@@ -1,0 +1,493 @@
+#!/opt/bin/python3
+
+"""
+For a given session_id, returns data on the user's datasets.  Order of priority:
+
+0.  User logged in with a layout passed to this script
+1.  User logged in with a submitted search string
+    a.  For searching their own datasets
+    b.  For searching the open datasets of others
+2.  User logged in with current, saved layout
+3.  Default layout (domain-specific, if cookie set) + user's private datasets
+4.  Default layout (Hearing domain, if cookie not set) + user's private datasets
+5.  Default layout (domain-specific, if cookie set) or anonymous user
+6.  Default layout (Hearing domain, if cookie not set) or anonymous user
+
+Data structure returned:
+
+{
+   datasets: [
+    {
+      dataset_id: "dataset12.corrected",
+      title: "Cell-specific RNASeq in the ear",
+      ldesc: "Super amazing illustration of cell-specific coloring of the ear cells.",
+      access: "Private"
+    }
+   ]
+}
+
+"""
+
+import cgi, json
+from datetime import datetime
+from operator import itemgetter
+
+import os, sys
+lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
+sys.path.append(lib_path)
+
+import geardb
+
+def main():
+    cnx = geardb.Connection()
+
+    print('Content-Type: application/json\n\n')
+
+    cursor = cnx.get_cursor()
+    form = cgi.FieldStorage()
+    session_id = form.getvalue('session_id')
+    scope = form.getvalue('scope')
+    search_terms = form.getvalue('search_terms')
+
+    # temporarily dealing with https://github.com/jorvis/gEAR/issues/350
+    if search_terms is not None:
+        search_terms = search_terms.translate(str.maketrans('','','+-/@'))
+    
+    permalink_id = form.getvalue('permalink_share_id')
+    only_types_str = form.getvalue('only_types')
+    sort_order = form.getvalue('order')
+    default_domain_label = form.getvalue('default_domain')
+
+    only_types = None
+
+    if only_types_str:
+        only_types = only_types_str.replace(' ', '').split(',')
+
+    # Only for get_layout_by_id - intial load on main.js = 1; dataset_manager.js = 0
+    exclude_pending = form.getvalue('exclude_pending')
+    if exclude_pending is not None:
+        exclude_pending = int(exclude_pending)
+
+    if sort_order is None:
+        sort_order = 'default'
+
+    current_user_id = get_user_id_from_session_id(cursor, session_id)
+    result = { 'datasets':[] }
+
+    # only used to non-redundify
+    dataset_ids = list()
+
+    layout_id = None
+    join_type = 'AND'
+
+    # Permalinks only. Get dataset info and return it
+    if permalink_id is not None:
+        result['datasets'] = get_permalink_dataset(cursor, permalink_id)
+        cursor.close()
+        cnx.close()
+        print(json.dumps(result))
+
+     # Was a specific layout ID passed?
+    if form.getvalue('layout_id') is not None:
+        layout_id = form.getvalue('layout_id')
+        result['datasets'].extend(get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending))
+
+        # if permalink_id is not None:
+        #     result['datasets'].extend(get_permalink_dataset(cursor, permalink_id))
+
+    # If scope is defined, the user is performing a search
+    elif scope is not None:
+        # If no search terms were defined, we want the whole list
+        search_term_qry = ''
+        qry_params = [current_user_id]
+
+        # Search terms defined, so search for matching datasets
+        if search_terms is not None:
+            # > = Include word, and increase rank if found
+            search_terms_str = '>' + search_terms.replace(' ', ' >')
+            search_term_qry = '''   AND MATCH(d.title, d.ldesc, d.geo_id) AGAINST( %s )
+                ORDER BY MATCH(d.title, d.ldesc) AGAINST(%s IN BOOLEAN MODE) DESC
+            '''
+            qry_params.append(search_terms)
+            qry_params.append(search_terms)
+            
+        matching_dataset_ids = list()
+        if scope == 'others':
+            query = """
+              SELECT d.id
+                FROM dataset d
+               WHERE d.is_public = 1
+                 AND d.owner_id != %s
+            """ + search_term_qry
+        elif scope == 'self':
+            #include shared datasets in search/list all
+            query = """
+              SELECT d.id
+                FROM dataset d
+               WHERE d.owner_id = %s
+            """ + search_term_qry
+            query_shared = """
+              SELECT s.dataset_id as id
+              FROM dataset_shares s
+              JOIN dataset d ON d.id=s.dataset_id
+              WHERE s.user_id = %s
+                AND s.is_allowed = 1
+            """ + search_term_qry
+        elif scope == 'shared':
+            query = """
+              SELECT s.dataset_id as id
+              FROM dataset_shares s
+              JOIN dataset d ON d.id=s.dataset_id
+              WHERE s.user_id = %s
+                AND s.is_allowed = 1
+            """ + search_term_qry
+        elif scope == 'user_all':
+            # Gathers all datasets the user has access to
+            # Targeted function: compare tool - show no pending datasets
+            query = """
+              SELECT d.id
+                FROM dataset d
+               WHERE d.owner_id = %s
+                AND load_status = 'completed'
+            """ + search_term_qry
+            query_shared = """
+              SELECT s.dataset_id as id
+              FROM dataset_shares s
+              JOIN dataset d ON d.id=s.dataset_id
+              WHERE s.user_id = %s
+                AND s.is_allowed = 1
+                AND load_status = 'completed'
+            """ + search_term_qry
+            query_public = """
+              SELECT d.id
+                FROM dataset d
+               WHERE d.is_public = 1
+                 AND d.owner_id != %s
+                AND load_status = 'completed'
+            """ + search_term_qry
+
+        else:
+            raise Exception("Dataset list requested but scope ({0}) wasn't recognized.".format(scope));
+
+        try:
+            cursor.execute(query, qry_params)
+        except:
+            print("The failed SQL was: {0}".format(cursor._executed), file=sys.stderr)
+            raise
+            
+        for row in cursor:
+            matching_dataset_ids.append(row[0])
+
+        #Search tags for any tagged datasets
+        if search_terms is not None:
+            search_term_list = search_terms.split()
+            for term in search_term_list:
+                qry_dataset_tag = """
+                    SELECT d.dataset_id
+                    FROM dataset_tag d
+                    JOIN tag t ON t.id=d.tag_id
+                    WHERE t.label=%s;
+                """
+                cursor.execute(qry_dataset_tag, (term,))
+                for row in cursor:
+                    if row[0] not in matching_dataset_ids:
+                        matching_dataset_ids.append(row[0])
+
+        if scope == 'self':
+            # now gather shared datasets
+            cursor.execute(query_shared, qry_params)
+            for row in cursor:
+                matching_dataset_ids.append(row[0])
+
+        if scope == 'user_all':
+            #now gather shared datasets
+            cursor.execute(query_shared, qry_params)
+            for row in cursor:
+                matching_dataset_ids.append(row[0])
+
+            #now gather public datasets
+            cursor.execute(query_public, qry_params)
+            for row in cursor:
+                matching_dataset_ids.append(row[0])
+
+        datasets_coll = geardb.DatasetCollection()
+        result['datasets'].extend(datasets_coll.get_by_dataset_ids(matching_dataset_ids))
+
+        # User didn't ask for a specific layout, and didn't pass search terms.  Let's check what
+        #  their account says instead.
+    else:
+        # Do they have a current layout saved?
+        saved_layout_query = "SELECT id FROM layout WHERE user_id = %s AND is_current = 1"
+        cursor.execute(saved_layout_query, (current_user_id,))
+        for row in cursor:
+            layout_id = row[0]
+            break
+
+        # No layout saved, used the default
+        if layout_id is None:
+            for dataset in get_default_layout(cursor, default_domain_label):
+                result['datasets'].append(dataset)
+                dataset_ids.append(dataset['dataset_id'])
+
+        else:
+            result['datasets'].extend(get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending))
+
+    cursor.close()
+    cnx.close()
+
+    # apply any post-processing
+    if only_types is not None:
+        kept_datasets = []
+
+        for dataset in result['datasets']:
+            if dataset['dtype'] in only_types:
+                kept_datasets.append(dataset)
+
+        result['datasets'] = kept_datasets
+
+    # does the user have a specific search requirement?
+    if sort_order == 'alpha':
+        datasets_sorted = sorted(result['datasets'], key=itemgetter('title'))
+        result['datasets'] = datasets_sorted
+
+    print(json.dumps(result))
+
+def get_default_layout(cursor, domain_label):
+    # this is the hearing one
+    layout_id = 0
+
+    # These values need to match what's in the database (check create_schema.sql)
+    if domain_label == "Brain development (default)":
+        layout_id = 10000
+    elif domain_label == "Huntington's disease (default)":
+        layout_id = 10001
+
+    return get_layout_by_id(cursor, 0, layout_id, 1)
+
+def get_users_datasets(cursor, user_id):
+    qry = """
+       SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
+       d.dtype, d.schematic_image, d.share_id, d.math_default,
+       d.marked_for_removal, d.date_added, d.load_status, d.plot_default,
+       IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags, o.id
+         FROM dataset d
+              JOIN organism o ON d.organism_id=o.id
+              LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
+              LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
+        WHERE d.owner_id = %s
+        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
+        d.dtype, d.schematic_image, d.share_id, d.math_default,
+        d.marked_for_removal, d.date_added, d.load_status, d.plot_default, o.id
+    """
+    cursor.execute(qry, (user_id,))
+    datasets = list()
+
+    for row in cursor:
+        # skip datasets marked_for_removal
+        if row[11] == 1:
+            continue
+        else:
+            if row[5] == 1:
+                access_level = 'Public'
+            else:
+                access_level = 'Private'
+
+            date_added = row[12].isoformat()
+
+            if row[15] == 'NULL':
+                tag_list = None
+            else:
+                tag_list = row[15].replace(',', ', ')
+
+            datasets.append({
+                'dataset_id': row[0],
+                'grid_position': None,
+                'grid_width': 4,
+                'title': row[1],
+                'organism': row[2],
+                'organism_id': row[16],
+                'pubmed_id': row[3],
+                'geo_id': row[4],
+                'access': access_level,
+                'ldesc': row[6],
+                'dtype': row[7],
+                'user_id': user_id,
+                'user_name': 'You',
+                'schematic_image': row[8],
+                'share_id': row[9],
+                'math_format': row[10],
+                'date_added': date_added,
+                'load_status': row[13],
+                'plot_format': row[14],
+                'tags': tag_list
+            })
+
+    return datasets
+
+def get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending):
+    qry = """
+       SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.math_preference,
+              d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
+              u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
+              ds.is_allowed, d.marked_for_removal, d.date_added, d.load_status,
+              IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags, d.has_h5ad,
+              d.plot_default, lm.plot_preference, o.id
+         FROM layout_members lm
+              JOIN layout l ON lm.layout_id=l.id
+              JOIN dataset d ON lm.dataset_id=d.id
+              JOIN organism o ON d.organism_id=o.id
+              JOIN guser u ON d.owner_id=u.id
+              LEFT JOIN dataset_shares ds ON d.id=ds.dataset_id
+                  AND ds.user_id = %s
+              LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
+              LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
+        WHERE l.id = %s
+     GROUP BY d.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.math_preference,
+            d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
+            u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
+            ds.is_allowed, d.marked_for_removal, d.date_added, d.load_status,
+            d.plot_default, lm.plot_preference, o.id
+     ORDER BY lm.grid_position
+    """
+    # print("DEBUGGING: ", qry.format(current_user_id, layout_id), file=sys.stderr)
+    cursor.execute(qry, (current_user_id, layout_id,))
+    datasets = list()
+
+    for row in cursor:
+        # skip dataset if 1) share has been revoked 2) is marked for removal 3)load_status is excluded
+        if row[16] == 0 or row[17] == 1 or (row[19] != 'completed' and exclude_pending == 1):
+            continue
+        else:
+            # does user have a math preference set
+            if row[3] == None:
+                #use dafault
+                math_format = row[15]
+            else:
+                #use user's preference
+                math_format = row[3]
+
+            if row[8] == 1:
+                access_level = 'Public'
+            else:
+                access_level = 'Private'
+
+            date_added = row[18].isoformat()
+
+            if row[20] == 'NULL':
+                tag_list = None
+            else:
+                tag_list = row[20].replace(',', ', ')
+
+            # does user have a plot preference set
+            if row[23] == None:
+                #use default
+                plot_format = row[22]
+            else:
+                #use user's preference
+                plot_format = row[23]
+
+            datasets.append({
+                'dataset_id': row[0],
+                'grid_position': row[1],
+                'grid_width': row[2],
+                'math_format': math_format,
+                'title': row[4],
+                'organism': row[5],
+                'organism_id': row[24],
+                'pubmed_id': row[6],
+                'geo_id': row[7],
+                'access': access_level,
+                'ldesc': row[9],
+                'dtype': row[10],
+                'user_id': row[11],
+                'user_name': row[12],
+                'schematic_image': row[13],
+                'share_id': row[14],
+                'date_added': date_added,
+                'is_permalink': 0,
+                'load_status': row[19],
+                'tags': tag_list,
+                'has_h5ad': row[21],
+                'plot_format': plot_format
+            })
+
+    return datasets
+
+def get_permalink_dataset(cursor, permalink_id):
+    qry = """
+       SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
+              u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
+              d.marked_for_removal, d.date_added, d.load_status,
+              IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags, d.has_h5ad, d.plot_default,
+              d.organism_id
+         FROM dataset d
+              JOIN organism o ON d.organism_id=o.id
+              JOIN guser u ON d.owner_id=u.id
+              LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
+              LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
+        WHERE d.share_id = %s
+        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
+               u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
+               d.marked_for_removal, d.date_added, d.load_status, d.plot_default, d.organism_id
+    """
+    cursor.execute(qry, (permalink_id,))
+    dataset = list()
+
+    for row in cursor:
+        # skip dataset if marked for removal
+        if row[13] == 1:
+            continue
+        else:
+
+            if row[8] == 1:
+                access_level = 'Public'
+            else:
+                access_level = 'Private'
+
+            date_added = row[14].isoformat()
+
+            if row[16] == 'NULL':
+                tag_list = None
+            else:
+                tag_list = row[16].replace(',', ', ')
+
+            dataset.append({
+                'dataset_id': row[0],
+                'grid_position': 100,
+                'grid_width': 4,
+                'title': row[1],
+                'organism': row[2],
+                'pubmed_id': row[3],
+                'geo_id': row[4],
+                'access': access_level,
+                'ldesc': row[6],
+                'dtype': row[7],
+                'user_id': row[8],
+                'user_name': row[9],
+                'schematic_image': row[10],
+                'share_id': row[11],
+                'math_format': row[12],
+                'date_added': date_added,
+                'is_permalink': 1,
+                'load_status': row[15],
+                'tags': tag_list,
+                'has_h5ad': row[17],
+                'plot_format': row[18],
+                "organism_id": row[19]
+            })
+
+    return dataset
+
+
+def get_user_id_from_session_id(cursor, session_id):
+    qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
+    cursor.execute(qry, (session_id, ) )
+    user_id = None
+
+    for (uid,) in cursor:
+        user_id = uid
+
+    return user_id
+
+if __name__ == '__main__':
+    main()

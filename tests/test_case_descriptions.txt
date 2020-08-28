@@ -1,0 +1,45 @@
+{ "file_description": "This file lists and describes the test cases for the gEAR uploader. This file is formatted in JSON",
+  "xlsx_tests": [
+      {
+        "test_name": "1_absent_exp_sheet",
+        "description": "Test case lacks the 'expression' sheet. This sheet is required."
+      },
+      {
+        "test_name": "2_absent_obs_sheet",
+        "description": "Test case lacks the 'observation' sheet. This sheet is required."
+      },
+      {
+        "test_name": "3_obs_count_mismatch_exp",
+        "description": "The count of rows in 'observation' sheet is less than 'expression'."
+      },
+      {
+        "test_name": "4_obs_name_mismatch_exp",
+        "description": "Observation keys in 'observation' sheet did not match those in 'expression'."
+      },
+      {
+        "test_name": "5_genes_count_mismatch_exp",
+        "description": "If 'genes' sheet is present, the count of rows is less than 'expression'."
+      },
+      {
+        "test_name": "6_genes_name_mismatch_exp",
+        "description": "If 'genes' sheet is present, the genes keys in 'genes' sheet did not match those in 'expression'."
+      },
+      {
+        "test_name": "7_exp_contains_string",
+        "description": "The 'expression' sheet contains non-integer values in the expression matrix."
+      },
+      {
+        "test_name": "8_exp_contains_empty_cells",
+        "description": "The 'expression' sheet contains empty cells in the expression matrix."
+      },
+      {
+        "test_name": "9_absent_genes_sheet.xlsx",
+        "description": "The 'genes' sheet is absent. It is optional. adata.var should be produced from 'expression' sheet."
+      },
+      {
+        "test_name": "",
+        "description": ""
+      },
+
+  ]
+}

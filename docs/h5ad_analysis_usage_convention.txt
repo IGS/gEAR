@@ -1,0 +1,31 @@
+--------------------------------------
+-= Possible additions to current UI =-
+--------------------------------------
+
+- When the dataset is selected, we could show the top N expressed genes:
+
+  sc.pl.highest_expr_genes(adata, n_top=20)
+
+------------------------------------------
+-= AnnData structure used and reasoning =-
+------------------------------------------
+
+Our AnnData structure reflects the need to support both ongoing analyses and
+allow users to back up to the first steps and start over.  This means some data
+copying so filtering steps don't remove our primary data.
+
+adata.X_orig = adata.X
+adata.var_orig = adata.var
+adata.obs_orig = adata.obs
+
+# What did the dataset look like right after filtering?
+adata.X_post_hivar = adata.X
+adata.var_post_hivar = adata.var
+adata.obs_post_hivar = adata.obs
+
+# Snapshot right after mito filtering
+adata.X_post_mito = adata.X
+adata.var_post_mito = adata.var
+adata.obs_post_mito = adata.obs
+
+

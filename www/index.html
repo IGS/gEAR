@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js">
+  <!--<![endif]-->
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <title>Main page</title>
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="-1" />
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+    -->
+    <base href="/" />
+
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+      integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+      crossorigin="anonymous"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/css/bootstrap4-toggle.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <link
+      href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+    <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+    <script>document.write('<link rel="stylesheet" href="css/index.' +  Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+    <script>document.write('<link rel="stylesheet" href="css/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+
+    <link rel="stylesheet" href="css/jquery.mCustomScrollbar.css" />
+    <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+  </head>
+  <body>
+
+  <!-- Forgot (Change) Password Modal -->
+  <div class="modal fade" id="forgot_password_modal" tabindex="-1" role="dialog"
+    aria-labelledby="forgot_password_modal_title" aria-hidden="true" data-backdrop='static'>
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="forgot_password_modal_title">Change your password</h2>
+        </div>
+        <div class="modal-body">
+          <div id="valid_forgot_pass_modal_body_c" class="container-fluid">
+            <div class="row">
+              <h3>Hi<span id="forgot_password_user_name"><b>!</b></span> You can reset your password by creating a
+                new one here.</h3>
+            </div>
+            <div class="row">
+              <form id='change_forgotten_pass_form' class='col-sm-12 form-horizontal' role='form'>
+                <input type='hidden' id='user_help_id' name='user_help_id' value='' />
+                <div class="form-group row">
+                  <label for="user_new_pass_1" class="col-2 col-form-label">New Password</label>
+                  <div class="col-10">
+                    <input class="form-control" type="password" value="" id="user_new_pass_1">
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label for="user_new_pass_2" class="col-2 col-form-label">Re-enter Password</label>
+                  <div class="col-10">
+                    <input class="form-control" type="password" value="" id="user_new_pass_2" disabled="true">
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class='row'>
+              <p>Both new passwords must match in order to save your new password.</p>
+            </div>
+          </div>
+          <div id="invalid_forgot_pass_modal_body_c" style="display:none;" class="container-fluid text-center">
+            <h3>This link is no longer available or has expired.</h3>
+          </div>
+          <div id="saving_forgot_pass_modal_body_c" style="display:none;" class="container-fluid text-center">
+            <h3><img id="submit_wait_indicator" src="img/loading_search.gif" style="height:30px; width:30px;"
+                alt="submitting"> Saving changes</h3>
+          </div>
+          <div id="success_forgot_pass_modal_body_c" style="display:none;" class="container-fluid text-center">
+            <h3><span class="glyphicon glyphicon-ok"></span> Your password has been updated.</h3>
+          </div>
+        </div>
+        <div id="forgot_pass_modal_footer" class="modal-footer text-center">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" id="save_user_new_pass" class="btn btn-primary" disabled="true">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div> <!-- end of forgot_password_modal -->
+
+    <!--[if lt IE 7]>
+      <p class="browsehappy">
+        You are using an <strong>outdated</strong> browser. Please
+        <a href="http://browsehappy.com/">upgrade your browser</a> to improve
+        your experience.
+      </p>
+    <![endif]-->
+    <div id="body_c">
+      <div id="navigation_bar">
+        <!-- content here inserted via JQuery -->
+      </div> <!-- end navigation_bar -->
+
+      <div class="alert-container">
+        <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+      </div>
+
+      <div id="intro_content">
+        <div id="intro_content_c" class="container-fluid">
+          <div class="row pb-3" id="intro_search_options_c">
+            <div class="col-6">
+              <h1>Gene search</h1>
+              <p class='subnote'>Specify one or more genes with spaces or commas</p>
+              <form id="intro_search_form">
+                <div class="form-row">
+                  <div class="col-12">
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="search_gene_symbol_intro" placeholder="Gene symbol" />
+                      <div class="input-group-append">
+                        <div id="intro_search_icon" class="input-group-text" >
+                          <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
+                        </div>
+                      </div>
+                      <div class="input-group-append">
+                        <div id="exact_match_icon" class="input-group-text" >
+                          <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div> <!-- .form-row -->
+              </form>
+            </div> <!-- end #intro_search_options_c -->
+            <div class="col-6">
+              <h1>Choose a profile to search</h1>
+              <p class='subnote'>A profile is named group of datasets</p>
+              <nav class="navbar navbar-expand-lg navbar-dark py-0">
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                  <ul class="navbar-nav">
+                    <li class="nav-item active">
+                      <a class="nav-link" href="#">Profile</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                      <a class="nav-link dropdown-toggle" href="#" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Choose one
+                      </a>
+                      <div class="dropdown-menu" aria-labelledby="search_param_profile">
+                        <h6 class="dropdown-header" id="intro_domains_header">Profiles</h6>
+                        <!-- domains inserted here later -->
+                        <div class="dropdown-divider"></div>
+                        <h6  class="dropdown-header" id="intro_profiles_header">Your profiles</h6>
+                        <!-- user profiles inserted here later -->
+                      </div>
+                      <script id="tmpl_intro_search_layouts" type="text/x-jsrender">
+                        <a class="dropdown-item domain_choice_c py-0" href="#" data-profile-label="{{:text}}" data-profile-id="{{:value}}">{{:text}}</a>
+                      </script>
+                    </li>
+                  </ul>
+                </div>
+              </nav>
+            </div>
+          </div> <!-- end intro_search_options_c -->
+        </div> <!-- end .section_panels_row -->
+        <div class="section_panels_row card-deck mt-2 pt-3">
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/wrench_purple.png" /> Compare tool</h3>
+            </div>
+            <div class="card-body">
+              <p class="card-title">
+                Compare gene expression between two conditions within a dataset.
+              </p>
+              <div class="img_c">
+                <img id="comparison_tool_screenshot" class="img-fluid" src="img/comparison_tool_screenshot.png" />
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="section_launcher" id="launcher_comparison_tool">
+                <div class="section_launcher_label">PERFORM COMPARISONS</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/drives_purple.png" /> Single-cell RNA-Seq workbench</h3>
+            </div>
+            <div class="card-body">
+              <p class="card-title">Analyze, visualize or share analyses of scRNA-Seq data.</p>
+              <div class="img_c">
+                <img id="analyzer_composite_screenshot" class="img-fluid" src="img/analyzer_composite_screenshot.png" />
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="section_launcher" id="launcher_workbench">
+                <div class="section_launcher_label">LAUNCH WORKBENCH</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/graph_purple.png" /> Epiviz tool</h3>
+            </div>
+            <div class="card-body">
+              <p class="card-title">Visualize epigenetic data using the Epiviz genome browser.</p>
+              <div class="img_c">
+                <img id="epiviz_mini_screenshot" class="img-fluid" src="img/epiviz_mini_screenshot.jpg" />
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="section_launcher section_launcher_notready" data-toggle="tooltip" data-placement="top" title="Not ready yet - In development">
+                <div class="section_launcher_label">START DATA VISUALIZATION</div>
+              </div>
+            </div>
+          </div>
+        </div> <!-- end .section_panels_row -->
+        <div class="section_panels_row card-deck pt-3">
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/upload_purple.png" /> Dataset uploader</h3>
+            </div>
+            <div class="card-body">
+              <p class="card-title">Upload gene expression dataset for private and/or public viewing.</p>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="section_launcher" id="launcher_uploader">
+                <div class="section_launcher_label">LAUNCH DATASET UPLOADER</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/gear_purple.png" /> Dataset manager</h3>
+            </div>
+            <div class="card-body">
+              <p class="card-title">Select datasets for visualization and analysis. Generate custom profiles for parallel visualization of datasets. Share private datasets with friends and collaborators.</p>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="section_launcher" id="launcher_dataset_manager">
+                <div class="section_launcher_label">MANAGE DATASETS</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/book_purple.png" /> <span class='domain_short_display_label'></span> manual</h3>
+            </div>
+            <div class="card-body">
+              <p class="card-title">The <span class='domain_short_display_label'></span> manual has step-by step instructions and video tutorials.</p>
+            </div>
+            <div class="card-footer bg-white">
+              <!-- <div class="section_launcher" id="launcher_manual"> -->
+              <div class="section_launcher section_launcher_notready" data-toggle="tooltip" data-placement="top" title="Not ready yet - In development">                
+                <div class="section_launcher_label">EXPLORE THE MANUAL</div>
+              </div>
+            </div>
+          </div>
+        </div> <!-- end .section_panels_row -->
+        <div id="news_and_stats" class="section_panels_row pb-3">
+          <hr class="pt-3">
+          <div class="col-12">
+            <div class="row news_and_stats_row">
+              <div class="news_and_stats_section col-6 pl-0">
+                <div id="news_c">
+                  <h3>News</h3>
+                  <ul>
+                    <li>
+                      Comparison tool updated to allow statistical coloring/filtering
+                    </li>
+                    <li>
+                      Ensembl release 94 loaded for mouse, human, chicken and
+                      zebrafish
+                    </li>
+                    <li>
+                      Several datasets added, including 'E18.5-P0, mouse IHC
+                      vs OHC and INSM1 WT and Mutant OHC, RNAseq'
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="news_and_stats_section col-3">
+                <div id="tutorials_c">
+                  <h3>Tutorials</h3>
+                  <ul>
+                    <li>
+                      <a href="./docs/manual_uploader.docx">Uploading data</a>
+                    </li>
+                    <li>
+                      <a href="./docs/manual_scRNA_workbench.docx">Single-cell analysis workbench</a>
+                    </li>
+                    <li>
+                      <a href="./docs/manual_comparison_tool.docx">Comparison tool</a>
+                    </li>
+                  </ul>
+                </div>
+              </div> <!-- end #tutorials_c -->
+              <div class="news_and_stats_section col-3 pr-0">
+                <div id="site_stats_c" class='bg-white'>
+                  <h3>Site stats</h3>
+                  <ul>
+                    <li>Datasets:<span id="stats_dataset_count" class="pull-right"></span></li>
+                    <li>Registered users:<span id="stats_user_count" class="pull-right"></span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div> <!-- end #news_and_stats -->
+      </div> <!-- end intro_content-->
+    </div> <!-- end section_panels_c -->
+
+    <div id="main_content" class="container-fluid">
+      <div id='note_main_c' class='row'>
+          <div id='note_side_panel_c' class='col-3 dock-right'></div>
+          <div id='note_fullwindow_c' class='col-9'></div>
+      </div>
+
+        <!-- REDESIGN ABOVE -->
+
+
+        <div class="row">
+          <div id="leftbar_main" class="col-2">
+            <div id="search_container">
+              <div id="search_info">
+                <div id="selected_profile_c" class="row">
+                  Profile:
+                  <span id="selected_profile" data-type="select" value="" data-title="Click to change"></span>
+                </div>
+                <div id="selected_gene_cart_c" class="row">
+                  Gene Cart:
+                  <span id="selected_gene_cart" data-type="select" value="" data-title="Click to change"></span>
+                </div>
+                <div id="selected_gene_cart_loading_c" class="row">
+                  <img id="selected_gene_car_loading" src="img/loading_search.gif" alt="loading" /> loading
+                </div>
+              </div>
+              <form id="gene_search_form">
+                <div class="form-row">
+                  <div class="col">
+                    <input type="hidden" name="dataset_ids" id="dataset_ids" value="" />
+                    <!-- Default for interesting single-cell data demo -->
+                    <!-- BDNF FGFR2 RPA2 S100A1 SOX10 SOX17 ATOH1 ACTB GAPDH HPRT ACVR2A ACVR2B AKT1 AP1M2 AQP4 AXIN2 BMI1 BMP2 BMP4 BMPR2 BRIP1 CACNA1D CALB1 Calb2 Calm1 CaMK4 CCNA2 CCNB1 CCNB2 CCND1 CCNE1 CCNE2 CDH1 CDH13 CDH2 CDK1 CDK6 CDK7 CDKN1A CDKN1B CDKN2A CDKN2d CHRD CLRN1 CNTNAP1 CSNK1E CTNNB1 DACH1 DKK1 DKK3 DLL1 DLX5 DNER DNMT1 DNMT3A DNMT3B DUSP9 EFNA1 EGFR EN1 EPCAM EPHA7 EPHB3 ESPN ETV4 ETV5 EYA1 EYA2 FBXO2 FGF10 FGF3 FGF8 FGF9 FGFR1 FGFR3 FGFR4 FOS FOXG1 FST FZD3 FZD4 FZD6 GATA2 GATA3 GDF10 GFAP GJB1 GJB2 GJB3 GJB6 GLI1 GLI2 GLI3 GPR98 GRB10 HES1 HES5 HES6 HEY1 HEY2 HMGA2 INHBA ISL1 ITPR2 JAG1 JAG2 JAK1 KCNJ10 KCNQ4 KRT14 LAMB1 LATS1 LATS2 LFNG LGR5 LIN28A MAP2K1 MCAM MKI67 MST1 MYC MYCN MYO15 MYO6 MYO7A NES NFKB2 NGFR NOG NOTCH2 NTF3 OC90 OCM OTOF OTOL1 OTOP1 OTOR OTX1 OTX2 PAX2 PAX8 PCDH15 PCGF2 PCNA PDGFRA PLP1 POU3F3 POU4F3 PROX1 PTPRQ PVALB RDX SHH SIX1 SIX3 SIX4 SLC1A3 SLC26A5 SLC2A4 SMO SMUG1 SOX2 SOX3 SOX9 SP5 SPNA2 SPRY1 SPRY2 TAZ TBX1 TCF7L1 TDG TGFB3 TGFBR2 TLE1 VEGFA VEGFC WNT1 WNT2B WNT3 WNT3A WNT4 WNT7A WNT7B WNT8A YAP1 -->
+                    <!-- Default for Ronna's list of interesting test genes -->
+                    <!-- Myo7a Pou4f3 Sox2 Fgfr3 Atoh1 lgr5 Glast RFX3 Pou3f4 -->
+                    <input type="hidden" name="exact_match" id="exact_match" value="" />
+                    <input id="search_gene_symbol" type="text" class="form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
+                  </div>
+                </div>
+                <div class="row search_option">
+                  <div class="col-8 pl-0 pr-0">
+                    Exact match
+                  </div>
+                  <div class="col-4">
+                    <input id="exact_match_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Limit results to exact matches" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <!-- this gets re-enabled when the page is loaded via javascript -->
+                  <button id="submit_search" type="submit" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="bottom" title="Search gene(s)" disabled>
+                    <span class="fa fa-search"></span> Search
+                  </button>
+                  <div class="btn-group">
+                    <button id="toggle_options" type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false" data-toggle="tooltip" data-placement="bottom" title="Change scoring method">
+                      <span class="fa fa-wrench"></span>
+                    </button>
+                    <ul id="scoring_and_gradient_menu" class="dropdown-menu" role="menu">
+                      <li class="instructions">Scoring method:</li>
+                      <li class="divider"></li>
+                      <li class="scope_choice" data-choice="gene">
+                        <span class="fa fa-arrows-h"> Gene scope</span>
+                      </li>
+                      <li class="scope_choice" data-choice="tissue">
+                        <span class="fa fa-arrows-v"> Tissue scope</span>
+                      </li>
+                      <li class="scope_choice" data-choice="dataset">
+                        <span class="fa fa-th"> Dataset scope</span>
+                      </li>
+                      <!-- color gradients added here by main.js:populate_example_color_gradients() -->
+                    </ul>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <!-- end #search_container -->
+
+            <div id="search_results_c" class="item search_result_c search_result_c_DISABLED" style="height:calc(90vh - 240px);">
+              <h4>
+                Search results
+                <span id="search_result_count" class="badge"></span>
+              </h4>
+              <div id="searching_indicator_c">
+                <img id="searching_indicator" src="img/loading_search.gif" alt="searching" />
+              </div>
+              <div id="search_results_scrollbox">
+                <div id="search_results" class="list-group"></div>
+              </div>
+            </div>
+            <!-- end #search_results_c -->
+          </div>
+          <!-- #lefbar_main -->
+
+          <div id="viewport_intro" class="main_column col-sm-7 col-md-7 col-lg-7">
+            <!-- #PERMALINK -->
+            <div id="permalink_intro_c" style="display:none">
+              <div id="permalink_info" class="container"></div>
+              <div class="container">
+                <h3>Instruction for viewing</h3>
+                <p>
+                  To view the dataset, search for a gene or list of genes to the
+                  left. Here's some examples: "atoh1" or "atoh1 gfi1 pou4f3
+                  lfng"
+                </p>
+              </div>
+            </div>
+            <!-- end permalink -->
+          </div>
+          <!-- end #viewport -->
+
+          <!----------------------------------------
+          ----------------------------------------
+            Main panel of active page
+        ------------------------------------------->
+          <div id="viewport_main" class="main_column col-10">
+            <div id="links_out_c" class="row search_result_c">
+              <div class="col-12">
+                <div id="searched_gene">
+                  Showing results for gene:
+                  <span id="selected_gene_symbol"></span>
+                </div>
+                <div class="row">
+                  <div class="col-4" id="gene_organism_options_c">
+                    <h4>Annotation by organism</h4>
+                    <div class="organism_icon_c">
+                      <button id="annot_organism_1" class="icon-organism" data-organism-id="1" data-toggle="tooltip" data-placement="top" title="Mouse">
+                        <img src="./img/icons/org-1-light-64.svg" alt="Mouse" />
+                      </button>
+                      <button id="annot_organism_2" class="icon-organism" data-organism-id="2" data-toggle="tooltip" data-placement="top" title="Human">
+                        <img src="./img/icons/org-2-light-64.svg" alt="Human" />
+                      </button>
+                      <button id="annot_organism_3" class="icon-organism" data-organism-id="3" data-toggle="tooltip" data-placement="top" title="Zebrafish">
+                        <img  src="./img/icons/org-3-light-64.svg" alt="Zebrafish" />
+                      </button>
+                      <button id="annot_organism_5" class="icon-organism" data-organism-id="5" data-toggle="tooltip" data-placement="top" title="Chicken">
+                        <img src="./img/icons/org-5-light-64.svg" alt="Chicken" />
+                      </button>
+                      <button id="annot_organism_6" class="icon-organism" data-organism-id="6" data-toggle="tooltip" data-placement="top" title="Rat">
+                        <img src="./img/icons/org-6-light-64.svg" alt="Rat" />
+                      </button>
+                      <button id="annot_organism_7" class="icon-organism" data-organism-id="7" data-toggle="tooltip" data-placement="top" title="Marmoset">
+                        <img src="./img/icons/org-7-light-64.svg" alt="Marmoset" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-5">
+                    <h4>External resource links</h4>
+                    <ul id="links_out"></ul>
+                    <script id="tmpl_external_links" type="text/x-jsrender">
+                      {{if url}}
+                      <li><a href="{{:url}}" target="gear_link" title="{{:title}}">{{:source}}</a></li>
+                      {{/if}}
+                    </script>
+                  </div>
+                  <div id='annotation_plugin_c' class="col-3">
+                    <!-- content inserted here if plugins present -->
+                  </div>
+                </div>
+                <!-- end .row -->
+              </div>
+            </div>
+            <!-- end #links_out_c-->
+
+            <div id="gene_details_c" class="row search_result_c">
+              <div id="gene_details" class="col-12">
+                <div id="gene_details_header" title="Show gene information" data-toggle="collapse" data-target="#gene_details_info" aria-expanded="false" aria-controls="gene_details_info">
+                  <div class="row">
+                    <div class="col-9">
+                      Functional annotation -
+                      <span id="gene_details_header_title"></span>
+                    </div>
+                    <div class="col-3 pull-right">
+                      <span id="gene_collapse_btn" class="fa fa-plus pull-right" aria-expanded="false"></span>
+                    </div>
+                  </div>
+                </div>
+                <div id="gene_details_info" class="collapse">
+                  <div id="gene_annotation_c" class="row">
+                    <div id="primary_annotation_attributes" class="col-3">
+                      <h4>Annotation</h4>
+                      <dl>
+                        <dt>Product</dt>
+                        <dd id="annot-product"></dd>
+
+                        <dt>Gene symbol</dt>
+                        <dd id="annot-gene_sym"></dd>
+
+                        <dt>Aliases</dt>
+                        <dd id="annot-aliases"></dd>
+
+                        <dt>
+                          Ensembl ID (Release
+                          <span id="annot-ensembl_release"></span>)
+                        </dt>
+                        <dd id="annot-ensembl_id"><a href=""></a></dd>
+                      </dl>
+                    </div>
+                    <div id="go_terms_c" class="col-6">
+                      <h4>
+                        GO terms <span id="go_term_count" class="badge"></span>
+                      </h4>
+                      <div id="go_terms_table_c">
+                        <table
+                          id="annot-go_terms"
+                          class="table table-condensed"
+                        ></table>
+                        <script id="tmpl_go_terms" type="text/x-jsrender">
+                          <tr>
+                            <td><a href="http://amigo1.geneontology.org/cgi-bin/amigo/term_details?term={{:go_id}}">{{:go_id}}</a></td>
+                            <td>{{:name}}</td>
+                          </tr>
+                        </script>
+                      </div>
+                    </div>
+                    <div id="mirna_tree_c" class="col-3">
+                      <h4>miRNA Tree</h4>
+                      <ul id="mirna_tree"></ul>
+                      <!-- populated by main.js -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- end div#gene_details -->
+              <script id="tmpl_aliases" type="text/x-jsrender">
+                <span class='gene_symbol_alias'>{{:label}}</span>
+              </script>
+            </div>
+            <!-- end #gene_details_c -->
+            <div id="tip" style="display:none">&nbsp;</div>
+            <div id="dataset_grid" class="search_result_c search_result_c_DISABLED">
+              <!-- populated by main.js:load_dataset_frames() -->
+            </div>
+            <div id="dataset_zoomed" class="search_result_c search_result_c_DISABLED" style="display:none;">
+              <!-- populated by main.js:load_dataset_frames() -->
+            </div>
+          </div>
+          <!-- end #viewport_main -->
+        </div> <!-- end #main_row -->
+
+        <div id='modals_c'>
+          <div class="modal fade" id="unready" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
+                  <h4 class="modal-title" id="myModalLabel">Oops!</h4>
+                </div>
+                <div class="modal-body">
+                  <!-- That feature isn't ready yet! -->
+                  <h3>That feature isn't ready yet!</h3>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                  <!--<button type="button" class="btn btn-primary">Save changes</button>-->
+                </div> <!-- end .modal-footer -->
+              </div> <!-- end .modal-content -->
+            </div> <!-- end .modal-dialog -->
+          </div> <!-- div#unready -->
+        </div> <!-- end #modals_c -->
+
+      </div> <!-- end #main_content -->
+
+      <div class=".clear_hack"></div>
+
+      <footer>
+        <!-- content here inserted via JQuery -->
+        <div id="funding"></div>
+        <div id="footer"></div>
+      </footer>
+    </div> <!-- /body_c -->
+
+    <div id="templates_c">
+      <script id="tmpl_mirna_tree" type="text/x-jsrender">
+        <b>Family:</b> {{:family_label}}
+        <ul>
+          {{* for (var i=0; i<stemloop_mature_group.length; i++) { }}
+                                                            <li id="mir_stemloop" style="list-style-type:none; margin-left:-25px;"><span class="glyphicon glyphicon-ok gly-rot-45"></span> <b>Stem-loop:</b> {{*:stemloop_mature_group[i]}}
+                                                              <ul>
+                                                                {{* for (var d=0; d<mature_labels.length; d++) { }}
+                                                                                                          <li id="mir_mature" style="list-style-type:none; margin-left:-10px;"><span class="glyphicon glyphicon-ok gly-rot-45"></span> <b>Mature miRNA:</b> {{*:mature_labels[d]}}</li>
+                                                                                                          {{* } }}
+                                                              </ul>
+                                                            </li>
+                                                            {{* } }}
+        </ul>
+      </script>
+      <script id="tmpl_permalink_info" type="text/x-jsrender">
+        {{if is_permalink == 1}}
+        <div class="row">
+          <div {{if schematic_image}} class="col" {{else}} class="col-sm-12"{{/if}}>
+            <h2>{{:title}}</h2>
+            <p>Owner:  {{:user_name}}</p>
+            <p>Uploaded:  {{:date_added}}</p>
+            <p class="dataset_ldesc">{{:ldesc}}</p>
+          </div>
+          {{if schematic_image}}
+          <div class="col">
+            <img width="100%;"src="{{:schematic_image}}" alt="Infograph" />
+          </div>
+        </div>
+        {{/if}}
+        {{/if}}
+      </script>
+      <!-- end script#permalink_info -->
+      <script id="tmpl_permalink_zoomed" type="text/x-jsrender">
+            {{if is_permalink == 1}}
+            <div class="dataset_cc col-sm-12">
+              <div id="dataset_zoomed" class="dataset_c">
+                <div id="tip_zoomed">&nbsp;Score here</div>
+                <div class="dataset_header container-fluid">
+                  <div class="row">
+                    <div class="dataset_header_title col-sm-10">{{:title}}</div>
+                  </div> <!-- .row -->
+                </div> <!-- .dataset_header -->
+                <div id="{{:dataset_id}}_nodata_c" class="nodata-container">
+                  <h2>No data found for this gene</h2>
+                </div>
+                {{if dtype == 'svg-expression'}}
+                <div id="{{:dataset_id}}_svg_cc" class="svg-container">
+                  <!-- adding height="100%" to this centers the SVG vertically -->
+                  <div id="dataset_{{:dataset_id}}_svg_c" class="svg-content" data-dataset-id="{{:dataset_id}}" data-path="datasets_uploaded/{{:dataset_id}}.svg"></div>
+                </div>
+                {{else dtype == 'image-static'}}
+                <div class="image-static-container">
+                  <img id='dataset_{{:dataset_id}}_image_static' src='' />
+                </div>
+                {{else dtype == 'image-static-standard'}}
+                <div class="image-static-container">
+                  <img id='dataset_{{:dataset_id}}_image_static' src='' />
+                </div>
+                {{else dtype == 'bargraph-standard'}}
+                <div class="bargraph-standard-container">
+                  <div id="dataset_{{:dataset_id}}_bargraph_standard"></div>
+                </div>
+                {{else dtype == 'linegraph-standard'}}
+                <div class="linegraph-standard-container">
+                  <div id="dataset_{{:dataset_id}}_linegraph_standard"></div>
+                </div>
+                {{else dtype == 'violin-standard'}}
+                <div class="violin-standard-container">
+                  <img id='dataset_{{:dataset_id}}_violin_standard' src='' />
+                </div>
+                {{else}}
+                <div id='dataset_{{:id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
+                {{/if}}
+              </div>
+            </div> <!-- #dataset_zoomed -->
+        </div> <!-- end dataset_cc -->
+        {{/if}}
+      </script>
+      <!-- end script#tmpl_permalink_zoomed -->
+      <script id="tmpl_infobox" type="text/x-jsrender">
+        <div class="modal fade" id="dataset_{{:dataset_id}}_info" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <!-- <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button> -->
+                <h4 class="modal-title">Dataset information</h4>
+              </div>
+              <div class="modal-body">
+                <h3>{{:title}}</h3>
+                <div class="textarea-ldesc">{{:ldesc}}</div>
+              </div>
+              <div class='infograph_illustration_{{:dataset_id}}'></div>
+              {{if schematic_image}}
+              <img class='img-fluid' src="{{:schematic_image}}" alt="Infograph" />
+              {{/if}}
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </script>
+      <!-- script#tmpl_infobox -->
+      <script id="tmpl_infobox" type="text/x-jsrender">
+        <div class="modal fade" id="dataset_{{:dataset_id}}_info" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <!-- <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button> -->
+                <h4 class="modal-title">Dataset information</h4>
+              </div>
+              <div class="modal-body">
+                <h3>{{:title}}</h3>
+                <div class="textarea-ldesc">{{:ldesc}}</div>
+              </div>
+              <div class='infograph_illustration_{{:dataset_id}}'></div>
+              {{if schematic_image}}
+              <img class='img-fluid' src="{{:schematic_image}}" alt="Infograph" />
+              {{/if}}
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </script>
+      <!-- script#tmpl_infobox -->
+      <script id="tmpl_displays_box" type="text/x-jsrender">
+        <div class="modal fade" id="dataset_{{:dataset_id}}_displays_modal" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <!-- <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button> -->
+                <h4 class="modal-title">Displays for {{:title}}</h4>
+              </div>
+              <div class="modal-body">
+                {{if user_displays.length}}
+                 <h4>Your Displays</h4>
+                 <div class='row m-1 col-sm-12'>
+                   {{for user_displays ~active_display_id=active_display_id}}
+                   <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
+                        style='height:220px; border: 1px solid rgb(200,200,200)'>
+                         <img
+                          class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
+                          id='modal-display-img-{{:id}}'/>
+                     </div>
+                   {{/for}}
+                 </div>
+                {{/if}}
+                {{if owner_displays.length}}
+                   <h4>Owner Displays</h4>
+                   <div class='row m-1 col-sm-12'>
+                     {{for owner_displays ~active_display_id=active_display_id}}
+                       <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
+                          style='height:220px; border: 1px solid rgb(200,200,200)'>
+                         <img id='modal-display-{{:id}}-loading' class='modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
+                         <img
+                          class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
+                          id='modal-display-img-{{:id}}'/>
+                       </div>
+                     {{/for}}
+                   </div>
+                {{/if}}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </script>
+      <!-- script#tmpl_infobox -->
+      <script id="tmpl_tooltip" type="text/x-jsrender">
+        <div class=''>
+          <h4 class='text-muted'>{{:tissue}}</h4>
+          <h3 class="">{{:score}}</h3>
+        </div>
+      </script>
+      <script id="tmpl_datasetbox" type="text/x-jsrender">
+        {{if load_status == 'completed'}}
+        <div class="dataset_cc col-sm-{{:grid_width}}" data-dataset-id="{{:id}}">
+          <div id="dataset_{{:id}}" class="dataset_c">
+            <div class="dataset_header container-fluid">
+              <div class="row">
+                <div class="dataset_header_title col-sm-9">{{:title}}</div>
+                <div class="dataset_header_menu col-sm-3">
+                  <div class="btn-group pull-right">
+                    <button id="note_launcher_{{:id}}" data-dataset-id="{{:id}}" data-title="{{:title}}" type="button" class="btn btn-sm note_launcher" data-toggle="tooltip" data-placement="bottom" title="Take notes">
+                      <span class="fa fa-pencil"></span>
+                    </button>
+                    <button type="button" class="btn btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-placement="bottom" title="Show options">
+                      <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-right" style='z-index:10000'>
+                      <li id="dataset_{{:id}}_displays"class='dropdown-submenu'>
+                        <a href="javascript:;" class="fa fa-clone"> Displays</a>
+                      </li>
+                      <li id="dataset_{{:id}}_zoom_in_control"><a href="javascript:;" class="fa fa-search-plus"> View</a></li>
+                      <li id="dataset_{{:id}}_info_launcher" class="more_info" data-dataset_id="{{:id}}"><a href="javascript:;" class="fa fa-info-circle"> Info</a></li>
+                      {{if access == 'Public'}}
+                      <li id="dataset_{{:id}}_info_launcher"><a href="./cgi/download_datafile.cgi?dataset_id={{:id}}" class="fa fa-download"> Download</a></li>
+                      {{/if}}
+                      {{if pubmed_id}}
+                      <li><a href="http://www.ncbi.nlm.nih.gov/pubmed/?term={{:pubmed_id}}" target="_blank" class="fa fa-graduation-cap"> Publication</a></li>
+                      {{/if}}
+                      {{if geo_id}}
+                      <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
+                      {{/if}}
+                      <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare</a></li>
+                      <li><a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate</a></li>
+                      {{if has_h5ad}}
+                      <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> Analyze</a></li>
+                      {{/if}}
+                    </ul>
+                  </div>
+                </div> <!-- .dataset_header_menu -->
+              </div>
+            </div> <!-- end .dataset_header -->
+            <div id="{{:id}}_dataset_status_c" class="dataset-status-container">
+              <div style="height:350px">
+                <h2>Loading...</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        {{/if}}
+      </script>
+      <!-- script#tmpl_datasetbox -->
+      <script id="tmpl_dataset_zoomed" type="text/x-jsrender">
+        <div class="dataset_cc" data-dataset-id="{{:id}}">
+          <div id="dataset_{{:id}}" class="dataset_c">
+            <div class="dataset_header container-fluid">
+              <div class="row">
+                <div class="dataset_header_title col-sm-9">{{:title}}</div>
+                <div class="dataset_header_menu col-sm-3">
+                  <div class="btn-group pull-right">
+                    <button
+                     id='dataset_zoom_out_btn'
+                     type="button"
+                     class="btn btn-sm">
+                       <span class="fa fa-search-minus"></span>
+                    </button>
+                  </div>
+                </div> <!-- .dataset_header_menu -->
+              </div>
+            </div> <!-- end .dataset_header -->
+            <div id="{{:id}}_dataset_status_c" class="dataset-status-container" style='display:none;'>
+              <div style="height:70vh">
+                <h2>Loading...</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </script>
+      <!-- script#tmpl_datasetbox -->
+    </div>
+    <!-- end templates_c -->
+
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <!-- Promise based HTTP client for the browser  -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- <script src="https://epiviz.github.io/polymer/charts/components/webcomponentsjs/webcomponents-lite.js"></script> -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+      integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+      integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/js/bootstrap4-toggle.min.js"></script>
+
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/6.1.5/bootstrap-slider.min.js"></script>-->
+
+    <script src="js/vendor/jquery.mCustomScrollbar.concat.min.js"></script>
+    <script src="js/vendor/js.cookie.js"></script>
+    <script src="js/vendor/snap.svg-min.js"></script>
+    <script src="js/vendor/jsrender.20181003.min.js"></script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/tinycolor/0.11.1/tinycolor.min.js"></script>
+    <script src="js/vendor/bootstrap.colorpickersliders.js"></script>
+    <script src="js/vendor/rainbowvis.js"></script>
+
+    <!-- X-editable-->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
+
+    <!-- Plotly JS-->
+    <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/ui-panel-annotation.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/ui-panel-dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/ui-panel-dataset-collection.' + Math.floor(Math.random() * 10000000) +'.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>'); </script>
+    <script>document.write('<script src="js/classes/display.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/index.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+
+    <script>
+      (function(i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r;
+        (i[r] =
+          i[r] ||
+          function() {
+            (i[r].q = i[r].q || []).push(arguments);
+          }),
+          (i[r].l = 1 * new Date());
+        (a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]);
+        a.async = 1;
+        a.src = g;
+        m.parentNode.insertBefore(a, m);
+      })(
+        window,
+        document,
+        'script',
+        '//www.google-analytics.com/analytics.js',
+        'ga'
+      );
+
+      ga('create', 'UA-59916932-1', 'auto');
+      ga('send', 'pageview');
+    </script>
+
+  </body>
+</html>

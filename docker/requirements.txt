@@ -1,0 +1,26 @@
+scanpy[louvain]==1.4.6
+louvain==0.6.1  # Louvain has issue with setting RNG currently -> https://github.com/theislab/scanpy/issues/1191
+pandas==1.0.3
+numba==0.48.0
+numpy==1.18.2
+jupyter==1.0.0
+xlrd==1.2.0
+requests==2.23.0
+plotly==4.6.0
+MulticoreTSNE==0.1
+Pillow==7.1.1
+biopython==1.76
+biocode==0.9.0
+python-dotenv==0.14.0
+Flask==1.1.2
+mysql-connector-python==8.0.12  # Using >8.0.18 gives a segmentation fault.  Need 8.0.20 for prod/devel/servers
+SQLAlchemy==1.2.12
+Flask-RESTful==0.3.8
+mod-wsgi==4.6.5
+opencv-python==4.1.1.26
+pathlib==1.0.1
+#anndata==0.7.1  # Installed through scanpy
+#h5py==2.10.0    # Installed through scanpy
+#matplotlib==3.2.1   # Installed through scanpy
+#scikit-learn==0.22.2    # Installed through scanpy
+#scipy==1.4.1    # Installed through scanpy

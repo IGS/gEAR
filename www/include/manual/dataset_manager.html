@@ -1,0 +1,707 @@
+<div id="manual_dataset_manager" class="container_manual">
+  <h2>Dataset Manager</h2>
+  <p>
+    This area is where you can manage your gEAR layout profiles and datasets. You can create new profiles, remove old ones, and set a profile to be used for you gEAR searches. Datasets can also be added, removed, and rearranged within profiles to better fit your needs. In this area, you can also change a dataset's access level, remove it from gEAR, and share it with others.
+  </p>
+  <br />
+  <p>
+    <b>Hover your mouse over each part of the image below to learn more:</b>
+  </p>
+  <img name="dataset_manager_listview_img" onload="resizeMap()" src="img/gear_manual_img/dataset_manager_list.png" alt="Dataset Manager - List View Screenshot" width="100%" border="0" usemap="#map_dataset_manager_list" />
+  <map name="map_dataset_manager_list">
+    <!-- #$-:Image map file created by GIMP Image Map plug-in -->
+    <!-- #$-:GIMP Image Map plug-in by Maurits Rijk -->
+    <!-- #$-:Please do not edit lines starting with "#$" -->
+    <!-- #$VERSION:2.3 -->
+    <!-- #$AUTHOR:Dustin Olley -->
+    <!-- coords="15,28,266,61" if including the profile_dropdown area-->
+    <area shape="rect"
+      coords="14,26,287,59"
+      class="text_tooltip"
+      alt="selected_profile"
+  	  data-toggle="tooltip"
+  	  title="The currently selected profile. This also drops down a list of other profiles to choose."
+      onmouseover="showDetails(&apos;selected_profile&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="#onhref"
+      href="#profile_management" />
+    <area shape="rect"
+      coords="14,60,129,91"
+      class="text_tooltip"
+      alt="btn_set_primary"
+  	  data-toggle="tooltip"
+  	  title="Sets the current profile to be used in gEAR searches."
+      onmouseover="showDetails(&apos;btn_set_primary&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="#onhref"
+      href="#profile_management" />
+    <area shape="rect"
+      coords="185,61,218,91"
+      class="text_tooltip"
+      alt="btn_new_profile"
+  	  data-toggle="tooltip"
+  	  title="Create a new profile layout."
+      onmouseover="showDetails(&apos;btn_new_profile&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="onhref"
+      href="#profile_management" />
+    <area shape="rect"
+      coords="220,61,252,91"
+      class="text_tooltip"
+      alt="btn_share_profile"
+  	  data-toggle="tooltip"
+  	  title="Share profile with someone. You have to own all the datasets of the profile in order to share. Any private dataset will be shared."
+      onmouseover="showDetails(&apos;btn_share_profile&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="onhref"
+      href="#profile_management" />
+    <area shape="rect"
+      coords="254,61,286,91"
+      class="text_tooltip"
+      alt="btn_delete_profile"
+  	  data-toggle="tooltip"
+  	  title="Deletes the current profile. 'Site default' cannot be deleted."
+      onmouseover="showDetails(&apos;btn_delete_profile&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#profile_management" />
+    <area shape="rect"
+      coords="54,105,118,141"
+      class="text_tooltip"
+      alt="btn_list_view"
+  	  data-toggle="tooltip"
+  	  title="Switch to List View (as already seen here)."
+      onmouseover="showDetails(&apos;btn_list_view&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#views" />
+    <area shape="rect"
+      coords="119,105,244,141"
+      class="html_tooltip"
+      alt="btn_arrangement_view"
+  	  data-toggle="tooltip"
+      title="<p>Switch to Arrangement View.</p><p>In this view, you can rearrange the datasets and change their widths within a profile to your liking. You only need to drag the datasets, resize them, and 'click' SAVE.</p><p>Click to read more below.</p>"
+      onmouseover="showDetails(&apos;btn_arrangement_view&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#views" />
+    <area shape="rect"
+      coords="14,194,287,228"
+      class="text_tooltip"
+      alt="field_search_your_datasets"
+  	  data-toggle="tooltip"
+  	  title="Search your uploaded and shared datasets by name or description."
+      onmouseover="showDetails(&apos;field_search_your_datasets&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#search_datasets" />
+    <area shape="rect"
+      coords="217,229,287,259"
+      class="text_tooltip"
+      alt="btn_listall_your_datasets"
+  	  data-toggle="tooltip"
+  	  title="Lists all the datasets you have uploaded and those that have been shared with you."
+      onmouseover="showDetails(&apos;btn_listall_your_datasets&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#search_datasets" />
+    <area shape="rect"
+      coords="94,229,215,259"
+      class="text_tooltip"
+      alt="btn_shared_with_me"
+  	  data-toggle="tooltip"
+  	  title="Lists all the datasets that are shared with you."
+      onmouseover="showDetails(&apos;btn_shared_with_me&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#search_datasets" />
+    <area shape="rect"
+      coords="14,314,287,347"
+      class="text_tooltip"
+      alt="field_search_pub_datasets"
+  	  data-toggle="tooltip"
+  	  title="Search the public datasets uploaded on gEAR by name or description."
+      onmouseover="showDetails(&apos;field_search_pub_datasets&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#search_datasets" />
+    <area shape="rect"
+      coords="217,348,286,378"
+      class="text_tooltip"
+      alt="btn_search_pub_datasets"
+  	  data-toggle="tooltip"
+  	  title="Lists all the publicly available datasets uploaded to gEAR."
+      onmouseover="showDetails(&apos;btn_search_pub_datasets&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#search_datasets" />
+    <area shape="rect"
+      coords="314,22,489,38"
+      class="text_tooltip"
+      alt="profile_dataset_count"
+  	  data-toggle="tooltip"
+  	  title="The number of datasets in the profile."
+      onmouseover="showDetails(&apos;profile_dataset_count&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="492,22,656,38"
+      class="text_tooltip"
+      alt="profile_no_modify"
+  	  data-toggle="tooltip"
+  	  title="While the 'Site Default' profile cannot be modified, you can add datasets to a profile by searching on the left column, below."
+      onmouseover="showDetails(&apos;profile_no_modify&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#profile_management" />
+    <area shape="rect"
+      coords="316,64,660,217"
+      class="text_tooltip"
+      alt="dataset_schematic_1"
+  	  data-toggle="tooltip"
+  	  title="The uploaded schematic image for the dataset. An example image is displayed for bar graphs. If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_schematic_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="313,319,671,516"
+      class="text_tooltip"
+      alt="dataset_schematic_2"
+  	  data-toggle="tooltip"
+  	  title="The uploaded schematic image for the dataset. An example image is displayed for bar graphs. If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_schematic_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="694,62,1219,86"
+      class="text_tooltip"
+      alt="dataset_title_1"
+  	  data-toggle="tooltip"
+  	  title="The dataset's title. If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_title_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="694,329,1096,351"
+      class="text_tooltip"
+      alt="dataset_title_2"
+  	  data-toggle="tooltip"
+  	  title="The dataset's title. If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_title_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="694,91,1827,158"
+      class="text_tooltip"
+      alt="dataset_desc_1"
+  	  data-toggle="tooltip"
+  	  title="The dataset's description. If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_desc_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="696,356,1818,400"
+      class="text_tooltip"
+      alt="dataset_desc_2"
+  	  data-toggle="tooltip"
+  	  title="The dataset's description. If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_desc_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="694,161,845,182"
+      class="text_tooltip"
+      alt="dataset_pubmed_1"
+  	  data-toggle="tooltip"
+  	  title="The dataset's PudMed ID (if included). If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_pubmed_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="697,405,846,425"
+      class="text_tooltip"
+      alt="dataset_pubmed_2"
+  	  data-toggle="tooltip"
+  	  title="The dataset's PudMed ID (if included). If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_pubmed_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="693,184,845,202"
+      class="text_tooltip"
+      alt="dataset_geo_1"
+  	  data-toggle="tooltip"
+  	  title="The dataset's GEO ID (if included). If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_geo_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="697,427,847,446"
+      class="text_tooltip"
+      alt="dataset_geo_2"
+  	  data-toggle="tooltip"
+  	  title="The dataset's GEO ID (if included). If you own the dataset, double-click to edit."
+      onmouseover="showDetails(&apos;dataset_geo_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#edit_datasets" />
+    <area shape="rect"
+      coords="692,204,803,223"
+      class="text_tooltip"
+      alt="dataset_access_1"
+  	  data-toggle="tooltip"
+  	  title="The dataset's access level. 'Public' access allows all gEAR users to see and use your dataset. 'Private' access allows for only you, and others you share the dataset with to view and use your dataset. Only the owner can change this."
+      onmouseover="showDetails(&apos;dataset_access_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="697,447,796,465"
+      class="text_tooltip"
+      alt="dataset_access_2"
+  	  data-toggle="tooltip"
+  	  title="The dataset's access level. 'Public' access allows all gEAR users to see and use your dataset. 'Private' access allows for only you, and others you share the dataset with to view and use your dataset. Only the owner can change this."
+      onmouseover="showDetails(&apos;dataset_access_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="693,225,842,242"
+      class="text_tooltip"
+      alt="dataset_owner_1"
+  	  data-toggle="tooltip"
+  	  title="The dataset's owner"
+      onmouseover="showDetails(&apos;dataset_owner_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="696,468,837,485"
+      class="text_tooltip"
+      alt="dataset_owner_2"
+  	  data-toggle="tooltip"
+  	  title="The dataset's owner"
+      onmouseover="showDetails(&apos;dataset_owner_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="698,263,755,297"
+      class="text_tooltip"
+      alt="btn_view_1"
+  	  data-toggle="tooltip"
+  	  title="Coming soon."
+      onmouseover="showDetails(&apos;btn_view_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="699,507,755,541"
+      class="text_tooltip"
+      alt="btn_view_2"
+  	  data-toggle="tooltip"
+  	  title="Coming soon."
+      onmouseover="showDetails(&apos;btn_view_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="760,263,892,297"
+      class="text_tooltip"
+      alt="btn_add2profile_1"
+  	  data-toggle="tooltip"
+  	  title="Add the dataset to the current profile. A profile can only have 1 copy of a dataset. Datasets cannot be added to the 'Site default' profile."
+      onmouseover="showDetails(&apos;btn_add2profile_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="758,507,893,541"
+      class="text_tooltip"
+      alt="btn_add2profile_2"
+  	  data-toggle="tooltip"
+  	  title="Add the dataset to the current profile. A profile can only have 1 copy of a dataset. Datasets cannot be added to the 'Site default' profile."
+      onmouseover="showDetails(&apos;btn_add2profile_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="897,263,1019,297"
+      class="text_tooltip"
+      alt="btn_change_access_1"
+  	  data-toggle="tooltip"
+  	  title="Change the access level of the dataset. 'Public' access allows all gEAR users to see and use your dataset. 'Private' access allows for only you, and others you share the dataset with, to view and use your dataset. Only the owner can change this."
+      onmouseover="showDetails(&apos;btn_change_access_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="897,507,1019,541"
+      class="text_tooltip"
+      alt="btn_change_access_2"
+  	  data-toggle="tooltip"
+  	  title="Change the access level of the dataset. 'Public' access allows all gEAR users to see and use your dataset. 'Private' access allows for only you, and others you share the dataset with, to view and use your dataset. Only the owner can change this."
+      onmouseover="showDetails(&apos;btn_change_access_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="1023,263,1090,297"
+      class="text_tooltip"
+      alt="btn_delete_dataset_1"
+  	  data-toggle="tooltip"
+  	  title="Delete the dataset from gEAR. Don't worry, you will prompted to confirm this before it is deleted. Only the owner can delete the dataset."
+      onmouseover="showDetails(&apos;btn_delete_dataset_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="1023,507,1090,541"
+      class="text_tooltip"
+      alt="btn_delete_dataset_2"
+  	  data-toggle="tooltip"
+  	  title="Delete the dataset from gEAR. Don't worry, you will prompted to confirm this before it is deleted. Only the owner can delete the dataset."
+      onmouseover="showDetails(&apos;btn_delete_dataset_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="1093,263,1156,297"
+      class="text_tooltip"
+      alt="btn_share_dataset_1"
+  	  data-toggle="tooltip"
+  	  title="Share the dataset with someone. Copy the URL provided and send it."
+      onmouseover="showDetails(&apos;btn_share_dataset_1&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+    <area shape="rect"
+      coords="1093,507,1157,541"
+      class="text_tooltip"
+      alt="btn_share_dataset_2"
+  	  data-toggle="tooltip"
+  	  title="Share the dataset with someone. Copy the URL provided and send it."
+      onmouseover="showDetails(&apos;btn_share_dataset_2&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+			href="#manage_datasets" />
+      <area shape="rect"
+      coords="12,389,120,544"
+      class="text_tooltip"
+      alt="filter_datasets"
+  	  data-toggle="tooltip"
+  	  title="Limit what datasets are shown. Filter datasets by organism and graph type."
+      onmouseover="showDetails(&apos;filter_datasets&apos;)"
+      onmouseout="showDetails(&apos;&apos;)"
+      onhref="nohref"
+      href="#filter_datasets"/>
+  </map>
+  <br />
+  <hr id="profile_management">
+  <br />
+  <h3>Profile Management</h3>
+  <div class="manual_section">
+    <p>
+      This area manages the gEAR layout profiles. A layout <b>profile</b> is used by gEAR to
+      display gene expression results. It contains datasets, and the order of those datasets,
+      that display the expression values of the searched gene(s). A <b>profile</b> can be
+      <b>set as primary</b>, <b>created</b>, <b>shared</b>, or <b>deleted</b>. Multiple profiles can be
+      created, but only one profile can be <b>set as primary</b> and used by gEAR to display
+      search results at one time.
+    </p>
+    <br />
+    <p>
+      The <b>'Site Default'</b> profile is available to all gEAR users and guests. It cannot
+      be modified, or deleted. To create a profile that is more tailored to your needs,
+      first create a gEAR account and log in
+      <em><a class="manual_link" data-section="create_account" href="#manual_create_account">
+      (Learn how to create a gEAR account)</a></em>.
+    </p>
+    <br />
+    <p>
+      <b>Set as Primary</b>
+    </p>
+    <div class="manual_section">
+      <div class="row">
+        <div class="col-sm-3">
+          <img class="img" src="img/gear_manual_img/profile_btns_screenshot.png" alt="Screenshot - Profile Management Buttons"/>
+        </div>
+        <div class="col-sm-8">
+          <p>
+            To <b>Set as primary</b>, click
+            <img src="img/gear_manual_img/button_set_primary.png" alt="Screenshot - Set as primary button"/>.
+            This sets the profile for use by gEAR. When using gEAR the profile set as primary will be used
+            to display search results.
+          </p>
+        </div>
+      </div>
+    </div> <!-- end manual_section -->
+    <br />
+    <!-- <p>
+      See how to add or delete a profile below:
+    </p> -->
+    <p>
+      <b>Add or Delete Profile</b>
+    </p>
+    <div class="manual_section">
+      <div class="row">
+        <div class="col-sm-3">
+          <img class="img" src="img/gear_manual_img/profile_btns_screenshot_add.png" alt="Screenshot - Profile Management Buttons"/>
+        </div>
+        <div class="col-sm-8">
+          <p>
+            To <b>add new a profile</b>, click
+            <img src="img/gear_manual_img/button_add_profile.png" alt="Screenshot - Add Profile Button"/>.
+            Next, enter a profile name and click
+            <img src="img/gear_manual_img/btn_add_new_profile.png" alt="Screenshot - Save New Profile"/>
+            to save the profile. Now, you can add datasets to the profile by searching your datasets and public datasets.
+          </p>
+          <p>
+            To <b>Delete</b> a profile, click
+            <img src="img/gear_manual_img/button_profile_delete.png" alt="Screenshot - Delete Profile Button"/>.
+            This will not delete any of the datasets that have been added to it.
+        </div>
+      </div>
+    </div> <!-- end manual_section -->
+    <br />
+    <!-- <p>
+      See how to share a profile below:
+    </p> -->
+    <p>
+      <b>Share a Profile</b>
+    </p>
+    <div class="manual_section">
+      <div class="row">
+        <div class="col-sm-3">
+          <img class="img" src="img/gear_manual_img/profile_btns_screenshot_share.png" alt="Screenshot - Share Profile Button"/>
+        </div>
+        <div class="col-sm-8">
+          <p>
+            To <b>share a profile</b>, click
+            <img src="img/gear_manual_img/button_share_profile.png" alt="Screenshot - Share Profile Button"/>.
+            Next, use the URL link provided to share the profile with someone.
+          </p>
+          <p>
+            Profiles containing private datasets cannot be shared, unless you own them. Please note that private datasets will be shared.
+          </p>
+        </div>
+      </div>
+    </div> <!-- end manual_section-->
+  </div> <!-- end manual_section-->
+  <br />
+  <hr id="views">
+  <br />
+  <h3>Views</h3>
+  <div class="manual_section">
+    <p>
+      These buttons switch between the Dataset Manager's 2 views. Both are described below.
+    </p>
+    <br />
+    <div class="row">
+      <div class="col-sm-3">
+        <img class="img" src="img/gear_manual_img/view_btns_screenshot.png" alt="Screenshot - View Buttons"/>
+      </div>
+      <div class="col-sm-8">
+        <p>
+          <b>List</b> view is the first view that displays in the Dataset Manager. In this view profiles
+          and datasets can be managed and searched.
+        </p>
+        <p>
+          <b>Arrangement</b> view is where datasets are rearranged within a profile and resized.
+        </p>
+      </div>
+    </div>
+    <br />
+    <div class="row">
+      <div class="col-sm-3">
+        <img class="img" src="img/gear_manual_img/view_arrangement_screenshot_mid.png" alt="Screenshot - Arrangement View"/>
+      </div>
+      <div class="col-sm-8">
+        <p>To <b>Rearrange</b> datasets in a profile, click
+          <img src="img/gear_manual_img/button_arrange.png" alt="Screenshot - Arrangement Button"/>.
+          Then <b>click and drag</b> the datasets into the order you want and click
+          <img src="img/gear_manual_img/button_save_arrangement.png" alt="Screenshot - Button Save Arrangement"/>.
+        </p>
+      </div>
+    </div>
+    <br />
+    <div class="row">
+      <div class="col-sm-3">
+        <img class="img" src="img/gear_manual_img/view_arrangement_resize.png" alt="Screenshot - Arrangement View"/>
+      </div>
+      <div class="col-sm-8">
+        <p>To <b>Resize</b> a dataset, click
+          <img src="img/gear_manual_img/button_arrange.png" alt="Screenshot - Arrangement Button"/>.
+          Then <b>drag</b> the right side of a dataset to the desired width and click
+          <img src="img/gear_manual_img/button_save_arrangement.png" alt="Screenshot - Button Save Arrangement"/>.
+        </p>
+        <p>Only the width of a dataset can resized.
+      </div>
+    </div>
+  </div>
+  <br />
+  <hr id="search_datasets">
+  <br />
+  <h3>Search Datasets</h3>
+  <div class="manual_section">
+    <p>
+      This area searches gEAR datasets. You can search for <b>your datasets</b> and <b>public datasets</b>
+      in the corresponding fields like the field below:
+    </p>
+    <br />
+    <div class="row">
+      <div class="col-sm-3">
+        <img class="img" src="img/gear_manual_img/yourdatasets_btn_screenshot.png" alt="Screenshot - Search Dataset Button"/>
+      </div>
+      <div class="col-sm-8">
+        <p><b>Your datasets</b> searches datasets you have uploaded to gEAR - public and private. Once you
+          <b>upload</b> a dataset, <b>search</b> for it here, and add it to a profile.
+        </p>
+        <p><b>Public datasets</b> searches datasets labelled as <b>'public'</b> by the dataset owner.
+          These datasets are viewable to all gEAR users. Once you find a dataset, you can add it to a profile.
+        </p>
+        <br/>
+        <p>
+          To list datasets that are <b>shared with you</b>, click <img src="img/gear_manual_img/btn_shared_with_me.png" alt="Screenshot - Shared With Me Button"/>.
+        </p>
+      </div>
+    </div>
+  </div> <!-- end manual_section-->
+  <br />
+  <hr id="filter_datasets">
+  <br />
+  <h3>Filter Datasets</h3>
+  <div class="manual_section">
+    <div class="row">
+      <div class="col-sm-3">
+        <img src="img/gear_manual_img/dataset_manager_filter_datasets.png" alt="Screenshot - Checkboxes for filtering datasets"/>
+      </div>
+      <div class="col-sm-8">
+        <p><b>Filter</b> datasets to limit the datasets displayed. Select one or more organism(s) to show only those organisms. Datasets can be filtered by organism and graph type.</p>
+      </div>
+    </div>
+  </div> <!-- end manual_section-->
+  <br />
+  <hr id="edit_datasets">
+  <br />
+  <h3>Edit Datasets</h3>
+  <div class="manual_section">
+    <p>
+      Information about each dataset can be modified. The following information can be editted:
+      <b>schematic image</b>, <b>title</b>, <b>description</b>, <b>PubMed ID</b>, and <b>GEO ID</b>. Only the dataset
+      owner can access this function.
+    </p>
+    <br />
+    <p>
+      Double-click to edit a field:
+    </p>
+    <img src="img/gear_manual_img/editable_fields.png" alt="Screensoht - Editable Field"/>
+    <p>
+      Click <img src="img/gear_manual_img/check_btn.png" alt="Checkmark Button"/> to save changes.
+    </p>
+  </div> <!-- end manual_section -->
+  <br />
+  <hr id="manage_datasets">
+  <br />
+  <h3>Manage Datasets</h3>
+  <div class="manual_section">
+    <p>
+      Individual datasets are managed with the following functions: <b>View</b>, <b>Add to this profile</b>,
+      <b>Change access</b>, <b>Delete</b>, and <b>Share</b>.
+    </p>
+    <br />
+    <div class='row'>
+      <div class='col-sm-3'>
+        <img src="img/gear_manual_img/button_view.png" alt="View Button"/>
+      </div>
+      <div class='col-sm-8'>
+        <p>
+          This is currently under construction.
+        </p>
+      </div>
+    </div>
+    <br />
+    <div class='row'>
+      <div class='col-sm-3'>
+        <img src="img/gear_manual_img/button_add_to_profile.png" alt="Add to Profile Button">
+      </div>
+      <div class='col-sm-8'>
+        <p>
+          Click to <b>add the dataset</b> to the current layout <b>Profile</b>. A dataset
+          can be added to a profile only once. Multiple instances of the same dataset cannot
+          be added to the same profile.
+        </p>
+      </div>
+    </div>
+    <br />
+    <div class='row'>
+      <div class='col-sm-3'>
+        <img src="img/gear_manual_img/button_change_access.png" alt="Change Access Button"/>
+      </div>
+      <div class='col-sm-8'>
+        <p>
+      	  Click to make the dataset <b>Private</b> or <b>Public</b>. Only the dataset owner can change the acccess level.
+        </p>
+        <p>
+      	  <b>Private</b> access level makes the dataset viewable to only the owner. If the owner <b>shares</b> the
+          dataset, it will still be viewable to those it has been shared with. To share the dataset use the <b>Share</b> button.
+        </p>
+        <p>
+          <b>Public</b> access level allows all gEAR users to view and use the dataset in their own profiles and gEAR searches.
+      </div>
+    </div>
+    <br />
+    <div class='row'>
+      <div class='col-sm-3'>
+        <img src="img/gear_manual_img/button_delete.png" alt="Delete Button"/>
+      </div>
+      <div class='col-sm-8'>
+        <p>
+          Click <b> to remove</b> the dataset from gEAR. This <em>permanently</em> deletes the dataset from gEAR.
+          Only the owner of the dataset can delete the dataset.
+        </p>
+      </div>
+    </div>
+    <br />
+    <div class='row'>
+      <div class='col-sm-3'>
+        <img src="img/gear_manual_img/button_share.png" alt="Share Button"/>
+      </div>
+      <div class='col-sm-8'>
+        <p>
+          Click <b> to share</b> the dataset with other gEAR users using the URL link provided. The shared user
+          can add the dataset to a profile using the URL link.
+        </p>
+      </div>
+    </div>
+    <br/>
+    <p>
+      To <b>manage sharing</b> of a dataset, click 'manage sharing' to view who has access to your private dataset:
+    </p>
+    <br />
+    <img src="img/gear_manual_img/dataset_manager_share_dataset_redbox.png" alt="Share dataset"/>
+    <br />
+    <br />
+    <p>
+      This will display the list of gEAR users who you have shared the dataset with.
+    </p>
+    <img src="img/gear_manual_img/manage_ds_shares.png" alt="Manage sharing"/>
+    <br />
+    <br />
+    <p>
+      <b>Unshare</b> or <b>Reshare</b> a dataset with someone by clicking <img src="img/gear_manual_img/btn_unshare_dataset.png" alt="Unshare dataset"/> or <img src="img/gear_manual_img/btn_reshare_dataset.png"/> next the user's name.
+    </p>
+  </div> <!-- end manual_section-->
+  <br />
+  <br />
+</div>

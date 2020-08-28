@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Dataset manager</title>
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+        <link rel="stylesheet" href="css/vendor/bootstrap-editable.css" />
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
+
+        <link rel="stylesheet" href="css/jquery.fileupload.css" />
+        <link rel="stylesheet" href="css/vendor/bootstrap-tokenfield.css">
+		<link rel="stylesheet" href="css/vendor/tokenfield-typeahead.css">
+        <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css" rel="stylesheet" /> -->
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+        <script>document.write('<link rel="stylesheet" href="css/common.css?dev=' + Math.floor(Math.random() * 10000) + '"\><\/link>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/dataset_manager.css?dev=' + Math.floor(Math.random() * 10000) + '"\><\/link>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/sidepanel_notes.css?dev=' + Math.floor(Math.random() * 10000) + '"\><\/link>');</script>
+
+        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+    </head>
+    <body>
+
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+ <div id="body_c">
+    <div id="navigation_bar">
+      <!-- content here inserted via JQuery -->
+    </div> <!-- end navigation_bar -->
+
+    <div id="main_content" class="container-fluid">
+      <div class="row">
+        <div class="col-12 alert-container">
+	      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+        </div>
+      </div>
+      <div id="login_checking" class="row">
+        <div class="col-12">
+          <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
+        </div>
+      </div>
+      <div id="login_warning" class="row">
+        <div class="col-12">
+          <h2>Login required</h2>
+          <p>
+            You must be logged in to manage your datasets.  Please use the login form in the top-right.
+          </p>
+        </div>
+      </div>
+      <div id='note_main_c' class='row'>
+          <div id='note_side_panel_c' class='col-3 dock-right'></div>
+          <div id='note_fullwindow_c' class='col-9'></div>
+      </div>
+      <div class="row">
+        <div id="page_name" class="col-12">
+          <h2>Dataset manager</h2>
+        </div>
+      </div>
+
+      <div id='main_row' class="row">
+        <div id="controls" class="col-2" style="border-right: 1px solid rgb(200,200,200);">
+          <div class="form-group">
+            <label for="selected_layout">Profile:</label>
+            <select class="form-control" id="selected_layout" name="selected_layout">
+              <!-- options here added by JQuery on page load -->
+            </select>
+            <script id="layout_list_tmpl" type="text/x-jsrender">
+              <option value="{{:id}}" data-is-domain="{{:is_domain}}" data-share-id="{{:share_id}}">{{:label}}</option>
+            </script>
+            <div class="btn-group pull-right" role="group" aria-label="...">
+              <button type="button" id="btn_set_primary_layout" class="btn btn-primary btn-sm" data-toggle="tooltip" data-placement="bottom" title="Use profile in gEAR search">
+                <span class="fa fa-thumbs-up" aria-hidden="true"></span> Set as primary
+              </button>
+              <button type="button" id="btn_add_layout" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Add new layout profile">
+                <span class="fa fa-plus" aria-hidden="true"></span>
+              </button>
+              <button type="button" id="btn_share_layout" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Share layout profile">
+                <span class="fa fa-share-alt" aria-hidden="true"></span>
+              </button>
+              <button type="button" id="btn_delete_layout" class="btn btn-danger btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Delete layout profile">
+                <span class="fa fa-trash" aria-hidden="true"></span>
+              </button>
+            </div>
+            <div style="clear: both;"></div>
+          </div> <!-- end layout selector -->
+          <div id="view_options">
+            <label>View:</label>
+            <div class="btn-group" role="group" aria-label="...">
+              <button type="button" class="btn btn-default btn-sm" id="btn_list_view" data-toggle="tooltip" data-placement="bottom" title="View datasets">
+                <span class="fa fa-th-list" aria-hidden="true"></span> List
+              </button>
+              <button type="button" class="btn btn-default btn-sm" id="btn_arrangement_view" data-toggle="tooltip" data-placement="bottom" title="Rearrange datasets">
+                <span class="fa fa-move" aria-hidden="true"></span> Arrangement
+              </button>
+            </div>
+            <div style="clear: both;"></div>
+          </div> <!-- #view_options -->
+
+          <div id="sort_options">
+            <label>Sort by:</label>
+            <div class="btn-group" role="group" aria-label="...">
+              <button type="button" class="btn btn-default btn-sm" id="btn_sort_date" data-toggle="tooltip" data-placement="bottom" title="Sort datasets by upload date">
+                <span class="fa fa-sort-by-attributes" aria-hidden="true"></span> Date
+              </button>
+              <button type="button" class="btn btn-default btn-sm" id="btn_sort_title" data-toggle="tooltip" data-placement="bottom" title="Sort datasets by title">
+                <span class="fa fa-sort-by-alphabet" aria-hidden="true"></span> Title
+              </button>
+            </div>
+            <div style="clear: both;"></div>
+          </div> <!-- #sort_options-->
+          <div id="dataset_search_controls_users">
+            <div class="form-group">
+              <label>Your datasets:</label>
+              <input type="text" class="form-control form-control-sm" id="dataset_search_string_users" placeholder="Part of name or description">
+              <button type="button" id="btn_search_users_datasets" class="btn btn-default btn-sm pull-right" data-toggle="tooltip" data-placement="bottom" title="Search your datasets">
+                <span class="fa fa-search" aria-hidden="true"></span> Search
+              </button>
+              <button type="button" id="btn_list_users_datasets" class="btn btn-default btn-sm pull-right" data-toggle="tooltip" data-placement="bottom" title="List all your datasets">
+                <span class="fa fa-th-list" aria-hidden="true"></span> List all
+              </button>
+              <button type="button" id="btn_list_shared_with_me" class="btn btn-default btn-sm pull-right" data-toggle="tooltip" data-placement="bottom" title="List all shared with me">
+                <span class="fa fa-filter" aria-hidden="true"></span> Shared with me
+              </button>
+            </div>
+            <div style="clear: both;"></div>
+          </div>
+          <div id="dataset_search_controls_others">
+            <div class="form-group">
+              <label>Find other public datasets:</label>
+              <input type="text" class="form-control form-control-sm" id="dataset_search_string_others" placeholder="Part of name or description">
+              <button type="button" id="btn_search_others_datasets" class="btn btn-default btn-sm pull-right" data-toggle="tooltip" data-placement="bottom" title="Search public datasets">
+                <span class="fa fa-search" aria-hidden="true"></span> Search
+              </button>
+              <button type="button" id="btn_list_others_datasets" class="btn btn-default btn-sm pull-right" data-toggle="tooltip" data-placement="bottom" title="List all public datasets">
+                <span class="fa fa-th-list" aria-hidden="true"></span> List all
+              </button>
+              <div style="clear: both;"></div>
+            </div>
+          </div>
+          <div id="dataset_filter_controls">
+            <label>Filter datasets:</label>
+            <div class="form-group">
+              <h5 style="margin-top15px;margin-bottom:0px;">Organism</h5>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="organism" value="Chicken">Chicken
+                  <span id="chicken-count"></span>
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="organism" value="Human">Human
+                  <span id="human-count"></span>
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="organism" value="Mouse">Mouse
+                  <span id="mouse-count"></span>
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="organism" value="Zebrafish">
+                  Zebrafish
+                  <span id="zebrafish-count"></span>
+                </label>
+              </div>
+              <h5 style="margin-top15px;margin-bottom:0px;">Graph type</h5>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="dtype" value="bargraph-standard">Bar graph
+                  <span id="bargraph-standard-count"></span>
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="dtype" value="linegraph-standard">Line graph
+                  <span id="linegraph-standard-count"></span>
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="dtype" value="svg-expression">SVG
+                  <span id="svg-expression-count"></span>
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="filterby" data-category="dtype" value="violin-standard">Violin
+                  <span id="violin-standard-count"></span>
+                </label>
+              </div>
+            </div>
+          </div> <!-- end of filters-->
+        </div> <!-- #controls -->
+        <div id="dataset_sharing_box" class="col-10">
+          <div class="row">
+            <div class="col-12">
+              <h3>Shared dataset</h3>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12">
+              <p>
+                Someone has shared this dataset with you.  In order to view it, you must choose a profile on the
+                left in which to add it.  It can't be added to the 'Site default' profile, so you'll have to create
+                a new one if you haven't already.
+              </p>
+              <div class='actions'>
+                <button id="add_share_to_profile" class="btn btn-default btn-primary" value="" data-toggle="tooltip" data-placement="bottom" title="Add to current profile">Add to this profile</button>
+              </div>
+            </div>
+          </div>
+        </div> <!-- end #dataset_sharing_box -->
+        <div id="profile_sharing_box" class="col-sm-10">
+          <div class="row">
+            <div class="col-sm-12">
+              <h3>Shared profile</h3>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-12">
+              <p>
+                Someone has shared this profile with you.  In order to view it, you must click 'Add this profile' below.
+              </p>
+              <div class='actions'>
+                <button id="add_shared_profile" class="btn btn-default btn-primary" value="" data-toggle="tooltip" data-placement="bottom" title="Add this profile">Add this profile</button>
+              </div>
+            </div>
+          </div>
+        </div> <!-- end #profile_sharing_box -->
+
+        <div id="manage_sharing_modal_c">
+          <!-- Modal -->
+          <div class="modal fade" id="shared_users_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title" id="myModalLabel">Manage Sharing</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                  You are sharing this dataset with the following gEAR users:
+                </div>
+                <div id="table_no_shares" style="display:none;">
+                  <br/>
+                  <p style="text-align:center;">
+                    <b>Dataset has not been shared.</b>
+                  </p>
+                  <br/>
+                </div>
+                <div id="table_c" class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Sharing with</th>
+                        <th>Unshare | Reshare</th>
+                      </tr>
+                    </thead>
+                    <tbody id="shared_users_table_c"></tbody>
+                  </table>
+
+                  <!-- <table> populated by jquery in dataset_manager.js: $().on('click', '.manage_sharing'...)-->
+                </div> <!-- end table_c-->
+                <script id="manage_sharing_view_tmpl" type="text/x-jsrender">
+                  {{if is_allowed}}
+                  <tr id="row_{{:user_id}}">
+                    <td> {{:user_name}}</td>
+                    <td>
+                      <button type="button" id="revoke_share_{{:user_id}}"
+                              data-dataset_id="{{:dataset_id}}"
+                              class="btn btn-danger revoke_share" autocomplete="off">Unshare</button>
+                    </td>
+                  </tr>
+                  {{else}}
+                  <tr id="row_{{:user_id}}">
+                    <td> {{:user_name}}</td>
+                    <td>
+                      <button type="button" id="reallow_share_{{:user_id}}"
+                              data-dataset_id="{{:dataset_id}}"
+                              class="btn btn-success reallow_share" autocomplete="off">Reshare</button>
+                    </td>
+                  </tr>
+                  {{/if}}
+                </script>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div> <!-- end modal-->
+        </div> <!--end #manage_sharing_modal_c-->
+
+        <div id="main_panel" class="col-sm-10">
+          <div class="row">
+            <div class="col-sm-12">
+              <h3 id='main_panel_header'></h3>
+            </div>
+          </div>
+          <div class="row">
+            <!-- ========================================== -->
+            <div id="dataset_list_c" class="col-sm-12"></div>
+            <script id="dataset_list_view_tmpl" type="text/x-jsrender">
+              <div class="row dataset {{if load_status=='pending'}}pending{{else load_status=='loading'}}pending{{else load_status =='failed'}}failed{{else}}{{/if}}" id='{{:dataset_id}}' data-date-added="{{:date_added}}" data-title="{{:title}}" data-dtype="{{:dtype}}" data-organism="{{:organism}}">
+                <div class="col-sm-3 schematic-c">
+                  {{if schematic_image}}
+                  <img id="schematic_{{:dataset_id}}" class='img-fluid' {{if user_owns}}class='editable-schematic' data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}" {{/if}}src='{{:schematic_image}}'>
+                  {{else}}
+                  {{if dtype == 'svg-expression'}}
+                  <img id="schematic_{{:dataset_id}}" class='img-fluid' {{if user_owns}}class='editable-schematic' data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}" {{/if}}src='datasets_uploaded/{{:dataset_id}}.svg'>
+                  {{else dtype == 'bargraph-standard'}}
+                  <img  id="schematic_{{:dataset_id}}" class='img-fluid' {{if user_owns}}class='generic editable-schematic' data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}" {{else}}class='generic' {{/if}}src='img/bargraph_example.png'>
+                  {{else dtype == 'linegraph-standard'}}
+                  <img  id="schematic_{{:dataset_id}}" class='img-fluid' {{if user_owns}}class='generic editable-schematic' data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}" {{else}}class='generic' {{/if}}src='img/linegraph_example.png'>
+                  {{else dtype == 'violin-standard'}}
+                  <img  id="schematic_{{:dataset_id}}" class='img-fluid' {{if user_owns}}class='generic editable-schematic' data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}" {{else}}class='generic' {{/if}}src='img/violin_example.png'>
+                  {{/if}}
+                  {{/if}}
+                </div>
+                <div class="col-sm-9 dataset-info-c">
+                  <div class="row dataset-info">
+                    <h4 id="title_{{:dataset_id}}" {{if user_owns}}class="editable-title" data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}"{{/if}}>{{:title}}</h4>
+                  </div>
+                  <div class="row dataset-info">
+                    <p id="ldesc_{{:dataset_id}}" {{if user_owns}}class="editable-ldesc" data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}"{{/if}}>{{:ldesc}}</p>
+                  </div>
+                  <div class="row dataset-info">
+  	                <p id="tag_{{:dataset_id}}" {{if user_owns}}class="editable-tag" data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}"{{/if}}>Tags: <span id="tag_list_{{:dataset_id}}">{{:tags}}</span></p>
+                  </div>
+                  <div class="row dataset-info">
+                    <div class="pull-left pubmed_c {{if user_owns}}editable-pubmed{{/if}}" {{if user_owns}}data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}"{{/if}}>
+                      Pubmed ID:
+    	              <span id="pubmed_{{:dataset_id}}"> {{:pubmed_id}}</span>
+                    </div>
+                    <div class="pull-left" style="margin-left:10px;">
+                      <small class="text-muted" style="vertical-align:text-bottom">
+                        <a id="pubmed_url_{{:dataset_id}}" href='http://www.ncbi.nlm.nih.gov/pubmed/{{:pubmed_id}}' target='_blank'>
+                          {{if pubmed_id}}
+                          link
+                          {{else}}{{/if}}
+                        </a>
+                      </small>
+                    </div>
+                    <button class="pull-left btn btn-xs btn-link permalink" id="btn_share_url" value="{{:share_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="auto" title="Get a permalink" style="margin-left:50px;margin-top:-1px;"{{:permalink_enabled}}> Get permalink</button>
+                  </div>
+                  <div class="row dataset-info">
+                    <div class="pull-left geo_c {{if user_owns}}editable-geo{{/if}}" {{if user_owns}}data-placement="left" title="Double-click to edit" data-dataset-id="{{:dataset_id}}"{{/if}}>
+                      GEO ID:
+    	              <span id="geo_{{:dataset_id}}"> {{:geo_id}}</span>
+                    </div>
+                    <div class="pull-left" style="margin-left:10px;">
+                      <small class="text-muted" style="vertical-align:text-bottom">
+                        <a id="geo_url_{{:dataset_id}}" href='https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}' target='_blank'>
+                          {{if geo_id}}
+                          link
+                          {{else}}{{/if}}
+                        </a>
+                      </small>
+                    </div>
+                    <br />
+                  </div>
+	              <div class="row dataset-info">
+		            <span id="access_{{:dataset_id}}">Access: {{:access}}</span>
+                    <br />
+                  </div>
+	              <div class="row dataset-info">
+		            <span id="owner_name_{{:dataset_id}}" class="owner-info">Owner: {{:user_name}}</span>
+                    <br />
+                  </div>
+	              <div class="row dataset-info">
+	                <span id="date_added_{{:dataset_id}}">Date Added: {{:date_formatted}}</span>
+                    <br />
+                  </div>
+                  <div class='actions'>
+                    <button class="btn btn-default btn-sm btn-primary view" value="{{:dataset_id}}" disabled data-toggle="tooltip" data-placement="bottom" title="Coming soon">View</button>
+                    <button class="btn btn-default btn-sm btn-primary add2profile" value="{{:dataset_id}}" {{:add2profile_enabled}} data-toggle="tooltip" data-placement="bottom" title="Add dataset to profile">Add to this profile</button>
+                    <button class="btn btn-default btn-sm btn-primary removefromprofile" value="{{:dataset_id}}" {{:removefromprofile_enabled}} data-toggle="tooltip" data-placement="bottom" title="Remove dataset from current profile">Remove from profile</button>
+                    <button class="btn btn-default btn-sm btn-primary curate" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Change how the dataset looks">Curate</button>
+                    <button class="btn btn-default btn-sm btn-primary change_access" value="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Change Access" {{:changeaccess_enabled}}>Change access</button>
+                    <button class="btn btn-default btn-sm btn-danger delete" value="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Remove dataset from gEAR" {{:delete_enabled}}>Delete</button>
+                    <button class="btn btn-default btn-sm btn-primary share" id="btn_share_url" value="{{:share_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Share dataset" {{:share_enabled}}>Share</button>
+                    <button class="btn btn-default btn-sm btn-primary note_launcher" data-dataset-id="{{:dataset_id}}" data-title="{{:title}}" data-toggle="tooltip" data-placement="bottom" title="View notes"><span class="fa fa-pencil"></span></button>
+                    {{if load_status=='pending'}}
+                    <h1 class="pull-right pending">Pending...</h1>
+                    {{else load_status=='loading'}}
+                    <h1 class="pull-right pending">Loading...</h1>
+                    {{else load_status =='failed'}}
+                    <h1 class="pull-right pending">Failed</h1>
+                    {{else}}
+                    {{/if}}
+                  </div>
+                </div>
+                <div style="clear: both;"></div>
+              </div> <!-- .dataset -->
+            </script>
+            <!-- ========================================== -->
+            <div id="dataset_arrangement_c" class="col-sm-12">
+              <p>
+                Drag to re-arrange the datasets in any orientation you wish, and drag the right side of any dataset to change its width. Then click save.
+              </p>
+              <div class="form-group">
+                <button type="button" id="btn_save_layout" class="btn btn-primary btn-sm pull-left" data-toggle="tooltip" data-placement="bottom" title="Save layout">
+                  <span class="fa fa-save" aria-hidden="true"></span> Save
+                </button>
+                <div style="clear: both;"></div>
+              </div>
+              <div id="dataset_arrangement"></div>
+              <script id="dataset_arrangement_view_tmpl" type="text/x-jsrender">
+                {{if schematic_image || dtype == 'image-static-standard' || dtype == 'image-static'}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <img class="sortable_tile_img" src="{{:schematic_image}}"/>
+                </div>
+                {{else}}
+                {{if dtype == 'svg-expression'}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <img class="sortable_tile_img" src="datasets_uploaded/{{:dataset_id}}.svg"/>
+                </div>
+                {{else dtype == 'bargraph-standard'}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <img class="sortable_tile_img" src="img/bargraph_example.png"/>
+                </div>
+                {{else dtype == 'linegraph-standard'}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <img class="sortable_tile_img" src="img/linegraph_example.png"/>
+                </div>
+                {{else dtype == 'violin-standard'}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <img class="sortable_tile_img" src="img/violin_example.png"/>
+                </div>
+                {{else dtype == 'singlecell-h5ad'}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <img class="sortable_tile_img" src="img/violin_example.png"/>
+                </div>
+                {{else}}
+                <div class="ui-state-default sortable_tile mr-1 mb-1" data-id="{{:dataset_id}}" style="width:{{:style_width}};">
+                  <p class="sortable_tile_title"><span>{{:title}}</span></p>
+                  <!-- TODO <img class="sortable_tile_img" src="img/violin_example.png"/> -->
+                </div>
+                {{/if}}
+                {{/if}}
+              </script>
+            </div>
+            <!-- ========================================== -->
+          </div> <!-- #main_panel .row -->
+        </div> <!-- #main_panel -->
+      </div>
+    </div><!-- end #main_row -->
+ </div> <!-- end #main_content -->
+
+    <div id='account_creation_c' class='row'>
+      <!-- content inserted via common.js-->
+    </div>
+    <div style="clear: both;">&nbsp;</div>
+
+    <footer>
+      <div id='funding'>
+        <!-- content here inserted via JQuery -->
+      </div>
+    </footer>
+</div> <!-- /body_c -->
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+        <script src="js/vendor/js.cookie.js"></script>
+        <script src="js/vendor/jsrender.20181003.min.js"></script>
+        <script src="js/vendor/jquery.fileupload.js"></script>
+
+        <!--<script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>-->
+        <script src="js/vendor/bootstrap-editable.min.js"></script>
+
+        <script src="js/vendor/bootstrap-tokenfield.js"></script>
+        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js"></script> -->
+
+
+        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+        <script>document.write('<script src="js/classes/dataset.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/ui-panel-annotation.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/ui-panel-dataset.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/ui-panel-dataset-collection.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/common.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/user.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/dataset_manager.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/sidepanel_notes.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-59916932-1', 'auto');
+  ga('send', 'pageview');
+        </script>
+    </body>
+</html>

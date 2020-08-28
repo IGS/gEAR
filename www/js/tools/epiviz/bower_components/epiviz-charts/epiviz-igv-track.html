@@ -1,0 +1,498 @@
+<!-- Polymer dependency -->
+<link rel="import" href="../polymer/polymer-element.html">
+
+<!-- Epiviz imports dependency -->
+<!-- <link rel="import" href="../epiviz-imports/epiviz-common-js.html"> -->
+
+<!-- IGV imports dependency -->
+<script type="text/javascript" src="https://igv.org/web/release/1.0.9/igv-1.0.9.js"></script>
+<link rel="stylesheet" type="text/css" href="https://igv.org/web/release/1.0.9/igv-1.0.9.css">
+
+<!-- Polymer Elements dependency -->
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../paper-dropdown-input/paper-dropdown-input.html">
+<link rel="import" href="../paper-swatch-picker/paper-swatch-picker.html">
+<link rel="import" href="../paper-styles/color.html">
+<link rel="import" href="../paper-styles/typography.html">
+<link rel="import" href="../iron-form/iron-form.html">
+
+<!--
+<h2> IGV Chart Component </h2>
+-->
+
+<dom-module id="epiviz-igv-track">
+    <template>
+        <style>
+            :host {
+                display: inline-block;
+                min-width: 250px;
+            }
+
+            #chart {
+                position: relative;
+            }
+
+            .tracks {
+                display: inline-block;
+            }
+
+            :host #igvControlDiv {
+                visibility: hidden;
+                display: none;
+            }
+
+            .igv-track-type-row {
+                padding: 10px;
+                border-bottom: 1px solid #E8E8E8;
+            }
+
+            [horizontal][layout] {
+                width: 400px;
+                display: flex;
+                flex-direction: row;
+            }
+
+            #trackSettings {
+                padding: 25px;
+                margin: 10px;
+            }
+
+            .fElement {
+                padding: 5px;
+            }
+        </style>
+
+        <!-- local DOM goes here -->
+        <div class="tracks">
+            <template id="dataTracks" is="dom-repeat" items={{tracks}}>
+                <button on-click="_editTrack">{{item.name}}</button>
+            </template>
+        </div>
+        <button on-click="_addTrack">Add New IGV Track</button>
+        <div id="chart">
+            <slot name="dragHandle"></slot>
+            <div id="{{plotId}}"></div>
+        </div>
+        <paper-dialog id="loadTrack" modal>
+            <h2 style="text-align:center; color: #4285f4">Add a New Track</h2>
+            <div class="content">
+                <form is="iron-form" id="trackSettings">
+                    <paper-input class="fElement" name="name" label="Track Name" value="{{trackSelected.name}}"></paper-input>
+                    <paper-dropdown-input name="type" label="Choose Track Type " items="[[igvTrackTypes]]" value="{{trackSelected.type}}">
+                        <template>
+                            <template id="trackTypesDOM" is="dom-repeat" items="[[items]]" as="item">
+                                <div class="igv-track-type-row" horizontal layout label="[[item.label]]" on-click="_trackTypeSelected">
+                                    <div>
+                                        <h3>[[item.trackType]] ([[item.fileTypes]])</h3>
+                                        <p>[[item.description]]</p>
+                                    </div>
+                                </div>
+                            </template>
+                        </template>
+                    </paper-dropdown-input>
+                    <!-- <paper-input name="format" label="File Extension" value="{{trackSelected.format}}"></paper-input> -->
+                    <paper-dropdown-input class="fElement" label="File Type" items="[[igvFileFormats]]" value="{{trackSelected.format}}"></paper-dropdown-input>
+                    <paper-input class="fElement" name="url" label="File location URL" value="{{trackSelected.url}}"></paper-input>
+                    <paper-input class="fElement" name="indexURL" label="indexURL (optional)" value="{{trackSelected.indexURL}}"></paper-input>
+                    <div class="fElement" style="display: block;">
+                        Choose Track Color :
+                        <paper-swatch-picker id="colorPicker" name="color" label="Track Color (optional)" color="{{trackSelected.color}}"></paper-swatch-picker>
+                    </div>
+                </form>
+            </div>
+            <div class="buttons">
+                <paper-button id="submit" raised>Add Track</paper-button>
+                <paper-button dialog-dismiss>Close</paper-button>
+            </div>
+        </paper-dialog>
+    </template>
+
+    <script>
+        // Extend Polymer.Element base class
+        class EpivizIGVTrack extends Polymer.Element {
+
+            static get is() { return 'epiviz-igv-track'; }
+
+            static get properties() {
+                return {
+                    reference: {
+                        type: String,
+                        notify: true,
+                        reflectInAttribute: true,
+                        value: function () {
+                            return "hg19";
+                        }
+                    },
+
+                    showNavigation: {
+                        type: Boolean,
+                        notify: true,
+                        reflectInAttribute: true,
+                        value: function () {
+                            return true;
+                        }
+                    },
+
+                    showRuler: {
+                        type: Boolean,
+                        notify: true,
+                        reflectInAttribute: true,
+                        value: function () {
+                            return false;
+                        }
+                    },
+
+                    genome: {
+                        type: String,
+                        notify: true,
+                        reflectInAttribute: true,
+                        value: function () {
+                            return "hg19";
+                        }
+                    },
+
+                    locus: {
+                        type: String,
+                        notify: true,
+                        reflectInAttribute: true,
+                        computed: "_getLocus(chr, start, end)"
+                    },
+
+                    tracks: {
+                        type: Array,
+                        notify: true,
+                        value: [],
+                        reflectInAttribute: true
+                    },
+
+                    trackTypes: {
+                        type: Array,
+                        notify: true,
+                        value: ['annotation', 'wig', 'alignment', 'variant', 'seg']
+                    },
+
+                    trackSelected: {
+                        type: Object,
+                        notify: true,
+                        value: {}
+                    },
+
+                    chr: {
+                        type: String,
+                        notify: true,
+                        value: "chr8"
+                    },
+
+                    start: {
+                        type: Number,
+                        notify: true,
+                        value: 128747267
+                    },
+
+                    end: {
+                        type: Number,
+                        notify: true,
+                        value: 128754546
+                    },
+
+                    igvTrackTypes: {
+                        type: Array,
+                        notify: true,
+                        value: function () {
+                            return [
+                                {
+                                    "label": "annotation",
+                                    "trackType": "annotation", "fileTypes": "bed, gff, gff3, gtf",
+                                    "description": "For displaying non-quantitative genome annotations such as genes. This is the most generic track type."
+                                },
+                                {
+                                    "label": "wig",
+                                    "trackType": "wig", "fileTypes": "wig, bigWig, bedGraph",
+                                    "description": "For displaying quantitative genomic data, such as ChIP peaks and alignment coverage."
+                                },
+                                {
+                                    "label": "alignment",
+                                    "trackType": "alignment", "fileTypes": "bam",
+                                    "description": "For displaying read alignments."
+                                },
+                                {
+                                    "label": "variant",
+                                    "trackType": "variant", "fileTypes": "vcf",
+                                    "description": "For displaying genome variants."
+                                },
+                                {
+                                    "label": "seg",
+                                    "trackType": "seg", "fileTypes": "seg",
+                                    "description": "For displaying segmented copy number data."
+                                }
+                            ]
+                        }
+                    },
+
+
+                    igvFileFormats: {
+                        type: Array,
+                        value: [],
+                        notify: true
+                    }
+                }
+            }
+
+            static get observers() {
+                return [
+                    /* observer array just like 1.x */
+                    "_tracksChanged(tracks.*)"
+
+                ]
+            }
+
+            constructor() {
+                super();
+                this.addEventListener('submit.click', e => this._submit(e));
+            }
+
+            /* lifecycle callback function after the element is ready */
+            connectedCallback() {
+                super.connectedCallback();
+                var self = this;
+
+                self.plotId = self.plotId || self._generatePlotId();
+                var parent = self.parentNode;
+
+                var tracks = [
+                    {
+                        name: "Genes",
+                        type: "annotation",
+                        format: "bed",
+                        sourceType: "file",
+                        url: "https://s3.amazonaws.com/igv.broadinstitute.org/annotations/hg19/genes/refGene.hg19.bed.gz",
+                        indexURL: "https://s3.amazonaws.com/igv.broadinstitute.org/annotations/hg19/genes/refGene.hg19.bed.gz.tbi",
+                        order: Number.MAX_VALUE,
+                        visibilityWindow: 300000000,
+                        displayMode: "EXPANDED"
+                    }, {
+                        name: "Phase 3 WGS variants",
+                        format: "vcf",
+                        url: "https://s3.amazonaws.com/1000genomes/release/20130502/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
+                        indexURL: "https://s3.amazonaws.com/1000genomes/release/20130502/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi",
+                        type: "variant"
+                    }
+                ];
+
+                self.tracks = tracks;
+            }
+
+            disconnectedCallback() {
+                super.disconnectedCallback();
+            }
+
+            ready() {
+                super.ready();
+                var self = this;
+                this.$.trackSettings.addEventListener('iron-form-submit', this._form_submit.bind(self));
+                // self.scopeSubtree(self.$.chart, true);
+
+                parent.addEventListener('hoverAllCharts', function (e) {
+                    self.chart.hover(e.detail.data);
+                }.bind(self));
+
+                parent.addEventListener('unHoverAllCharts', function (e) {
+                    self.chart.unHover();
+                }.bind(self));
+            }
+
+            _getLocus(chr, start, end) {
+                return chr + ":" + start + "-" + end;
+            }
+
+            _trackTypeSelected(e) {
+                this.push("igvFileFormats", []);
+                this.igvFileFormats = event.model.get("item.fileTypes").split(",");
+                this.push("igvFileFormats", event.model.get("item.fileTypes").split(","));
+            }
+
+            _submit(event) {
+                this.$.trackSettings.submit();
+            }
+
+            /**
+            * handles form submit action
+            */
+            _form_submit(event) {
+                var self = this;
+                this.vals = event.detail;
+                this.vals.color = self.$.colorPicker.color;
+                // console.log(this.vals);
+                self.push("tracks", this.vals);
+                self.$.loadTrack.close();
+            }
+
+            _addTrack() {
+                this.set("trackSelected", {})
+                this.trackSelected = {};
+                this.$.loadTrack.open();
+            }
+
+            _editTrack(e) {
+                var track = this.$.dataTracks.itemForElement(e.target);
+                this.set("trackSelected", track);
+                this.$.loadTrack.open();
+            }
+
+            /**
+             * Generates a unique chart ID
+             * 
+             * @return {string}
+             */
+            _generatePlotId() {
+                var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                var result = '';
+                var size = 7;
+
+                for (var i = 0; i < size; ++i) {
+                    result += chars[Math.round(Math.random() * (chars.length - 1))];
+                }
+
+                return 'epiviz-' + result;
+            }
+
+            /**
+             * ChartLocation/RangeChange event handler.
+             */
+            _rangeChanged() {
+
+                if (this.chromosome != null && this.start != null && this.end != null) {
+                    if (this.plotId) {
+                        this._draw();
+                    }
+                }
+            }
+
+            _tracksChanged(newTrack, oldTrack) {
+                this._draw();
+            }
+
+            /**
+            * Hover event handler.
+            *
+            * @param {object} data data object currently hovered.
+            */
+            hover(data) {
+                var self = this;
+                if (data.seqName == this.chr) {
+                    var hoverCanvas = self.$.chart.querySelector("canvas.igv-ideogram-canvas");
+                    var canvasWidth = parseInt(hoverCanvas.width);
+                    var canvasHeight = parseInt(hoverCanvas.height)
+                    var width = self.end - self.start;
+                    var ratio = width / canvasWidth;
+
+                    // this.chart.doHover(data);
+                    this._draw();
+                    setTimeout(function () {
+                        var canvas = self.$.chart.querySelectorAll("canvas");
+                        canvas.forEach(function (cElem) {
+                            var ctx = cElem.getContext("2d");
+                            ctx.beginPath();
+
+                            ctx.fillStyle = "#ffc600";
+                            ctx.globalAlpha = 0.2;
+
+                            var x = data.start - self.start;
+                            var w = data.end - self.start;
+
+                            ctx.rect(
+                                x / ratio,
+                                0,
+                                w / ratio,
+                                canvasHeight
+                            );
+
+                            ctx.fill();
+                        });
+                    }, 500);
+                }
+            }
+
+            /**
+             * unHover event handler.
+             */
+            unHover() {
+                // this.chart.doUnhover();
+                this._draw();
+            }
+
+            /**
+             * Draws the chart.
+             */
+            _draw() {
+
+                var self = this;
+
+                $(self.shadowRoot.querySelector("#" + self.plotId)).empty();
+                var div = self.shadowRoot.querySelector("#" + self.plotId);
+
+                var options = {
+                    reference: {
+                        id: self.reference,
+                        fastaURL: "https://s3.amazonaws.com/igv.broadinstitute.org/genomes/seq/1kg_v37/human_g1k_v37_decoy.fasta",
+                        cytobandURL: "https://s3.amazonaws.com/igv.broadinstitute.org/genomes/seq/b37/b37_cytoband.txt"
+                    },
+                    locus: self.locus,
+                    tracks: JSON.parse(JSON.stringify(self.tracks))
+                };
+                self.browser = igv.createBrowser(div, options);
+
+                setTimeout(function () {
+                    var hoverCanvas = self.$.chart.querySelector("canvas.igv-ideogram-canvas");
+                    var canvasWidth = parseInt(hoverCanvas.width);
+                    var width = self.end - self.start;
+                    var ratio = width / canvasWidth;
+
+                    var canvas = self.$.chart.querySelectorAll("canvas");
+                    canvas.forEach(function (cElem) {
+                        cElem.addEventListener("mousemove", function (event) {
+                            var rect = cElem.getBoundingClientRect();
+                            var x = event.clientX;
+                            var y = event.clientY;
+
+                            var start = self.start;
+                            var width = ratio * x;
+                            var elem = new epiviz.ui.charts.ChartObject(
+                                sprintf("igv-track", self.plotId),
+                                start + width - 10,
+                                start + width + 10,
+                                undefined, undefined, undefined, undefined, undefined, self.chr
+                            );
+
+                            self.dispatchEvent(new CustomEvent('hover',
+                                {
+                                    detail: {
+                                        data: elem
+                                    },
+                                    bubbles: true
+                                }
+                            ));
+                        });
+
+                        cElem.addEventListener("mouseout", function (event) {
+                            self.dispatchEvent(new CustomEvent('unHover',
+                                {
+                                    detail: {
+                                        data: null
+                                    },
+                                    bubbles: true
+                                }
+                            )
+                            );
+                        });
+                    });
+                }, 500);
+            }
+        };
+
+        customElements.define(EpivizIGVTrack.is, EpivizIGVTrack);
+
+    </script>
+</dom-module>

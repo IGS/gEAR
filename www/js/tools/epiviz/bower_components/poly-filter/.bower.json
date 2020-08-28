@@ -1,0 +1,50 @@
+{
+  "name": "data-filter",
+  "authors": [
+    "jayaram <jayaram.kancherla@gmail.com>",
+    "alex <alexzhangn@gmail.com>"
+  ],
+  "description": "A simple JSON data grid component with a table view, selection and filter sidebar.",
+  "main": "data-filter.html",
+  "license": "MIT",
+  "homepage": "http://github.com/epiviz/data-filter",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "iron-flex-layout": "^2.0.3",
+    "iron-form": "^2.3.0",
+    "paper-input": "^2.2.2",
+    "paper-toggle-button": "^2.1.1",
+    "paper-dropdown-input": "^2.5.2",
+    "iron-label": "^2.1.0",
+    "iron-list": "^2.0.11",
+    "iron-dropdown": "^2.2.0",
+    "lodash": "^4.17.10",
+    "paper-range-slider": "IftachSadeh/paper-range-slider#1.0.3",
+    "paper-button": "^2.1.1",
+    "iron-collapse": "^2.2.1",
+    "paper-collapse-item": "2.3.1",
+    "paper-tags": "AlexanderYZhang/paper-tags#polymer2-additions",
+    "paper-checkbox": "^2.0.4"
+  },
+  "devDependencies": {
+    "iron-component-page": "^3.0.1",
+    "iron-demo-helpers": "^2.1.2"
+  },
+  "version": "2.0.1",
+  "_release": "2.0.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "2.0.1",
+    "commit": "d507b63f0151a7e0ad8fa3b21672da3565bc0119"
+  },
+  "_source": "https://github.com/jkanche/table-filter.git",
+  "_target": "*",
+  "_originalSource": "jkanche/table-filter"
+}

@@ -1,0 +1,57 @@
+<div id="manual_upload_dataset_linegraph" class="container_manual">
+  <h2>Line graph format</h2>
+  <p>
+    To upload a dataset as a line graph, gEAR requires only a tab-delimited text data file. This
+    file holds your expression data, and should have a 'Gene symbol' column and then expression
+    value columns, with headers on the first row.
+  </p>
+  <h3>Data file</h3>
+  <div class="manual_section">
+    <p>
+      This file must have a column labeled 'Gene symbol' containing your genes of interest.
+      The following data columns contain the expression values. These columns must be labeled using
+      the following convention: <span><b>Group--Label</b></span>. A <b>Group</b> can be considered
+      your experimental groups, while a <b>label</b> can be considered a replicate. To use multiple
+      words within a <b>group</b> or <b>label</b>, use an underscore ('_') instead of a space.
+    </p>
+    <p>
+      To include <b>p-values</b> and <b>standard deviations</b>, you use the exact name for the
+      p-value and stand deviation columns as used for their the corresponding expression column
+      and append '_pval' or '_sd'. For example, the p-value and stand deviation columns for column
+      'Untreated--0' would be 'Untreated--0_pval' and 'Untreated--0_sd', respectively.
+       See below for an example.
+    </p>
+    <div class="instructions_image_c">
+      <img src="img/gear_manual_img/upload_help_linegraph.png" alt="File upload - Spreadsheet"/>
+    </div>
+    <br />
+    <p>
+      The spreadsheet above can yield the line graphs (below). Depending on how the columns are
+      arranged on the dataset uploader, you can display the dataset as a series of subplots (max
+      of 3 subplots) or display the dataset as a single graph, with 1 or more series. On the left,
+      you'll notice the 'Group' parts of the column headers label each subplot. This is automatically
+      handled by the dataset uploader. On the right, you'll see that 'Untreated' and 'Treated' are
+      plotted together. Multi-series plots like this must be uploaded as a single plot. Subplots
+      are too small that contain multiple series, therefore we do not allow it. When you hover the
+      mouse of a line, the 'Label' for the line and expression value display.
+    </p>
+    <div id="linegraph_examples_c" class="row text-center">
+      <div id="linegraph_example_subplot_c" class="col-sm-4 col-sm-offset-1 instructions_image_c">
+        <img src="img/linegraph_example.png" alt="Line graph Example"/>
+      </div>
+      <div id="linegraph_example_multiseries_c" class="col-sm-4 col-sm-offset-1 instructions_image_c">
+        <img src="img/linegraph_example_multiseries.png" alt="Multi-series Line graph Example"/>
+      </div>
+    </div>
+  </div>
+  <br />
+  <p>
+    Once your file is formatted and uploaded, you'll be ready to complete the next step.
+  </p>
+  <h2>
+    <a class="manual_link" id="open_manual_upload_dataset_schematic"
+    data-section="upload_dataset_schematic" href="#manual_upload_dataset_schematic">
+      Continue to 'Step 4: Upload Schematic Image'...
+    </a>
+  </h2>
+</div>

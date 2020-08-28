@@ -1,0 +1,4619 @@
+{
+   "hipk3": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1314882&allele_accession_id=MGI:5588270&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "otoa": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2149209&allele_accession_id=MGI:5548754&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "mkrn2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914277&allele_accession_id=MGI:5548531&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "selenok": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1931466&allele_accession_id=MGI:5548722&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "brd2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:99495&allele_accession_id=MGI:6147548&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "fads3": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1928740&allele_accession_id=MGI:5692754&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "csnk1g3": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917675&allele_accession_id=MGI:4461713&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "agap1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2653690&allele_accession_id=MGI:4820274&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "klc2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107953&allele_accession_id=MGI:4434042&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "cep250": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108084&allele_accession_id=MGI:4431949&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "d6wsu163e": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107893&allele_accession_id=MGI:5636910&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "duoxa2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914061&allele_accession_id=MGI:5637016&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "minar2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442934&allele_accession_id=MGI:5637144&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "zfp719": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444708&allele_accession_id=MGI:5548829&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "gpr152": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685519&allele_accession_id=MGI:5548871&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "camsap3": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916947&allele_accession_id=MGI:4431915&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "mir96": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3619440&allele_accession_id=NULL-9BE55A8B7&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "col9a3": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:894686&allele_accession_id=MGI:6156598&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "usp53": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2139607&allele_accession_id=MGI:6156547&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "prdm5": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918029&allele_accession_id=MGI:6156485&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "mcidas": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3648807&allele_accession_id=MGI:6157333&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "atp8b1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1859665&allele_accession_id=MGI:6156424&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "tmprss2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1354381&allele_accession_id=MGI:5812917&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "rap1gap2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3028623&allele_accession_id=MGI:6120805&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ptchd1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685233&allele_accession_id=MGI:5763006&zygosity=hemizygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "kcne1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96673&allele_accession_id=MGI:6287371&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "aak1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1098687&allele_accession_id=MGI:5766745&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "baiap2l2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2652819&allele_accession_id=MGI:5548844&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ankrd11": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1924337&allele_accession_id=MGI:5548681&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ildr1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2146574&allele_accession_id=MGI:4419159&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "ocm": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97401&allele_accession_id=MGI:4432497&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "klhl18": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2143315&allele_accession_id=MGI:4362936&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "ush1c": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919338&allele_accession_id=MGI:4363497&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "wdr45": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1859606&allele_accession_id=MGI:5779851&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "wdtc1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685541&allele_accession_id=MGI:4362336&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "tram2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1924817&allele_accession_id=MGI:4949327&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "srrm4": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916205&allele_accession_id=MGI:4451952&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "prmt9": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2142651&allele_accession_id=MGI:6104244&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "rab10": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:105066&allele_accession_id=MGI:5907845&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "myo10": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107716&allele_accession_id=MGI:4362966&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "tmco6": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919233&allele_accession_id=MGI:5698471&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "rab11fip3": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444431&allele_accession_id=MGI:5755639&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "eya4": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1337104&allele_accession_id=MGI:5548437&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "romo1": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914317&allele_accession_id=NULL-1D5D8D3DA&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "ppfia3": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1924037&allele_accession_id=MGI:6109981&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "med10": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106331&allele_accession_id=MGI:5766989&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "tprn": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2139535&allele_accession_id=MGI:5445918&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "nedd4l": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1933754&allele_accession_id=MGI:5637104&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "mgrn1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2447670&allele_accession_id=MGI:6156581&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "dyrk1b": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1330302&allele_accession_id=MGI:5548430&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "herc1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2384589&allele_accession_id=MGI:6153732&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "setd5": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920145&allele_accession_id=MGI:4432631&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "dlec1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443671&allele_accession_id=MGI:5548818&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "gm12258": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3651534&allele_accession_id=MGI:5548909&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "sun1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1924303&allele_accession_id=MGI:5793071&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "tent4a": {
+      "on_hover": "IMPC - CCP-IMG",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2682295&allele_accession_id=MGI:6120803&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=CCP_001&phenotyping_center=CCP-IMG"
+         }
+      ]
+   },
+   "hilpda": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916823&allele_accession_id=NULL-CB87580A9&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "klk5": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915918&allele_accession_id=MGI:5604101&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "clpp": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1858213&allele_accession_id=MGI:4820264&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "dbnl": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:700006&allele_accession_id=MGI:5812932&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "rsad1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3039628&allele_accession_id=MGI:5548890&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "fbxo33": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917861&allele_accession_id=MGI:5548601&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "cluh": {
+      "on_hover": "IMPC - CCP-IMG",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921398&allele_accession_id=MGI:6147533&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=CCP_001&phenotyping_center=CCP-IMG"
+         }
+      ]
+   },
+   "gata2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95662&allele_accession_id=MGI:5605839&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "tmem30b": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442082&allele_accession_id=MGI:5692820&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "odf3l2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2686003&allele_accession_id=MGI:5548879&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "clrn1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2388124&allele_accession_id=MGI:5582439&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "adgrv1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1274784&allele_accession_id=MGI:5695890&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "tox": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2181659&allele_accession_id=MGI:5605811&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "tmtc4": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921050&allele_accession_id=MGI:5708220&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "zfp119a": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1345189&allele_accession_id=MGI:5548456&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "il10ra": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96538&allele_accession_id=MGI:5766765&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "gipc3": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2387006&allele_accession_id=MGI:5446012&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "espnl": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685402&allele_accession_id=MGI:5554914&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ube2g1": {
+      "on_hover": "IMPC - RBRC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914378&allele_accession_id=MGI:5577267&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=IMPC_001&phenotyping_center=RBRC"
+         }
+      ]
+   },
+   "nin": {
+      "on_hover": "IMPC - RBRC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:105108&allele_accession_id=MGI:5606341&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=IMPC_001&phenotyping_center=RBRC"
+         }
+      ]
+   },
+   "klhdc7b": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3648212&allele_accession_id=MGI:6285603&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tmem51": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2384874&allele_accession_id=MGI:5792558&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gas2l2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3652048&allele_accession_id=MGI:4841109&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "marveld2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2446166&allele_accession_id=MGI:5637157&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "nptn": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108077&allele_accession_id=MGI:5548382&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "slc4a10": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2150150&allele_accession_id=MGI:5692790&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "col9a2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88466&allele_accession_id=MGI:5692882&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "elmod1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3583900&allele_accession_id=MGI:5548895&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "pias2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1096566&allele_accession_id=MGI:4419892&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "igsf9b": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685354&allele_accession_id=MGI:6107617&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "adgrb1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1933736&allele_accession_id=MGI:5006776&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "gga1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2146207&allele_accession_id=MGI:5695948&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "dnase1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:103157&allele_accession_id=MGI:5620311&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "plin4": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1929709&allele_accession_id=NULL-CC94F9BED&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ahsg": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107189&allele_accession_id=MGI:5548370&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "epn3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919139&allele_accession_id=MGI:5548611&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "il1r2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96546&allele_accession_id=MGI:5695974&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "aldoc": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:101863&allele_accession_id=MGI:5548322&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ccdc88c": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915589&allele_accession_id=NULL-387FB49D6&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "elmo3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2679007&allele_accession_id=MGI:5548855&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "plcb4": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107464&allele_accession_id=MGI:5630063&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "med28": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914249&allele_accession_id=MGI:5548528&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "adamts15": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2449569&allele_accession_id=MGI:5569072&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "slc17a8": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3039629&allele_accession_id=MGI:6277038&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "skida1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919918&allele_accession_id=MGI:5548624&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "gorasp1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921748&allele_accession_id=MGI:5766756&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "dnajc17": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916658&allele_accession_id=MGI:5548585&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "acsl4": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1354713&allele_accession_id=MGI:4431605&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "usp30": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2140991&allele_accession_id=NULL-4284AABB3&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "blvrb": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2385271&allele_accession_id=MGI:4419545&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "myo6": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104785&allele_accession_id=MGI:6257724&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "ap4e1": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1336993&allele_accession_id=MGI:5548434&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "tssk4": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918349&allele_accession_id=MGI:5907824&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "frs2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1100860&allele_accession_id=MGI:5548401&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gtpbp2": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1860138&allele_accession_id=MGI:5548500&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "hoxa2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96174&allele_accession_id=MGI:5613670&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "aspn": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913945&allele_accession_id=MGI:5548526&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "avpi1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916784&allele_accession_id=MGI:5548586&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "ces1f": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2142687&allele_accession_id=MGI:5752553&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "lsm14a": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914320&allele_accession_id=MGI:5548532&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "zdhhc11": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918414&allele_accession_id=MGI:5445927&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "iqgap2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2449975&allele_accession_id=MGI:5558039&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ust": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442406&allele_accession_id=MGI:5749738&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "phf3": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2446126&allele_accession_id=NULL-DA103E082&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "ube2w": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914049&allele_accession_id=MGI:5605776&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "atg4b": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913865&allele_accession_id=NULL-EFD1E7E16&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fam53b": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1925188&allele_accession_id=MGI:5548690&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "med25": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1922863&allele_accession_id=MGI:5615649&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "zcchc14": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2159407&allele_accession_id=MGI:4362839&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "macrod2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920149&allele_accession_id=MGI:5445674&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ccdc92": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106485&allele_accession_id=MGI:5692564&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "phf6": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918248&allele_accession_id=MGI:5548606&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "foxo3": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1890081&allele_accession_id=MGI:5471395&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "arhgap29": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443818&allele_accession_id=MGI:5749747&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ubiad1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918957&allele_accession_id=MGI:5896808&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "rest": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104897&allele_accession_id=MGI:5692555&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "aspm": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1334448&allele_accession_id=MGI:4362345&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "nacc1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914080&allele_accession_id=MGI:6324156&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "plag1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1891916&allele_accession_id=MGI:6273963&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "zfp445": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2143340&allele_accession_id=MGI:5613658&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "dnase1l2": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913955&allele_accession_id=NULL-F4E5B553D&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "serinc3": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1349457&allele_accession_id=MGI:4363849&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "mfsd4b4": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3035041&allele_accession_id=MGI:6104251&zygosity=homozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "fer": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:105917&allele_accession_id=MGI:6156446&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "golph3": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913879&allele_accession_id=MGI:6156473&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "hsd17b4": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:105089&allele_accession_id=MGI:6156445&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "ppp2r5e": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1349473&allele_accession_id=NULL-7FCCB5F1D&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "atad2b": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444798&allele_accession_id=MGI:5548831&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "dnajc14": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921580&allele_accession_id=MGI:5471951&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "nt5dc2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917271&allele_accession_id=MGI:5902345&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "mpdz": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1343489&allele_accession_id=MGI:5571597&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "myh1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1339711&allele_accession_id=MGI:5617788&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "gjb3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95721&allele_accession_id=MGI:5692890&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ccn5": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1328326&allele_accession_id=MGI:5548427&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "nemp1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2446113&allele_accession_id=MGI:5897390&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "bzw1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914132&allele_accession_id=MGI:5763137&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "scaper": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1925976&allele_accession_id=MGI:5792557&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "maz": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1338823&allele_accession_id=MGI:6336151&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "xxylt1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2146443&allele_accession_id=MGI:4456689&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "coq4": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1098826&allele_accession_id=MGI:4441729&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_006_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "nxn": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109331&allele_accession_id=MGI:5548389&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "trim37": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2153072&allele_accession_id=NULL-CD41D954E&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "pax5": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97489&allele_accession_id=MGI:5692910&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "vgll4": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2652840&allele_accession_id=MGI:6120802&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "aldh1l1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1340024&allele_accession_id=MGI:5548445&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "csnk1g2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920014&allele_accession_id=MGI:5613652&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "ahrr": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1333776&allele_accession_id=MGI:5443922&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "dnmbp": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917352&allele_accession_id=MGI:6152467&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "erlec1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914003&allele_accession_id=MGI:6152474&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "cad": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916969&allele_accession_id=MGI:6276915&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "cacna2d1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88295&allele_accession_id=MGI:6276924&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "hnf4g": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1353604&allele_accession_id=MGI:6276900&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "reg2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97896&allele_accession_id=MGI:5548968&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "hmx2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107159&allele_accession_id=MGI:5708171&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "plod3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1347008&allele_accession_id=MGI:5629312&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "dok7": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3584043&allele_accession_id=MGI:5582445&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "hcn1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1096392&allele_accession_id=MGI:6153798&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "cox4i1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88473&allele_accession_id=MGI:5548923&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "clec3b": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104540&allele_accession_id=MGI:5646134&zygosity=homozygote&parameter_stable_id=IMPC_ABR_008_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "stim2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2151156&allele_accession_id=MGI:5634802&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "snx29": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921728&allele_accession_id=MGI:5548647&zygosity=homozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ppp6c": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915107&allele_accession_id=MGI:5548551&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_004_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ppp1r42": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921138&allele_accession_id=MGI:4364817&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "rnf10": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1859162&allele_accession_id=MGI:5548492&zygosity=homozygote&parameter_stable_id=IMPC_ABR_002_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "usp32": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2144475&allele_accession_id=NULL-19D18244C&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "otud3": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920412&allele_accession_id=NULL-B804249AA&zygosity=homozygote&parameter_stable_id=IMPC_ABR_012_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "defb43": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3647180&allele_accession_id=MGI:5692868&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "ppp1r14a": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1931139&allele_accession_id=NULL-2A2EBB876&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fbxl8": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1354697&allele_accession_id=NULL-ADD8D875E&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fbxo24": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918426&allele_accession_id=NULL-F6CB8197C&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "usp43": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444541&allele_accession_id=NULL-D6D45ED7C&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "oxsm": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918397&allele_accession_id=NULL-04207DA18&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "bod1": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916806&allele_accession_id=MGI:5694175&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "bap1": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1206586&allele_accession_id=NULL-E8DDC3FFF&zygosity=heterozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "akr1c12": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1351661&allele_accession_id=MGI:5692634&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fam166b": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2445194&allele_accession_id=MGI:4841123&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "cyp17a1": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88586&allele_accession_id=MGI:5605834&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fbxl15": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915681&allele_accession_id=NULL-607F6283A&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "dctd": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444529&allele_accession_id=NULL-9499973A4&zygosity=homozygote&parameter_stable_id=IMPC_ABR_010_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "alg10b": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2146159&allele_accession_id=MGI:5548751&zygosity=homozygote&parameter_stable_id=IMPC_GEL_042_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "krit1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1930618&allele_accession_id=MGI:5583067&zygosity=homozygote&parameter_stable_id=IMPC_GEL_042_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "pigq": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1333114&allele_accession_id=MGI:6148224&zygosity=homozygote&parameter_stable_id=IMPC_GEL_042_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "folr1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95568&allele_accession_id=MGI:5695973&zygosity=homozygote&parameter_stable_id=IMPC_GEL_042_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ubtf": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98512&allele_accession_id=MGI:6152669&zygosity=heterozygote&parameter_stable_id=IMPC_GEL_042_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "gabpa": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95610&allele_accession_id=MGI:6158477&zygosity=homozygote&parameter_stable_id=IMPC_GEM_021_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "slc25a1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1345283&allele_accession_id=MGI:5692627&zygosity=homozygote&parameter_stable_id=IMPC_GEM_021_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "brap": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919649&allele_accession_id=MGI:6276845&zygosity=heterozygote&parameter_stable_id=IMPC_GEO_022_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "eya1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109344&allele_accession_id=MGI:5805682&zygosity=homozygote&parameter_stable_id=IMPC_GEP_026_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "kif1b": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108426&allele_accession_id=MGI:5505909&zygosity=homozygote&parameter_stable_id=IMPC_GEP_026_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "prkra": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1344375&allele_accession_id=MGI:6257728&zygosity=homozygote&parameter_stable_id=IMPC_CSD_027_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "eps8l2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2138828&allele_accession_id=MGI:6120769&zygosity=homozygote&parameter_stable_id=IMPC_CSD_027_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "cib2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1929293&allele_accession_id=MGI:5548707&zygosity=homozygote&parameter_stable_id=IMPC_CSD_027_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "lrba": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1933162&allele_accession_id=MGI:6153482&zygosity=homozygote&parameter_stable_id=MGP_CSD_079_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "kcnj11": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107501&allele_accession_id=MGI:5695116&zygosity=homozygote&parameter_stable_id=IMPC_CSD_027_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "mpzl2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1289160&allele_accession_id=MGI:5636941&zygosity=homozygote&parameter_stable_id=IMPC_CSD_027_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "spns2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2384936&allele_accession_id=MGI:4460276&zygosity=homozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "cdh23": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1890219&allele_accession_id=MGI:5775000&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "myo7a": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104510&allele_accession_id=MGI:4431921&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "myo15": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1261811&allele_accession_id=MGI:4431637&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "slc25a21": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2445059&allele_accession_id=MGI:4364913&zygosity=homozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "pycr2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1277956&allele_accession_id=MGI:4842705&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "espn": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1861630&allele_accession_id=MGI:4431731&zygosity=homozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "kdm5b": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1922855&allele_accession_id=MGI:6153378&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "ap2a2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:101920&allele_accession_id=MGI:5548327&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "wdr47": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2139593&allele_accession_id=MGI:4433065&zygosity=homozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "wbp2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104709&allele_accession_id=MGI:4847848&zygosity=homozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "mms22l": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2684980&allele_accession_id=MGI:4433323&zygosity=heterozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "mcph1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443308&allele_accession_id=MGI:4431685&zygosity=homozygote&parameter_stable_id=M-G-P_008_001_013&pipeline_stable_id=M-G-P_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "ppil3": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917475&allele_accession_id=MGI:5637044&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "prss53": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2652890&allele_accession_id=MGI:6147557&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "rasal2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443881&allele_accession_id=MGI:4939768&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "slc20a2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97851&allele_accession_id=MGI:4431725&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "rida": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1095401&allele_accession_id=MGI:5002935&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "prkab1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1336167&allele_accession_id=MGI:5501071&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "a830031a19rik": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685508&allele_accession_id=MGI:5812929&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "msl1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921276&allele_accession_id=MGI:6153493&zygosity=heterozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "gdap2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1338001&allele_accession_id=MGI:6140193&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "ldhb": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96763&allele_accession_id=MGI:5637210&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "mau2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921799&allele_accession_id=MGI:5637081&zygosity=heterozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "eml1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915769&allele_accession_id=MGI:6153330&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "mta1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2150037&allele_accession_id=MGI:4842891&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_018&pipeline_stable_id=ESLIM_002&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "pop4": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913411&allele_accession_id=MGI:4944520&zygosity=heterozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "bin2": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3611448&allele_accession_id=MGI:6153285&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "tmem189": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2142624&allele_accession_id=MGI:4363077&zygosity=homozygote&parameter_stable_id=MGP_CSD_008_001&pipeline_stable_id=MGP_001&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "0610009b22rik": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913300&allele_accession_id=MGI:5694170&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "2310022b05rik": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916801&allele_accession_id=MGI:4436328&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "2510002d24rik": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919557&allele_accession_id=MGI:5583064&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "2900026a02rik": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920194&allele_accession_id=MGI:4435426&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "abcb4": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97569&allele_accession_id=MGI:1857236&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "acbd3": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2181074&allele_accession_id=MGI:5548778&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "acvr2b": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:87912&allele_accession_id=MGI:5548915&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "adprm": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913608&allele_accession_id=MGI:5811623&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "adra2a": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:87934&allele_accession_id=MGI:5695965&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ajap1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685419&allele_accession_id=MGI:5502312&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "akap7": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1859150&allele_accession_id=MGI:5612823&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "akr7a5": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107796&allele_accession_id=MGI:5617786&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "aldh2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:99600&allele_accession_id=MGI:4431566&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "aldh3a2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1353452&allele_accession_id=MGI:4432633&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "alg9": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1924753&allele_accession_id=MGI:5823410&zygosity=heterozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ankrd1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1097717&allele_accession_id=MGI:5569943&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "anxa6": {
+      "on_hover": "IMPC - CMHD",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88255&allele_accession_id=MGI:4839130&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=CMHD"
+         }
+      ]
+   },
+   "aqp9": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1891066&allele_accession_id=MGI:6120726&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "arap1": {
+      "on_hover": "IMPC - CMHD",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916960&allele_accession_id=MGI:4839133&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_001&pipeline_stable_id=ESLIM_002&phenotyping_center=CMHD"
+         }
+      ]
+   },
+   "arih2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1344361&allele_accession_id=MGI:5695900&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "arl6ip1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1858943&allele_accession_id=MGI:5698068&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "arvcf": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109620&allele_accession_id=MGI:4432634&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "aspa": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:87914&allele_accession_id=MGI:5614710&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "asxl1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2684063&allele_accession_id=MGI:4431878&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_002&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "atf7": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443472&allele_accession_id=MGI:5614707&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "b9d1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1351471&allele_accession_id=MGI:4432284&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "bahd1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2139371&allele_accession_id=MGI:5699601&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "baz1b": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1353499&allele_accession_id=MGI:4363543&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "bc052040": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3026886&allele_accession_id=MGI:5749789&zygosity=heterozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "becn1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1891828&allele_accession_id=MGI:5548507&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "bend3": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2677212&allele_accession_id=MGI:5707440&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "bfsp1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:101770&allele_accession_id=MGI:5696874&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "bicd1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1101760&allele_accession_id=MGI:5605749&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "bin1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108092&allele_accession_id=NULL-2B53863ED&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_008&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "brip1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442836&allele_accession_id=MGI:5823287&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "brpf1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1926033&allele_accession_id=MGI:4433631&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "bspry": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2177191&allele_accession_id=MGI:4432968&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_002&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "btbd16": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3045247&allele_accession_id=MGI:5581735&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "btbd2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1933831&allele_accession_id=MGI:6276952&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "btg2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108384&allele_accession_id=MGI:5472170&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "bub1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1100510&allele_accession_id=MGI:6257501&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "c9orf72": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920455&allele_accession_id=NULL-6D4CD6A36&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "cacnb4": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:103301&allele_accession_id=MGI:4435787&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "cap2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914502&allele_accession_id=MGI:5776537&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "capn5": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1100859&allele_accession_id=MGI:4436604&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "cast": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1098236&allele_accession_id=MGI:5488495&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "cdc123": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2138811&allele_accession_id=MGI:5548737&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "cdh4": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:99218&allele_accession_id=MGI:5571352&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "cdk13": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916812&allele_accession_id=MGI:5588278&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "celsr1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1100883&allele_accession_id=MGI:1862019&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "chrna9": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1202403&allele_accession_id=MGI:4432564&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_008&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "chst12": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1929064&allele_accession_id=NULL-BE6E6B855&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "ckb": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88407&allele_accession_id=MGI:5692879&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "clic5": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917912&allele_accession_id=MGI:5692701&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "clrn2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3646230&allele_accession_id=MGI:5912027&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "cndp2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913304&allele_accession_id=MGI:6152443&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "cnnm2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2151054&allele_accession_id=MGI:5692792&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "col11a2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88447&allele_accession_id=MGI:5692880&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "colca2": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685530&allele_accession_id=MGI:5766180&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "colec12": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2152907&allele_accession_id=MGI:6277022&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "cpt1c": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2446526&allele_accession_id=MGI:5708252&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "crbn": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913277&allele_accession_id=MGI:5558154&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "cryge": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88525&allele_accession_id=MGI:6192022&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "cstb": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109514&allele_accession_id=MGI:5790639&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ctnnb1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:88276&allele_accession_id=MGI:2656734&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "cyp27b1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1098274&allele_accession_id=MGI:5588267&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "cyp7a1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106091&allele_accession_id=MGI:5692562&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "ddx6": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104976&allele_accession_id=MGI:6152458&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "dis3": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919912&allele_accession_id=MGI:5548623&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "dixdc1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2679721&allele_accession_id=MGI:5445766&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "dner": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2152889&allele_accession_id=MGI:5637119&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "dpm3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915813&allele_accession_id=MGI:5548565&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "drg2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1342307&allele_accession_id=MGI:4432942&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "ebf1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95275&allele_accession_id=MGI:6293851&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "eef1b2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1929520&allele_accession_id=MGI:5823412&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "eif2s2": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914454&allele_accession_id=MGI:6257461&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "elk3": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:101762&allele_accession_id=NULL-B95772D5C&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "enpep": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106645&allele_accession_id=MGI:5692565&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "epb41l5": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:103006&allele_accession_id=MGI:4436105&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "epha5": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:99654&allele_accession_id=MGI:5766186&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "ephx1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95405&allele_accession_id=NULL-1AB51D694&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "eral1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1889295&allele_accession_id=MGI:6257585&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "esd": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95421&allele_accession_id=MGI:5897850&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "esrp1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1917326&allele_accession_id=MGI:6276892&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "esrra": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1346831&allele_accession_id=MGI:5620908&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "evl": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1194884&allele_accession_id=MGI:5548406&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "f2rl1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:101910&allele_accession_id=MGI:5548326&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "fam161a": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921123&allele_accession_id=MGI:5472171&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "fam57b": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916202&allele_accession_id=MGI:6257762&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "fam83g": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916890&allele_accession_id=MGI:4431981&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "fbxo11": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2147134&allele_accession_id=MGI:1862017&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_002&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "fbxo2": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2446216&allele_accession_id=MGI:5694184&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fgf11": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109167&allele_accession_id=MGI:4432799&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "fgf7": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95521&allele_accession_id=MGI:6324182&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "fgf9": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104723&allele_accession_id=MGI:5523233&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "fkbp10": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104769&allele_accession_id=MGI:5432211&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "frmd5": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442557&allele_accession_id=MGI:4435944&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "fshr": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95583&allele_accession_id=MGI:4415446&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "fzd3": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108476&allele_accession_id=MGI:5692578&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gas6": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95660&allele_accession_id=MGI:5766764&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "gatm": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914342&allele_accession_id=MGI:5548533&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "get4": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914854&allele_accession_id=MGI:6257709&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "glrb": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95751&allele_accession_id=MGI:6156599&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "gm5134": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3646667&allele_accession_id=MGI:4435240&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gna11": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95766&allele_accession_id=MGI:4432307&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gnao1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95775&allele_accession_id=MGI:5548941&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gnasas1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1861674&allele_accession_id=MGI:4950066&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gnas": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95777&allele_accession_id=MGI:3050794&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_003&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "gpr142": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2668437&allele_accession_id=MGI:5603570&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "gramd1c": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443024&allele_accession_id=MGI:5661974&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "grhl2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2182543&allele_accession_id=MGI:6277030&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "gria1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95808&allele_accession_id=MGI:6257717&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "grin2b": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95821&allele_accession_id=MGI:5605840&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "grtp1": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914040&allele_accession_id=MGI:5513788&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "gsk3a": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2152453&allele_accession_id=MGI:5695125&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "gstcd": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914803&allele_accession_id=MGI:5605781&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "gsto1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1342273&allele_accession_id=MGI:5827741&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "h3f3b": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1101768&allele_accession_id=MGI:5614694&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "h6pd": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2140356&allele_accession_id=MGI:4432827&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "hbp1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:894659&allele_accession_id=NULL-8ABC709ED&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "hectd3": {
+      "on_hover": "IMPC - MARC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1923858&allele_accession_id=MGI:4880080&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=MARC"
+         }
+      ]
+   },
+   "hhatl": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1922020&allele_accession_id=MGI:6152499&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "hibadh": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1889802&allele_accession_id=MGI:5637002&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "hint1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1321133&allele_accession_id=MGI:4433692&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_003&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "hmbs": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96112&allele_accession_id=MGI:5642364&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "hnrnpc": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107795&allele_accession_id=MGI:5635221&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "hsbp1l1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913505&allele_accession_id=MGI:5750173&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ikzf2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1342541&allele_accession_id=MGI:6153889&zygosity=homozygote&parameter_stable_id=HRWLIP_CSD_036_001&pipeline_stable_id=HRWLIP_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "ilrun": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106281&allele_accession_id=MGI:4075405&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ino80e": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2141881&allele_accession_id=MGI:4433084&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_004&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "ipo9": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918944&allele_accession_id=MGI:6257741&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "iqsec3": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2677208&allele_accession_id=MGI:5563212&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "itch": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1202301&allele_accession_id=MGI:5692595&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "jmjd6": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1858910&allele_accession_id=MGI:5548491&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "kansl1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1923969&allele_accession_id=MGI:5699600&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "kcnj12": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108495&allele_accession_id=MGI:4432694&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "kcnj16": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1314842&allele_accession_id=NULL-452EE54CB&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "kif3c": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107979&allele_accession_id=MGI:5630064&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "lama1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:99892&allele_accession_id=MGI:5613672&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "lat": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1342293&allele_accession_id=MGI:6324168&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "lingo2": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442298&allele_accession_id=NULL-42BF86D58&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "lmod3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444169&allele_accession_id=MGI:6152507&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "maf": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96909&allele_accession_id=MGI:6276966&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "mag": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:96912&allele_accession_id=MGI:5576044&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "man1b1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2684954&allele_accession_id=MGI:6257674&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "map3k1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1346872&allele_accession_id=MGI:3883782&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "mark4": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1920955&allele_accession_id=MGI:6152512&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "mat2a": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2443731&allele_accession_id=MGI:4435877&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "mcf2l": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:103263&allele_accession_id=MGI:4436065&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_008&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "mecom": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:95457&allele_accession_id=MGI:2158381&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_002&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "mtarc2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914497&allele_accession_id=MGI:4435988&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "mx2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97244&allele_accession_id=MGI:6324169&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "myc": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97250&allele_accession_id=NULL-E584892FD&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "myo1d": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107728&allele_accession_id=MGI:5775818&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "mysm1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444584&allele_accession_id=MGI:4362924&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "naaladl2": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685867&allele_accession_id=MGI:6257753&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "naxe": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2180167&allele_accession_id=MGI:5692800&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "ncor2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1337080&allele_accession_id=NULL-810B70D54&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "nfya": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97316&allele_accession_id=MGI:4872253&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "nhs": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2684894&allele_accession_id=MGI:5754996&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "nipsnap1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1278344&allele_accession_id=MGI:4431806&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_002&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "nlgn3": {
+      "on_hover": "IMPC - RBRC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444609&allele_accession_id=MGI:6156147&zygosity=hemizygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=RBRC"
+         }
+      ]
+   },
+   "nmb": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915289&allele_accession_id=MGI:5620905&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "nodal": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97359&allele_accession_id=MGI:2180793&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "nol8": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918180&allele_accession_id=MGI:5574602&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "nolc1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1918019&allele_accession_id=MGI:5692702&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "npas3": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1351610&allele_accession_id=MGI:6120711&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "nr1h4": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1352464&allele_accession_id=NULL-0318CF98F&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_008&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "nr6a1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1352459&allele_accession_id=NULL-F89F72EDC&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "nsd3": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2142581&allele_accession_id=MGI:5637114&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "nup37": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919964&allele_accession_id=MGI:5708217&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "oas1a": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2180860&allele_accession_id=MGI:5692801&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "oplah": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1922725&allele_accession_id=MGI:5548658&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "orc5": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1347044&allele_accession_id=MGI:4433614&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "ostes": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3688249&allele_accession_id=MGI:3689329&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "ostf1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:700012&allele_accession_id=MGI:5811626&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "otogl": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3647600&allele_accession_id=MGI:5755623&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "otud7b": {
+      "on_hover": "IMPC - CMHD",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2654703&allele_accession_id=MGI:4839147&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=CMHD"
+         }
+      ]
+   },
+   "pacs2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1924399&allele_accession_id=MGI:4435377&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "palm3": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921587&allele_accession_id=MGI:6161257&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "paqr6": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916207&allele_accession_id=MGI:5548574&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "parl": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1277152&allele_accession_id=MGI:4435986&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "peli1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914495&allele_accession_id=MGI:5548537&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "pkhd1l1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2183153&allele_accession_id=MGI:6149161&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "pkn2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109211&allele_accession_id=MGI:5613636&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "pla2g7": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1351327&allele_accession_id=MGI:5662431&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "pmel": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98301&allele_accession_id=MGI:5637220&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "ppm1n": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2142330&allele_accession_id=MGI:6276865&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ppp2r5c": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1349475&allele_accession_id=MGI:6277066&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ppy": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97753&allele_accession_id=MGI:5695979&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "prkcsh": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107877&allele_accession_id=MGI:5705869&zygosity=heterozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "prkd2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2141917&allele_accession_id=MGI:6257638&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "prmt1": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107846&allele_accession_id=MGI:4432476&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "prrc2c": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913754&allele_accession_id=MGI:6143826&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "prrt2": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916267&allele_accession_id=MGI:6120738&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "prss50": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2447303&allele_accession_id=MGI:4455807&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "prune1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1925152&allele_accession_id=MGI:5695935&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "ptpra": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:97808&allele_accession_id=MGI:5812936&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=ICS_001&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "rbfox3": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106368&allele_accession_id=MGI:4434907&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_004&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "rfxank": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1333865&allele_accession_id=MGI:5614696&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "rgl1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107484&allele_accession_id=MGI:6277056&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "rps26": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1351628&allele_accession_id=MGI:5692633&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "rps6ka1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104558&allele_accession_id=MGI:5792822&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "rtl10": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3833934&allele_accession_id=MGI:5825309&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ryr2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:99685&allele_accession_id=MGI:5637225&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "scamp2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1346518&allele_accession_id=MGI:5752771&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "sdhaf3": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913288&allele_accession_id=MGI:6257675&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "septin8": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:894310&allele_accession_id=MGI:4433986&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "serf2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1337041&allele_accession_id=MGI:6120704&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "setd3": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1289184&allele_accession_id=MGI:5766145&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "setdb1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1934229&allele_accession_id=MGI:4432424&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_004&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "setdb2": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685139&allele_accession_id=MGI:4364322&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "setmar": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921979&allele_accession_id=MGI:4432061&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_010&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "sfrp2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108078&allele_accession_id=MGI:3056485&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_001&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "shh": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98297&allele_accession_id=MGI:1857796&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_003&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "sirt6": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1354161&allele_accession_id=MGI:4432093&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_003&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "slc38a10": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919305&allele_accession_id=MGI:4441779&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "slc44a1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2140592&allele_accession_id=MGI:5637111&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "slc44a2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915932&allele_accession_id=MGI:5796295&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "slc8a3": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:107976&allele_accession_id=MGI:5554913&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "slc9a4": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:105074&allele_accession_id=MGI:5636898&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "slitrk1": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2679446&allele_accession_id=MGI:5583079&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "smagp": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2448476&allele_accession_id=MGI:5692839&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "sox13": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98361&allele_accession_id=MGI:4433017&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_007&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "spink12": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1925492&allele_accession_id=MGI:5649013&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "spryd3": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2446175&allele_accession_id=MGI:4434532&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_008&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "spta1": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98385&allele_accession_id=MGI:6257764&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "srsf11": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916457&allele_accession_id=MGI:5692694&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "ssbp2": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914220&allele_accession_id=MGI:5605777&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "sstr5": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:894282&allele_accession_id=MGI:6276928&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "strap": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1329037&allele_accession_id=NULL-4B184FCFF&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "tap1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98483&allele_accession_id=MGI:5692917&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "tardbp": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2387629&allele_accession_id=MGI:5692816&zygosity=heterozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tbc1d2b": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914266&allele_accession_id=MGI:4434639&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tg(thy1-mapt*p301s)2541godt": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:3838540&allele_accession_id=NULL-6BFEB7DA8&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tmem183a": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914729&allele_accession_id=NULL-2C39B9217&zygosity=heterozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "thra": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98742&allele_accession_id=MGI:5614615&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "timp4": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109125&allele_accession_id=MGI:6276973&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "tiprl": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1915087&allele_accession_id=MGI:5698469&zygosity=heterozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "tmc8": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2669037&allele_accession_id=MGI:4432152&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "tmem255b": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2685533&allele_accession_id=MGI:4436032&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tmem72": {
+      "on_hover": "IMPC - KMPC",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2442707&allele_accession_id=MGI:6256796&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=IMPC_001&phenotyping_center=KMPC"
+         }
+      ]
+   },
+   "tmem79": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1919163&allele_accession_id=MGI:5632528&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "tnfaip1": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:104961&allele_accession_id=MGI:4433727&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "tnfrsf1b": {
+      "on_hover": "IMPC - ICS",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1314883&allele_accession_id=MGI:4433096&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_005&pipeline_stable_id=ESLIM_002&phenotyping_center=ICS"
+         }
+      ]
+   },
+   "tnks2": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1921743&allele_accession_id=MGI:5473325&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "tomm40": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1858259&allele_accession_id=MGI:5774456&zygosity=heterozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "tpm1": {
+      "on_hover": "IMPC - WTSI",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98809&allele_accession_id=MGI:4842867&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_008&pipeline_stable_id=ESLIM_002&phenotyping_center=WTSI"
+         }
+      ]
+   },
+   "tpo": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:98813&allele_accession_id=MGI:6257652&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tra2a": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1933972&allele_accession_id=MGI:5637105&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "trip13": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916966&allele_accession_id=MGI:5443928&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "trpc3": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:109526&allele_accession_id=MGI:3689326&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_002&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "ttc28": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2140873&allele_accession_id=MGI:5513829&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "ttll4": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1914784&allele_accession_id=MGI:4433211&zygosity=homozygote&parameter_stable_id=ESLIM_011_001_006&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "tuba8": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1858225&allele_accession_id=MGI:5779854&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ube2o": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2444266&allele_accession_id=MGI:5477804&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "usp2": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1858178&allele_accession_id=MGI:5636991&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "usp29": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1888998&allele_accession_id=MGI:6156467&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "usp31": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1923429&allele_accession_id=MGI:6257795&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HRWL_001&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "vax1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1277163&allele_accession_id=MGI:5490505&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "vdac1": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:106919&allele_accession_id=MGI:5701719&zygosity=heterozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "vopp1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2141658&allele_accession_id=MGI:5659670&zygosity=homozygote&parameter_stable_id=JAXLA_CSD_036_001&pipeline_stable_id=JAXLA_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "vps13b": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1916380&allele_accession_id=MGI:6156483&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "wnt10b": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108061&allele_accession_id=MGI:5582422&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "wtap": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1926395&allele_accession_id=MGI:4434984&zygosity=heterozygote&parameter_stable_id=ESLIM_011_001_009&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "xylb": {
+      "on_hover": "IMPC - MRC Harwell",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2142985&allele_accession_id=MGI:4435322&zygosity=homozygote&parameter_stable_id=ESLIM_008_001_013&pipeline_stable_id=ESLIM_002&phenotyping_center=MRC Harwell"
+         }
+      ]
+   },
+   "ylpm1": {
+      "on_hover": "IMPC - JAX",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1926195&allele_accession_id=MGI:5661980&zygosity=heterozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=JAX_001&phenotyping_center=JAX"
+         }
+      ]
+   },
+   "ypel2": {
+      "on_hover": "IMPC - TCP",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1925114&allele_accession_id=MGI:6156500&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=TCP_001&phenotyping_center=TCP"
+         }
+      ]
+   },
+   "ypel3": {
+      "on_hover": "IMPC - UC Davis",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1913340&allele_accession_id=MGI:5548509&zygosity=homozygote&parameter_stable_id=IMPC_CSD_036_001&pipeline_stable_id=UCD_001&phenotyping_center=UC Davis"
+         }
+      ]
+   },
+   "zdhhc5": {
+      "on_hover": "IMPC - HMGU",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:1923573&allele_accession_id=MGI:6317366&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=HMGU_001&phenotyping_center=HMGU"
+         }
+      ]
+   },
+   "zfp160": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:108187&allele_accession_id=MGI:5638563&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "zfp488": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2686052&allele_accession_id=MGI:6257496&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   },
+   "zfp930": {
+      "on_hover": "IMPC - BCM",
+      "links": [
+         {
+            "label": "IMPC",
+            "url": "http://www.mousephenotype.org/data/charts?accession=MGI:2675306&allele_accession_id=MGI:5692845&zygosity=homozygote&parameter_stable_id=IMPC_ACS_006_001&pipeline_stable_id=BCM_001&phenotyping_center=BCM"
+         }
+      ]
+   }
+}

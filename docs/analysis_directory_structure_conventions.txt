@@ -1,0 +1,24 @@
+PRIMARY
+- These are the direct h5 files created by the user when they upload a dataset.
+-------
+www/datasets/$dataset_id.h5ad
+
+PUBLIC
+- These can only be made by owner or gear curators and are publicly available for everyone to see/copy.
+------
+www/analyses/by_dataset/$dataset_id/$analysis_id/$dataset_id.h5ad
+
+USER_SAVED
+- Created by users from their datasets or any other public ones. Visible only to the user.
+----------
+www/analyses/by_user/$user_id/$dataset_id/$analysis_id/$dataset_id.h5ad
+
+USER_UNSAVED
+- These are created automatically by the interface any time a user does an analysis step, saving progress.
+------------
+/tmp/$session/$dataset_id/$analysis_id/$dataset_id.h5ad
+/tmp/e385305c-4387-433e-8b62-4bcf7c30ac52/ab859cd1-2c4c-48a1-8ba0-0c0480e08f20
+
+If a user selects a PRIMARY or PUBLIC analysis and makes modifications, it should first be copied to USER_UNSAVED, issued a new analysis_id, then changes made.
+
+Selecting a USER_SAVED or USER_UNSAVED should allow modifications directly.

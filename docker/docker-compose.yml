@@ -1,0 +1,34 @@
+version: '3'
+
+networks:
+  gear:
+
+services:
+  db:
+    environment:
+      MYSQL_DATABASE: gear_portal
+      MYSQL_USER: gear
+      MYSQL_PASSWORD: gearadmin
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+    image: mysql:5.7
+    networks:
+      - gear
+    ports:
+      - "3306:3306"
+    restart: always
+    volumes:
+      - ./mysql:/var/lib/mysql
+
+  web:
+    build: .
+    depends_on:
+      - db
+    image: umgear
+    networks:
+      - gear
+    ports:
+      - "8080:80"
+    restart: on-failure
+    volumes:
+      - ..:/opt/gEAR/
+

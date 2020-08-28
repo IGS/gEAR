@@ -1,0 +1,5 @@
+[database]
+user = gear
+password = gearadmin
+host = db
+name = gear_portal

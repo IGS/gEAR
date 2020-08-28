@@ -1,0 +1,124 @@
+<!-- External Polymer Styles/elements dependency -->
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+
+<!-- Epiviz element dependency -->
+
+<script>
+    /**
+     * `ChartRemoveBehavior` object manages the `<epiviz-chart-average>` element for each chart. 
+     * All charts inherit this behavior to remove itself from DOM.
+     *
+     * @polymerBehavior
+    **/
+    EpivizChartAverageBehavior = function (superClass) {
+        return class extends superClass {
+            constructor() {
+                super();
+            }
+
+            static get properties() {
+                return {};
+            }
+
+            /**
+            * Shows the remove element
+            */
+            _showAverageDialog() {
+                var self = this;
+
+                self.isAverage  = !self.isAverage;
+
+                self._toggleAverageIcon();
+
+                if (!self.isAverage) {
+                    self.chartSettings = self._originalSettings
+                    self.data = self._originalData
+                    // self.chart.setCustomSettingsValues(self._originalSettings);
+                    // self._draw();
+                    return;
+                }
+
+
+                if (!self._originalData) {
+                    self._originalData = self.data
+                }
+
+                if (!self._originalSettings) {
+                    self._originalSettings = JSON.parse(JSON.stringify(self.chartSettings))
+                }
+
+                self.chartSettings = JSON.parse(JSON.stringify(self._originalSettings));
+
+                console.log(self);
+                console.log(self.measurements)
+
+                // if (self.measurements.length == 2) {
+                    console.log("measurements is == 2")
+                    console.log(self.data)
+                    // first create a measurement for log ratio
+
+                    var groupByMarker = new epiviz.ui.charts.markers.VisualizationMarker(
+                        "average", "average", "average", 
+                        "function(data) {  return null; }", 
+                        "function(m, data, preMarkResult) {  return 'average'; }"
+                    );
+
+                    var aggregator = epiviz.ui.charts.markers.MeasurementAggregators["mean-stdev"];
+                    self._averageData = new epiviz.datatypes.MeasurementAggregatedGenomicData(self._originalData, groupByMarker, aggregator);
+                    self._averageData.ready(function() {
+                        if (self._averageData.isReady()) {
+                            // self.chart._lastData = newData;
+                            self.data = self._averageData
+                            self.chart.setCustomSettingsValues(self.chartSettings);
+
+                            self._draw();
+                        }
+                    })
+                // }
+            }
+
+            /**
+            * Initializes the `<epiviz-chart-logratio>` element
+            */
+            _initializeAverageDialog() {
+                var chartSettingsContainer = this.shadowRoot.querySelector('#chartSettingsContainer');
+                var chartContainer = this.shadowRoot.querySelector('#' + this.plotId);
+                var currSettingIcon = this.shadowRoot.querySelector('#chartAverageIcon');
+
+                if (currSettingIcon == null) {
+                    var iconElem = document.createElement('button');
+                    iconElem.innerHTML = "Mean |";
+                    iconElem.className = "setIcon";
+                    iconElem.id = "chartAverageIcon";
+                    // iconElem.icon = "icons:alarm";
+
+                    iconElem.addEventListener("click", this._showAverageDialog.bind(this));
+
+                    chartSettingsContainer.appendChild(iconElem);
+                }
+            }
+
+            _toggleAverageIcon() {
+                var self = this;
+
+
+                var dis1 = this.shadowRoot.querySelector('#chartLogRatioIcon');
+                var active = this.shadowRoot.querySelector('#chartAverageIcon');
+                var dis2 = this.shadowRoot.querySelector('#chartNegationIcon');
+
+                if(self.isAverage) {
+                    active.style.color = 'blue';
+                }
+                else {
+                    active.style.color = 'black';
+
+                }
+
+                self.isLogRatio = self.isNegation = false;
+
+                dis1.style.color = dis2.style.color = 'black';
+            }
+        }
+    }
+</script>

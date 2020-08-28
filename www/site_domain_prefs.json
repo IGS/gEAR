@@ -1,0 +1,8 @@
+{
+    "domain_label": "gear",
+    "domain_short_display_label": "gEAR",
+    "enabled_plugins": {"deafness_gene_annotation": ["index.html"]},
+    "links_out": {
+        "DVD": true
+    }
+}

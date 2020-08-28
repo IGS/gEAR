@@ -1,0 +1,77 @@
+<div id="manual_upload_dataset_svg" class="container_manual">
+  <h2>SVG format</h2>
+  <p>
+    To upload a dataset as an SVG, gEAR requires two files:  a spreadsheet data file
+    and an SVG file.  The two are linked by agreement between the column header in the data file and class
+    attributes in the SVG file's path elements, as illustrated below.
+  </p>
+  <ol id="steps_overview">
+    <li>
+      <span><b>Data file</b></span>: This holds your expression data, and should have at least a 'Gene symbol'
+      column and then expression value columns, with headers on the first row.  This file can be in any of the
+      following formats:  .xlsx, .xls, .obs, comma-delimited (.csv) or tab-delimited (.tab).
+    </li>
+    <li>
+     <span><b>SVG file</b></span>: Graphical representation of your data to be colorized based on expression
+      values.
+    </li>
+  </ol>
+  <h3>Data file</h3>
+  <div class="manual_section">
+    <p>
+      This file must at least have a column labeled 'Gene_symbol', then any number of data columns
+      with expression values.  This will be linked to your SVG using the values in the header row.  Below,
+      for example, column D has data for 'Hair_cells', and you'll see this matches exactly the class values
+      in the SVG files.
+    </p>
+    <div class="instructions_image_c">
+      <img src="img/upload_help_spreadsheet.png" alt="File upload - Spreadsheet"/>
+    </div>
+  </div>
+  <br />
+  <h3>SVG file</h3>
+  <div class="manual_section">
+    <p>
+      SVG files can be created with tools such as <a href="https://inkscape.org" target="_blank">Inkscape</a> (free)
+      or <a href="http://www.adobe.com/products/illustrator.html" target="_blank">Adobe Illustrator</a> (commercial).
+      As you will see, an SVG is really just a plain text file which represents a drawing. This file contains
+      &lt;path&gt; elements which represent lines or shapes in the image. Each &lt;path&gt; element has a 'class'
+      value that lets gEAR connect that shape to the expression value in your data file.
+    </p>
+    <p>
+      Below is an example of an SVG. This example, being viewed with Inkscape, has a &lt;path&gt; element selected.
+      The &lt;path&gt; element has the 'class' attribute with the value 'Hair_cells'. This 'class' value corresponds to the column D in our
+      spreadsheet exactly. To assign a data column of the spreadsheet to an &lt;path&gt; element of the SVG, the 'class' attribute
+      must match the column header. As long as you have agreement between the data columns and your SVG classes, the
+      interface will display your expression values properly.
+    </p>
+    <div class="instructions_image_c">
+      <img src="img/upload_help_svg_and_xmleditor.png" alt="File upload - SVG graphic view"/>
+    </div>
+    <br />
+    <p>
+      Below is a text view of the SVG file from above. You'll see each &lt;path&gt; element has the 'class' value of
+      'Hair_cells' which matches the header of column D in our spreadsheet.
+    </p>
+    <div class="instructions_image_c">
+      <img src="img/upload_help_svg_text.png" alt="File upload - Spreadsheet text"/>
+    </div>
+  </div>
+  <br />
+  <h2>
+    <a class="manual_link" id="open_manual_tutorial_match_spreadsheet_to_svg"
+    data-section="tutorial_match_spreadsheet_to_svg" href="#manual_tutorial_match_spreadsheet_to_svg">
+      For a demostration, continue to 'Match spreadsheet to SVG' tutorial...
+    </a>
+  </h2>
+  <br />
+  <p>
+    Once your file(s) have formatted and uploaded, you'll be ready to complete the next step:
+  </p>
+  <h2>
+    <a class="manual_link" id="open_manual_upload_dataset_schematic"
+    data-section="upload_dataset_schematic" href="#manual_upload_dataset_schematic">
+      Continue to 'Step 4: Upload Schematic Image'...
+    </a>
+  </h2>
+</div>

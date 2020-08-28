@@ -1,0 +1,331 @@
+# https://docs.python.org/3.4/library/http.cookies.html
+CREATE TABLE guser (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       user_name      VARCHAR(255),
+       email          VARCHAR(255),
+       institution    VARCHAR(255),
+       pass           VARCHAR(50),
+       updates_wanted TINYINT(1),
+       is_admin       TINYINT(1) DEFAULT 0,
+       help_id        VARCHAR(50),
+       date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
+       is_gear_curator TINYINT(1) DEFAULT 0
+) ENGINE=INNODB;
+
+# password is a hashlib md5 hexdigest
+INSERT INTO guser (id, user_name, email, institution, pass, updates_wanted, is_admin)
+       VALUES (0, 'admin', 'admin@localhost', 'UMaryland', 'somepasswordhash', 0, 1);
+
+CREATE TABLE user_session (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       user_id        INT,
+       session_id     VARCHAR(255),
+       FOREIGN KEY (user_id)
+          REFERENCES guser(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE organism (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       label          VARCHAR(255) NOT NULL,
+       genus          VARCHAR(255),
+       species        VARCHAR(255),
+       strain         VARCHAR(255),
+       taxon_id       INT
+) ENGINE=INNODB;
+
+## DO NOT change these values without making corresponding changes in the loading scripts
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (1, 'Mouse', 'Mus', 'musculus', NULL, 10090);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (2, 'Human', 'Homo', 'sapiens', 'sapiens', 9606);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (3, 'Zebrafish', 'Danio', 'rerio', NULL, 7955);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (5, 'Chicken', 'Gallus', 'gallus', NULL, 9031);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (6, 'Rat', 'Rattus', 'norvegicus', NULL, 10116);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (7, 'Marmoset', 'Callithrix', 'jacchus', 'jacchus', 9483);
+
+CREATE TABLE gene (
+       id               INT PRIMARY KEY AUTO_INCREMENT,
+       ensembl_id       VARCHAR(40),
+       ensembl_version  VARCHAR(40),
+       ensembl_release  INT NOT NULL,
+       genbank_acc      VARCHAR(20),
+       organism_id      INT NOT NULL,
+       molecule         varchar(100),
+       start            int(11),
+       stop             int(11),
+       gene_symbol      VARCHAR(20),
+       product          VARCHAR(255),
+       biotype          VARCHAR(100),
+       INDEX            org_idx (organism_id),
+       INDEX            org_sym (organism_id, gene_symbol),
+       FOREIGN KEY (organism_id) REFERENCES organism(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE gene_cart (
+       id              INT PRIMARY KEY AUTO_INCREMENT,
+       user_id         INT NOT NULL,
+       label           VARCHAR(255) NOT NULL,
+       FOREIGN KEY (user_id)
+          REFERENCES guser(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE gene_cart_member (
+       id              INT PRIMARY KEY AUTO_INCREMENT,
+       gene_cart_id    INT NOT NULL,
+       gene_symbol     VARCHAR(20) NOT NULL,
+       FOREIGN KEY (gene_cart_id)
+          REFERENCES gene_cart(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE gene_symbol (
+       id               INT PRIMARY KEY AUTO_INCREMENT,
+       gene_id          INT NOT NULL,
+       label            VARCHAR(30),
+       is_primary       TINYINT(1) DEFAULT 0,
+       INDEX            gene_symbol_label_idx (label),
+       FOREIGN KEY (gene_id) REFERENCES gene(id)
+) ENGINE=INNODB;
+CREATE INDEX idx_gene_symbol__gene_id ON gene_symbol (gene_id);
+CREATE INDEX idx_gene_symbol__label ON gene_symbol (label);
+
+CREATE TABLE go (
+       go_id          VARCHAR(20) PRIMARY KEY,
+       name           VARCHAR(255) NOT NULL,
+       namespace      VARCHAR(30) NOT NULL,
+       def            TEXT
+) ENGINE=INNODB;
+
+CREATE TABLE gene_go_link (
+       id             INT UNIQUE KEY AUTO_INCREMENT,
+       gene_id        INT NOT NULL,
+       go_id          VARCHAR(20) NOT NULL,
+       PRIMARY KEY (gene_id, go_id),
+       FOREIGN KEY (gene_id) REFERENCES gene(id)
+) ENGINE=INNODB;
+
+CREATE TABLE gene_dbxref (
+       id             INT UNIQUE KEY AUTO_INCREMENT,
+       gene_id        INT NOT NULL,
+       dbxref         VARCHAR(100) NOT NULL,
+       PRIMARY KEY (gene_id, dbxref),
+       FOREIGN KEY (gene_id) REFERENCES gene(id)
+) ENGINE=INNODB;
+
+CREATE TABLE mirna_family (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       stem_loop_id   INT NOT NULL,
+       mature_id      INT NOT NULL,
+       family_id      VARCHAR(20),
+       family_label   VARCHAR(20),
+       FOREIGN KEY (stem_loop_id) REFERENCES gene(id),
+       FOREIGN KEY (mature_id) REFERENCES gene(id)
+) ENGINE=INNODB;
+
+CREATE TABLE anatomy (
+       id            INT PRIMARY KEY AUTO_INCREMENT,
+       organism_id   INT NOT NULL,
+       label         VARCHAR(100),
+       parent_id     INT,
+       FOREIGN KEY (parent_id)
+          REFERENCES anatomy(id)
+          ON DELETE CASCADE,
+       FOREIGN KEY (organism_id)
+          REFERENCES organism(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE dataset (
+       id                       VARCHAR(50) PRIMARY KEY,
+       owner_id                 INT NOT NULL,
+       title                    VARCHAR(255) NOT NULL,
+       organism_id              INT NOT NULL,
+       pubmed_id                VARCHAR(20),
+       geo_id                   VARCHAR(20),
+       is_public                TINYINT DEFAULT 0,
+       ldesc                    TEXT,
+       date_added               DATETIME,
+       dtype                    VARCHAR(50) NOT NULL DEFAULT 'svg-expression',
+       # paths are relative to the root, so probably like datasets_uploaded/{dataset_id}.jpg
+       schematic_image          VARCHAR(255),
+       share_id                 VARCHAR(50),
+       math_default             VARCHAR(50) NOT NULL DEFAULT 'raw', #options: 'raw', 'log2', 'log10'
+       marked_for_removal       TINYINT DEFAULT 0,
+       load_status              VARCHAR(20), #options: 'pending', 'loading', 'completed', 'failed',
+       has_h5ad                 TINYINT DEFAULT 0,
+       platform_id              VARCHAR(20),
+       instrument_model         VARCHAR(50),
+       library_selection        VARCHAR(255),
+       library_source           VARCHAR(255),
+       library_strategy         TEXT,
+       contact_email            VARCHAR(100),
+       contact_institute        VARCHAR(255),
+       contact_name             VARCHAR(100),
+       annotation_source        VARCHAR(20),
+       plot_default             VARCHAR(50), #options: 'bar', 'line', 'violin'
+       annotation_release       INT,
+       FULLTEXT                 text_idx (title, ldesc),
+       FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
+       FOREIGN KEY (owner_id)
+          REFERENCES guser(id)
+          ON DELETE CASCADE,
+       FOREIGN KEY (organism_id)
+          REFERENCES organism(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+INSERT INTO dataset (id, owner_id, title, organism_id, pubmed_id, is_public, ldesc, date_added,
+                     dtype, schematic_image, share_id, math_default, load_status)
+  VALUES ('31238h1j-0000-11e7-9560-3ca9f41a0df0', 0, 'EpiViz track viewer', 1, '26328750', 1,
+          'Container for EpiViz tracks - Interactive visualization of functional genomics data.',
+          NOW(), 'epiviz', 'img/schematic_epiviz-chipseq.png', '31212121-0000-11e7-9560-3ca9f41a0df0',
+          'raw', 'completed');
+
+CREATE TABLE dataset_display (
+       id            INT PRIMARY KEY AUTO_INCREMENT,
+       dataset_id    VARCHAR(50) NOT NULL,
+       user_id       INT NOT NULL,
+       label         VARCHAR(255),
+       plot_type     VARCHAR(20),
+       plotly_config TEXT,
+
+       FOREIGN KEY (dataset_id)
+          REFERENCES dataset(id)
+          ON DELETE CASCADE,
+       FOREIGN KEY (user_id)
+          REFERENCES guser(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE dataset_preference (
+   user_id        INT NOT NULL,
+   dataset_id     VARCHAR(50) NOT NULL,
+   display_id     INT NOT NULL,
+   primary key (user_id, dataset_id),
+
+   FOREIGN KEY (dataset_id)
+      REFERENCES dataset(id)
+      ON DELETE CASCADE,
+   FOREIGN KEY (user_id)
+      REFERENCES guser(id)
+      ON DELETE CASCADE,
+   FOREIGN KEY (display_id)
+      REFERENCES dataset_display(id)
+      ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE dataset_shares (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      dataset_id                VARCHAR(50) NOT NULL,
+      user_id                   INT NOT NULL,
+      is_allowed                TINYINT(1) DEFAULT 0,
+      FOREIGN KEY (dataset_id)
+          REFERENCES dataset(id)
+          ON DELETE CASCADE,
+      FOREIGN KEY (user_id)
+          REFERENCES guser(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE layout (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       user_id                  INT NOT NULL,
+       group_id                 INT,
+       label                    VARCHAR(255),
+       is_current               TINYINT(1) DEFAULT 0,
+       share_id                 VARCHAR(8),
+       FOREIGN KEY (user_id)
+          REFERENCES guser(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+# Load some initial layout
+#INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
+
+CREATE TABLE layout_members (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       layout_id                INT NOT NULL,
+       dataset_id               VARCHAR(50) NOT NULL,
+       grid_position            INT NOT NULL,
+       grid_width               INT NOT NULL,
+       math_preference          VARCHAR(50), #options: 'raw', 'log2', 'log10'
+       plot_preference          VARCHAR(50), #options: 'bar', 'line', 'violin'
+       FOREIGN KEY (layout_id)
+          REFERENCES layout(id)
+          ON DELETE CASCADE,
+       FOREIGN KEY (dataset_id)
+          REFERENCES dataset(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE supplemental_images (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       # label is a meant to identify the class of image
+       label                    VARCHAR(50),
+       ensembl_id               VARCHAR(20),
+       gene_symbol              VARCHAR(20),
+       image_url                VARCHAR(200),
+       index                    gene_sym_idx(gene_symbol)
+) ENGINE=INNODB;
+
+CREATE TABLE tag (
+	id		INT PRIMARY KEY AUTO_INCREMENT,
+	label	VARCHAR(55)
+) ENGINE=INNODB;
+
+# multiple tags to multiple comments
+CREATE TABLE comment_tag (
+	id			INT PRIMARY KEY AUTO_INCREMENT,
+	tag_id		INT,
+	comment_id	INT,
+	FOREIGN KEY (tag_id) REFERENCES tag(id),
+	FOREIGN KEY (comment_id)
+    REFERENCES comment(id)
+    ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE dataset_tag (
+    id                   INT PRIMARY KEY AUTO_INCREMENT,
+    tag_id               INT,
+    dataset_id           VARCHAR(50) NOT NULL,
+    FOREIGN KEY (tag_id)
+      REFERENCES tag(id),
+    FOREIGN KEY (dataset_id)
+      REFERENCES dataset(id)
+      ON DELETE CASCADE
+) ENGINE=INNODB;
+
+CREATE TABLE note (
+  id                  INT PRIMARY KEY AUTO_INCREMENT,
+  title               VARCHAR(100),
+  ldesc               TEXT,
+  user_id             INT,
+  dataset_id          VARCHAR(50),
+  is_public           TINYINT DEFAULT 0,
+  date_added          DATETIME,
+  date_last_change    DATETIME,
+  FOREIGN KEY (user_id)
+     REFERENCES guser(id),
+  FOREIGN KEY (dataset_id)
+     REFERENCES dataset(id)
+) ENGINE=INNODB;
+
+CREATE TABLE `dataset_epiviz` (
+  `id` varchar(50) NOT NULL,
+  `owner_id` int(11) NOT NULL,
+  `annotation` text,
+  `type` varchar(10) NOT NULL,
+  `url` text NOT NULL,
+  `title` text,
+  `is_public` tinyint(4) DEFAULT '0',
+  `description` text,
+  `share_id` varchar(50) NOT NULL,
+  `organism` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB;

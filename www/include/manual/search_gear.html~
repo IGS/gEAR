@@ -1,0 +1,21 @@
+<div id="manual_search_gear" class="container">
+  <h2>Search gEAR</h2>
+  <p>
+    This can be an introduction to the gEAR Search.
+  </p>
+  <h3>How to Search</h3>
+  <p>
+  	To begin a search in gEAR use the search bar on the left of the screen.
+  </p>
+  <div>
+    <img src="img/gear_manual_img/search_start.png" alt="How to search">
+  </div>
+  <br />
+  <p>
+  	A single gene, or group of genes can be searched: 
+  </p>
+  <ul>
+    <li>Single gene: "sox2"</li>
+    <li>Group of genes: "fgf8 fam40b pou4f3"</li>
+  </ul>
+</div>

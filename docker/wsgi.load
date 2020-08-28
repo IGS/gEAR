@@ -1,0 +1,2 @@
+# LoadModule wsgi_module /usr/lib/apache2/modules/mod_wsgi.so
+LoadModule wsgi_module "/opt/Python-3.7.3/lib/python3.7/site-packages/mod_wsgi/server/mod_wsgi-py37.cpython-37m-x86_64-linux-gnu.so"

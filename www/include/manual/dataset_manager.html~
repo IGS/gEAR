@@ -1,0 +1,50 @@
+<div id="manual_dataset_manager" class="container">
+  <h2>Dataset Manager (View Datasets)</h2>
+  <p>
+    Area to change the access level, view, share, and delete uploaded datasets. The user workspace can 
+    also be rearranged here.
+  </p>
+  <br />
+  <h3>List View</h3>
+  <ul>
+    <li>
+<!--      	      <h3>Change Access</h3>-->
+      <img src="img/gear_manual_img/button_change_access.png" alt="Change Access Button"/>
+    </li>
+    <p>
+  	  Change to <b>Private</b> or <b>Public</b>. Only the owner of the dataset can change the acccess level.
+  	  <b>Private</b> access level will make the dataset viewable to only the owner. If the owner has 
+  	  <em>shared</em> the dataset with other users, it will still be viewable to them. Changing who the dataset is shared with can be managed with the <b>Share</b> button <a href="#manual_share">below</a>.
+    </p>
+    <li>
+<!--      	      <h3>View</h3>-->
+      <img src="img/gear_manual_img/button_view.png" alt="View Button"/>
+    </li> <!-- TODO -->
+    <p>
+  	  Under construction
+    </p>
+    <li>
+<!--      	      <h3 id="manual_share">Share</h3>-->
+      <img src="img/gear_manual_img/button_share.png" alt="Share Button"/>  
+    </li> <!-- TODO -->
+    <p>
+  	  Under construction
+    </p>
+    <li>
+<!--      	      <h3>Delete</h3>-->
+      <img src="img/gear_manual_img/button_delete.png" alt="Delete Button"/>
+    </li>
+    <p>
+  	  Remove dataset from the gEAR. Only the owner of the dataset can remove the dataset.
+    </p>
+  </ul>
+  <br />
+  <h3>Arrangement View</h3>
+  <p>
+   Rearrange the datasets into a customized layout. This layout determines how the datasets appear 
+   when searching the gEAR.
+  </p>
+  <div>
+    <img src="#" alt="One image of rearranging datasets"/> <!-- TODO -->
+  </div>
+</div>

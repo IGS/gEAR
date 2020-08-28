@@ -1,0 +1,23 @@
+Andy Yates <ayates@ebi.ac.uk>
+May 26 (2 days ago)
+
+to Ensembl 
+Hi Joshua
+
+If you are referring to our ensembl_id field in the object_xref table then it's any one of a number of fields. Ensembl id refers to the primary key from
+
+- gene
+- transcript
+- translation
+- operon
+- operon_transcript
+
+The ensembl_object_type indicates the source of the identifier e.g. An object type of Gene means ensembl_id is equivalent to gene_id in the gene table.
+
+I will urge a lot of caution of using the SQL schema directly. The relations are not the easiest to follow and we can make large changes. However if you want a lot of different types of annotation data linked to the central objects (especially genes and variants) have you taken a look at biomart our data warehouse tool? You can access the tool from http://www.ensembl.org/biomart and a video from http://www.ensembl.org/Multi/Help/Movie?db=core;id=189
+
+Hope this helps you get to the data you need quickly
+
+Best regards
+
+Andy
