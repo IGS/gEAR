@@ -11,9 +11,9 @@ Other things to include:
 	  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
 
 
-**Screenshot**: If the software has visual components, place a screenshot after the description; e.g.,
+**Screenshot**: Example of home page after searching for a gene:
 
- ![](https://github.com/IGS/gEAR/blob/18282bc8a9c1fe23957780da567034db44fe0fff/docs/gear_overview.png)
+ ![](https://github.com/IGS/gEAR/blob/269f8f971301c15b69c50f3d11ad3441b2d24c78/docs/gear_overview.png)
 
 
 ## Installation
