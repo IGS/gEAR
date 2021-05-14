@@ -27,6 +27,8 @@ This file, when gunzipped will be about 1.6 Gb.  After this, we copy the file in
 1. Do `docker-compose exec mysql /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<GENERATED_ROOT_PASSWORD> gear\_portal` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
 2. In the mysql client, run `source /tmp/gear\_portal.20191106.sql` to load the SQL dump backup file.
 3. After that finishes run `grant select, insert, update, delete on gear\_portal.\* to gear@localhost identified by 'gearadmin';` to set up privileges for the "gear" user.
+4. Run `mysql> create fulltext index text_with_geo_pubmed_idx on dataset(title, ldesc, geo_id, pubmed_id);`
+
 
 ## Issues
 

@@ -1,5 +1,9 @@
 [database]
 user = gear
-password = yourpass
+password = gearadmin
 host = db
 name = gear_portal
+
+[email_sender]
+address = [gear_email]
+password = [pass]

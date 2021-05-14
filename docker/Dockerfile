@@ -11,7 +11,7 @@ ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTH
 
 # To assign $git_user run `docker build --build-arg git_user=<user> --build-arg git_pass=<pass> .`
 # Avoiding using my personal username and password for this
-ARG GEAR_BRANCH=dockerized
+ARG GEAR_BRANCH=master
 ARG git_user
 ARG git_pass
 ARG GEAR_URL=https://${git_user}:${git_pass}@github.com/jorvis/gEAR.git
