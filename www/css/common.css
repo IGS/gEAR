@@ -1,0 +1,204 @@
+/* palette generator: https://coolors.co
+  dark purple: #2F0F3E
+  light purple:  #A089A5
+  matching grey: #ABA9BF
+  light grey   : #E8EBEE
+  matching green: #ACC18A
+  reddish: #FC6471
+
+
+  https://stackoverflow.com/a/41281304/1368079
+*/
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+a, a:visited, a:hover {
+    color: var(--global-visited-links);
+}
+a:hover {
+    text-decoration: underline;
+}
+body {
+    /* https://fonts.google.com */
+    font-family: 'Muli', sans-serif;
+    font-size: 90%;
+
+    /* leaves room for footer*/
+    margin-bottom: 200px;
+}
+div.clear_hack {
+    clear: both;
+}
+div#footer {
+    border: 1px solid black;
+    margin-top: 30px;
+    padding: 0;
+}
+div#footer_main_c {
+    text-align: left;
+    background-color: rgb(41,50,54);
+    color: rgb(155,155,155);
+}
+div#footer_main_c a {
+    font-weight: bold;
+    text-decoration: underline;
+    color: rgb(155,155,155);
+}
+div.footer_sub_c h3,
+div.footer_sub_c p {
+    padding: 0 40px 0 40px;
+}
+div#funding > .container {
+  padding: 0;
+}
+div#main_content {
+    /* this needs to be the height of the gEAR logo plus spacing */
+    margin-top: 40px;
+}
+.shown_later {
+    display: none;
+}
+footer {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  bottom: 0;
+  height: 200px; /* matches padding in body */
+  max-width: 100%;
+  width: 98%;
+  text-align: center;
+}
+h1 {
+    color: rgb(134,134,134);
+}
+h2 {
+    font-size: 120%;
+    font-weight: bold;
+    color: rgb(134,134,134);
+}
+h3 {
+    font-size: 110%;
+    font-weight: bold;
+    color: rgb(134,134,134);
+}
+h4 {
+    font-size: 100%;
+    font-weight: bold;
+    color: rgb(134,134,134);
+}
+h5 {
+    font-size: 100%;
+    font-weight: bold;
+    color: rgb(134,134,134);
+}
+hr {
+    clear: both;
+}
+img#searching_indicator {
+    display: block;
+    margin: 0 auto;
+    width: 50px;
+}
+nav#main_nav {
+    margin: 0;
+    font-size: 90%;
+    min-height: 50px;
+}
+span.glyphicon {
+    cursor: pointer;
+    cursor: hand;
+}
+ul.dropdown-menu li {
+    margin: 0;
+    padding: 0 0 0 10px;
+}
+ul.dropdown-menu li a.glyphicon {
+    padding: 0;
+}
+
+/*****************
+  Navigation bar
+*****************/
+a#create_acct_link {
+    color: white;
+}
+a#main_logo {
+    background-color: rgb(255,255,255);
+    height: 75px;                        /* be sure to set height & width */
+    width:  126px;
+    position: absolute;
+    left: 100px;
+    top: 0;
+
+    /* Hide the text. */
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+
+    border-radius: 4px;
+      -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15), 0 1px 5px rgba(0, 0, 0, .075);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15), 0 1px 5px rgba(0, 0, 0, .075);
+}
+button#btn_sign_in {
+    margin-right: 5px;
+}
+div#login_controls .nav-item,
+div#loggedin_controls .nav-item {
+    padding-right: 20px;
+}
+div#loggedin_controls {
+    display: none;
+    padding-right: 40px;
+}
+div#navigation_bar {
+    /* this prevents the default bootstrap white gradient */
+    background-color: var(--banner-bg-color);
+    background-image: none;
+    background-repeat: no-repeat;
+}
+div#site_label {
+    color: white;
+    margin-left: 250px;
+    font-size: 120%;
+    font-weight: bold;
+}
+form#login_form input {
+    margin-right: 5px;
+}
+li > #manual_link,
+li > #comment_link {
+    color: #fff;
+    background-color: var(--banner-bg-color);
+    font-size: 120%;
+}
+li > #manual_link:hover,
+li > #comment_link:hover,
+li.active > #manual_link,
+li.active > #comment_link {
+    color: #fff;
+    background-color: #A28CA7;
+    background-image: none;
+}
+span#new_msg_count_c {
+    background-color: #d9534f;
+    padding: 7px 7px;
+    /*
+    display: none;
+    position: absolute;
+    border-radius: 50%;
+    bottom: -10px;
+    right: -5px;
+    */
+}
+ul#user_menu {
+    z-index: 5;
+}
+ul#user_menu li a {
+    font-size: 80%;
+}
+ul#user_menu li a i {
+    display: inline-block;
+    margin-right: 0.5em;
+}

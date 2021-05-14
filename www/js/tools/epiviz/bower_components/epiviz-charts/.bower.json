@@ -1,0 +1,65 @@
+{
+  "name": "epiviz-charts",
+  "authors": [
+    "Jayaram Kancherla <jayaram.kancherla@gmail.com>"
+  ],
+  "description": "using epiviz code",
+  "main": "",
+  "keywords": [
+    "epiviz",
+    "charts",
+    "genomics",
+    "bioinformatics"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/epiviz/epiviz-chart",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "epiviz-imports": "epiviz/epiviz-imports",
+    "paper-icon-button": "PolymerElements/paper-icon-button#^2.1.0",
+    "iron-icons": "^2.1.1",
+    "paper-button": "PolymerElements/paper-button#^2.0.0",
+    "paper-dropdown-input": "^2.5.2",
+    "paper-styles": "PolymerElements/paper-styles#^2.0.0",
+    "iron-form": "PolymerElements/iron-form#^2.0.0",
+    "paper-dialog": "PolymerElements/paper-dialog#^2.0.0",
+    "paper-dialog-scrollable": "PolymerElements/paper-dialog-scrollable#^2.0.0",
+    "paper-swatch-picker": "PolymerElements/paper-swatch-picker#^2.0.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^2.0.0",
+    "iron-label": "2.1.0",
+    "iron-collapse": "PolymerElements/iron-collapse#^2.0.0",
+    "paper-toggle-button": "PolymerElements/paper-toggle-button#^2.0.0",
+    "paper-header-panel": "PolymerElements/paper-header-panel#^2.0.0",
+    "paper-listbox": "PolymerElements/paper-listbox#^2.0.0",
+    "paper-autocomplete": "^3.5.0",
+    "paper-toast": "PolymerElements/paper-toast#^2.0.0",
+    "epiviz-data-source": "epiviz/epiviz-data-source",
+    "paper-spinner": "^2.1.0",
+    "paper-collapse-item": "^2.3.1",
+    "table-filter": "https://github.com/jkanche/table-filter.git#master",
+    "poly-filter": "jkanche/table-filter",
+    "paper-tabs": "PolymerElements/paper-tabs#2.1.1",
+    "iron-pages": "PolymerElements/iron-pages#2.0.0",
+    "jquery-ui": "^1.12.1"
+  },
+  "devDependencies": {},
+  "resolutions": {
+    "epiviz-imports": "50adc4ede6"
+  },
+  "_release": "b139bbee45",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "b139bbee45151b7057986d183a42ce8f604e2d16"
+  },
+  "_source": "https://github.com/epiviz/epiviz-chart.git",
+  "_target": "*",
+  "_originalSource": "epiviz/epiviz-chart"
+}

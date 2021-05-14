@@ -1,0 +1,83 @@
+<div id="manual_upload_dataset" class="container_manual">
+<!--  <h2>Upload New Dataset</h2>-->
+<!--  <p>-->
+<!--    General introduction words.-->
+<!--  </p>-->
+  <h2>Dataset upload instructions</h2>
+  <p>
+    Each dataset uploaded requires two things:  an SVG file which graphically represents your
+    expression data and a tab-delimited text data file with the actual values.  The two are linked
+    by agreement between the column header in the data file and class attributes in the SVG file's
+    path elements, as illustrated below.
+  </p>
+  <ol id="steps_overview">
+    <li>
+      <span>Data file</span>: This holds your expression data, and should have at least a 'Gene symbol'
+      column and then expression value columns, with headers on the first row.  Currently only
+      tab-delimited text files are supported.
+    </li>
+    <li>
+     <span>SVG file</span>: Graphical representation of your data to be colorized based on expression
+      value.
+    </li>
+  </ol>
+  <h3>Data file</h3>
+  <div class="instructions_image_c">
+    <img src="img/upload_help_spreadsheet.png" alt="File upload - Spreadsheet"/>
+  </div>
+  <p>
+    This file must at least have a column labeled 'Gene_symbol', then any number of data columns
+    with expression values.  This will be linked to your SVG using the values in the header row.  Here,
+    for example, column D has data for 'Hair_cells', and you'll see this matches exactly the class values
+    in the SVG files (below).
+  </p>
+  <h3>SVG file</h3>
+  <div class="instructions_image_c">
+    <img src="img/upload_help_svg.png" alt="File upload - SVG graphic view"/>
+  </div>
+  <p>
+    SVG files can be created with tools such as <a href="https://inkscape.org" target="_blank">Inkscape</a> (free)
+    or <a href="http://www.adobe.com/products/illustrator.html" target="_blank">Adobe Illustrator</a> (commercial).
+    They are really just plain text files which represent drawings like the one above, but which look
+    like the file below:
+  </p>
+  <div class="instructions_image_c">
+    <img src="img/upload_help_svg_text.png" alt="File upload - Spreadsheet text"/>
+  </div>
+  <p>
+    Each &lt;path&gt; element there represents a line or shape in the image, and the 'class' value
+    on each lets us connect that shape to the expression value in your data file.  Here, the 'class'
+    value for this path element is 'Hair_cells', which matches column D in our spreadsheet exactly.  As
+    long as you have agreement between the data columns and your SVG classes, the interface will
+    display your expression values properly.
+  </p>
+  <!-- end "upload_instructions.html" insert -->
+  <h3>Describe Data</h3>
+  <p>
+  	Finally, provide some details to describe the data. 
+  </p>
+  <ul>
+    <li><b>Title</b> - A concise description of the dataset. For example:
+      <p>"P0, mouse cochlea, RNA-seq, Hair cells compared with rest of cochlear duct."</p>
+    </li>
+    <li><b>Organism</b> - Select the organism used in the data (Mouse, Chick, Zebrafish)</li>
+    <li><b>PubMed ID</b> - Provide the PubMed ID, if the data is published.</li>
+    <li>
+      <b>Access Level</b> - Select "Public" to make the dataset viewable to all gEAR users, 
+      or select "Private" to keep the dataset viewable only to you, and others you have shared 
+      it with (if applicable).
+    </li>
+    <li><b>Publication Preview</b> - </li> <!-- TODO-->
+    <li>
+      <b>Long Description</b> - An expanded description of the dataset. For example:
+      <p>
+        "(P0) Atoh1<sup>A1GFP/A1GFP</sup> mice which express GFP in their hair cells were used. 
+        Cochlear ducts were dissociated and hair cells were separated from the rest of the cells 
+        in the cochlear duct. Gene expression was measured using RNA-seq. (Cai T, Jen HI, Kang H, 
+        Klisch TJ, Zoghbi HY and Groves AK (2015) Characterization of the transcriptome of nascent 
+        hair cells and identification of direct targets of the Atoh1 transcription factor. 
+        J Neurosci. 2015 Apr 8;35(14):5870-83)"
+      </p>
+    </li>
+  </ul>
+</div>

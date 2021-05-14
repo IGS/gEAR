@@ -1,0 +1,77 @@
+#!/opt/bin/python3
+'''
+Redirects short permalink urls to actual long url
+
+s = dataset_share_id
+l = profile/layout ID
+p = page to send to:
+    null = index.html (default)
+    a = analyze_dataset.html
+g = gene_symbol to search
+gsem = toggle exact match searching for gene symbols (truthy value)
+'''
+
+import cgi
+import os
+import sys
+from urllib.parse import urlparse
+from urllib import request
+
+def main():
+    print('Content-Type: text/html\n\n')
+    form = cgi.FieldStorage()
+    gene_symbol = form.getvalue('g')
+    gene_symbol_exact_match = form.getvalue('gsem')
+    layout_id = form.getvalue('l')
+    page = form.getvalue('p')
+    share_id = form.getvalue('s')
+
+    url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
+    main_page = 'index.html'
+
+    if page == 'a':
+        main_page = 'analyze_dataset.html'
+
+    url = url_base + '/' + main_page
+        
+    params = dict()
+
+    if share_id is not None:
+        params['share_id'] = share_id
+
+    if layout_id is not None:
+        params['layout_id'] = layout_id
+
+    if gene_symbol is not None:
+        params['gene_symbol'] = gene_symbol
+
+    if gene_symbol_exact_match is None:
+        params['gene_symbol_exact_match'] = 1
+    else:
+        params['gene_symbol_exact_match'] = gene_symbol_exact_match
+
+    if len(params) > 0:
+        url += '?'
+        first_param = True
+        
+        for p in params:
+            if first_param:
+                url += "{0}={1}".format(p, params[p])
+                first_param = False
+            else:
+                url += "&{0}={1}".format(p, params[p])
+                
+    #redirect user to permalink
+    print("""<!DOCTYPE html>
+    <html>
+    <head>
+    <title>gEAR Portal</title>
+    <meta http-equiv="refresh" content="0;URL='{0}'" />
+    </head>
+    <body>
+    </body>
+    </html>
+    """.format(url))
+
+if __name__ == '__main__':
+    main()

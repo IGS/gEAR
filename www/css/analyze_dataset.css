@@ -1,0 +1,259 @@
+.shown_later {
+    display: none;
+}
+dd {
+    margin-bottom: 25px;
+}
+dd div {
+    margin-bottom: 10px;
+}
+div#action_log_floating_c,
+div#analysis_list_c {
+    position: -webkit-sticky; /* Safari */
+    position: sticky;
+    top: 10px;
+}
+div#analysis_action_c p,
+div#analysis_status_info_c {
+    font-size: 90%;
+}
+div.analysis_column {
+    margin: 0;
+    padding: 5px;
+}
+div#analysis_compare_genes label.control-label {
+    margin: 8px 0 0 0;
+}
+div.analysis_label {
+    margin: 0 0 10px 0;
+    padding: 0;
+    font-size: 90%;
+}
+div.analysis_toggle {
+    margin: 0 0 3px 0;
+    padding: 0 0 0 20px;
+}
+div#analysis_workbench_c {
+    margin: 0;
+    padding: 0;
+}
+div#asvg_options_c div.row {
+    margin-bottom: 5px;
+}
+div#compare_genes_submission_c {
+    margin-top: 7px;
+}
+table#compare_genes_table_f,
+table#compare_genes_table_r {
+    margin-top: 20px;
+    width: 100%;
+    font-size: 90%;
+}
+table#compare_genes_table_f th,
+table#compare_genes_table_r th {
+    text-align: center;
+}
+table#compare_genes_table_f td,
+table#compare_genes_table_r td {
+    border: 1px solid rgb(200,200,200);
+    padding: 0 3px 0 3px;
+}
+div.code {
+    font-size: 90%;
+    font-family: courier;
+    letter-spacing: 1px;
+}
+div.control_block {
+    margin-top: 25px;
+}
+div#duplicate_label_warning {
+    font-size: 80%;
+}
+
+div#primary_filter_options_c {
+    margin: 10px 0 0 50px;
+}
+div#analysis_select_variable_genes div.form-group-sm div {
+    margin: 0;
+    padding: 0 5px 0 0;
+}
+div#analysis_select_variable_genes div.form-group-sm label {
+    margin: 0;
+    padding: 0;
+}
+div#analysis_select_variable_genes input,
+div#analysis_qc_by_mito input {
+    text-align: right;
+    padding-right: 3px;
+}
+div#asvg_options_c div.button-group,
+div#qc_mito_options_c div.button-group {
+    margin-top: 15px;
+}
+div#body_c {
+    padding: 0px;
+}
+div.dropdown-menu span.text {
+    /* these are created in the select boxes */
+    padding-left: 5px;
+}
+div.form-group-sm {
+    margin-bottom: 5px;
+}
+div#group_labels_c table {
+    font-size: 80%;
+}
+div#group_labels_c table td {
+    border: 1px solid black;
+    padding: 0 3px 0 3px;
+}
+div.infoblock {
+    border: 1px solid #2F0F3E;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    padding: 5px;
+}
+div.infoblock .container-fluid {
+    margin: 0;
+    padding: 0;
+}
+div.infoblock .row {
+    margin: 0;
+    padding: 0;
+}
+div.infoblock h3 {
+    margin-top: 5px;
+}
+div.infoblock form {
+    font-size: 90%;
+}
+div.infoblock p {
+    font-size: 90%;
+    font-weight: bold;
+}
+div.infoblock p span {
+    font-weight: normal;
+}
+div#login_checking,
+div#login_warning {
+    padding-bottom: 200px;
+}
+div#login_warning {
+    display: none;
+}
+div#login_checking,
+div#login_warning {
+    margin-top: 50px;
+    margin-left: 40px;
+}
+div#louvain_run_c {
+    margin-top: 7px;
+}
+img#checking_indicator {
+    height: 30px;
+    width: 30px;
+    margin-right: 10px;
+}
+div#main_content {
+    display: none;
+}
+div#marker_genes_submission_c {
+    margin-top: 5px;
+    margin-left: 15px;
+}
+div#marker_genes_table_c table {
+    font-size: 90%;
+}
+div#marker_genes_table_c table th {
+    text-align: center;
+}
+div#marker_genes_table_c table td {
+    border: 1px solid black;
+    padding: 0 3px 0 3px;
+}
+div#marker_genes_table_c table td.highlighted {
+    background-color: #A089A5;
+}
+div#new_analysis_label_c {
+    margin-bottom: 15px;
+}
+div#primary_initial_plot_loading_c img {
+    height: 30px;
+}
+input.duplicate {
+    background-color: red !important;
+    font-weight: bold !important;
+}
+div#pca_missing_gene_c {
+    font-size: 90%;
+    color: rgb(100,0,0);
+}
+div#qc_mito_options_c .form-group {
+    margin-bottom: 5px;
+}
+.tool_instructions {
+    font-weight: normal !important;
+}
+div#tsne_options_c div.form-group {
+    margin-bottom: 5px;
+}
+div#viewport {
+    min-height: 500px;
+}
+div#viewport .container-fluid,
+div#viewport .row-fluid {
+    margin: 0;
+    padding: 0;
+}
+div.toggle.disabled {
+    cursor: not-allowed;
+}
+h4#marker_genes_table_header {
+    margin-top: 20px;
+}
+p.footnote {
+    font-size: 80%;
+}
+.dropdown-item {
+    margin: 0 0 0 15px !important;
+    padding: 0 !important;
+}
+select#dataset_id option {
+    /* this isn't working */
+    /* font-size: 80%; */
+}
+span.analysis_item_label {
+    padding-left: 5px;
+}
+ul#action_log {
+    margin: 0;
+    padding: 0 0 0 10px;
+    font-size: 80%;
+}
+ul#action_log li.failure {
+    color: rgb(255,50,50);
+    font-weight: bold;
+}
+ul#action_log li.working img {
+    height: 30px;
+}
+ul#action_log li.working span {
+    padding-left: 10px;
+}
+
+/* The 'size' attribute for Input tags with 'number' type is not valid. Adjust width instead */
+input.input-length-2 {
+    width: 2em;
+}
+input.input-length-4 {
+    width: 4em;
+}
+input.input-length-6 {
+    width: 6em;
+}
+
+/* Give image a blue shadow to indicate it is a clickable thumbnail */
+img.img-zoomed:hover {
+  box-shadow: 0 0 2px 2px rgba(0, 140, 186, 0.5);
+
+}

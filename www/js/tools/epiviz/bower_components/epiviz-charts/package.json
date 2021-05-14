@@ -1,0 +1,31 @@
+{
+  "name": "epiviz-charts",
+  "version": "1.0.0",
+  "description": "epiviz charts as polymer components",
+  "main": "demo/",
+  "scripts": {
+    "postinstall": "bower cache clean && bower install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HCBravoLab/epiviz-chart-to-polymer.git"
+  },
+  "keywords": [
+    "epiviz",
+    "charts",
+    "polymer",
+    "genomics",
+    "visualization",
+    "tracks"
+  ],
+  "author": "Jayaram Kancherla <jkanche@umiacs.umd.edu>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HCBravoLab/epiviz-chart-to-polymer/issues"
+  },
+  "homepage": "https://github.com/HCBravoLab/epiviz-chart-to-polymer#readme",
+  "dependencies": {
+    "@shopify/draggable": "^1.0.0-beta",
+    "bower": "latest"
+  }
+}

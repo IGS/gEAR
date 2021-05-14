@@ -1,0 +1,59 @@
+{
+  "name": "paper-tags",
+  "authors": [
+    "christophe.geiser <christophe.geiser@e-smile.org>"
+  ],
+  "description": "paper-input and paper-dropdown-menu with tags",
+  "keywords": [
+    "web-component",
+    "web-components",
+    "tags",
+    "material design",
+    "polymer",
+    "form",
+    "input",
+    "paper-input"
+  ],
+  "main": "paper-tags-import.html",
+  "license": "https://github.com/PolymerEl/LICENCE",
+  "homepage": "https://github.com/PolymerEl/paper-tags",
+  "ignore": [
+    "/.*",
+    "/test/",
+    "/demo/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlexanderYZhang/paper-tags.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "paper-input": "PolymerElements/paper-input#^2.0.0",
+    "paper-badge": "PolymerElements/paper-badge#^2.0.0",
+    "paper-icon-button": "PolymerElements/paper-icon-button#^2.0.0",
+    "iron-icons": "PolymerElements/iron-icons#^2.0.0",
+    "iron-icon": "PolymerElements/iron-icon#^2.0.0",
+    "iron-a11y-keys": "PolymerElements/iron-a11y-keys#^2.0.0",
+    "iron-behaviors": "PolymerElements/iron-behaviors#^2.0.0",
+    "iron-validatable-behavior": "PolymerElements/iron-validatable-behavior#^2.0.0",
+    "paper-item": "PolymerElements/paper-item#^2.0.0",
+    "paper-ripple": "PolymerElements/paper-ripple#^2.0.0",
+    "paper-dropdown-menu": "PolymerElements/paper-dropdown-menu#^2.0.0",
+    "paper-listbox": "PolymerElements/paper-listbox#^2.0.0"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^2.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "web-component-tester": "^4.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0"
+  },
+  "_release": "b62a283949",
+  "_resolution": {
+    "type": "branch",
+    "branch": "polymer2-additions",
+    "commit": "b62a283949880c771f5ba43062421b7d1fc5ec5d"
+  },
+  "_source": "https://github.com/AlexanderYZhang/paper-tags.git",
+  "_target": "polymer2-additions",
+  "_originalSource": "AlexanderYZhang/paper-tags"
+}

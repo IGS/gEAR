@@ -1,0 +1,17 @@
+<link rel="import" href="../hydrolysis/hydrolysis.html">
+
+<script>
+      var hyd = require('hydrolysis');
+      hyd.Analyzer.analyze('paper-tags.html').then(function(analyzer) {
+        console.log(analyzer.elementsByTagName['paper-tags'].desc);
+      });
+      hyd.Analyzer.analyze('paper-tags-input.html').then(function(analyzer) {
+        console.log(analyzer.elementsByTagName['paper-tags-input'].desc);
+      });
+      hyd.Analyzer.analyze('paper-tags-dropdown.html').then(function(analyzer) {
+        console.log(analyzer.elementsByTagName['paper-tags-dropdown'].desc);
+      });
+      // hyd.Analyzer.analyze('/path/to/any-element.html').then(function(analyzer) {
+      //   console.log(analyzer.elementsByTagName['any-element'].desc);
+      // });
+</script>

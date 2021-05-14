@@ -1,0 +1,29 @@
+                      <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider" provider-id="umd" provider-url="https://epiviz.umgear.org/app/hrp/igs/data/main.php"></epiviz-data-source>
+                      <epiviz-environment 
+                         id="epivizEnv-genomic"
+                         chr="chr6"
+                         start="64076201"
+                         end="65088740"
+                         measurements='{
+                             "genes" :{
+                                 "id": "genes",
+                                 "name": "Genes",
+                                 "type": "range",
+                                 "datasourceId": "genes",
+                                 "datasourceGroup": "genes",
+                                 "dataprovider": "umd",
+                                 "formula": null,
+                                 "defaultChartType": "Genes Track",
+                                 "annotation": null,
+                                 "minValue": null,
+                                 "maxValue": null,
+                                 "metadata": [
+                                    "gene",
+                                    "entrez",
+                                    "exon_starts",
+                                    "exon_ends"
+                                 ]
+                             }
+                         }'>
+                         <epiviz-genes-track id ="gTrack" class="charts" dim-s='["genes"]'></epiviz-genes-track>
+                      </epiviz-environment>

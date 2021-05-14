@@ -1,0 +1,659 @@
+<!-- Polymer dependency -->
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../polymer/lib/utils/flattened-nodes-observer.html">
+<link rel="import" href="../polymer/lib/utils/render-status.html">
+
+<!-- Epiviz imports dependency -->
+<!-- <link rel="import" href="../epiviz-imports/epiviz-common-js.html">
+<link rel="import" href="../epiviz-imports/epiviz-common-css.html"> -->
+
+<!-- Epiviz Polymer Behaviors dependency -->
+<link rel="import" href="chart-data-behavior.html">
+<link rel="import" href="chart-workspace-behavior.html">
+<link rel="import" href="chart-add-behavior.html">
+<link rel="import" href="chart-draggable-behavior.html">
+<!-- <link rel="import" href="chart-remove.html"> -->
+
+<!-- Polymer Elements -->
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-menu-button/paper-menu-button.html">
+<link rel="import" href="../paper-listbox/paper-listbox.html">
+<link rel="import" href="../iron-dropdown/iron-dropdown.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-label/iron-label.html">
+
+<!--
+<h2> App Component </h2>
+
+epiviz-chart components are pure user interface (UI) elements. They cannot make data requests
+or can directly interact with other epiviz elements on the page. Chart elements emit hover events
+that propagate up the DOM hierarchy. To build interactive web applications or to coordinate
+events, interactions and data requests across different chart elements, we encapsulate charts inside
+app components.
+
+Another essential part of the epiviz design is that data and plots are separated: you can visualize
+multiple charts from the same data object without having to replicate the data. This way, data
+queries are made by the data object, not per chart, which leads to a more responsive design of the
+system.
+
+epiviz-app components are abstract components that 1) manage layouts, 2) coordinate interactions
+across charts by genomic position and 3) handle and cache data across charts.
+
+<h2> `epiviz-environment` </h2>
+`epiviz-environment` is an app component and is not linked to a specific genomic region. If a genomic region is
+not set, the charts visualize the entire data set. 
+
+To create an environment element on a HTML page, add
+
+      <epiviz-environment>
+          .. can have epiviz-charts as children html nodes
+          <epiviz-genes-track></epiviz-genes-track>
+          <epiviz-scatter-plot></epiviz-scatter-plot>
+      </epiviz-environment>
+
+@demo demo/index-environment.html Example page showing a environment element with charts 
+-->
+
+<dom-module id="epiviz-environment">
+    <template>
+        <style>
+            :host {
+                display: inline-block;
+                /* padding: 15px; */
+                width: 99%;
+                /* width: auto; */
+                /* height: 100%; */
+                margin: 10px;
+                resize: both;
+                border-radius: 5px;
+                /* padding: 4px; */
+                /* margin:5px; */
+                transition: width 0.01s, height 0.01s;
+                @apply(--shadow-elevation-2dp);
+            }
+
+
+            #chartSettingsContainer {
+                position: absolute;
+                top: 0;
+                right: 0;
+                border: 1px solid #000;
+                border-radius: 2px;
+                margin: 1px;
+            }
+
+            .paper-header {
+                background-color: var(--google-grey-300);
+                padding-left: 5px;
+            }
+
+            #logo {
+                vertical-align: middle;
+            }
+
+
+            paper-menu-button {
+                float: right;
+            }
+
+            iron-label {
+                color: #4285f4;
+                font-weight: bold;
+                font-size: 16px;
+            }
+
+            .isempty {
+                position: relative;
+                top: 50%;
+                left: 50%;
+                transform: translateX(-50%) translateY(-50%);
+            }
+
+            #header {
+                height: 50px;
+                /* linear-gradient(white, #e0e2e2) */
+            }
+
+            .content {
+                min-height: 500px;
+                padding: 5px;
+                /* min height should be height of largest plot */
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                grid-auto-rows: minmax(max-content, 100px);
+                grid-row-gap: 2px;
+                grid-column-gap: 2px;
+            }
+
+            .content ::slotted {
+                /* min height should be height of largest plot */
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                grid-auto-rows: minmax(max-content, 100px);
+                grid-row-gap: 2px;
+                grid-column-gap: 2px;
+            }
+
+            .content ::slotted(.grid-plot) {
+                grid-row: span 1;
+                grid-column: span 2;
+            }
+
+            .content ::slotted(.grid-track) {
+                grid-column: span 6;
+                grid-row: span 1;
+            }
+
+            .content ::slotted(.grid-navigation) {
+                grid-row: span 1;
+                grid-column: span 6;
+                order: 2;
+            }
+        </style>
+
+        <div id="header" class="paper-header">
+            <iron-label>EPIVIZ ENVIRONMENT</iron-label>
+            <a href="http://epiviz.github.io" target="_blank" hidden$="[[noLogo]]">
+                <img id="logo" src="epiviz_4_logo_medium.png" alt="Epiviz" width="100" height="21">
+            </a>
+            <!-- <iron-dropdown> -->
+            <!-- </iron-dropdown> -->
+
+            <epiviz-add-chart id="addChart"></epiviz-add-chart>
+            <paper-menu-button dynamic-align vertical-align="bottom" vertical-offset=24>
+                <paper-icon-button icon="menu" class="dropdown-trigger"></paper-icon-button>
+                <paper-menu class="dropdown-content">
+                    <paper-item>Delete</paper-item>
+                    <paper-item>Clone</paper-item>
+                </paper-menu>
+            </paper-menu-button>
+        </div>
+        <div class="content chartContainer">
+            <slot id="chartEnv" name="charts"></slot>
+        </div>
+    </template>
+
+    <script>
+        // Extend Polymer.Element base class
+        class EpivizEnvironment extends EpivizChartDraggableBehavior(EpivizChartWorkspaceBehavior(EpivizChartDataBehavior(EpivizChartAddBehavior(Polymer.Element)))) {
+
+            static get is() { return 'epiviz-environment'; }
+
+            static get properties() {
+                return {
+                    /**
+                     * Measurement Object mapped to measurements provided from `<epiviz-data-source>`.
+                     *
+                     * @type {Object}
+                     */
+                    measurements: {
+                        type: Object,
+                        notify: true,
+                        reflectToAttribute: true
+                    },
+
+                    /**
+                     * Chromosome location.
+                     * Default Location Attribute to set to all the children chart elements.
+                     *
+                     * @example: chr1
+                     *
+                     * @type {string}
+                     */
+                    chr: {
+                        type: String,
+                        notify: true,
+                        value: "all"
+                    },
+
+                    /**
+                     * <Optional> Chromosome start. 
+                     * Default Chromosome start value to use. (defaults to 0).
+                     *
+                     * @type {number}
+                     */
+                    start: {
+                        type: Number,
+                        notify: true,
+                        value: null
+                    },
+
+                    /**
+                     * <Optional> Chromosome end. 
+                     * Default Chromosome end value to use. (defaults to the `<chr>` length).
+                     *
+                     * @type {number}
+                     */
+                    end: {
+                        type: Number,
+                        notify: true,
+                        value: null
+                    },
+
+                    /**
+                     * Computed Range from `<chr>`, `<start>` & `<end>`. 
+                     *
+                     * @type {Object<epiviz.datatypes.GenomicRange>}
+                     */
+                    range: {
+                        type: Object,
+                        notify: true,
+                        computed: 'getGenomicRange(chr, start, end)'
+                    },
+
+                    /**
+                    * Unique plot-id. an id will be assigned if not set
+                    *
+                    * @type {string}
+                    */
+                    plotId: {
+                        type: String,
+                        reflectToAttribute: true,
+                        notify: true
+                    },
+
+                    /**
+                     * Intiliazes an environment with `<epiviz-navigation>` elements.
+                     * 
+                     * Can be one of these {region: {chr , start, end}} or {gene} 
+                     *
+                     * @example: [{region: {chr: 'chr11', start: 20000, end: 600000}{, {gene: 'esr1'}]
+                     * 
+                     * @type {Array[<Object>]}
+                     */
+                    initializeRegions: {
+                        type: Array,
+                        value: []
+                    },
+
+                    /**
+                     * List of regions currently in workspace
+                     * 
+                     * @type {Array}
+                     */
+                    navigationRegions: {
+                        type: Array,
+                        notify: true,
+                        value: []
+                    },
+
+                    /**
+                     * Whether to show/hide the epiviz logo
+                     *
+                     * @type {boolean}
+                     */
+                    noLogo: {
+                        type: Boolean,
+                        notify: true,
+                        reflectToAttribute: true,
+                        value: false
+                    },
+
+                    /**
+                     * Whether to use the default layout
+                     *
+                     * @type {boolean}
+                     */
+                    useLayout: {
+                        type: Boolean,
+                        notify: true,
+                        reflectToAttribute: true,
+                        value: true
+                    },
+
+                    /**
+                     * Whether the element has no children
+                     *
+                     * @type {boolean}
+                     */
+                    _isEmpty: {
+                        type: Boolean,
+                        notify: true,
+                        value: function () {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            static get observers() {
+                return [
+                    /* observer array just like 1.x */
+                    // '_rangeChanged(chr.*, start.*, end.*)',
+                    '_navigationRegionsChanged(navigationRegions.*)'
+                ]
+            }
+
+            constructor() {
+                super();
+                this.addEventListener('navigationRangeUpdate', e => this._updateNavRegion(e));
+                this.addEventListener('hover', e => this.onHover(e));
+                this.addEventListener('unHover', e => this.onUnhover(e));
+                this.addEventListener('select', e => this.onSelect(e));
+                this.addEventListener('deSelect', e => this.onDeSelect(e));
+                this.addEventListener('dimChanged', e => this.onDimChanged(e));
+                this.addEventListener('iron-resize', e => this._onResize(e));
+                this.addEventListener('navWorkspaceChanged', e => this._childWorkspaceChanged(e));
+
+                // this.addEventListener('transitionend', e => this._onResize(e));
+            }
+
+            connectedCallback() {
+                super.connectedCallback();
+                var self = this;
+                if (self.initializeRegions.length > 0) {
+                    for (var i = 0; i < self.initializeRegions.length; i++) {
+                        var navElem = document.createElement("epiviz-navigation");
+                        navElem.className = "charts";
+                        if (Object.keys(self.initializeRegions[i]).indexOf("gene") != -1) {
+                            navElem.gene = self.initializeRegions[i].gene;
+                        }
+                        else {
+                            navElem.chr = self.initializeRegions[i].region.chr;
+                            navElem.start = self.initializeRegions[i].region.start;
+                            navElem.end = self.initializeRegions[i].region.end;
+                        }
+                        this.shadowRoot.appendChild(navElem);
+                    }
+                }
+
+                self._observer = new Polymer.FlattenedNodesObserver(this.$.chartEnv, (info) => {
+                    info.addedNodes.forEach(function (node) {
+                        node._parentContainer = self;
+                        if (node.nodeName === "EPIVIZ-NAVIGATION") {
+                            self._getElementSeqInfo(node, Polymer.dom(self));
+                            self.push("navigationRegions", { "plotId": node.plotId, "range": node.range });
+                            let navChildren =
+                                Polymer.FlattenedNodesObserver.getFlattenedNodes(node).filter(n => n.nodeType === Node.ELEMENT_NODE)
+                            for (var nindex = 0; nindex < navChildren.length; nindex++) {
+                                var currentNavChild = navChildren[nindex];
+                                currentNavChild._parentContainer = self;
+                                currentNavChild.range = node.range;
+                                if (!currentNavChild.data) {
+                                    self._getElementData(currentNavChild, self, self.measurements);
+                                }
+                            }
+                        }
+                        else {
+                            if (!node.data && !node.useDefaultDataProvider) {
+                                self._getElementData(node, self, self.measurements);
+                            }
+                        }
+                        self.set('_isEmpty', true);
+                    });
+                    self.saveWorkspace();
+                    // this._processRemovedNodes(info.removedNodes);
+                });
+
+                self._initializeSortable();
+                self.$.addChart._parentContainer = self;
+
+                self._createPropertyObserver('_rangeChanged(chr.*, start.*, end.*)', false);
+            }
+
+            disconnectedCallback() {
+                super.disconnectedCallback();
+            }
+
+            /* callback function after the element is initialized & attached */
+            ready() {
+                super.ready();
+                var self = this;
+                self.plotId = self.plotId || self._generatePlotId();
+
+                if (self.transformDataFunc) {
+                    self.transformFunc = new Function('return ' + self.transformDataFunc);
+                }
+                else {
+                    self.transformFunc = self.epivizToJSON;
+                }
+
+                // self._getElementSeqInfo(self, self);
+
+                if (self.chr != "all") {
+                    self._getElementSeqInfo(self, self);
+                }
+
+                if (self.workspace) {
+                    self.loadWorkspace(self.workspace);
+                }
+                self._initializeAddDialog();
+            }
+
+            _updateNavRegion(e) {
+                for (var regIndex = 0; regIndex < this.navigationRegions.length; regIndex++) {
+                    if (e.detail.plotId == this.navigationRegions[regIndex]["plotId"]
+                        && (e.detail.range != this.navigationRegions[regIndex]["range"])
+                    ) {
+                        this.navigationRegions.splice(regIndex, 1);
+                        this.push("navigationRegions", { "plotId": e.detail.plotId, "range": e.detail.range });
+                    }
+                }
+            }
+
+            _childWorkspaceChanged(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.saveWorkspace();
+            }
+
+            /**
+             * Resizes the chart.
+             */
+            _onResize() {
+                var self = this;
+                let navChildren =
+                    Polymer.FlattenedNodesObserver.getFlattenedNodes(this.$.chartEnv).filter(n => n.nodeType === Node.ELEMENT_NODE);
+                var numChildren = navChildren.length;
+                if (numChildren > 0) { self.set('_isEmpty', true); }
+                for (var index = 0; index < numChildren; index++) {
+                    var currentChild = navChildren[index];
+                    currentChild._onResize();
+                }
+            }
+
+            /**
+             * Creates a epiviz GenomicRange object from chromosome, start and end.
+             * 
+             * @param {string} chr chromosome location 
+             * @param {number} start chromosome start
+             * @param {number} end chromosome end 
+             * 
+             * @return {epiviz.datatypes.GenomicRange}
+             */
+            getGenomicRange(chr, start, end) {
+                return new epiviz.datatypes.GenomicRange(chr, start, end - start);
+            }
+
+            _navigationRegionsChanged() {
+                var self = this;
+                if (this.navigationRegions && this.navigationRegions.length > 0) {
+                    this.dispatchEvent(new CustomEvent('navigationRegions',
+                        {
+                            detail: {
+                                data: this.navigationRegions
+                            }
+                        }
+                    ));
+
+                    var nRegions = [];
+
+                    for (var regIndex = 0; regIndex < this.navigationRegions.length; regIndex++) {
+                        nRegions.push(this.navigationRegions[regIndex]["range"]);
+                    }
+
+                    let navChildren =
+                        Polymer.FlattenedNodesObserver.getFlattenedNodes(this.$.chartEnv).filter(n => n.nodeType === Node.ELEMENT_NODE);
+                    var numChildren = navChildren.length;
+                    if (numChildren > 0) { self.set('_isEmpty', true); }
+                    for (var index = 0; index < numChildren; index++) {
+                        var currentChild = navChildren[index];
+                        if (currentChild.nodeName === "EPIVIZ-SCATTER-PLOT") {
+                            currentChild.colorByRegions = nRegions;
+                        }
+                    }
+                }
+            }
+
+            /**
+             * Hover event handler.
+             * Listens to hover events fired from its children elements and propagates to other charts
+             *
+             * @fires hoverAllCharts
+             */
+            onHover(e) {
+
+                /**
+                 * Propogates hover event to other charts.
+                 *
+                 * @event hoverAllCharts
+                 * @type {object}
+                 * @property {object} data - data object currently hovered.
+                 */
+                this.dispatchEvent(new CustomEvent('hoverAllCharts',
+                    {
+                        detail: {
+                            data: e.detail.data
+                        }
+                    }
+                )
+                );
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            /**
+             * Unhover event handler.
+             * Listens to unhover events fired from its children elements and propagates to other charts
+             * 
+             * @fires unHoverAllCharts
+             */
+            onUnhover(e) {
+
+                /**
+                 * Propogates unHover event to other charts.
+                 *
+                 * @event unHoverAllCharts
+                 */
+                this.dispatchEvent(new CustomEvent('unHoverAllCharts',
+                    {
+                        detail: {
+                            data: null
+                        }
+                    }
+                )
+                );
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            /**
+             * select event handler.
+             * Listens to select events fired from its children elements and propagates to other charts
+             * 
+             * @fires selectAllCharts
+             */
+            onSelect(e) {
+
+                /**
+                 * Propogates select event to other charts.
+                 *
+                 * @event selectAllCharts
+                 */
+                this.dispatchEvent(new CustomEvent('selectAllCharts',
+                    {
+                        detail: {
+                            data: e.detail.data
+                        }
+                    }
+                )
+                );
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            /**
+             * deSelect event handler.
+             * Listens to deSelect events fired from its children elements and propagates to other charts
+             * 
+             * @fires unSelectAllCharts
+             */
+            onDeSelect(e) {
+
+                /**
+                 * Propogates select event to other charts.
+                 *
+                 * @event unSelectAllCharts
+                 */
+                this.dispatchEvent(new CustomEvent('unSelectAllCharts',
+                    {
+                        detail: {
+                            data: null
+                        }
+                    }
+                )
+                );
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            /**
+             * MeasurementChange/ChartDimension event handler.
+             * Listens to when a chart dimensions(axes) are changed and updates chart
+             */
+            onDimChanged(e) {
+                var chartId = e.detail.id;
+
+                if (chartId != null) {
+                    var currentChild = this.shadowRoot.querySelector('[plot-id$="' + cId + '"]');
+                    currentChild.shadowRoot.querySelector("paper-spinner-lite").active = true;
+
+                    this._updateChart(chartId);
+                }
+                self._initializeRemoveDialog();
+            }
+
+            /**
+             * Generates a unique chart ID
+             * 
+             * @return {string}
+             */
+            _generatePlotId() {
+                var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                var result = '';
+                var size = 7;
+
+                for (var i = 0; i < size; ++i) {
+                    result += chars[Math.round(Math.random() * (chars.length - 1))];
+                }
+                return 'epiviz-' + result;
+            }
+
+            /**
+             * ChartLocation/RangeChange event handler.
+             */
+            _rangeChanged() {
+
+                var self = this;
+                if (self.measurements) {
+                    let navChildren =
+                        Polymer.FlattenedNodesObserver.getFlattenedNodes(this.$.chartEnv).filter(n => n.nodeType === Node.ELEMENT_NODE);
+                    var numChildren = navChildren.length;
+                    if (numChildren > 0) { self.set('_isEmpty', true); }
+                    for (var index = 0; index < numChildren; index++) {
+                        var currentChild = navChildren[index];
+                        if (currentChild == undefined || currentChild.plotId == undefined) { return; }
+                        if (currentChild.data) { return; }
+                        currentChild.range = self.range;
+                        // self._updateChart(currentChild.plotId);  
+                        self._getElementData(currentChild, self, self.measurements);
+                    }
+                }
+            }
+        };
+
+        customElements.define(EpivizEnvironment.is, EpivizEnvironment);
+    </script>
+</dom-module>

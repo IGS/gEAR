@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+  <title>data-filter demo</title>
+
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../data-filter.html">
+
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+      .vertical-section-container {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+
+      data-filter {
+        max-height: 500px;
+      }
+    </style>
+  </custom-style>
+</head>
+
+<body>
+  <div class="vertical-section-container centered">
+    <h4>Show All columns</h4>
+    <demo-snippet>
+      <template>
+        <data-filter data='[{"Age":21,"first_name":"Gerri","gender":"Male","Country":"Indonesia","Single?":false},{"Age":31,"first_name":"Sydelle","gender":"Female","Country":"China","Single?":false},{"Age":56,"first_name":"Thomasin","gender":"Female","Country":"Brazil","Single?":true},{"Age":75,"first_name":"Christian","gender":"Female","Country":"United States","Single?":false},{"Age":16,"first_name":"Ellwood","gender":"Male","Country":"China","Single?":false},{"Age":67,"first_name":"Dewain","gender":"Male","Country":"Indonesia","Single?":false},{"Age":51,"first_name":"Hilarius","gender":"Male","Country":"Mongolia","Single?":true},{"Age":76,"first_name":"Erl","gender":"Male","Country":"Cyprus","Single?":true},{"Age":53,"first_name":"Myron","gender":"Male","Country":"Canada","Single?":false},{"Age":23,"first_name":"Amalea","gender":"Female","Country":"Indonesia","Single?":true},{"Age":22,"first_name":"Vonny","gender":"Female","Country":"China","Single?":true},{"Age":25,"first_name":"Panchito","gender":"Male","Country":"China","Single?":true},{"Age":38,"first_name":"Thomas","gender":"Male","Country":"United States","Single?":true},{"Age":61,"first_name":"Brynn","gender":"Female","Country":"Indonesia","Single?":false},{"Age":43,"first_name":"Tana","gender":"Female","Country":"Portugal","Single?":false},{"Age":27,"first_name":"Vincents","gender":"Male","Country":"Indonesia","Single?":false},{"Age":37,"first_name":"Fonzie","gender":"Male","Country":"Argentina","Single?":false},{"Age":51,"first_name":"Ketti","gender":"Female","Country":"Philippines","Single?":false},{"Age":33,"first_name":"Rubina","gender":"Female","Country":"Indonesia","Single?":true},{"Age":32,"first_name":"Tomi","gender":"Female","Country":"China","Single?":false},{"Age":61,"first_name":"Rois","gender":"Female","Country":"Brazil","Single?":false},{"Age":20,"first_name":"Chrystel","gender":"Female","Country":"Indonesia","Single?":false},{"Age":53,"first_name":"Nana","gender":"Female","Country":"Russia","Single?":true},{"Age":50,"first_name":"Ellynn","gender":"Female","Country":"Russia","Single?":true},{"Age":42,"first_name":"Vasily","gender":"Male","Country":"France","Single?":false}]'></data-filter>
+      </template>
+    </demo-snippet>
+
+    <h4>pre-select columns</h4>
+    <demo-snippet>
+      <template>
+        <data-filter data='[{"Age":21,"first_name":"Gerri","gender":"Male","Country":"Indonesia","Single?":false},{"Age":31,"first_name":"Sydelle","gender":"Female","Country":"China","Single?":false},{"Age":56,"first_name":"Thomasin","gender":"Female","Country":"Brazil","Single?":true},{"Age":75,"first_name":"Christian","gender":"Female","Country":"United States","Single?":false},{"Age":16,"first_name":"Ellwood","gender":"Male","Country":"China","Single?":false},{"Age":67,"first_name":"Dewain","gender":"Male","Country":"Indonesia","Single?":false},{"Age":51,"first_name":"Hilarius","gender":"Male","Country":"Mongolia","Single?":true},{"Age":76,"first_name":"Erl","gender":"Male","Country":"Cyprus","Single?":true},{"Age":53,"first_name":"Myron","gender":"Male","Country":"Canada","Single?":false},{"Age":23,"first_name":"Amalea","gender":"Female","Country":"Indonesia","Single?":true},{"Age":22,"first_name":"Vonny","gender":"Female","Country":"China","Single?":true},{"Age":25,"first_name":"Panchito","gender":"Male","Country":"China","Single?":true},{"Age":38,"first_name":"Thomas","gender":"Male","Country":"United States","Single?":true},{"Age":61,"first_name":"Brynn","gender":"Female","Country":"Indonesia","Single?":false},{"Age":43,"first_name":"Tana","gender":"Female","Country":"Portugal","Single?":false},{"Age":27,"first_name":"Vincents","gender":"Male","Country":"Indonesia","Single?":false},{"Age":37,"first_name":"Fonzie","gender":"Male","Country":"Argentina","Single?":false},{"Age":51,"first_name":"Ketti","gender":"Female","Country":"Philippines","Single?":false},{"Age":33,"first_name":"Rubina","gender":"Female","Country":"Indonesia","Single?":true},{"Age":32,"first_name":"Tomi","gender":"Female","Country":"China","Single?":false},{"Age":61,"first_name":"Rois","gender":"Female","Country":"Brazil","Single?":false},{"Age":20,"first_name":"Chrystel","gender":"Female","Country":"Indonesia","Single?":false},{"Age":53,"first_name":"Nana","gender":"Female","Country":"Russia","Single?":true},{"Age":50,"first_name":"Ellynn","gender":"Female","Country":"Russia","Single?":true},{"Age":42,"first_name":"Vasily","gender":"Male","Country":"France","Single?":false}]'
+          show-columns='["id", "gender", "Age"]'></data-filter>
+      </template>
+    </demo-snippet>
+
+    <p> The dataset for this demo is generated using
+      <a href="https://mockaroo.com">mockaroo</a>
+    </p>
+  </div>
+</body>
+
+</html>

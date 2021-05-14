@@ -1,0 +1,47 @@
+<div id="manual_upload_dataset_bargraph" class="container_manual">
+  <h2>Bar graph format</h2>
+  <p>
+    To upload a dataset as a bar graph, gEAR requires only a tab-delimited text data file. This
+    file holds your expression data, and should have a 'Gene symbol' column and then expression
+    value columns, with headers on the first row.
+  </p>
+  <h3>Data file</h3>
+  <div class="manual_section">
+    <p>
+      This file must have a column labeled 'Gene symbol' containing your genes of interest.
+      The following data columns contain the expression values. These columns must be labeled using
+      the following convention: <span><b>Group--Label</b></span>. A <b>Group</b> can be considered
+      your experimental groups, while a <b>label</b> can be considered a replicate. To use multiple
+      words within a <b>group</b> or <b>label</b>, use an underscore ('_') instead of a space.
+    </p>
+    <p>
+      To include <b>p-values</b> and <b>standard deviations</b>, you use the exact name for the
+      p-value and stand deviation columns as used for their the corresponding expression column
+      and append '_pval' or '_sd'. For example, the p-value and stand deviation columns for column
+      'Untreated--P_0' would be 'Untreated--P_0_pval' and 'Untreated--P_0_sd', respectively.
+       See below for an example.
+    </p>
+    <div class="instructions_image_c">
+      <img src="img/gear_manual_img/upload_help_bargraph.png" alt="File upload - Spreadsheet"/>
+    </div>
+    <br />
+    <p>
+      The spreadsheet above yields the bar graph (below). You'll notice the 'Group' parts of the
+      column headers label the 2 groups of bars. When you hover the mouse of a bar, the 'Label' for
+      the bar and expression value display.
+    </p>
+    <div class="instructions_image_c">
+      <img src="img/upload_help_bargraph_example.png" alt="Bar graph Example"/>
+    </div>
+  </div>
+  <br />
+  <p>
+    Once your file is formatted and uploaded, you'll be ready to complete the next step.
+  </p>
+  <h2>
+    <a class="manual_link" id="open_manual_upload_dataset_schematic"
+    data-section="upload_dataset_schematic" href="#manual_upload_dataset_schematic">
+      Continue to 'Step 4: Upload Schematic Image'...
+    </a>
+  </h2>
+</div>

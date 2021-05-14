@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>epiviz-charts</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js" integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <link rel="import" href="../../epiviz-data-source/epiviz-data-source.html">
+    <link rel="import" href="../epiviz-charts.html">
+
+</head>
+
+<body>
+    <h3>Environment and charts</h3>
+    <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider" provider-id="umd" provider-url="http://epiviz-dev.cbcb.umd.edu/api/">
+    </epiviz-data-source>
+
+    <epiviz-environment id="testEnv" chr="chr11">
+    </epiviz-environment>
+</body>
+
+</html>

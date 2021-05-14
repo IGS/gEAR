@@ -1,0 +1,36 @@
+{
+  "name": "epiviz-imports",
+  "version": "0.0.1",
+  "description": "imports for polymer components",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hcbravolab/epiviz-imports.git"
+  },
+  "keywords": [
+    "epiviz",
+    "genomics",
+    "visualization",
+    "polymer",
+    "components"
+  ],
+  "author": "Jayaram Kancherla",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hcbravolab/epiviz-imports/issues"
+  },
+  "homepage": "https://github.com/hcbravolab/epiviz-imports#readme",
+  "dependencies": {
+    "d3": "^3.5.17",
+    "epiviz": "git+https://github.com/epiviz/epiviz-library.git#epiviz-5",
+    "sprintf": "^0.1.5"
+  },
+  "devDependencies": {
+    "webpack": "^3.12.0",
+    "webpack-cli": "^3.0.8",
+    "webpack-command": "^0.4.1"
+  }
+}

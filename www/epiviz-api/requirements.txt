@@ -1,0 +1,2 @@
+-e git+git://github.com/epiviz/epivizFileParser@epfs-lite
+gunicorn

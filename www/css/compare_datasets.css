@@ -1,0 +1,82 @@
+dd {
+    margin-bottom: 25px;
+}
+dd div {
+    margin-bottom: 10px;
+}
+div#chart_settings h3 {
+    margin-top: 20px;
+    margin-bottom: 0px;
+}
+div#chart_settings label {
+    font-size: 90%;
+}
+div#chart_settings ul {
+    list-style: none;
+    font-size: 90%;
+    margin: 20px 0 0 10px;
+    padding: 0;
+}
+div.code {
+    font-size: 90%;
+    font-family: courier;
+    letter-spacing: 1px;
+}
+div#error_loading_c {
+    display: none;
+}
+div#create_gene_cart_dialog {
+    display: none;
+    margin: 15px 0 15px 0;
+}
+div#gene_list_c {
+    /*margin-top: 20px;*/
+}
+div.loading_indicator {
+    display: none;
+}
+div.loading_indicator img {
+    width: 100px;
+}
+div#result_table_c {
+    margin-top: 30px;
+}
+div#saved_gene_cart_info_c {
+    display: none;
+}
+div#saved_gene_cart_info_c h3 {
+    margin-bottom: 5px;
+}
+div#selected_label {
+    display: none;    
+    margin-bottom: 10px;
+}
+div#sidebar {
+    padding: 20px 0 0 10px;
+}
+div#stat_action_options_c {
+    margin-top: 10px;
+    padding-left: 5px;
+}
+div#viewport {
+    min-height: 500px;
+}
+div.svg-container {
+    max-width: 100%;
+}
+p#saved_gene_cart_info {
+    font-size: 80%;
+}
+table#tbl_selected_genes {
+    display: none;
+    border-collapse: collapse;
+}
+table#tbl_selected_genes td {
+    padding: 3px;
+    font-size: 90%;
+    border: 1px solid rgb(200,200,200);
+}
+table#tbl_selected_genes th {
+    border: 1px solid rgb(200,200,200);
+    padding: 3px;
+}

@@ -1,0 +1,217 @@
+<!-- External Polymer Styles/elements dependency -->
+<link rel="import" href="../iron-resizable-behavior/iron-resizable-behavior.html">
+
+<script>
+    /**
+     * `ChartWorkspaceBehavior` is an interface to save & load workspaces as html attributes. 
+     * `epiviz-navigation` & `epiviz-environment` inherit this behavior.
+     *
+     * @polymerBehavior
+    **/
+    EpivizChartWorkspaceBehavior = function (superClass) {
+        return class extends superClass {
+            constructor() {
+                super();
+            }
+
+            static get properties() {
+                return {
+                    /**
+                    * current workspace object.
+                    *
+                    * @type {Object}
+                    */
+                    workspace: {
+                        type: Object,
+                        notify: true
+                        // observer: 'loadWorkspace'
+                    },
+
+                    /**
+                    * current workspace name.
+                    *
+                    * @type {String}
+                    */
+                    workspaceName: {
+                        type: String,
+                        notify: true,
+                        value: "default"
+                    }
+                };
+            }
+
+            /**
+             * load workspace from the `workspace` property of the chart.
+             */
+            loadWorkspace(workspace) {
+
+                var self = this;
+
+                self.measurements = self.workspace.measurements;
+                self.chr = self.workspace.chr;
+                self.start = self.workspace.start;
+                self.end = self.workspace.end;
+                self.plotId = self.workspace.plotId;
+                self.collapsed = self.workspace.collapsed ? self.workspace.collapsed : false;
+                self.noLogo = true;
+
+                for (var key in self.workspace.children) {
+                    var chartWorkspaceObj = self.workspace.children[key];
+
+                    var chart = document.createElement(chartWorkspaceObj.node);
+                    chart.slot = "charts";
+                    if (chartWorkspaceObj.node == "EPIVIZ-NAVIGATION") {
+                        chart.chr = chartWorkspaceObj.chr;
+                        chart.start = chartWorkspaceObj.start;
+                        chart.end = chartWorkspaceObj.end;
+                        // chart.node = chartWorkspaceObj.nodeName;
+                        chart.collapsed = chartWorkspaceObj.collapsed ? chartWorkspaceObj.collapsed : false;
+                        chart.range = new epiviz.datatypes.GenomicRange(chart.chr, chart.start, chart.end - chart.start);
+                        chart._strRange = chart.chr + ": " + chart.start + " - " + chart.end;
+                        chart.noLogo = true;
+                        self.appendChild(chart);
+
+                        for (var navs in chartWorkspaceObj.children) {
+                            var chartNavWorkspaceObj = chartWorkspaceObj.children[navs];
+                            var navChart = document.createElement(chartNavWorkspaceObj.node);
+
+                            navChart.slot = "charts";
+                            navChart.measurements = chartNavWorkspaceObj.measurements;
+                            navChart.dimS = chartNavWorkspaceObj.dims;
+                            navChart.chartSettings = chartNavWorkspaceObj.chartSettings;
+                            navChart.chartColors = chartNavWorkspaceObj.chartColors;
+
+                            chart.appendChild(navChart);
+                        }
+                    }
+                    else {
+                        chart.measurements = chartWorkspaceObj.measurements;
+                        chart.dimS = chartWorkspaceObj.dims;
+                        chart.chartSettings = chartWorkspaceObj.chartSettings;
+                        chart.chartColors = chartWorkspaceObj.chartColors;
+                        self.appendChild(chart);
+                    }
+                }
+            }
+
+            /**
+             * Save current list of charts to the workspace property.
+             *
+             * @fires workspaceChanged
+             */
+            saveWorkspace() {
+                var self = this;
+
+                var workspaceObj = {};
+                workspaceObj.measurements = self.measurements ? self.measurements : null;
+                workspaceObj.plotId = self.plotId;
+                workspaceObj.chr = self.chr;
+                workspaceObj.start = self.start;
+                workspaceObj.end = self.end;
+                workspaceObj.node = self.nodeName;
+                workspaceObj.children = {};
+                workspaceObj.collapsed = self.collapsed ? self.collapsed : null;
+
+
+                let navChildren =
+                    Polymer.FlattenedNodesObserver.getFlattenedNodes(this).filter(n => n.nodeType === Node.ELEMENT_NODE);
+
+                var numChildren = navChildren.length;
+                for (var index = 0; index < numChildren; index++) {
+
+                    var childObj = {};
+                    var currentChild = navChildren[index];
+                    childObj[currentChild.plotId] = {};
+
+                    if (currentChild.nodeName === "EPIVIZ-NAVIGATION") {
+
+                        childObj[currentChild.plotId].chr = currentChild.chr;
+                        childObj[currentChild.plotId].start = currentChild.start;
+                        childObj[currentChild.plotId].end = currentChild.end;
+                        childObj[currentChild.plotId].node = currentChild.nodeName;
+                        childObj[currentChild.plotId].children = {};
+
+                        let navChildren2 =
+                            Polymer.FlattenedNodesObserver.getFlattenedNodes(currentChild).filter(n => n.nodeType === Node.ELEMENT_NODE);
+
+                        var numChildren2 = navChildren2.length;
+                        for (var nindex = 0; nindex < numChildren2; nindex++) {
+                            var currentNavChild = navChildren2[nindex];
+                            childObj[currentChild.plotId].children[currentNavChild.plotId] = {
+                                "node": currentNavChild.nodeName,
+                                "measurements": currentNavChild.measurements ? currentNavChild.measurements : null,
+                                "dims": currentNavChild.dimS ? currentNavChild.dimS : null,
+                                "chartSettings": currentNavChild.chartSettings,
+                                "chartColors": currentNavChild.chartColors
+                            }
+                        }
+                    }
+                    else {
+                        childObj[currentChild.plotId] = {
+                            "node": currentChild.nodeName,
+                            "measurements": currentChild.measurements ? currentChild.measurements : null,
+                            "dims": currentChild.dimS ? currentChild.dimS : null,
+                            "chartSettings": currentChild.chartSettings,
+                            "chartColors": currentChild.chartColors
+                        };
+                    }
+                    workspaceObj.children[currentChild.plotId] = childObj[currentChild.plotId];
+                }
+                self.workspace = workspaceObj;
+
+                if (self.nodeName == "EPIVIZ-NAVIGATION") {
+
+                    if (self._parentContainer && self._parentContainer.nodeName == "EPIVIZ-ENVIRONMENT") {
+                        self._parentContainer.dispatchEvent(new CustomEvent('navWorkspaceChanged',
+                            {
+                                detail: {
+                                    id: self.plotId
+                                },
+                                bubbles: true
+                            }
+                        )
+                        );
+                    }
+                    else {
+                        /**
+                         * fires event when a chart workspace has changed. 
+                         * Notifies `epiviz-workspace` element to save to firebase.
+                         *
+                         * @event workspaceChanged
+                         * @type {object}
+                         */
+                        document.dispatchEvent(new CustomEvent('workspaceChanged',
+                            {
+                                detail: {
+                                    id: self.plotId,
+                                    data: self.workspace
+                                },
+                                bubbles: true
+                            }
+                        )
+                        );
+                    }
+                }
+                else {
+                    /**
+                     * fires event when a chart workspace has changed. 
+                     * Notifies `epiviz-workspace` element to save to firebase.
+                     *
+                     * @event workspaceChanged
+                     * @type {object}
+                     */
+                    document.dispatchEvent(new CustomEvent('workspaceChanged',
+                        {
+                            detail: {
+                                id: self.plotId,
+                                data: self.workspace
+                            },
+                            bubbles: true
+                        }
+                    )
+                    );
+                }
+            }
+        }
+    }
+</script>

@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>scRNA workbench</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+         to be changed for any hosts where gEAR is not at the webserver root.
+      -->
+    <base href="/" />
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/css/bootstrap-select.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.2.0/css/bootstrap4-toggle.min.css">
+
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/css/bootstrap-editable.css"/>
+    <!--<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.0/css/all.css" integrity="sha384-aOkxzJ5uQz7WBObEZcHvV5JvRW3TUc2rNPA7pe3AwnsUohiw1Vj2Rgx2KSOkF5+h" crossorigin="anonymous">-->
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+    <script>document.write('<link rel="stylesheet" href="css/analyze_dataset.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+
+    <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+  </head>
+  <body>
+    <!--[if lt IE 7]>
+        <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+    <div id="body_c">
+      <div id="navigation_bar">
+        <!-- content here inserted via JQuery -->
+      </div> <!-- end navigation_bar -->
+
+      <div id="login_checking">
+        <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
+      </div>
+
+      <div id="login_warning">
+        <h2>Login required</h2>
+        <p>
+          You must be logged in to analyze datasets.  Please use the login form in the top-right.
+        </p>
+      </div>
+
+      <div id="main_content" class="container-fluid">
+        <div class="row">
+          <div class="col-12 alert-container">
+  	        <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+          </div>
+        </div>
+        <div id='main_row' class="row">
+          <div id="sidebar" class="col-2">
+            <div class="control_block">
+              <form>
+                <div class="form-group-sm">
+                  <label for="dataset_id" class="control-label">Choose dataset</label>
+                  <select id="dataset_id" class="form-control form-control-sm">
+                    <option value="">Choose one</option>
+                    <optgroup id="dataset_ids_user" label="Your datasets">
+                      <option disabled>None found</option>
+                    </optgroup>
+                    <optgroup id="dataset_ids_shared_with_user" label="Shared with you">
+                      <option disabled>None found</option>
+                    </optgroup>
+                    <optgroup id="dataset_ids_public" label="Public datasets">
+                      <option disabled>None found</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <script id="dataset_list_tmpl" type="text/x-jsrender">
+                  <option value="{{:id}}">{{:title}}</option>
+                </script>
+                <div id='stored_analyses_c' class='shown_later'>
+                  <div class="form-group-sm">
+                    <label for="analysis_id" class="control-label">Stored analyses</label>
+                    <select id="analysis_id" class="form-control form-control-sm">
+                      <option data-analysis-id="0" value="0">New</option>
+                      <optgroup id="analyses_primary" label="Imported analysis"></optgroup>
+                      <optgroup id="analyses_public" label="Public saved analyses"></optgroup>
+                      <optgroup id="analyses_saved" label="Your saved analyses"></optgroup>
+                      <optgroup id="analyses_unsaved" label="Recent unsaved analyses"></optgroup>
+                    </select>
+                  </div>
+
+                  <!--
+                       Tried adding this to the options below:
+                       data-toggle="tooltip" data-placement="top" title="Analysis curated by the gEAR team"
+                      -->
+
+                  <script id="analyses_list_tmpl" type="text/x-jsrender">
+                    {{if vetting == 'gear'}}
+                      <option class="fa fa-gear" data-analysis-id="{{:id}}" data-analysis-type="{{:type}}" data-dataset-id="{{:dataset_id}}">
+                    {{else vetting == 'owner'}}
+                      <option class="fa fa-user" data-analysis-id="{{:id}}" data-analysis-type="{{:type}}" data-dataset-id="{{:dataset_id}}">
+                    {{else}}
+                      <option class="fa fa-users" data-analysis-id="{{:id}}" data-analysis-type="{{:type}}" data-dataset-id="{{:dataset_id}}">
+                    {{/if}}
+                      {{if label}}
+                        {{:label}}
+                      {{else}}
+                        Unlabeled
+                      {{/if}}
+                    </option>
+                  </script>
+                  <div id="analyses_list_empty_tmpl" class="shown_later">
+                    <option disabled>None found</option>
+                  </div>
+                  <div id="new_analysis_label_c" class="form-group-sm shown_later">
+                    <label for="new_analysis_label" class="control-label">Label for this analysis</label>
+                    <input type="text" name="new_analysis_label" id="new_analysis_label" class="form-control form-control-sm" value="Unlabeled"/>
+                    <div id="duplicate_label_warning" class='shown_later'>
+                      This analysis label has already been used.
+                    </div>
+                    <div class="btn-group btn-group-sm mt-1">
+                      <button id="new_analysis_label_save"   class="btn btn-primary" title="Save this label"><i class="fa fa-save"></i></button>
+                      <button id="new_analysis_label_cancel" class="btn btn-default"  title="Cancel this label update"><i class="fa fa-ban"></i></button>
+                    </div>
+                  </div>
+                  <div id="analysis_action_c" class="shown_later">
+                    <p id="unsaved_analysis_warning">
+                      This analysis is currently being saved in a temporary space.
+                    </p>
+                    <div class="btn-group btn-group-sm">
+                      <button class='btn btn-default' id='btn_save_analysis' title='Save this analysis to your profile'><i class="fa fa-save"></i></button>
+                      <button class='btn btn-danger' id='btn_delete_unsaved_analysis' title="Permanently delete this analysis and associated images. You can always recreate it again later."><i class="fa fa-trash"></i></button>
+                      <button class='btn btn-default show_analysis_renamer' title='Rename this analysis'><i class="fa fa-pencil-square-o"></i></button>
+                    </div>
+                  </div> <!-- end #analysis_action_c -->
+                  <div id="analysis_status_info_c" class="shown_later">
+                    <p id="analysis_status_info">
+                      This analysis is stored in your profile.
+                    </p>
+                    <div class="btn-group btn-group-sm">
+                      <button id='btn_make_public_copy' class='btn btn-default shown_later' title="A copy will be made publicly available, leaving this one behind for you to continue editing."><i class="fa fa-thumbs-up"></i></button>
+                      <button id='btn_delete_saved_analysis' class='btn_delete_analysis btn btn-default btn-danger' title="Permanently delete this analysis and associated images. You can always recreate it again later."><i class="fa fa-trash"></i></button>
+                      <button class='btn btn-default show_analysis_renamer' title='Rename this analysis'><i class="fa fa-pencil-square-o"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <hr />
+            <div id='analysis_list_c' class='control_block shown_later'>
+              <h3>Analysis steps available</h3>
+              <div class="container-fluid">
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    QC - filter by mitochondrial content
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_qc_by_mito" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="qc_by_mito"
+                           data-on="<i class='fa fa-eye'></i>"
+                           data-off="<span data-toggle='tooltip' title='Can run after primary filters are applied'><i class='fa fa-eye-slash'></i></span>"
+                           data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    Identify highly-variable genes
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_select_variable_genes" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="select_variable_genes"
+                       data-on="<i class='fa fa-eye'></i>"
+                       data-off="<span data-toggle='tooltip' title='Can run after primary filters are applied'><i class='fa fa-eye-slash'></i></span>"
+                       data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    Principal Component Analysis (PCA)
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_pca" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="pca"
+                           data-on="<i class='fa fa-eye'></i>"
+                           data-off="<span data-toggle='tooltip' title='Can run after variable gene identification'><i class='fa fa-eye-slash'></i></span>"
+                           data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    tSNE / UMAP
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_tsne" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="tsne"
+                           data-on="<i class='fa fa-eye'></i>"
+                           data-off="<span data-toggle='tooltip' title='Can run after PCA'><i class='fa fa-eye-slash'></i></span>"
+                           data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    Clustering (Louvain)
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_louvain" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="louvain"
+                           data-on="<i class='fa fa-eye'></i>"
+                           data-off="<span data-toggle='tooltip' title='Can run after tSNE / UMAP'><i class='fa fa-eye-slash'></i></span>"
+                           data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    Find marker genes
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_marker_genes" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="marker_genes"
+                           data-on="<i class='fa fa-eye'></i>"
+                           data-off="<span data-toggle='tooltip' title='Can run after clustering'><i class='fa fa-eye-slash'></i></span>"
+                           data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+                <div class="row analysis_option">
+                  <div class="col-8 analysis_label">
+                    Compare genes / clusters
+                  </div>
+                  <div class="col-4 analysis_toggle">
+                    <input id="toggle_compare_genes" class="tooltoggle" type="checkbox" data-toggle="toggle" data-analysis-name="compare_genes"
+                       data-on="<i class='fa fa-eye'></i>"
+                       data-off="<span data-toggle='tooltip' title='Must find marker genes first'><i class='fa fa-eye-slash'></i></span>"
+                       data-size="small">
+                  </div>
+                </div> <!-- analysis option row -->
+
+              </div>
+            </div>
+          </div> <!-- end #sidebar -->
+
+          <div id="viewport" class="col-8">
+            <div class="container-fluid">
+              <div class="row-fluid">
+                <div id="analysis_workbench_c" class="col-12">
+
+                  <h3 class='initial_instructions'>About</h3>
+
+                  <div class='initial_instructions'>
+                    <p>
+                      <strong>The gEAR workbench for single cell RNAseq (scRNAseq)</strong> is designed to allow
+                      biologists meaningful access to single cell data, even with limited informatics training.
+                      The workbench begins by selecting a dataset for analysis, and then offers analysis tools
+                      following several standard pre-processing steps.
+                    </p>
+                    <p>
+                      <strong>Start by choosing a dataset on the left.</strong>
+                      <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="top"
+                            title="The menu on the left allows you to choose a dataset for analysis in the single cell work bench. Information about the individual datasets can be found in the dataset manager."></span>
+                    </p>
+                  </div>
+
+                  <div id='primary_analysis_notification' class='shown_later'>
+                    <h3>Imported analysis selected</h3>
+                    <p>
+                      You have a selected an analysis bundled with the dataset itself, usually created by the dataset
+                      author outside of this workbench. You can use the workbench to perform actions below
+                      provided by the analyses the authors have uploaded, but all other analysis steps will be disabled
+                      until you create an entirely new analysis.
+                    </p>
+                  </div>
+
+                  <div class='infoblock shown_later' id='analysis_compare_genes'>
+                    <h3>Compare genes / clusters</h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-3">
+                          <div id='compare_genes_options_c' class="container-fluid">
+                            <form id="compare_genes_options_f" class='reset_on_change'>
+                              <div class="form-group row form-group-sm">
+                                <label for="compare_genes_n_genes" class="col-5 col-form-label">N genes</label>
+                                <div class="col-7"><input type="number" class="input-length-4" name="compare_genes_n_genes" id="compare_genes_n_genes" size="2" value="7" min="1"/></div>
+                              </div> <!-- end .row -->
+                              <div class="form-group row form-group-sm">
+                                <div class="col-12 control-label">
+                                  <label for="query_cluster" class="control-label">Query cluster</label>
+                                  <select id="query_cluster" class="form-control form-control-sm">
+                                    <option value="">Choose one</option>
+                                    <optgroup id="query_cluster_options" label="Marker gene or label:"></optgroup>
+                                  </select>
+                                  <label for="reference_cluster" class="control-label">Compare with</label>
+                                  <select id="reference_cluster" class="form-control form-control-sm">
+                                    <option value="all-reference-clusters">All</option>
+                                    <optgroup id="reference_cluster_options" label="Marker gene or label:"></optgroup>
+                                  </select>
+                                  <script id="cluster_list_tmpl" type="text/x-jsrender">
+                                    <option value="{{:value}}">{{:label}}</option>
+                                  </script>
+                                  <label for="compare_genes_method" class="control-label">Method</label>
+                                  <select id="compare_genes_method" class="form-control form-control-sm">
+                                    <option value="t-test_overestim_var" selected="selected">t-test overestimated variance</option>
+                                    <option value="t-test">t-test</option>
+                                    <!--<option value="logreg">logistic regression</option>-->
+                                    <option value="wilcoxon">Wilcoxon-Rank-Sum</option>
+                                  </select>
+                                  <div id="compare_genes_corr_method_c">
+                                    <label for="compare_genes_corr_method" class="control-label">P-value correction method</label>
+                                    <select id="compare_genes_corr_method" class="form-control form-control-sm">
+                                      <option value="benjamini-hochberg" selected="selected">Benjamini-Hochberg</option>
+                                      <option value="bonferroni">Bonferroni</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div> <!-- end .row -->
+                            </form>
+                          </div> <!-- #compare_genes_options_c -->
+                          <div id='compare_genes_submission_c'>
+                            <button id='btn_compare_genes_run' type='button' class='btn btn-default btn-sm'>Go</button>
+                          </div>
+                        </div> <!-- end left column -->
+                        <div class="col-9">
+                          <div id='compare_genes_visualization_c'>
+                            <div class="tool_instructions">
+                              <p>
+                                The method dropdown menu lists the available statistical tests for your comparison. The
+                                “t-test overestimated variance” option may help in situations where clusters contain few
+                                cells and variance is difficult to estimate directly, otherwise for robust clusters
+                                choose “t-test” (Assumes normally distributed data). The “Wilcoxon-Rank-Sum” option is
+                                a non-parametric test and may be helpful when a dataset includes a few genes with very
+                                high expression (outliers) or data distribution is not known. Multiple testing correction
+                                can be performed either by Benjamini-Hochberg or Bonferroni methods, where Bonferroni is
+                                more conservative.
+                              </p>
+                            </div>
+                            <div id='compare_genes_results_c' class='shown_later'>
+                              <div class='row'>
+                                <div class='col-6 image_result_c empty_on_change' id='compare_genes_ranked_c'></div>
+                                <div class='col-6 image_result_c empty_on_change'  id='compare_genes_violin_c'></div>
+                              </div>
+                              <div class='row'>
+                                <div class='col-12'>
+                                  <button type='button' id='cg_show_table_f' class='ml-2 btn btn-default btn-sm fa fa-eye'> Show table</button>
+                                  <button type='button' id='cg_download_table_f' class='ml-2 btn btn-default btn-sm fa fa-download'> Download table</button>
+                                </div>
+                              </div>
+                              <div class='row'>
+                                <div class='col-12'>
+                                  <table id="compare_genes_table_f" class="shown_later">
+                                    <thead>
+                                      <tr>
+                                        <th>Name</th>
+                                        <th>log2FC</th>
+                                        <th>P-value</th>
+                                        <th>FDR</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody class="empty_on_change"><td colspan="4">No data to display</td></tbody>
+                                    <script id="compare_genes_table_body_tmpl" type="text/x-jsrender">
+                                      <tr>
+                                        <td>{{:#data[0]}}</td>
+                                        <td>{{:#data[1]}}</td>
+                                        <td>{{:#data[2]}}</td>
+                                        <td>{{:#data[3]}}</td>
+                                      </tr>
+                                    </script>
+                                  </table>
+                                </div>
+                              </div> <!-- end .row -->
+                              <hr class="separator">
+                              <div class='row'>
+                                <div class='col-6 image_result_c empty_on_change' id='compare_genes_ranked_rev_c'></div>
+                                <div class='col-6 image_result_c empty_on_change' id='compare_genes_violin_rev_c'></div>
+                              </div>
+                              <div class='row'>
+                                <div class='col-12'>
+                                  <button type='button' id='cg_show_table_r' class='ml-2 btn btn-default btn-sm fa fa-eye'> Show table</button>
+                                  <button type='button' id='cg_download_table_r' class='ml-2 btn btn-default btn-sm fa fa-download'> Download table</button>
+                                </div>
+                              </div>
+                              <div class='row'>
+                                <div class='col-12'>
+                                  <table id="compare_genes_table_r" class="shown_later">
+                                    <thead>
+                                      <tr>
+                                        <th>Name</th>
+                                        <th>log2FC</th>
+                                        <th>P-value</th>
+                                        <th>FDR</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody class="empty_on_change"><td colspan="4">No data to display</td></tbody>
+                                  </table>
+                                </div>
+                              </div> <!-- end .row -->
+                            </div>
+                          </div> <!-- marker_genes_visualization_c -->
+                        </div> <!-- end right column -->
+                      </div> <!-- end .row -->
+                    </div> <!-- end .container-fluid -->
+                  </div> <!-- end #analysis_compare_genes -->
+
+                  <div class='infoblock shown_later' id='analysis_marker_genes'>
+                    <h3>Find marker genes</h3>
+                    <div class="tool_instructions">
+                      <p>
+                        This option will show you the marker genes within each group of cells as defined by the Louvain clustering.
+                        You can adjust the number of genes you would like to see for each cluster by adjusting the N.
+                      </p>
+                    </div>
+                    <div id='marker_genes_options_c' class="container-fluid mb-2">
+                      <form id="marker_genes_options_f" class='form-inline reset_on_change'>
+                        <label for="marker_genes_n_genes">N genes</label>
+                        <input type="number" class="form-control form-control-sm ml-2 input-length-2" id="marker_genes_n_genes" size="2" value="5" min="1"/>
+                        <button id='btn_marker_genes_run' type='button' class='ml-2 btn btn-default btn-sm click-once'>Go</button>
+                      </form>
+                    </div> <!-- #marker_genes_options_c -->
+                    <div class='image_result_c empty_on_change' id='marker_genes_plot_c'></div>
+                    <h4 id='marker_genes_table_header' class='shown_later'>
+                      Top ranked genes per cluster (click to select genes of interest)
+                      <button id='btn_download_marker_genes' class='pull-right shown_later'>Download</button>
+                    </h4>
+
+                    <div id='marker_genes_table_c' class='pre-scrollable'>
+                      <table id="marker_genes_table">
+                        <thead>
+                          <tr class="empty_on_change"></tr>
+                        </thead>
+                        <tbody class="empty_on_change"></tbody>
+                      </table>
+                      <script id="marker_genes_table_head_tmpl" type="text/x-jsrender">
+                        <th>{{:label}}</th>
+                      </script>
+                      <script id="marker_genes_table_body_tmpl" type="text/x-jsrender">
+                        <tr>
+                          <td>{{:rowid}}</td>
+                          {{for columns}}
+                          <td>{{:label}}</td>
+                          {{/for}}
+                        </tr>
+                      </script>
+                    </div> <!-- end #marker_genes_table_c -->
+                    <div id='marker_genes_visualization_c' class='mt-3 shown_later'>
+                      <h4>Marker gene visualization</h4>
+                      <p>Select desired marker genes in the table above and/or type gene symbols (separated by commas) in the field below to visualize</p>
+                      <div class="row">
+                        <div class="col-12">
+                          <input type="text" class="form-control form-control-sm ml-2 mr-2 mb-2" id="marker_genes_manually_entered" size="60" value=""/>
+                        </div>
+                      </div>
+                      <ul>
+                        <li>Marker genes selected in table: <span id='marker_genes_selected_count'>0</span></li>
+                        <li>Marker genes manually entered: <span id='marker_genes_entered_count'>0</span></li>
+                        <li>Total unique genes selected: <span id='marker_genes_unique_count'>0</span></li>
+                      </ul>
+                      <button id='btn_visualize_marker_genes' class='btn btn-default btn-sm'>Visualize</button>
+                      <div id='marker_genes_results_c' class='container-fluid shown_later mt-3'>
+                        <div class="row">
+                          <div id='marker_genes_dotplot_c' class='col-sm-6 image_result_c empty_on_change'></div>
+                          <div id='marker_genes_violin_c' class='col-sm-6 image_result_c empty_on_change'></div>
+                        </div>
+                      </div>
+                    </div> <!-- marker_genes_visualization_c -->
+                  </div> <!-- end #analysis_marker_genes -->
+
+                  <div class='infoblock shown_later' id='analysis_sbs_tsne'>
+                    <h3>Labeled tSNE</h3>
+                    <div class="tool_instructions">
+                      <p>
+                        Enter a gene of interest to see its tSNE colored both by expression and cluster / cell type.
+                      </p>
+                    </div>
+                    <div id='sbs_tsne_options_c' class="container-fluid mb-2">
+                      <form id="sbs_tsne_options_f" class='form-inline reset_on_change' onsubmit="return false;">
+                        <label for="sbs_tsne_gene">Gene symbol</label>
+                        <input type="text" class="form-control form-control-sm ml-2" id="sbs_tsne_gene_symbol" size="7"/>
+                        <button id='btn_sbs_tsne_run' type='button' class='ml-2 btn btn-default btn-sm click-once'>Search</button>
+                      </form>
+                    </div> <!-- #marker_genes_options_c -->
+                    <div class='image_result_c empty_on_change' id='sbs_tsne_plot_c'></div>
+                    <div id='sbs_tsne_gene_not_found' class='shown_later'>
+                      <p>
+                        Unable to load this image. Perhaps that gene is not found in this dataset?
+                      </p>
+                    </div>
+                  </div> <!-- end #analysis_sbs_tsne -->
+
+                  <div class='infoblock shown_later' id='analysis_louvain'>
+                    <h3>Clustering (Louvain)</h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-4">
+                          <div id='louvain_options_c' class="container-fluid">
+                            <form id='louvain_options_f' class='reset_on_change'>
+                              <div class="form-group row form-group-sm">
+                                <div class="col-4"><input type="number" class="pull-right input-length-6" name="louvain_resolution" id="louvain_resolution" size="6" value="1.3" step="0.1"/></div>
+                                <label for="louvain_resolution" class="col-8 col-form-label">Resolution</label>
+                              </div>
+                            </form>
+                          </div> <!-- #louvain_options_c -->
+                          <div id='louvain_run_c'>
+                            <button id='btn_louvain_run' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
+                          </div>
+                          <div id="group_labels_c" class="shown_later">
+                            <table id="marker_genes_group_labels">
+                              <thead>
+                                <tr>
+                                  <th>Group</th>
+                                  <th>Markers</th>
+                                  <th>New label</th>
+                                </tr>
+                              </thead>
+                              <tbody class="empty_on_change"></tbody>
+                              <script id="marker_genes_group_labels_tmpl" type="text/x-jsrender">
+                                <tr>
+                                  <td>{{:group_label}}</td>
+                                  <td>{{:genes}}</td>
+                                  <td class="group_user_label"><input type="text" name="group_labels[]" placeholder="label" value="{{:new_group_label}}"/></td>
+                                </tr>
+                              </script>
+                            </table>
+                            <p>
+                              <button id='btn_louvain_rerun_with_groups' type='button' class='btn btn-default btn-sm'>Rerun with labels</button>
+                            </p>
+                          </div> <!-- end #group_labels_c -->
+                        </div>
+                        <div class="col-sm-8 col-md-8 col-lg-8">
+                          <div>
+                            <p class="tool_instructions">
+                              The Louvain clustering is used to find the most likely groups of associated cells within a network.
+                              Here they are color-coded. The number of neighbors will have an effect on the smallest possible
+                              size for a cluster. If you are interested in groups of cells that are all larger than 20 cells,
+                              for example (based on the gene coloring in the initial PCA) – then you can try 6, 10 or 15 neighbors,
+                              for example. However, if this is a smaller dataset of regular RNA-seq, for example, with only
+                              biological triplicates, starting with two neighbors makes more sense – because the smallest ‘natural’
+                              group should be 3 replicates. Alternatively, if some of the populations in a single cell dataset
+                              are very small, again, 3 neighbors could be a useful approach. However, the smaller the number of
+                              neighbors, the larger the number of clusters.
+                            </p>
+                            <p class="tool_instructions">
+                              The resolution determines how granular the clustering will be. It is set to 1.3 by default. To decrease
+                              resolution you can drop it to 1, for example. Or increase the number for higher resolution.
+                            </p>
+                          </div>
+                          <div class='image_result_c empty_on_change' id='louvain_tsne_plot_c'></div>
+                          <div class='image_result_c empty_on_change' id='louvain_umap_plot_c'></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div> <!-- end #analysis_louvain -->
+
+                  <!-- TODO:  Add an option for log scale coloring -->
+                  <div class='infoblock shown_later' id='analysis_tsne'>
+                    <h3>tSNE / UMAP</h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-sm-6 col-md-6 col-lg-6">
+                          <div id='tsne_options_c' class="container-fluid">
+                            <form id='tsne_options_f' class='reset_on_change'>
+                              <div class="form-group row form-group-sm">
+                                <label for="tsne_genes_to_color" class="col-sm-7 col-md-7 col-form-label">Genes to colorize (comma-separated)</label>
+                                <div class="col-sm-5 col-md-5"><input type="text" name="tsne_genes_to_color" id="tsne_genes_to_color"/></div>
+                              </div>
+                              <div class="form-group row form-group-sm">
+                                <label for="dredux_n_neighbors" class="col-sm-7 col-form-label">N neighbors</label>
+                                <div class="col-sm-5"><input type="number" class="input-length-6" name="dredux_n_neighbors" id="dredux_n_neighbors" size="6" min="1"/></div>
+                              </div>
+                              <div class="form-group row form-group-sm">
+                                <label for="tsne_n_pcs" class="col-sm-7 col-form-label">N dimensions (principal components)</label>
+                                <div class="col-sm-5"><input type="number" class="input-length-6" name="tsne_n_pcs" id="tsne_n_pcs" size="6" min="1"/></div>
+                              </div>
+                              <div class="form-group row form-group-sm shown_later">
+                                <div class="col-sm-4"><input type="text" class="pull-right" name="tsne_random_state" id="tsne_random_state" size="6" value="2"/></div>
+                                <label for="tsne_random_state" class="col-sm-8 col-form-label">Random state</label>
+                              </div>
+                              <div class="form-group row form-group-sm shown_later">
+                                <div class="col-sm-4"><input type="checkbox" name="tsne_use_scaled" id="tsne_use_scaled" class="pull-right" disabled/></div>
+                                <label for="tsne_use_scaled" class="col-sm-8 col-form-label">Use scaled and corrected expression</label>
+                              </div>
+                              <div class="form-group row form-group-sm">
+
+                                <label for="dimensionality_reduction_method" class="col-sm-7 col-form-label">Dimensionality reduction method</label>
+                                <div class="col-sm-5">
+                                  <p class="footnote">
+                                    Choose one (or both). <a href='https://www.biorxiv.org/content/early/2018/04/10/298430'>What's the difference?</a>
+                                  </p>
+                                  <input type="checkbox" name="dimensionality_reduction_method_tsne" id="dimensionality_reduction_method_tsne"/> tSNE<br />
+                                  <input type="checkbox" name="dimensionality_reduction_method_umap" id="dimensionality_reduction_method_umap" checked/> UMAP (faster)
+                                </div>
+                              </div>
+                            </form>
+                            <div id='tsne_missing_gene_c' class='shown_later'>
+                              Couldn't find this gene in the dataset: <span id='tsne_missing_gene'></span>
+                            </div>
+                            <div class='button-group'>
+                              <button id='btn_tsne_run' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
+                            </div>
+                          </div> <!-- end #tsne_options_c -->
+                        </div>
+                        <div class="col-sm-6 col-md-6 col-lg-6">
+                          <div class="tool_instructions">
+                            This non-linear dimensional reduction visualization tool is used to visually cells that are similar to
+                            each other. The number of principal components to include depends on the result in the PCA step, as listed
+                            above. You can vary the number of principal components used and view how it changes the data display. The
+                            default recommendation is to look for the point in the PCA curve in which additional components result in
+                            minimal added variation.
+                          </div>
+                          <div id='tsne_plot_c' class="image_result_c empty_on_change"></div>
+                          <div id='umap_plot_c' class="image_result_c empty_on_change"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div> <!-- end #analysis_tsne -->
+
+                  <div class='infoblock shown_later' id='analysis_pca'>
+                    <h3>Principal Component Analysis (PCA)</h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-sm-4 col-md-4 col-lg-4">
+                          <div id='pca_options_c' class="container-fluid">
+                            <form id='pca_options_f' class='reset_on_change'>
+                              <div class="form-group form-group-sm">
+                                <label for="pca_genes_to_color" class="col-form-label">Genes to colorize (comma-separated)</label>
+                                <input type="text" name="pca_genes_to_color" id="pca_genes_to_color"/>
+                              </div>
+                            </form>
+                            <div id='pca_missing_gene_c' class='shown_later'>
+                              Couldn't find this gene in the dataset: <span id='pca_missing_gene'></span>
+                            </div>
+                            <div class='button-group'>
+                              <button id='btn_pca_run' type='button' class='btn btn-default btn-sm click-once'>Compute and plot</button>
+                            </div>
+                            <form id='pca_options_g' class='shown_later'>
+                              <div class="form-group form-group-sm">
+                                <label for="top_pca_genes" class="col-form-label">Principal Components</label>
+                                <label for="top_pca_genes" class="col-form-label">(comma-separated, between 2 and 5 PCs, number only)</label>
+                                <input type="text" name="top_pca_genes" id="top_pca_genes"/>
+                                <br>
+                                <button id='btn_pca_top_genes' type='button' class='btn btn-default btn-sm click-once'>Plot top genes</button>
+                              </div>
+                            </form>
+                          </div> <!-- end #asvg_options_c -->
+                        </div>
+                        <div class="col-sm-8 col-md-8 col-lg-8">
+                          <div class="container-fluid">
+                            <div class="row tool_instructions">
+                              The principal component analysis indicates the groups of genes that have the largest
+                              contribution to the variability in gene expression in the dataset. For example, PC1 with have
+                              the largest effect in dividing the dataset into subtypes of cells or samples. Each principal
+                              component is composed of groups of “related” genes. Visualizing your principal component
+                              graph and knowing which genes contribute to it (listed in the table) is important for the
+                              next step. The number of principal components included will affect your tSNE (t-distributed
+                              stochastic neighbor embedding) plot.
+                            </div>
+                            <div class="row">
+                              <div id='pca_scatter_c' class="image_result_c col-sm-6 col-md-6 col-lg-6 empty_on_change"></div>
+                              <div id='pca_variance_c' class="image_result_c col-sm-6 col-md-6 col-lg-6 empty_on_change"></div>
+                            </div>
+                            <div class="row">
+                              <div id='pca_top_genes_c' class="image_result_c col-sm-12 col-md-12 col-lg-12 empty_on_change"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div> <!-- end #analysis_pca -->
+
+                  <div class='infoblock shown_later' id='analysis_select_variable_genes'>
+                    <h3>Identify highly-variable genes <span id="asvg_result_count" class="empty_on_change"></span></h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-md-4 col-lg-4">
+                          <div id='asvg_options_c' class="container-fluid">
+                            <form id='asvg_options_f'>
+                              <div class="row form-group form-group-sm">
+                                <div class="col-sm-4">
+                                  <select id="asvg_flavor" class="form-control form-control-sm">
+                                    <option value="seurat">Seurat</option>
+                                    <option value="cell_ranger">Cell Ranger</option>
+                                  </select>
+                                </div>
+                                <label for="asvg_flavor" class="col-sm-8 col-form-label">
+                                  Convention
+                                  <span id="asvg_flavor_tooltip" class="fa fa-info-circle" data-trigger="hover"
+                                        title="Choose <a href='https://doi.org/10.1038/nbt.3192'>Seurat</a> vs. <a href='https://doi.org/10.1038/ncomms14049'>Cell Ranger</a> normalization methods"></span>
+                                </label>
+                              </div>
+                              <div class="row form-group form-group-sm">
+                                <div class="col-sm-4"><input type="text" class="pull-right form-control form-control-sm" name="asvg_norm_counts_per_cell" id="asvg_norm_counts_per_cell" size="6" value="1e4"/></div>
+                                <label for="asvg_norm_counts_per_cell" class="col-sm-8 col-form-label">Normalized counts per cell</label>
+                              </div>
+                              <hr class="separator" />
+                              <div class="row form-group form-group-sm">
+                                <div class="col-sm-4"><input type="number" class="pull-right form-control form-control-sm input-length-6" name="asvg_n_top_genes" id="asvg_n_top_genes" size="6" value="" min="1" max="2000"/></div>
+                                <label for="asvg_n_top_genes" class="col-sm-8 col-form-label">
+                                  N top genes
+                                  <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
+                                        title="Choose a number of variable genes or reach this number by altering parameters in the three boxes below. Reducing the dimensionality of scRNA-seq data is a multi-step process which starts with identifying and keeping genes that are informative of the variability in the dataset. The gEAR suggests limiting the maximum number of variable genes to 2,000 for efficient processing of the data. You can also adjust the number of normalized counts per cell, maximum expression value and the minimal dispersion percentage. At the completion of this step press on ‘save these genes’."
+                                        </span>
+                                </label>
+                              </div>
+                              <hr class="separator" />
+                              <div class="row">
+                                <span id='n_top_genes_warning'>Options below are ignored if N top genes is used</span>
+                              </div>
+                              <div class="row form-group form-group-sm">
+                                <div class="col-sm-4"><input type="number" class="pull-right form-control form-control-sm input-length-6" name="asvg_min_mean" id="asvg_min_mean" size="6" value="0.0125" step="0.0001"/></div>
+                                <label for="asvg_min_mean" class="col-sm-8 col-form-label">Min mean</label>
+                              </div>
+                              <div class="row form-group form-group-sm">
+                                <div class="col-sm-4"><input type="number" class="pull-right form-control form-control-sm input-length-6" name="asvg_max_mean" id="asvg_max_mean" size="6" value="3" step="0.0001"/></div>
+                                <label for="asvg_max_mean" class="col-sm-8 col-form-label">Max mean</label>
+                              </div>
+                              <div class="row form-group form-group-sm">
+                                <div class="col-sm-4"><input type="number" class="pull-right form-control form-control-sm input-length-6" name="asvg_min_dispersion" id="asvg_min_dispersion" size="6" value="0.5" step="0.1"/></div>
+                                <label for="asvg_min_dispersion" class="col-sm-8 col-form-label">Min dispersion</label>
+                              </div>
+                              <hr class="separator asvg_save_options shown_later"/>
+                              <!--
+                              <div class="row" class="asvg_save_options shown_later">
+                                These options are only used when saving gene selection.
+                              </div>
+
+                              <div class="row form-group form-group-sm asvg_save_options shown_later">
+                                <label><input id='asvg_regress_out' type="checkbox" disabled>
+                                Regress out effects of total counts per cell and percentage of mitochondrial genes expressed.</label>
+                              </div>
+                              <div class="row form-group form-group-sm asvg_save_options shown_later">
+                                <label><input id='asvg_scale_unit_variance' type="checkbox" disabled>
+                                Scale the data to unit variance, clipping values exceeding 10 standard deviations</label>
+                              </div>
+                              <hr class="separator" />
+                              -->
+                            </form>
+                            <div class='button-group'>
+                              <button id='btn_do_analysis_select_variable_genes' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
+                              <button id='btn_asvg_save' type='button' class='btn btn-default btn-sm shown_later'>Save these genes</button>
+                            </div>
+                          </div> <!-- end #asvg_options_c -->
+                        </div>
+                        <div class="col-md-8 col-lg-8">
+                          <div class="container-fluid">
+                            <div class="row tool_instructions">
+                              <div class="tool_instructions col-sm-12 col-md-12 col-lg-12">
+                                We are next going to start to use dimensionality reduction methods to look for structure
+                                within the data, but before we do that we want to filter the large gene list down to those
+                                genes that are more likely to represent the biologically important variability between each
+                                of the cells. There are several parameters that can be adjusted here to set the sensitivity
+                                versus stringency of what genes are included and you may find that trying different
+                                parameters help you identify new features of the dataset. As a brief description, the
+                                x-axis represents the average expression of genes across the dataset. The y-axis is a
+                                measure called dispersion, which indicates the variance of that gene across the dataset.
+                                <strong>The gEAR workbench will limit your maximum number of highly variable genes to 2,000.</strong> By
+                                increasing the Min mean you increase the minimal expression value of genes that may be
+                                considered as highly variable. We suggest that you change the parameters and observe the
+                                plot to further guide your selection parameters. <strong>At the completion of this step press on
+                                  ‘save these genes’.</strong>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div id='asvg_plot_c' class="col-sm-12 col-md-12 col-lg-12 empty_on_change"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div> <!-- end #analysis_select_variable_genes -->
+
+                  <div class='infoblock shown_later' id='analysis_qc_by_mito'>
+                    <h3>
+                      QC by mitochondrial content
+                      <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right" data-html="true"
+                            title="This step allows you to:<br \>
+                                   a) Tell gEAR how the mitochrondrial genes are labeled in this dataset (default is mt-).<br \>
+                                   b) Remove cells which are expressing a certain percentage of mitochondrial genes (default is 5%).<br \>
+                                   c) Remove doublets by filtering cells by number of counts."></span>
+
+                    </h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-4">
+                          <div id='qc_mito_options_c' class="container-fluid">
+                            <form>
+                              <div class="form-group row">
+                                <div class="col-sm-4">
+                                  <input type="text" class="form-control form-control-sm" id="qbm_gene_prefix" value="Mt-" size="4">
+                                </div>
+                                <label for="qbm_gene_prefix" class="col-sm-8 col-form-label col-form-label-sm">Mitochondrial gene prefix</label>
+                              </div>
+                              <div class="form-group row">
+                                <div class="col-sm-4">
+                                  <input type="number" class="form-control form-control-sm input-length-4" id="qbm_filter_mito_perc" value="0.05" size="4" step="0.01", min="0.01", max="1.00">
+                                </div>
+                                <label for="qbm_filter_mito_perc" class="col-sm-8 col-form-label col-form-label-sm">Filter by percent</label>
+                              </div>
+                              <div class="form-group row">
+                                <div class="col-sm-4">
+                                  <input type="number" class="form-control form-control-sm input-length-4" id="qbm_filter_mito_count" size="4", min="1">
+                                </div>
+                                <label for="qbm_filter_mito_count" class="col-sm-8 col-form-label col-form-label-sm">Filter by count</label>
+                              </div>
+                            </form>
+
+                            <p id="qbm_post_shape" class="shown_later reset_on_change">
+                              Filtered shape:
+                              <span id="qbm_gene_count" class="empty_on_change"></span> genes x
+                              <span id="qbm_obs_count" class="empty_on_change"></span> obs
+                            </p>
+                            <div class="button-group">
+                              <button id="btn_do_analysis_qc_by_mito" type='button' class="btn btn-default btn-sm click-once">Plot</button>
+                              <button id="btn_qbm_save" type='button' class="btn btn-default btn-sm shown_later qbm_secondary_options" disabled>Save these genes</button>
+                            </div>
+                            <div id="no_mt_found_c" class="shown_later">
+                              <p>
+                                No mitochondrial genes with this prefix were found.  This could be real, or it could be just
+                                because this prefix is case-sensitive.  Common options are mt-, Mt- or MT-.  (This should
+                                be handled for you automatically in a later release.)
+                              </p>
+                            </div>
+                          </div> <!-- end #qc_mito_options_c -->
+                        </div>
+                        <div class="col-8">
+                          <div id="qbm_violin_c" class="empty_on_change"></div>
+                          <div class="container-fluid">
+                            <div class="row tool_instructions">
+                              <div class="tool_instructions col-12">
+                                <strong>Press on the plot button</strong> to see plots of (a) the number of genes in each cell; (b) number of read counts
+                                per cell; and (c) percent mitochondrial content. The general recommendation is to maintain
+                                percent mitochondrial content below 0.05% to focus on living cells. Based on the data in these
+                                plots you may wish to change some of the criteria in your previous step. <strong>Press ‘save these
+                                  genes’ before moving to the next step</strong>.
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div id="qbm_scatter_percent_mito_c" class="col-sm-6 col-md-6 col-lg-6 empty_on_change"></div>
+                              <div id="qbm_scatter_n_genes_c" class="col-sm-6 col-md-6 col-lg-6 empty_on_change"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div> <!-- end #analysis_qc_by_mito -->
+
+                  <div class='infoblock shown_later' id='dataset_info'>
+                    <h3>Dataset: <span id='selected_dataset_title'></span></h3>
+                    <div class="container-fluid">
+                      <div class="row">
+                        <div class="col-5">
+                          <p>Initial shape: <span id='selected_dataset_shape_initial'></span></p>
+                          <p id='selected_dataset_shape_filtered_c' class="shown_later reset_on_change">Filtered shape: <span id='selected_dataset_shape_filtered' class="empty_on_change"></span></p>
+                          <p>
+                            Apply filters as desired.  <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
+                            title="The initial dataset contains many  observations (cells), some  of which may hold no significant value to the downstream analysis. Here you can perform multiple filtering steps to remove empty captures, doublets and genes not expressed in this dataset."></span>
+                          </p>
+                          <div>
+                            <div id='primary_filter_options_c'>
+                              <form id='primary_filter_options_f' class='reset_on_change'>
+                                <div class="form-group-sm">
+                                  <input id='filter_cells_lt_n_genes_selected' type="checkbox">
+                                  Exclude cells with &lt; <input type="number" class="input-length-4" id="filter_cells_lt_n_genes" name="filter_cells_lt_n_genes" size="4" value="300" min="1"/> genes
+                                </div>
+                                <div class="form-group-sm">
+                                  <input id='filter_cells_gt_n_genes_selected' type="checkbox">
+                                  Exclude cells with &gt; <input type="number" class="input-length-4" id="filter_cells_gt_n_genes" name="filter_cells_gt_n_genes" size="4" min="1"/> genes
+                                </div>
+                                <div class="form-group-sm">
+                                  <input id='filter_genes_lt_n_cells_selected' type="checkbox">
+                                  Exclude genes in &lt; <input type="number" class="input-length-4" id="filter_genes_lt_n_cells" name="filter_cells_lt_n_genes" size="4" value="3" min="1"/> cells
+                                </div>
+                                <div class="form-group-sm">
+                                  <input id='filter_genes_gt_n_cells_selected' type="checkbox">
+                                  Exclude genes in &gt; <input type="number" class="input-length-4" id="filter_genes_gt_n_cells" name="filter_cells_gt_n_genes" size="4" min="1"/> cells
+                                </div>
+                              </form>
+                              <button id='btn_apply_primary_filter' type='button' class='btn btn-default btn-sm click-once'>Apply filters</button>
+                            </div> <!-- end #primary_filter_oprtions_c -->
+                          </div>
+                        </div> <!-- end column -->
+                        <div class="col-7">
+                          <h5 class="primary_initial_plot">Initial composition</h5>
+                          <div id="primary_initial_plot_loading_c" class="primary_initial_plot"><img class="img-fluid" src="../img/loading_search.gif" alt="Loading"/> Loading initial gene/cell count plots</div>
+                          <div id="primary_initial_plot_c" class="primary_initial_plot shown_later">
+                            <div id="primary_initial_violin_c" class="empty_on_change"></div>
+                            <div id="primary_initial_scatter_c" class="empty_on_change"></div>
+                          </div>
+                          <div id="primary_top_genes_plot_c" class="shown_later">
+                            <h5>Genes with highest fraction of counts per cell</h5>
+                            <div id='primary_top_genes_c' class='empty_on_change'></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div> <!-- end #dataset_info -->
+                </div>
+              </div> <!-- end #analysis_workbench_c -->
+            </div>
+          </div> <!-- end #viewport -->
+          <div id="action_log_c" class="col-2">
+            <div id="action_log_floating_c">
+              <h3>Action log</h3>
+              <ul id='action_log'></ul>
+            </div>
+          </div>
+        </div> <!-- end main_row -->
+      </div> <!-- end #main_content -->
+
+      <div id='account_creation_c' class='row'>
+        <!-- content inserted via common.js-->
+      </div>
+      <div style="clear: both;">&nbsp;</div>
+
+    </div> <!-- end #body_c -->
+
+    <footer>
+      <div id='funding'>
+        <!-- content here inserted via common.js -->
+      </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <!-- Try this instead? http://davidstutz.de/bootstrap-multiselect/index.html#getting-started -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/js/bootstrap-select.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.2.0/js/bootstrap4-toggle.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script src="js/vendor/js.cookie.js"></script>
+    <script src="js/vendor/jsrender.20181003.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/ui-panel-dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/analysis.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/analyze_dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-59916932-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+  </body>
+</html>

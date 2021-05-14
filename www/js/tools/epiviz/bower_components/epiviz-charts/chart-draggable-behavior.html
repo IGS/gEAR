@@ -1,0 +1,29 @@
+<script>
+    /**
+     * `ChartDraggableBehavior` object initializes draggable and resizable behaviors for charts. 
+     * All elements that should be draggable should include this behavior.
+     *
+     * @polymerBehavior
+    **/
+
+    EpivizChartDraggableBehavior = function (superClass) {
+        return class extends superClass {
+            constructor() {
+                super();
+            }
+
+            static get properties() {
+                return {};
+            }
+
+            _initializeSortable() {
+                $(this).sortable({
+                    tolerance: "pointer",
+                    cursorAt: { left: 10, top: 10 },
+                    items: "> :not(epiviz-navigation)",
+                    handle: ".dragHandle",
+                });
+            }
+        }
+    }
+</script>
