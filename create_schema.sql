@@ -10,11 +10,13 @@ CREATE TABLE guser (
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        is_gear_curator TINYINT(1) DEFAULT 0
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 # password is a hashlib md5 hexdigest
 INSERT INTO guser (id, user_name, email, institution, pass, updates_wanted, is_admin)
-       VALUES (0, 'admin', 'admin@localhost', 'UMaryland', 'somepasswordhash', 0, 1);
+       VALUES (0, 'gEAR admin', 'admin@localhost', 'UMaryland', 'fcdf1dc2c1ef7dec3dbb1a6e2c5e3c8a', 0, 1);
+INSERT INTO guser (email, user_name, institution, pass, updates_wanted, is_admin)
+       VALUES('jorvis@gmail.com', 'Joshua Orvis', 'IGS', 'e81e78d854d86edc38ba45c443662aee', 0, 1);
 
 CREATE TABLE user_session (
        id             INT PRIMARY KEY AUTO_INCREMENT,
@@ -23,7 +25,7 @@ CREATE TABLE user_session (
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE organism (
        id             INT PRIMARY KEY AUTO_INCREMENT,
@@ -32,7 +34,7 @@ CREATE TABLE organism (
        species        VARCHAR(255),
        strain         VARCHAR(255),
        taxon_id       INT
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 ## DO NOT change these values without making corresponding changes in the loading scripts
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
@@ -65,7 +67,7 @@ CREATE TABLE gene (
        INDEX            org_sym (organism_id, gene_symbol),
        FOREIGN KEY (organism_id) REFERENCES organism(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE gene_cart (
        id              INT PRIMARY KEY AUTO_INCREMENT,
@@ -74,7 +76,7 @@ CREATE TABLE gene_cart (
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE gene_cart_member (
        id              INT PRIMARY KEY AUTO_INCREMENT,
@@ -83,7 +85,7 @@ CREATE TABLE gene_cart_member (
        FOREIGN KEY (gene_cart_id)
           REFERENCES gene_cart(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE gene_symbol (
        id               INT PRIMARY KEY AUTO_INCREMENT,
@@ -92,7 +94,7 @@ CREATE TABLE gene_symbol (
        is_primary       TINYINT(1) DEFAULT 0,
        INDEX            gene_symbol_label_idx (label),
        FOREIGN KEY (gene_id) REFERENCES gene(id)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 CREATE INDEX idx_gene_symbol__gene_id ON gene_symbol (gene_id);
 CREATE INDEX idx_gene_symbol__label ON gene_symbol (label);
 
@@ -101,7 +103,7 @@ CREATE TABLE go (
        name           VARCHAR(255) NOT NULL,
        namespace      VARCHAR(30) NOT NULL,
        def            TEXT
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE gene_go_link (
        id             INT UNIQUE KEY AUTO_INCREMENT,
@@ -109,7 +111,7 @@ CREATE TABLE gene_go_link (
        go_id          VARCHAR(20) NOT NULL,
        PRIMARY KEY (gene_id, go_id),
        FOREIGN KEY (gene_id) REFERENCES gene(id)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE gene_dbxref (
        id             INT UNIQUE KEY AUTO_INCREMENT,
@@ -117,7 +119,7 @@ CREATE TABLE gene_dbxref (
        dbxref         VARCHAR(100) NOT NULL,
        PRIMARY KEY (gene_id, dbxref),
        FOREIGN KEY (gene_id) REFERENCES gene(id)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE mirna_family (
        id             INT PRIMARY KEY AUTO_INCREMENT,
@@ -127,7 +129,7 @@ CREATE TABLE mirna_family (
        family_label   VARCHAR(20),
        FOREIGN KEY (stem_loop_id) REFERENCES gene(id),
        FOREIGN KEY (mature_id) REFERENCES gene(id)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE anatomy (
        id            INT PRIMARY KEY AUTO_INCREMENT,
@@ -140,7 +142,7 @@ CREATE TABLE anatomy (
        FOREIGN KEY (organism_id)
           REFERENCES organism(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE dataset (
        id                       VARCHAR(50) PRIMARY KEY,
@@ -148,7 +150,7 @@ CREATE TABLE dataset (
        title                    VARCHAR(255) NOT NULL,
        organism_id              INT NOT NULL,
        pubmed_id                VARCHAR(20),
-       geo_id                   VARCHAR(20),
+       geo_id                   VARCHAR(50),
        is_public                TINYINT DEFAULT 0,
        ldesc                    TEXT,
        date_added               DATETIME,
@@ -160,8 +162,8 @@ CREATE TABLE dataset (
        marked_for_removal       TINYINT DEFAULT 0,
        load_status              VARCHAR(20), #options: 'pending', 'loading', 'completed', 'failed',
        has_h5ad                 TINYINT DEFAULT 0,
-       platform_id              VARCHAR(20),
-       instrument_model         VARCHAR(50),
+       platform_id              VARCHAR(255),
+       instrument_model         VARCHAR(255),
        library_selection        VARCHAR(255),
        library_source           VARCHAR(255),
        library_strategy         TEXT,
@@ -173,20 +175,14 @@ CREATE TABLE dataset (
        annotation_release       INT,
        FULLTEXT                 text_idx (title, ldesc),
        FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
+       FULLTEXT                 text_with_geo_pubmed_idx (title, ldesc, geo_id, pubmed_id),
        FOREIGN KEY (owner_id)
           REFERENCES guser(id)
           ON DELETE CASCADE,
        FOREIGN KEY (organism_id)
           REFERENCES organism(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
-
-INSERT INTO dataset (id, owner_id, title, organism_id, pubmed_id, is_public, ldesc, date_added,
-                     dtype, schematic_image, share_id, math_default, load_status)
-  VALUES ('31238h1j-0000-11e7-9560-3ca9f41a0df0', 0, 'EpiViz track viewer', 1, '26328750', 1,
-          'Container for EpiViz tracks - Interactive visualization of functional genomics data.',
-          NOW(), 'epiviz', 'img/schematic_epiviz-chipseq.png', '31212121-0000-11e7-9560-3ca9f41a0df0',
-          'raw', 'completed');
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE dataset_display (
        id            INT PRIMARY KEY AUTO_INCREMENT,
@@ -202,7 +198,7 @@ CREATE TABLE dataset_display (
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE dataset_preference (
    user_id        INT NOT NULL,
@@ -219,7 +215,7 @@ CREATE TABLE dataset_preference (
    FOREIGN KEY (display_id)
       REFERENCES dataset_display(id)
       ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE dataset_shares (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
@@ -232,7 +228,7 @@ CREATE TABLE dataset_shares (
       FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE layout (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
@@ -240,14 +236,14 @@ CREATE TABLE layout (
        group_id                 INT,
        label                    VARCHAR(255),
        is_current               TINYINT(1) DEFAULT 0,
-       share_id                 VARCHAR(8),
+       share_id                 VARCHAR(24),
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
-
-# Load some initial layout
-#INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
+INSERT INTO layout VALUES (10000, 0, NULL, "Brain development (default)", 0);
+INSERT INTO layout VALUES (10001, 0, NULL, "Huntingtons disease (default)", 0);
 
 CREATE TABLE layout_members (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
@@ -263,7 +259,7 @@ CREATE TABLE layout_members (
        FOREIGN KEY (dataset_id)
           REFERENCES dataset(id)
           ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE supplemental_images (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
@@ -273,12 +269,12 @@ CREATE TABLE supplemental_images (
        gene_symbol              VARCHAR(20),
        image_url                VARCHAR(200),
        index                    gene_sym_idx(gene_symbol)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE tag (
 	id		INT PRIMARY KEY AUTO_INCREMENT,
 	label	VARCHAR(55)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 # multiple tags to multiple comments
 CREATE TABLE comment_tag (
@@ -289,7 +285,7 @@ CREATE TABLE comment_tag (
 	FOREIGN KEY (comment_id)
     REFERENCES comment(id)
     ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE dataset_tag (
     id                   INT PRIMARY KEY AUTO_INCREMENT,
@@ -300,7 +296,7 @@ CREATE TABLE dataset_tag (
     FOREIGN KEY (dataset_id)
       REFERENCES dataset(id)
       ON DELETE CASCADE
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE note (
   id                  INT PRIMARY KEY AUTO_INCREMENT,
@@ -315,7 +311,7 @@ CREATE TABLE note (
      REFERENCES guser(id),
   FOREIGN KEY (dataset_id)
      REFERENCES dataset(id)
-) ENGINE=INNODB;
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE `dataset_epiviz` (
   `id` varchar(50) NOT NULL,
@@ -328,4 +324,4 @@ CREATE TABLE `dataset_epiviz` (
   `description` text,
   `share_id` varchar(50) NOT NULL,
   `organism` varchar(100) DEFAULT NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;

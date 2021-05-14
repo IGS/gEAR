@@ -10,7 +10,6 @@ Other things to include:
 	  - [UMgEAR](https://umgear.org) - Portal for hearing research
 	  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
 
-
 **Screenshot**: Example of home page after searching for a gene:
 
  ![](https://github.com/IGS/gEAR/blob/269f8f971301c15b69c50f3d11ad3441b2d24c78/docs/gear_overview.png)
