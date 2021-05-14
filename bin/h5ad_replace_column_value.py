@@ -28,17 +28,19 @@ def main():
     adata = sc.read_h5ad(args.input_file)
 
     if type(adata.obs[args.column]):
+        # Convert to string before replacing values.  Afterwards restore column to original type
+        # If original type was numerical and cannot be converted back, that is fine... the data was probably meant to be categorical
+        orig_type = type(adata.obs[args.column])
+        adata.obs[args.column] = adata.obs[args.column].apply(str)
         adata.obs[args.column].replace({args.previous_value:args.post_value}, inplace=True)
+        try:
+            adata.obs[args.column] = adata.obs[args.column].apply(orig_type)
+        except:
+            pass
+
         adata.write(args.output_file)
     else:
         print("ERROR: Didn't find column '{0}' in the dataset observations".format(args.column))
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-

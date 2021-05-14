@@ -20,6 +20,7 @@ def main():
     parser.add_argument('-o', '--output_file', type=str, required=True, help='Path to an output file to be created' )
     parser.add_argument('-org', '--organism', type=int, required=True, help='Organism ID to use')
     parser.add_argument('-er', '--ensembl_release', type=int, required=True, help='Ensembl release ID to use')
+    parser.add_argument('-u', '--unmapped_file', type=str, required=False, help='Writes a file containing the rows which could not be mapped')
     args = parser.parse_args()
     
     cnx = geardb.Connection()
@@ -53,6 +54,9 @@ def main():
             
     line_num = 0
 
+    if args.unmapped_file:
+        ufh = open(args.unmapped_file, 'wt')
+
     ofh = open(args.output_file, 'w')
     
     for line in open(args.input_file):
@@ -61,6 +65,10 @@ def main():
         
         if line_num == 1:
             print("Ensembl_ID\t" + line, file=ofh)
+
+            if args.unmapped_file:
+                print("Ensembl_ID\t" + line, file=ufh)
+            
             continue
 
         cols = line.split("\t")
@@ -71,6 +79,13 @@ def main():
         else:
             print("Gene not found: ({0})".format(cols[0]))
             gs_not_found += 1
+
+            if args.unmapped_file:
+                cols.insert(0, 'unknown')
+                print("\t".join(cols), file=ufh)
+
+    if args.unmapped_file:
+        ufh.close()
 
     print("INFO: There were {0} instances of rows skipped in output because their gene symbol wasn't found in the index".format(gs_not_found), file=sys.stderr)
 

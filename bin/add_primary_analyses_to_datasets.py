@@ -18,7 +18,8 @@ VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass
 And these pairs for tSNE:
 
 VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined']]
-
+VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'], 
+                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
 
 
 """
@@ -45,11 +46,16 @@ DATASET_BASE_DIR = '{}/www/datasets'.format(gear_root_path)
 VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot']
 VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'],
                     # These are all carlo's custom ones.  Need to resolve this a different way later
-                    ['PC1%var6.14', 'PC2%var1.79']
-]
+                    ['PC1%var6.14', 'PC2%var1.79']]
+VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'], 
+                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
+
 
 def main():
-    dataset_ids = get_dataset_ids()
+    if len(sys.argv) > 1:
+        dataset_ids = [sys.argv[1]]
+    else:
+        dataset_ids = get_dataset_ids()
 
     for dataset_id in dataset_ids:
         print("Processing dataset ID: {0}".format(dataset_id))
@@ -76,37 +82,55 @@ def main():
         ana = geardb.Analysis(dataset_id=dataset_id, type='primary')
         adata = ana.get_adata(backed=True)
 
-        changes_made = False
+        h5ad_changes_made = False
+        json_changes_made = False
 
         tsne_detected = detect_tsne(adata)
         if tsne_detected:
+            if 'tsne' not in analysis_json or analysis_json['tsne']['tsne_calculated'] == False:
+                json_changes_made = True
+            
             analysis_json['tsne']['tsne_calculated'] = True
             analysis_json['tsne']['plot_tsne'] = 1
             if not has_tsne(adata):
                 print("\tAdding tSNE analysis")
                 add_tsne_analysis(adata)
-                changes_made = True
+                h5ad_changes_made = True
+
+        umap_detected = detect_umap(adata)
+        if umap_detected:
+            if 'tsne' not in analysis_json or 'tsne_calculated' not in analysis_json['tsne'] or analysis_json['tsne']['tsne_calculated'] == False:
+                json_changes_made = True
+            
+            # the parent key 'tsne' here should really be renamed to 'dimred' or something like it
+            analysis_json['tsne']['umap_calculated'] = True
+            analysis_json['tsne']['plot_umap'] = 1
+            if not has_umap(adata):
+                print("\tAdding UMAP analysis")
+                add_umap_analysis(adata)
+                h5ad_changes_made = True
 
         clustering_detected = detect_clustering(adata)
         if clustering_detected:
+            if 'louvain' not in analysis_json or analysis_json['louvain']['calculated'] == False:
+                json_changes_made = True
+            
             analysis_json['louvain']['calculated'] = True
             if not has_louvain(adata):
                 print("\tAdding clustering analysis")
                 add_clustering_analysis(adata)
-                changes_made = True
+                h5ad_changes_made = True
 
-        if changes_made:
-            try:
-                adata.write()
+        if h5ad_changes_made:
+            # 482cb81f-4816-e4e3-a3fe-514707b847d8.h5ad
+            print("\tWriting new H5AD")
+            adata.write()
 
-                # we only want to write if it has both clustering and tSNE
-                if tsne_detected and clustering_detected:
-                    #if any([tsne_detected, clustering_detected]):
-                    with open(analysis_json_path, 'w') as outfile:
-                        json.dump(analysis_json, outfile, indent=3)
-            except:
-                print("ERROR: Unable to save write result files back out", file=sys.stderr)
-
+        # Does the JSON need to be updated?
+        if json_changes_made:
+            print("\tWriting new JSON")
+            with open(analysis_json_path, 'w') as outfile:
+                json.dump(analysis_json, outfile, indent=3)
 
 def add_clustering_analysis(adata):
     cols = adata.obs.columns.tolist()
@@ -125,6 +149,14 @@ def add_tsne_analysis(adata):
             adata.obsm['X_tsne'] = adata.obs[[pair[0], pair[1]]].values
             return
 
+def add_umap_analysis(adata):
+    cols = adata.obs.columns.tolist()
+
+    for pair in VALID_UMAP_PAIRS:
+        if pair[0] in cols and pair[1] in cols:
+            adata.obsm['X_umap'] = adata.obs[[pair[0], pair[1]]].values
+            return
+        
 def get_dataset_ids():
     ids = []
     for filename in os.listdir(DATASET_BASE_DIR):
@@ -150,11 +182,23 @@ def detect_clustering(adata):
 
 def detect_tsne(adata):
     """
-    Looks for the combination of tSNE_1/tSNE_2 or tSNE1/tSNE2
+    Looks for the combination of pairs in VALID_TSNE_PAIRS
     """
     cols = adata.obs.columns.tolist()
 
     for pair in VALID_TSNE_PAIRS:
+        if pair[0] in cols and pair[1] in cols:
+            return True
+
+    return False
+
+def detect_umap(adata):
+    """
+    Looks for the combination of pairs in VALID_UMAP_PAIRS
+    """
+    cols = adata.obs.columns.tolist()
+
+    for pair in VALID_UMAP_PAIRS:
         if pair[0] in cols and pair[1] in cols:
             return True
 
@@ -175,6 +219,17 @@ def has_tsne(adata):
         pass
 
     return False
+
+def has_umap(adata):
+    try:
+        if type(adata.obsm['X_umap']):
+            return True
+    except:
+        pass
+
+    return False
+
+
 
 if __name__ == '__main__':
     main()

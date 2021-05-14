@@ -34,7 +34,7 @@ print("Observation columns:")
 for col in adata.obs.columns:
     print("\t{0}".format(col))
 
-print(adata.obs.head(5))
+print(adata.obs.head(50))
 
 print("\n---------------------------------------------")
 print("---------------------------------------------")
@@ -59,7 +59,13 @@ try:
     if type(adata.obsm['X_tsne']):
         print("tSNE")
         analysis_count += 1
+except:
+    pass
 
+try:
+    if type(adata.obsm['X_umap']):
+        print("UMAP")
+        analysis_count += 1
 except:
     pass
 

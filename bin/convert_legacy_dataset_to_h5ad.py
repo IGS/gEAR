@@ -46,8 +46,6 @@ def main():
 
     cnx = geardb.Connection()
     cursor = geardb.Connection().get_cursor()
-
-    
     
     cursor.close()
     cnx.close()
