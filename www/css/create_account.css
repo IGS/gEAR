@@ -1,9 +1,0 @@
-span.account-creation-error-message {
-    padding-left: 10px;
-    font-weight: bold;
-    color: red;
-    display: none;
-}
-div#account_already_created_c {
-    display: none;
-}
