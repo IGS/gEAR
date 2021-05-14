@@ -24,7 +24,8 @@ class MySQLDB:
         
         try:
             cnx = mysql.connector.connect(user=config['database']['user'], password=config['database']['password'],
-                                          host=config['database']['host'], database=config['database']['name'], buffered=True)
+                                          host=config['database']['host'], database=config['database']['name'],
+                                          buffered=True, use_pure=True)
             
             return cnx
         except mysql.connector.Error as err:

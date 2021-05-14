@@ -112,7 +112,7 @@ class DataArchive:
                 exp = pd.read_csv(entry, sep='\t', index_col=0, header=0)
                 exp_obs = list(exp.columns)
                 exp_genes= list(exp.index)
-                adata = sc.read(entry, cache=False).transpose()
+                adata = sc.read(entry, first_column_names=True, cache=False).transpose()
             elif 'observations.tab' in entry or 'COLmeta.tab' in entry:
                 obs = pd.read_csv(entry, sep='\t', index_col=0, header=0)
             elif 'genes.tab' in entry or 'ROWmeta.tab' in entry:

@@ -1,887 +1,591 @@
-from __future__ import absolute_import
-
-from plotly import exceptions, optional_imports
-import plotly.colors as clrs
-from plotly.figure_factory import utils
-from plotly.subplots import make_subplots
+from plotly import exceptions
 from plotly.colors import unlabel_rgb
-from itertools import cycle, chain
-import math, copy
-from numbers import Number
+from plotly.subplots import make_subplots
+import plotly.express as px
+import plotly.graph_objects as go
+
+from itertools import cycle
 
 import sys
 
-pd = optional_imports.get_module('pandas')
+px.defaults.template = "none"
+blank_template = go.layout.Template()
 
-TICK_COLOR = '#969696'
-AXIS_TITLE_COLOR = '#0f0f0f'
-AXIS_TITLE_SIZE = 12
-GRID_COLOR = '#ffffff'
-LEGEND_COLOR = '#ffffff'
-PLOT_BGCOLOR = '#ffffff'
-ANNOT_RECT_COLOR = '#ffffff'
-PAPER_BGCOLOR = 'rgba(255, 255, 255, 0)'
-LEGEND_BORDER_WIDTH = 0
-LEGEND_ANNOT_X = 1.05
-LEGEND_ANNOT_Y = 0.5
-MAX_TICKS_PER_AXIS = 5
-THRES_FOR_FLIPPED_FACET_TITLES = 10
-GRID_WIDTH = 1
-PLOT_LOGGING = False
+# mapping to ensure the right function is used.
+PLOT_TYPE_TO_FUNCTION = {
+    "bar":px.bar,
+    "box":px.box,
+    "histogram":px.histogram,
+    "line":px.line,
+    "scatter":px.scatter,
+    "strip":px.strip,
+    #"violin":px.violin,
+    "contour":px.density_contour    # NOTE: Potentially add as secondary option to lay over scatter plot
+}
 
-VALID_TRACE_TYPES = ['scatter', 'scattergl', 'histogram', 'bar', 'box', 'line', 'violin']
+def _add_kwargs_info_to_annotations(fig, annotation_info):
+    """Add various annotation info.  Updates 'fig' inplace."""
+    fig.update_annotations(
+        patch=annotation_info
+    )
 
-CUSTOM_LABEL_ERROR = (
-    "If you are using a dictionary for custom labels for the facet row/col, "
-    "make sure each key in that column of the dataframe is in your facet "
-    "labels. The keys you need are {}"
-)
+def _add_kwargs_info_to_coloraxes(fig, coloraxis_info):
+    """Add various coloraxis info.  Updates 'fig' inplace."""
+    fig.update_coloraxes(
+        patch=coloraxis_info
+    )
 
-def _adjust_plot_for_jitter(trace, jitter, curr_color):
-    """Make plot have jitter effect, which requires a bit of manipulation."""
-    # See 'strip' def at:
-    # https://github.com/plotly/plotly.py/blob/master/packages/python/plotly/plotly/express/_chart_types.py
+def _add_kwargs_info_to_layout(fig, layout_info):
+    """Add various layout info.  Updates 'fig' inplace."""
+    fig.update_layout(
+        dict1=layout_info
+    )
 
-    trace['type'] = "box"
-    trace["jitter"] = jitter
-    trace["boxpoints"] = "all"
-    trace["pointpos"] = 0   # centers points in box
-    #trace["showlegend"] = False
+def _add_kwargs_info_to_traces(fig, trace_info):
+    """Add various trace info.  Updates 'fig' inplace."""
+    fig.update_traces(
+        patch=trace_info
+    )
 
-    # This wipes out the actual boxplot, matching it with the plot bgcolor
-    trace["line"] = {"color":PAPER_BGCOLOR, "width": 0}
-    trace["fillcolor"] = PAPER_BGCOLOR
-    trace["whiskerwidth"] = 0
-    trace["boxmean"] = False
+def _add_kwargs_info_to_xaxes(fig, xaxis_info):
+    """Add various xaxis info.  Updates 'fig' inplace."""
+    fig.update_xaxes(
+        patch=xaxis_info
+    )
 
-    # Default will hover on both points and invisible boxplot
-    trace["hoveron"] = "points"
+def _add_kwargs_info_to_yaxes(fig, yaxis_info):
+    """Add various yaxis info.  Updates 'fig' inplace."""
+    fig.update_yaxes(
+        patch=yaxis_info
+    )
 
-    # Boxplots have no mode
-    trace.pop("mode")
-    return trace
+def _add_marker_info_to_traces(fig, marker_info, plot_type, color_name=None):
+    """Add various marker info as trace properties.  Updates 'fig' inplace."""
 
-def _append_to_numerical_trace(trace, group, color_name, x, y, trace_type):
-    """Append extra stuff to a trace with a numerical color label"""
+    if plot_type in ["bar"]:
+        marker_info.pop('size', None)
+    elif plot_type in ["violin"]:
+        # Marker will make jitter points black.
+        # Normally this affects fillcolor of plot, but this is manually set
+        marker_info.setdefault("color","#000000")
+    else:
+        # In scatter plots, the 'size' was set during initial figure generation.
+        # The UI Marker size slider will be used to set the minimum marker size
+        if plot_type == "scatter" and not isinstance(marker_info["size"], int):
+            marker_info.setdefault("sizemode", "diameter")
+            marker_info.setdefault("sizeref", 0.5)
+            marker_info.pop('size', None)
 
-    trace["marker"]["color"] =  list(group[color_name])
-    trace["marker"]["coloraxis"] = "coloraxis"  # Makes all subplots share the same colorbar
+    if not color_name:
+        # Set default purple color on trace markers
+        marker_info.setdefault("color", "#401362")
 
-    if 'replicate' in group.columns and trace_type != 'violin':
-        #print(group[color_name]["mean"])
-        #print(list(group[color_name]["mean"]))
-        trace["marker"]["color"] =  list(group[color_name]["mean"])
-        if x:
-            trace['x'] = group[x]['mean']
-        if y:
-            trace['y'] = group[y]['mean']
+    # After adding some extra marker properties, apply all trace updates.
+    fig.update_traces(
+        marker=marker_info,
+    )
 
-    return trace
+def _add_vertical_lines(fig, vline):
+    """Add a vertical line to the figure.  Updates fig in-place."""
+    fig.add_shape(dict(
+        type= 'line',
+        yref= 'paper', y0= 0, y1= 1,    # Entire length of axis
+        xref= 'x', x0= vline["vl_pos"], x1= vline["vl_pos"],
+        line = dict(dash=vline["vl_style"])
+    ))
 
-def _build_priority_groups(facet_row, facet_col, color_name, x):
+def _adjust_colorscale(plotting_args, colormap=None, palette=None):
+    """Adjust the colorscale used for plotting."""
+    # Add colorrange
+    if colormap and isinstance(colormap, dict):
+        plotting_args["color_discrete_map"] = colormap
+    elif colormap and isinstance(colormap, list):
+        plotting_args["color_continuous_scale"] = colormap
+    else:
+        # purple shades
+        plotting_args["color_continuous_scale"] = [
+            [0, 'rgb(218, 183, 193)'],
+            [0.35, 'rgb(194, 137, 166)'],
+            [0.5, 'rgb(169, 98, 151)'],
+            [0.6, 'rgb(145, 66, 143)'],
+            [0.7, 'rgb(105, 39, 122)'],
+            [1, 'rgb(63, 19, 98)']
+        ]
+        # Palette selection supercedes "purples"
+        if palette:
+            plotting_args["color_continuous_scale"] = palette
+
+    # There is no palette option for discrete mapping
+    return plotting_args
+
+def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=None ):
+    """Aggregate dataframe information under certain conditions."""
+
+    priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
+
+    # Safeguard against grouping by an empty list
+    if not priority_groups:
+        return df
+
+    grouped = df.groupby(priority_groups)
+
+    # Discrete colorscale or no colorscale
+    if not color_name or _is_categorical(df[color_name]):
+        df = grouped.agg({
+                y: ['mean', 'std']
+            }) \
+            .dropna(subset=[(y, "mean")]) \
+            .loc[:, y] \
+            .fillna(value={"std":0}) \
+            .rename(columns=dict(mean=y)) \
+            .reset_index()
+    else:
+        # Continuous colorscale
+        df = grouped.agg({
+                color_name: ['mean'],
+                y: ['mean', 'std']
+            }) \
+            .dropna() \
+            .reset_index()
+    return df
+
+def _build_priority_groups(facet_row=None, facet_col=None, color_name=None, x=None, y=None):
     """Determine group priority for "groupby" functions."""
     priority_groups = []
     # Add facet row or facet_col or both
-    if facet_row and facet_col:
+    if facet_row and facet_col and not facet_row == facet_col:
         priority_groups.extend([facet_row, facet_col])
-    elif bool(facet_row) ^ bool(facet_col):
+    elif (bool(facet_row) ^ bool(facet_col)):
         # XOR condition
         priority_groups.append(facet_row if facet_row else facet_col)
-    if color_name:
+    elif facet_row and facet_row == facet_col:
+        # Safeguard if both facets are the same... add only one
+        priority_groups.append(facet_row)
+
+    if color_name and color_name not in priority_groups:
         priority_groups.append(color_name)
-    # Always add x
-    priority_groups.append(x)
+    if x and x not in priority_groups:
+        priority_groups.append(x)
+    # Only added for contour plots
+    if y and y not in priority_groups:
+        priority_groups.append(y)
+
     return priority_groups
 
-def _calculate_dtick(min_range, max_range, range_are_numbers, user_dtick):
-    """Determine step interval between tick labels (dtick)."""
-    dtick = 1
-    if range_are_numbers:
-        if user_dtick:
-            return user_dtick, min_range, max_range
+def _determine_annotation_shift(ds):
+    """Determine number of pixels to shift annotation based on longest entry in dataseries."""
+    if _is_categorical(ds):
+        ds_list = ds.unique().tolist()
+        longest_entry = len(max(ds_list, key = len))
+        return -(longest_entry * 3 + 30)
+    else:
+        return -50
 
-        min_range = math.floor(min_range)
-        max_range = math.ceil(max_range)
-
-        # extend widen frame by 5% on each side
-        min_range -= 0.05 * (max_range - min_range)
-        max_range += 0.05 * (max_range - min_range)
-
-        if PLOT_LOGGING:
-            print("DEBUG: Adjusted ranges are min_range:{} max_range:{}".format(min_range, max_range), file=sys.stderr)
-
-        return math.floor(
-            (max_range - min_range) / MAX_TICKS_PER_AXIS
-        ), min_range, max_range
-    return dtick, min_range, max_range
-
-def _create_trace(group, x, y, trace_type, kwargs_trace, kwargs_marker):
-    """Create a trace for a plot some general characteristics."""
-    # Start creating the trace dictionary
-    trace = dict(
-        type="scatter" if trace_type == 'line' else trace_type,
-        **kwargs_trace
-    )
-
-    if x:
-        trace['x'] = group[x]
-    if y:
-        trace['y'] = group[y]
-
-    # Add some error bars if stdev is a datapoint for a barplot
-    if 'std' in group.columns and trace_type == 'bar':
-        trace['error_y'] = dict(
-            type='data',
-            array=group['std']
-        )
-
-    # Specific trace-type adjustments
-    if trace_type in ['scatter', 'scattergl']:
-        trace['mode'] = 'markers'
-    elif trace_type in ["line"]:
-        trace['mode'] = 'lines'
-        trace['line'] = dict(shape='spline')
-    elif trace_type in ["violin"]:
-        trace['scalemode'] = "count"
-
-    trace['marker'] = dict(**kwargs_marker)
-    return trace
+def _invalid_plot_type(plot_type):
+    """Check for invalid plot types."""
+    raise exceptions.PlotlyError("Plot type {} is invalid!".format(plot_type))
 
 def _is_categorical(series):
     """Return True if Dataframe series is categorical."""
     return series.dtype.name == 'category'
 
-def _is_flipped(num):
-    """Do the axes labels need to be flipped?"""
-    if num >= THRES_FOR_FLIPPED_FACET_TITLES:
-        flipped = True
-    else:
-        flipped = False
-    return flipped
+def _translate_and_scale(series, x):
+    """Convert and return number from a linear scale using another linear scale."""
+    unscaled_min = series.min()
+    unscaled_max = series.max()
 
+    # These were arbitrarily chosen. At least 1 will be added to the final total based on marker size increase
+    NEW_MIN = 0
+    NEW_MAX = 9
 
-def _return_label(original_label, facet_labels, facet_var):
-    """Return either the default label or a custom facet label."""
-    if isinstance(facet_labels, dict):
-        label = facet_labels[original_label]
-    elif isinstance(facet_labels, str):
-        label = '{}: {}'.format(facet_var, original_label)
-    else:
-        label = original_label
-    return label
+    return ( (NEW_MAX - NEW_MIN)*(x - unscaled_min) / (unscaled_max - unscaled_min) ) + NEW_MIN
 
+def _truncate_ticktext(group_list):
+    """Truncate a group of axis ticks to a specified length."""
+    TRUNCATION_LEN=7    # How much of the original text to use (followed by ellipses)
+    MAX_LEN_ALLOWED=10  # Any text over this limit will be truncated
 
-def _annotation_dict(text, lane, num_of_lanes, SUBPLOT_SPACING, row_col='col',
-                     flipped=True):
-    """Customize properties for a new annotation layer."""
-    l = (1 - (num_of_lanes - 1) * SUBPLOT_SPACING) / (num_of_lanes)
-    xanchor = 'center'
-    yanchor = 'middle'
-    name = 'y-facet'
-    textangle = 0
-    x = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
-    y = 1.03
+    # If only 0 or 1 datapoints in group, categoryarray was not present
+    if not group_list:
+        return None
 
-    # if not flipped, just change a couple things
-    if row_col == 'row':
-        y = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
-        x = 1.03
-        textangle = 90
-        name = 'x-facet'    # Used to easily identify annotation for later modification
+    new_ticktext = []
+    for val in group_list:
+        if len(val) > MAX_LEN_ALLOWED:
+            new_ticktext.append("{}...".format(val[0:TRUNCATION_LEN]))
+        else:
+            new_ticktext.append(val)
+    return new_ticktext
 
-    # If flipped, we change everything
-    if flipped:
-        # row_col is 'col'
-        yanchor = 'bottom'
-        y = 1.0
-        textangle = 270
-        if row_col == 'row':
-            xanchor = 'left'
-            yanchor = 'middle'
-            y = (lane - 1) * (l + SUBPLOT_SPACING) + 0.5 * l
-            x = 1.0
-            textangle = 0
+def _update_axis_titles(fig, df, x, y, facet_col=None, facet_row=None, x_title=None, y_title=None):
+    """Update axis titles.  Edits "fig" inplace."""
 
-    annotation_dict = dict(
-        textangle=textangle,
-        name=name,
-        xanchor=xanchor,
-        yanchor=yanchor,
-        x=x,
-        y=y,
-        showarrow=False,
-        xref='paper',
-        yref='paper',
-        text=str(text),
-        font=dict(
-            size=13,
-            color=AXIS_TITLE_COLOR
+    # Annotation defaults based on https://community.plotly.com/t/subplots-how-to-add-master-axis-titles/13927/6
+    # NOTE: I've come to the conclusion that a one-size-fits-all solution is not possible for all graphs
+    if facet_col:
+        fig.update_xaxes(title=None)
+        fig.add_annotation(
+            x=0.5,
+            y=-0,
+            yshift=_determine_annotation_shift(df[x]),
+            #yshift=-30,
+            showarrow=False,
+            text=x_title,
+            name="x-title",
+            xref="paper",
+            yref="paper",
+            yanchor="top",
         )
-    )
-    return annotation_dict
 
-def _axis_title_annotation(text, x_or_y_axis='x'):
-    """Customize annotation layer pertaining to an overall axis title."""
-    x_pos = 0.5
-    y_pos = -0.3
-    textangle = 0
-    name = "x-title"    # Used to easily identify annotation for later modification
-    if x_or_y_axis == 'y':
-        x_pos = -0.15
-        y_pos = 0.5
-        textangle = 270
-        name = "y-title"
+    if facet_row:
+        fig.update_yaxes(title=None)
+        fig.add_annotation(
+            x=0,
+            xshift=-40,
+            y=0.5,
+            showarrow=False,
+            text=y_title,
+            textangle=-90,
+            name="y-title",
+            xref="paper",
+            yref="paper",
+            xanchor="right",
+        )
 
-    if not text:
-        text = ''
+def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
+    """Updates specific to certain plot types.  Updates 'fig' inplace."""
+    if plot_type == "violin":
+        fig.update_traces(
+            spanmode="hard",    # Do not extend violin tails beyond the min/max values
 
-    annot = {'font': {'color': '#000000', 'size': AXIS_TITLE_SIZE},
-             'showarrow': False,
-             'text': text,
-             'textangle': textangle,
-             'name':name,
-             'x': x_pos,
-             'xref': 'paper',
-             'y': y_pos,
-             'yref': 'paper'}
-    return annot
+            # Jitter-based args (to make beeswarm plot)
+            jitter=0.25 if use_jitter else None,
+            points="all" if use_jitter else False,
+            pointpos=0 if use_jitter else None,
+        )
+        #fig.for_each_trace(lambda t: t.update(scalegroup="{}_{}_{}".format(t.xaxis, t.yaxis, t.name)))
+        fig.update_layout(
+            violinmode='group'
+        )
+        if force_overlay:
+            fig.update_layout(
+                # Overlay is chosen if color dataseries is same as 'facet_col' dataseries
+                violinmode='overlay'
+            )
+    elif plot_type == "line":
+        # Previously subplot spacing was increased before rewrite,
+        # so it may need to be increase again in the future
+        fig.update_traces(line_shape='spline')
+    elif plot_type == "bar":
+        fig.update_layout(
+            barmode='group'
+        )
+        if force_overlay:
+            fig.update_layout(
+                barmode='overlay'
+            )
+    elif plot_type in ["box", "strip"]:
+        fig.update_layout(
+            boxmode='group'
+        )
+        if force_overlay:
+            fig.update_layout(
+                boxmode='overlay'
+            )
 
-
-# TODO: Various issues moved to https://github.com/jorvis/gEAR/issues/784
-def _gear_facet_grid(df, x, y, facet_row, facet_col,
-                color_name, colormapping, color_type, num_of_rows,
-                num_of_cols, facet_row_labels, facet_col_labels,
-                trace_type, flipped_rows, flipped_cols,
-                SUBPLOT_SPACING, marker_color, text_name, jitter, kwargs_trace, kwargs_marker):
-
-    print("DEBUG check: within _facet_grid, trace type is {}".format(trace_type), file=sys.stderr)
-
-    fig = make_subplots(rows=num_of_rows, cols=num_of_cols,
-                        shared_xaxes=True, shared_yaxes=True,
-                        horizontal_spacing=SUBPLOT_SPACING,
-                        vertical_spacing=SUBPLOT_SPACING, print_grid=False)
-
-    if PLOT_LOGGING:
-        print("DEBUG: facet_row:{0} facet_col:{1}".format(facet_row, facet_col), file=sys.stderr)
-    else:
-        print("DEBUG: plot debugging appears to be off", file=sys.stderr)
-
-    # 'color_name' will be omitted if 'None'
-    # Do not add color_name for 'numerical' data since that will blow up the number of traces
-    priority_groups = _build_priority_groups(facet_row, facet_col, None, x) if color_type == "numerical" \
-        else _build_priority_groups(facet_row, facet_col, color_name, x)
+def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
+                      color_name=None, colormap=None, palette=None,
+                      reverse_palette=False, category_orders=None,
+                      plot_type='scatter', hide_x_labels=False, hide_y_labels=False,
+                      hide_legend=None, text_name=None, jitter=False,
+                      x_range=None, y_range=None, vlines=[], x_title=None, y_title=None,
+                      **kwargs):
+    """Generates and returns figure for facet grid."""
 
     # If replicates are present, use mean and stdev of expression data as datapoints
-    if 'replicate' in df.columns and trace_type != 'violin':
-        grouped = df.groupby(priority_groups)
+    if 'replicate' in df.columns and plot_type not in ['violin', 'contour']:
+        df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)
 
-        if color_type == "numerical":
-            df = grouped.agg({
-                    color_name: ['mean'],
-                    "raw_value": ['mean', 'std']
-                }) \
-                .dropna() \
-                .reset_index()
-        else:
-            df = grouped.agg({
-                    "raw_value": ['mean', 'std']
-                }) \
-                .dropna() \
-                .loc[:, 'raw_value'] \
-                .rename(columns=dict(mean='raw_value')) \
-                .reset_index()
+    # Little bit of safeguarding with kwargs
+    # keys for kwargs: 'annotations', 'coloraxes', 'layout', 'traces', 'xaxes', 'yaxes'
 
-    # When doing groupby for iteration purposes, we do not want the "x" column grouped
-    # Violins will keep x, so they will be processed in the 'groupby' block to create multiple traces, instead of one
-    if trace_type != "violin" or len(priority_groups) > 1:
-        priority_groups.pop()   # Assumes 'x' group is always the last item.
+    kwargs.setdefault("traces", {"marker": {}})         # If traces does not exist
+    kwargs["traces"].setdefault("marker", {})           # If markers does not exist within
+    kwargs["traces"]["marker"].setdefault("size", 3)    # If size does not exist within
 
-    # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
-    facet_row_groups = list(df.groupby(facet_row)) if facet_row else []
-    facet_row_indexes = {group[0]: idx for idx, group in enumerate(facet_row_groups, start=1)}
-    facet_col_groups = list(df.groupby(facet_col)) if facet_col else []
-    facet_col_indexes = {group[0]: idx for idx, group in enumerate(facet_col_groups, start=1)}
-
-    traces = []
-    row_idxs = []
-    col_idxs = []
-    annotations = []
-    names_in_legend = {}
-
-    # Update kwargs_marker with default values, but higher-level assignments should supercede
-    if color_type == None:
-        kwargs_marker.setdefault('color', marker_color)
-
-    # If there is nothing to group by there will only be one trace
-    # Essentially no facet rows or columns, and no replicates
-    if not len(priority_groups):
-        trace = _create_trace(df, x, y, trace_type, kwargs_trace, kwargs_marker)
-
-        # 'categorical' colortypes will always have the 'color_name' priority group in the list
-        if color_type == "numerical":
-            trace = _append_to_numerical_trace(trace, df, color_name, x, y, trace_type)
-
-        # If applicable, add some jitter to the datapoints.
-        # Attempting to replicate the "strip" plot function in plotly express
-        if trace_type == "scatter" and _is_categorical(df[x]) and jitter:
-            trace = _adjust_plot_for_jitter(trace, jitter, None)
-
-        if text_name and text_name in df:
-            trace['text'] = df[text_name]
-        traces.append(trace)
-        row_idxs.append(1)  # Do not need, but is a safeguard in case annotations are added
-        col_idxs.append(1)
-    else:
-        # https://pandas.pydata.org/docs/user_guide/groupby.html#iterating-through-groups
-        # Worth noting.  If number of groups = 1 then 'name' is a string, else is a tuple
-        for name, group in df.groupby(priority_groups):
-            trace = _create_trace(group, x, y, trace_type, kwargs_trace, kwargs_marker)
-
-            curr_color = None
-            if color_type == "categorical":
-                # If name is a tuple, color_name is last element
-                curr_color = name
-                if isinstance(name, tuple):
-                    curr_color = name[-1]
-                # Making the assumption that kwargs_marker should not overwrite these marker attributes
-                trace['marker']['color'] = colormapping[curr_color]
-                trace['name'] = str(curr_color)
-
-            elif color_type == "numerical":
-                trace = _append_to_numerical_trace(trace, group, color_name, x, y, trace_type)
-
-            # If applicable, add some jitter to the datapoints.
-            # Attempting to replicate the "strip" plot function in plotly express
-            if trace_type == "scatter" and _is_categorical(group[x]) and jitter:
-                trace = _adjust_plot_for_jitter(trace, jitter, curr_color)
-
-            if not facet_row and not facet_col:
-                if text_name and text_name in group:
-                    trace['text'] = group[text_name]
-
-            # Plotly workaround:
-            # Once a trace name has been added to the legend,
-            # we don't want to include future traces in the
-            # legend with that name, otherwise we get legend
-            # label explosion. (mostly with 'categorical' color_type)
-            legend_key = name
-            if color_type == "categorical":
-                legend_key = curr_color
-
-            if legend_key in names_in_legend:
-                trace['showlegend'] = False
-            else:
-                names_in_legend[legend_key] = True
-
-            traces.append(trace)
-
-            # Now determine which plot this trace should go to.  Facet column is first if row does not exist.
-            if isinstance(name, tuple):
-                row_idxs.append(facet_row_indexes[name[0]] if facet_row else 1)
-                if facet_row:
-                    col_idxs.append(facet_col_indexes[name[1]] if facet_col else 1)
-                else:
-                    col_idxs.append(facet_col_indexes[name[0]] if facet_col else 1)
-            else:
-                row_idxs.append(facet_row_indexes[name] if facet_row else 1)
-                col_idxs.append(facet_col_indexes[name] if facet_col else 1)
-
-    # Create annotations for each facet row or column
-    for rowname in facet_row_indexes:
-        label = _return_label(rowname, facet_row_labels, facet_row)
-        annotations.append(
-                _annotation_dict(
-                    label,
-                    (num_of_rows - facet_row_indexes[rowname]) + 1, # Order from top to bottom
-                    num_of_rows,    # Adds to right of plot
-                    SUBPLOT_SPACING,
-                    'row',
-                    flipped_rows)
-            )
-    for colname in facet_col_indexes:
-        label = _return_label(colname, facet_col_labels, facet_col)
-        annotations.append(
-                _annotation_dict(
-                    label,
-                    facet_col_indexes[colname],
-                    num_of_cols,    # Adds to bottom of plot
-                    SUBPLOT_SPACING,
-                    'col',
-                    flipped_cols)
-            )
-
-    # Traces, row, and col lists should be 1-to-1-to-1
-    fig.add_traces(traces, rows=row_idxs, cols=col_idxs)
-    return fig, annotations
-
-def create_facet_grid(df, x=None, y=None, facet_row=None, facet_col=None,
-                      color_name=None, colormap=None, color_is_cat=False,
-                      facet_row_labels=None, facet_col_labels=None,
-                      height=None, width=None, trace_type='scatter', hide_x_labels=False,hide_y_labels=False,
-                      scales='fixed', dtick_x=None, dtick_y=None, text_name=None,
-                      show_boxes=True, ggplot2=False, binsize=1, jitter=0, **kwargs):
-    """
-    Returns figure for facet grid.
-    :param (pd.DataFrame) df: the dataframe of columns for the facet grid.
-    :param (str) x: the name of the dataframe column for the x axis data.
-    :param (str) y: the name of the dataframe column for the y axis data.
-    :param (str) facet_row: the name of the dataframe column that is used to
-        facet the grid into row panels.
-    :param (str) facet_col: the name of the dataframe column that is used to
-        facet the grid into column panels.
-    :param (str) color_name: the name of your dataframe column that will
-        function as the colormap variable.
-    :param (str|list|dict) colormap: the param that determines how the
-        color_name column colors the data. If the dataframe contains numeric
-        data, then a dictionary of colors will group the data categorically
-        while a Plotly Colorscale name or a custom colorscale will treat it
-        numerically. To learn more about colors and types of colormap, run
-        `help(plotly.colors)`.
-    :param (bool) color_is_cat: determines whether a numerical column for the
-        colormap will be treated as categorical (True) or sequential (False).
-            Default = False.
-    :param (str|dict) facet_row_labels: set to either 'name' or a dictionary
-        of all the unique values in the faceting row mapped to some text to
-        show up in the label annotations. If None, labeling works like usual.
-    :param (str|dict) facet_col_labels: set to either 'name' or a dictionary
-        of all the values in the faceting row mapped to some text to show up
-        in the label annotations. If None, labeling works like usual.
-    :param (int) height: the height of the facet grid figure.
-    :param (int) width: the width of the facet grid figure.
-    :param (str) trace_type: decides the type of plot to appear in the
-        facet grid. The options are 'scatter', 'scattergl', 'histogram',
-        'bar', and 'box'.
-        Default = 'scatter'.
-    :param (str) scales: determines if axes have fixed ranges or not. Valid
-        settings are 'fixed' (all axes fixed), 'free_x' (x axis free only),
-        'free_y' (y axis free only) or 'free' (both axes free).
-    :param (float) dtick_x: determines the distance between each tick on the
-        x-axis. Default is None which means dtick_x is set automatically.
-    :param (float) dtick_y: determines the distance between each tick on the
-        y-axis. Default is None which means dtick_y is set automatically.
-    :param (bool) show_boxes: draws grey boxes behind the facet titles.
-    :param (bool) ggplot2: draws the facet grid in the style of `ggplot2`. See
-        http://ggplot2.tidyverse.org/reference/facet_grid.html for reference.
-        Default = False
-    :param (int) binsize: groups all data into bins of a given length.
-    :param (int) jitter: Amount to offset an individual categorical x-axis
-        datapoint.  The higher the number, the more extreme the jitter
-        Default: 0 (no jitter)
-    :param (dict) kwargs: a dictionary of scatterplot arguments.
-    Examples 1: One Way Faceting
-    ```
-    import plotly.plotly as py
-    import plotly.figure_factory as ff
-    import pandas as pd
-    mpg = pd.read_table('https://raw.githubusercontent.com/plotly/datasets/master/mpg_2017.txt')
-    fig = ff.create_facet_grid(
-        mpg,
-        x='displ',
-        y='cty',
-        facet_col='cyl',
-    )
-    py.iplot(fig, filename='facet_grid_mpg_one_way_facet')
-    ```
-    Example 2: Two Way Faceting
-    ```
-    import plotly.plotly as py
-    import plotly.figure_factory as ff
-    import pandas as pd
-    mpg = pd.read_table('https://raw.githubusercontent.com/plotly/datasets/master/mpg_2017.txt')
-    fig = ff.create_facet_grid(
-        mpg,
-        x='displ',
-        y='cty',
-        facet_row='drv',
-        facet_col='cyl',
-    )
-    py.iplot(fig, filename='facet_grid_mpg_two_way_facet')
-    ```
-    Example 3: Categorical Coloring
-    ```
-    import plotly.plotly as py
-    import plotly.figure_factory as ff
-    import pandas as pd
-    mpg = pd.read_table('https://raw.githubusercontent.com/plotly/datasets/master/mpg_2017.txt')
-    fig = ff.create_facet_grid(
-        mtcars,
-        x='mpg',
-        y='wt',
-        facet_col='cyl',
-        color_name='cyl',
-        color_is_cat=True,
-    )
-    py.iplot(fig, filename='facet_grid_mpg_default_colors')
-    ```
-    Example 4: Sequential Coloring
-    ```
-    import plotly.plotly as py
-    import plotly.figure_factory as ff
-    import pandas as pd
-    tips = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/tips.csv')
-    fig = ff.create_facet_grid(
-        tips,
-        x='total_bill',
-        y='tip',
-        facet_row='sex',
-        facet_col='smoker',
-        color_name='size',
-        colormap='Viridis',
-    )
-    py.iplot(fig, filename='facet_grid_tips_sequential_colors')
-    ```
-    Example 5: Custom labels
-    ```
-    import plotly.plotly as py
-    import plotly.figure_factory as ff
-    import pandas as pd
-    mtcars = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/mtcars.csv')
-    fig = ff.create_facet_grid(
-        mtcars,
-        x='wt',
-        y='mpg',
-        facet_col='cyl',
-        facet_col_labels={4: "$\\alpha$", 6: '$\\beta$', 8: '$\sqrt[y]{x}$'},
-    )
-    py.iplot(fig, filename='facet_grid_mtcars_custom_labels')
-    ```
-    Example 6: Other Trace Type
-    ```
-    import plotly.plotly as py
-    import plotly.figure_factory as ff
-    import pandas as pd
-    mtcars = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/mtcars.csv')
-    fig = ff.create_facet_grid(
-        mtcars,
-        x='wt',
-        facet_col='cyl',
-        trace_type='histogram',
-    )
-    py.iplot(fig, filename='facet_grid_mtcars_other_trace_type')
-    ```
-    """
-
-    if not pd:
-        raise exceptions.ImportError(
-            "'pandas' must be installed for this figure_factory."
-        )
-
-    if not isinstance(df, pd.DataFrame):
-        raise exceptions.PlotlyError(
-            "You must input a pandas DataFrame."
-        )
-
-    # make sure all columns are of homogenous datatype
-    utils.validate_dataframe(df)
-
-    # the tsne_dynamic trace type is an alias for scatter
-    if trace_type == 'tsne_dynamic':
-        trace_type = 'scatter'
-
-    if PLOT_LOGGING:
-        print("DEBUG: trace_type is: {0}".format(trace_type), file=sys.stderr)
-
-    if trace_type in ['scatter', 'scattergl']:
-        if not x or not y:
-            raise exceptions.PlotlyError(
-                "You need to input 'x' and 'y' if you are you are using a "
-                "trace_type of 'scatter' or 'scattergl'."
-            )
-
-    for key in [x, y, facet_row, facet_col, color_name]:
-        if key is not None:
-            try:
-                df[key]
-            except KeyError:
-                raise exceptions.PlotlyError(
-                    "x, y, facet_row, facet_col and color_name must be keys "
-                    "in your dataframe."
-                )
-
-    if trace_type not in VALID_TRACE_TYPES:
-        raise exceptions.PlotlyError(
-            "'trace_type' must be in {}".format(VALID_TRACE_TYPES)
-        )
-
-    if trace_type == 'histogram' or trace_type == 'line':
-        SUBPLOT_SPACING = 0.06
-    else:
-        SUBPLOT_SPACING = 0.015
-
-    # seperate kwargs for marker and else
-    if 'marker' in kwargs:
-        kwargs_marker = kwargs['marker']
-    else:
-        kwargs_marker = {}
-    marker_color = kwargs_marker.pop('color', None)
-    kwargs.pop('marker', None)
-    kwargs_trace = kwargs
-
-    if 'size' not in kwargs_marker:
-        kwargs_marker['size'] = 3
-
-    # Bar plots do not accept size markers
-    if trace_type == 'bar':
-        kwargs_marker.pop('size', None)
-
-    if 'opacity' not in kwargs_marker:
-        kwargs_trace['opacity'] = 0.6
-
-    # if 'line' not in kwargs_marker:
-        # kwargs_marker['line'] = {'color': 'darkgrey', 'width': 1}
-
-    # default marker size
-    if not ggplot2:
-        if not marker_color:
-            marker_color = '#401362'
-    else:
-        marker_color = 'rgb(0, 0, 0)'
-
-    num_of_rows = 1
-    num_of_cols = 1
-    flipped_rows = False
-    flipped_cols = False
-    if facet_row:
-        num_of_rows = len(df[facet_row].unique())
-        flipped_rows = _is_flipped(num_of_rows)
-        if isinstance(facet_row_labels, dict):
-            for key in df[facet_row].unique():
-                if key not in facet_row_labels.keys():
-                    unique_keys = df[facet_row].unique().tolist()
-                    raise exceptions.PlotlyError(
-                        CUSTOM_LABEL_ERROR.format(unique_keys)
-                    )
-    if facet_col:
-        num_of_cols = len(df[facet_col].unique())
-        flipped_cols = _is_flipped(num_of_cols)
-        if isinstance(facet_col_labels, dict):
-            for key in df[facet_col].unique():
-                if key not in facet_col_labels.keys():
-                    unique_keys = df[facet_col].unique().tolist()
-                    raise exceptions.PlotlyError(
-                        CUSTOM_LABEL_ERROR.format(unique_keys)
-                    )
-
-    # Set up some args to pass to _gear_facet_grid function
-    show_legend = False
-    colormapping = None
-    color_type = None   # None, 'categorical', or 'numerical'
-
-    # If there is a color label, use either the categorial or numerical facet grid
-    if color_name:
-        if isinstance(colormap, dict):
-            show_legend = True
-            color_type = "categorical"
-
-            clrs.validate_colors_dict(colormap, 'rgb')
-
-            for val in df[color_name].unique():
-                if val not in colormap.keys():
-                    raise exceptions.PlotlyError(
-                        "If using 'colormap' as a dictionary, make sure "
-                        "all the values of the colormap column are in "
-                        "the keys of your dictionary."
-                    )
-
-            colormapping = colormap
-            if PLOT_LOGGING:
-                print("DEBUG: Color type is 'categorical' with colormap dict", file=sys.stderr)
-
-        elif isinstance(colormap, list):
-            color_type = "numerical"
-            colormapping = colormap
-            clrs.validate_colorscale(colormapping)
-            if PLOT_LOGGING:
-                print("DEBUG: Color type is 'numerical' from colormap list", file=sys.stderr)
-        elif isinstance(colormap, str):
-            color_type = "numerical"
-            if colormap in clrs.PLOTLY_SCALES.keys():
-                colormapping = clrs.PLOTLY_SCALES[colormap]
-            else:
-                raise exceptions.PlotlyError(
-                    "If 'colormap' is a string, it must be the name "
-                    "of a Plotly Colorscale. The available colorscale "
-                    "names are {}".format(clrs.PLOTLY_SCALES.keys())
-                )
-            if PLOT_LOGGING:
-                print("DEBUG: Color type is 'numerical' from colormap string", file=sys.stderr)
-        else:
-            if isinstance(df[color_name].iloc[0], str) or color_is_cat:
-                color_type = "categorical"
-                # use default plotly colors for dictionary
-                default_colors = clrs.DEFAULT_PLOTLY_COLORS
-                colormap = {}
-                j = 0
-                for val in df[color_name].unique():
-                    if j >= len(default_colors):
-                        j = 0
-                    colormap[val] = default_colors[j]
-                    j += 1
-                colormapping = colormap
-            else:
-                color_type = "numerical"
-                colormapping = [
-                                [0, 'rgb(218, 183, 193)'],
-                                [0.35, 'rgb(194, 137, 166)'],
-                                [0.5, 'rgb(169, 98, 151)'],
-                                [0.6, 'rgb(145, 66, 143)'],
-                                [0.7, 'rgb(105, 39, 122)'],
-                                [1, 'rgb(63, 19, 98)']
-                            ]
-                if PLOT_LOGGING:
-                    print("DEBUG: Color type is 'numerical' with no colormap", file=sys.stderr)
-    else:
-        if PLOT_LOGGING:
-            print("DEBUG: Color type is 'None'", file=sys.stderr)
-
-    fig, annotations = _gear_facet_grid(
-        df, x, y, facet_row, facet_col, color_name, colormapping, color_type,
-        num_of_rows, num_of_cols, facet_row_labels, facet_col_labels,
-        trace_type, flipped_rows, flipped_cols,
-        SUBPLOT_SPACING, marker_color, text_name, jitter, kwargs_trace, kwargs_marker
-    )
-
-    ### General layout adjustments
-    fig['layout'].update(title='', paper_bgcolor=PAPER_BGCOLOR)
-    fig['layout']['hovermode'] = "closest"
-    # Default "plotly" theme produces gray plot backgrounds
-    fig['layout']['template'] = "none"
-
-    # axis titles
-    x_title_annot = _axis_title_annotation('', 'x')
-    y_title_annot = _axis_title_annotation('', 'y')
-
-    # annotations
-    annotations.append(x_title_annot)
-    annotations.append(y_title_annot)
-
-
-    # all xaxis and yaxis labels
-    axis_labels = {'x': [], 'y': []}
-    for key in fig['layout']:
-        if 'xaxis' in key:
-            axis_labels['x'].append(key)
-        elif 'yaxis' in key:
-            axis_labels['y'].append(key)
-
-    string_number_in_data = False
-    for var in [v for v in [x, y] if v]:
-        if isinstance(df[var].tolist()[0], str):
-            for item in df[var]:
-                try:
-                    int(item)
-                    string_number_in_data = True
-                except ValueError:
-                    pass
-
-    # Iterated through 'x' or 'y' axis
-    for x_y in axis_labels.keys():
-        # Iterate through all faceted axes
-        for axis_name in axis_labels[x_y]:
-            # Common to both x and y
-            if string_number_in_data:
-                fig['layout'][axis_name]['type'] = 'category'
-            fig['layout'][axis_name]['showgrid'] = False
-            fig['layout'][axis_name]['automargin'] = True
-            fig['layout'][axis_name]['zeroline'] = False
-            # Specific axis only
-            if x_y == 'x':
-                if hide_x_labels:
-                    #TODO: test with 'visible' attribute instead of 'showticklabels'
-                    fig['layout'][axis_name]['showticklabels'] = False
-
-                # Uniformity of tick angles if facet groupings are present
-                if facet_col:
-                    fig['layout'][axis_name]['tickangle'] = 270
-            elif x_y == 'y':
-                fig['layout'][axis_name]['hoverformat'] = '.2f'
-                if hide_y_labels:
-                    fig['layout'][axis_name]['showticklabels'] = False
-
-    fig['layout']['autosize'] = True
-
-    # legend
-    fig['layout']['showlegend'] = show_legend
-    fig['layout']['legend']['bgcolor'] = LEGEND_COLOR
-    fig['layout']['legend']['borderwidth'] = LEGEND_BORDER_WIDTH
-    fig['layout']['legend']['x'] = 1.05
-    fig['layout']['legend']['y'] = 1
-    fig['layout']['legend']['yanchor'] = 'top'
-
-    # Colorbar adjustments
-    if color_type == "numerical":
-        fig['layout']['coloraxis'] = {
-            "colorscale":colormapping,   # Defines the range of colors for a numerical color group
-            "colorbar": {'x':1.15},
-            "showscale": True,
-
+    # Collect all args in a dictionary for easy passing to plotting function
+    plotting_args={"x":x
+        , "y":y
+        , "facet_row":facet_row
+        , "facet_col":facet_col
+        , "color":color_name
+        , "category_orders": category_orders if category_orders else {}
+        , "labels": {x:x_title, y:y_title, color_name:""}
+        , "hover_name": text_name if text_name else y
         }
 
+    plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
+    plotting_args["hover_data"] = { col: False for col in df.columns.tolist() }
 
-    # Violin plot settings
-    if trace_type == 'violin':
-        if color_name:
-            fig['layout']['violinmode'] = 'group'
+    # If jitter is needed for scatter plot, convert to a strip plot
+    if plot_type == "scatter" and jitter:
+        plot_type = "strip"
+
+    # For scatter plots with a lot of datapoints, use WebGL rendering
+    if plot_type == "scattergl":
+        plot_type == "scatter"
+        plotting_args["render"] = "webgl"
+
+    # Scatter plots are the only types that let you set marker size by group
+    # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
+    if plot_type == "scatter":
+        if not isinstance(kwargs['traces']['marker']['size'], int):
+            group_size = kwargs['traces']['marker']['size']
+            size_increase = kwargs['traces']['marker']['sizemin'] if "sizemin" in kwargs['traces']['marker'] else 1
+            if _is_categorical(df[group_size]):
+                # If categorical, pass a number equivalent to the group
+                plotting_args["size"] = [i+size_increase for i in df.groupby(group_size).ngroup()]
+            else:
+                # If continuous data, convert data so that range is all positive integers
+                scaled_range = [_translate_and_scale(df[group_size], i) for i in df[group_size]]
+                plotting_args["size"] = [i+size_increase for i in scaled_range]
+
+    # Some plottypes cannot use a certain colorscale
+    if plot_type in ["strip", "box", "violin", "contour", "line"]:
+        plotting_args.pop("color_continuous_scale", None)
+
+    if plot_type in ["bar"]:
+        plotting_args["error_y"] = "std" if "std" in df.columns else None
+
+    if plot_type == 'contour':
+        plotting_args["z"] = z
+        plotting_args["histfunc"] = "avg"   # For expression data
+        # NOTE: Almost feel these below should be under "_update_by_plot_type()"
+        kwargs["traces"]["contours_coloring"] = "fill"
+        # For expression data, start scale at 0
+        if z == "raw_value":
+            kwargs["traces"]["zmin"] = 0.0
+            kwargs["traces"]["zmax"] = max(df[z].tolist())
+
+    ### CREATE THE PLOT
+
+    fig = None
+    # Call the right Plotly express function based on the plot type
+    func = PLOT_TYPE_TO_FUNCTION.get(plot_type)
+    if func:
+        fig = func(df, **plotting_args)
+    else:
+        # SAdkins - An aside... this following code is why I wanted to use Plotly Express to generate the plots
+        # TODO: put in function
+
+        # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
+        facet_row_groups = category_orders[facet_row] if facet_row and facet_row in category_orders else []
+        facet_row_indexes = {group: idx for idx, group in enumerate(facet_row_groups, start=1)}
+        num_rows = len(facet_row_groups) if facet_row else 1
+        facet_col_groups = category_orders[facet_col] if facet_col and facet_col in category_orders else []
+        facet_col_indexes = {group: idx for idx, group in enumerate(facet_col_groups, start=1)}
+        num_cols = len(facet_col_groups) if facet_col else 1
+
+        # Make faceted plot
+        fig = make_subplots(rows=num_rows
+                , cols=num_cols
+                , row_titles=facet_row_groups if facet_row else None
+                , column_titles=facet_col_groups if facet_col else None
+                )
+
+        # Because of the reliance on the premade figure, this cannot go at the top of the page
+        # like to the Plotly Express plot constructors
+        PLOT_TYPE_TO_SPECIAL_FUNCTION = {
+            "violin":fig.add_violin,
+        }
+
+        special_func = PLOT_TYPE_TO_SPECIAL_FUNCTION.get(plot_type)
+        if not special_func:
+            _invalid_plot_type(plot_type)
+
+        # TODO clean this up in a function
+        new_plotting_args = { 'x': df[x]
+                , "y": df[y]
+                , "text":df[text_name] if text_name else y
+                }
+        new_plotting_args['line'] = dict(color='#401362')
+        new_plotting_args['showlegend'] = False
+
+        priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
+        if priority_groups:
+            # Groupby will not include combinations with missing data.  This can result in missing traces for a group
+            grouped = df.groupby(priority_groups)
+            names_in_legend = {}
+            # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
+            # Group is the 'groupby' dataframe
+            for name, group in grouped:
+                for k, v in {'x':x, 'y':y, 'text':text_name}.items():
+                    new_plotting_args[k] = group[v] if v else y
+
+                # Quick plot-specific check
+                if plot_type in ["violin"]:
+                    if color_name and (palette or not _is_categorical(df[color_name])):
+                        return {"success": -1,
+                                "message":"ERROR: Tried to call continuous colorscale on violin plot."
+                                }
+
+                # Name trace based on grouping to ensure plots are scaled correctly for violin plots
+                new_plotting_args['name'] = name
+                if isinstance(name, tuple):
+                    new_plotting_args['name'] = "_".join(name)
+
+                # If color dataseries is present, add some special configurations
+                if color_name and colormap:
+                    curr_color = name
+                    if isinstance(name, tuple):
+                        curr_color = name[priority_groups.index(color_name)]
+                    # Use black outlines with colormap fillcolor. Pertains mostly to violin plots
+                    new_plotting_args['fillcolor'] = colormap[curr_color]
+                    new_plotting_args['line'] = dict(color='#000000')
+                    new_plotting_args['showlegend'] = True
+                    new_plotting_args["legendgroup"] = curr_color
+
+                    # If facets are present, a legend group trace can appear multiple times.
+                    # Ensure it only shows once.
+                    if curr_color in names_in_legend:
+                        new_plotting_args['showlegend'] = False
+                    names_in_legend[curr_color] = True
+
+                # Now determine which plot this trace should go to.  Facet column is first if row does not exist.
+                # Note the "facet_row/col_indexes" enum command started indexing at 1, so no need to increment for 1-indexed subplots
+                row_idx = 1
+                col_idx = 1
+                if isinstance(name, tuple):
+                    row_idx = facet_row_indexes[name[0]] if facet_row else 1
+                    # Use index in case row and col were identical
+                    col_idx = facet_col_indexes[ name[priority_groups.index(facet_col)] ] if facet_col else 1
+                else:
+                    row_idx = facet_row_indexes[name] if facet_row else 1
+                    col_idx = facet_col_indexes[name] if facet_col else 1
+
+                special_func(**new_plotting_args, row=row_idx, col=col_idx)
+
         else:
-            fig['layout']['violinmode'] = 'overlay'
+            # Safeguard against grouping by an empty list
+            # use dataframe instead
+            special_func(**new_plotting_args, row=1, col=1)
 
-    # assign annotations to figure
-    fig['layout']['annotations'] = annotations
 
+        #TODO: Since graph_object plots don't need 'category_orders' decide if we can drop passing that to the px functions
+        fig.update_layout(template=blank_template)
+        # Only tick labels from the first axis should be shown
+        if facet_row:
+            fig.update_xaxes(showticklabels=False)
+            max_x = "xaxis{}".format(num_rows if num_rows > 1 else "")
+            fig['layout'][max_x]['showticklabels'] = True
+        else:
+            fig['layout']['xaxis']['title']['text'] = x_title
+        if facet_col:
+            fig.update_yaxes(showticklabels=False)
+            fig['layout']['yaxis']['showticklabels'] = True
+        else:
+            fig['layout']['yaxis']['title']['text'] = y_title
 
-    # autoscale histogram bars
-    if trace_type not in ['scatter', 'line', 'scattergl']:
-        scales = 'free'
+        # Order the columns
+        if x in category_orders:
+            for key in fig['layout']:
+                if key.startswith('xaxis'):
+                    fig['layout'][key]['categoryarray'] = category_orders[x]
+        elif y in category_orders:
+            for key in fig['layout']:
+                if key.startswith('yaxis'):
+                    fig['layout'][key]['categoryarray'] = category_orders[y]
 
-    # validate scales
-    if scales not in ['fixed', 'free_x', 'free_y', 'free']:
-        raise exceptions.PlotlyError(
-            "'scales' must be set to 'fixed', 'free_x', 'free_y' and 'free'."
+    ### POST-PLOT ADJUSTMENTS
+
+    # Change facet annotations to read <group> instead of <cat> = <group>
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+
+    # Update axes layouts
+    fig.update_xaxes(dict(
+        automargin=True,
+        zeroline=False,
+        showgrid=False,
+        visible=False if hide_x_labels else True,
+        range=x_range if x_range and not _is_categorical(df[x]) else None,
+        #tickangle=-90 if facet_col else None
+    ))
+
+    # Truncate faceted column axis labels so annotation can fit
+    if facet_col and _is_categorical(df[x]):
+        fig.for_each_xaxis(
+            lambda a: a.update(
+                ticktext= _truncate_ticktext(a.categoryarray),
+                tickvals= a.categoryarray,
+            )
         )
-    fixed_axes = None
-    if scales == 'fixed':
-        fixed_axes = ['x', 'y']
-    elif scales == 'free_x':
-        fixed_axes = ['y']
-    elif scales == 'free_y':
-        fixed_axes = ['x']
-    elif scales == 'free':
-        fixed_axes = []
-    else:
-        raise("Invalid scale type provided.  Must be 'fixed', 'free_x', 'free_y', or 'free'")
 
-    # SAdkins - Removed checks for None and length and sparse matrix check
-    # since recent edits should have all traces populated with data
-    if len(fig['data']):
-        # fixed ranges
-        for x_y in fixed_axes:
-            min_range = min(chain( *(trace[x_y] for trace in fig['data']) ))
-            max_range = max(chain( *(trace[x_y] for trace in fig['data']) ))
-            range_are_numbers = (isinstance(min_range, Number)
-                                and isinstance(max_range, Number))
-            if PLOT_LOGGING:
-                print("DEBUG: On axis:{0} min_range:{1} max_range:{2}".format(x_y, min_range, max_range), file=sys.stderr)
+    fig.update_yaxes(dict(
+        automargin=True,
+        zeroline=False,
+        showgrid=False,
+        visible=False if hide_y_labels else True,
+        range=y_range if y_range and not _is_categorical(df[y]) else None
+    ))
 
-            user_dtick = None
-            if x_y == 'x':
-                user_dtick = dtick_x
-            elif x_y == 'y':
-                user_dtick = dtick_y
+    # More general trace updates
+    fig.update_traces(dict(
+        opacity=None if plot_type in ["contour"] or "color_continuous_scale" in plotting_args else 0.6,
+    ))
 
-            dtick, min_range, max_range = _calculate_dtick(min_range, max_range, range_are_numbers, user_dtick)
+    # If 'facet_col' and 'color_name' dataseries are equal treat as if color series is not present (for plot grouping)
+    # Originally included 'x' and 'color_name' but a plotly update fixed this
+    force_overlay = True
+    if color_name:
+        force_overlay = False
+        color_eq_col = False
+        if facet_col:
+            color_eq_col = df[color_name].equals(df[facet_col])
+        color_eq_x = df[color_name].equals(df[x])
+        force_overlay = color_eq_x or color_eq_col
 
-            # For the given axis dimension set tick attributes
-            for axis_title in axis_labels[x_y]:
-                fig['layout'][axis_title]['dtick'] = dtick
-                fig['layout'][axis_title]['ticklen'] = 0
-                if range_are_numbers:
-                    fig['layout'][axis_title]['range'] = [min_range, max_range]
+    # Plottype-specific tweaks
+    _update_by_plot_type(fig, plot_type, force_overlay, jitter)
 
-    else:
-        if PLOT_LOGGING:
-            print("DEBUG: No trace data for current plot")
+    _update_axis_titles(fig, df, x, y, facet_col, facet_row, x_title, y_title)
+
+    # Add vertical lines
+    [_add_vertical_lines(fig, vl) for vl in vlines]
+
+    # More general layout updates
+    fig.update_layout(
+        autosize=True,
+        hovermode='closest',
+        legend = dict(itemsizing="constant"),
+        showlegend=False if hide_legend else None,   # 'None' just means do whatever plotly defaults to
+    )
+
+    # Use kwargs marker information to update figure information
+    # Pop off marker info since it is already loaded.
+    if plot_type not in ["contour"]:
+        _add_marker_info_to_traces(fig, kwargs["traces"]["marker"], plot_type, color_name)
+    kwargs["traces"].pop("marker", None)
+
+    if reverse_palette:
+        kwargs["coloraxes"]["reversescale"] = reverse_palette
+
+    # Update this particular entity with kwargs information.  This is generally custom things the user wants
+    # that is not avaiable in the general plotly configuration we want nor in dataset_curator options
+    if "annotations" in kwargs:
+        _add_kwargs_info_to_annotations(fig, kwargs["annotations"])
+    if "coloraxes" in kwargs:
+        _add_kwargs_info_to_coloraxes(fig, kwargs["coloraxes"])
+    if "layout" in kwargs:
+        _add_kwargs_info_to_layout(fig, kwargs["layout"])
+    if "traces" in kwargs:
+        _add_kwargs_info_to_traces(fig, kwargs["traces"])
+    if "xaxes" in kwargs:
+        _add_kwargs_info_to_xaxes(fig, kwargs["xaxes"])
+    if "yaxes" in kwargs:
+        _add_kwargs_info_to_yaxes(fig, kwargs["yaxes"])
 
     return fig
+
 
 def get_config():
     """Get config for Plotly chart."""
@@ -922,10 +626,6 @@ def get_config():
         ]
  )
 
-def rgb_to_hex(r,g,b):
-    hex = "#{:02x}{:02x}{:02x}".format(int(r),int(g),int(b))
-    return hex
-
 def plotly_color_map(names):
     """
     Private plot helper method for generating colors
@@ -965,3 +665,7 @@ def plotly_color_map(names):
         return dict(zip(names, color_generator))
     else:
         return dict(zip(names, [rgb_to_hex(*unlabel_rgb('rgb(64,19,98)'))]))
+
+def rgb_to_hex(r,g,b):
+    hex = "#{:02x}{:02x}{:02x}".format(int(r),int(g),int(b))
+    return hex

@@ -59,7 +59,7 @@ class MexUploader(FileType):
 
                 # Read each file (.mtx as adata.X and .tsv as pandas dataframes)
                 if entry.name == 'matrix.mtx' or os.path.basename(filepath)== 'matrix.mtx':
-                    adata = sc.read(filepath, cache=False).transpose()
+                    adata = sc.read(filepath, first_column_names=True, cache=False).transpose()
                 elif entry.name == 'barcodes.tsv' or os.path.basename(filepath)== 'barcodes.tsv':
                     obs = pd.read_csv(filepath, sep='\t', index_col=0, header=None, names=['observations'])
                 elif entry.name == 'genes.tsv' or os.path.basename(filepath)=='genes.tsv':

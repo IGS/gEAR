@@ -72,7 +72,7 @@ class ThreeTabUploader(FileType):
                     exp_genes= list(exp.index)
 
                     # Read in expressions as AnnData object
-                    adata = sc.read(filepath, cache=False).transpose()
+                    adata = sc.read(filepath, first_column_names=True, cache=False).transpose()
                 elif entry.name == 'observations.tab' or os.path.basename(filepath)== 'observations.tab' or 'COLmeta.tab' in entry.name:
                     obs = pd.read_table(filepath, sep='\t', index_col=0, header=0)
                 elif entry.name == 'genes.tab' or os.path.basename(filepath)== 'genes.tab' or 'ROWmeta.tab' in entry.name:
