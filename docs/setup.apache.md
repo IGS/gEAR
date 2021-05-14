@@ -48,6 +48,9 @@ Aside from the default things, these sections are important
             SetHandler cgi-script
     </FilesMatch>
 
+    WSGIPythonHome "/opt/Python-3.7.3"
+    LoadModule wsgi_module "/opt/Python-3.7.3/lib/python3.7/site-packages/mod_wsgi/server/mod_wsgi-py37.cpython-37m-x86_64-linux-gnu.so"
+
 ### /etc/apache2/sites-available/000-default.conf
 
 Assuming you have SSL setup (below) you want to make sure apache redirects http traffic
@@ -55,6 +58,28 @@ to https, so you need to add this line to the <VirtualHost *:80> block, adjusted
 domain, of course:
 
     Redirect permanent / https://umgear.org/
+
+### Disable apache's PrivateTmp
+
+gEAR lets users write datafiles such as analyses in an area under /tmp until they want to
+save, when they are moved to a directory within the application.  If Apache has PrivateTmp
+on this causes an error like this:
+
+   OSError: [Errno 18] Invalid cross-device link
+
+For now, the solution is to disable this.  If you run this:
+
+    $ systemctl show apache2 | grep PrivateTmp
+
+And you get this:
+
+    PrivateTmp=yes
+
+You need to turn it off.  On Ubuntu 20, you can find the setting in this file:
+
+    /usr/lib/systemd/system/apache2.service
+
+Set it to false, then restart apache.
 
 ### Victor's SSL instructions
 
@@ -77,17 +102,10 @@ Resources:
 - http://flask.pocoo.org/docs/1.0/deploying/mod_wsgi/
 - https://www.digitalocean.com/community/tutorials/how-to-deploy-a-flask-application-on-an-ubuntu-vps
 
-### /etc/apache2/apache2.conf
-
-Make sure these lines are added:
-
-    WSGIPythonHome "/opt/Python-3.7.3"
-    LoadModule wsgi_module "/opt/Python-3.7.3/lib/python3.7/site-packages/mod_wsgi/server/mod_wsgi-py37.cpython-37m-x86_64-linux-gnu.so"
-
 ### /etc/apache2/sites-available/umgear-ssl.conf
 
-This needs to be tailored for each machine's resources to match
-the processors (cores) present and number of threads within each process
+This needs to be tailored for each machine's resources to match the processors (cores) present
+and number of threads within each process.  If not running under SSL, this goes in 000-default.conf
 
 There's a lot in here, but the CGI-related addition is:
 

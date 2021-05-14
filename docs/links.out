@@ -1,0 +1,37 @@
+
+ENSEMBL - 
+  - Organized by organism, so can only derive direct links if we store them
+    in an organism-specific way.  Example:
+  - http://www.ensembl.org/Mus_musculus/Gene/Summary?g=ENSMUSG00000071434
+
+MGI -
+  - Mouse specific
+  - No direct URL lookup that I can see between the symbol given in the EMBL
+    file ('MGI:9230019H11Rik') and the one the mouse URL expects, which are:
+  - http://www.informatics.jax.org/marker/MGI:3588256
+
+NCBI CDDS -
+  - Example: CCDS:CCDS56668.1
+  - http://www.ncbi.nlm.nih.gov/projects/CCDS/CcdsBrowse.cgi?REQUEST=ALLFIELDS&DATA=CCDS56668.1
+
+SHIELD -
+  - Easy to link with (some) current gene symbols
+      https://shield.hms.harvard.edu/viewgene.html?gene=1110012J17Rik
+    But not others, like:
+      https://shield.hms.harvard.edu/gene_search.html?gene=38047
+
+Uniprot/SPTREMBL
+  - Needs a bit of parsing, but should be easy to check
+  - Example: Uniprot/SPTREMBL:Q3UW27_MOUSE
+  - http://www.uniprot.org/uniprot/Q3UW27
+
+Uniparc
+  - Example: UniParc:UPI00005ABCEA
+  - http://www.uniprot.org/uniparc/UPI00005ABCEA
+
+UCSC
+  - Example: UCSC:uc011wzv.1
+  - URL GUIDE:
+    http://genome.ucsc.edu/FAQ/FAQlink.html
+  - Mouse: http://genome.ucsc.edu/cgi-bin/hgTracks?org=mouse&db=mm10&singleSearch=knownCanonical&position=uc011wzv.1
+  - ZF: 
