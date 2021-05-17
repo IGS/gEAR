@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js">
+  <!--<![endif]-->
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <title>Test time!</title>
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="-1" />
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+    -->
+    <base href="/" />
+
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+      integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+      crossorigin="anonymous"
+    />
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <link
+      href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Efficient select-box tool -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+    <script>document.write('<link rel="stylesheet" href="css/index.' +  Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+
+
+    <link rel="stylesheet" href="css/jquery.mCustomScrollbar.css" />
+    <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+  </head>
+
+  <body>
+
+    <div class="container">
+      <h1>Multigene Plot Test Page!!!!! </h1>
+
+      <form>
+      <div class="form-group row">
+        <label class="col-2 col-form-label" for="dataset_select">Dataset</label>
+        <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the dataset to use.">
+          <i class="fa fa-question-circle" aria-hidden="true"></i>
+        </span>
+        <select class="col form-control" id="dataset_select">
+          <optgroup id="dataset_ids_user" label="Your datasets">
+            <option class="user_initial" disabled>None found</option>
+          </optgroup>
+          <optgroup id="dataset_ids_shared_with_user" label="Shared with you">
+            <option class="user_initial" disabled>None found</option>
+          </optgroup>
+          <optgroup id="dataset_ids_public" label="Public datasets">
+            <option disabled>None found</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-2 col-form-label" for="plot_type_select">Plot type</label>
+        <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the type of plot to draw.">
+          <i class="fa fa-question-circle" aria-hidden="true"></i>
+        </span>
+        <select class="col form-control" id="plot_type_select">
+          <option value="heatmap">Heatmap</option>
+          <option value="volcano">Volcano Plot</option>
+        </select>
+      </div>
+      <div class="form-group row">
+        <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to cluster observation groups, in addition to genes.  Otherwise only genes are clustered.">
+          <i class="fa fa-question-circle" aria-hidden="true"></i>
+        </span>
+        <div class="col-9 form-check">
+          <input class="form-check-input" type="checkbox" value="" id="cluster_cols">
+          <label class="form-check-label" for="cluster_cols">
+            Cluster observation groups
+          </label>
+        </div>
+      </div>
+      <div class="form-group row" id="gene_dropdown_container"></div>
+      <div class="form-group row" id="obs_sort_dropdown_container"></div>
+      <fieldset class="form-group" id="obs_dropdowns_container"></fieldset>
+      <button type="button" class="btn btn-primary" id="update_plot">Update Plot</button>
+      </form>
+    </div> <!-- end container -->
+
+    <div id="dataset_plot"></div>
+
+    <script id="dataset_list_tmpl" type="text/x-jsrender">
+      <option value="{{:id}}">{{:title}}</option>
+    </script>
+
+    <script id="gene_dropdown_tmpl" type="text/x-jsrender">
+      <label class="col-2 col-form-label" for="gene_dropdown">Gene Symbols</label>
+      <span class="col-1" data-toggle="tooltip" data-placement="top" title="In heatmaps, only these genes are shown. In volcano plots, these genes are annotated.">
+        <i class="fa fa-question-circle" aria-hidden="true"></i>
+      </span>
+      <button type="button" class="btn btn-secondary col-1" data-toggle="tooltip" data-placement="top" title="Start typing gene names and select them from the dropdown">
+        <i class="fa fa-question-circle" aria-hidden="true"></i>
+      </button>
+      <select id="gene_dropdown" class="genes col form-control" multiple="multiple">
+        {{for genes}}
+        <option value="{{:#data}}">{{:#data}}</option>
+        {{/for}}
+      </select>
+    </script>
+
+    <script id="obs_sort_dropdown_tmpl" type="text/x-jsrender">
+      <label class="col-2 col-form-label" for="sort_obs_dropdown">Sort by Observation</label>
+      <span class="col-1" data-toggle="tooltip" data-placement="top" title="Check the observation category that you want to sort by for the heatmap.">
+        <i class="fa fa-question-circle" aria-hidden="true"></i>
+      </span>
+      {{props}}
+      <div class="form-check form-check-inline col">
+        <input class="form-check-input obs_sort" type="radio" name="obs_sort" id="{{:key}}_sort" value="{{:key}}">
+        <label class="form-check-label" for="{{:key}}_sort">{{:key}}</label>
+      </div>
+      {{/props}}
+    </script>
+
+    <!-- Declare a JsRender template, in a script block: -->
+    <script id="obs_dropdowns_tmpl" type="text/x-jsrender">
+      <div class="row">
+        <legend class="col-2 col-form-label">Filter by Observations</legend>
+        <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select which groups for a category to filter by, or leave empty to use all groups. The observation category can also be removed from the list of filters.">
+          <i class="fa fa-question-circle" aria-hidden="true"></i>
+        </span>
+        <div class="col-10">
+        {{props}}
+          {{!-- key is categorical observation, prop is the list of unique categories --}}
+          <div class="row form-group" id="{{:key}}_div">
+            <label class="col-2 col-form-label" for="{{:key}}_dropdown">{{:key}}</label>
+            <select id="{{:key}}_dropdown" class="obs_levels col form-control" multiple="multiple">
+              {{props prop}}
+                {{!-- key is list index, prop is the value --}}
+              <option value="{{:prop}}">{{:prop}}</option>
+              {{/props}}
+            </select>
+            <button type='button' class="close col-1" id="{{:key}}_close" aria-label="Close {{:key}} Filter"> <i class="fa fa-times-circle" aria-hidden="true"></i></button>
+          </div>
+        {{/props}}
+        </div>
+      </div>
+    </script>
+
+    <script id="dataset_plot_tmpl" type="text/x-jsrender">
+      <div id="dataset_{{:dataset_id}}" class="dataset_c">
+        <div id='dataset_{{:dataset_id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
+      </div>
+    </script>
+
+
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+    <!-- Load JsRender latest version, from www.jsviews.com: -->
+    <script src="https://www.jsviews.com/download/jsrender.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Plotly JS-->
+    <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
+    <script>document.write('<script src="js/multigene_test.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+
+  </body>
