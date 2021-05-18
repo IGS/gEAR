@@ -103,15 +103,15 @@ def build_column_group_markers(traces, filter_indexes):
                 col_group_markers[k][column_id] = {'group': elem}
     return col_group_markers
 
-def build_obs_group_indexes(adata, filters):
+def build_obs_group_indexes(df, filters):
     """Build dict of group indexes for filtered groups."""
     filter_indexes = {}
     for k, v in filters.items():
         filter_indexes.setdefault(k, {})
         for elem in v:
-            obs_index = adata.obs.index[adata.obs[k] == elem ]
+            obs_index = df.index[df[k] == elem ]
             # Convert dataframe index to ordinal indexes
-            filter_indexes[k][elem] = [adata.obs.index.get_loc(i) for i in obs_index]
+            filter_indexes[k][elem] = [df.index.get_loc(i) for i in obs_index]
     return filter_indexes
 
 def create_filtered_composite_index(filters):
@@ -491,15 +491,17 @@ class MultigeneDashData(Resource):
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
-
-            if sort_filter and not cluster_cols:
-                selected.obs.sort_values(by=[sort_filter], inplace=True)
-
             df = selected.to_df()
+            filter_indexes = build_obs_group_indexes(selected.obs, filters)
+
+            # If sorting by a observation column, adjust group indexes after sorting
+            if sort_filter and not cluster_cols:
+                sorted_df = selected.obs.sort_values(by=[sort_filter])
+                df = df.reindex(sorted_df.index.tolist())
+                filter_indexes = build_obs_group_indexes(sorted_df, filters)
+
             df = df.transpose()
             df = df[gene_filter]
-
-            filter_indexes = build_obs_group_indexes(selected, filters)
 
             # Sort gene_symbols_list
             # Wanted to sort dataframe using gene list index as key, but it requires Pandas >1.10.0 (we use 1.0.3)

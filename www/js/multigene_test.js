@@ -29,8 +29,6 @@ var gene_symbols = null;    //TODO: get encoded string from POST and decode to a
     $("#dataset_select").change(async function() {
         dataset_id = $("#dataset_select").select2('data')[0].id;
 
-        dataset_id = "b0420910-a0fa-e920-152d-420b6275d3af";
-
         $('#plot_type_select').show();
 
         // Get genes for this dataset
@@ -58,6 +56,11 @@ var gene_symbols = null;    //TODO: get encoded string from POST and decode to a
             placeholder: 'Start typing to filter categories or leave empty for no filter on this category. Click "x" to remove filter.',
             allowClear: true
         });
+
+        // Ensure genes and observation columns dropdown toooltip shows
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        })
 
         // Render dataset plot HTML
         const plot_template = $.templates("#dataset_plot_tmpl");
@@ -122,12 +125,12 @@ var gene_symbols = null;    //TODO: get encoded string from POST and decode to a
 
     // Some options are heatmap-specific
     $('#plot_type_select').change(function(){
-        if(this.val() == "heatmap") {
-            $('#cluster_cols').show();
+        if($('#plot_type_select').val() == "heatmap") {
+            $('#obs_checkbox_container').show();
             $('#obs_sort_dropdown_container').show();
         } else {
             $('#cluster_cols').prop('checked', false);
-            $('#cluster_cols').hide();
+            $('#obs_checkbox_container').hide();
             $('.obs_sort').prop('checked', false);
             $('#obs_sort_dropdown_container').hide();
         }
@@ -206,7 +209,7 @@ async function populate_datasets() {
 
         },
         error: function (xhr, status, msg) {
-            report_error("Failed to load dataset list because msg: " + msg);
+            console.error("Failed to load dataset list because msg: " + msg);
         },
         });
 }

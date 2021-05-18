@@ -78,7 +78,7 @@
           <option value="volcano">Volcano Plot</option>
         </select>
       </div>
-      <div class="form-group row">
+      <div class="form-group row" id="obs_checkbox_container">
         <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to cluster observation groups, in addition to genes.  Otherwise only genes are clustered.">
           <i class="fa fa-question-circle" aria-hidden="true"></i>
         </span>
@@ -107,9 +107,6 @@
       <span class="col-1" data-toggle="tooltip" data-placement="top" title="In heatmaps, only these genes are shown. In volcano plots, these genes are annotated.">
         <i class="fa fa-question-circle" aria-hidden="true"></i>
       </span>
-      <button type="button" class="btn btn-secondary col-1" data-toggle="tooltip" data-placement="top" title="Start typing gene names and select them from the dropdown">
-        <i class="fa fa-question-circle" aria-hidden="true"></i>
-      </button>
       <select id="gene_dropdown" class="genes col form-control" multiple="multiple">
         {{for genes}}
         <option value="{{:#data}}">{{:#data}}</option>
@@ -137,7 +134,7 @@
         <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select which groups for a category to filter by, or leave empty to use all groups. The observation category can also be removed from the list of filters.">
           <i class="fa fa-question-circle" aria-hidden="true"></i>
         </span>
-        <div class="col-10">
+        <div class="col-9">
         {{props}}
           {{!-- key is categorical observation, prop is the list of unique categories --}}
           <div class="row form-group" id="{{:key}}_div">
