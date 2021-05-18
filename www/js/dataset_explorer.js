@@ -663,7 +663,6 @@ function process_search_results(data, result_label) {
         }
 
         // set grid width styling for arrangement view
-        console.log("Grid width is: " + dataset['grid_width']);
         if (dataset['grid_width'] == 12) {
             dataset['style_width'] = '588px';
         } else if (dataset['grid_width'] == 8) {
@@ -678,9 +677,6 @@ function process_search_results(data, result_label) {
     var resultsViewHtml = resultsViewTmpl.render(data['datasets']);
     $("#dataset_list_results_view_c").html(resultsViewHtml);
 
-    // sort
-    console.log(data['datasets']);
-    
     // For the arrangement view
     var arrangementViewTmpl = $.templates("#dataset_arrangement_view_tmpl");
     var arrangementViewHtml = arrangementViewTmpl.render(data['datasets']);
