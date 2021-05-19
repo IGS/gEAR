@@ -200,6 +200,7 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
                 CURRENT_USER.user_name = data['name'];
                 CURRENT_USER.session_id = data['session_id'];
                 CURRENT_USER.profile = data['gear_default_domain'];
+                CURRENT_USER.id = data['user_id'];
 
                 if (data['is_admin'] == 1 ) {
                     CURRENT_USER.is_admin = true;
@@ -316,7 +317,7 @@ function handle_login_ui_updates() {
             load_preliminary_data();
             $("#controls_profile_nouser_c").remove();
             $("#your_dataset_filter").show();
-            
+
         } else if (document.URL.indexOf("manual.html") >= 0) {
             $('a#manual_link').parent().addClass('active');
 

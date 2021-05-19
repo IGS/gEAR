@@ -9,7 +9,7 @@ services:
       MYSQL_DATABASE: gear_portal
       MYSQL_USER: gear
       MYSQL_PASSWORD: gearadmin
-      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+      MYSQL_ROOT_PASSWORD: rootadmin
     image: mysql:5.7
     networks:
       - gear
