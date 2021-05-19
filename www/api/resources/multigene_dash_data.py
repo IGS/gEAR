@@ -177,6 +177,10 @@ def create_volcano_plot(df):
 
     )
 
+def intersection(lst1, lst2):
+    """Intersection of two lists."""
+    return list(set(lst1) & set(lst2))
+
 def modify_clustergram(fig, traces, filter_indexes, is_log10=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
@@ -439,7 +443,9 @@ class MultigeneDashData(Resource):
             # Add new column to combine various groups for an eventual "groupby" argument
             composite_index = adata.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
             adata.obs['comparison_composite_index'] = composite_index.tolist()
-            groups = create_filtered_composite_index(filters)
+            groups = intersection(create_filtered_composite_index(filters), composite_index.unique().tolist())
+            if sorted(groups) == sorted(composite_index.unique().tolist()):
+                groups = "all"
 
         adata.obs['comparison_composite_index'] = adata.obs['comparison_composite_index'].astype('category')
 

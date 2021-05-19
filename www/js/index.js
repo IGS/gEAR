@@ -56,11 +56,17 @@ window.onload=function() {
 
     var permalinked_gene_symbol = getUrlParameter('gene_symbol');
     var permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
+    var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
         if (permalinked_gsem && permalinked_gsem === "1") {
             set_exact_match('on');
+        }
+
+        if (permalinked_multigene_plots && permalinked_multigene_plots === "1") {
+            set_multigene_plots('on');
         }
 
         sleep(1000).then(() => {
@@ -80,6 +86,16 @@ window.onload=function() {
         } else {
             // else it was off, so turn it on
             set_exact_match('on');
+        }
+    });
+
+
+    $('#multigene_plots_input').change(function() {
+        if ( $('#multigene_plots_input').prop("checked") ) {
+            $('#search_results_c').hide();
+        } else {
+            // else it was off, so turn it on
+            $('#search_results_c').show();
         }
     });
 
@@ -589,6 +605,8 @@ $("#gene_search_form").submit(function( event ) {
 
     // determine if searching for exact matches (convert from bool to 1 or 0)
     $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
+    $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
+
 
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
@@ -607,7 +625,8 @@ $("#gene_search_form").submit(function( event ) {
         {
             'layout_id': share_id,
             'gene_symbol': curated_searched_gene_symbols,
-            'gene_symbol_exact_match': $("#exact_match").val()
+            'gene_symbol_exact_match': $("#exact_match").val(),
+            'multigene_plots': $("#multigene_plots").val()
         },
         // State title
         "Gene search",
@@ -615,6 +634,7 @@ $("#gene_search_form").submit(function( event ) {
         "/index.html?layout_id=" + share_id
             + "&gene_symbol=" + encodeURIComponent(curated_searched_gene_symbols)
             + "&gene_symbol_exact_match=" + $("#exact_match").val()
+            + "&multigene_plots=" + $("#multigene_plots").val()
     )
 
     $('#search_results').empty();
@@ -884,5 +904,15 @@ function set_exact_match(mode) {
         $('#exact_match_input').bootstrapToggle('off');
         $("#exact_match_icon img").attr("src", "img/arrow_target_unselected.png");
         $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off)").tooltip('show');
+    }
+}
+
+function set_multigene_plots(mode) {
+    if (mode == 'on') {
+        $('#search_results_c').hide();
+        $('#multigene_plots_input').bootstrapToggle('on');
+    } else if (mode == 'off') {
+        $('#search_results_c').show();
+        $('#multigene_plots_input').bootstrapToggle('off');
     }
 }

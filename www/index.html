@@ -317,6 +317,8 @@
                     <!-- Default for Ronna's list of interesting test genes -->
                     <!-- Myo7a Pou4f3 Sox2 Fgfr3 Atoh1 lgr5 Glast RFX3 Pou3f4 -->
                     <input type="hidden" name="exact_match" id="exact_match" value="" />
+                    <input type="hidden" name="multigene_plots" id="multigene_plots" value="" />
+
                     <input id="search_gene_symbol" type="text" class="form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
                   </div>
                 </div>
@@ -326,6 +328,14 @@
                   </div>
                   <div class="col-4">
                     <input id="exact_match_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Limit results to exact matches" />
+                  </div>
+                </div>
+                <div class="row search_option">
+                  <div class="col-8 pl-0 pr-0">
+                    Multigene plots
+                  </div>
+                  <div class="col-4">
+                    <input id="multigene_plots_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Show plots that display all searched genes" />
                   </div>
                 </div>
 
