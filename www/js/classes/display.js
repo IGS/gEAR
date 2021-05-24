@@ -547,11 +547,11 @@ class PlotlyDisplay extends Display {
         this.sort_filter = sort_filter;
     }
     clear_display() {
-        $(`#dataset_${this.dataset_id}_h5ad`).remove();
-        if (this.zoomed) $(`#dataset_${this.dataset_id}_h5ad_zoomed`).remove();
+        $(`#dataset_${this.dataset_id}_dash`).remove();
+        if (this.zoomed) $(`#dataset_${this.dataset_id}_dash_zoomed`).remove();
     }
     clear_zoomed() {
-        $(`#dataset_${this.dataset_id}_h5ad_zoomed`).remove();
+        $(`#dataset_${this.dataset_id}_dash_zoomed`).remove();
     }
 
     fetch_h5ad_info() {
