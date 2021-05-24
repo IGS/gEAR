@@ -122,6 +122,8 @@ def create_filtered_composite_index(filters):
     # Essentially  ((x,y) for x in A for y in B)
     value_combinations = product(*all_vals)
     string_value_combinations = [";".join(v) for v in value_combinations]
+
+    # NOTE: This returns combinations of indexes that may not exist.  Those are filtered out later
     return string_value_combinations
 
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False):
@@ -451,15 +453,21 @@ class MultigeneDashData(Resource):
             composite_index = adata.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
             adata.obs['comparison_composite_index'] = composite_index.tolist()
             groups = intersection(create_filtered_composite_index(filters), composite_index.unique().tolist())
-            if sorted(groups) == sorted(composite_index.unique().tolist()):
-                groups = "all"
 
         adata.obs['comparison_composite_index'] = adata.obs['comparison_composite_index'].astype('category')
 
         # Rank the genes in order to get p_values and log-fold changes (effort size)
-        # Use all remaining groups when ranking.  Use many of the default options
         # For volcano-plots
         if plot_type == "volcano":
+
+            # Filter composite members for one observation only, since it causes by div-by-zero errors
+            # Source; https://github.com/theislab/scanpy/pull/1490
+            groups = list(
+                adata.obs["comparison_composite_index"]
+                .value_counts()
+                .loc[lambda x: x > 1]
+                .index
+                )
             #sc.pp.filter_cells(adata, min_genes=10)
             #sc.pp.filter_genes(adata, min_cells=1)
             sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=False, groups=groups, reference="rest", n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg')#, log_transformed=False)
@@ -470,7 +478,7 @@ class MultigeneDashData(Resource):
 
         # Filter the AnnData object based on our criteria
         filtered_composite_index = adata.obs["comparison_composite_index"].unique()
-        if filters and not groups == "all":
+        if filters:
             filtered_composite_index = groups
             condition_filter = adata.obs["comparison_composite_index"].isin(filtered_composite_index)
             selected = adata[condition_filter, :]
@@ -493,7 +501,7 @@ class MultigeneDashData(Resource):
             df['group'] = pd.Categorical(df['group'], categories=filtered_composite_index)
             df = df.sort_values(['group', 'level_0']).drop(columns='level_0')
             df = df.join(selected.var.gene_symbol, on="names")
-            df["SNP"] = df['group'].astype(str) + '-' + df["gene_symbol"]
+            df["SNP"] = df['group'].astype(str) + '-' + df["gene_symbol"].astype(str)
             df = df.reset_index(drop=True)
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
@@ -539,6 +547,7 @@ class MultigeneDashData(Resource):
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
+        # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response
         return {
             "success": success
             , "message": message
