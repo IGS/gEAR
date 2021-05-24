@@ -424,7 +424,7 @@ class MultigeneDashData(Resource):
             dataset_genes = adata.var.gene_symbol.unique().tolist()
             normalized_genes_list, found_genes = normalize_searched_genes(dataset_genes, gene_symbols_list)
             gene_filter = adata.var.gene_symbol.isin(normalized_genes_list)
-            if not gene_filter.any():
+            if not gene_filter.all():
                 # Use message to show a warning
                 genes_not_present = [gene for gene in gene_symbols_list if gene not in found_genes]
                 success = 3,
