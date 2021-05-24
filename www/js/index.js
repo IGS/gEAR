@@ -15,6 +15,7 @@ var SELECTED_GENE = null;
 
 var share_id = null; //from permalink
 var permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
+var multigene = false;  // If true, multigene toggle is set
 
 var annotation_panel = new FunctionalAnnotationPanel();
 var dataset_collection_panel = new DatasetCollectionPanel();
@@ -57,6 +58,7 @@ window.onload=function() {
     var permalinked_gene_symbol = getUrlParameter('gene_symbol');
     var permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
     var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+    multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
 
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
@@ -65,7 +67,7 @@ window.onload=function() {
             set_exact_match('on');
         }
 
-        if (permalinked_multigene_plots && permalinked_multigene_plots === "1") {
+        if (multigene) {
             set_multigene_plots('on');
         }
 
@@ -139,8 +141,6 @@ window.onload=function() {
     });
 
     $(document).on('click', '.domain_choice_c', function() {
-        var permalinked_multigene_plots = getUrlParameter('multigene_plots');
-        var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
         dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         share_id = $(this).data('profile-share-id');
     });
@@ -276,16 +276,13 @@ function validate_permalink(share_id, scope) {
         data : { 'share_id': share_id, 'scope': scope },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
-            var permalinked_multigene_plots = getUrlParameter('multigene_plots');
-            var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
-
             if ( data['success'] == 1 ) {
                 // query the db and load the images, including permalink dataset
                 dataset_collection_panel.load_frames({ share_id, multigene });
 
             } else {
                 // query the db and load the images
-                dataset_collection_panel.load_frames({multigene: mg});
+                dataset_collection_panel.load_frames({multigene});
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
@@ -395,9 +392,6 @@ function load_layouts() {
 
             //Serves as source for #selected_profile editable
             layouts = formattedData;
-
-            var permalinked_multigene_plots = getUrlParameter('multigene_plots');
-            var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
 
             dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true, multigene);
 
@@ -620,13 +614,15 @@ $("#gene_search_form").submit(function( event ) {
     $('#searching_indicator_c').show();
 
     var formData = $("#gene_search_form").serializeArray();
-    //console.log(formData);
 
     // split on combination of space and comma (individually or both together.)
     var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
     // Remove duplicates in gene search if they exist
     var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
     var curated_searched_gene_symbols = uniq_gene_symbols.join(',');
+
+    // Update multigene toggle so correct grid widths are loaded.
+    multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
 
     history.pushState(
         // State Info
@@ -687,7 +683,6 @@ $("#gene_search_form").submit(function( event ) {
             } else {
                 $("#search_results_scrollbox").mCustomScrollbar("update");
             }
-
             return false;
         },
         error: function (jqXHR, textStatus, errorThrown) {
@@ -809,8 +804,6 @@ if (window.location.href.indexOf("manual.html") === -1) { //Without this the man
               - Fetch and draw the new DatasetCollectionPanel
               - If a user is logged in, set a cookie with the new layout ID
              */
-            var permalinked_multigene_plots = getUrlParameter('multigene_plots');
-            var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
 
             dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true, multigene);
             share_id = find_share_id_by_pk(params.layout_id)

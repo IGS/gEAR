@@ -590,6 +590,7 @@ class PlotlyDisplay extends Display {
             // Throw hands up and use all properties if this dataset does not have cell_type or louvain
             if (!Object.keys(this.obs_filters).length)
                 this.obs_filters = obs_levels;
+                this.sort_filter = Object.keys(this.obs_levels)[0]  // Do not care which property to sort by... get first
         }
 
         // NOTE: Currently forcing certain conditions for the GCID demo
