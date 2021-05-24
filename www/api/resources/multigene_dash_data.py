@@ -325,6 +325,12 @@ def modify_volcano_plot(fig):
     fig.layout["legend"]["y"] = 1.0
     fig.layout["legend"]["yanchor"] = "top"
 
+def normalize_searched_genes(gene_list, chosen_genes):
+    """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
+    case_insensitive_genes = [g for cg in chosen_genes for g in gene_list if cg.lower() == g.lower()]
+    found_genes = [cg for cg in chosen_genes for g in gene_list if cg.lower() == g.lower()]
+    return case_insensitive_genes, found_genes
+
 def set_obs_groups_and_colors(filter_indexes):
     """Create mapping of groups and colors per observation category."""
     # TODO: Use observation colors if available instead of Dark24."""
@@ -415,11 +421,12 @@ class MultigeneDashData(Resource):
         message = ""
 
         if 'gene_symbol' in adata.var.columns:
-            gene_filter = adata.var.gene_symbol.isin(gene_symbols_list)
+            dataset_genes = adata.var.gene_symbol.unique().tolist()
+            normalized_genes_list, found_genes = normalize_searched_genes(dataset_genes, gene_symbols_list)
+            gene_filter = adata.var.gene_symbol.isin(normalized_genes_list)
             if not gene_filter.any():
                 # Use message to show a warning
-                dataset_genes = adata.var.gene_symbol.unique().tolist()
-                genes_not_present = [gene for gene in gene_symbols_list if i not in dataset_genes]
+                genes_not_present = [gene for gene in gene_symbols_list if gene not in found_genes]
                 success = 3,
                 message = 'One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)),
         else:
