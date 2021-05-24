@@ -520,6 +520,217 @@ class PlotlyDisplay extends Display {
     }
 
 }
+
+/**
+ * Class representing a multigene display drawn with Dash
+ * @extends Display
+ */
+ class DashMGDisplay extends Display {
+    /**
+     * Initialize dash display.
+     * @param {Object} Data - Data used to draw heatmap or volcano plot
+     */
+    constructor({
+        plotly_config,  // Currently Dash config is not saved to database
+        ...args
+    }) {
+        super(args);
+        const {
+            analysis,
+            obs_filters,
+            cluster_cols,
+            sort_filter,
+        } = plotly_config;
+        this.analysis = analysis;
+        this.obs_filters = obs_filters;
+        this.cluster_cols = cluster_cols;
+        this.sort_filter = sort_filter;
+    }
+    clear_display() {
+        $(`#dataset_${this.dataset_id}_h5ad`).remove();
+        if (this.zoomed) $(`#dataset_${this.dataset_id}_h5ad_zoomed`).remove();
+    }
+    clear_zoomed() {
+        $(`#dataset_${this.dataset_id}_h5ad_zoomed`).remove();
+    }
+
+    fetch_h5ad_info() {
+        const base = `./api/h5ad/${this.dataset_id}`;
+        const query = this.analysis ? `?analysis=${this.analysis.id}` : "";
+        return axios.get(`${base}${query}`);
+    }
+
+    /**
+     * Query the server for data to draw dash chart.
+     * @param {string} gene_symbols - Gene symbols to visualize.
+     */
+    async get_data(gene_symbols) {
+        // If config did not have filters, add some default ones
+        if (!(this.obs_filters && Object.keys(this.obs_filters).length)) {
+            this.obs_filters = {};
+            const { data } = await this.fetch_h5ad_info();
+            var obs_levels = data.obs_levels;
+
+            // Delete useless filters
+            for (var property in obs_levels) {
+                if (property === "color" || property.endsWith("colors")) {
+                    delete obs_levels[property];
+                } else if (obs_levels[property].length === 1) {
+                    delete obs_levels[property];
+                }
+            }
+            // Use cell type or louvain filters
+            for (var property in obs_levels) {
+                if (property === "cell_type" || property === "louvain") {
+                    this.obs_filters[property] = obs_levels[property];
+                    this.sort_filter = property;
+                    break;
+                }
+            }
+            // Throw hands up and use all properties if this dataset does not have cell_type or louvain
+            if (!Object.keys(this.obs_filters).length)
+                this.obs_filters = obs_levels;
+        }
+
+        // NOTE: Currently forcing certain conditions for the GCID demo
+        return axios.post(`/api/plot/${this.dataset_id}/mg_dash`, {
+            plot_type: "heatmap",
+            analysis: this.analysis,
+            analysis_owner_id: this.user_id,
+            gene_symbols: gene_symbols,
+            obs_filters: this.obs_filters,
+            cluster_cols: this.cluster_cols,
+            sort_filter: this.sort_filter,
+        });
+    }
+    /**
+     * Draw chart.
+     * @param {*} data - Plotly data.
+     */
+    draw_chart(data) {
+        this.clear_display();
+
+        const target_div = `dataset_${this.dataset_id}_dash`;
+        const {
+            plot_json,
+            plot_config
+        } = data;
+
+        this.hide_loading();
+        $(`#dataset_${this.dataset_id}`).append(this.template());
+        this.show();
+
+        var layout_mods = {
+            height: target_div.clientHeight,
+            width: target_div.clientWidth,
+        };
+
+        // Overwrite plot layout and config values with custom ones from display
+        var layout = {
+            ...plot_json.layout,
+            ...layout_mods,
+        };
+
+        var config_mods = {
+            responsive: false,
+        };
+
+        const config = {
+            ...plot_config,
+            ...config_mods,
+        };
+
+        Plotly.newPlot(target_div, plot_json.data, layout, config);
+    }
+
+    draw_zoomed() {
+        this.clear_display();
+        const target_div = `dataset_${this.dataset_id}_dash_zoomed`;
+        // const target_div = document
+        //   .querySelector(`#dataset_zoomed div#dataset_${this.dataset_id}`);
+
+        $(`#dataset_zoomed div#dataset_${this.dataset_id}`).append(
+            this.zoomed_template()
+        );
+
+        this.hide_loading();
+        const {
+            plot_json,
+            plot_config
+        } = this.data;
+        var layout_mods = {
+            height: target_div.clientHeight,
+            width: target_div.clientWidth,
+        };
+
+        // Overwrite plot layout and config values with custom ones from display
+        var layout = {
+            ...plot_json.layout,
+            ...layout_mods,
+        };
+
+        Plotly.newPlot(target_div, plot_json.data, layout, plot_config);
+    }
+
+    show() {
+        $('#dataset_' + this.dataset_id + ' .plot-container').show();
+    }
+    template() {
+        const template = `
+        <div
+          id='dataset_${this.dataset_id}_dash'
+          class="h5ad-container"
+          style="position: relative;">
+        </div>
+      `;
+        return template;
+    }
+    zoomed_template() {
+        const template = `
+        <div
+          style='max-width:96%; height:70vh;'
+          id='dataset_${this.dataset_id}_dash_zoomed'
+          class="h5ad-container">
+        </div>
+      `;
+        return template;
+    }
+
+    /**
+     * Display warning above the plot
+     */
+    show_warning(msg) {
+
+        const hover_msg = " Hover to see warning."
+
+        const dataset_selector = $( `#dataset_${this.dataset_id}_h5ad` );
+        const warning_template = `
+        <div class='dataset-warning bg-warning' id='dataset_${this.dataset_id}_h5ad_warning'>
+            <i class='fa fa-exclamation-triangle'></i>
+            <span id="dataset_${this.dataset_id}_h5ad_msg">${hover_msg}</span>
+        </div>`;
+
+        // Add warning above the chart
+        // NOTE: must add to DOM before making selector variables
+        dataset_selector.prepend(warning_template);
+
+        const warning_selector = $( `#dataset_${this.dataset_id}_h5ad_warning` );
+        const msg_selector = $( `#dataset_${this.dataset_id}_h5ad_msg` );
+
+        // Add some CSS to warning to keep at top of container and not push display down
+        warning_selector.css('position', 'absolute').css('z-index', '2');
+
+        // Add hover events (via jQuery)
+        warning_selector.mouseover(function() {
+            msg_selector.text(" " + msg);
+        });
+        warning_selector.mouseout(function() {
+            msg_selector.text(hover_msg);
+       });
+    }
+
+}
+
 /**
  * Class representing an SVG display.
  * @extends Display

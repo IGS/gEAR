@@ -94,6 +94,31 @@ class DatasetPanel extends Dataset {
     if (zoom) display.zoom_in();
   }
 
+  // async draw_mg_chart(gene_symbols, display_id)
+  async draw_mg_chart(gene_symbols) {
+    const data = {dataset_id: this.id, user_id: this.user_id, plot_type: "heatmap", plotly_config:{}};
+    //const data = await this.get_dataset_display(display_id)
+
+    let zoom = false;
+    if (this.display && this.display.zoomed) {
+      zoom = true;
+    }
+    let display;
+    if (data.plot_type === 'heatmap' ||
+      data.plot_type === 'volcano'
+    ) {
+      display = new DashMGDisplay(data, gene_symbols)
+    }
+    this.display = display;
+
+    // We first draw with the display then zoom in, so whenever
+    // gene search is updated, the other displays behind the zoomed
+    // is updated too.
+    display.draw(gene_symbols);
+    if (zoom) display.zoom_in();
+  }
+
+  // Draw single-gene plots
   async draw({ gene_symbol } = {}) {
     if (this.display) this.display.clear_display();
 
@@ -129,6 +154,49 @@ class DatasetPanel extends Dataset {
         );
       }
     }
+  }
+
+  // Draw multigene plots
+  // NOTE: Currently hardcoded to draw a default heatmap plot
+  async draw_mg({ gene_symbols } = {}) {
+    if (this.display) this.display.clear_display();
+
+    this.show_loading();
+
+    // cache gene_symbol so we can use it to redraw with different display
+    this.gene_symbols = gene_symbols;
+
+    // NOTE: Forcing multigene charts to be drawn for now
+    this.draw_mg_chart(gene_symbols);
+
+    /* NOTE: No default displays saved for multigene plots yet.
+    if (this.display) {
+      this.draw_mg_chart(gene_symbols, this.display.id);
+    } else {
+      // first time searching gene and displays have not been loaded
+      const { default_display_id } = await this.get_default_display(CURRENT_USER.id, this.id);
+
+      if (default_display_id) {
+        this.default_display_id = default_display_id;
+        this.draw_mg_chart(gene_symbols, default_display_id);
+
+        // cache all owner/user displays for this panel;
+        const owner_displays = await this.get_dataset_displays(this.user_id, this.id);
+        this.owner_displays = owner_displays;
+
+        const user_displays = await this.get_dataset_displays(CURRENT_USER.id, this.id);
+        this.user_displays = user_displays;
+
+        this.register_events();
+      } else {
+        // No default display, this really shouldn't happen because
+        // owners should always have atleast done this after upload
+        this.show_error(
+          'No default display. Create one in the dataset curator.'
+        );
+      }
+    }
+    */
   }
 
   async redraw(display_id) {
@@ -299,6 +367,7 @@ class DatasetPanel extends Dataset {
             d.draw(gene_symbol);
             $(`#modal-display-${display.id}-loading`).hide();
         }
+        // TODO: Add multigene plots as well, or break into new function
       });
       $(`#dataset_${this.id}_displays_modal`).modal({ show: true });
     });

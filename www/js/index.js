@@ -139,7 +139,9 @@ window.onload=function() {
     });
 
     $(document).on('click', '.domain_choice_c', function() {
-        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true);
+        var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+        var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
+        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         share_id = $(this).data('profile-share-id');
     });
 
@@ -274,13 +276,16 @@ function validate_permalink(share_id, scope) {
         data : { 'share_id': share_id, 'scope': scope },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
+            var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+            var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
+
             if ( data['success'] == 1 ) {
                 // query the db and load the images, including permalink dataset
-                dataset_collection_panel.load_frames({ share_id });
+                dataset_collection_panel.load_frames({ share_id, multigene });
 
             } else {
                 // query the db and load the images
-                dataset_collection_panel.load_frames();
+                dataset_collection_panel.load_frames({multigene: mg});
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
@@ -391,7 +396,10 @@ function load_layouts() {
             //Serves as source for #selected_profile editable
             layouts = formattedData;
 
-            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true);
+            var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+            var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
+
+            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true, multigene);
 
             d.resolve();
         },
@@ -655,7 +663,11 @@ $("#gene_search_form").submit(function( event ) {
             $('#intro_content').hide('fade', {}, 400, function() {
                 // auto-select the first match.  first <a class="list-group-item"
                 first_thing = $('#search_results a.list-group-item').first();
-                select_search_result(first_thing);
+                if ($('#multigene_plots').val() == 1){
+                    dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+                } else {
+                    select_search_result(first_thing);
+                }
             });
 
             // http://manos.malihu.gr/jquery-custom-content-scroller/
@@ -797,7 +809,10 @@ if (window.location.href.indexOf("manual.html") === -1) { //Without this the man
               - Fetch and draw the new DatasetCollectionPanel
               - If a user is logged in, set a cookie with the new layout ID
              */
-            dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true);
+            var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+            var multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
+
+            dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true, multigene);
             share_id = find_share_id_by_pk(params.layout_id)
             update_datasetframes_generesults();
         },
@@ -891,7 +906,15 @@ function update_datasetframes_generesults() {
     $.when( resubmit_gene_search() ).done(function(){
         // auto-select the first match.  first <a class="list-group-item"
         first_thing = $('#search_results a.list-group-item').first();
-        select_search_result(first_thing);
+        if ($('#multigene_plots').val() == 1){
+            // split on combination of space and comma (individually or both together.)
+            var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+            // Remove duplicates in gene search if they exist
+            var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+            dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+        } else {
+            select_search_result(first_thing);
+        }
     });
 }
 

@@ -463,7 +463,7 @@ class MultigeneDashData(Resource):
 
         # Filter the AnnData object based on our criteria
         filtered_composite_index = adata.obs["comparison_composite_index"].unique()
-        if filters:
+        if filters and not groups == "all":
             filtered_composite_index = groups
             condition_filter = adata.obs["comparison_composite_index"].isin(filtered_composite_index)
             selected = adata[condition_filter, :]
