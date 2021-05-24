@@ -29,8 +29,6 @@ var gene_symbols = null;    //TODO: get encoded string from POST and decode to a
     $("#dataset_select").change(async function() {
         dataset_id = $("#dataset_select").select2('data')[0].id;
 
-        dataset_id = "b0420910-a0fa-e920-152d-420b6275d3af";
-
         $('#plot_type_select').show();
 
         // Get genes for this dataset
