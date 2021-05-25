@@ -564,8 +564,8 @@ function load_organism_list() {
     
     $.ajax({
         url : './cgi/get_organism_list.cgi',
-        type: "POST",
-        data : { 'session_id': session_id },
+        type: "GET",
+        data : {},
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
             var ListTmpl = $.templates("#organism_list_tmpl");
