@@ -426,11 +426,17 @@ class MultigeneDashData(Resource):
             dataset_genes = adata.var.gene_symbol.unique().tolist()
             normalized_genes_list, found_genes = normalize_searched_genes(dataset_genes, gene_symbols_list)
             gene_filter = adata.var.gene_symbol.isin(normalized_genes_list)
-            if not gene_filter.all():
+            if not gene_filter.any():
+                return {
+                    'success': -1,
+                    'message': 'Gene not found',
+                }
+            else:
                 # Use message to show a warning
                 genes_not_present = [gene for gene in gene_symbols_list if gene not in found_genes]
-                success = 3,
-                message = 'One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)),
+                if genes_not_present:
+                    success = 3,
+                    message = 'One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)),
         else:
             return {
                 'success': -1,
@@ -459,18 +465,30 @@ class MultigeneDashData(Resource):
         # Rank the genes in order to get p_values and log-fold changes (effort size)
         # For volcano-plots
         if plot_type == "volcano":
-
             # Filter composite members for one observation only, since it causes by div-by-zero errors
             # Source; https://github.com/theislab/scanpy/pull/1490
-            groups = list(
+            filtered_groups = list(
                 adata.obs["comparison_composite_index"]
                 .value_counts()
                 .loc[lambda x: x > 1]
                 .index
                 )
+
+            # If groups were filtered initially, only use those groups.
+            if groups == "all":
+                groups = filtered_groups
+            else:
+                groups = intersection(filtered_groups, groups)
+
+            if not groups:
+                return {
+                    'success': -1,
+                    'message': 'The selected combination of filtered observations cannot be used for rank_genes_groups because only one cell matches this combinations.'
+                }
+
             #sc.pp.filter_cells(adata, min_genes=10)
             #sc.pp.filter_genes(adata, min_cells=1)
-            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=False, groups=groups, reference="rest", n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg')#, log_transformed=False)
+            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=False, groups=groups, reference="rest", n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg', log_transformed=False)
 
         # ADATA - Observations are rows, genes are columns
         # adata.uns.rank_genes_groups.<column> will be a 2D array.  Outer dimension is # genes (or n_genes). Inner dimension is per 'groupby' group
@@ -547,7 +565,7 @@ class MultigeneDashData(Resource):
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
-        # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response
+        # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response occasionally
         return {
             "success": success
             , "message": message
