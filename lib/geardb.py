@@ -765,6 +765,7 @@ class Layout:
         """
         cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width))
         member.id = cursor.lastrowid
+        self.members.append(member)
 
         cursor.close()
         conn.commit()
@@ -776,6 +777,8 @@ class Layout:
         """
         conn = Connection()
         cursor = conn.get_cursor()
+
+        self.members = list()
 
         qry = """
               SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width
@@ -813,6 +816,8 @@ class Layout:
         for row in cursor:
             (self.user_id, self.group_id, self.label, self.is_current, self.share_id) = row
 
+        self.get_members()
+            
         cursor.close()
         conn.commit()
 
@@ -846,7 +851,7 @@ class Layout:
               WHERE layout_id = %s
         """
         cursor.execute(qry, (self.id,))
-
+        
         cursor.close()
         conn.commit()
 
@@ -875,6 +880,9 @@ class Layout:
                 AND layout_id = %s
         """
         cursor.execute(qry, (dataset_id, self.id))
+
+        # make sure this member is removed from our internal list too
+        self.members = [i for i in self.members if i.dataset_id != dataset_id]
 
         cursor.close()
         conn.commit()

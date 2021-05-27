@@ -34,8 +34,10 @@ def main():
         result['error'] = error
     else:
         # make sure the user owns the layout
+        gpos = len(layout.members) + 1
+        
         if user.id == layout.user_id:
-            lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=1, grid_width=4)
+            lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4)
             layout.add_member(lm)
             result['success'] = 1
         else:
