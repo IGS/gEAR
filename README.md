@@ -46,4 +46,7 @@ If you'd like to contribute to the gEAR in any form (documentation, bug fixes, n
 ## Open source licensing info
 The gEAR is distributed under the GNU AFFERO GENERAL PUBLIC LICENSE V3   For more info, see the [LICENSE](LICENSE) document.
 
+[![DOI](https://zenodo.org/badge/289995740.svg)](https://zenodo.org/badge/latestdoi/289995740)
+
+
 
