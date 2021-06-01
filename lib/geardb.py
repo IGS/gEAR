@@ -1167,8 +1167,6 @@ class DatasetCollection:
                     
                     #  TODO: These all need to be tracked through the code and removed
                     dataset.dataset_id = dataset.id
-                    dataset.grid_position = None
-                    dataset.grid_width = 4
                     dataset.user_id = dataset.owner_id
                     dataset.math_format = dataset.math_default
 
