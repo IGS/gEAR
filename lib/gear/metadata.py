@@ -42,8 +42,8 @@ def get_value_from_df(df, index_label):
 
     # Clean up dtype labels
     if index_label == 'dataset_type':
-        if value == 'single-cell RNA-Seq': value = 'single-cell-rnaseq'
-        if value == 'bulk RNA-Seq': value = 'bulk-rnaseq'
+        if 'single' in value.lower(): value = 'single-cell-rnaseq'
+        if 'bulk' in value.lower(): value = 'bulk-rnaseq'
         if value == 'microarray': value = 'microarray'
         if value == 'ChIP-Seq': value = 'chip-seq'
         if value == 'ATAC-Seq': value = 'atac-seq'
