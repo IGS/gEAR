@@ -829,10 +829,13 @@ function update_add_remove_buttons() {
             domain_profile_selected = true;
         }
 
+        // The ability to edit and delete and dataset are currently paired
         if (CURRENT_USER.id == $(this).find("button.delete_dataset").data('owner-id')) {
             $(this).find("button.delete_dataset").show();
+            $(this).find("button.edit_dataset").show();
         } else {
             $(this).find("button.delete_dataset").hide();
+            $(this).find("button.edit_dataset").hide();
         }
         
         if (domain_profile_selected) {
