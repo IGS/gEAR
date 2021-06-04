@@ -667,7 +667,7 @@ function process_search_results(data, result_label) {
         }
         
         // some fields should never have whitespace
-        if (dataset['pubmed_id']) {
+        if (dataset['pubmed_id'] !== 'None' && dataset['pubmed_id']) {
             dataset['pubmed_id'] = dataset['pubmed_id'].trim();
         } else {
             dataset['pubmed_id'] = 0;
