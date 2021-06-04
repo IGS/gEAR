@@ -167,12 +167,8 @@ window.onload=function() {
 
         // Make sure the view is expanded
         if ($(selector_base + " .expandable-view").hasClass('expanded-view-hidden')) {
-            console.log("Didn't appear to be hidden");
             $(selector_base + " span.dataset-expander").click();
-        } else {
-            console.log("Isn't hidden");
         }
-        
     });
 
     $(document).on('click', 'button.removefromprofile', function() {
@@ -657,6 +653,8 @@ function process_search_results(data, result_label) {
     }
     
     for (const dataset of data['datasets']) {
+        console.log(dataset);
+        
         // make date_added nicer looking
         dataset['date_formatted'] = new Date(dataset['date_added']);
         dataset['date_formatted'] = dataset['date_formatted'].toDateString();
@@ -677,6 +675,10 @@ function process_search_results(data, result_label) {
             dataset['geo_id'] = dataset['geo_id'].trim();
         } else {
             dataset['geo_id'] = 0;
+        }
+
+        if (dataset['is_public'] === null) {
+            dataset['is_public'] = 0;
         }
 
         // set grid width styling for arrangement view

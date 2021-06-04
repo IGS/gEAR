@@ -1147,6 +1147,7 @@ class DatasetCollection:
                                       organism_id=row[19],
                                       pubmed_id=row[3],
                                       geo_id=row[4],
+                                      is_public=row[5],
                                       ldesc=row[6],
                                       dtype=row[7],
                                       owner_id=row[8],

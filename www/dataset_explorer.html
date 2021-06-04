@@ -244,16 +244,29 @@
               <script id="dataset_results_view_tmpl" type="text/x-jsrender">
                  <div class="dataset_list_element_c row" id="result_dataset_id_{{:dataset_id}}" data-dataset-id="{{:dataset_id}}">
                    <div class="dataset_preview_c col-sm-2">
-                     <img class="img-fluid" src="{{:preview_image_url}}" alt="Dataset preview image"/>
+                     <div class="row">
+                       <div class="col-12">
+                         <img class="img-fluid" src="{{:preview_image_url}}" alt="Dataset preview image"/>
+                       </div>
+                     </div>
+                     <div class="row justify-content-center accessibility_c">
+                       <div class="col-8">
+                         {{if is_public == 1}}
+                         <h3><span class="badge badge-success">Public dataset</span></h3>
+                         {{else}}
+                         <h3><span class="badge badge-danger">Private dataset</span></h3>
+                         {{/if}}
+                       </div>
+                     </div>
                    </div>
                    <div class="col-sm-10">
                      <div class="row">
                        <div class="col-sm-11 is-editable">
                          <h5>{{:title}}</h5>
                        </div>
-                       <div class="col-sm-11 editable-version">
+                       <div id="editable_title_c" class="col-sm-11 editable-version">
                         <span class="att_label">Title</span>
-                        <input class="editable_title" id="dataset_id_{{:dataset_id}}_editable_title" value="{{:title}}"/>
+                        <input type="text" class="editable_title" id="dataset_id_{{:dataset_id}}_editable_title" value="{{:title}}"/>
                       </div>
                        <div class="col-sm-1">
                          <span class="dataset-expander pull-right" data-dataset-id="{{:dataset_id}}"><i class="fa fa-expand"></i></span>
@@ -265,11 +278,19 @@
                        <div class="col-sm-3"><span class="att_label">Type</span> {{:dtype}}</div>
                        <div class="col-sm-3"><span class="att_label">Added</span> {{:date_formatted}}</div>
                      </div>
-                     <div class="row no-gutters expandable-view expanded-view-hidden">
+                     <div class="row no-gutters">
                        <div class="col-sm-3"><span class="att_label">Annotation source</span>{{if annotation_source}} {{:annotation_source}}{{else}} Not given{{/if}}</div>
                        <div class="col-sm-3"><span class="att_label">Version</span> {{if annotation_release}} {{:annotation_release}}{{else}} Not given{{/if}}</div>
-                       <div class="col-sm-3"><span class="att_label">Pubmed</span>{{if pubmed_id}} <a href="https://pubmed.ncbi.nlm.nih.gov/{{:pubmed_id}}">{{:pubmed_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
-                       <div class="col-sm-3"><span class="att_label">GEO ID</span>{{if geo_id}} <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank">{{:geo_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
+                       <div class="col-sm-3 is-editable"><span class="att_label">Pubmed</span>{{if pubmed_id}} <a href="https://pubmed.ncbi.nlm.nih.gov/{{:pubmed_id}}">{{:pubmed_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
+                       <div class="col-sm-3 editable-version">
+                         <span class="att_label">Pubmed</span>
+                         <input type="text" value="{{if pubmed_id}} {{:pubmed_id}}{{/if}}" />
+                       </div>
+                       <div class="col-sm-3 is-editable"><span class="att_label">GEO ID</span>{{if geo_id}} <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank">{{:geo_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
+                       <div class="col-sm-3 editable-version">
+                         <span class="att_label">GEO ID</span>
+                         <input type="text" value="{{if geo_id}}{{:geo_id}}{{/if}}" />
+                       </div>
                      </div>
                      <hr class="expandable-view expanded-view-hidden" />
                      <div class="row expandable-view expanded-view-hidden">
@@ -279,7 +300,7 @@
                        </div>
                        <div class="col-sm-6 editable-version">
                         <h5>Long description</h5>
-                        <textarea id="dataset_id_{{:dataset_id}}_editable_ldesc" rows="4" cols="50">{{:ldesc}}</textarea>
+                        <textarea id="dataset_id_{{:dataset_id}}_editable_ldesc" rows="4">{{:ldesc}}</textarea>
                       </div>
                        <div class="col-sm-6">
                          <h5>Found in these profiles</h5>
@@ -306,8 +327,10 @@
                            <button class="btn btn-default btn-sm btn-outline-danger delete_dataset" value="{{:dataset_id}}" data-owner-id="{{:owner_id}}" data-toggle="popover" data-placement="bottom" title="Remove dataset from gEAR"><i class="fa fa-trash"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary share_dataset" value="{{:share_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Share dataset"><i class="fa fa-share-alt"></i></button>
                            <!--<button class="btn btn-default btn-sm btn-outline-secondary note_launcher" data-dataset-id="{{:dataset_id}}" data-title="{{:title}}" data-toggle="tooltip" data-placement="bottom" title="View notes"><span class="fa fa-pencil"></span></button>-->
-                           <button class="btn btn-default btn-sm btn-outline-secondary edit_dataset" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-pencil"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary edit_dataset is-editable" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-pencil"></i></button>
                            <span class="dataset_action_note"></span>
+                           <button class="btn btn-default btn-sm btn-outline-primary edit_dataset_save editable-version" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-floppy-o"></i> Save edits</button>
+                           <button class="btn btn-default btn-sm btn-outline-primary edit_dataset_cancel editable-version" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
                          </div>
                        </div>
                      </div>
