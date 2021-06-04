@@ -1,3 +1,6 @@
+.editable-version {
+    display: none;
+}
 .expanded-view-hidden {
     display: none;
 }
@@ -127,6 +130,9 @@ h4.expandable_control:hover {
 hr.dataset_list_element_divider {
     width: 90%;
     background-color: var(--dataset-panel-header-bg-color);
+}
+input.editable_title {
+    width: 100%;
 }
 span.att_label {
     font-size: 90%;

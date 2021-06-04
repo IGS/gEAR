@@ -157,6 +157,24 @@ window.onload=function() {
         add_to_profile(dataset_id);
     });
 
+    $(document).on('click', 'button.edit_dataset', function() {
+        var dataset_id = $(this).data('dataset-id');
+        var selector_base = "#result_dataset_id_" + dataset_id;
+
+        // Show editable versions where there are some and hide the display versions
+        $(selector_base + " .is-editable").hide();
+        $(selector_base + " .editable-version").show();
+
+        // Make sure the view is expanded
+        if ($(selector_base + " .expandable-view").hasClass('expanded-view-hidden')) {
+            console.log("Didn't appear to be hidden");
+            $(selector_base + " span.dataset-expander").click();
+        } else {
+            console.log("Isn't hidden");
+        }
+        
+    });
+
     $(document).on('click', 'button.removefromprofile', function() {
         dataset_id = $(this).attr('value');
         remove_from_profile(dataset_id);

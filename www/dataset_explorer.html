@@ -248,9 +248,13 @@
                    </div>
                    <div class="col-sm-10">
                      <div class="row">
-                       <div class="col-sm-11">
+                       <div class="col-sm-11 is-editable">
                          <h5>{{:title}}</h5>
                        </div>
+                       <div class="col-sm-11 editable-version">
+                        <span class="att_label">Title</span>
+                        <input class="editable_title" id="dataset_id_{{:dataset_id}}_editable_title" value="{{:title}}"/>
+                      </div>
                        <div class="col-sm-1">
                          <span class="dataset-expander pull-right" data-dataset-id="{{:dataset_id}}"><i class="fa fa-expand"></i></span>
                        </div>
@@ -269,10 +273,14 @@
                      </div>
                      <hr class="expandable-view expanded-view-hidden" />
                      <div class="row expandable-view expanded-view-hidden">
-                       <div class="col-sm-6">
+                       <div class="col-sm-6 is-editable">
                          <h5>Long description</h5>
                          <div>{{:ldesc}}</div>
                        </div>
+                       <div class="col-sm-6 editable-version">
+                        <h5>Long description</h5>
+                        <textarea id="dataset_id_{{:dataset_id}}_editable_ldesc" rows="4" cols="50">{{:ldesc}}</textarea>
+                      </div>
                        <div class="col-sm-6">
                          <h5>Found in these profiles</h5>
                          <div class='profile_list_c'>
@@ -287,7 +295,7 @@
                            </ul>
                          </div>
                        </div>
-                     </div>
+                     </div> <!-- end .expandable-view -->
                      <div class="row">
                        <div class="col-sm-12">
                          <div class="att_buttons btn-group pt-2" role="group"> 
@@ -339,12 +347,12 @@
   <!-- content inserted via common.js-->
  </div>
  <div style="clear: both;">&nbsp;</div>
-    <footer>
-      <div id='funding'>
-        <!-- content here inserted via JQuery -->
-      </div>
-    </footer>
-</div> <!-- /body_c -->
+ <footer>
+   <div id='funding'>
+     <!-- content here inserted via JQuery -->
+   </div>
+ </footer>
+
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
