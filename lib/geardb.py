@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import re
 import sys
 import uuid
 
@@ -1055,22 +1056,26 @@ class Dataset:
 
     def save_change(self, attribute=None, value=None):
         """
-        Update a dataset attribute.
+        Update a dataset attribute, both in the object and the relational database
         """
         if self.id is None:
             raise Exception("Error: no dataset id. Cannot save change.")
         if attribute is None:
             raise Exception("Error: no attribute given. Cannot save change.")
 
+        ## quick sanitization of attribute
+        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
+        setattr(self, attribute, value)
+        
         conn = Connection()
         cursor = conn.get_cursor()
 
         save_sql = """
             UPDATE dataset
-            SET {0} = '{1}'
-            WHERE id = '{2}'
-        """.format(attribute, str(value), self.id)
-        cursor.execute(save_sql)
+            SET {0} = %s
+            WHERE id = %s
+        """.format(attribute)
+        cursor.execute(save_sql, (str(value), self.id))
 
         conn.commit()
         cursor.close()
