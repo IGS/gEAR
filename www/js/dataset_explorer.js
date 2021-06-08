@@ -279,6 +279,31 @@ $(document).on('click', '.confirm_dataset_delete', function() {
     }); //end ajax for .confirm_delete
 });
 
+$(document).on('click', '.edit_dataset_cancel', function() {
+    var dataset_id = $(this).data('dataset-id');
+    var selector_base = "#result_dataset_id_" + dataset_id;
+
+    // Show editable versions where there are some and hide the display versions
+    $(selector_base + " .editable-version").hide();
+    $(selector_base + " .is-editable").show();
+
+    // Reset any unsaved/edited values
+    var visibility = $(selector_base + "_visibility").data("original-val");
+    $(selector_base + "_visibility").val(visibility);
+
+    var title = $(selector_base + "_editable_title").data("original-val");
+    $(selector_base + "_editable_title").val(title);
+
+    var pubmed_id = $(selector_base + "_editable_pubmed_id").data("original-val");
+    $(selector_base + "_editable_pubmed_id").val(pubmed_id);
+
+    var geo_id = $(selector_base + "_editable_geo_id").data("original-val");
+    $(selector_base + "_editable_geo_id").val(geo_id);
+
+    var ldesc = $(selector_base + "_editable_ldesc").data("original-val");
+    $(selector_base + "_editable_ldesc").val(ldesc);
+});
+
 $('#btn_delete_layout').popover({
 		animation: true,
 		trigger: 'click',
@@ -653,8 +678,6 @@ function process_search_results(data, result_label) {
     }
     
     for (const dataset of data['datasets']) {
-        console.log(dataset);
-        
         // make date_added nicer looking
         dataset['date_formatted'] = new Date(dataset['date_added']);
         dataset['date_formatted'] = dataset['date_formatted'].toDateString();

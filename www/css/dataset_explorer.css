@@ -151,6 +151,9 @@ hr.dataset_list_element_divider {
 input.editable_title {
     width: 100%;
 }
+select.visibility_selector {
+    width: 95%;
+}
 span.att_label {
     font-size: 90%;
     font-weight: bold;

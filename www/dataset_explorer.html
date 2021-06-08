@@ -238,6 +238,12 @@
               </div>
             </div> 
           </div> <!-- end initial_instructions_c -->
+          <!--
+              In this section of looped dataset displays there are class-based controls for editable fields.
+              This is controlled by a few paired classes, "is-editable" and "editable-version".  When the
+              user clicks the edit button for any dataset all the elements which are is-editable are hidden
+              and the editable-version ones are displayed in their stead.
+          -->
           <div id="dataset_viewport" class="row">
             <div id="dataset_list_c" class="col-sm-12">
               <div id="dataset_list_results_view_c"></div>
@@ -250,12 +256,23 @@
                        </div>
                      </div>
                      <div class="row justify-content-center accessibility_c">
-                       <div class="col-8">
+                       <div class="col-8 is-editable">
                          {{if is_public == 1}}
-                         <h3><span class="badge badge-success">Public dataset</span></h3>
+                         <h3><span class="badge badge-light">Public dataset</span></h3>
                          {{else}}
                          <h3><span class="badge badge-danger">Private dataset</span></h3>
                          {{/if}}
+                       </div>
+                       <div class="col-8 editable-version pl-0 pr-0 pt-4">
+                         <select class="visibility_selector" data-original-val="{{if is_public == 1}}public{{else}}private{{/if}}" id="result_dataset_id_{{:dataset_id}}_visibility">
+                           {{if is_public == 1}}
+                           <option value="public" selected>Public</option>
+                           <option value="private">Private</option>
+                           {{else}}
+                           <option value="public">Public</option>
+                           <option value="private" selected>Private</option>
+                           {{/if}}
+                         </select>
                        </div>
                      </div>
                    </div>
@@ -266,7 +283,7 @@
                        </div>
                        <div id="editable_title_c" class="col-sm-11 editable-version">
                         <span class="att_label">Title</span>
-                        <input type="text" class="editable_title" id="dataset_id_{{:dataset_id}}_editable_title" value="{{:title}}"/>
+                        <input type="text" class="editable_title" id="result_dataset_id_{{:dataset_id}}_editable_title" data-original-val="{{:title}}" value="{{:title}}"/>
                       </div>
                        <div class="col-sm-1">
                          <span class="dataset-expander pull-right" data-dataset-id="{{:dataset_id}}"><i class="fa fa-expand"></i></span>
@@ -284,12 +301,12 @@
                        <div class="col-sm-3 is-editable"><span class="att_label">Pubmed</span>{{if pubmed_id}} <a href="https://pubmed.ncbi.nlm.nih.gov/{{:pubmed_id}}">{{:pubmed_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
                        <div class="col-sm-3 editable-version">
                          <span class="att_label">Pubmed</span>
-                         <input type="text" value="{{if pubmed_id}} {{:pubmed_id}}{{/if}}" />
+                         <input type="text" id="result_dataset_id_{{:dataset_id}}_editable_pubmed_id" data-original-val="{{if pubmed_id}}{{:pubmed_id}}{{/if}}" value="{{if pubmed_id}}{{:pubmed_id}}{{/if}}" />
                        </div>
                        <div class="col-sm-3 is-editable"><span class="att_label">GEO ID</span>{{if geo_id}} <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank">{{:geo_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
                        <div class="col-sm-3 editable-version">
                          <span class="att_label">GEO ID</span>
-                         <input type="text" value="{{if geo_id}}{{:geo_id}}{{/if}}" />
+                         <input type="text" id="result_dataset_id_{{:dataset_id}}_editable_geo_id" data-original-val="{{if geo_id}}{{:geo_id}}{{/if}}" value="{{if geo_id}}{{:geo_id}}{{/if}}" />
                        </div>
                      </div>
                      <hr class="expandable-view expanded-view-hidden" />
@@ -300,7 +317,7 @@
                        </div>
                        <div class="col-sm-6 editable-version">
                         <h5>Long description</h5>
-                        <textarea id="dataset_id_{{:dataset_id}}_editable_ldesc" rows="4">{{:ldesc}}</textarea>
+                        <textarea id="result_dataset_id_{{:dataset_id}}_editable_ldesc" rows="4" data-original-val="{{:ldesc}}">{{:ldesc}}</textarea>
                       </div>
                        <div class="col-sm-6">
                          <h5>Found in these profiles</h5>
