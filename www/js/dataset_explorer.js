@@ -370,6 +370,8 @@ $(document).on('click', '.edit_dataset_save', function() {
                 $(selector_base + "_display_ldesc").html(new_ldesc);
                 
                 // Put interface back to view mode.
+                $(selector_base + " .editable-version").hide();
+                $(selector_base + " .is-editable").show();
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
