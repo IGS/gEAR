@@ -256,7 +256,7 @@
                        </div>
                      </div>
                      <div class="row justify-content-center accessibility_c">
-                       <div class="col-8 is-editable">
+                       <div class="col-8 is-editable" id="result_dataset_id_{{:dataset_id}}_display_visibility">
                          {{if is_public == 1}}
                          <h3><span class="badge badge-light">Public dataset</span></h3>
                          {{else}}
@@ -279,7 +279,7 @@
                    <div class="col-sm-10">
                      <div class="row">
                        <div class="col-sm-11 is-editable">
-                         <h5>{{:title}}</h5>
+                         <h5 id="result_dataset_id_{{:dataset_id}}_display_title">{{:title}}</h5>
                        </div>
                        <div id="editable_title_c" class="col-sm-11 editable-version">
                         <span class="att_label">Title</span>
@@ -298,12 +298,27 @@
                      <div class="row no-gutters">
                        <div class="col-sm-3"><span class="att_label">Annotation source</span>{{if annotation_source}} {{:annotation_source}}{{else}} Not given{{/if}}</div>
                        <div class="col-sm-3"><span class="att_label">Version</span> {{if annotation_release}} {{:annotation_release}}{{else}} Not given{{/if}}</div>
-                       <div class="col-sm-3 is-editable"><span class="att_label">Pubmed</span>{{if pubmed_id}} <a href="https://pubmed.ncbi.nlm.nih.gov/{{:pubmed_id}}">{{:pubmed_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
+                       <!-- Any changes to the Pubmed or GEO elements here need to be reflected in the .edit_dataset_save handler -->
+                       <div class="col-sm-3 is-editable" id="result_dataset_id_{{:dataset_id}}_display_pubmed_id">
+                         <span class="att_label">Pubmed</span>
+                         {{if pubmed_id}} <a href="https://pubmed.ncbi.nlm.nih.gov/{{:pubmed_id}}">{{:pubmed_id}}
+                           <i class="fa fa-external-link"></i></a>
+                         {{else}}
+                           Not given
+                         {{/if}}
+                       </div>
                        <div class="col-sm-3 editable-version">
                          <span class="att_label">Pubmed</span>
                          <input type="text" id="result_dataset_id_{{:dataset_id}}_editable_pubmed_id" data-original-val="{{if pubmed_id}}{{:pubmed_id}}{{/if}}" value="{{if pubmed_id}}{{:pubmed_id}}{{/if}}" />
                        </div>
-                       <div class="col-sm-3 is-editable"><span class="att_label">GEO ID</span>{{if geo_id}} <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank">{{:geo_id}} <i class="fa fa-external-link"></i></a>{{else}} Not given{{/if}}</div>
+                       <div class="col-sm-3 is-editable" id="result_dataset_id_{{:dataset_id}}_display_geo_id">
+                         <span class="att_label">GEO ID</span>
+                         {{if geo_id}} <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank">{{:geo_id}}
+                           <i class="fa fa-external-link"></i></a>
+                         {{else}}
+                           Not given
+                         {{/if}}
+                       </div>
                        <div class="col-sm-3 editable-version">
                          <span class="att_label">GEO ID</span>
                          <input type="text" id="result_dataset_id_{{:dataset_id}}_editable_geo_id" data-original-val="{{if geo_id}}{{:geo_id}}{{/if}}" value="{{if geo_id}}{{:geo_id}}{{/if}}" />
@@ -313,7 +328,7 @@
                      <div class="row expandable-view expanded-view-hidden">
                        <div class="col-sm-6 is-editable">
                          <h5>Long description</h5>
-                         <div>{{:ldesc}}</div>
+                         <div id="result_dataset_id_{{:dataset_id}}_display_ldesc">{{:ldesc}}</div>
                        </div>
                        <div class="col-sm-6 editable-version">
                         <h5>Long description</h5>
@@ -336,7 +351,7 @@
                      </div> <!-- end .expandable-view -->
                      <div class="row">
                        <div class="col-sm-12">
-                         <div class="att_buttons btn-group pt-2" role="group"> 
+                         <div class="att_buttons btn-group pt-2" role="group">
                            <button class="btn btn-default btn-sm btn-outline-secondary view_dataset" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View"><i class="fa fa-eye"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary profile_control add2profile" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Add dataset to profile"><i class="fa fa-plus"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary profile_control removefromprofile" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Remove dataset from current profile"><i class="fa fa-minus"></i></button>

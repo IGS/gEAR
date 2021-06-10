@@ -304,6 +304,82 @@ $(document).on('click', '.edit_dataset_cancel', function() {
     $(selector_base + "_editable_ldesc").val(ldesc);
 });
 
+$(document).on('click', '.edit_dataset_save', function() {
+    session_id = Cookies.get('gear_session_id');
+    var dataset_id = $(this).data('dataset-id');
+    var selector_base = "#result_dataset_id_" + dataset_id;
+    var new_visibility = $(selector_base + "_visibility").val();
+    var new_title = $(selector_base + "_editable_title").val();
+    var new_pubmed_id = $(selector_base + "_editable_pubmed_id").val();
+    var new_geo_id = $(selector_base + "_editable_geo_id").val();
+    var new_ldesc = $(selector_base + "_editable_ldesc").val();
+
+    $.ajax({
+        url : './cgi/save_datasetinfo_changes.cgi',
+        type: "POST",
+        data : { 'session_id': session_id,
+                 'dataset_id': dataset_id,
+                 'visibility': new_visibility,
+                 'title': new_title,
+                 'pubmed_id': new_pubmed_id,
+                 'geo_id': new_geo_id,
+                 'ldesc': new_ldesc
+               },
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            if ( data['success'] == 1 ) {
+                // Update the UI for the new values
+                $(selector_base + "_visibility").data("original-val", new_visibility);
+
+                var visibility_html = ''
+                if (new_visibility == 'public') {
+                    visibility_html = '<h3><span class="badge badge-light">Public dataset</span></h3>'
+                } else {
+                    visibility_html = '<h3><span class="badge badge-danger">Private dataset</span></h3>';
+                }
+                $(selector_base + "_display_visibility").html(visibility_html);
+                
+                $(selector_base + "_editable_title").data("original-val", new_title);
+                $(selector_base + "_display_title").html(new_title);
+                
+                $(selector_base + "_editable_pubmed_id").data("original-val", new_pubmed_id);
+                var pubmed_html = "<span class='att_label'>Pubmed</span>";
+
+                if (new_pubmed_id) {
+                    pubmed_html += "<a href='https://pubmed.ncbi.nlm.nih.gov/" + new_pubmed_id + "' target='_blank'> " + new_pubmed_id;
+                    pubmed_html += " <i class='fa fa-external-link'></i></a>";
+                } else {
+                    pubmed_html = "Not given";
+                }
+
+                $(selector_base + "_display_pubmed_id").html(pubmed_html);
+
+                $(selector_base + "_editable_geo_id").data("original-val", new_geo_id);
+                var geo_html = "<span class='att_label'>GEO ID</span>";
+
+                if (new_geo_id) {
+                    geo_html += "<a href='https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=" + new_geo_id + "' target='_blank'> " + new_geo_id;
+                    geo_html += " <i class='fa fa-external-link'></i></a>";
+                } else {
+                    geo_html = "Not given";
+                }
+
+                $(selector_base + "_display_geo_id").html(geo_html);
+
+                $(selector_base + "_editable_ldesc").data("original-val", new_ldesc);
+                $(selector_base + "_display_ldesc").html(new_ldesc);
+                
+                // Put interface back to view mode.
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log('textStatus= ', textStatus);
+            console.log('errorThrown= ', errorThrown);
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    }); //end ajax
+});   
+
 $('#btn_delete_layout').popover({
 		animation: true,
 		trigger: 'click',
