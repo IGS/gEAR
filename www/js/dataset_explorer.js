@@ -498,7 +498,8 @@ $(document).on('click', 'button#btn_save_layout', function() {
                 $("#arrangement_save_notification").show();
                 setTimeout(function() {
                     $("#arrangement_save_notification").fadeOut();
-                }, 5000);
+                    $("#btn_list_view_compact").trigger('click');
+                }, 800);
             }
 
             if ( data['error'] ) {
