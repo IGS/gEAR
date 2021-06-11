@@ -133,6 +133,9 @@ div#intro_search_icon:hover,
 div#exact_match_icon:hover {
   cursor: pointer;
 }
+div#intro_search_options_c {
+    margin-bottom: 400px;
+}
 div#intro_search_options_c h1 {
     color: rgb(0,0,0);
     font-size: 140%;
@@ -398,6 +401,9 @@ p#dataset_browse_label a {
 }
 p#intro_selected_profile_warning {
     padding-top: 10px;
+}
+p#site_down_notice {
+    margin-top: 20px;
 }
 span.corner-badge {
   /* Inspiration for badges: https://codepen.io/eode9/pen/twkKm */

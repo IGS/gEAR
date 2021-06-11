@@ -6,134 +6,19 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>User Profile page</title>
-        <meta http-equiv="Pragma" content="no-cache">
-        <meta http-equiv="Expires" content="-1">
-        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
+        <meta http-equiv="refresh" content="0; URL=./index.html" />
+        <title>This page has moved</title>
         <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
              to be changed for any hosts where gEAR is not at the webserver root.
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-        <script>document.write('<link rel="stylesheet" href="css/user_profile.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-
     </head>
     <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
-        <div id="body_c">
 
-            <div id="navigation_bar">
-            <!-- content here inserted via JQuery -->
-            </div> <!-- end navigation_bar -->
-            <div class="col-12 alert-container">
-            <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-            </div>
+      
 
-            <div id="login_checking">
-            <div class="col-12">
-            <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
-            </div>
-            </div>
-
-            <div id="login_warning">
-            <div class="col-12">
-            <h2>Login required</h2>
-            <p>
-                You must be logged in to view a user propfile.  Please use the login form in the top-right.
-            </p>
-            </div>
-            </div>
-
-            <div id="main_content" class="container">
-            <div id='main_row' class="row">
-                <div class="col">
-                    <h2>User Profile</h2>
-
-                    <form id="settings_form" name="settings_form">
-                        <h4>User settings</h4>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="email">Email:</label>
-                            <div class="col">
-                            <input id="email" name="email" type="email" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="institution">Institution:</label>
-                            <div class="col">
-                            <input id="institution" name="institution" type="text" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="newPassword">New password:</label>
-                            <div class="col">
-                            <input id="newPassword" name="newPassword" type="password" class="form-control" />
-                            <div class="form-check">
-                            <input id="showPassword" name="showPassword" type="checkbox" class="form-check-input" />
-                            <label class="form-check-label" for="showPassword">Show Password</label>
-                            </div>
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="repeatPassword">Repeat new password:</label>
-                            <div class="col">
-                            <input id="repeatPassword" name="repeatPassword" type="password" class="form-control"/>
-                            <span id="passwordMatch"></span>
-                            </div>
-                        </div>
-                        <div class="form-check form-group form-row">
-                            <div class="offset-2">
-                            <input id="wantUpdates" name="wantUpdates" type="checkbox" class="form-check-input" />
-                            <label class="form-check-label" for="wantUpdates">Check box if you want to receive periodic news and updates about gEAR</label>
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <button id="submit_preferences" class="btn btn-primary offset-2" type="submit">Update Profile</button>
-                        </div>
-                    </form>
-
-                    <!-- eventually differentiate between user settings and profiles with a tab menu or accordion or something -->
-                </div> <!-- end #.col-12 -->
-            </div> <!-- end #main_row -->
-            </div> <!-- end #main_content -->
-
-            <div id='account_creation_c' class='row'>
-            <!-- content inserted via common.js-->
-            </div>
-
-            <div style="clear: both;">&nbsp;</div>
-
-            <footer>
-                <div id='funding'>
-                    <!-- content here inserted via JQuery -->
-                </div>
-            </footer>
-        </div> <!-- /body_c -->
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-
-        <script src="js/vendor/js.cookie.js"></script>
-        <script src="js/vendor/jquery.iframe-transport.js"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
-
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/user_profile.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-
-        <script>
+      <script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -141,6 +26,6 @@
 
   ga('create', 'UA-59916932-1', 'auto');
   ga('send', 'pageview');
-        </script>
+      </script>
     </body>
 </html>

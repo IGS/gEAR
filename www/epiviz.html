@@ -1,34 +1,31 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta http-equiv="refresh" content="0; URL=./index.html" />
+        <title>This page has moved</title>
+        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+          -->
+        <base href="/" />
 
-<head>
-    <title>Epiviz</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+    </head>
+    <body>
 
-    <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/jquery/dist/jquery.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/jquery-ui/jquery-ui.js"></script>
+      
 
-    <script src="js/epiviz.js"></script>
+      <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-    <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
-    
-    <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components.html">
-</head>
-
-<body>
-    <!-- Let the components know where the epiviz file server is running -->
-    <div id="epiviz_container">
-        <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider" 
-            provider-id="fileapi" 
-            provider-url="/epivizfile">
-        </epiviz-data-source>  
-    </div>
-
-    <noscript>
-        Please enable JavaScript to view this website.
-    </noscript>
-</body>
-
+  ga('create', 'UA-59916932-1', 'auto');
+  ga('send', 'pageview');
+      </script>
+    </body>
 </html>
