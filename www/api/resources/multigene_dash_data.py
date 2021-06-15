@@ -80,6 +80,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False):
     if is_log10:
         values = df.loc[rows].values
 
+    # TODO: If just one gene, use go.heatmap instead
+
     return dashbio.Clustergram(
         data=values
         , column_labels=columns
@@ -88,99 +90,17 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False):
         , color_map="balance"               # Heatmap colors
         , display_ratio=0.5                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
-        #, hidden_labels="col"
         , log_transform=False if is_log10 else True
-        #, optimal_leaf_order=True
         , return_computed_traces=True
     )
 
-def modify_clustergram(fig, traces, filter_indexes, is_log10=False) -> None:
-    """Add column traces for each filtered group.  Edits figure in-place."""
-
-    # Append all traces but the genes dendrogram
-    new_data = []
-    for data in fig.data:
-        if not (data["name"] and "Row" in data["name"]):
-            new_data.append(data)
-    fig.data = new_data
-
-    # Clustergram "color_list" does not seem to work. Change dendrogram line color here.
-    for i in range(len(fig.data) - 1):
-        fig.data[i]["marker"]["color"] = "black"
-
-    # Delete dendrogram axis
-    fig.layout.pop("xaxis4", None)
-    fig.layout.pop("yaxis4", None)
-
-    # Adjust domain of heatmap, and col clusters
-    fig.layout["xaxis2"]["domain"] = [0, 0.95]
-    fig.layout["xaxis5"]["domain"] = [0, 0.95]
-    fig.layout["xaxis8"]["domain"] = [0, 0.95]
-
-    # Move heatmap colorbar to left of plot
-    fig.data[len(fig.data) - 1]["colorbar"]["x"] = -0.1
-    fig.data[len(fig.data) - 1]["colorbar"]["xanchor"] = "left"
-    fig.data[len(fig.data) - 1]["colorbar"].pop("xpad", None)
-    fig.data[len(fig.data) - 1]["colorbar"]["y"] = -0.05    # Align with bottom of heatmap
-    fig.data[len(fig.data) - 1]["colorbar"]["yanchor"] = "bottom"
-    fig.data[len(fig.data) - 1]["colorbar"]["title"]["text"] = "Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
-    fig.data[len(fig.data) - 1]["colorbar"]["title"]["side"] = "right"
-
-
-    col_group_markers = build_column_group_markers(traces, filter_indexes)
-    groups_and_colors = set_obs_groups_and_colors(filter_indexes)
-
-    # Create a 2D-heatmap.  Convert the discrete groups into integers.
-    # One heatmap per observation category
-    col_group_labels = []
-
-    # This is derived from the heatmap axis in the figure
-    x=list(range(int(fig.layout["xaxis5"]["range"][0]+5), int(fig.layout["xaxis5"]["range"][1]+5), 10))
-
-    # Offset the obs group colorbar to the right of the heatmap
-    colorbar_x = 1.02
-
-    # Find top of original heatmap and put "groups" heatmap tracks above.  Makes a small space b/t the genes and groups tracks
-    mid_y = max(fig.layout["yaxis5"]["tickvals"]) + 12
-
-    for key, val in col_group_markers.items():
-        # TODO: col_group_markers is out of order.  Needs to be in the order of traces.column_id
-        z = [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
-
-        # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
-        colorscale= []
-        for i in range(len(groups_and_colors[key]["colors"])):
-            # Start of color thresholds
-            colorscale.append(( (i)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
-            # End of color thresholds
-            colorscale.append(( (i+1)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
-
-        trace = go.Heatmap(
-            x=x
-            , y=[mid_y-5, mid_y+5]
-            , z=z
-            , colorbar=dict(
-                ticktext=[group for group in groups_and_colors[key]["groups"]]
-                , tickmode="array"
-                , tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
-                , title=key
-                , x=colorbar_x
-                , y=-0.05   # Align with bottom of heatmap
-                , yanchor="bottom"
-                )
-            , colorscale=colorscale
-        )
-        col_group_labels.append(trace)
-
-        # Add group label to axis tuples
-        fig.layout["yaxis5"]["ticktext"] = fig.layout["yaxis5"]["ticktext"] + (key, )
-        fig.layout["yaxis5"]["tickvals"] = fig.layout["yaxis5"]["tickvals"] + (mid_y, )
-
-        colorbar_x += 0.1
-        mid_y += 12 # add enough gap to space the "group" tracks
-
-    for cgl in col_group_labels:
-        fig.append_trace(cgl, 2, 2)
+def modify_clustergram(fig):
+    """Curate the clustergram. Edits 'fig' inplace."""
+    hyperlink_genes = []
+    for gene in fig.layout['yaxis5']['ticktext']:
+        # Inherit from parent tag. Plotly's default style is to make the "a" tag blue which also messes with hovertext
+        hyperlink_genes.append("<a style='fill:inherit;>{}</a>".format(gene))
+    fig.layout['yaxis5']['ticktext'] = hyperlink_genes
 
 ### Violin fxns
 
@@ -212,7 +132,7 @@ def create_violin_plot(df, gene_map, groupby_filter):
                 , scalegroup="{}_{}".format(gene, name)
                 , showlegend=showlegend
                 , fillcolor=fillcolor
-                , offsetgroup=offsetgroup
+                , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
                 , line=dict(color=fillcolor)
                 , points=False
                 , box=dict(
@@ -372,17 +292,68 @@ def build_obs_group_indexes(df, filters):
             filter_indexes[k][elem] = [df.index.get_loc(i) for i in obs_index]
     return filter_indexes
 
-def create_filtered_composite_index(filters):
+def create_dataframe_gene_filter(df, gene_symbols, plot_type):
+    """Create a gene filter to filter a dataframe."""
+    gene_filter = None
+    success = 1
+    message = ""
+    if 'gene_symbol' in df.columns:
+        if gene_symbols:
+            dataset_genes = df.gene_symbol.unique().tolist()
+            normalized_genes_list, found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+            gene_filter = df.gene_symbol.isin(normalized_genes_list)
+            if not gene_filter.any():
+                raise PlotError("Genes not found")
+            else:
+                # Use message to show a warning
+                genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
+                if genes_not_present:
+                    success = 3,
+                    message = 'One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)),
+        else:
+            if plot_type not in ["heatmap"]:
+                raise PlotError('Must filter genes before creating a plot of type {}'.format(plot_type))
+    else:
+        raise PlotError('Missing gene_symbol column in adata.var')
+    return gene_filter, success, message
+
+def create_filtered_composite_indexes(filters, composite_indexes):
     """Create an index based on the 'comparison_composite_index' column."""
     all_vals = [v for k, v in filters.items()]  # List of lists
 
     # itertools.product returns a combation of every value from every list
     # Essentially  ((x,y) for x in A for y in B)
-    value_combinations = product(*all_vals)
-    string_value_combinations = [";".join(v) for v in value_combinations]
+    filter_combinations = product(*all_vals)
+    string_filter_combinations = [";".join(v) for v in filter_combinations]
 
-    # NOTE: This returns combinations of indexes that may not exist.  Those are filtered out later
-    return string_value_combinations
+    # This contains combinations of indexes that may not exist in the dataframe.
+    # Use composite indexes from dataframe to return valid filtered indexes
+    return intersection(string_filter_combinations, composite_indexes)
+
+def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+    """Return analysis object based on various factors."""
+    # If an analysis is posted we want to read from its h5ad
+    if analysis:
+        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=analysis_owner_id)
+
+        if 'type' in analysis:
+            ana.type = analysis['type']
+        else:
+            user = geardb.get_user_from_session_id(session_id)
+            ana.discover_type(current_user_id=user.id)
+    else:
+        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
+        h5_path = ds.get_file_path()
+
+        # Let's not fail if the file isn't there
+        if not os.path.exists(h5_path):
+            return {
+                'success': -1,
+                'message': "No h5 file found for this dataset"
+            }
+        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+    return ana
 
 def intersection(lst1, lst2):
     """Intersection of two lists."""
@@ -393,6 +364,21 @@ def normalize_searched_genes(gene_list, chosen_genes):
     case_insensitive_genes = [g for cg in chosen_genes for g in gene_list if cg.lower() == g.lower()]
     found_genes = [cg for cg in chosen_genes for g in gene_list if cg.lower() == g.lower()]
     return case_insensitive_genes, found_genes
+
+def order_by_time_point(obs_df):
+    """Order observations by time point column if it exists."""
+    # check if time point order is intially provided in h5ad
+    time_point_order = obs_df.get('time_point_order')
+    if (time_point_order is not None and 'time_point' in obs_df.columns):
+        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
+        # Safety check. Make sure time point is categorical before
+        # calling .cat
+        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
+        col = obs_df['time_point'].cat
+        obs_df['time_point'] = col.reorder_categories(
+            sorted_df.time_point.drop_duplicates(), ordered=True)
+        obs_df = obs_df.drop(['time_point_order'], axis=1)
+    return obs_df
 
 def set_obs_groups_and_colors(filter_indexes):
     """Create mapping of groups and colors per observation category."""
@@ -406,6 +392,13 @@ def set_obs_groups_and_colors(filter_indexes):
         groups_and_colors[k]["groups"] = [elem for elem in v]
         groups_and_colors[k]["colors"] = [next(color_cycler) for elem in v]
     return groups_and_colors
+
+
+class PlotError(Exception):
+    """Error based on plotting issues."""
+    def __init__(self, message="") -> None:
+        self.message = message
+        super().__init__(self.message)
 
 
 class MultigeneDashData(Resource):
@@ -424,7 +417,6 @@ class MultigeneDashData(Resource):
 
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
-        user = geardb.get_user_from_session_id(session_id)
         req = request.get_json()
         analysis = req.get('analysis', None)
         analysis_owner_id = req.get('analysis_owner_id', None)
@@ -432,45 +424,15 @@ class MultigeneDashData(Resource):
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
         cluster_cols = req.get('cluster_cols', False)
-        sort_filter = req.get('sort_filter', None)
+        groupby_filter = req.get('groupby_filter', None)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
-        # If an analysis is posted we want to read from its h5ad
-        if analysis:
-            ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                  session_id=session_id, user_id=analysis_owner_id)
-
-            if 'type' in analysis:
-                ana.type = analysis['type']
-            else:
-                ana.discover_type(current_user_id=user.id)
-        else:
-            ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-            h5_path = ds.get_file_path()
-
-            # Let's not fail if the file isn't there
-            if not os.path.exists(h5_path):
-                return {
-                    'success': -1,
-                    'message': "No h5 file found for this dataset"
-                }
-            ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+        ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
 
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=False)
 
-
-        # check if time point order is intially provided in h5ad
-        time_point_order = adata.obs.get('time_point_order')
-        if (time_point_order is not None and 'time_point' in adata.obs.columns):
-            sorted_df = adata.obs.drop_duplicates().sort_values(by='time_point_order')
-            # Safety check. Make sure time point is categorical before
-            # calling .cat
-            adata.obs['time_point'] = pd.Categorical(adata.obs['time_point'])
-            col = adata.obs['time_point'].cat
-            adata.obs['time_point'] = col.reorder_categories(
-                sorted_df.time_point.drop_duplicates(), ordered=True)
-            adata.obs = adata.obs.drop(['time_point_order'], axis=1)
+        adata.obs = order_by_time_point(adata.obs)
 
         # get a map of all levels for each column
         columns = adata.obs.columns.tolist()
@@ -481,95 +443,70 @@ class MultigeneDashData(Resource):
         success = 1
         message = ""
 
-        gene_filter = None
-
-        if 'gene_symbol' in adata.var.columns:
-            if gene_symbols:
-                dataset_genes = adata.var.gene_symbol.unique().tolist()
-                normalized_genes_list, found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
-                gene_filter = adata.var.gene_symbol.isin(normalized_genes_list)
-                if not gene_filter.any():
-                    return {
-                        'success': -1,
-                        'message': 'Gene not found',
-                    }
-                else:
-                    # Use message to show a warning
-                    genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
-                    if genes_not_present:
-                        success = 3,
-                        message = 'One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)),
-        else:
+        # TODO: How to deal with a gene mapping to multiple Ensemble IDs
+        try:
+            gene_filter, success, message = create_dataframe_gene_filter(adata.var, gene_symbols, plot_type)
+        except PlotError as pe:
             return {
                 'success': -1,
-                'message': 'Missing gene_symbol column in adata.var'
+                'message': str(pe),
             }
-
-        # TODO: How to deal with a gene mapping to multiple Ensemble IDs
-        """
-        if len(df.columns) > 1:
-            success = 2
-            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
-            df = df.iloc[:,[0]] # Note, put the '0' in a list to return a DataFrame.  Not having in list returns DataSeries instead
-        """
-
-        # If no filters, just have a 1-to-1 mapping with index for later "groupby"
-        adata.obs['comparison_composite_index'] = adata.obs.index.tolist()
-        groups = "all"
-        if filters:
-            # Add new column to combine various groups for an eventual "groupby" argument
-            composite_index = adata.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
-            adata.obs['comparison_composite_index'] = composite_index.tolist()
-            groups = intersection(create_filtered_composite_index(filters), composite_index.unique().tolist())
-
-        adata.obs['comparison_composite_index'] = adata.obs['comparison_composite_index'].astype('category')
-
-        # Rank the genes in order to get p_values and log-fold changes (effort size)
-        # For volcano-plots
-        if plot_type == "volcano":
-            # Filter composite members for one observation only, since it causes by div-by-zero errors
-            # Source; https://github.com/theislab/scanpy/pull/1490
-            filtered_groups = list(
-                adata.obs["comparison_composite_index"]
-                .value_counts()
-                .loc[lambda x: x > 1]
-                .index
-                )
-
-            # If groups were filtered initially, only use those groups.
-            if groups == "all":
-                groups = filtered_groups
-            else:
-                groups = intersection(filtered_groups, groups)
-
-            if not groups:
-                return {
-                    'success': -1,
-                    'message': 'The selected combination of filtered observations cannot be used for rank_genes_groups because only one cell matches this combinations.'
-                }
-
-            #sc.pp.filter_cells(adata, min_genes=10)
-            #sc.pp.filter_genes(adata, min_cells=1)
-            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=False, groups=groups, reference="rest", n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg', log_transformed=False)
 
         # ADATA - Observations are rows, genes are columns
         selected = adata
         if plot_type in ['heatmap', 'violin'] and gene_filter is not None:
-            selected = adata[:, gene_filter]
+            selected = selected[:, gene_filter]
 
-        # Filter the AnnData object based on our criteria
-        filtered_composite_index = selected.obs["comparison_composite_index"].unique()
+        if plot_type == "volcano" and not filters:
+            return {
+                'success': -1,
+                'message': 'At least one observation filter must be set to create a volcano plot'
+            }
+
+        # Filter dataframe on the chosen observation filters
         if filters:
-            filtered_composite_index = groups
-            condition_filter = selected.obs["comparison_composite_index"].isin(filtered_composite_index)
-            selected = selected[condition_filter, :]
+            # Add new column to combine various groups into a single index
+            selected.obs['comparison_composite_index'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
+            selected.obs['comparison_composite_index'] = selected.obs['comparison_composite_index'].astype('category')
+
+            unique_composite_indexes = selected.obs["comparison_composite_index"].unique()
+
+            # Only want to keep indexes that match chosen filters
+            # However if no filters were chosen, just use everything
+            filtered_composite_indexes = create_filtered_composite_indexes(filters, unique_composite_indexes.tolist())
+            if filtered_composite_indexes:
+                condition_filter = selected.obs["comparison_composite_index"].isin(filtered_composite_indexes)
+                selected = selected[condition_filter, :]
+
+            # Rank the genes in order to get p_values and log-fold changes (effort size)
+            # For volcano-plots
+            if plot_type == "volcano":
+                # Filter composite members for one observation only, since it causes by div-by-zero errors
+                # Source; https://github.com/theislab/scanpy/pull/1490
+                filtered_groups = list(
+                    selected.obs["comparison_composite_index"]
+                    .value_counts()
+                    .loc[lambda x: x > 1]
+                    .index
+                    )
+
+                groups = intersection(filtered_groups, filtered_composite_indexes)
+
+                if not groups:
+                    return {
+                        'success': -1,
+                        'message': 'The selected combination of filtered observations cannot be used for rank_genes_groups because only one cell matches this combinations.'
+                    }
+
+                #sc.pp.filter_cells(adata, min_genes=10)
+                #sc.pp.filter_genes(adata, min_cells=1)
+                sc.tl.rank_genes_groups(selected, 'comparison_composite_index', use_raw=False, groups=groups, reference="rest", n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg', log_transformed=False)
 
         # Ensure datasets are not doubly log-transformed
         is_log10 = False
         if dataset_id in LOG10_TRANSFORMED_DATASETS:
             is_log10 = True
 
-        traces = None
         if plot_type == "volcano":
 
             # Stolen from https://github.com/theislab/scanpy/blob/8fe1cf9cb6309fa0e91aa5cfd9ed7580e9d5b2ad/scanpy/get/get.py#L17-L93
@@ -577,10 +514,10 @@ class MultigeneDashData(Resource):
             colnames = ['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']
 
             # adata.uns.rank_genes_groups.<column> will be a 2D array.  Outer dimension is # genes (or n_genes). Inner dimension is per 'groupby' group
-            df = [pd.DataFrame(selected.uns['rank_genes_groups'][c])[filtered_composite_index] for c in colnames]
+            df = [pd.DataFrame(selected.uns['rank_genes_groups'][c])[filtered_composite_indexes] for c in colnames]
             df = pd.concat(df, axis=1, names=[None, 'group'], keys=colnames)
             df = df.stack(level=1).reset_index()
-            df['group'] = pd.Categorical(df['group'], categories=filtered_composite_index)
+            df['group'] = pd.Categorical(df['group'], categories=filtered_composite_indexes)
             df = df.sort_values(['group', 'level_0']).drop(columns='level_0')
             df = df.join(selected.var.gene_symbol, on="names")
             df["SNP"] = df['group'].astype(str) + '-' + df["gene_symbol"].astype(str)
@@ -597,48 +534,25 @@ class MultigeneDashData(Resource):
             df = selected.to_df()
             filter_indexes = build_obs_group_indexes(selected.obs, filters)
 
-            """
-            #sorted_series = None
-            # If sorting by a observation column, adjust group indexes after sorting
-            if sort_filter and not cluster_cols:
-                sorted_df = selected.obs.sort_values(by=[sort_filter])
-                df = df.reindex(sorted_df.index.tolist())
-                filter_indexes = build_obs_group_indexes(sorted_df, filters)
-                #sorted_series = sorted_df[sort_filter].tolist()
-            """
-            if sort_filter:
-                df[sort_filter] = selected.obs[sort_filter]
-                grouped = df.groupby([sort_filter])
+            if groupby_filter:
+                df[groupby_filter] = selected.obs[groupby_filter]
+                grouped = df.groupby([groupby_filter])
                 df = grouped.agg('mean') \
                     .dropna() \
 
-            cluster_cols=True
-
-            """
-            fig = go.Figure()
-            fig.add_trace(create_heatmap(df, gene_symbols, is_log10))
-            fig.update_xaxes(dict(
-                showticklabels=False
-            ))
-            """
-            plot_stuff = create_clustergram(df, gene_symbols, is_log10, cluster_cols)
-            fig = plot_stuff[0] # Is tossed in favor of a modified one
-            traces = plot_stuff[1]
-            #modify_clustergram(fig, traces, filter_indexes, is_log10)
-            traces = json.dumps(traces, cls=PlotlyJSONEncoder)
+            (fig, _traces) = create_clustergram(df, gene_symbols, is_log10, cluster_cols)
+            modify_clustergram(fig)
 
         elif plot_type == "violin":
             df = selected.to_df()
-            # TODO: hardcoded sort filter
-            sort_filter = "cluster"
-            df[sort_filter] = selected.obs[sort_filter]
+            df[groupby_filter] = selected.obs[groupby_filter]
 
             # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
             gene_map = {}
             for gene in gene_symbols:
                 gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
 
-            fig = create_violin_plot(df, gene_map, sort_filter)
+            fig = create_violin_plot(df, gene_map, groupby_filter)
         else:
             return {
                 'success': -1,
@@ -657,6 +571,5 @@ class MultigeneDashData(Resource):
             , "message": message
             , 'gene_symbols': gene_symbols
             , 'plot_json': json.loads(plot_json)
-            , 'computed_traces':json.loads(traces) if traces else traces
             , "plot_config": get_config()
         }

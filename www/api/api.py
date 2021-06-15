@@ -83,5 +83,5 @@ if __name__ == '__main__':
     # api.add_resource(PlotlyData, '/api/plot/<dataset_id>')
     # api.add_resource(H5ad, '/api/h5ad/<dataset_id>')
     # app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
 
