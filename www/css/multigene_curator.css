@@ -1,0 +1,20 @@
+div#login_checking,
+div#login_warning {
+    padding-bottom: 200px;
+}
+div#login_warning {
+    display: none;
+}
+div#login_checking,
+div#login_warning {
+    margin-top: 50px;
+}
+main {
+    margin-top: 45px;
+}
+label.control-label {
+    margin: 8px 0 0 0;
+}
+.js-plotly-plot .plotly svg a {
+    fill: inherit !important;  /* override plotly defaults */
+}
