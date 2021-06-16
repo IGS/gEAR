@@ -3534,13 +3534,13 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
 
   const routes = [
     {
-      path: "/dataset/:dataset_id/displays/",
+      path: "/dataset/:dataset_id/displays",
       component: datasetCurator,
       props: true,
       children: [
         {
+          path: "",
           name: "dashboard",
-          path: "/",
           component: datasetDisplays,
         },
         {
@@ -3556,6 +3556,7 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
         },
         {
           path: ":display_id/edit",
+          name: "edit",
           component: datasetDisplay,
           props: true,
         },
