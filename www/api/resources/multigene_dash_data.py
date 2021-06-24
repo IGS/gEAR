@@ -408,7 +408,7 @@ class MultigeneDashData(Resource):
     gene_symbols: str
         Genes to search in adata.
     plot_type: str
-        Plot type (bar, violin, scatter or line)
+        Plot type (heatmap, mg_violin, volcano)
     Returns
     -------
     dict
@@ -454,7 +454,7 @@ class MultigeneDashData(Resource):
 
         # ADATA - Observations are rows, genes are columns
         selected = adata
-        if plot_type in ['heatmap', 'violin'] and gene_filter is not None:
+        if plot_type in ['heatmap', 'mg_violin'] and gene_filter is not None:
             selected = selected[:, gene_filter]
 
         if plot_type == "volcano" and not filters:
@@ -543,7 +543,7 @@ class MultigeneDashData(Resource):
             (fig, _traces) = create_clustergram(df, gene_symbols, is_log10, cluster_cols)
             modify_clustergram(fig)
 
-        elif plot_type == "violin":
+        elif plot_type == "mg_violin":
             df = selected.to_df()
             df[groupby_filter] = selected.obs[groupby_filter]
 
