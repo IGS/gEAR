@@ -258,13 +258,16 @@ function handle_login_ui_updates() {
     }
 
     if (CURRENT_USER.session_id == null) {
+        // these are the pages which require a login
         if (document.URL.indexOf("upload_dataset.html") >= 0 ||
             document.URL.indexOf("analyze_dataset.html") >= 0 ||
             document.URL.indexOf("projection.html") >= 0 ||
             document.URL.indexOf("user_profile.html") >= 0 ||
             document.URL.indexOf("upload_epigenetic_data.html") >= 0 ||
             document.URL.indexOf("dataset_curator.html") >= 0 ||
+            document.URL.indexOf("gene_cart_manager.html") >= 0 ||
             document.URL.indexOf("epiviz_panel_designer.html")  >= 0) {
+            console.log("Showing login warning");
             $('div#login_warning').show();
             $('div#login_checking').hide();
             $('div#main_content').hide();
@@ -286,6 +289,8 @@ function handle_login_ui_updates() {
             load_preliminary_data();
             $('div#login_checking').hide();
             $("#controls_profile_c").remove();
+        } else if (document.URL.indexOf("gene_cart_manager.html") >= 0) {
+            $('div#login_checking').hide();
         }
 
         $('#login_controls').show();
@@ -327,6 +332,7 @@ function handle_login_ui_updates() {
 
         if (document.URL.indexOf("upload_dataset.html") >= 0 ||
             document.URL.indexOf("dataset_explorer.html") >= 0 ||
+            document.URL.indexOf("gene_cart_manager.html") >= 0 ||
             document.URL.indexOf("analyze_dataset.html") >= 0 ||
             document.URL.indexOf("projection.html") >= 0 ||
             document.URL.indexOf("user_profile.html") >= 0 ||

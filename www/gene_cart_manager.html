@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Gene cart manager</title>
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+        <link rel="stylesheet" href="css/vendor/bootstrap-editable.css" />
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
+
+        <!--
+        <link rel="stylesheet" href="css/jquery.fileupload.css" />
+        <link rel="stylesheet" href="css/vendor/bootstrap-tokenfield.css">
+		<link rel="stylesheet" href="css/vendor/tokenfield-typeahead.css">
+        -->
+        <!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css" rel="stylesheet" /> -->
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+        <script>document.write('<link rel="stylesheet" href="css/common.css?dev=' + Math.floor(Math.random() * 10000) + '"\><\/link>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/gene_cart_manager.css?dev=' + Math.floor(Math.random() * 10000) + '"\><\/link>');</script>
+
+        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+    </head>
+    <body>
+
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+ <div id="body_c">
+    <div id="navigation_bar">
+      <!-- content here inserted via JQuery -->
+    </div> <!-- end navigation_bar -->
+    <div>
+      <div class="alert-container">
+	      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+      </div>
+    </div>
+    <div id="login_checking">
+      <div>
+        <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
+      </div>
+    </div>
+    <div id="login_warning">
+      <div>
+        <h2>Login required</h2>
+        <p>
+          You must be logged in to manage and create gene carts.  Please use the login form in the top-right.
+        </p>
+      </div>
+    </div>
+
+    <div id="main_content" class="container-fluid">
+      <div class="row">
+        <div id="page_name" class="col-12">
+          <h2>Dataset explorer</h2>
+        </div>
+      </div>
+
+      <div id='main_row' class="row">
+        <div id="controls" class="col-2">
+          <div id='controls_primary_search'>
+            <form id="submit_search">
+              <div class="form-group">
+                <label for="search" class="form-label-sm mb-0">Find carts:</label>
+                <div class="btn-group">
+                  <input type="search" class="form-control form-control-sm" placeholder="Enter search terms" id="search_terms">
+                  <span id="search_clear" class="fa fa-times-circle shown_later"></span>
+                </div>
+              </div>
+            </form>
+          </div> <!-- #controls_primary_search -->
+          
+          <div id='controls_profile'>
+            <h4 class="expandable_control"><i class="fa fa-plus"></i><i class="fa fa-minus shown_later"></i> Cart management</h4>
+            <div id="controls_profile_nouser_c" class="expandable_target shown_later">
+              <p>
+                Login or create an account to build profiles.
+              </p>
+            </div>
+            <div id="controls_profile_c" class="expandable_target profile_control">
+              <form>
+                <div id="selected_layout_c" class="form-group">
+                  <label for="selected_layout" class="form-label-sm mb-0">Choose gene cart:</label>
+                  <select id="selected_layout" name="selected_layout" class="custom-select mb-0">
+                    <!-- filled by load_user_layouts() -->
+                    <optgroup id="site_profile_list" label="Site profiles"></optgroup>
+                    <optgroup id="user_profile_list" label="Your profiles"></optgroup>
+                  </select>
+                </div>
+                <div class="btn-group pull-right mt-0" role="group">
+                  <button type="button" id="btn_set_primary_layout" class="btn btn-primary btn-sm" data-toggle="tooltip" data-placement="bottom" title="Make this profile active gEAR search">
+                    <i class="fa fa-thumbs-up"></i>
+                  </button>
+                  <button type="button" id="btn_view_layout_datasets" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="View datasets in this profile">
+                    <i class="fa fa-eye"></i>
+                  </button>
+                  <button type="button" id="btn_add_layout" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Add new layout profile">
+                    <i class="fa fa-plus"></i>
+                  </button>
+                  <button type="button" id="btn_share_layout" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Share layout profile">
+                    <i class="fa fa-share-alt"></i>
+                  </button>
+                  <button type="button" id="btn_delete_layout" class="btn btn-danger btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Delete layout profile">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+                <div style="clear: both;"></div>
+                <div>
+                  <span id="layout_action_note" class="pull-right">&nbsp;</span>
+                </div>
+                <div style="clear: both;"></div>
+              </form>
+              <script id="layout_list_tmpl" type="text/x-jsrender">
+                <option value="{{:id}}" data-is-domain="{{:is_domain}}" data-share-id="{{:share_id}}">{{:label}}</option>
+              </script>
+            </div> <!-- #controls_profile_c -->
+          </div> <!-- end #controls_profile -->
+
+          <div id='controls_ownership' class='filter_subsection'>
+            <h4 class="expandable_control"><i class="fa fa-plus shown_later"></i><i class="fa fa-minus"></i> Ownership</h4>
+            <ul class="controls_filter_options expandable_target">
+              <li class="all_selector selected">All</li>
+              <li id="your_dataset_filter" data-dbval="yours" class="shown_later">Your datasets</li>
+              <li data-dbval="shared">Shared with you</li>
+              <li data-dbval="public">Public datasets</li>
+            </ul>
+          </div>
+          <div id='controls_date_added' class='filter_subsection'>
+            <h4 class="expandable_control"><i class="fa fa-plus shown_later"></i><i class="fa fa-minus"></i> Date added</h4>
+            <ul class="controls_filter_options expandable_target only_one">
+              <li class="all_selector selected">Any time</li>
+              <li data-dbval="week">Within last week</li>
+              <li data-dbval="month">Within last month</li>
+              <li data-dbval="year">Within last year</li>
+            </ul>
+          </div>
+        </div> <!-- #controls -->
+        <div id="main_panel" class="col-sm-10">
+          <div id="initial_instructions_c" class="row ml-4 mr-4 mb-3 pt-2 pb-2">
+            <div class="col-sm-12">
+              <div id="initial_instructions_header" class="row">
+                <div id="initial_instructions_bar" class="col-sm-11">
+                  Click for instructions
+                </div>
+                <div id="initial_instructions_closer" class="col-sm-1 pt-1">
+                  <i class="fa fa-window-close pull-right"></i>
+                </div>
+              </div><!-- end initial_instructions_header -->
+              <div id="initial_instructions_body" class="row">
+                <div class="col-sm-12">
+                  <p>
+                    Use the controls on the left to search/filter datasets within the portal.  Above you'll find
+                    options to control compact/expanded views, sorting of results, and pagination of results.
+                  </p>
+                  <p>
+                    If you are logged in, you can use the section on the left labeled 'Profile Management'.  Once
+                    clicked, controls will appear to allow you to create groups of datasets we call 'profiles'.
+                    You can search for datesets, then add them to profiles you create and then view this collection
+                    on the home page.
+                  </p>
+                </div>
+              </div>
+            </div> 
+          </div> <!-- end initial_instructions_c -->
+          <!--
+              In this section of looped dataset displays there are class-based controls for editable fields.
+              This is controlled by a few paired classes, "is-editable" and "editable-version".  When the
+              user clicks the edit button for any dataset all the elements which are is-editable are hidden
+              and the editable-version ones are displayed in their stead.
+          -->
+          <div id="dataset_viewport" class="row">
+            <div id="dataset_list_c" class="col-sm-12">
+              <div id="dataset_list_results_view_c"></div>
+              <script id="dataset_results_view_tmpl" type="text/x-jsrender">
+                 <div class="dataset_list_element_c row" id="result_dataset_id_{{:dataset_id}}" data-dataset-id="{{:dataset_id}}">
+                   <div class="dataset_preview_c col-sm-2">
+                     <div class="row">
+                       <div class="col-12">
+                         <img class="img-fluid" src="{{:preview_image_url}}" alt="Dataset preview image"/>
+                       </div>
+                     </div>
+                     <div class="row justify-content-center accessibility_c">
+                       <div class="col-8 is-editable" id="result_dataset_id_{{:dataset_id}}_display_visibility">
+                         {{if is_public == 1}}
+                         <h3><span class="badge badge-light">Public dataset</span></h3>
+                         {{else}}
+                         <h3><span class="badge badge-danger">Private dataset</span></h3>
+                         {{/if}}
+                       </div>
+                       <div class="col-8 editable-version pl-0 pr-0 pt-4">
+                         <select class="visibility_selector" data-original-val="{{if is_public == 1}}public{{else}}private{{/if}}" id="result_dataset_id_{{:dataset_id}}_visibility">
+                           {{if is_public == 1}}
+                           <option value="public" selected>Public</option>
+                           <option value="private">Private</option>
+                           {{else}}
+                           <option value="public">Public</option>
+                           <option value="private" selected>Private</option>
+                           {{/if}}
+                         </select>
+                       </div>
+                     </div>
+                   </div>
+                   <div class="col-sm-10">
+                     <div class="row">
+                       <div class="col-sm-11 is-editable">
+                         <h5 id="result_dataset_id_{{:dataset_id}}_display_title">{{:title}}</h5>
+                       </div>
+                       <div id="editable_title_c" class="col-sm-11 editable-version">
+                        <span class="att_label">Title</span>
+                        <input type="text" class="editable_title" id="result_dataset_id_{{:dataset_id}}_editable_title" data-original-val="{{:title}}" value="{{:title}}"/>
+                      </div>
+                       <div class="col-sm-1">
+                         <span class="dataset-expander pull-right" data-dataset-id="{{:dataset_id}}"><i class="fa fa-expand"></i></span>
+                       </div>
+                     </div>
+                     <div class="row no-gutters">
+                       <div class="col-sm-3"><span class="att_label">Organism</span> {{:organism}}</div>
+                       <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
+                       <div class="col-sm-3"><span class="att_label">Type</span> {{:dtype}}</div>
+                       <div class="col-sm-3"><span class="att_label">Added</span> {{:date_formatted}}</div>
+                     </div>
+                     <div class="row no-gutters">
+                       <div class="col-sm-3"><span class="att_label">Annotation source</span>{{if annotation_source}} {{:annotation_source}}{{else}} Not given{{/if}}</div>
+                       <div class="col-sm-3"><span class="att_label">Version</span> {{if annotation_release}} {{:annotation_release}}{{else}} Not given{{/if}}</div>
+                       <!-- Any changes to the Pubmed or GEO elements here need to be reflected in the .edit_dataset_save handler -->
+                       <div class="col-sm-3 is-editable" id="result_dataset_id_{{:dataset_id}}_display_pubmed_id">
+                         <span class="att_label">Pubmed</span>
+                         {{if pubmed_id}} <a href="https://pubmed.ncbi.nlm.nih.gov/{{:pubmed_id}}">{{:pubmed_id}}
+                           <i class="fa fa-external-link"></i></a>
+                         {{else}}
+                           Not given
+                         {{/if}}
+                       </div>
+                       <div class="col-sm-3 editable-version">
+                         <span class="att_label">Pubmed</span>
+                         <input type="text" id="result_dataset_id_{{:dataset_id}}_editable_pubmed_id" data-original-val="{{if pubmed_id}}{{:pubmed_id}}{{/if}}" value="{{if pubmed_id}}{{:pubmed_id}}{{/if}}" />
+                       </div>
+                       <div class="col-sm-3 is-editable" id="result_dataset_id_{{:dataset_id}}_display_geo_id">
+                         <span class="att_label">GEO ID</span>
+                         {{if geo_id}} <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank">{{:geo_id}}
+                           <i class="fa fa-external-link"></i></a>
+                         {{else}}
+                           Not given
+                         {{/if}}
+                       </div>
+                       <div class="col-sm-3 editable-version">
+                         <span class="att_label">GEO ID</span>
+                         <input type="text" id="result_dataset_id_{{:dataset_id}}_editable_geo_id" data-original-val="{{if geo_id}}{{:geo_id}}{{/if}}" value="{{if geo_id}}{{:geo_id}}{{/if}}" />
+                       </div>
+                     </div>
+                     <hr class="expandable-view expanded-view-hidden" />
+                     <div class="row expandable-view expanded-view-hidden">
+                       <div class="col-sm-6 is-editable">
+                         <h5>Long description</h5>
+                         <div id="result_dataset_id_{{:dataset_id}}_display_ldesc">{{:ldesc}}</div>
+                       </div>
+                       <div class="col-sm-6 editable-version">
+                        <h5>Long description</h5>
+                        <textarea id="result_dataset_id_{{:dataset_id}}_editable_ldesc" rows="4" data-original-val="{{:ldesc}}">{{:ldesc}}</textarea>
+                      </div>
+                       <div class="col-sm-6">
+                         <h5>Found in these profiles</h5>
+                         <div class='profile_list_c'>
+                           <ul class='layout_links'>
+                             {{for layouts}}
+                             {{if user_id == 0}}
+                             <li data-profile-share-id="{{:share_id}}"><i class="fa fa-users" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Go to this public profile"/> {{:label}}</li>
+                             {{else}}
+                             <li data-profile-share-id="{{:share_id}}"><i class="fa fa-user" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Go to your profile"/> {{:label}}</li>
+                             {{/if}}
+                             {{/for}}
+                           </ul>
+                         </div>
+                       </div>
+                     </div> <!-- end .expandable-view -->
+                     <div class="row">
+                       <div class="col-sm-12">
+                         <div class="att_buttons btn-group pt-2" role="group">
+                           <button class="btn btn-default btn-sm btn-outline-secondary view_dataset" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View"><i class="fa fa-eye"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary profile_control add2profile" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Add dataset to profile"><i class="fa fa-plus"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary profile_control removefromprofile" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Remove dataset from current profile"><i class="fa fa-minus"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary curate" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Change the dataset's display"><i class="fa fa-bar-chart"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-danger delete_dataset" value="{{:dataset_id}}" data-owner-id="{{:owner_id}}" data-toggle="popover" data-placement="bottom" title="Remove dataset from gEAR"><i class="fa fa-trash"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary share_dataset" value="{{:share_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Share dataset"><i class="fa fa-share-alt"></i></button>
+                           <!--<button class="btn btn-default btn-sm btn-outline-secondary note_launcher" data-dataset-id="{{:dataset_id}}" data-title="{{:title}}" data-toggle="tooltip" data-placement="bottom" title="View notes"><span class="fa fa-pencil"></span></button>-->
+                           <button class="btn btn-default btn-sm btn-outline-secondary edit_dataset is-editable" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-pencil"></i></button>
+                           <span class="dataset_action_note"></span>
+                           <button class="btn btn-default btn-sm btn-outline-primary edit_dataset_save editable-version" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-floppy-o"></i> Save edits</button>
+                           <button class="btn btn-default btn-sm btn-outline-primary edit_dataset_cancel editable-version" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   <hr class="dataset_list_element_divider" />
+                 </div> <!-- end .dataset_list_element_c -->
+              </script>
+            </div> <!-- dataset_list_c -->
+          </div> <!-- #view_controls -->
+        </div> <!-- #main_panel -->
+        
+      </div>
+    </div><!-- end #main_row -->
+ </div> <!-- end #main_content -->
+
+ <div id='account_creation_c' class='row'>
+  <!-- content inserted via common.js-->
+ </div>
+ <div style="clear: both;">&nbsp;</div>
+ <footer>
+   <div id='funding'>
+     <!-- content here inserted via JQuery -->
+   </div>
+ </footer>
+
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+        <script src="js/vendor/js.cookie.js"></script>
+        <script src="js/vendor/jsrender.20181003.min.js"></script>
+
+        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+        <script>document.write('<script src="js/classes/dataset.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/ui-panel-annotation.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/ui-panel-dataset.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/ui-panel-dataset-collection.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/common.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/user.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/gene_cart_manager.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-59916932-1', 'auto');
+  ga('send', 'pageview');
+        </script>
+    </body>
+</html>
