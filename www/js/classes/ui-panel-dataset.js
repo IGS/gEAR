@@ -105,6 +105,7 @@ class DatasetPanel extends Dataset {
     }
     let display;
     if (data.plot_type === 'heatmap' ||
+      data.plot_type === 'mg_violin' ||
       data.plot_type === 'volcano'
     ) {
       display = new DashMGDisplay(data, gene_symbols)
@@ -277,7 +278,7 @@ class DatasetPanel extends Dataset {
       user_displays.forEach(display => {
         // check if config has been stringified
         let gene_symbol;
-        if (typeof display.plot_config == 'string') {
+        if (typeof display.plotly_config == 'string') {
           const config = JSON.parse(display.plotly_config);
           gene_symbol = config.gene_symbol;
         } else {
@@ -319,7 +320,7 @@ class DatasetPanel extends Dataset {
       });
       owner_displays.forEach(display => {
         let config;
-        if (typeof display.plot_config == 'string') {
+        if (typeof display.plotly_config == 'string') {
             config = JSON.parse(display.plotly_config);
         } else {
             config = display.plotly_config;

@@ -528,7 +528,7 @@ class PlotlyDisplay extends Display {
  class DashMGDisplay extends Display {
     /**
      * Initialize dash display.
-     * @param {Object} Data - Data used to draw heatmap or volcano plot
+     * @param {Object} Data - Data used to draw heatmap, violin, or volcano plot
      */
     constructor({
         plotly_config,  // Currently Dash config is not saved to database

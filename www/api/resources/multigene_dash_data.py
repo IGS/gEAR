@@ -183,7 +183,7 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list) -> None:
                         , yref="y"
                     )
 
-def create_volcano_plot(df):
+def create_volcano_plot(df, use_adj_pvals=False):
     """Generate a volcano plot.  Returns Plotly figure."""
     # Volcano plot
     # https://github.com/plotly/dash-bio/blob/master/dash_bio/component_factory/_volcano.py
@@ -202,7 +202,7 @@ def create_volcano_plot(df):
         , gene="gene_symbol"
         , genomewideline_value= -np.log10(0.05)
         , highlight_color="black"
-        , p="pvals_adj"
+        , p="pvals_adj" if use_adj_pvals else "pvals"
         , xlabel="log2 fold-change"
         , ylabel="-log10(adj-P)"
 
@@ -425,6 +425,10 @@ class MultigeneDashData(Resource):
         filters = req.get('obs_filters', {})    # Dict of lists
         cluster_cols = req.get('cluster_cols', False)
         groupby_filter = req.get('groupby_filter', None)
+        # Volcano plot options
+        condition1 = req.get('condition1', None)
+        condition2 = req.get('condition2', None)
+        use_adj_pvals = req.get('use_adj_pvals', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
@@ -439,6 +443,11 @@ class MultigeneDashData(Resource):
 
         if 'replicate' in columns:
             columns.remove('replicate')
+
+        # Ensure datasets are not doubly log-transformed
+        is_log10 = False
+        if dataset_id in LOG10_TRANSFORMED_DATASETS:
+            is_log10 = True
 
         success = 1
         message = ""
@@ -457,18 +466,11 @@ class MultigeneDashData(Resource):
         if plot_type in ['heatmap', 'mg_violin'] and gene_filter is not None:
             selected = selected[:, gene_filter]
 
-        if plot_type == "volcano" and not filters:
-            return {
-                'success': -1,
-                'message': 'At least one observation filter must be set to create a volcano plot'
-            }
-
         # Filter dataframe on the chosen observation filters
         if filters:
             # Add new column to combine various groups into a single index
             selected.obs['comparison_composite_index'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
             selected.obs['comparison_composite_index'] = selected.obs['comparison_composite_index'].astype('category')
-
             unique_composite_indexes = selected.obs["comparison_composite_index"].unique()
 
             # Only want to keep indexes that match chosen filters
@@ -478,53 +480,43 @@ class MultigeneDashData(Resource):
                 condition_filter = selected.obs["comparison_composite_index"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
 
-            # Rank the genes in order to get p_values and log-fold changes (effort size)
-            # For volcano-plots
-            if plot_type == "volcano":
-                # Filter composite members for one observation only, since it causes by div-by-zero errors
-                # Source; https://github.com/theislab/scanpy/pull/1490
-                filtered_groups = list(
-                    selected.obs["comparison_composite_index"]
-                    .value_counts()
-                    .loc[lambda x: x > 1]
-                    .index
-                    )
-
-                groups = intersection(filtered_groups, filtered_composite_indexes)
-
-                if not groups:
-                    return {
-                        'success': -1,
-                        'message': 'The selected combination of filtered observations cannot be used for rank_genes_groups because only one cell matches this combinations.'
-                    }
-
-                #sc.pp.filter_cells(adata, min_genes=10)
-                #sc.pp.filter_genes(adata, min_cells=1)
-                sc.tl.rank_genes_groups(selected, 'comparison_composite_index', use_raw=False, groups=groups, reference="rest", n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg', log_transformed=False)
-
-        # Ensure datasets are not doubly log-transformed
-        is_log10 = False
-        if dataset_id in LOG10_TRANSFORMED_DATASETS:
-            is_log10 = True
-
         if plot_type == "volcano":
 
+            if not (condition1 and condition2):
+                return {
+                    'success': -1,
+                    'message': 'Must pass two conditions in order to generate a volcano plot.'
+                }
+
+            (cond1_key, cond1_val) = condition1.split(';-;')
+            (cond2_key, cond2_val) = condition2.split(';-;')
+
+            if cond1_key != cond2_key:
+                return {
+                    'success': -1,
+                    'message': "Both comparable conditions must came from same observation group."
+                }
+            sc.pp.filter_cells(adata, min_genes=10)
+            sc.pp.filter_genes(adata, min_cells=1)
+
+            # Rank the genes in order to get p_values and log-fold changes (effort size)
+            sc.tl.rank_genes_groups(selected, cond1_key, use_raw=False, groups=[cond1_val], reference=cond2_val, n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg', log_transformed=False)
+
             # Stolen from https://github.com/theislab/scanpy/blob/8fe1cf9cb6309fa0e91aa5cfd9ed7580e9d5b2ad/scanpy/get/get.py#L17-L93
+            # NOTE: From a later release of scanpy we have not upgraded to yet
+
             # rank_genes_groups colnames
             colnames = ['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']
 
             # adata.uns.rank_genes_groups.<column> will be a 2D array.  Outer dimension is # genes (or n_genes). Inner dimension is per 'groupby' group
-            df = [pd.DataFrame(selected.uns['rank_genes_groups'][c])[filtered_composite_indexes] for c in colnames]
-            df = pd.concat(df, axis=1, names=[None, 'group'], keys=colnames)
-            df = df.stack(level=1).reset_index()
-            df['group'] = pd.Categorical(df['group'], categories=filtered_composite_indexes)
-            df = df.sort_values(['group', 'level_0']).drop(columns='level_0')
+            df = [pd.DataFrame(selected.uns['rank_genes_groups'][c])[cond1_val] for c in colnames]
+            df = pd.concat(df, axis=1, names=['group'], keys=colnames)
             df = df.join(selected.var.gene_symbol, on="names")
-            df["SNP"] = df['group'].astype(str) + '-' + df["gene_symbol"].astype(str)
+            df["SNP"] = df["gene_symbol"]
             df = df.reset_index(drop=True)
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
-            fig = create_volcano_plot(df)
+            fig = create_volcano_plot(df, use_adj_pvals)
             modify_volcano_plot(fig)
             add_gene_annotations_to_volcano_plot(fig, gene_symbols)
 

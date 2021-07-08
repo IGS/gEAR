@@ -1,9 +1,11 @@
-"use strict";
+'use strict';
 
 /*
  This script relies on the source having also included the
  common.js within this project (for login purposes)
 */
+
+/* global $ Vue */
 
 Vue.use(Vuex);
 Vue.use(VueRouter);
