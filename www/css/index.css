@@ -318,16 +318,21 @@ div.textarea-ldesc table {
     width: 100%;
     border-collapse: collapse;
 }
-
 div.textarea-ldesc table td,
 div.textarea-ldesc table th {
     padding-left: 3px;
- }
+}
 div.textarea-ldesc table td {
     border: 1px solid rgb(50,50,50);
 }
 div.textarea-ldesc table th {
     font-weight: bold;
+}
+div.tool_launcher_c h3 {
+
+}
+div.tool_launcher_c img {
+    border: 1px solid rgb(220,220,220);
 }
 div#tutorials_c {
     background-color: var(--banner-bg-color);
