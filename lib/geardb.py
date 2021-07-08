@@ -243,36 +243,34 @@ def get_display_by_id(display_id):
 
     try:
         (id, dataset_id, user_id, label, plot_type, plotly_config) = cursor.fetchone()
-        cursor.close()
-        conn.close()
         return dict(
             id=id, dataset_id=dataset_id, user_id=user_id, label=label,
             plot_type=plot_type, plotly_config=json.loads(plotly_config)
         )
     except:
+        return None
+    finally:
         cursor.close()
         conn.close()
-        return None
 
-def get_default_display(user_id, dataset_id):
+def get_default_display(user_id, dataset_id, is_multigene=0):
     """Return user's display preference for given dataset."""
     conn = Connection()
     cursor = conn.get_cursor()
     qry = """
         SELECT display_id FROM dataset_preference
-        where user_id = %s and dataset_id = %s
+        where user_id = %s and dataset_id = %s and is_multigene = %s
     """
-    cursor.execute(qry, (user_id, dataset_id))
+    cursor.execute(qry, (user_id, dataset_id, is_multigene))
     try:
         (default_display_id,) = cursor.fetchone()
-        cursor.close()
-        conn.close()
         return default_display_id
     except:
-        cursor.close()
-        conn.close()
         # User has no display preference for this dataset
         return None
+    finally:
+        cursor.close()
+        conn.close()
 
 def get_displays_by_user_id(user_id, dataset_id):
     """Given user id, return all datasets representations from dataset display table."""
@@ -726,7 +724,7 @@ class OrganismCollection:
         cursor.close()
 
         return self.organisms
-    
+
 class Layout:
     def __init__(self, id=None, user_id=None, group_id=None, label=None,
                  is_current=None, share_id=None, members=None):
@@ -736,7 +734,7 @@ class Layout:
         self.label = label
         self.is_current = is_current
         self.share_id = share_id
- 
+
         # This should be a list of LayoutMember objects
         if not members:
             self.members = list()
@@ -799,7 +797,7 @@ class Layout:
         all the rest of the attributes, including layout members.
         """
         self.members = list()
-        
+
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -907,7 +905,7 @@ class Layout:
     # TODO: Need a function to take a DatasetCollection and populate
     #  information on it within a layout
 
-        
+
 @dataclass
 class Dataset:
     id: str
@@ -981,7 +979,7 @@ class Dataset:
         Populates the dataset layouts attribute, a list of Layout objects in which
         this dataset can be found (only those which the user has rights to see.)
 
-        First checks to see if self.layouts is empty.  If already populated, it is 
+        First checks to see if self.layouts is empty.  If already populated, it is
         just returned.
         """
         if len(self.layouts) < 1:
@@ -1013,12 +1011,12 @@ class Dataset:
                 l = Layout(id=row[0], user_id=row[1], group_id=row[2], label=row[3],
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
-                
+
             cursor.close()
-                
+
         return self.layouts
-        
-        
+
+
     def get_shape(self, session_id=None):
         """
         Queries the dataset's source expression matrix in order to get its shape.
@@ -1150,13 +1148,13 @@ class DatasetCollection:
                                       annotation_source=row[17],
                                       annotation_release=row[18]
                     )
-                        
+
                     # Add supplemental attributes this method created previously
                     dataset.organism = row[2]
                     dataset.tags = row[16].split(',')
                     dataset.access = 'access_level'
                     dataset.user_name = row[9]
-                    
+
                     #  TODO: These all need to be tracked through the code and removed
                     dataset.dataset_id = dataset.id
                     dataset.grid_position = None
@@ -1165,7 +1163,7 @@ class DatasetCollection:
                     dataset.math_format = dataset.math_default
 
                     self.datasets.append(dataset)
-                    
+
         cursor.close()
         conn.close()
         return self.datasets

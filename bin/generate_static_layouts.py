@@ -99,6 +99,8 @@ def main():
             config = json.loads(props["config"])
             config['plot_type'] = props['plot_type']
 
+            gene = "single"
+
             if os.path.isfile(filename):
                 print("Overwriting file {}".format(filename))
 
@@ -113,6 +115,10 @@ def main():
                 success = make_static_svg_graph(dataset_id, filename, config)
             # Epiviz (todo later)
             elif props["plot_type"] in ["epiviz"]:
+                pass
+            # Multigene plots
+            elif props["plot_type"] in ["heatmap", "mg_violin", "volcano"]:
+                gene = "multi"
                 pass
             else:
                 print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))
@@ -129,7 +135,7 @@ def main():
 
             # Create symlink to filename for all the designated 'default' displays
             if props["default"]:
-                symlink_path = os.path.join(DATASET_PREVIEWS_DIR, "{}.default.png".format(dataset_id))
+                symlink_path = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.default.png".format(dataset_id, gene))
                 # If running multiple times, we shouldn't need to recreate the symlink
                 try:
                     os.symlink(filename, symlink_path)

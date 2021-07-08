@@ -204,7 +204,8 @@ CREATE TABLE dataset_preference (
    user_id        INT NOT NULL,
    dataset_id     VARCHAR(50) NOT NULL,
    display_id     INT NOT NULL,
-   primary key (user_id, dataset_id),
+   is_multigene   TINYINT(1) DEFAULT 0,
+   primary key (user_id, dataset_id, is_multigene),
 
    FOREIGN KEY (dataset_id)
       REFERENCES dataset(id)

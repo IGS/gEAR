@@ -20,6 +20,10 @@ def main():
 
     display = geardb.get_display_by_id(display_id)
 
+    # If no display found for this ID, treat as if it were already deleted.
+    if not display:
+        return dict(success=True)
+
     if user_id == display['user_id']:
         query = "DELETE FROM dataset_display where id = %s"
         cursor.execute(query, (display_id,))

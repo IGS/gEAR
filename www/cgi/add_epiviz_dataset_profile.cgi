@@ -48,7 +48,7 @@ def main():
 
         # add to dataset
         dataset_sql = """
-            INSERT INTO dataset (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added, dtype, schematic_image, 
+            INSERT INTO dataset (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added, dtype, schematic_image,
                 share_id, math_default, load_status, has_h5ad, platform_id, instrument_model, library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name, annotation_source, annotation_release, plot_default)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
@@ -69,7 +69,7 @@ def main():
 
         # Insert dataset_epiviz info to database
         cursor.execute(dataset_display_sql, (dataset_uid, user.id, "Epiviz", "epiviz", dataset_config,))
-        
+
         cnx.commit()
 
         #  set preference
@@ -80,7 +80,7 @@ def main():
 
         # Insert dataset_epiviz info to database
         cursor.execute(dataset_preference_sql, (user.id, dataset_uid, cursor.lastrowid,))
-        
+
         cnx.commit()
 
         result['success'] = 1
