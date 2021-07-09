@@ -328,8 +328,8 @@ div.textarea-ldesc table td {
 div.textarea-ldesc table th {
     font-weight: bold;
 }
-div.tool_launcher_c h3 {
-
+div.tool_launcher_c:hover {
+    cursor: pointer;
 }
 div.tool_launcher_c img {
     border: 1px solid rgb(220,220,220);
@@ -349,6 +349,12 @@ div#tutorials_c ul li a {
 }
 div#tutorials_c ul li:before {
   content: '\0BB \020';
+}
+div#uploader_header_c {
+    margin-top: 30px;
+}
+div#uploader_header_c hr {
+    margin: 8px 0 15px 0;
 }
 div.youtube-video-container {
     position: relative;
@@ -403,6 +409,11 @@ p#dataset_browse_label a {
 }
 p#intro_selected_profile_warning {
     padding-top: 10px;
+}
+span.citation_authors,
+span.citation_pub,
+span.citation_pmid {
+    font-size: 90%;
 }
 span.corner-badge {
   /* Inspiration for badges: https://codepen.io/eode9/pen/twkKm */

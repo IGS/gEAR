@@ -206,7 +206,8 @@
             <div class="card-body">
               <div class="row">
                 <div class="col-12">
-                  <div class="row mb-3">
+
+                  <div class="row mb-3 tool-launcher" data-tool-name="comparison">
                     <div class="col-4 tool_launcher_c pr-0">
                       <img class="img-fluid" src="./img/comparison_tool_screenshot.png" />
                     </div>
@@ -214,17 +215,36 @@
                       <span>Comparison tool</span>
                     </div>
                   </div>
-                  <div class="row">
+                  <div class="row tool-launcher" data-tool-name="workbench">
                     <div class="col-4 tool_launcher_c pr-0">
                       <img class="img-fluid" src="./img/analyzer_composite_screenshot.png" />
                     </div>
                     <div class="col-8 tool_launcher_c my-auto">
                       <span>Single-cell workbench</span>
                     </div>
+                  </div> <!-- end subrow -->
+                  <div id="uploader_header_c" class="row">
+                    <div class="col-12">
+                      <h3><img src="./img/icons/upload_purple.png" /> Dataset uploader</h3>
+                      <hr />
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6 pl-1 pr-1">
+                      <div class="section_launcher section_launcher_double" id="launcher_expression_uploader">
+                        <div class="section_launcher_label">EXPRESSION DATA</div>
+                      </div>
+                    </div>
+                    <div class="col-6 pl-1 pr-1">
+                      <div class="section_launcher section_launcher_double" id="launcher_epigenetic_uploader">
+                        <div class="section_launcher_label">EPIGENETIC DATA</div>
+                      </div>
+                    </div>
                   </div>
                 </div> <!-- end .col-12 -->
-              </div>
-            </div>
+              </div> <!-- end .row -->
+            </div> <!-- end .card-body -->
+            
           </div> <!-- end Launcher card -->
           <div class="card">
             <div class="card-header bg-white pb-0">
@@ -283,24 +303,16 @@
         <div class="section_panels_row card-deck pt-3">
           <div class="card">
             <div class="card-header bg-white pb-0">
-              <h3><img src="./img/icons/upload_purple.png" /> Dataset uploader</h3>
+              <h3><img src="./img/icons/citation.png" /> Citation</h3>
             </div>
             <div class="card-body">
-              <p class="card-title">Upload gene expression datasets for private and/or public viewing.</p>
-            </div>
-            <div class="card-footer bg-white">
-              <div class="row">
-                <div class="col-6 pl-1 pr-1">
-                  <div class="section_launcher section_launcher_double" id="launcher_expression_uploader">
-                    <div class="section_launcher_label">UPLOAD EXPRESSION DATASET</div>
-                  </div>
-                </div>
-                <div class="col-6 pl-1 pr-1">
-                  <div class="section_launcher section_launcher_double" id="launcher_epigenetic_uploader">
-                    <div class="section_launcher_label">UPLOAD EPIGENETIC DATASET</div>
-                  </div>
-                </div>
-              </div>
+              <p class="card-title">
+                <strong>gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.</strong><br />
+                <span class="citation_authors">Orvis J, Hertzano R., et al.</span> <br />
+                <span class="citation_pub">Nat Methods. 2021 Jun 25. doi: 10.1038/s41592-021-01200-9</span><br />
+                <span class="citation_pmid">PMID: <u><a href="https://pubmed.ncbi.nlm.nih.gov/34172972/">34172972</a></u></span>.
+              </p>
+              
             </div>
           </div>
           <div class="card">
