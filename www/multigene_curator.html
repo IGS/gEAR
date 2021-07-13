@@ -39,8 +39,6 @@
     <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
     <script>document.write('<link rel="stylesheet" href="css/multigene_curator.' +  Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
 
-
-    <link rel="stylesheet" href="css/jquery.mCustomScrollbar.css" />
     <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
   </head>
 
@@ -294,6 +292,8 @@
           <span class="sr-only">Loading...</span>
         </div>
         <div id='dataset_{{:dataset_id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
+        <div class="alert alert-error js-plot-error" role="alert" style="display:none;"></div>
+        <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
       </div>
     </script>
 
@@ -304,6 +304,8 @@
           <span class="sr-only">Loading...</span>
         </div>
         <div id='dataset_{{:dataset_id}}_secondary' class="plot-container plotly-container h5ad-container"></div>
+        <div class="alert alert-error js-plot-error" role="alert" style="display:none;"></div>
+        <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
       </div>
     </script>
 

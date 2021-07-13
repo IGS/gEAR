@@ -145,7 +145,7 @@ async function drawPreviewImage (display) {
 // Draw plotly chart in HTML
 function drawChart (data, datasetId, supplementary = false) {
   const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
-  const { plot_json: plotJson, plot_config: plotConfig } = data;
+  const { plot_json: plotJson, plot_config: plotConfig, message, success} = data;
 
   const layoutMods = {
     height: targetDiv.clientHeight,
@@ -175,6 +175,17 @@ function drawChart (data, datasetId, supplementary = false) {
     ...configMods
   };
   Plotly.newPlot(targetDiv, plotJson.data, layout, config);
+
+  if (message) {
+    if (success < 1) {
+      $(targetDiv + '.js-plot-error').text(message);
+      $(targetDiv + '.js-plot-error').show();
+    } else {
+      $(targetDiv + '.js-plot-warning').text(message);
+      $(targetDiv + '.js-plot-warning').show();
+    }
+
+  }
 }
 
 // Submit API request and draw the HTML
@@ -272,20 +283,20 @@ async function loadSavedDisplays (datasetId) {
 
 // Populate the HTML config options based on what was in the plot
 function loadDisplayConfigHtml (plotConfig) {
-  // Populate any checkboxes and radio buttons
-  $('input[name="obs_groupby"]').filter(`[value=${plotConfig.groupby_filter}]`).prop('checked', true);
-  $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
-  $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
-
-  // Create a few of the dropdown options
+// Create a few of the dropdown options
   createObsGroupbyField(obsLevels);
   createObsDropdowns(obsLevels);
   createVolcanoDropdowns(obsLevels);
 
+  // Populate any checkboxes and radio buttons
+  $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
+  $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
+  $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+
   // Populate filter-by dropdowns
   obsFilters = plotConfig.obs_filters;
   for (const property in obsFilters) {
-    $(`#${property}_dropdown`).val(obsFilters.property);
+    $(`#${property}_dropdown`).val(obsFilters[property]);
     $(`#${property}_dropdown`).trigger('change');
   }
 
@@ -668,7 +679,7 @@ $(document).on('click', '#advanced_options_button', function () {
 });
 
 // Save plot
-$(document).on('click', '#save_display_btn', function () {
+$(document).on('click', '#save_display_btn', async function () {
   $('#saved_plot_confirmation').hide();
   $('#saved_plot_confirmation').removeClass('text-success');
   $('#saved_plot_confirmation').removeClass('text-danger');
@@ -688,7 +699,7 @@ $(document).on('click', '#save_display_btn', function () {
     })
   };
 
-  const res = $.ajax({
+  const res = await $.ajax({
     url: './cgi/save_dataset_display.cgi',
     type: 'POST',
     data: payload,
@@ -714,19 +725,14 @@ $(document).on('click', '.js-edit-display', async function () {
   const id = this.id;
   displayId = id.replace('_edit', '');
 
-  const res = await $.ajax({
+  const display = await $.ajax({
     url: './cgi/get_dataset_display.cgi',
     type: 'POST',
     data: { display_id: displayId },
     dataType: 'json'
   });
-  // const display = data;
-  const display = res;
-  console.log(res);
-  plotConfig = display.plotly_config;
 
-  // Load config options
-  loadDisplayConfigHtml(plotConfig);
+  plotConfig = display.plotly_config;
 
   // Load plot type
   $('#plot_type_select').val(display.plot_type);
@@ -737,6 +743,12 @@ $(document).on('click', '.js-edit-display', async function () {
   $('#gene_dropdown').val(geneSymbols);
   $('#gene_dropdown').trigger('change');
 
+  // Load config options
+  loadDisplayConfigHtml(plotConfig);
+
+  // Hide modal box
+  $('#load_plots_modal').modal('hide');
+
   // Draw the updated chart
   $('#dataset_spinner').show();
   const plotTemplate = $.templates('#dataset_plot_tmpl');
@@ -744,13 +756,10 @@ $(document).on('click', '.js-edit-display', async function () {
   $('#dataset_plot').html(plotHtml);
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
-
-  // Hide modal box
-  $('#load_plots_modal').modal('hide');
 });
 
 // Delete user display
-$(document).on('click', '.js-delete-display', function () {
+$(document).on('click', '.js-delete-display', async function () {
   $('#delete_display_confirmation').hide();
   $('#delete_display_confirmation').removeClass('alert-success');
   $('#delete_display_confirmation').removeClass('alert-danger');
@@ -758,7 +767,7 @@ $(document).on('click', '.js-delete-display', function () {
   const id = this.id;
   const displayId = id.replace('_delete', '');
 
-  const res = $.ajax({
+  const res = await $.ajax({
     url: './cgi/delete_dataset_display.cgi',
     type: 'POST',
     data: { id: displayId, user_id: CURRENT_USER.id },
@@ -780,7 +789,7 @@ $(document).on('click', '.js-delete-display', function () {
 });
 
 // Save this particular display as the user's default display
-$(document).on('click', '.js-save-default', function () {
+$(document).on('click', '.js-save-default', async function () {
   $('#saved_default_confirmation').hide();
   $('#saved_default_confirmation').removeClass('alert-success');
   $('#saved_default_confirmation').removeClass('alert-danger');
@@ -788,7 +797,7 @@ $(document).on('click', '.js-save-default', function () {
   const id = this.id;
   const displayId = id.replace('_save_default', '');
 
-  const res = $.ajax({
+  const res = await $.ajax({
     url: './cgi/save_default_display.cgi',
     type: 'POST',
     data: {

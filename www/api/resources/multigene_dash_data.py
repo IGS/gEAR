@@ -296,25 +296,46 @@ def create_dataframe_gene_filter(df, gene_symbols, plot_type):
     """Create a gene filter to filter a dataframe."""
     gene_filter = None
     success = 1
-    message = ""
+    message_list = []
     if 'gene_symbol' in df.columns:
         if gene_symbols:
-            dataset_genes = df.gene_symbol.unique().tolist()
+            # Get list of duplicated genes for the dataset
+            gene_counts_df = df['gene_symbol'].value_counts().to_frame()
+            dup_genes = gene_counts_df.index[gene_counts_df['gene_symbol'] > 1].tolist()
+
+            # Some genes may map to multiple Ensembl IDs, which can cause issues.  Create a 1-to-1 mapping by dropping dups
+            uniq_df = df.drop_duplicates(subset=['gene_symbol'])
+            dataset_genes = df['gene_symbol'].unique().tolist()
             normalized_genes_list, found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
-            gene_filter = df.gene_symbol.isin(normalized_genes_list)
-            if not gene_filter.any():
+
+            # Use our list of genes to get a single Ensembl ID for each gene
+            uniq_gene_filter = uniq_df['gene_symbol'].isin(normalized_genes_list)
+            genes_df = uniq_df['gene_symbol'][uniq_gene_filter]
+
+            if genes_df.empty:
                 raise PlotError("Genes not found")
-            else:
-                # Use message to show a warning
-                genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
-                if genes_not_present:
-                    success = 3,
-                    message = 'One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)),
+
+            # Now that our mapping is finished, create the gene filter
+            gene_filter = df.index.isin(genes_df.index)
+
+            # Note to user which genes were duplicated.
+            dup_genes_intersection = intersection(dup_genes, normalized_genes_list)
+
+            if dup_genes_intersection:
+                success = 2
+                message_list.append('The following genes were mapped to 2 or more Ensembl IDs in this dataset, so one was chosen at random for the plot: {}'.format(', '.join(dup_genes_intersection)))
+
+            # Note to user which genes were not found in the dataset
+            genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
+            if genes_not_present:
+                success = 3,
+                message_list.append('One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)))
         else:
             if plot_type not in ["heatmap"]:
                 raise PlotError('Must filter genes before creating a plot of type {}'.format(plot_type))
     else:
         raise PlotError('Missing gene_symbol column in adata.var')
+    message = "\n".join(message_list) if message_list else ""
     return gene_filter, success, message
 
 def create_filtered_composite_indexes(filters, composite_indexes):
@@ -454,6 +475,9 @@ class MultigeneDashData(Resource):
 
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
+            # Some datasets have multiple ensemble IDs mapped to the same gene.
+            # Drop dups to prevent out-of-bounds index errors downstream
+            #var = adata.var.drop_duplicates(subset=['gene_symbol'])
             gene_filter, success, message = create_dataframe_gene_filter(adata.var, gene_symbols, plot_type)
         except PlotError as pe:
             return {
