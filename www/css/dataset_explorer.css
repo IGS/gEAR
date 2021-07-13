@@ -1,5 +1,18 @@
+.editable-version {
+    display: none;
+}
 .expanded-view-hidden {
     display: none;
+}
+button.edit_dataset_save {
+    margin-left: 15px;
+}
+div.accessibility_c {
+    margin-top: 5px;
+}
+div.accessibility_c h3 {
+    margin: 0;
+    padding: 0;
 }
 div.alert-container {
   	position: fixed;
@@ -60,6 +73,13 @@ div#dataset_count_label_c span {
     font-size: 120%;
     font-weight: bold;
     vertical-align: -0.5em;
+}
+div#editable_title_c {
+    margin-bottom: 10px;
+}
+div.editable-version input,
+div.editable-version textarea {
+    width: 95%;
 }
 div#initial_instructions_c {
     color: white;
@@ -127,6 +147,12 @@ h4.expandable_control:hover {
 hr.dataset_list_element_divider {
     width: 90%;
     background-color: var(--dataset-panel-header-bg-color);
+}
+input.editable_title {
+    width: 100%;
+}
+select.visibility_selector {
+    width: 95%;
 }
 span.att_label {
     font-size: 90%;

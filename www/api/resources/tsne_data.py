@@ -24,6 +24,8 @@ PLOT_TYPE_TO_BASIS = {
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
+NUM_LEGENDS_PER_COL = 12
+
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
     return (num_plots * 4) + (num_plots -1)
@@ -34,7 +36,7 @@ def calculate_figure_width(num_plots):
 
 def calculate_num_legend_cols(group_len):
     """Determine number of columns legend should have in tSNE plot."""
-    return ceil(group_len / 8)
+    return ceil(group_len / NUM_LEGENDS_PER_COL)
 
 def sort_legend(figure, sort_order):
     """Sort legend of plot."""
@@ -284,8 +286,7 @@ class TSNEData(Resource):
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map='YlOrRd', return_fig=True, use_raw=False)
 
         io_pic = io.BytesIO()
-        io_fig.tight_layout()
-        io_fig.savefig(io_pic, format='png')
+        io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
         plt.close() # Prevent zombie plots, which can cause issues
 

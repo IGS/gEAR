@@ -79,6 +79,7 @@ def main():
             for row in cursor:
                 profile = row[0]
 
+            result['user_id'] = user_id
             result['session_id'] = session_id
             result['name'] = user_name
             result['is_admin'] = is_admin

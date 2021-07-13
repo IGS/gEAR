@@ -78,14 +78,14 @@ def main():
             result['problem'] = "Didn't recognize the custom list requested"
     elif layout_share_id:
         qry = """
-              SELECT d.id
+              SELECT d.id, lm.grid_position, lm.grid_width
                   FROM dataset d
                        JOIN layout_members lm ON d.id=lm.dataset_id
                        JOIN layout l ON lm.layout_id=l.id
                  WHERE d.marked_for_removal = 0 
                    AND d.load_status = 'completed'
                    AND l.share_id = %s
-                ORDER BY d.date_added DESC
+                ORDER BY lm.grid_position
         """
         qry_params = [layout_share_id]
     else:
@@ -192,12 +192,21 @@ def main():
     cursor.execute(qry, qry_params)
 
     matching_dataset_ids = list()
+    # this index keeps track of the size and position of each dataset if a layout was passed
+    layout_idx = dict()
     for row in cursor:
         matching_dataset_ids.append(row[0])
+
+        if layout_share_id:
+            layout_idx[row[0]] = {'position': row[1], 'width': row[2]}
 
     result['datasets'].extend(datasets_collection.get_by_dataset_ids(matching_dataset_ids))
 
     for dataset in result['datasets']:
+        if layout_share_id:
+            dataset.grid_position = layout_idx[dataset.id]['position']
+            dataset.grid_width = layout_idx[dataset.id]['width']
+        
         dataset.get_layouts(user=user)
         if os.path.exists("{0}/{1}.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)

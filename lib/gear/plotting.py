@@ -263,7 +263,6 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
             points="all" if use_jitter else False,
             pointpos=0 if use_jitter else None,
         )
-        #fig.for_each_trace(lambda t: t.update(scalegroup="{}_{}_{}".format(t.xaxis, t.yaxis, t.name)))
         fig.update_layout(
             violinmode='group'
         )
@@ -409,7 +408,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                 , "text":df[text_name] if text_name else y
                 }
         new_plotting_args['line'] = dict(color='#401362')
-        new_plotting_args['showlegend'] = False
+        new_plotting_args['showlegend'] = False # Only add legend with color group present
 
         priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
         if priority_groups:
@@ -420,7 +419,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
             # Group is the 'groupby' dataframe
             for name, group in grouped:
                 for k, v in {'x':x, 'y':y, 'text':text_name}.items():
-                    new_plotting_args[k] = group[v] if v else y
+                    new_plotting_args[k] = group[v] if v else group[y]
 
                 # Quick plot-specific check
                 if plot_type in ["violin"]:
@@ -429,27 +428,32 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                                 "message":"ERROR: Tried to call continuous colorscale on violin plot."
                                 }
 
-                # Name trace based on grouping to ensure plots are scaled correctly for violin plots
-                new_plotting_args['name'] = name
+                # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
+                new_plotting_args['scalegroup'] = name
                 if isinstance(name, tuple):
-                    new_plotting_args['name'] = "_".join(name)
+                    new_plotting_args['scalegroup'] = "_".join(name)
 
                 # If color dataseries is present, add some special configurations
-                if color_name and colormap:
+                if color_name:
                     curr_color = name
                     if isinstance(name, tuple):
                         curr_color = name[priority_groups.index(color_name)]
-                    # Use black outlines with colormap fillcolor. Pertains mostly to violin plots
-                    new_plotting_args['fillcolor'] = colormap[curr_color]
-                    new_plotting_args['line'] = dict(color='#000000')
-                    new_plotting_args['showlegend'] = True
-                    new_plotting_args["legendgroup"] = curr_color
+                    new_plotting_args['name'] = curr_color
 
                     # If facets are present, a legend group trace can appear multiple times.
                     # Ensure it only shows once.
+                    new_plotting_args['showlegend'] = True
                     if curr_color in names_in_legend:
                         new_plotting_args['showlegend'] = False
                     names_in_legend[curr_color] = True
+
+                    new_plotting_args['line'] = dict(color='#000000')
+                    new_plotting_args["legendgroup"] = curr_color
+                    new_plotting_args["offsetgroup"] = curr_color   # Cleans up some weird grouping stuff, making plots thicker
+
+                    if colormap:
+                        # Use black outlines with colormap fillcolor. Pertains mostly to violin plots
+                        new_plotting_args['fillcolor'] = colormap[curr_color]
 
                 # Now determine which plot this trace should go to.  Facet column is first if row does not exist.
                 # Note the "facet_row/col_indexes" enum command started indexing at 1, so no need to increment for 1-indexed subplots

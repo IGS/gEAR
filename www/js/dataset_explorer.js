@@ -14,7 +14,6 @@ window.onload=function() {
     check_for_login();
 
     $('#selected_layout').on('change', function() {
-        console.log("Detected change in layout");
         update_layout_dataset_id_list();
         update_view_buttons();
     });
@@ -158,6 +157,20 @@ window.onload=function() {
         add_to_profile(dataset_id);
     });
 
+    $(document).on('click', 'button.edit_dataset', function() {
+        var dataset_id = $(this).data('dataset-id');
+        var selector_base = "#result_dataset_id_" + dataset_id;
+
+        // Show editable versions where there are some and hide the display versions
+        $(selector_base + " .is-editable").hide();
+        $(selector_base + " .editable-version").show();
+
+        // Make sure the view is expanded
+        if ($(selector_base + " .expandable-view").hasClass('expanded-view-hidden')) {
+            $(selector_base + " span.dataset-expander").click();
+        }
+    });
+
     $(document).on('click', 'button.removefromprofile', function() {
         dataset_id = $(this).attr('value');
         remove_from_profile(dataset_id);
@@ -265,6 +278,109 @@ $(document).on('click', '.confirm_dataset_delete', function() {
         }
     }); //end ajax for .confirm_delete
 });
+
+$(document).on('click', '.edit_dataset_cancel', function() {
+    var dataset_id = $(this).data('dataset-id');
+    var selector_base = "#result_dataset_id_" + dataset_id;
+
+    // Show editable versions where there are some and hide the display versions
+    $(selector_base + " .editable-version").hide();
+    $(selector_base + " .is-editable").show();
+
+    // Reset any unsaved/edited values
+    var visibility = $(selector_base + "_visibility").data("original-val");
+    $(selector_base + "_visibility").val(visibility);
+
+    var title = $(selector_base + "_editable_title").data("original-val");
+    $(selector_base + "_editable_title").val(title);
+
+    var pubmed_id = $(selector_base + "_editable_pubmed_id").data("original-val");
+    $(selector_base + "_editable_pubmed_id").val(pubmed_id);
+
+    var geo_id = $(selector_base + "_editable_geo_id").data("original-val");
+    $(selector_base + "_editable_geo_id").val(geo_id);
+
+    var ldesc = $(selector_base + "_editable_ldesc").data("original-val");
+    $(selector_base + "_editable_ldesc").val(ldesc);
+});
+
+$(document).on('click', '.edit_dataset_save', function() {
+    session_id = Cookies.get('gear_session_id');
+    var dataset_id = $(this).data('dataset-id');
+    var selector_base = "#result_dataset_id_" + dataset_id;
+    var new_visibility = $(selector_base + "_visibility").val();
+    var new_title = $(selector_base + "_editable_title").val();
+    var new_pubmed_id = $(selector_base + "_editable_pubmed_id").val();
+    var new_geo_id = $(selector_base + "_editable_geo_id").val();
+    var new_ldesc = $(selector_base + "_editable_ldesc").val();
+
+    $.ajax({
+        url : './cgi/save_datasetinfo_changes.cgi',
+        type: "POST",
+        data : { 'session_id': session_id,
+                 'dataset_id': dataset_id,
+                 'visibility': new_visibility,
+                 'title': new_title,
+                 'pubmed_id': new_pubmed_id,
+                 'geo_id': new_geo_id,
+                 'ldesc': new_ldesc
+               },
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            if ( data['success'] == 1 ) {
+                // Update the UI for the new values
+                $(selector_base + "_visibility").data("original-val", new_visibility);
+
+                var visibility_html = ''
+                if (new_visibility == 'public') {
+                    visibility_html = '<h3><span class="badge badge-light">Public dataset</span></h3>'
+                } else {
+                    visibility_html = '<h3><span class="badge badge-danger">Private dataset</span></h3>';
+                }
+                $(selector_base + "_display_visibility").html(visibility_html);
+                
+                $(selector_base + "_editable_title").data("original-val", new_title);
+                $(selector_base + "_display_title").html(new_title);
+                
+                $(selector_base + "_editable_pubmed_id").data("original-val", new_pubmed_id);
+                var pubmed_html = "<span class='att_label'>Pubmed</span>";
+
+                if (new_pubmed_id) {
+                    pubmed_html += "<a href='https://pubmed.ncbi.nlm.nih.gov/" + new_pubmed_id + "' target='_blank'> " + new_pubmed_id;
+                    pubmed_html += " <i class='fa fa-external-link'></i></a>";
+                } else {
+                    pubmed_html = "Not given";
+                }
+
+                $(selector_base + "_display_pubmed_id").html(pubmed_html);
+
+                $(selector_base + "_editable_geo_id").data("original-val", new_geo_id);
+                var geo_html = "<span class='att_label'>GEO ID</span>";
+
+                if (new_geo_id) {
+                    geo_html += "<a href='https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=" + new_geo_id + "' target='_blank'> " + new_geo_id;
+                    geo_html += " <i class='fa fa-external-link'></i></a>";
+                } else {
+                    geo_html = "Not given";
+                }
+
+                $(selector_base + "_display_geo_id").html(geo_html);
+
+                $(selector_base + "_editable_ldesc").data("original-val", new_ldesc);
+                $(selector_base + "_display_ldesc").html(new_ldesc);
+                
+                // Put interface back to view mode.
+                $(selector_base + " .editable-version").hide();
+                $(selector_base + " .is-editable").show();
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log('textStatus= ', textStatus);
+            console.log('errorThrown= ', errorThrown);
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    }); //end ajax
+});   
 
 $('#btn_delete_layout').popover({
 		animation: true,
@@ -382,7 +498,8 @@ $(document).on('click', 'button#btn_save_layout', function() {
                 $("#arrangement_save_notification").show();
                 setTimeout(function() {
                     $("#arrangement_save_notification").fadeOut();
-                }, 5000);
+                    $("#btn_list_view_compact").trigger('click');
+                }, 800);
             }
 
             if ( data['error'] ) {
@@ -564,8 +681,8 @@ function load_organism_list() {
     
     $.ajax({
         url : './cgi/get_organism_list.cgi',
-        type: "POST",
-        data : { 'session_id': session_id },
+        type: "GET",
+        data : {},
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
             var ListTmpl = $.templates("#organism_list_tmpl");
@@ -650,7 +767,7 @@ function process_search_results(data, result_label) {
         }
         
         // some fields should never have whitespace
-        if (dataset['pubmed_id']) {
+        if (dataset['pubmed_id'] !== 'None' && dataset['pubmed_id']) {
             dataset['pubmed_id'] = dataset['pubmed_id'].trim();
         } else {
             dataset['pubmed_id'] = 0;
@@ -660,6 +777,10 @@ function process_search_results(data, result_label) {
             dataset['geo_id'] = dataset['geo_id'].trim();
         } else {
             dataset['geo_id'] = 0;
+        }
+
+        if (dataset['is_public'] === null) {
+            dataset['is_public'] = 0;
         }
 
         // set grid width styling for arrangement view
@@ -830,10 +951,13 @@ function update_add_remove_buttons() {
             domain_profile_selected = true;
         }
 
+        // The ability to edit and delete and dataset are currently paired
         if (CURRENT_USER.id == $(this).find("button.delete_dataset").data('owner-id')) {
             $(this).find("button.delete_dataset").show();
+            $(this).find("button.edit_dataset").show();
         } else {
             $(this).find("button.delete_dataset").hide();
+            $(this).find("button.edit_dataset").hide();
         }
         
         if (domain_profile_selected) {

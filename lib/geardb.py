@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import re
 import sys
 import uuid
 
@@ -763,6 +764,7 @@ class Layout:
         """
         cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width))
         member.id = cursor.lastrowid
+        self.members.append(member)
 
         cursor.close()
         conn.commit()
@@ -774,6 +776,8 @@ class Layout:
         """
         conn = Connection()
         cursor = conn.get_cursor()
+
+        self.members = list()
 
         qry = """
               SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width
@@ -811,6 +815,8 @@ class Layout:
         for row in cursor:
             (self.user_id, self.group_id, self.label, self.is_current, self.share_id) = row
 
+        self.get_members()
+            
         cursor.close()
         conn.commit()
 
@@ -844,7 +850,7 @@ class Layout:
               WHERE layout_id = %s
         """
         cursor.execute(qry, (self.id,))
-
+        
         cursor.close()
         conn.commit()
 
@@ -873,6 +879,9 @@ class Layout:
                 AND layout_id = %s
         """
         cursor.execute(qry, (dataset_id, self.id))
+
+        # make sure this member is removed from our internal list too
+        self.members = [i for i in self.members if i.dataset_id != dataset_id]
 
         cursor.close()
         conn.commit()
@@ -1045,22 +1054,26 @@ class Dataset:
 
     def save_change(self, attribute=None, value=None):
         """
-        Update a dataset attribute.
+        Update a dataset attribute, both in the object and the relational database
         """
         if self.id is None:
             raise Exception("Error: no dataset id. Cannot save change.")
         if attribute is None:
             raise Exception("Error: no attribute given. Cannot save change.")
 
+        ## quick sanitization of attribute
+        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
+        setattr(self, attribute, value)
+        
         conn = Connection()
         cursor = conn.get_cursor()
 
         save_sql = """
             UPDATE dataset
-            SET {0} = '{1}'
-            WHERE id = '{2}'
-        """.format(attribute, str(value), self.id)
-        cursor.execute(save_sql)
+            SET {0} = %s
+            WHERE id = %s
+        """.format(attribute)
+        cursor.execute(save_sql, (str(value), self.id))
 
         conn.commit()
         cursor.close()
@@ -1137,6 +1150,7 @@ class DatasetCollection:
                                       organism_id=row[19],
                                       pubmed_id=row[3],
                                       geo_id=row[4],
+                                      is_public=row[5],
                                       ldesc=row[6],
                                       dtype=row[7],
                                       owner_id=row[8],
@@ -1157,8 +1171,6 @@ class DatasetCollection:
 
                     #  TODO: These all need to be tracked through the code and removed
                     dataset.dataset_id = dataset.id
-                    dataset.grid_position = None
-                    dataset.grid_width = 4
                     dataset.user_id = dataset.owner_id
                     dataset.math_format = dataset.math_default
 

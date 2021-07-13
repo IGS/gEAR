@@ -6,7 +6,7 @@ networks:
 services:
   db:
     environment:
-      MYSQL_DATABASE: [db]
+      MYSQL_DATABASE: [database]
       MYSQL_USER: [user]
       MYSQL_PASSWORD: [user_pw]
       MYSQL_ROOT_PASSWORD: [root_pw]
