@@ -73,6 +73,8 @@ CREATE TABLE gene_cart (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        user_id         INT NOT NULL,
        label           VARCHAR(255) NOT NULL,
+       share_id        VARCHAR(50),
+       is_public       TINYINT DEFAULT 0,
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
