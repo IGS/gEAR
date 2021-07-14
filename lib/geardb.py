@@ -1538,10 +1538,12 @@ class GeneCollection:
 
 
 class GeneCart:
-    def __init__(self, id=None, user_id=None, label=None, genes=None):
+    def __init__(self, id=None, user_id=None, label=None, genes=None, share_id=None, is_public=None):
         self.id = id
         self.user_id = user_id
         self.label = label
+        self.share_id = share_id
+        self.is_public = is_public
 
         # TODO: This should be a reference to a GeneCollection
         if not genes:
@@ -1566,9 +1568,9 @@ class GeneCart:
         if self.id is None:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
-            gc_insert_qry = "INSERT INTO gene_cart (user_id, label) VALUES (%s, %s)"
+            gc_insert_qry = "INSERT INTO gene_cart (user_id, label, share_id, is_public) VALUES (%s, %s, %s, %s)"
 
-            cursor.execute(gc_insert_qry, (self.user_id, self.label))
+            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.share_id, self.is_public))
             self.id = cursor.lastrowid
 
             for gene in self.genes:
