@@ -1,8 +1,20 @@
+var animation_time = 200;
+
 window.onload=function() {
     // check if the user is already logged in
     check_for_login();
 
+    $("#initial_instructions_bar").on('click', function() {
+        if ($("#initial_instructions_body").is(":visible")) {
+            $("#initial_instructions_body").hide(animation_time);
+        } else {
+            $("#initial_instructions_body").show(animation_time);
+        }
+    });
 
+    $("#initial_instructions_closer i").on('click', function() {
+        $("#initial_instructions_c").hide();
+    });
 };  // end window onloads
 
 function display_error_bar(msg) {

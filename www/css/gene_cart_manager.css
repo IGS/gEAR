@@ -1,3 +1,43 @@
+h4.expandable_control:hover {
+    cursor: pointer;
+}
+ul.controls_filter_options {
+    margin: 0;
+    padding: 0 0 0 5px;
+    list-style: none;
+}
+ul.controls_filter_options li {
+    padding: 1px 0 1px 5px;
+    /* need to set an invisible border so clicking
+       doesn't make elements jiggle when the 
+       border appears on the selected version */
+    border: 1px solid white;
+}
+ul.controls_filter_options li:hover {
+    cursor: pointer;
+}
+ul.controls_filter_options li.selected {
+    background-color: #E8EBEE;
+    border: 1px solid #E8EBEE;
+    border-radius: 4px;
+}
+div.filter_subsection {
+    margin-bottom: 20px;
+}
+div#initial_instructions_c {
+    color: white;
+    background-color: var(--main-section-launcher-bg-color-inactive);
+    border-radius: 5px;
+    font-weight: bold;
+}
+div#initial_instructions_body {
+    margin-top: 10px;
+    display: none;
+}
+div#initial_instructions_bar:hover,
+div#initial_instructions_closer:hover {
+    cursor:pointer;
+}
 div#login_checking,
 div#login_warning {
     margin: 75px 0 0 50px;
