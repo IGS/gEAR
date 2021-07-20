@@ -72,7 +72,9 @@ CREATE TABLE gene (
 CREATE TABLE gene_cart (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        user_id         INT NOT NULL,
+       gctype          VARCHAR(50) NOT NULL DEFAULT 'unweighted-list',
        label           VARCHAR(255) NOT NULL,
+       ldesc           TEXT,
        share_id        VARCHAR(50),
        is_public       TINYINT DEFAULT 0,
        FOREIGN KEY (user_id)
