@@ -111,6 +111,7 @@ def main():
         'genes_detected_color',
         'genes_detected_id',
         'genes_detected_label',
+        'group_colors',
         'library_id',
         'louvain',
         'mapped_reads',
