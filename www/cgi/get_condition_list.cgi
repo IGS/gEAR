@@ -95,6 +95,7 @@ def main():
         'cluster_id',
         'cluster_label',
         'cluster_color',
+        'cluster_colors',
         'cross_species_cluster',
         'cross_species_cluster_color',
         'cross_species_cluster_id',
