@@ -77,6 +77,7 @@ CREATE TABLE gene_cart (
        ldesc           TEXT,
        share_id        VARCHAR(50),
        is_public       TINYINT DEFAULT 0,
+       FULLTEXT        text_idx (label, ldesc),
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
           ON DELETE CASCADE
