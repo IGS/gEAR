@@ -4,6 +4,10 @@
 .expanded-view-hidden {
     display: none;
 }
+div#add_cart_controls_c {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
 div#controls {
     border-right: 1px solid rgb(220,220,220);
     /* 111px is height of footer, 130 is the expanded profile mgmt box*/

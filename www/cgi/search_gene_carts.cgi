@@ -118,6 +118,7 @@ def main():
         gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
                              is_public=row[6], date_added=row[7])
         gc.user_name = row[1]
+        gc.gene_count = len(gc.genes)
         gene_carts.append(gc)
 
     result['gene_carts'] = gene_carts

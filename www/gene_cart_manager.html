@@ -80,51 +80,9 @@
             </form>
           </div> <!-- #controls_primary_search -->
           
-          <div id='controls_profile'>
-            <h4 class="expandable_control"><i class="fa fa-plus"></i><i class="fa fa-minus shown_later"></i> Cart management</h4>
-            <div id="controls_profile_nouser_c" class="expandable_target shown_later">
-              <p>
-                Login or create an account to build profiles.
-              </p>
-            </div>
-            <div id="controls_profile_c" class="expandable_target profile_control">
-              <form>
-                <div id="selected_layout_c" class="form-group">
-                  <label for="selected_layout" class="form-label-sm mb-0">Choose gene cart:</label>
-                  <select id="selected_layout" name="selected_layout" class="custom-select mb-0">
-                    <!-- filled by load_user_layouts() -->
-                    <optgroup id="site_profile_list" label="Site profiles"></optgroup>
-                    <optgroup id="user_profile_list" label="Your profiles"></optgroup>
-                  </select>
-                </div>
-                <div class="btn-group pull-right mt-0" role="group">
-                  <button type="button" id="btn_set_primary_layout" class="btn btn-primary btn-sm" data-toggle="tooltip" data-placement="bottom" title="Make this profile active gEAR search">
-                    <i class="fa fa-thumbs-up"></i>
-                  </button>
-                  <button type="button" id="btn_view_layout_datasets" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="View datasets in this profile">
-                    <i class="fa fa-eye"></i>
-                  </button>
-                  <button type="button" id="btn_add_layout" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Add new layout profile">
-                    <i class="fa fa-plus"></i>
-                  </button>
-                  <button type="button" id="btn_share_layout" class="btn btn-default btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Share layout profile">
-                    <i class="fa fa-share-alt"></i>
-                  </button>
-                  <button type="button" id="btn_delete_layout" class="btn btn-danger btn-sm" data-toggle="popover" data-toggle="tooltip" data-placement="bottom" title="Delete layout profile">
-                    <i class="fa fa-trash"></i>
-                  </button>
-                </div>
-                <div style="clear: both;"></div>
-                <div>
-                  <span id="layout_action_note" class="pull-right">&nbsp;</span>
-                </div>
-                <div style="clear: both;"></div>
-              </form>
-              <script id="layout_list_tmpl" type="text/x-jsrender">
-                <option value="{{:id}}" data-is-domain="{{:is_domain}}" data-share-id="{{:share_id}}">{{:label}}</option>
-              </script>
-            </div> <!-- #controls_profile_c -->
-          </div> <!-- end #controls_profile -->
+          <div id='add_cart_controls_c'>
+            <button type="button" class="btn btn-primary">Create new cart</button>
+          </div>
 
           <div id='controls_ownership' class='filter_subsection'>
             <h4 class="expandable_control"><i class="fa fa-plus shown_later"></i><i class="fa fa-minus"></i> Ownership</h4>
@@ -235,14 +193,15 @@
                        </div>
                      </div>
                      <div class="row no-gutters">
-                       <div class="col-sm-3 pl-3">
+                       <div class="col-sm-2 pl-2">
                          {{if is_public == 1}}
                          <span class="badge badge-light">Public gene cart</span>
                          {{else}}
                          <span class="badge badge-danger">Private gene cart</span>
                          {{/if}}
                        </div>
-                       <div class="col-sm-3"><span class="att_label">Type</span> {{:gctype}}</div>
+                       <div class="col-sm-2"><span class="att_label">Genes</span> {{:gene_count}}</div>
+                       <div class="col-sm-2"><span class="att_label">Type</span> {{:gctype}}</div>
                        <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
                        <div class="col-sm-3"><span class="att_label">Added</span> {{:date_added}}</div>
                      </div>
