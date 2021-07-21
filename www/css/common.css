@@ -96,6 +96,9 @@ h5 {
 hr {
     clear: both;
 }
+img#checking_indicator {
+    width: 20px;
+}
 img#searching_indicator {
     display: block;
     margin: 0 auto;
