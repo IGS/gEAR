@@ -1551,13 +1551,28 @@ class GeneCart:
 
         # TODO: This should be a reference to a GeneCollection
         if not genes:
-            self.genes = list()
+            self.get_genes()
 
     def __repr__(self):
         return json.dumps(self.__dict__)
 
     def add_gene(self, gene):
         self.genes.append(gene)
+
+    def get_genes(self):
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = "SELECT gene_symbol FROM gene_cart_member WHERE gene_cart_id = %s"
+        cursor.execute(qry, (self.id,))
+
+        self.genes = list()
+
+        for row in cursor:
+            self.genes.append(row[0])
+
+        cursor.close()
+        conn.close()
 
     def save(self):
         """
