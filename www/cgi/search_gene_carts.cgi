@@ -78,7 +78,7 @@ def main():
 
         if date_added:
             date_added = re.sub("[^a-z]", "", date_added)
-            wheres.append("AND d.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
+            wheres.append("AND gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
 
         if sort_by == 'relevance':
             # relevance can only be ordered if a search term was used
