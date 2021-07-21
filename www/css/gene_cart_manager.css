@@ -21,6 +21,16 @@ div#controls_profile h4 {
     padding-bottom: 3px;
     border-bottom: 2px solid rgb(220,220,220);
 }
+div#gc_count_label_c span {
+    font-size: 120%;
+    font-weight: bold;
+    vertical-align: -0.5em;
+}
+div.gc_list_element_c h5 {
+    color: black;
+    font-weight: bold;
+    font-weight: 110%;
+}
 div#initial_instructions_c {
     color: white;
     background-color: var(--main-section-launcher-bg-color-inactive);
@@ -54,6 +64,9 @@ hr.gc_list_element_divider {
 span.att_label {
     font-size: 90%;
     font-weight: bold;
+}
+span.badge {
+    font-size: 90%;
 }
 span.gc-expander:hover {
     cursor: pointer;

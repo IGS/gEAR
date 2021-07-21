@@ -130,9 +130,9 @@
             <h4 class="expandable_control"><i class="fa fa-plus shown_later"></i><i class="fa fa-minus"></i> Ownership</h4>
             <ul class="controls_filter_options expandable_target">
               <li class="all_selector selected">All</li>
-              <li id="your_dataset_filter" data-dbval="yours" class="shown_later">Your datasets</li>
+              <li id="your_dataset_filter" data-dbval="yours" class="shown_later">Your carts</li>
               <!--<li data-dbval="shared">Shared with you</li>-->
-              <li data-dbval="public">Public datasets</li>
+              <li data-dbval="public">Public carts</li>
             </ul>
           </div>
           <div id='controls_date_added' class='filter_subsection'>
@@ -151,8 +151,7 @@
             <div class="col-sm-5">
               <div class="row">
                 <div id="gc_count_label_c" class="col-sm-7">
-                  <span id="initial_gc_count_label"><span id="result_count"></span> <span id="result_label">most recent</span></span>
-                  <span id="gc_count_label"><span id="dataset_count"></span> most recent datasets</span>
+                  <span id="gc_count_label"><span id="result_count"></span> <span id="result_label"></span></span>
                 </div>
                 <div class="col-sm-5">
                   <span class="label_by_buttons">View: </span>
@@ -236,9 +235,15 @@
                        </div>
                      </div>
                      <div class="row no-gutters">
+                       <div class="col-sm-3 pl-3">
+                         {{if is_public == 1}}
+                         <span class="badge badge-light">Public gene cart</span>
+                         {{else}}
+                         <span class="badge badge-danger">Private gene cart</span>
+                         {{/if}}
+                       </div>
                        <div class="col-sm-3"><span class="att_label">Type</span> {{:gctype}}</div>
                        <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
-                       <div class="col-sm-3"><span class="att_label">Public</span> {{:is_public}}</div>
                        <div class="col-sm-3"><span class="att_label">Added</span> ADD DATE FIELD</div>
                      </div>
                    </div>

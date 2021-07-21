@@ -151,6 +151,9 @@ function process_search_results(data, result_label) {
     var resultsViewTmpl = $.templates("#gc_results_view_tmpl");
     var resultsViewHtml = resultsViewTmpl.render(data['gene_carts']);
     $("#gc_list_results_view_c").html(resultsViewHtml);
+
+    $("#result_count").html(data['gene_carts'].length);
+    $("#result_label").html(result_label);
 }
 
 function submit_search() {
@@ -179,7 +182,6 @@ function submit_search() {
         data : search_criteria,
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
-            console.log(data);
             process_search_results(data, ' results');
             current_dataset_list_label = 'search';
         },
