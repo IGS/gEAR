@@ -108,6 +108,18 @@ window.onload=function() {
     });
 };  // end window onloads
 
+$("#btn_create_cart_toggle").click(function(e) {
+    if ($("#add_cart_panel").is(":visible")) {
+        $("#add_cart_panel").hide();
+        $("#gc_viewport").show(animation_time);
+        $("#view_controls").show(animation_time);
+    } else {
+        $("#view_controls").hide();
+        $("#gc_viewport").hide();
+        $("#add_cart_panel").show(animation_time);
+    }
+});
+
 function build_filter_string(group_name, att_name, crit) {
     // Builds a comma-separated search string based on the selected options
     //  in one of the filter option blocks
