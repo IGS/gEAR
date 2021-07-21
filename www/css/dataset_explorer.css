@@ -40,9 +40,7 @@ div#controls {
     /* 111px is height of footer, 130 is the expanded profile mgmt box*/
     height: calc(85vh - 112px + 260px); 
 }
-div#controls_ownership {
-    margin-top: 20px;
-}
+div#controls_ownership,
 div#controls_profile {
     margin-top: 20px;
 }

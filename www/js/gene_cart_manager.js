@@ -1,3 +1,4 @@
+var first_search = true;
 var animation_time = 200;
 
 window.onload=function() {
@@ -107,6 +108,20 @@ window.onload=function() {
     });
 };  // end window onloads
 
+function build_filter_string(group_name, att_name, crit) {
+    // Builds a comma-separated search string based on the selected options
+    //  in one of the filter option blocks
+    if ($("#" + group_name + " ul li.selected").not(".all_selector").length) {
+        var dbvals = [];
+
+        $("#" + group_name + " ul li.selected").not(".all_selector").each(function() {
+            dbvals.push($(this).data('dbval'));
+        });
+
+        crit[att_name] = dbvals.join(",");
+    }
+}
+
 function display_error_bar(msg) {
     $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
       '<button type="button" class="close close-alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
@@ -117,4 +132,61 @@ function display_error_bar(msg) {
       '</div>').show();
 }
 
+function load_preliminary_data() {
+    /*
+      Loads all the parts of the page which need initial calls from the server, such as 
+      database-driven select boxes.
+    */
+    //load_user_layouts();
+    //load_initial_results();
+}
 
+function process_search_results(data, result_label) {
+    // each element keeps getting sent as a string
+    for (i = 0; i < data['gene_carts'].length; i++) {
+        data['gene_carts'][i] = JSON.parse(data['gene_carts'][i]);
+    }
+    
+    // For the list view
+    var resultsViewTmpl = $.templates("#gc_results_view_tmpl");
+    var resultsViewHtml = resultsViewTmpl.render(data['gene_carts']);
+    $("#gc_list_results_view_c").html(resultsViewHtml);
+}
+
+function submit_search() {
+    // clear out any previous results:
+    $("#gc_list_results_view_c").empty();
+
+    // If this is the first time searching with terms, set the sort by to relevance
+    if ($("#search_terms").val() && first_search) {
+        $("#sort_by").val('relevance');
+        first_search = false;
+    }
+    
+    var search_criteria = {
+        'session_id': session_id,
+        'search_terms': $("#search_terms").val(),
+        'sort_by': $("#sort_by").val()
+    };
+
+    // collect the filter options the user defined
+    build_filter_string('controls_date_added', 'date_added', search_criteria);
+    build_filter_string('controls_ownership', 'ownership', search_criteria);
+
+    $.ajax({
+        url : './cgi/search_gene_carts.cgi',
+        type: "POST",
+        data : search_criteria,
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            console.log(data);
+            process_search_results(data, ' results');
+            current_dataset_list_label = 'search';
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+	        console.log('textStatus= ', textStatus);
+	        console.log('errorThrown= ', errorThrown);
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    }); //end ajax for search    
+};

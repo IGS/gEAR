@@ -131,7 +131,7 @@
             <ul class="controls_filter_options expandable_target">
               <li class="all_selector selected">All</li>
               <li id="your_dataset_filter" data-dbval="yours" class="shown_later">Your datasets</li>
-              <li data-dbval="shared">Shared with you</li>
+              <!--<li data-dbval="shared">Shared with you</li>-->
               <li data-dbval="public">Public datasets</li>
             </ul>
           </div>
@@ -146,11 +146,57 @@
           </div>
         </div> <!-- #controls -->
         <div id="main_panel" class="col-sm-10">
+           <div id="view_controls" class="row">
+            <!-- Count and view control -->
+            <div class="col-sm-5">
+              <div class="row">
+                <div id="gc_count_label_c" class="col-sm-7">
+                  <span id="initial_gc_count_label"><span id="result_count"></span> <span id="result_label">most recent</span></span>
+                  <span id="gc_count_label"><span id="dataset_count"></span> most recent datasets</span>
+                </div>
+                <div class="col-sm-5">
+                  <span class="label_by_buttons">View: </span>
+                  <div class="btn-group" role="group" aria-label="Gene cart list view preference">
+                    <button type="button" id="btn_list_view_compact" class="btn btn-secondary btn-sm active" aria-label="Compact view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Compact view"><i class="fa fa-list"></i></button>
+                    <button type="button" id="btn_list_view_expanded" class="btn btn-secondary btn-sm" aria-label="Expanded view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Expanded view"><i class="fa fa-window-maximize"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Sorting controls -->
+            <div id="sort_controls" class="col-sm-3">
+              <div class="form-group">
+                <label class="d-inline-block" for="sort_by">Sort by:</label>
+                <select name="sort_by" class="form-control form-control-sm d-inline-block" style="width: auto;" id="sort_by">
+                   <option value="relevance">Relevance</option>
+                   <option value="title">Gene cart title</option>
+                   <option value="date_added" selected>Date created</option>
+                   <option value="owner">Owner</option>
+                </select>
+              </div>
+            </div><!-- #sort_controls -->
+            <!-- Pagination -->
+            <div id="pagination_controls" class="col-sm-4">
+                <!--
+                <span class="label_by_buttons">Page:</span>
+                <div class="btn-group mr-3" role="group">
+                  <button type="button" class="btn btn-sm btn-secondary">1</button>
+                  <button type="button" class="btn btn-sm btn-secondary">2</button>
+                  <button type="button" class="btn btn-sm btn-secondary">3</button>
+                  <button type="button" class="btn btn-sm btn-secondary">4</button>
+                </div>
+                <div class="btn-group" role="group">
+                  <button type="button" class="btn btn-sm btn-secondary">Show all</button>
+                </div>
+                -->
+            </div> <!-- #pagination_controls -->
+          </div> <!-- #view_controls -->
           <div id="initial_instructions_c" class="row ml-4 mr-4 mb-3 pt-2 pb-2">
             <div class="col-sm-12">
               <div id="initial_instructions_header" class="row">
                 <div id="initial_instructions_bar" class="col-sm-11">
                   Click for instructions
+                  
                 </div>
                 <div id="initial_instructions_closer" class="col-sm-1 pt-1">
                   <i class="fa fa-window-close pull-right"></i>
@@ -171,16 +217,32 @@
               user clicks the edit button for any dataset all the elements which are is-editable are hidden
               and the editable-version ones are displayed in their stead.
           -->
-          <div id="dataset_viewport" class="row">
-            <div id="dataset_list_c" class="col-sm-12">
-              <div id="dataset_list_results_view_c"></div>
-              <script id="dataset_results_view_tmpl" type="text/x-jsrender">
-                 <div class="dataset_list_element_c row" id="result_dataset_id_{{:dataset_id}}" data-dataset-id="{{:dataset_id}}">
-                   <div class="dataset_preview_c col-sm-2">
+          <div id="gc_viewport" class="row">
+            <div id="gc_list_c" class="col-sm-12">
+              <div id="gc_list_results_view_c"></div>
+              <script id="gc_results_view_tmpl" type="text/x-jsrender">
+                 <div class="gc_list_element_c row" id="result_gc_id_{{:id}}" data-gc-id="{{:id}}">
+                   <div class="col-sm-12">
+                     <div class="row">
+                       <div class="col-sm-11 is-editable">
+                         <h5 id="result_gc_id_{{:id}}_display_title">{{:label}}</h5>
+                       </div>
+                       <div id="editable_title_c" class="col-sm-11 editable-version">
+                        <span class="att_label">Title</span>
+                        <input type="text" class="editable_title" id="result_gc_id_{{:id}}_editable_title" data-original-val="{{:label}}" value="{{:label}}"/>
+                      </div>
+                       <div class="col-sm-1">
+                         <span class="gc-expander pull-right" data-gc-id="{{:id}}"><i class="fa fa-expand"></i></span>
+                       </div>
+                     </div>
+                     <div class="row no-gutters">
+                       <div class="col-sm-3"><span class="att_label">Type</span> {{:gctype}}</div>
+                       <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
+                       <div class="col-sm-3"><span class="att_label">Public</span> {{:is_public}}</div>
+                       <div class="col-sm-3"><span class="att_label">Added</span> ADD DATE FIELD</div>
+                     </div>
                    </div>
-                   <div class="col-sm-10">
-                   </div>
-                   <hr class="dataset_list_element_divider" />
+                   <hr class="gc_list_element_divider" />
                  </div> <!-- end .dataset_list_element_c -->
               </script>
             </div> <!-- dataset_list_c -->

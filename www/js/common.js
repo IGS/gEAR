@@ -323,6 +323,11 @@ function handle_login_ui_updates() {
             $("#controls_profile_nouser_c").remove();
             $("#your_dataset_filter").show();
 
+        } else if (document.URL.indexOf("gene_cart_manager.html") >= 0) {
+            // these are defined in dataset_explorer.js
+            load_preliminary_data();
+            $("#your_dataset_filter").show();
+
         } else if (document.URL.indexOf("manual.html") >= 0) {
             $('a#manual_link').parent().addClass('active');
 
