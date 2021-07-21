@@ -1538,10 +1538,13 @@ class GeneCollection:
 
 
 class GeneCart:
-    def __init__(self, id=None, user_id=None, label=None, genes=None, share_id=None, is_public=None):
+    def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None,
+                 genes=None, share_id=None, is_public=None):
         self.id = id
         self.user_id = user_id
+        self.gctype = gctype
         self.label = label
+        self.ldesc = ldesc
         self.share_id = share_id
         self.is_public = is_public
 
