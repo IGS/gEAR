@@ -113,12 +113,79 @@ $("#btn_create_cart_toggle").click(function(e) {
         $("#add_cart_panel").hide();
         $("#gc_viewport").show(animation_time);
         $("#view_controls").show(animation_time);
+
+        $("#btn_create_cart_toggle").html('Create new cart');
+        reset_add_form();
     } else {
         $("#view_controls").hide();
         $("#gc_viewport").hide();
         $("#add_cart_panel").show(animation_time);
+        $('#new_cart_is_public').bootstrapToggle('off');
+
+        $("#btn_create_cart_toggle").html('Cancel cart creation');
     }
 });
+
+$("#btn_gc_paste_unweighted_list").click(function(e) {
+    $("#new_cart_unweighted_header").addClass('bg-primary');
+    $("#new_cart_unweighted_header").css('color', 'white');
+    $("#btn_gc_upload_unweighted_list").addClass('disabled');
+    $("#btn_gc_upload_weighted_list").addClass('disabled');
+    $("#new_cart_pasted_genes_c").show();
+    $("#new_cart_form_c").show(animation_time);
+});
+
+$("#btn_gc_upload_unweighted_list").click(function(e) {
+    $("#new_cart_unweighted_header").addClass('bg-primary');
+    $("#new_cart_unweighted_header").css('color', 'white');
+    $("#btn_gc_upload_weighted_list").addClass('disabled');
+    $("#btn_gc_paste_unweighted_list").addClass('disabled');
+    $("#new_cart_form_c").show(animation_time);
+});
+
+$("#btn_gc_upload_weighted_list").click(function(e) {
+    $("#new_cart_weighted_header").addClass('bg-primary');
+    $("#new_cart_weighted_header").css('color', 'white');
+    $("#btn_gc_upload_unweighted_list").addClass('disabled');
+    $("#btn_gc_paste_unweighted_list").addClass('disabled');
+    $("#new_cart_form_c").show(animation_time);
+});
+
+$("#btn_new_cart_cancel").click(function(e) {
+    $("#btn_create_cart_toggle").trigger('click');
+});
+
+$("#btn_new_cart_save").click(function(e) {
+    session_id = Cookies.get('gear_session_id');
+
+    var is_public = 0;
+
+    if ($("#new_cart_is_public").val() == 'Public') {
+        is_public = 1;
+    }
+
+    var gc = new GeneCart({
+        session_id: session_id,
+        label: $("#new_cart_label").val(),
+        ldesc: $("#new_cart_ldesc").val(),
+        is_public: is_public,
+    });
+
+    // parse the gene names
+    var gene_str = $("#new_cart_pasted_genes").val().replace(',', ' ');
+    gene_str = gene_str.replace('  ', ' ');
+    var gene_symbols = gene_str.split(' ');
+
+    gene_symbols.forEach(function (gs) {
+        var gene = new Gene({
+            gene_symbol: gs,
+        });
+        gc.add_gene(gene);
+    });
+
+    gc.save(gene_cart_saved);
+});
+
 
 function build_filter_string(group_name, att_name, crit) {
     // Builds a comma-separated search string based on the selected options
@@ -142,6 +209,11 @@ function display_error_bar(msg) {
       '</p>' +
       '<p style="text-align: center;">(<em>Error: ' + msg + '</em>)</p>' +
       '</div>').show();
+}
+
+function gene_cart_saved() {
+    $("#btn_create_cart_toggle").trigger('click');
+    submit_search();
 }
 
 function load_preliminary_data() {
@@ -168,6 +240,26 @@ function process_search_results(data, result_label) {
 
     $("#result_count").html(data['gene_carts'].length);
     $("#result_label").html(result_label);
+}
+
+function reset_add_form() {
+    $("#new_cart_label").val('');
+    $("#new_cart_ldesc").val('');
+    $("#new_cart_pasted_genes").val('');
+    $('#new_cart_is_public').bootstrapToggle('off');
+
+    $("#new_cart_unweighted_header").removeClass('bg-primary');
+    $("#new_cart_unweighted_header").css('color', 'black');
+
+    $("#new_cart_weighted_header").removeClass('bg-primary');
+    $("#new_cart_weighted_header").css('color', 'black');
+    
+    $("#btn_gc_paste_unweighted_list").removeClass('disabled');
+    $("#btn_gc_upload_unweighted_list").removeClass('disabled');
+    $("#btn_gc_upload_weighted_list").removeClass('disabled');
+
+    $("#new_cart_form_c").hide();
+    $("#new_cart_pasted_genes_c").hide();
 }
 
 function submit_search() {

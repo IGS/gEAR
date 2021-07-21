@@ -16,6 +16,7 @@
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
         <link rel="stylesheet" href="css/vendor/bootstrap-editable.css" />
         <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/css/bootstrap4-toggle.min.css"/>
 
         <!--
         <link rel="stylesheet" href="css/jquery.fileupload.css" />
@@ -126,31 +127,72 @@
           </div> <!-- end initial_instructions_c -->
           <div id="add_cart_panel" class="row shown_later">
             <div class="col-sm-12">
-              <div class="card-deck">
-                <div class="card">
-                  <div class="card-header">
-                    Unweighted
-                  </div>
-                  <div class="card-body">
-                    <h5 class="card-title">Create unweighted gene cart</h5>
-                    <p class="card-text">
-                      This is a list of gene symbols only, possibly the most common form of gene carts.
-                    </p>
-                    <a href="#" class="btn btn-primary">Paste gene list</a>
-                    <a href="#" class="btn btn-primary">Upload gene list</a>
-                  </div>
+              <div class="row">
+                <div class="col-sm-12">
+                  <div class="card-deck">
+                    <div class="card">
+                      <div class="card-header" id="new_cart_unweighted_header">
+                        Unweighted
+                      </div>
+                      <div class="card-body">
+                        <h5 class="card-title">Create unweighted gene cart</h5>
+                        <p class="card-text">
+                          This is a list of gene symbols only, possibly the most common form of gene carts.
+                        </p>
+                        <button class="btn btn-sm btn-primary" id="btn_gc_paste_unweighted_list">Paste gene list</button>
+                        <button class="btn btn-sm btn-primary" id="btn_gc_upload_unweighted_list">Upload gene list</button>
+                      </div>
+                    </div>
+                    <div class="card">
+                      <div class="card-header" id="new_cart_weighted_header">
+                        Weighted
+                      </div>
+                      <div class="card-body">
+                        <h5 class="card-title">Create weighted gene cart</h5>
+                        <p class="card-text">
+                          Upload a gene list with associated weights, for example from a principal component analysis
+                        </p>
+                        <button class="btn btn-sm btn-primary" id="btn_gc_upload_weighted_list">Upload weighted list file</button>
+                      </div>
+                    </div>
+                  </div><!-- end .card-deck -->
                 </div>
-                <div class="card">
-                  <div class="card-header">
-                    Weighted
-                  </div>
-                  <div class="card-body">
-                    <h5 class="card-title">Create weighted gene cart</h5>
-                    <p class="card-text">
-                      Upload a gene list with associated weights, for example from a principal component analysis
-                    </p>
-                    <a href="#" class="btn btn-primary">Upload weighted list file</a>
-                  </div>
+              </div>
+              <div class="row shown_later" id="new_cart_form_c">
+                <div class="col-sm-12">
+                  <div class="card-deck mt-3">
+                    <div class="card">
+                      <div class="card-header">New gene cart information</div>
+                      <div class="card-body">
+                        <form>
+                          <div class="row">
+                            <div class="col">
+                               <div class="form-group">
+                                 <label for="new_cart_label">Label</label>
+                                 <input type="input" class="form-control" id="new_cart_label" placeholder="">
+                               </div>
+                            </div>
+                            <div class="col">
+                               <div class="form-group">
+                                 <label for="new_cart_is_public">Visibility</label><br />
+                                 <input type="checkbox" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle" data-on="Public" data-off="Private">
+                               </div>
+                            </div>
+                          </div>
+                          <div class="form-group">
+                            <label for="new_cart_ldesc">Longer description</label>
+                            <textarea class="form-control" id="new_cart_ldesc" rows="3"></textarea>
+                          </div>
+                          <div class="form-group shown_later" id="new_cart_pasted_genes_c">
+                            <label for="new_cart_pasted_genes">Paste gene symbols, separated by commas or spaces</label>
+                            <textarea class="form-control" id="new_cart_pasted_genes" rows="3" placeholder="Sox2 Pou4f3 Rfx7"></textarea>
+                          </div>
+                        </form>
+                        <button class="btn btn-sm btn-primary" id="btn_new_cart_save">Save</button>
+                        <button class="btn btn-sm btn-primary" id="btn_new_cart_cancel">Cancel</button>
+                      </div>
+                    </div>
+                  </div> <!-- end .card-deck -->
                 </div>
               </div>
             </div>
@@ -205,7 +247,7 @@
               user clicks the edit button for any dataset all the elements which are is-editable are hidden
               and the editable-version ones are displayed in their stead.
           -->
-          <div id="gc_viewport" class="row">
+          <div id="gc_viewport" class="row">`
             <div id="gc_list_c" class="col-sm-12">
               <div id="gc_list_results_view_c"></div>
               <script id="gc_results_view_tmpl" type="text/x-jsrender">
@@ -281,13 +323,13 @@
         <script src="js/vendor/js.cookie.js"></script>
         <script src="js/vendor/jsrender.20181003.min.js"></script>
 
+        <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/js/bootstrap4-toggle.min.js"></script>
+
         <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/dataset.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
-        <script>document.write('<script src="js/classes/ui-panel-annotation.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
-        <script>document.write('<script src="js/classes/ui-panel-dataset.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
-        <script>document.write('<script src="js/classes/ui-panel-dataset-collection.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
         <script>document.write('<script src="js/common.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
         <script>document.write('<script src="js/classes/user.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/gene.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/genecart.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
         <script>document.write('<script src="js/gene_cart_manager.js?dev=' + Math.floor(Math.random() * 10000) + '"\><\/script>');</script>
         <script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){

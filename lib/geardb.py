@@ -1630,7 +1630,7 @@ class GeneCart:
             self.genes = list()
 
             for gene_dict in json_obj['genes']:
-                gene = Gene(id=gene_dict['id'], gene_symbol=gene_dict['gene_symbol'])
+                gene = Gene(gene_symbol=gene_dict['gene_symbol'])
                 self.add_gene(gene)
 
 

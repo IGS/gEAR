@@ -1,13 +1,16 @@
 "use strict";
 
 class GeneCart {
-    constructor ({id, session_id, label, share_id, is_public, genes = []} = {}) {
+    constructor ({id, session_id, label, share_id, is_public,
+                  genes = [], gctype, ldesc} = {}) {
         this.id = id;
         this.session_id = session_id;
         this.label = label;
         this.share_id = share_id;
         this.is_public = is_public;
         this.genes = genes;
+        this.gctype = gctype;
+        this.ldesc = ldesc;
     }
 
     add_cart_to_db(callback, gc) {
