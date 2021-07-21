@@ -145,6 +145,8 @@ function process_search_results(data, result_label) {
     // each element keeps getting sent as a string
     for (i = 0; i < data['gene_carts'].length; i++) {
         data['gene_carts'][i] = JSON.parse(data['gene_carts'][i]);
+        data['gene_carts'][i]['date_added'] = new Date(data['gene_carts'][i]['date_added']);
+        data['gene_carts'][i]['date_added'] = data['gene_carts'][i]['date_added'].toDateString();
     }
     
     // For the list view

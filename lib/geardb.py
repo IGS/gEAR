@@ -1539,7 +1539,7 @@ class GeneCollection:
 
 class GeneCart:
     def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None,
-                 genes=None, share_id=None, is_public=None):
+                 genes=None, share_id=None, is_public=None, date_added=None):
         self.id = id
         self.user_id = user_id
         self.gctype = gctype
@@ -1547,6 +1547,7 @@ class GeneCart:
         self.ldesc = ldesc
         self.share_id = share_id
         self.is_public = is_public
+        self.date_added = date_added
 
         # TODO: This should be a reference to a GeneCollection
         if not genes:
