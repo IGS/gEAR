@@ -73,6 +73,7 @@ def main():
         'celltype_a',
         'celltype_b',
         'celltype_colors',
+        'cell_type_colors',
         'class_id',
         'class_label',
         'class_color',
@@ -96,6 +97,7 @@ def main():
         'genes_detected_color',
         'genes_detected_id',
         'genes_detected_label',
+        'group_colors',
         'library_id',
         'louvain',
         'mapped_reads',
@@ -153,7 +155,7 @@ def main():
         "TechRep",
         "color",
         "X"
-        ]
+    ]
 
     if not os.path.exists(h5_path):
         result = dict()
