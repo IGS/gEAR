@@ -543,7 +543,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     if color_name:
         force_overlay = False
         color_eq_col = False
-        if facet_col:
+        if facet_col and _is_categorical(df[color_name]):
             color_eq_col = df[color_name].equals(df[facet_col])
         color_eq_x = df[color_name].equals(df[x])
         force_overlay = color_eq_x or color_eq_col

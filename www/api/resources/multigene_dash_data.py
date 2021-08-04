@@ -1,8 +1,7 @@
 from flask import request
 from flask_restful import Resource
 import pandas as pd
-import scanpy as sc
-sc.settings.verbosity = 0
+import diffxpy.api as de
 
 import numpy as np
 import json
@@ -203,8 +202,8 @@ def create_volcano_plot(df, use_adj_pvals=False):
         , genomewideline_value= -np.log10(0.05)
         , highlight_color="black"
         , p="pvals_adj" if use_adj_pvals else "pvals"
-        , xlabel="log2 fold-change"
-        , ylabel="-log10(adj-P)"
+        , xlabel="log2FC"
+        , ylabel="-log10(adjusted-P)" if use_adj_pvals else "-log10(P)"
 
     )
 
@@ -331,7 +330,7 @@ def create_dataframe_gene_filter(df, gene_symbols, plot_type):
                 success = 3,
                 message_list.append('One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)))
         else:
-            if plot_type not in ["heatmap"]:
+            if plot_type in ["heatmap", "mg_violin"]:
                 raise PlotError('Must filter genes before creating a plot of type {}'.format(plot_type))
     else:
         raise PlotError('Missing gene_symbol column in adata.var')
@@ -520,29 +519,37 @@ class MultigeneDashData(Resource):
                     'success': -1,
                     'message': "Both comparable conditions must came from same observation group."
                 }
-            sc.pp.filter_cells(adata, min_genes=10)
-            sc.pp.filter_genes(adata, min_cells=1)
 
-            # Rank the genes in order to get p_values and log-fold changes (effort size)
-            sc.tl.rank_genes_groups(selected, cond1_key, use_raw=False, groups=[cond1_val], reference=cond2_val, n_genes=0, method="wilcoxon", copy=False, corr_method='benjamini-hochberg', log_transformed=False)
+            de_filter1 = selected.obs[cond1_key].isin([cond1_val])
+            selected1 = selected[de_filter1, :]
+            de_filter2 = selected.obs[cond1_key].isin([cond2_val])
+            selected2 = selected[de_filter2, :]
+            de_selected = selected1.concatenate(selected2)
 
-            # Stolen from https://github.com/theislab/scanpy/blob/8fe1cf9cb6309fa0e91aa5cfd9ed7580e9d5b2ad/scanpy/get/get.py#L17-L93
-            # NOTE: From a later release of scanpy we have not upgraded to yet
+            print(de_selected.obs, file=sys.stderr)
 
-            # rank_genes_groups colnames
-            colnames = ['names', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj']
+            #perform_t_test(de_selected)
 
-            # adata.uns.rank_genes_groups.<column> will be a 2D array.  Outer dimension is # genes (or n_genes). Inner dimension is per 'groupby' group
-            df = [pd.DataFrame(selected.uns['rank_genes_groups'][c])[cond1_val] for c in colnames]
-            df = pd.concat(df, axis=1, names=['group'], keys=colnames)
-            df = df.join(selected.var.gene_symbol, on="names")
-            df["SNP"] = df["gene_symbol"]
-            df = df.reset_index(drop=True)
+            de_results = de.test.t_test(
+                de_selected
+                , grouping=cond1_key
+                , gene_names=de_selected.var["gene_symbol"]
+                , is_logged=is_log10
+            )
+
+            # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
+            df = de_results.summary()
+            df["ensm_id"] = de_selected.var.index
+            df["pvals"] = df["pval"].fillna(1)      # Unexpressed genes show up as NaN
+            df["pvals_adj"] = df["qval"].fillna(1)
+            df["logfoldchanges"] = df["log2fc"]
+            df["SNP"] = df["gene_symbol"] = df["gene"]
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
             fig = create_volcano_plot(df, use_adj_pvals)
             modify_volcano_plot(fig)
-            add_gene_annotations_to_volcano_plot(fig, gene_symbols)
+            if gene_symbols:
+                add_gene_annotations_to_volcano_plot(fig, gene_symbols)
 
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe

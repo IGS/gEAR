@@ -145,7 +145,7 @@ async function drawPreviewImage (display) {
 // Draw plotly chart in HTML
 function drawChart (data, datasetId, supplementary = false) {
   const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
-  const { plot_json: plotJson, plot_config: plotConfig, message, success} = data;
+  const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
 
   const layoutMods = {
     height: targetDiv.clientHeight,
@@ -158,6 +158,16 @@ function drawChart (data, datasetId, supplementary = false) {
     if (genesFilters.length > 50) {
       layoutMods.height = genesFilters.length * 10;
     }
+  } else if ($('#plot_type_select').select2('data')[0].id === 'volcano') {
+    layoutMods.height = 800;
+    layoutMods.width = 1000;
+  }
+
+  // If there was an error in the plot, put alert up
+  if (!plotJson.layout && success < 1) {
+    $(targetDiv + '.js-plot-error').text(message);
+    $(targetDiv + '.js-plot-error').show();
+    return;
   }
 
   // Overwrite plot layout and config values with custom ones from display
@@ -176,15 +186,9 @@ function drawChart (data, datasetId, supplementary = false) {
   };
   Plotly.newPlot(targetDiv, plotJson.data, layout, config);
 
-  if (message) {
-    if (success < 1) {
-      $(targetDiv + '.js-plot-error').text(message);
-      $(targetDiv + '.js-plot-error').show();
-    } else {
-      $(targetDiv + '.js-plot-warning').text(message);
-      $(targetDiv + '.js-plot-warning').show();
-    }
-
+  if (message && success > 1) {
+    $(targetDiv + '.js-plot-warning').text(message);
+    $(targetDiv + '.js-plot-warning').show();
   }
 }
 
@@ -226,6 +230,7 @@ function createObsDropdowns (obsLevels) {
 }
 
 // Render the volcano condition selection dropdown
+// TODO: Dropdowns are condensed unless "reset observations" is clicked.... why?
 function createVolcanoDropdowns (obsLevels) {
   const tmpl = $.templates('#volcano_options_tmpl');
   const html = tmpl.render(obsLevels);
@@ -687,7 +692,7 @@ $(document).on('click', '#save_display_btn', async function () {
   const plotType = $('#plot_type_select').select2('data')[0].id;
 
   const payload = {
-    id: displayId,
+    id: null, // Want to save as a new display
     dataset_id: datasetId,
     user_id: CURRENT_USER.id,
     label: $('#display_name').val(),
@@ -721,9 +726,9 @@ $(document).on('click', '#save_display_btn', async function () {
 });
 
 // Load display information back into the curator page
-$(document).on('click', '.js-edit-display', async function () {
+$(document).on('click', '.js-load-display', async function () {
   const id = this.id;
-  displayId = id.replace('_edit', '');
+  displayId = id.replace('_load', '');
 
   const display = await $.ajax({
     url: './cgi/get_dataset_display.cgi',

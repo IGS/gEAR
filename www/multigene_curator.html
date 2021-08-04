@@ -316,7 +316,7 @@
           <span class="col-1"></span>
           <input class="col-3" id="display_name" placeholder="Enter name for saved display">
         </div>
-        <button type="button" class="btn btn-purple" id="save_display_btn">Save {{:plot_type}}</button>
+        <button type="button" class="btn btn-purple" id="save_display_btn">Save new {{:plot_type}}</button>
         <p id="saved_plot_confirmation" style="display:none;"></p>
       </form>
     </script>
@@ -337,7 +337,7 @@
             <img id='modal-display-img-{{:id}}' class='card-img-top'/>
             <div class="card-footer bg-transparent">
               <button type="button" class="badge btn-purple btn js-save-default" id="{{:id}}_save_default">Make Default</button>
-              <button type="button" class="badge btn-purple btn js-edit-display" id="{{:id}}_edit">Edit</button>
+              <button type="button" class="badge btn-purple btn js-load-display" id="{{:id}}_load">Edit</button>
               <button type="button" class="badge badge-danger btn js-delete-display" id="{{:id}}_delete">Delete</button>
             </div>
           </div>
@@ -356,6 +356,7 @@
               <img id='modal-display-img-{{:id}}' class='card-img-top'/>
               <div class="card-footer bg-transparent">
                 <button type="button" class="badge btn js-save-default" id="{{:id}}_save_default">Make Default</button>
+                <button type="button" class="badge btn-purple btn js-load-display" id="{{:id}}_load">Edit</button>
               </div>
             </div>
             {{/for}}
