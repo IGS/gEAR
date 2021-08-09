@@ -34,3 +34,6 @@ Scanpy (or dependencies) assumes it can write in several directories which the w
 
     $ cd /opt/Python-3.7.3/lib/python3.7/site-packages/scanpy
     $ find ./ -name __pycache__ -exec chmod 777 {} \;
+
+Diffxpy (v0.7.4) is used in the multigene curator, but their version does not allow for free-ordering of conditions (for volcano plots).  I forked their code (adkinsrs/diffxpy), made the fix, and installed
+    $ sudo /opt/Python-3.7.3/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021
