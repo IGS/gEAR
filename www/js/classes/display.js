@@ -75,7 +75,28 @@ class Display {
             if (this.zoomed) {
                 this.draw_zoomed();
             } else {
-                this.draw_chart(data);
+                var attempts_left = 3;
+
+                while (attempts_left) {
+                    var draw_success = this.draw_chart(data);
+                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    attempts_left -= 1;
+
+                    // if it didn't work, wait one second and try again
+                    if (draw_success) {
+                        attempts_left = 0;
+                    } else {
+                        if (attempts_left) {
+                            // else the scope is lost in the anon function below
+                            var that = this;
+                            setTimeout(
+                                function() {
+                                    draw_success = that.draw_chart(data);
+                                    attempts_left -= 1;
+                                }, 1000);
+                        }
+                    }
+                }
             }
             // Exit status 2 is status to show plot but append warning message
             if (data.success === 2)
@@ -212,6 +233,8 @@ class EpiVizDisplay extends Display {
             this.hide_loading();
             this.show();
         }
+
+        return true;
     }
 
     epiviz_template(config) {
@@ -431,6 +454,8 @@ class PlotlyDisplay extends Display {
         };
 
         Plotly.newPlot(target_div, plot_json.data, layout, config);
+
+        return true;
     }
 
     draw_zoomed() {
@@ -885,6 +910,12 @@ class SVGDisplay extends Display {
 
             const color = color_range;
             const tissues = Object.keys(data.data);
+
+            // Sometimes path isn't defined yet - latency/async issue??
+            if (! paths) {
+                return false;
+            }
+            
             paths.forEach(path => {
                 const tissue_classes = path.node.className.baseVal.split(' ');
 
@@ -1039,6 +1070,8 @@ class SVGDisplay extends Display {
         this.hide_loading();
         this.show();
         if (!this.target.includes('modal')) this.draw_legend(data, zoomed);
+
+        return true;
     }
     /**
      * Draw linear gradient as legend
@@ -1320,6 +1353,7 @@ class TsneDisplay extends Display {
     $(target_div_img).attr('src', "data:image/png;base64," + this.data.image);
     this.hide_loading();
     this.show();
+    return true;  
   }
 
   // Essentially recycled the "draw_chart" function

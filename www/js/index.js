@@ -135,6 +135,15 @@ window.onload=function() {
         window.location.replace('./upload_epigenetic_data.html');
     });
 
+    $('.tool-launcher').click(function() {
+        if ($(this).data('tool-name') == 'comparison') {
+            window.location.replace('./compare_datasets.html');
+
+        } else if ($(this).data('tool-name') == 'workbench') {
+            window.location.replace('./analyze_dataset.html');
+        }
+    });
+
     // add post-page load listeners
     $( "#dataset_zoomed_zoom_out_control" ).click(function() {
         zoom_out_dataset();

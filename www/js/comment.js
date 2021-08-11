@@ -64,7 +64,7 @@ $('#btn_submit_comment').click(function(e) {
         				    }, 2000);
 
         				} else {
-        				    console.log("Handle a failed report from the CGI");
+        				    console.log("Error during creation: " + data["error"]);
         				}
       			},
       			error: function(jqXHR, textStatus, errorThrown) {
