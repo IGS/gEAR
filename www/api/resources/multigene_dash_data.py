@@ -155,12 +155,12 @@ def create_violin_plot(df, gene_map, groupby_filter):
 
 ### Volcano fxns
 
-def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list) -> None:
+def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=False) -> None:
     """Add annotations to point to each desired gene within the volcano plot. Edits in-place."""
     # Very hacky way to add annotations. need to redo.
     for gene in gene_symbols_list:
-        # Skip insignificant genes
-        for data_idx in range(1, len(fig.data)):
+        # Insignificant genes are at index 0.  If you want to skip annotating them, start at index 1
+        for data_idx in range(0 if annot_nonsig else 1, len(fig.data)):
             # TODO: The endswith is fragile and should probably be done differently, maybe with regex.
             gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
                 if fig.data[data_idx].text[idx].endswith("<br>GENE: {}".format(gene))]
@@ -448,7 +448,8 @@ class MultigeneDashData(Resource):
         # Volcano plot options
         condition1 = req.get('condition1', None)
         condition2 = req.get('condition2', None)
-        use_adj_pvals = req.get('use_adj_pvals', False)
+        use_adj_pvals = req.get('adj_pvals', False)
+        annotate_nonsignificant = req.get('annotate_nonsignificant', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
@@ -526,10 +527,6 @@ class MultigeneDashData(Resource):
             selected2 = selected[de_filter2, :]
             de_selected = selected1.concatenate(selected2)
 
-            print(de_selected.obs, file=sys.stderr)
-
-            #perform_t_test(de_selected)
-
             de_results = de.test.t_test(
                 de_selected
                 , grouping=cond1_key
@@ -549,7 +546,7 @@ class MultigeneDashData(Resource):
             fig = create_volcano_plot(df, use_adj_pvals)
             modify_volcano_plot(fig)
             if gene_symbols:
-                add_gene_annotations_to_volcano_plot(fig, gene_symbols)
+                add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
 
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe

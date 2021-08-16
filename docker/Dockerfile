@@ -87,10 +87,10 @@ COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.7m.so.1.0 /usr/lib/ \
   && ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  && /opt/Python-${PYTHON_VERSION}/bin/python${PYTHON_VERSION} -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021 \
+  && /opt/Python-${PYTHON_VERSION}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021 \
   && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
-  && chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true
+  && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Apache things
 WORKDIR /opt/gEAR

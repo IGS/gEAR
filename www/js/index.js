@@ -91,6 +91,16 @@ window.onload=function() {
         }
     });
 
+    $('#multigene_search_icon').click(function() {
+        // handle if it was already in the on position
+        if ( $('#multigene_plots_input').prop("checked") ) {
+            set_multigene_plots('off');
+        } else {
+            // else it was off, so turn it on
+            set_multigene_plots('on');
+        }
+    });
+
 
     $('#multigene_plots_input').change(function() {
         if ( $('#multigene_plots_input').prop("checked") ) {
@@ -936,8 +946,14 @@ function set_multigene_plots(mode) {
     if (mode == 'on') {
         $('#search_results_c').hide();
         $('#multigene_plots_input').bootstrapToggle('on');
+        $("#multigene_search_icon i").attr('data-original-title', "Search for multigene displays (currently on)").tooltip('show');
+        $("#multigene_search_icon i").addClass("fa-inverse");
+        $("#multigene_search_icon").addClass("btn-purple");
     } else if (mode == 'off') {
         $('#search_results_c').show();
         $('#multigene_plots_input').bootstrapToggle('off');
+        $("#multigene_search_icon i").attr('data-original-title', "Search for multigene displays (currently off)").tooltip('show');
+        $("#multigene_search_icon i").removeClass("fa-inverse");
+        $("#multigene_search_icon").removeClass("btn-purple");
     }
 }

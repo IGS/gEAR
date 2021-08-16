@@ -174,6 +174,7 @@ class DatasetCollectionPanel {
     update_by_all_results(entries) {
         for (var dataset of this.datasets) {
             if (typeof entries !== 'undefined' ) {
+                // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
                 // 'entries' is array of gene_symbols
                 dataset.draw_mg({'gene_symbols':entries});
             } else {

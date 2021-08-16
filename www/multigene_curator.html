@@ -162,7 +162,7 @@
       </fieldset>
 
       <!-- Advanced Options -->
-      <fieldset class="form-group" id="advanced_options_container">
+      <fieldset class="form-group" id="advanced_options_container" style="display:none;">
         <button class="btn btn-outline-purple btn-sm" type="button" data-toggle="collapse" id="advanced_options_button" data-target="#advanced_options_collapsable" role="button" aria-expanded="false" aria-controls="advanced_options_collapsable">
         Advanced Options <i class="fa fa-caret-down" aria-hidden="true" id="advanced_options_arrow"></i>
         </button>
@@ -179,13 +179,24 @@
             </div>
           </div>
           <div class="form-group row" id="adjusted_pvals_checkbox_container">
-            <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to use adjusted p-values instead of raw ones">
+            <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Check to use adjusted p-values instead of raw ones">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <div class="col-9 form-check">
               <input class="form-check-input" type="checkbox" value="" id="adj_pvals">
               <label class="form-check-label" for="adj_pvals">
-                Use adjusted p-values
+                Use adjusted p-values instead of raw
+              </label>
+            </div>
+          </div>
+          <div class="form-group row" id="annot_nonsig_checkbox_container">
+            <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Check to include annotations of all nonsignificant gene symbols from the input set">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <div class="col-9 form-check">
+              <input class="form-check-input" type="checkbox" value="" id="annot_nonsig">
+              <label class="form-check-label" for="annot_nonsig">
+                Annotate nonsignificant genes.
               </label>
             </div>
           </div>

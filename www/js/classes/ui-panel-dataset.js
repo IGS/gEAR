@@ -38,11 +38,11 @@ class DatasetPanel extends Dataset {
     });
   }
 
-  get_default_display(user_id, dataset_id) {
+  get_default_display(user_id, dataset_id, is_multigene=0) {
     return $.ajax({
       url: './cgi/get_default_display.cgi',
       type: 'POST',
-      data: { user_id, dataset_id },
+      data: { user_id, dataset_id, is_multigene },
       dataType: 'json',
     });
   }
@@ -94,10 +94,8 @@ class DatasetPanel extends Dataset {
     if (zoom) display.zoom_in();
   }
 
-  // async draw_mg_chart(gene_symbols, display_id)
-  async draw_mg_chart(gene_symbols) {
-    const data = {dataset_id: this.id, user_id: this.user_id, plot_type: "heatmap", plotly_config:{}};
-    //const data = await this.get_dataset_display(display_id)
+  async draw_mg_chart(gene_symbols, display_id) {
+    const data = await this.get_dataset_display(display_id)
 
     let zoom = false;
     if (this.display && this.display.zoomed) {
@@ -108,14 +106,14 @@ class DatasetPanel extends Dataset {
       data.plot_type === 'mg_violin' ||
       data.plot_type === 'volcano'
     ) {
-      display = new DashMGDisplay(data, gene_symbols)
+      display = new MultigeneDisplay(data, gene_symbols)
     }
     this.display = display;
 
     // We first draw with the display then zoom in, so whenever
     // gene search is updated, the other displays behind the zoomed
     // is updated too.
-    display.draw(gene_symbols);
+    display.draw_mg(gene_symbols);
     if (zoom) display.zoom_in();
   }
 
@@ -158,7 +156,10 @@ class DatasetPanel extends Dataset {
   }
 
   // Draw multigene plots
-  // NOTE: Currently hardcoded to draw a default heatmap plot
+  /**
+  * Initialize dash display.
+  * @param {Array} gene_symbols - Array of gene symbols
+  */
   async draw_mg({ gene_symbols } = {}) {
     if (this.display) this.display.clear_display();
 
@@ -167,15 +168,11 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbols = gene_symbols;
 
-    // NOTE: Forcing multigene charts to be drawn for now
-    this.draw_mg_chart(gene_symbols);
-
-    /* NOTE: No default displays saved for multigene plots yet.
     if (this.display) {
       this.draw_mg_chart(gene_symbols, this.display.id);
     } else {
       // first time searching gene and displays have not been loaded
-      const { default_display_id } = await this.get_default_display(CURRENT_USER.id, this.id);
+      const { default_display_id } = await this.get_default_display(CURRENT_USER.id, this.id, 1);
 
       if (default_display_id) {
         this.default_display_id = default_display_id;
@@ -197,7 +194,6 @@ class DatasetPanel extends Dataset {
         );
       }
     }
-    */
   }
 
   async redraw(display_id) {

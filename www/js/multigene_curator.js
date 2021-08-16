@@ -296,6 +296,7 @@ function loadDisplayConfigHtml (plotConfig) {
   // Populate any checkboxes and radio buttons
   $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
   $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
+  $('#annot_nonsig').prop('checked', plotConfig.annotate_nonsignificant)
   $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
 
   // Populate filter-by dropdowns
@@ -487,6 +488,7 @@ $('#cluster_cols').change(function () {
 
 // Some options are specific to certain plot types
 $('#plot_type_select').change(function () {
+  $('#advanced_options_container').show()
   switch ($('#plot_type_select').val()) {
     case 'heatmap':
       $('#cluster_cols_checkbox_container').show();
@@ -563,6 +565,7 @@ $(document).on('click', '#update_plot', async function () {
 
   const clusterCols = $('#cluster_cols').is(':checked');
   const adjustPvals = $('#adj_pvals').is(':checked');
+  const annotNonsig = $('#annot_nonsig').is(':checked');
 
   const condition1 = $('#volcano_condition1').select2('data')[0].id;
   const condition2 = $('#volcano_condition2').select2('data')[0].id;
@@ -602,6 +605,7 @@ $(document).on('click', '#update_plot', async function () {
     obs_filters: obsFilters,
     cluster_cols: clusterCols,
     adj_pvals: adjustPvals,
+    annotate_nonsignificant: annotNonsig,
     condition1: condition1,
     condition2: condition2
   };

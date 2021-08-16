@@ -104,6 +104,50 @@ class Display {
         }
     }
     /**
+     *  Draw the multigene visualization.
+     * @param {string} gene_symbols - Gene Symbols to visualize.
+     */
+     async draw_mg(gene_symbols) {
+        this.gene_symbols = gene_symbols;
+        const {
+            data
+        } = await this.get_data(gene_symbols);
+        if (data.success === -1) {
+            this.show_error(data.message);
+        } else {
+            this.data = data;
+            if (this.zoomed) {
+                this.draw_zoomed();
+            } else {
+                var attempts_left = 3;
+
+                while (attempts_left) {
+                    var draw_success = this.draw_chart(data);
+                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    attempts_left -= 1;
+
+                    // if it didn't work, wait one second and try again
+                    if (draw_success) {
+                        attempts_left = 0;
+                    } else {
+                        if (attempts_left) {
+                            // else the scope is lost in the anon function below
+                            var that = this;
+                            setTimeout(
+                                function() {
+                                    draw_success = that.draw_chart(data);
+                                    attempts_left -= 1;
+                                }, 1000);
+                        }
+                    }
+                }
+            }
+            // Exit status 2 is status to show plot but append warning message
+            if (data.success === 2)
+                this.show_warning(this.data.message);
+        }
+    }
+    /**
      * Hides the display container
      */
     hide_loading() {
@@ -550,26 +594,36 @@ class PlotlyDisplay extends Display {
  * Class representing a multigene display drawn with Dash
  * @extends Display
  */
- class DashMGDisplay extends Display {
+ class MultigeneDisplay extends Display {
     /**
      * Initialize dash display.
      * @param {Object} Data - Data used to draw heatmap, violin, or volcano plot
+     * @param {Array} gene_symbols - Array of gene symbols
      */
     constructor({
-        plotly_config,  // Currently Dash config is not saved to database
+        plotly_config,
         ...args
-    }) {
+    }, gene_symbols) {
         super(args);
         const {
-            analysis,
+            groupby_filter,
             obs_filters,
             cluster_cols,
-            sort_filter,
+            adj_pvals,
+            annotate_nonsignificant,
+            condition1,
+            condition2,
+            analysis,   // Analysis ID
         } = plotly_config;
-        this.analysis = analysis;
+        this.gene_symbols = gene_symbols;
+        this.groupby_filter = groupby_filter;
         this.obs_filters = obs_filters;
         this.cluster_cols = cluster_cols;
-        this.sort_filter = sort_filter;
+        this.adj_pvals = adj_pvals;
+        this.annot_nonsig = annotate_nonsignificant;
+        this.condition1 = condition1;
+        this.condition2 = condition2;
+        this.analysis = analysis;
     }
     clear_display() {
         $(`#dataset_${this.dataset_id}_dash`).remove();
@@ -590,44 +644,19 @@ class PlotlyDisplay extends Display {
      * @param {string} gene_symbols - Gene symbols to visualize.
      */
     async get_data(gene_symbols) {
-        // If config did not have filters, add some default ones
-        if (!(this.obs_filters && Object.keys(this.obs_filters).length)) {
-            this.obs_filters = {};
-            const { data } = await this.fetch_h5ad_info();
-            var obs_levels = data.obs_levels;
-
-            // Delete useless filters
-            for (var property in obs_levels) {
-                if (property === "color" || property.endsWith("colors")) {
-                    delete obs_levels[property];
-                } else if (obs_levels[property].length === 1) {
-                    delete obs_levels[property];
-                }
-            }
-            // Use cell type or louvain filters
-            for (var property in obs_levels) {
-                if (property === "cell_type" || property === "louvain") {
-                    this.obs_filters[property] = obs_levels[property];
-                    this.sort_filter = property;
-                    break;
-                }
-            }
-            // Throw hands up and use all properties if this dataset does not have cell_type or louvain
-            if (!Object.keys(this.obs_filters).length) {
-                this.obs_filters = obs_levels;
-                this.sort_filter = Object.keys(obs_levels)[0];  // Do not care which property to sort by... get first
-            }
-        }
-
-        // NOTE: Currently forcing certain conditions for the GCID demo
         return axios.post(`/api/plot/${this.dataset_id}/mg_dash`, {
-            plot_type: "heatmap",
             analysis: this.analysis,
             analysis_owner_id: this.user_id,
+            groupby_filter: this.groupby_filter,
+            plot_type: this.plot_type,
             gene_symbols: gene_symbols,
             obs_filters: this.obs_filters,
             cluster_cols: this.cluster_cols,
-            sort_filter: this.sort_filter,
+            adj_pvals: this.adj_pvals,
+            annotate_nonsignificant: this.annot_nonsig,
+            condition1: this.condition1,
+            condition2: this.condition2,
+
         });
     }
     /**
@@ -915,7 +944,7 @@ class SVGDisplay extends Display {
             if (! paths) {
                 return false;
             }
-            
+
             paths.forEach(path => {
                 const tissue_classes = path.node.className.baseVal.split(' ');
 
@@ -1353,7 +1382,7 @@ class TsneDisplay extends Display {
     $(target_div_img).attr('src', "data:image/png;base64," + this.data.image);
     this.hide_loading();
     this.show();
-    return true;  
+    return true;
   }
 
   // Essentially recycled the "draw_chart" function
