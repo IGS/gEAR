@@ -613,7 +613,7 @@ class PlotlyDisplay extends Display {
             annotate_nonsignificant,
             condition1,
             condition2,
-            analysis,   // Analysis ID
+            analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
         this.groupby_filter = groupby_filter;
@@ -626,11 +626,11 @@ class PlotlyDisplay extends Display {
         this.analysis = analysis;
     }
     clear_display() {
-        $(`#dataset_${this.dataset_id}_dash`).remove();
-        if (this.zoomed) $(`#dataset_${this.dataset_id}_dash_zoomed`).remove();
+        $(`#dataset_${this.dataset_id}_mg`).remove();
+        if (this.zoomed) $(`#dataset_${this.dataset_id}_mg_zoomed`).remove();
     }
     clear_zoomed() {
-        $(`#dataset_${this.dataset_id}_dash_zoomed`).remove();
+        $(`#dataset_${this.dataset_id}_mg_zoomed`).remove();
     }
 
     fetch_h5ad_info() {
@@ -666,7 +666,7 @@ class PlotlyDisplay extends Display {
     draw_chart(data) {
         this.clear_display();
 
-        const target_div = `dataset_${this.dataset_id}_dash`;
+        const target_div = `dataset_${this.dataset_id}_mg`;
         const {
             plot_json,
             plot_config
@@ -701,7 +701,7 @@ class PlotlyDisplay extends Display {
 
     draw_zoomed() {
         this.clear_display();
-        const target_div = `dataset_${this.dataset_id}_dash_zoomed`;
+        const target_div = `dataset_${this.dataset_id}_mg_zoomed`;
         // const target_div = document
         //   .querySelector(`#dataset_zoomed div#dataset_${this.dataset_id}`);
 
@@ -734,7 +734,7 @@ class PlotlyDisplay extends Display {
     template() {
         const template = `
         <div
-          id='dataset_${this.dataset_id}_dash'
+          id='dataset_${this.dataset_id}_mg'
           class="h5ad-container"
           style="position: relative;">
         </div>
@@ -745,7 +745,7 @@ class PlotlyDisplay extends Display {
         const template = `
         <div
           style='max-width:96%; height:70vh;'
-          id='dataset_${this.dataset_id}_dash_zoomed'
+          id='dataset_${this.dataset_id}_mg_zoomed'
           class="h5ad-container">
         </div>
       `;

@@ -91,6 +91,7 @@ window.onload=function() {
         }
     });
 
+    // If MG search icon on front page is clicked
     $('#multigene_search_icon').click(function() {
         // handle if it was already in the on position
         if ( $('#multigene_plots_input').prop("checked") ) {
@@ -101,13 +102,19 @@ window.onload=function() {
         }
     });
 
-
+    // If toggle is clicked, change some display things
+    // TODO: Ideally would love to change after search is clicked
     $('#multigene_plots_input').change(function() {
         if ( $('#multigene_plots_input').prop("checked") ) {
+            // MG enabled
             $('#search_results_c').hide();
+            $(".js-curate").hide();
+            $(".js-mg-curate").show();
         } else {
-            // else it was off, so turn it on
+            // MG disabled
             $('#search_results_c').show();
+            $(".js-curate").show();
+            $(".js-mg-curate").hide();
         }
     });
 
@@ -554,7 +561,7 @@ function select_search_result(elm) {
 }
 
 function isNumeric(n) {
-  return !isNaN(parseFloat(n)) && isFinite(n);
+    return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
 function show_search_result_info_box() {
@@ -944,13 +951,11 @@ function set_exact_match(mode) {
 
 function set_multigene_plots(mode) {
     if (mode == 'on') {
-        $('#search_results_c').hide();
-        $('#multigene_plots_input').bootstrapToggle('on');
+        $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
         $("#multigene_search_icon i").attr('data-original-title', "Search for multigene displays (currently on)").tooltip('show');
         $("#multigene_search_icon i").addClass("fa-inverse");
         $("#multigene_search_icon").addClass("btn-purple");
     } else if (mode == 'off') {
-        $('#search_results_c').show();
         $('#multigene_plots_input').bootstrapToggle('off');
         $("#multigene_search_icon i").attr('data-original-title', "Search for multigene displays (currently off)").tooltip('show');
         $("#multigene_search_icon i").removeClass("fa-inverse");

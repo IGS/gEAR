@@ -196,6 +196,7 @@ def create_volcano_plot(df, use_adj_pvals=False):
 
     return dashbio.VolcanoPlot(
         dataframe=df
+        , title=None
         , col="lightgrey"
         , effect_size="logfoldchanges"
         , gene="gene_symbol"

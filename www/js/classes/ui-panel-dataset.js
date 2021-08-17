@@ -126,7 +126,8 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbol = gene_symbol;
 
-    if (this.display) {
+    if (this.display && this.display.gene_symbol) {
+      // Ensure that this display is a single-gene display
       this.draw_chart(gene_symbol, this.display.id);
 
     } else {
@@ -168,7 +169,8 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbols = gene_symbols;
 
-    if (this.display) {
+    if (this.display && this.display.gene_symbols) {
+      // Ensure this display is a multigene display
       this.draw_mg_chart(gene_symbols, this.display.id);
     } else {
       // first time searching gene and displays have not been loaded
@@ -190,7 +192,7 @@ class DatasetPanel extends Dataset {
         // No default display, this really shouldn't happen because
         // owners should always have atleast done this after upload
         this.show_error(
-          'No default display. Create one in the dataset curator.'
+          'No default display. Create one in the multigene curator.'
         );
       }
     }

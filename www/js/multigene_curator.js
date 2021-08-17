@@ -40,10 +40,18 @@ let geneSymbols = null;
     placeholder: 'Choose how to plot'
   });
 
-  // Hide further configs until a dataset is chosen
+  // Hide further configs until a dataset is chosen.
+  // Changing the dataset will start triggering these to show
   $('#plot_type_container').hide();
   $('#advanced_options_container').hide();
   $('#gene_container').hide();
+
+  // If brought here by the "gene search results" page, curate on the dataset ID that referred us
+  var linkedDatasetId = getUrlParameter("dataset_id");
+  if (linkedDatasetId) {
+    $('#dataset_select').val(linkedDatasetId);
+    $('#dataset_select').trigger('change');
+  }
 })();
 
 // Call API to return plot JSON data
@@ -73,7 +81,7 @@ async function fetchH5adInfo (payload) {
 }
 
 async function populateDatasets () {
-  $.ajax({
+  await $.ajax({
     type: 'POST',
     url: './cgi/get_h5ad_dataset_list.cgi',
     data: {

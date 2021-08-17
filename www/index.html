@@ -644,10 +644,10 @@
       </script>
       <!-- end script#permalink_info -->
       <script id="tmpl_permalink_zoomed" type="text/x-jsrender">
-            {{if is_permalink == 1}}
-            <div class="dataset_cc col-sm-12">
-              <div id="dataset_zoomed" class="dataset_c">
-                <div id="tip_zoomed">&nbsp;Score here</div>
+        {{if is_permalink == 1}}
+          <div class="dataset_cc col-sm-12">
+            <div id="dataset_zoomed" class="dataset_c">
+              <div id="tip_zoomed">&nbsp;Score here</div>
                 <div class="dataset_header container-fluid">
                   <div class="row">
                     <div class="dataset_header_title col-sm-10">{{:title}}</div>
@@ -684,7 +684,7 @@
                 {{else}}
                 <div id='dataset_{{:id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
                 {{/if}}
-              </div>
+              </div> <!-- #tip_zoomed -->
             </div> <!-- #dataset_zoomed -->
         </div> <!-- end dataset_cc -->
         {{/if}}
@@ -820,7 +820,8 @@
                       <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
                       {{/if}}
                       <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare</a></li>
-                      <li><a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate</a></li>
+                      <li class="js-curate"><a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate</a></li>
+                      <li class="js-mg-curate" style='display:none;'><a class="fa fa-plus-square" href="./multigene_curator.html?dataset_id={{:id}}"> Curate</a></li>
                       {{if has_h5ad}}
                       <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> Analyze</a></li>
                       {{/if}}
