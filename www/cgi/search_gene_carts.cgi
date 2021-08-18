@@ -26,6 +26,7 @@ def main():
     session_id = form.getvalue('session_id')
     custom_list = form.getvalue('custom_list')
     search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
+    organism_ids = form.getvalue('organism_ids')
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
@@ -75,6 +76,11 @@ def main():
             #  be the first qry param
             qry_params.insert(0, ' '.join(search_terms))
             qry_params.append(' '.join(search_terms))
+
+        if organism_ids:
+            ## only numeric characters and the comma are allowed here
+            organism_ids = re.sub("[^,0-9]", "", organism_ids)
+            wheres.append("AND gc.organism_id in ({0})".format(organism_ids))
 
         if date_added:
             date_added = re.sub("[^a-z]", "", date_added)

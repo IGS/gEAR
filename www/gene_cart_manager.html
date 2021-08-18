@@ -94,6 +94,15 @@
               <li data-dbval="public">Public carts</li>
             </ul>
           </div>
+          <div id="controls_organism" class="filter_subsection">
+            <h4 class="expandable_control"><i class="fa fa-plus shown_later"></i><i class="fa fa-minus"></i> Organism</h4>
+            <ul id="organism_choices" class="controls_filter_options expandable_target">
+              <li class="all_selector selected">All</li>
+            </ul>
+            <script id="organism_list_tmpl" type="text/x-jsrender">
+              <li data-dbval="{{:id}}">{{:label}}</li>
+            </script>
+          </div>
           <div id='controls_date_added' class='filter_subsection'>
             <h4 class="expandable_control"><i class="fa fa-plus shown_later"></i><i class="fa fa-minus"></i> Date added</h4>
             <ul class="controls_filter_options expandable_target only_one">
@@ -178,6 +187,10 @@
                                  <input type="checkbox" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle" data-on="Public" data-off="Private">
                                </div>
                             </div>
+                          </div>
+                          <div class="form-group">
+                            <label for="new_cart_organism_id">Organism</label>
+                            <select class="form-control" id="new_cart_organism_id" rows="3"></select>
                           </div>
                           <div class="form-group">
                             <label for="new_cart_ldesc">Longer description</label>

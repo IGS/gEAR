@@ -221,8 +221,27 @@ function load_preliminary_data() {
       Loads all the parts of the page which need initial calls from the server, such as 
       database-driven select boxes.
     */
-    //load_user_layouts();
+    load_organism_list()
     //load_initial_results();
+}
+
+function load_organism_list() {
+    session_id = Cookies.get('gear_session_id');
+    
+    $.ajax({
+        url : './cgi/get_organism_list.cgi',
+        type: "GET",
+        data : {},
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            var ListTmpl = $.templates("#organism_list_tmpl");
+            var ListHtml = ListTmpl.render(data['organisms']);
+            $("#organism_choices").append(ListHtml);
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    });
 }
 
 function process_search_results(data, result_label) {
@@ -279,6 +298,7 @@ function submit_search() {
     };
 
     // collect the filter options the user defined
+    build_filter_string('controls_organism', 'organism_ids', search_criteria);
     build_filter_string('controls_date_added', 'date_added', search_criteria);
     build_filter_string('controls_ownership', 'ownership', search_criteria);
 
