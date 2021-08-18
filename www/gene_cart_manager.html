@@ -191,6 +191,9 @@
                           <div class="form-group">
                             <label for="new_cart_organism_id">Organism</label>
                             <select class="form-control" id="new_cart_organism_id" rows="3"></select>
+                            <script id="organism_select_tmpl" type="text/x-jsrender">
+                              <option value="{{:id}}">{{:label}}</li>
+                            </script>
                           </div>
                           <div class="form-group">
                             <label for="new_cart_ldesc">Longer description</label>

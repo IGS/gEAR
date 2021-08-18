@@ -167,6 +167,7 @@ $("#btn_new_cart_save").click(function(e) {
     var gc = new GeneCart({
         session_id: session_id,
         label: $("#new_cart_label").val(),
+        organism_id: $("#new_cart_organism_id").val(),
         ldesc: $("#new_cart_ldesc").val(),
         is_public: is_public,
     });
@@ -237,6 +238,10 @@ function load_organism_list() {
             var ListTmpl = $.templates("#organism_list_tmpl");
             var ListHtml = ListTmpl.render(data['organisms']);
             $("#organism_choices").append(ListHtml);
+
+            var selectTmpl = $.templates("#organism_select_tmpl");
+            var selectHtml = selectTmpl.render(data['organisms']);
+            $("#new_cart_organism_id").append(selectHtml);
         },
         error: function (jqXHR, textStatus, errorThrown) {
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);

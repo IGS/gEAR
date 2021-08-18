@@ -1538,12 +1538,13 @@ class GeneCollection:
 
 
 class GeneCart:
-    def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None,
+    def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None, organism_id=None,
                  genes=None, share_id=None, is_public=None, date_added=None):
         self.id = id
         self.user_id = user_id
         self.gctype = gctype
         self.label = label
+        self.organism_id = organism_id
         self.ldesc = ldesc
         self.share_id = share_id
         self.is_public = is_public
@@ -1587,9 +1588,9 @@ class GeneCart:
         if self.id is None:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
-            gc_insert_qry = "INSERT INTO gene_cart (user_id, label, share_id, is_public) VALUES (%s, %s, %s, %s)"
+            gc_insert_qry = "INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public) VALUES (%s, %s, %s, %s, %s)"
 
-            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.share_id, self.is_public))
+            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public))
             self.id = cursor.lastrowid
 
             for gene in self.genes:
@@ -1621,6 +1622,9 @@ class GeneCart:
         """
         if 'label' in json_obj:
             self.label = json_obj['label']
+
+        if 'organism_id' in json_obj:
+            self.organism_id = json_obj['organism_id']
 
         if 'session_id' in json_obj and not self.user_id:
             user_logged_in = get_user_from_session_id(json_obj['session_id'])
