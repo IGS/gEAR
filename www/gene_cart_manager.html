@@ -175,25 +175,27 @@
                       <div class="card-body">
                         <form>
                           <div class="row">
-                            <div class="col">
+                            <div class="col-5">
                                <div class="form-group">
                                  <label for="new_cart_label">Label</label>
                                  <input type="input" class="form-control" id="new_cart_label" placeholder="">
                                </div>
                             </div>
-                            <div class="col">
+                            <div class="col-4">
+                              <div class="form-group">
+                                <label for="new_cart_organism_id">Organism</label>
+                                <select class="form-control" id="new_cart_organism_id" rows="3"></select>
+                                <script id="organism_select_tmpl" type="text/x-jsrender">
+                                  <option value="{{:id}}">{{:label}}</option>
+                                 </script>
+                              </div>
+                            </div>
+                            <div class="col-3">
                                <div class="form-group">
                                  <label for="new_cart_is_public">Visibility</label><br />
                                  <input type="checkbox" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle" data-on="Public" data-off="Private">
                                </div>
                             </div>
-                          </div>
-                          <div class="form-group">
-                            <label for="new_cart_organism_id">Organism</label>
-                            <select class="form-control" id="new_cart_organism_id" rows="3"></select>
-                            <script id="organism_select_tmpl" type="text/x-jsrender">
-                              <option value="{{:id}}">{{:label}}</li>
-                            </script>
                           </div>
                           <div class="form-group">
                             <label for="new_cart_ldesc">Longer description</label>
