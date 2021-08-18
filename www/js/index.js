@@ -24,15 +24,12 @@ var search_result_postselection_functions = [];
 window.onload=function() {
     // check if the user is already logged in
     check_for_login();
+    load_gene_carts();
 
     // Was a permalink found?
     share_id = getUrlParameter('share_id');
     scope = "permalink";
-    if (!share_id) {
-        // layout_id is a share_id for the profile layout
-        share_id = getUrlParameter('layout_id');
-        scope = "profile";
-    }
+    
     if (share_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
@@ -44,8 +41,10 @@ window.onload=function() {
         // validate the share_id. runs load_dataset_frames() on success
         validate_permalink(share_id, scope);
     } else {
+        // layout_id is a share_id for the profile layout
+        share_id = getUrlParameter('layout_id');
+        scope = "profile";
         get_index_info();
-        load_gene_carts();
     }
 
     // Was help_id found?
