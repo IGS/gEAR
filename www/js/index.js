@@ -952,13 +952,17 @@ function set_exact_match(mode) {
 function set_multigene_plots(mode) {
     if (mode == 'on') {
         $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
-        $("#multigene_search_icon i").attr('data-original-title', "Search for multigene displays (currently on)").tooltip('show');
-        $("#multigene_search_icon i").addClass("fa-inverse");
-        $("#multigene_search_icon").addClass("btn-purple");
+        $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays ").tooltip('show');
+        //$("#multigene_search_icon i").addClass("fa-inverse");
+        //$("#multigene_search_icon").addClass("btn-purple");
+        $("#multigene_search_icon i").addClass("fa-gears");
+        $("#multigene_search_icon i").removeClass("fa-gear");
     } else if (mode == 'off') {
         $('#multigene_plots_input').bootstrapToggle('off');
-        $("#multigene_search_icon i").attr('data-original-title', "Search for multigene displays (currently off)").tooltip('show');
-        $("#multigene_search_icon i").removeClass("fa-inverse");
-        $("#multigene_search_icon").removeClass("btn-purple");
+        $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays").tooltip('show');
+        //$("#multigene_search_icon i").removeClass("fa-inverse");
+        //$("#multigene_search_icon").removeClass("btn-purple");
+        $("#multigene_search_icon i").addClass("fa-gear");
+        $("#multigene_search_icon i").removeClass("fa-gears");
     }
 }
