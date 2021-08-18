@@ -2,13 +2,15 @@
 '''
 Redirects short permalink urls to actual long url
 
-s = dataset_share_id
+c = gene cart share ID
+g = gene_symbol to search
+gsem = toggle exact match searching for gene symbols (truthy value)
 l = profile/layout ID
 p = page to send to:
     null = index.html (default)
     a = analyze_dataset.html
-g = gene_symbol to search
-gsem = toggle exact match searching for gene symbols (truthy value)
+s = dataset_share_id
+
 '''
 
 import cgi
@@ -20,6 +22,7 @@ from urllib import request
 def main():
     print('Content-Type: text/html\n\n')
     form = cgi.FieldStorage()
+    gene_cart = form.getvalue('c')
     gene_symbol = form.getvalue('g')
     gene_symbol_exact_match = form.getvalue('gsem')
     layout_id = form.getvalue('l')
@@ -49,6 +52,9 @@ def main():
         params['gene_symbol_exact_match'] = 1
     else:
         params['gene_symbol_exact_match'] = gene_symbol_exact_match
+
+    if gene_cart:
+        params['gene_cart_share_id'] = gene_cart
 
     if len(params) > 0:
         url += '?'

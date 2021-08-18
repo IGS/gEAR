@@ -19,6 +19,7 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
+    share_id = form.getvalue('share_id')
     current_user_id = get_user_id_from_session_id(cursor, session_id)
     result = { 'gene_carts':[] }
 
@@ -30,8 +31,13 @@ def main():
     else:
         # A user is logged in
         gene_cart_query = "SELECT id, label FROM gene_cart WHERE user_id = %s"
+        query_args = [current_user_id]
 
-        cursor.execute(gene_cart_query, (current_user_id,))
+        if share_id:
+            gene_cart_query += " OR share_id = %";
+            query_args.append(share_id)
+
+        cursor.execute(gene_cart_query, query_args)
         for row in cursor:
             result['gene_carts'].append({'id': row[0], 'label': row[1]})
 

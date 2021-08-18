@@ -24,7 +24,7 @@ var search_result_postselection_functions = [];
 window.onload=function() {
     // check if the user is already logged in
     check_for_login();
-    load_gene_carts();
+    load_gene_carts(getUrlParameter('gene_cart_share_id'));
 
     // Was a permalink found?
     share_id = getUrlParameter('share_id');
@@ -38,6 +38,7 @@ window.onload=function() {
 
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
+        
         // validate the share_id. runs load_dataset_frames() on success
         validate_permalink(share_id, scope);
     } else {
@@ -388,7 +389,7 @@ function load_layouts() {
     d.promise();
 }
 
-function load_gene_carts() {
+function load_gene_carts(cart_share_id) {
   var d = new $.Deferred();
   var session_id = Cookies.get('gear_session_id');
 
@@ -401,7 +402,7 @@ function load_gene_carts() {
       $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-        data: { 'session_id': session_id },
+          data: { 'session_id': session_id, 'share_id': cart_share_id },
         dataType: 'json',
         success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
             var user_gene_carts = [];
@@ -411,7 +412,6 @@ function load_gene_carts() {
                 //User has some profiles
                 $.each(data['gene_carts'], function(i, item){
                     user_gene_carts.push({value: item['id'], text: item['label'] });
-
                 });
 
                 formattedData = [{text: 'My gene carts', children: user_gene_carts }];
