@@ -753,6 +753,7 @@
                    {{for user_displays ~active_display_id=active_display_id}}
                    <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
                         style='height:220px; border: 1px solid rgb(200,200,200)'>
+                        <img id='modal-display-{{:id}}-loading' class='modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
                          <img
                           class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
                           id='modal-display-img-{{:id}}'/>
