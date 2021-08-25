@@ -252,6 +252,7 @@ CREATE TABLE layout_members (
        dataset_id               VARCHAR(50) NOT NULL,
        grid_position            INT NOT NULL,
        grid_width               INT NOT NULL,
+       mg_grid_width            INT NOT NULL,
        math_preference          VARCHAR(50), #options: 'raw', 'log2', 'log10'
        plot_preference          VARCHAR(50), #options: 'bar', 'line', 'violin'
        FOREIGN KEY (layout_id)

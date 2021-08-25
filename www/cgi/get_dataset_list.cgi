@@ -52,7 +52,7 @@ def main():
     # temporarily dealing with https://github.com/jorvis/gEAR/issues/350
     if search_terms is not None:
         search_terms = search_terms.translate(str.maketrans('','','+-/@'))
-    
+
     permalink_id = form.getvalue('permalink_share_id')
     only_types_str = form.getvalue('only_types')
     sort_order = form.getvalue('order')
@@ -110,7 +110,7 @@ def main():
             '''
             qry_params.append(search_terms)
             qry_params.append(search_terms)
-            
+
         matching_dataset_ids = list()
         if scope == 'others':
             query = """
@@ -174,7 +174,7 @@ def main():
         except:
             print("The failed SQL was: {0}".format(cursor._executed), file=sys.stderr)
             raise
-            
+
         for row in cursor:
             matching_dataset_ids.append(row[0])
 
@@ -303,6 +303,7 @@ def get_users_datasets(cursor, user_id):
                 'dataset_id': row[0],
                 'grid_position': None,
                 'grid_width': 4,
+                'mg_grid_width': 4,
                 'title': row[1],
                 'organism': row[2],
                 'organism_id': row[16],
@@ -326,7 +327,7 @@ def get_users_datasets(cursor, user_id):
 
 def get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending):
     qry = """
-       SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.math_preference,
+       SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width, lm.math_preference,
               d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
               u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
               ds.is_allowed, d.marked_for_removal, d.date_added, d.load_status,
@@ -342,7 +343,7 @@ def get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending):
               LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
               LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
         WHERE l.id = %s
-     GROUP BY d.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.math_preference,
+     GROUP BY d.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width, lm.math_preference,
             d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
             u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
             ds.is_allowed, d.marked_for_removal, d.date_added, d.load_status,
@@ -390,24 +391,25 @@ def get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending):
                 'dataset_id': row[0],
                 'grid_position': row[1],
                 'grid_width': row[2],
+                'mg_grid_width': row[3],
                 'math_format': math_format,
-                'title': row[4],
-                'organism': row[5],
-                'organism_id': row[24],
-                'pubmed_id': row[6],
-                'geo_id': row[7],
+                'title': row[5],
+                'organism': row[6],
+                'organism_id': row[25],
+                'pubmed_id': row[7],
+                'geo_id': row[8],
                 'access': access_level,
-                'ldesc': row[9],
-                'dtype': row[10],
-                'user_id': row[11],
-                'user_name': row[12],
-                'schematic_image': row[13],
-                'share_id': row[14],
+                'ldesc': row[10],
+                'dtype': row[11],
+                'user_id': row[12],
+                'user_name': row[13],
+                'schematic_image': row[14],
+                'share_id': row[15],
                 'date_added': date_added,
                 'is_permalink': 0,
-                'load_status': row[19],
+                'load_status': row[20],
                 'tags': tag_list,
-                'has_h5ad': row[21],
+                'has_h5ad': row[22],
                 'plot_format': plot_format
             })
 
@@ -455,6 +457,7 @@ def get_permalink_dataset(cursor, permalink_id):
                 'dataset_id': row[0],
                 'grid_position': 100,
                 'grid_width': 4,
+                'mg_grid_width': 4,
                 'title': row[1],
                 'organism': row[2],
                 'pubmed_id': row[3],

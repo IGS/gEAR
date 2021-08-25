@@ -759,10 +759,10 @@ class Layout:
         cursor = conn.get_cursor()
 
         qry = """
-              INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width)
-              VALUES (%s, %s, %s, %s)
+              INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, mg_grid_width)
+              VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width))
+        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width, member.mg_grid_width))
         member.id = cursor.lastrowid
         self.members.append(member)
 
@@ -780,7 +780,7 @@ class Layout:
         self.members = list()
 
         qry = """
-              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width
+              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width
                 FROM layout_members lm
                      JOIN dataset d ON lm.dataset_id=d.id
                WHERE lm.layout_id = %s
@@ -790,7 +790,7 @@ class Layout:
         cursor.execute(qry, (self.id,))
 
         for row in cursor:
-            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2], grid_width=row[3])
+            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2], grid_width=row[3], mg_grid_width=row[4])
             self.members.append(lm)
 
         cursor.close()
@@ -816,7 +816,7 @@ class Layout:
             (self.user_id, self.group_id, self.label, self.is_current, self.share_id) = row
 
         self.get_members()
-            
+
         cursor.close()
         conn.commit()
 
@@ -850,7 +850,7 @@ class Layout:
               WHERE layout_id = %s
         """
         cursor.execute(qry, (self.id,))
-        
+
         cursor.close()
         conn.commit()
 
@@ -1064,7 +1064,7 @@ class Dataset:
         ## quick sanitization of attribute
         attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
         setattr(self, attribute, value)
-        
+
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -1612,11 +1612,12 @@ class GeneCart:
 
 
 class LayoutMember:
-    def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None):
+    def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None, mg_grid_width=None):
         self.id = id
         self.dataset_id = dataset_id
         self.grid_position = grid_position
         self.grid_width = grid_width
+        self.mg_grid_width = mg_grid_width
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1652,11 +1653,11 @@ class LayoutMember:
 
         if self.id is None:
             lm_insert_qry = """
-            INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width)
+            INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, mg_grid_width)
             VALUES (%s, %s, %s, %s)
             """
             cursor.execute(lm_insert_qry, (layout.id, self.dataset_id, self.grid_position,
-                                           self.grid_width))
+                                           self.grid_width, self.mg_grid_width))
             self.id = cursor.lastrowid
         else:
             # ID already populated

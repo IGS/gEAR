@@ -40,12 +40,9 @@ class DatasetCollectionPanel {
             dataType: "json",
             success: function(data, textStatus, jqXHR) {
                 $.each( data['datasets'], function(i, ds) {
-                    var dataset = new DatasetPanel(ds);
-
-                    // SAdkins - Very hacky way to force multigene plots to be full-width since they are not in the database yet
-                    if (multigene)
-                        dataset.grid_width = 12;
-
+                    // Choose single-gene or multigene grid-width
+                    let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
+                    var dataset = new DatasetPanel(ds, grid_width);
                     if (dataset.load_status == 'completed') {
                         // reformat the date
                         dataset.date_added = new Date(dataset.date_added);
