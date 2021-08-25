@@ -612,7 +612,8 @@ $("#gene_search_form").submit(function( event ) {
         {
             'layout_id': share_id,
             'gene_symbol': curated_searched_gene_symbols,
-            'gene_symbol_exact_match': $("#exact_match").val()
+            'gene_symbol_exact_match': $("#exact_match").val(),
+            'gene_cart_share_id': getUrlParameter('gene_cart_share_id')
         },
         // State title
         "Gene search",
@@ -620,6 +621,7 @@ $("#gene_search_form").submit(function( event ) {
         "/index.html?layout_id=" + share_id
             + "&gene_symbol=" + encodeURIComponent(curated_searched_gene_symbols)
             + "&gene_symbol_exact_match=" + $("#exact_match").val()
+            + "&gene_cart_share_id=" + getUrlParameter('gene_cart_share_id')
     )
 
     $('#search_results').empty();
