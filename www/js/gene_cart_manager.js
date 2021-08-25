@@ -227,7 +227,7 @@ function load_preliminary_data() {
       database-driven select boxes.
     */
     load_organism_list()
-    //load_initial_results();
+    $("#your_gene_cart_filter").trigger('click');
 }
 
 function load_organism_list() {
