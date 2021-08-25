@@ -751,116 +751,115 @@ $(document).on('click', '#gene_details_header, #gene_collapse_btn', function() {
     }
 });
 
-if (window.location.href.indexOf("manual.html") === -1) { //Without this the manual links break.
-    // Allows user to change layout profile without having to go to dataset Manager
-    // User not logged in can only change domain profiles
-    $('#selected_profile').editable({
-        mode: 'inline',
-        type: 'select',
-        pk: function() {
-            //return the layout_id
-            return $('.editable-input select option:selected').attr('value');
-        },
-        params: function(params) {
-            //data to be sent to 'url'
-            var data = {};
-            data['layout_id'] = parseInt(params.pk);
-            data['session_id'] =  Cookies.get('gear_session_id');
-            return data;
-        },
-        url: function(params) {
-            /*
-              When a user changes the profile the following needs to happen
 
-              - Store the new layout ID
-              - set share_id so new state can be pushed to history (in update_datasetframes_generesults)
-              - Fetch and draw the new DatasetCollectionPanel
-              - If a user is logged in, set a cookie with the new layout ID
-             */
-            dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true);
-            share_id = find_share_id_by_pk(params.layout_id)
-            update_datasetframes_generesults();
-        },
-        title: 'Click to change',
-        tpl: '<select style="width:160px"></select>',
-        showbuttons: false,
-        source: function() {
-            return layouts; //populated by load_layouts()
-        },
-        sourceCache: true
-    });
+// Allows user to change layout profile without having to go to dataset Manager
+// User not logged in can only change domain profiles
+$('#selected_profile').editable({
+    mode: 'inline',
+    type: 'select',
+    pk: function() {
+        //return the layout_id
+        return $('.editable-input select option:selected').attr('value');
+    },
+    params: function(params) {
+        //data to be sent to 'url'
+        var data = {};
+        data['layout_id'] = parseInt(params.pk);
+        data['session_id'] =  Cookies.get('gear_session_id');
+        return data;
+    },
+    url: function(params) {
+        /*
+          When a user changes the profile the following needs to happen
 
-    // Load user's gene carts
-    $('#selected_gene_cart').editable({
-        mode: 'inline',
-        type: 'select',
-        pk: function() {
-            //return the gene_cart_id
-            return $('.editable-input select option:selected').attr('value');
-        },
-        params: function(params) {
-            //data to be sent to 'url'
-            var data = {};
-            data['gene_cart_id'] = parseInt(params.pk);
-            data['session_id'] =  Cookies.get('gear_session_id');
-            return data;
-        },
-        url: function(params) {
-            var d = new $.Deferred(); //Causes editable to wait until results are returned
+          - Store the new layout ID
+          - set share_id so new state can be pushed to history (in update_datasetframes_generesults)
+          - Fetch and draw the new DatasetCollectionPanel
+          - If a user is logged in, set a cookie with the new layout ID
+         */
+        dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true);
+        share_id = find_share_id_by_pk(params.layout_id)
+        update_datasetframes_generesults();
+    },
+    title: 'Click to change',
+    tpl: '<select style="width:160px"></select>',
+    showbuttons: false,
+    source: function() {
+        return layouts; //populated by load_layouts()
+    },
+    sourceCache: true
+});
 
-            //User is not logged in
-            if (!params.session_id) {
-                d.resolve();
-            } else {
-                //User is logged in
-                $("#search_gene_symbol").prop("disabled", true);
-                $("#selected_gene_cart_loading_c").show();
+// Load user's gene carts
+$('#selected_gene_cart').editable({
+    mode: 'inline',
+    type: 'select',
+    pk: function() {
+        //return the gene_cart_id
+        return $('.editable-input select option:selected').attr('value');
+    },
+    params: function(params) {
+        //data to be sent to 'url'
+        var data = {};
+        data['gene_cart_id'] = parseInt(params.pk);
+        data['session_id'] =  Cookies.get('gear_session_id');
+        return data;
+    },
+    url: function(params) {
+        var d = new $.Deferred(); //Causes editable to wait until results are returned
 
-                //Get the gene cart members and populate the gene symbol search bar
-                $.ajax({
-                    url: './cgi/get_gene_cart_members.cgi',
-                    type: 'post',
-                    data: params,
-                    success: function(data, newValue, oldValue) {
-                        if (data['success'] == 1) {
-                            // Append gene symbols to search bar
-                            gene_symbols = ''
+        //User is not logged in
+        if (!params.session_id) {
+            d.resolve();
+        } else {
+            //User is logged in
+            $("#search_gene_symbol").prop("disabled", true);
+            $("#selected_gene_cart_loading_c").show();
 
-                            //format gene symbols into search string
-                            $.each(data['gene_symbols'], function(i, item){
-                                gene_symbols += item['label'] + ' ';
-                            });
+            //Get the gene cart members and populate the gene symbol search bar
+            $.ajax({
+                url: './cgi/get_gene_cart_members.cgi',
+                type: 'post',
+                data: params,
+                success: function(data, newValue, oldValue) {
+                    if (data['success'] == 1) {
+                        // Append gene symbols to search bar
+                        gene_symbols = ''
 
-                            $('#search_gene_symbol').val(gene_symbols);
+                        //format gene symbols into search string
+                        $.each(data['gene_symbols'], function(i, item){
+                            gene_symbols += item['label'] + ' ';
+                        });
 
-                            // determine if searching for exact matches
-                            if ( $('#exact_match_input').prop("checked") == false ) {
-                                $('#exact_match_input').bootstrapToggle('on');
-                            }
+                        $('#search_gene_symbol').val(gene_symbols);
 
-                        } else {
-                            $('#selected_gene_cart').text(oldValue);
-                            $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-                              '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                              '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
+                        // determine if searching for exact matches
+                        if ( $('#exact_match_input').prop("checked") == false ) {
+                            $('#exact_match_input').bootstrapToggle('on');
                         }
-                        $("#search_gene_symbol").prop("disabled", false);
-                        $("#selected_gene_cart_loading_c").hide();
-                        d.resolve();
+
+                    } else {
+                        $('#selected_gene_cart').text(oldValue);
+                        $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                          '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                          '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
                     }
-                });
-            }
-            return d.promise();
-        },
-        title: 'Click to change',
-        tpl: '<select style="width:160px"></select>',
-        showbuttons: false,
-        source: function() {
-            return gene_carts; //populated by load_gene_carts()
-        },
-        sourceCache: true
-    });
-}
+                    $("#search_gene_symbol").prop("disabled", false);
+                    $("#selected_gene_cart_loading_c").hide();
+                    d.resolve();
+                }
+            });
+        }
+        return d.promise();
+    },
+    title: 'Click to change',
+    tpl: '<select style="width:160px"></select>',
+    showbuttons: false,
+    source: function() {
+        return gene_carts; //populated by load_gene_carts()
+    },
+    sourceCache: true
+});
 
 // automatically reloads dataset grid and resubmits gene search
 function update_datasetframes_generesults() {
