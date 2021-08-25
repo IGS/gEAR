@@ -112,7 +112,10 @@ class DatasetCollectionPanel {
         this.layout_id = layout_id;
         this.layout_label = layout_label;
 
+        // According to this, we shouldn't be manually setting the label:
+        //  https://github.com/vitalets/x-editable/issues/332#issuecomment-22379178
         $('#selected_profile').text(layout_label);
+        
         $('#selected_profile').val(layout_id);
         $('#search_param_profile').text(layout_label);
 

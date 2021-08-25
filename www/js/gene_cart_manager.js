@@ -39,6 +39,10 @@ window.onload=function() {
         $("#initial_instructions_c").hide();
     });
 
+    $(document).on('click', 'button.view_gc', function(e){
+        window.location = "./p?c=" + $(this).val();
+    });
+    
     // Generic function to handle all collapsable menus
     // h.expandable_control is clicked and looks for plus/minus icons as siblings
     // and an .expandable_target as a direct child

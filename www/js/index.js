@@ -421,6 +421,11 @@ function load_gene_carts(cart_share_id) {
 
             //Serves as source for #selected_gene_cart editable
             gene_carts = formattedData;
+
+            console.log("Current gene cart val is: " + $('#selected_gene_cart').val());
+            $('#selected_gene_cart').val(cart_share_id);
+            console.log("Cart share id: " + cart_share_id);
+            console.log("New gene cart val is: " + $('#selected_gene_cart').val());
             d.resolve();
         },
         error: function (jqXHR, textStatus, errorThrown) {
@@ -794,6 +799,7 @@ $('#selected_profile').editable({
 $('#selected_gene_cart').editable({
     mode: 'inline',
     type: 'select',
+    value: getUrlParameter('gene_cart_share_id'),
     pk: function() {
         //return the gene_cart_id
         return $('.editable-input select option:selected').attr('value');
