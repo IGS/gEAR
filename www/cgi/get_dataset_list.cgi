@@ -356,36 +356,36 @@ def get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending):
 
     for row in cursor:
         # skip dataset if 1) share has been revoked 2) is marked for removal 3)load_status is excluded
-        if row[16] == 0 or row[17] == 1 or (row[19] != 'completed' and exclude_pending == 1):
+        if row[17] == 0 or row[18] == 1 or (row[20] != 'completed' and exclude_pending == 1):
             continue
         else:
             # does user have a math preference set
-            if row[3] == None:
+            if row[4] == None:
                 #use dafault
-                math_format = row[15]
+                math_format = row[16]
             else:
                 #use user's preference
-                math_format = row[3]
+                math_format = row[4]
 
-            if row[8] == 1:
+            if row[9] == 1:
                 access_level = 'Public'
             else:
                 access_level = 'Private'
 
-            date_added = row[18].isoformat()
+            date_added = row[19].isoformat()
 
-            if row[20] == 'NULL':
+            if row[21] == 'NULL':
                 tag_list = None
             else:
-                tag_list = row[20].replace(',', ', ')
+                tag_list = row[21].replace(',', ', ')
 
             # does user have a plot preference set
-            if row[23] == None:
+            if row[24] == None:
                 #use default
-                plot_format = row[22]
+                plot_format = row[23]
             else:
                 #use user's preference
-                plot_format = row[23]
+                plot_format = row[24]
 
             datasets.append({
                 'dataset_id': row[0],
