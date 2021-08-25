@@ -19,7 +19,7 @@ GITHUB_ACCESS_TOKEN=os.getenv("GITHUB_ACCESS_TOKEN")
 GEAR_GIT_URL="https://api.github.com/repos/jorvis/gEAR/issues"
 ASSIGNEES=["echrysostomou84"]
 
-SITE_COMMENTS_PROJ_URL="https://api.github.com/projects/columns/8150789/cards" # Corresponds to IGS/gEAR
+SITE_COMMENTS_PROJ_URL="https://api.github.com/projects/columns/8150789/cards" # Corresponds to jorvis/gEAR
 
 SCREENSHOT_DIR = "contact_screenshots"
 SCREENSHOT_URL = 'https://umgear.org/{}'.format(SCREENSHOT_DIR)
