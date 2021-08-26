@@ -16,7 +16,11 @@ Vue.use(BootstrapVueIcons);
 Vue.component("ValidationObserver", VeeValidate.ValidationObserver);
 Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
 
-(() => {
+(async () => {
+  // check if the user is already logged in
+  await check_for_login();
+
+
   const datasetTitle = Vue.component("dataset-title", {
     template: `
       <b-row v-if='title' class='justify-content-md-center id="dataset-title"'>
@@ -3284,13 +3288,15 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
         commit("set_title", title);
       },
       async fetch_user_displays({ commit }, { user_id, dataset_id }) {
-        let displays = await $.ajax({
+        const displays = await $.ajax({
           url: "./cgi/get_dataset_displays.cgi",
           type: "POST",
           data: { user_id, dataset_id },
           dataType: "json",
         });
-        commit("set_user_displays", displays);
+        // Filter out the multigene displays, which do not have the "gene_symbol" config property
+        const curated_displays = displays.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        commit("set_user_displays", curated_displays);
       },
       async fetch_owner_displays({ commit }, { owner_id, dataset_id }) {
         const displays = await $.ajax({
@@ -3299,8 +3305,9 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
           data: { user_id: owner_id, dataset_id },
           dataType: "json",
         });
-
-        commit("set_owner_displays", displays);
+        // Filter out the multigene displays, which do not have the "gene_symbol" config property
+        const curated_displays = displays.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        commit("set_owner_displays", curated_displays);
       },
       async fetch_available_plot_types(
         { commit, state },
@@ -3578,9 +3585,6 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
       ...Vuex.mapState(["user"]),
     },
     created() {
-      // check if the user is already logged in
-      // SADKINS - 7/10/2020 - this was originally a Vue component but I removed that due to redundancy
-      check_for_login();
 
       // We want to check for session when the curator app is first created
       session_id = Cookies.get("gear_session_id");
