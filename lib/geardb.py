@@ -1054,6 +1054,12 @@ class Dataset:
     def to_json(self):
         return str(self)
 
+    def remove(self):
+        """
+        Removes a dataset and its dependencies from the database
+        """
+        raise Exception("Support not yet added to remove dataset via the API")
+
     def save_change(self, attribute=None, value=None):
         """
         Update a dataset attribute, both in the object and the relational database
@@ -1575,6 +1581,25 @@ class GeneCart:
         cursor.close()
         conn.close()
 
+    def remove(self):
+        """
+        Removes a gene cart and its dependencies from the database.  Requires object's
+        'id' attribute to be defined.
+        """
+        if not self.id:
+            raise Exception("Failed to delete a gene cart without an ID")
+        
+        # gene_cart_member entries are deleted by foreign key cascade
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        sql = "DELETE FROM gene_cart WHERE id = %s"
+        cursor.execute(sql, (self.id,))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
     def save(self):
         """
         Will perform a save or an update depending on whether the ID attribute is
