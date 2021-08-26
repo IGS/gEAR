@@ -67,6 +67,24 @@
               </div>
             </div>
             <!-- end success modal-->
+
+            <!-- Modal - Confirm public submisison-->
+            <div class="modal" tabindex="-1" role="dialog" id="confirmModal" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                  <div class="modal-body">
+                    <p>By clicking "OK", you acknowledge that your question or comment has no private data within and will be posted as an issue in the public IGS/gEAR Github repository.</p>
+                    <p>If there is private data, please click "Cancel" and check the "private data" checkbox on the form</p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" id="actual_submit" class="btn btn-primary">OK</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- end confirm modal -->
+
 		    <div id="contact_form_c">
 	          <form id="upload_form" name="upload_form">
                 <div class="form-group col-5">
@@ -110,8 +128,9 @@
                   <input name="super_impressive_security_check" type="text" class="form-control" id="super_impressive_security_check" placeholder="This helps prevent automated submissions">
                 </div>
                 <div id="submit_comment_c" class="col-3">
-                  <button id="btn_submit_comment" type="submit" class="btn btn-default btn-success form-control">Submit</button>
+                  <button id="btn_submit_comment" data-toggle="modal" type="button" class="btn btn-default btn-success form-control">Submit</button>
                 </div>
+
               </form>
             </div> <!--end #contact_form_c -->
           </div>  <!-- end #comment_container-->

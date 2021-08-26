@@ -44,7 +44,7 @@ def main():
 
     # If screenshot was provided, get URL and eventually assign to body
     screenshot_url = "None"
-    if screenshot:
+    if screenshot and not screenshot == "null":
         ext = os.path.splitext(screenshot)[1]
         new_basename = str(uuid4()) + ext
         src = f"../{SCREENSHOT_DIR}/files/{screenshot}"

@@ -75,9 +75,21 @@ function get_tag_list() {
 } //end get_tag_list()
 
 $("#btn_submit_comment").click(function (e) {
+  // If user confirmed private data in the form, skip the modal
+  if ($('#private_check').is(':checked')) {
+    $("#actual_submit").click();
+  } else {
+    $('#confirmModal').modal("show");
+  }
+
+});
+
+// Modal "OK" was clicked
+$("#actual_submit").click(function (e) {
+  $('#confirmModal').modal("hide");
+
   //remove any existing warnings
   $(".label-warning").remove();
-
   e.preventDefault();
 
   // check if required fields were filled in
