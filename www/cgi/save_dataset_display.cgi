@@ -35,7 +35,7 @@ def make_static_plotly_graph(dataset_id, filename, config):
 
     plot_json = decoded_result["plot_json"]
 
-    # We know the figure is valid, so skip potential illegal property issues. 
+    # We know the figure is valid, so skip potential illegal property issues.
     fig = go.Figure(data=plot_json["data"], layout=plot_json["layout"], skip_invalid=True)
     fig.write_image(filename)
     try:
