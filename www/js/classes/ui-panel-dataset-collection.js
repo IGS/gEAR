@@ -20,7 +20,7 @@ class DatasetCollectionPanel {
         }
     }
 
-    load_frames({share_id} = {}) {
+    load_frames({share_id=null, multigene=false} = {}) {
         /*
           Queries the database to get the list of datasets in the user's current
           view.  Initializes the dataset frame panels with placeholders for each
@@ -40,8 +40,9 @@ class DatasetCollectionPanel {
             dataType: "json",
             success: function(data, textStatus, jqXHR) {
                 $.each( data['datasets'], function(i, ds) {
-                    var dataset = new DatasetPanel(ds);
-
+                    // Choose single-gene or multigene grid-width
+                    let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
+                    var dataset = new DatasetPanel(ds, grid_width);
                     if (dataset.load_status == 'completed') {
                         // reformat the date
                         dataset.date_added = new Date(dataset.date_added);
@@ -101,7 +102,7 @@ class DatasetCollectionPanel {
         $('#dataset_grid').empty();
     }
 
-    set_layout(layout_id, layout_label, do_load_frames) {
+    set_layout(layout_id, layout_label, do_load_frames, multigene=false) {
         /*
           Updates this object, the user's stored cookie, and the database and UI labels
         */
@@ -117,7 +118,7 @@ class DatasetCollectionPanel {
         $('#search_param_profile').text(layout_label);
 
         if (do_load_frames) {
-            this.load_frames();
+            this.load_frames({multigene});
         }
 
         // If a user is logged in, we need to save to the db also
@@ -151,6 +152,7 @@ class DatasetCollectionPanel {
         return d.promise();
     }
 
+    // Single-gene displays
     update_by_search_result(entry) {
         for (var dataset of this.datasets) {
             if (typeof entry !== 'undefined' &&
@@ -158,6 +160,20 @@ class DatasetCollectionPanel {
                 var gene = JSON.parse(entry['by_organism'][dataset.organism_id][0]);
                 var gene_symbol = gene.gene_symbol;
                 dataset.draw({'gene_symbol':gene_symbol});
+            } else {
+                if (dataset.display) dataset.display.clear_display();
+                dataset.show_no_match();
+            }
+        }
+    }
+
+    // Multigene displays
+    update_by_all_results(entries) {
+        for (var dataset of this.datasets) {
+            if (typeof entries !== 'undefined' ) {
+                // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
+                // 'entries' is array of gene_symbols
+                dataset.draw_mg({'gene_symbols':entries});
             } else {
                 if (dataset.display) dataset.display.clear_display();
                 dataset.show_no_match();

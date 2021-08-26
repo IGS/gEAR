@@ -244,36 +244,34 @@ def get_display_by_id(display_id):
 
     try:
         (id, dataset_id, user_id, label, plot_type, plotly_config) = cursor.fetchone()
-        cursor.close()
-        conn.close()
         return dict(
             id=id, dataset_id=dataset_id, user_id=user_id, label=label,
             plot_type=plot_type, plotly_config=json.loads(plotly_config)
         )
     except:
+        return None
+    finally:
         cursor.close()
         conn.close()
-        return None
 
-def get_default_display(user_id, dataset_id):
+def get_default_display(user_id, dataset_id, is_multigene=0):
     """Return user's display preference for given dataset."""
     conn = Connection()
     cursor = conn.get_cursor()
     qry = """
         SELECT display_id FROM dataset_preference
-        where user_id = %s and dataset_id = %s
+        where user_id = %s and dataset_id = %s and is_multigene = %s
     """
-    cursor.execute(qry, (user_id, dataset_id))
+    cursor.execute(qry, (user_id, dataset_id, is_multigene))
     try:
         (default_display_id,) = cursor.fetchone()
-        cursor.close()
-        conn.close()
         return default_display_id
     except:
-        cursor.close()
-        conn.close()
         # User has no display preference for this dataset
         return None
+    finally:
+        cursor.close()
+        conn.close()
 
 def get_displays_by_user_id(user_id, dataset_id):
     """Given user id, return all datasets representations from dataset display table."""
@@ -727,7 +725,7 @@ class OrganismCollection:
         cursor.close()
 
         return self.organisms
-    
+
 class Layout:
     def __init__(self, id=None, user_id=None, group_id=None, label=None,
                  is_current=None, share_id=None, members=None):
@@ -737,7 +735,7 @@ class Layout:
         self.label = label
         self.is_current = is_current
         self.share_id = share_id
- 
+
         # This should be a list of LayoutMember objects
         if not members:
             self.members = list()
@@ -761,10 +759,10 @@ class Layout:
         cursor = conn.get_cursor()
 
         qry = """
-              INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width)
-              VALUES (%s, %s, %s, %s)
+              INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, mg_grid_width)
+              VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width))
+        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width, member.mg_grid_width))
         member.id = cursor.lastrowid
         self.members.append(member)
 
@@ -782,7 +780,7 @@ class Layout:
         self.members = list()
 
         qry = """
-              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width
+              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width
                 FROM layout_members lm
                      JOIN dataset d ON lm.dataset_id=d.id
                WHERE lm.layout_id = %s
@@ -792,7 +790,7 @@ class Layout:
         cursor.execute(qry, (self.id,))
 
         for row in cursor:
-            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2], grid_width=row[3])
+            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2], grid_width=row[3], mg_grid_width=row[4])
             self.members.append(lm)
 
         cursor.close()
@@ -803,7 +801,7 @@ class Layout:
         all the rest of the attributes, including layout members.
         """
         self.members = list()
-        
+
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -818,7 +816,7 @@ class Layout:
             (self.user_id, self.group_id, self.label, self.is_current, self.share_id) = row
 
         self.get_members()
-            
+
         cursor.close()
         conn.commit()
 
@@ -852,7 +850,7 @@ class Layout:
               WHERE layout_id = %s
         """
         cursor.execute(qry, (self.id,))
-        
+
         cursor.close()
         conn.commit()
 
@@ -916,7 +914,7 @@ class Layout:
     # TODO: Need a function to take a DatasetCollection and populate
     #  information on it within a layout
 
-        
+
 @dataclass
 class Dataset:
     id: str
@@ -990,7 +988,7 @@ class Dataset:
         Populates the dataset layouts attribute, a list of Layout objects in which
         this dataset can be found (only those which the user has rights to see.)
 
-        First checks to see if self.layouts is empty.  If already populated, it is 
+        First checks to see if self.layouts is empty.  If already populated, it is
         just returned.
         """
         if len(self.layouts) < 1:
@@ -1022,12 +1020,12 @@ class Dataset:
                 l = Layout(id=row[0], user_id=row[1], group_id=row[2], label=row[3],
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
-                
+
             cursor.close()
-                
+
         return self.layouts
-        
-        
+
+
     def get_shape(self, session_id=None):
         """
         Queries the dataset's source expression matrix in order to get its shape.
@@ -1066,7 +1064,7 @@ class Dataset:
         ## quick sanitization of attribute
         attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
         setattr(self, attribute, value)
-        
+
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -1164,20 +1162,20 @@ class DatasetCollection:
                                       annotation_source=row[17],
                                       annotation_release=row[18]
                     )
-                        
+
                     # Add supplemental attributes this method created previously
                     dataset.organism = row[2]
                     dataset.tags = row[16].split(',')
                     dataset.access = 'access_level'
                     dataset.user_name = row[9]
-                    
+
                     #  TODO: These all need to be tracked through the code and removed
                     dataset.dataset_id = dataset.id
                     dataset.user_id = dataset.owner_id
                     dataset.math_format = dataset.math_default
 
                     self.datasets.append(dataset)
-                    
+
         cursor.close()
         conn.close()
         return self.datasets
@@ -1614,11 +1612,12 @@ class GeneCart:
 
 
 class LayoutMember:
-    def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None):
+    def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None, mg_grid_width=None):
         self.id = id
         self.dataset_id = dataset_id
         self.grid_position = grid_position
         self.grid_width = grid_width
+        self.mg_grid_width = mg_grid_width
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1654,11 +1653,11 @@ class LayoutMember:
 
         if self.id is None:
             lm_insert_qry = """
-            INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width)
+            INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, mg_grid_width)
             VALUES (%s, %s, %s, %s)
             """
             cursor.execute(lm_insert_qry, (layout.id, self.dataset_id, self.grid_position,
-                                           self.grid_width))
+                                           self.grid_width, self.mg_grid_width))
             self.id = cursor.lastrowid
         else:
             # ID already populated

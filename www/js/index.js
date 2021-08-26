@@ -15,6 +15,7 @@ var SELECTED_GENE = null;
 
 var share_id = null; //from permalink
 var permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
+var multigene = false;  // If true, multigene toggle is set
 
 var annotation_panel = new FunctionalAnnotationPanel();
 var dataset_collection_panel = new DatasetCollectionPanel();
@@ -56,12 +57,18 @@ window.onload=function() {
 
     var permalinked_gene_symbol = getUrlParameter('gene_symbol');
     var permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
+    var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+    multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
 
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
         if (permalinked_gsem && permalinked_gsem === "1") {
             set_exact_match('on');
+        }
+
+        if (multigene) {
+            set_multigene_plots('on');
         }
 
         sleep(1000).then(() => {
@@ -81,6 +88,33 @@ window.onload=function() {
         } else {
             // else it was off, so turn it on
             set_exact_match('on');
+        }
+    });
+
+    // If MG search icon on front page is clicked
+    $('#multigene_search_icon').click(function() {
+        // handle if it was already in the on position
+        if ( $('#multigene_plots_input').prop("checked") ) {
+            set_multigene_plots('off');
+        } else {
+            // else it was off, so turn it on
+            set_multigene_plots('on');
+        }
+    });
+
+    // If toggle is clicked, change some display things
+    // TODO: Ideally would love to change after search is clicked
+    $('#multigene_plots_input').change(function() {
+        if ( $('#multigene_plots_input').prop("checked") ) {
+            // MG enabled
+            $('#search_results_c').hide();
+            $(".js-curate").hide();
+            $(".js-mg-curate").show();
+        } else {
+            // MG disabled
+            $('#search_results_c').show();
+            $(".js-curate").show();
+            $(".js-mg-curate").hide();
         }
     });
 
@@ -121,7 +155,7 @@ window.onload=function() {
     $('.tool-launcher').click(function() {
         if ($(this).data('tool-name') == 'comparison') {
             window.location.replace('./compare_datasets.html');
-            
+
         } else if ($(this).data('tool-name') == 'workbench') {
             window.location.replace('./analyze_dataset.html');
         }
@@ -133,7 +167,7 @@ window.onload=function() {
     });
 
     $(document).on('click', '.domain_choice_c', function() {
-        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true);
+        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         share_id = $(this).data('profile-share-id');
     });
 
@@ -270,11 +304,11 @@ function validate_permalink(share_id, scope) {
         success: function(data, textStatus, jqXHR) {
             if ( data['success'] == 1 ) {
                 // query the db and load the images, including permalink dataset
-                dataset_collection_panel.load_frames({ share_id });
+                dataset_collection_panel.load_frames({ share_id, multigene });
 
             } else {
                 // query the db and load the images
-                dataset_collection_panel.load_frames();
+                dataset_collection_panel.load_frames({multigene});
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
@@ -385,7 +419,7 @@ function load_layouts() {
             //Serves as source for #selected_profile editable
             layouts = formattedData;
 
-            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true);
+            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true, multigene);
 
             d.resolve();
         },
@@ -527,7 +561,7 @@ function select_search_result(elm) {
 }
 
 function isNumeric(n) {
-  return !isNaN(parseFloat(n)) && isFinite(n);
+    return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
 function show_search_result_info_box() {
@@ -599,12 +633,13 @@ $("#gene_search_form").submit(function( event ) {
 
     // determine if searching for exact matches (convert from bool to 1 or 0)
     $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
+    $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
+
 
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
 
     var formData = $("#gene_search_form").serializeArray();
-    //console.log(formData);
 
     // split on combination of space and comma (individually or both together.)
     var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
@@ -612,12 +647,16 @@ $("#gene_search_form").submit(function( event ) {
     var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
     var curated_searched_gene_symbols = uniq_gene_symbols.join(',');
 
+    // Update multigene toggle so correct grid widths are loaded.
+    multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
+
     history.pushState(
         // State Info
         {
             'layout_id': share_id,
             'gene_symbol': curated_searched_gene_symbols,
-            'gene_symbol_exact_match': $("#exact_match").val()
+            'gene_symbol_exact_match': $("#exact_match").val(),
+            'multigene_plots': $("#multigene_plots").val()
         },
         // State title
         "Gene search",
@@ -625,6 +664,7 @@ $("#gene_search_form").submit(function( event ) {
         "/index.html?layout_id=" + share_id
             + "&gene_symbol=" + encodeURIComponent(curated_searched_gene_symbols)
             + "&gene_symbol_exact_match=" + $("#exact_match").val()
+            + "&multigene_plots=" + $("#multigene_plots").val()
     )
 
     $('#search_results').empty();
@@ -645,7 +685,11 @@ $("#gene_search_form").submit(function( event ) {
             $('#intro_content').hide('fade', {}, 400, function() {
                 // auto-select the first match.  first <a class="list-group-item"
                 first_thing = $('#search_results a.list-group-item').first();
-                select_search_result(first_thing);
+                if ($('#multigene_plots').val() == 1){
+                    dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+                } else {
+                    select_search_result(first_thing);
+                }
             });
 
             // http://manos.malihu.gr/jquery-custom-content-scroller/
@@ -665,7 +709,6 @@ $("#gene_search_form").submit(function( event ) {
             } else {
                 $("#search_results_scrollbox").mCustomScrollbar("update");
             }
-
             return false;
         },
         error: function (jqXHR, textStatus, errorThrown) {
@@ -787,7 +830,8 @@ if (window.location.href.indexOf("manual.html") === -1) { //Without this the man
               - Fetch and draw the new DatasetCollectionPanel
               - If a user is logged in, set a cookie with the new layout ID
              */
-            dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true);
+
+            dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true, multigene);
             share_id = find_share_id_by_pk(params.layout_id)
             update_datasetframes_generesults();
         },
@@ -881,7 +925,15 @@ function update_datasetframes_generesults() {
     $.when( resubmit_gene_search() ).done(function(){
         // auto-select the first match.  first <a class="list-group-item"
         first_thing = $('#search_results a.list-group-item').first();
-        select_search_result(first_thing);
+        if ($('#multigene_plots').val() == 1){
+            // split on combination of space and comma (individually or both together.)
+            var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+            // Remove duplicates in gene search if they exist
+            var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+            dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+        } else {
+            select_search_result(first_thing);
+        }
     });
 }
 
@@ -894,5 +946,23 @@ function set_exact_match(mode) {
         $('#exact_match_input').bootstrapToggle('off');
         $("#exact_match_icon img").attr("src", "img/arrow_target_unselected.png");
         $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off)").tooltip('show');
+    }
+}
+
+function set_multigene_plots(mode) {
+    if (mode == 'on') {
+        $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
+        $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays ").tooltip('show');
+        //$("#multigene_search_icon i").addClass("fa-inverse");
+        //$("#multigene_search_icon").addClass("btn-purple");
+        $("#multigene_search_icon i").addClass("fa-gears");
+        $("#multigene_search_icon i").removeClass("fa-gear");
+    } else if (mode == 'off') {
+        $('#multigene_plots_input').bootstrapToggle('off');
+        $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays").tooltip('show');
+        //$("#multigene_search_icon i").removeClass("fa-inverse");
+        //$("#multigene_search_icon").removeClass("btn-purple");
+        $("#multigene_search_icon i").addClass("fa-gear");
+        $("#multigene_search_icon i").removeClass("fa-gears");
     }
 }

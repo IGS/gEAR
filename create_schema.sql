@@ -204,7 +204,8 @@ CREATE TABLE dataset_preference (
    user_id        INT NOT NULL,
    dataset_id     VARCHAR(50) NOT NULL,
    display_id     INT NOT NULL,
-   primary key (user_id, dataset_id),
+   is_multigene   TINYINT(1) DEFAULT 0,
+   primary key (user_id, dataset_id, is_multigene),
 
    FOREIGN KEY (dataset_id)
       REFERENCES dataset(id)
@@ -251,6 +252,7 @@ CREATE TABLE layout_members (
        dataset_id               VARCHAR(50) NOT NULL,
        grid_position            INT NOT NULL,
        grid_width               INT NOT NULL,
+       mg_grid_width            INT NOT NULL,
        math_preference          VARCHAR(50), #options: 'raw', 'log2', 'log10'
        plot_preference          VARCHAR(50), #options: 'bar', 'line', 'violin'
        FOREIGN KEY (layout_id)

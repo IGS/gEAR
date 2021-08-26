@@ -24,7 +24,7 @@ def main():
     layout_id = int(form.getvalue('layout_id'))
     dataset_id = form.getvalue('dataset_id')
     result = { 'success': 0, 'error': '' }
-    
+
     user = geardb.get_user_from_session_id(session_id)
     layout = geardb.Layout(id=layout_id)
     layout.load()
@@ -35,15 +35,15 @@ def main():
     else:
         # make sure the user owns the layout
         gpos = len(layout.members) + 1
-        
+
         if user.id == layout.user_id:
-            lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4)
+            lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4, mg_grid_width=4)
             layout.add_member(lm)
             result['success'] = 1
         else:
             error = "Not able to add to the profile. User doesn't own it"
             result['error'] = error
-            
+
     print(json.dumps(result))
 
 if __name__ == '__main__':

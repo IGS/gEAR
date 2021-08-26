@@ -511,3 +511,9 @@ li.scope_choice:hover {
 .active-display {
   border: solid #401362;
 }
+
+.btn-purple {
+  color: white;
+  background-color: #562a6f;
+  border-color: #562a6f;
+}

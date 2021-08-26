@@ -38,11 +38,11 @@ class DatasetPanel extends Dataset {
     });
   }
 
-  get_default_display(user_id, dataset_id) {
+  get_default_display(user_id, dataset_id, is_multigene=0) {
     return $.ajax({
       url: './cgi/get_default_display.cgi',
       type: 'POST',
-      data: { user_id, dataset_id },
+      data: { user_id, dataset_id, is_multigene },
       dataType: 'json',
     });
   }
@@ -94,6 +94,30 @@ class DatasetPanel extends Dataset {
     if (zoom) display.zoom_in();
   }
 
+  async draw_mg_chart(gene_symbols, display_id) {
+    const data = await this.get_dataset_display(display_id)
+
+    let zoom = false;
+    if (this.display && this.display.zoomed) {
+      zoom = true;
+    }
+    let display;
+    if (data.plot_type === 'heatmap' ||
+      data.plot_type === 'mg_violin' ||
+      data.plot_type === 'volcano'
+    ) {
+      display = new MultigeneDisplay(data, gene_symbols)
+    }
+    this.display = display;
+
+    // We first draw with the display then zoom in, so whenever
+    // gene search is updated, the other displays behind the zoomed
+    // is updated too.
+    display.draw_mg(gene_symbols);
+    if (zoom) display.zoom_in();
+  }
+
+  // Draw single-gene plots
   async draw({ gene_symbol } = {}) {
     if (this.display) this.display.clear_display();
 
@@ -102,7 +126,8 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbol = gene_symbol;
 
-    if (this.display) {
+    if (this.display && this.display.gene_symbol) {
+      // Ensure that this display is a single-gene display
       this.draw_chart(gene_symbol, this.display.id);
 
     } else {
@@ -131,7 +156,49 @@ class DatasetPanel extends Dataset {
     }
   }
 
-  async redraw(display_id) {
+  // Draw multigene plots
+  /**
+  * Initialize dash display.
+  * @param {Array} gene_symbols - Array of gene symbols
+  */
+  async draw_mg({ gene_symbols } = {}) {
+    if (this.display) this.display.clear_display();
+
+    this.show_loading();
+
+    // cache gene_symbol so we can use it to redraw with different display
+    this.gene_symbols = gene_symbols;
+
+    if (this.display && this.display.gene_symbols) {
+      // Ensure this display is a multigene display
+      this.draw_mg_chart(gene_symbols, this.display.id);
+    } else {
+      // first time searching gene and displays have not been loaded
+      const { default_display_id } = await this.get_default_display(CURRENT_USER.id, this.id, 1);
+
+      if (default_display_id) {
+        this.default_display_id = default_display_id;
+        this.draw_mg_chart(gene_symbols, default_display_id);
+
+        // cache all owner/user displays for this panel;
+        const owner_displays = await this.get_dataset_displays(this.user_id, this.id);
+        this.owner_displays = owner_displays;
+
+        const user_displays = await this.get_dataset_displays(CURRENT_USER.id, this.id);
+        this.user_displays = user_displays;
+
+        this.register_events(multigene=true);
+      } else {
+        // No default display, this really shouldn't happen because
+        // owners should always have atleast done this after upload
+        this.show_error(
+          'No default display. Create one in the multigene curator.'
+        );
+      }
+    }
+  }
+
+  async redraw(display_id, multigene=false) {
     // This check is here in case there was no
     // default display rendered, and a user tries
     // to toggle to a different display. There would
@@ -139,13 +206,97 @@ class DatasetPanel extends Dataset {
     if (this.display) this.display.clear_display();
 
     this.show_loading();
-    this.draw_chart(this.gene_symbol, display_id);
+    if (multigene) {
+      this.draw_chart_mg(this.gene_symbol, display_id);
+    } else {
+      this.draw_chart(this.gene_symbol, display_id);
+    }
   }
 
-  register_events() {
+  // Generate single-gene preview images (Plotly) or plots
+  draw_preview_images(display) {
+    // check if config has been stringified
+    let gene_symbol;
+    let config
+    if (typeof display.plotly_config == 'string') {
+      config = JSON.parse(display.plotly_config);
+    } else {
+      config = display.plotly_config;
+    }
+    gene_symbol = config.gene_symbol;
+
+    if (gene_symbol) {
+      if (
+        display.plot_type === 'violin' ||
+        display.plot_type === 'bar' ||
+        display.plot_type === 'line' ||
+        display.plot_type === 'scatter' ||
+        display.plot_type === 'contour' ||
+        display.plot_type === 'tsne_dynamic' ||  // legacy
+        display.plot_type === 'tsne/umap_dynamic'
+      ) {
+        const d = new PlotlyDisplay(display);
+        d.get_data(gene_symbol).then(({ data }) => {
+          const { plot_json, plot_config } = data;
+          Plotly.toImage(
+            { ...plot_json, plot_config },
+            { height: 500, width: 500 }
+          ).then(url => {
+            $(`#modal-display-img-${display.id}`).attr('src', url);
+          });
+        });
+      } else if (display.plot_type === 'svg') {
+        const target = `modal-display-${display.id}`;
+        const d = new SVGDisplay(display, null, target);
+        d.get_data(gene_symbol).then(({ data }) => {
+          d.draw_chart(data);
+        });
+      } else {
+        // tsne
+        const target = `modal-display-${display.id}`;
+        const d = new TsneDisplay(display, gene_symbol, target);
+        d.draw(gene_symbol);
+      }
+      $(`#modal-display-${display.id}-loading`).hide();
+    } else {
+      // Hide the container box for the multigene plot
+      $(`#modal-display-${display.id}`).hide();
+    }
+  }
+
+  // Generate multigene preview plots
+  draw_preview_images_mg(display) {
+    // check if config has been stringified
+    let config;
+    if (typeof display.plotly_config === 'string') {
+      config = JSON.parse(display.plotly_config);
+    } else {
+      config = display.plotly_config;
+    }
+    const gene_symbols = config.gene_symbols;
+    // Draw preview image
+    if (gene_symbols) {
+      const d = new MultigeneDisplay(display, gene_symbols)
+      d.get_data(gene_symbols).then(({ data }) => {
+        const { plot_json, plot_config } = data;
+        Plotly.toImage(
+          { ...plot_json, plot_config },
+          { height: 500, width: 500 }
+        ).then(url => {
+          $(`#modal-display-img-${display.id}`).attr('src', url);
+        });
+      });
+      $(`#modal-display-${display.id}-loading`).hide();
+    } else {
+      // Hide the container box for the single-gene plot
+      $(`#modal-display-${display.id}`).hide();
+    }
+  }
+
+  register_events(multigene=false) {
     // redraw plot when user changes display
     $(`#dataset_${this.id}`).on('changePlot', (e, display_id) =>
-      this.redraw(display_id)
+      this.redraw(display_id, multigene)
     );
 
     // zoom event
@@ -207,97 +358,17 @@ class DatasetPanel extends Dataset {
       });
 
       user_displays.forEach(display => {
-        // check if config has been stringified
-        let gene_symbol;
-        if (typeof display.plot_config == 'string') {
-          const config = JSON.parse(display.plotly_config);
-          gene_symbol = config.gene_symbol;
+        if (multigene) {
+          this.draw_preview_images_mg(display)
         } else {
-          const config = display.plotly_config;
-          gene_symbol = config.gene_symbol;
-        }
-
-        if (
-          display.plot_type === 'violin' ||
-          display.plot_type === 'bar' ||
-          display.plot_type === 'line' ||
-          display.plot_type === 'scatter' ||
-          display.plot_type === 'contour' ||
-          display.plot_type === 'tsne_dynamic' ||  // legacy
-          display.plot_type === 'tsne/umap_dynamic'
-        ) {
-          const d = new PlotlyDisplay(display);
-          d.get_data(gene_symbol).then(({ data }) => {
-            const { plot_json, plot_config } = data;
-            Plotly.toImage(
-              { ...plot_json, plot_config },
-              { height: 500, width: 500 }
-            ).then(url => {
-              $(`#modal-display-img-${display.id}`).attr('src', url);
-            });
-          });
-        } else if (display.plot_type === 'svg') {
-          const target = `modal-display-${display.id}`;
-          const d = new SVGDisplay(display, null, target);
-          d.get_data(gene_symbol).then(({ data }) => {
-            d.draw_chart(data);
-          });
-        } else {
-          // tsne
-          const target = `modal-display-${display.id}`;
-          const d = new TsneDisplay(display, gene_symbol, target);
-          d.draw(gene_symbol);
+          this.draw_preview_images(display)
         }
       });
       owner_displays.forEach(display => {
-        let config;
-        if (typeof display.plot_config == 'string') {
-            config = JSON.parse(display.plotly_config);
+        if (multigene) {
+          this.draw_preview_images_mg(display)
         } else {
-            config = display.plotly_config;
-        }
-        const { gene_symbol } = config;
-
-        if (
-          display.plot_type === 'violin' ||
-          display.plot_type === 'bar' ||
-          display.plot_type === 'line' ||
-          display.plot_type === 'scatter' ||
-          display.plot_type === 'contour' ||
-          display.plot_type === 'tsne_dynamic' ||  // legacy
-          display.plot_type === 'tsne/umap_dynamic'
-        ) {
-            const d = new PlotlyDisplay(display);
-            d.get_data(gene_symbol).then(
-                ({ data }) => {
-                    const { plot_json, plot_config } = data;
-                    Plotly.toImage(
-                        { ...plot_json, plot_config },
-                        { height: 500, width: 500 }
-                    ).then(
-                        url => { $(`#modal-display-img-${display.id}`).attr('src', url) }
-                    ).then(
-                        () => { $(`#modal-display-${display.id}-loading`).hide() }
-                    );
-                }
-            );
-        } else if (display.plot_type === 'svg') {
-            const target = `modal-display-${display.id}`;
-            const d = new SVGDisplay(display, null, target);
-            d.get_data(gene_symbol).then(
-                ({ data }) => {
-                    d.draw_chart(data).then(
-                        () => { $(`#modal-display-${display.id}-loading`).hide() }
-                    )
-                }
-            );
-        } else {
-            // tsne
-            const target = `modal-display-${display.id}`;
-            const d = new TsneDisplay(display, gene_symbol, target);
-
-            d.draw(gene_symbol);
-            $(`#modal-display-${display.id}-loading`).hide();
+          this.draw_preview_images(display)
         }
       });
       $(`#dataset_${this.id}_displays_modal`).modal({ show: true });

@@ -81,15 +81,16 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 
 # Upgrade pip and install requirements from file
 # This set of modules will be used by the main Python install and scripts that call it (like CGI ones)
+# NOTE: Installing custom version of diffxpy that I forked and fixed a function to work
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.7m.so.1.0 /usr/lib/ \
   && ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  #&& ./pip3 install -r /var/www/api/requirements.txt \
+  && /opt/Python-${PYTHON_VERSION}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021 \
   && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
-  && chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python3.7/site-packages/scanpy/preprocessing/__pycache__
+  && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Apache things
 WORKDIR /opt/gEAR

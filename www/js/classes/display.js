@@ -104,6 +104,50 @@ class Display {
         }
     }
     /**
+     *  Draw the multigene visualization.
+     * @param {string} gene_symbols - Gene Symbols to visualize.
+     */
+     async draw_mg(gene_symbols) {
+        this.gene_symbols = gene_symbols;
+        const {
+            data
+        } = await this.get_data(gene_symbols);
+        if (data.success === -1) {
+            this.show_error(data.message);
+        } else {
+            this.data = data;
+            if (this.zoomed) {
+                this.draw_zoomed();
+            } else {
+                var attempts_left = 3;
+
+                while (attempts_left) {
+                    var draw_success = this.draw_chart(data);
+                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    attempts_left -= 1;
+
+                    // if it didn't work, wait one second and try again
+                    if (draw_success) {
+                        attempts_left = 0;
+                    } else {
+                        if (attempts_left) {
+                            // else the scope is lost in the anon function below
+                            var that = this;
+                            setTimeout(
+                                function() {
+                                    draw_success = that.draw_chart(data);
+                                    attempts_left -= 1;
+                                }, 1000);
+                        }
+                    }
+                }
+            }
+            // Exit status 2 is status to show plot but append warning message
+            if (data.success === 2)
+                this.show_warning(this.data.message);
+        }
+    }
+    /**
      * Hides the display container
      */
     hide_loading() {
@@ -545,6 +589,204 @@ class PlotlyDisplay extends Display {
     }
 
 }
+
+/**
+ * Class representing a multigene display drawn with Dash
+ * @extends Display
+ */
+ class MultigeneDisplay extends Display {
+    /**
+     * Initialize dash display.
+     * @param {Object} Data - Data used to draw heatmap, violin, or volcano plot
+     * @param {Array} gene_symbols - Array of gene symbols
+     */
+    constructor({
+        plotly_config,
+        ...args
+    }, gene_symbols) {
+        super(args);
+        const {
+            groupby_filter,
+            obs_filters,
+            cluster_cols,
+            adj_pvals,
+            annotate_nonsignificant,
+            condition1,
+            condition2,
+            analysis,   // Analysis
+        } = plotly_config;
+        this.gene_symbols = gene_symbols;
+        this.groupby_filter = groupby_filter;
+        this.obs_filters = obs_filters;
+        this.cluster_cols = cluster_cols;
+        this.adj_pvals = adj_pvals;
+        this.annot_nonsig = annotate_nonsignificant;
+        this.condition1 = condition1;
+        this.condition2 = condition2;
+        this.analysis = analysis;
+    }
+    clear_display() {
+        $(`#dataset_${this.dataset_id}_mg`).remove();
+        if (this.zoomed) $(`#dataset_${this.dataset_id}_mg_zoomed`).remove();
+    }
+    clear_zoomed() {
+        $(`#dataset_${this.dataset_id}_mg_zoomed`).remove();
+    }
+
+    fetch_h5ad_info() {
+        const base = `./api/h5ad/${this.dataset_id}`;
+        const query = this.analysis ? `?analysis=${this.analysis.id}` : "";
+        return axios.get(`${base}${query}`);
+    }
+
+    /**
+     * Query the server for data to draw dash chart.
+     * @param {string} gene_symbols - Gene symbols to visualize.
+     */
+    async get_data(gene_symbols) {
+        return axios.post(`/api/plot/${this.dataset_id}/mg_dash`, {
+            analysis: this.analysis,
+            analysis_owner_id: this.user_id,
+            groupby_filter: this.groupby_filter,
+            plot_type: this.plot_type,
+            gene_symbols: gene_symbols,
+            obs_filters: this.obs_filters,
+            cluster_cols: this.cluster_cols,
+            adj_pvals: this.adj_pvals,
+            annotate_nonsignificant: this.annot_nonsig,
+            condition1: this.condition1,
+            condition2: this.condition2,
+
+        });
+    }
+    /**
+     * Draw chart.
+     * @param {*} data - Plotly data.
+     */
+    draw_chart(data) {
+        this.clear_display();
+
+        const target_div = `dataset_${this.dataset_id}_mg`;
+        const {
+            plot_json,
+            plot_config
+        } = data;
+
+        this.hide_loading();
+        $(`#dataset_${this.dataset_id}`).append(this.template());
+        this.show();
+
+        var layout_mods = {
+            height: target_div.clientHeight,
+            width: target_div.clientWidth,
+        };
+
+        // Overwrite plot layout and config values with custom ones from display
+        var layout = {
+            ...plot_json.layout,
+            ...layout_mods,
+        };
+
+        var config_mods = {
+            responsive: false,
+        };
+
+        const config = {
+            ...plot_config,
+            ...config_mods,
+        };
+
+        Plotly.newPlot(target_div, plot_json.data, layout, config);
+    }
+
+    draw_zoomed() {
+        this.clear_display();
+        const target_div = `dataset_${this.dataset_id}_mg_zoomed`;
+        // const target_div = document
+        //   .querySelector(`#dataset_zoomed div#dataset_${this.dataset_id}`);
+
+        $(`#dataset_zoomed div#dataset_${this.dataset_id}`).append(
+            this.zoomed_template()
+        );
+
+        this.hide_loading();
+        const {
+            plot_json,
+            plot_config
+        } = this.data;
+        var layout_mods = {
+            height: target_div.clientHeight,
+            width: target_div.clientWidth,
+        };
+
+        // Overwrite plot layout and config values with custom ones from display
+        var layout = {
+            ...plot_json.layout,
+            ...layout_mods,
+        };
+
+        Plotly.newPlot(target_div, plot_json.data, layout, plot_config);
+    }
+
+    show() {
+        $('#dataset_' + this.dataset_id + ' .plot-container').show();
+    }
+    template() {
+        const template = `
+        <div
+          id='dataset_${this.dataset_id}_mg'
+          class="h5ad-container"
+          style="position: relative;">
+        </div>
+      `;
+        return template;
+    }
+    zoomed_template() {
+        const template = `
+        <div
+          style='max-width:96%; height:70vh;'
+          id='dataset_${this.dataset_id}_mg_zoomed'
+          class="h5ad-container">
+        </div>
+      `;
+        return template;
+    }
+
+    /**
+     * Display warning above the plot
+     */
+    show_warning(msg) {
+
+        const hover_msg = " Hover to see warning."
+
+        const dataset_selector = $( `#dataset_${this.dataset_id}_h5ad` );
+        const warning_template = `
+        <div class='dataset-warning bg-warning' id='dataset_${this.dataset_id}_h5ad_warning'>
+            <i class='fa fa-exclamation-triangle'></i>
+            <span id="dataset_${this.dataset_id}_h5ad_msg">${hover_msg}</span>
+        </div>`;
+
+        // Add warning above the chart
+        // NOTE: must add to DOM before making selector variables
+        dataset_selector.prepend(warning_template);
+
+        const warning_selector = $( `#dataset_${this.dataset_id}_h5ad_warning` );
+        const msg_selector = $( `#dataset_${this.dataset_id}_h5ad_msg` );
+
+        // Add some CSS to warning to keep at top of container and not push display down
+        warning_selector.css('position', 'absolute').css('z-index', '2');
+
+        // Add hover events (via jQuery)
+        warning_selector.mouseover(function() {
+            msg_selector.text(" " + msg);
+        });
+        warning_selector.mouseout(function() {
+            msg_selector.text(hover_msg);
+       });
+    }
+
+}
+
 /**
  * Class representing an SVG display.
  * @extends Display
@@ -702,7 +944,7 @@ class SVGDisplay extends Display {
             if (! paths) {
                 return false;
             }
-            
+
             paths.forEach(path => {
                 const tissue_classes = path.node.className.baseVal.split(' ');
 
@@ -1140,7 +1382,7 @@ class TsneDisplay extends Display {
     $(target_div_img).attr('src', "data:image/png;base64," + this.data.image);
     this.hide_loading();
     this.show();
-    return true;  
+    return true;
   }
 
   // Essentially recycled the "draw_chart" function

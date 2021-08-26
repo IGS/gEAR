@@ -264,6 +264,7 @@ function handle_login_ui_updates() {
             document.URL.indexOf("user_profile.html") >= 0 ||
             document.URL.indexOf("upload_epigenetic_data.html") >= 0 ||
             document.URL.indexOf("dataset_curator.html") >= 0 ||
+            document.URL.indexOf("multigene_curator.html") >= 0 ||
             document.URL.indexOf("epiviz_panel_designer.html")  >= 0) {
             $('div#login_warning').show();
             $('div#login_checking').hide();
@@ -332,6 +333,7 @@ function handle_login_ui_updates() {
             document.URL.indexOf("user_profile.html") >= 0 ||
             document.URL.indexOf("upload_epigenetic_data.html") >= 0 ||
             document.URL.indexOf("dataset_curator.html") >= 0 ||
+            document.URL.indexOf("multigene_curator.html") >= 0 ||
             document.URL.indexOf("epiviz_panel_designer.html") >= 0) {
             $('div#login_warning').hide();
             $('div#login_checking').hide();

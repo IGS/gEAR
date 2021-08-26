@@ -133,6 +133,11 @@
                         </div>
                       </div>
                       <div class="input-group-append">
+                        <div id="multigene_search_icon" class="input-group-text" >
+                          <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays"></i>
+                        </div>
+                      </div>
+                      <div class="input-group-append">
                         <div id="intro_search_icon" class="input-group-text" >
                           <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
                         </div>
@@ -244,7 +249,7 @@
                 </div> <!-- end .col-12 -->
               </div> <!-- end .row -->
             </div> <!-- end .card-body -->
-            
+
           </div> <!-- end Launcher card -->
           <div class="card">
             <div class="card-header bg-white pb-0">
@@ -308,11 +313,11 @@
             <div class="card-body">
               <p class="card-title">
                 <strong>gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.</strong><br />
-                <span class="citation_authors">Orvis J, et al.</span> 
-                <span class="citation_pub">Nat Methods. 2021 Jun 25. doi: 10.1038/s41592-021-01200-9</span> &nbsp; 
+                <span class="citation_authors">Orvis J, et al.</span>
+                <span class="citation_pub">Nat Methods. 2021 Jun 25. doi: 10.1038/s41592-021-01200-9</span> &nbsp;
                 <span class="citation_pmid">PMID: <u><a href="https://pubmed.ncbi.nlm.nih.gov/34172972/">34172972</a></u></span>.
               </p>
-              
+
             </div>
           </div>
           <div class="card">
@@ -360,6 +365,7 @@
                     <!-- Default for Ronna's list of interesting test genes -->
                     <!-- Myo7a Pou4f3 Sox2 Fgfr3 Atoh1 lgr5 Glast RFX3 Pou3f4 -->
                     <input type="hidden" name="exact_match" id="exact_match" value="" />
+                    <input type="hidden" name="multigene_plots" id="multigene_plots" value="" />
 
                     <input id="search_gene_symbol" type="text" class="form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
                   </div>
@@ -370,6 +376,14 @@
                   </div>
                   <div class="col-4">
                     <input id="exact_match_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Limit results to exact matches" />
+                  </div>
+                </div>
+                <div class="row search_option">
+                  <div class="col-8 pl-0 pr-0">
+                    Multigene plots
+                  </div>
+                  <div class="col-4">
+                    <input id="multigene_plots_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Show plots that display all searched genes" />
                   </div>
                 </div>
 
@@ -630,10 +644,10 @@
       </script>
       <!-- end script#permalink_info -->
       <script id="tmpl_permalink_zoomed" type="text/x-jsrender">
-            {{if is_permalink == 1}}
-            <div class="dataset_cc col-sm-12">
-              <div id="dataset_zoomed" class="dataset_c">
-                <div id="tip_zoomed">&nbsp;Score here</div>
+        {{if is_permalink == 1}}
+          <div class="dataset_cc col-sm-12">
+            <div id="dataset_zoomed" class="dataset_c">
+              <div id="tip_zoomed">&nbsp;Score here</div>
                 <div class="dataset_header container-fluid">
                   <div class="row">
                     <div class="dataset_header_title col-sm-10">{{:title}}</div>
@@ -670,7 +684,7 @@
                 {{else}}
                 <div id='dataset_{{:id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
                 {{/if}}
-              </div>
+              </div> <!-- #tip_zoomed -->
             </div> <!-- #dataset_zoomed -->
         </div> <!-- end dataset_cc -->
         {{/if}}
@@ -739,6 +753,7 @@
                    {{for user_displays ~active_display_id=active_display_id}}
                    <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
                         style='height:220px; border: 1px solid rgb(200,200,200)'>
+                        <img id='modal-display-{{:id}}-loading' class='modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
                          <img
                           class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
                           id='modal-display-img-{{:id}}'/>
@@ -806,7 +821,8 @@
                       <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
                       {{/if}}
                       <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare</a></li>
-                      <li><a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate</a></li>
+                      <li class="js-curate"><a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate</a></li>
+                      <li class="js-mg-curate" style='display:none;'><a class="fa fa-plus-square" href="./multigene_curator.html?dataset_id={{:id}}"> Curate</a></li>
                       {{if has_h5ad}}
                       <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> Analyze</a></li>
                       {{/if}}
