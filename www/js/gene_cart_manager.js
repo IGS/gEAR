@@ -1,5 +1,6 @@
 var first_search = true;
 var animation_time = 200;
+var gc_id_to_delete = null;
 
 window.onload=function() {
     // check if the user is already logged in
@@ -111,6 +112,41 @@ window.onload=function() {
         submit_search();
     });
 };  // end window onloads
+
+// Popover for these is created within process_search_results()
+$(document).on('click', '#cancel_gc_delete', function() {
+    gc_id_to_delete = null;
+    $('.delete_gc').popover('hide');
+});
+
+$(document).on('click', '.confirm_gc_delete', function() {
+    $('.delete_gc').popover('hide');
+
+    session_id = Cookies.get('gear_session_id');
+
+    $.ajax({
+        url : './cgi/remove_gene_cart.cgi',
+        type: "POST",
+        data : { 'session_id': session_id, 'gene_cart_id': gc_id_to_delete },
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            if (data['success'] == 1) {
+                $("#result_gc_id_" + gc_id_to_delete).fadeOut("slow", function() {
+                    $("#result_count").html( $("#result_count").html() - 1  );
+                    $(this).remove();
+                });
+                gc_id_to_delete = null;
+            } else {
+                display_error_bar(data['error']);
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log('textStatus= ', textStatus);
+            console.log('errorThrown= ', errorThrown);
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    }); //end ajax for .confirm_delete
+});
 
 $("#btn_create_cart_toggle").click(function(e) {
     if ($("#add_cart_panel").is(":visible")) {
@@ -268,6 +304,24 @@ function process_search_results(data, result_label) {
 
     $("#result_count").html(data['gene_carts'].length);
     $("#result_label").html(result_label);
+
+    $('.delete_gc').popover({
+		animation: true,
+		trigger: 'click',
+		title: "Delete gene cart",
+		content: "<p>Are you sure you want to delete this gene cart?</p>" +
+		    "<div class='btn-toolbar' style='width:250px'>" +
+            "<span id='gc_id_to_delete'></span>" +
+		    "<button class='btn btn-default btn-danger confirm_gc_delete' data-dismiss='popover'>Delete</button>" +
+		    "<button id='cancel_gc_delete' class='btn btn-default cancel_delete' value='cancel_delete'>Cancel</button>" +
+		    "</div>",
+		html: true,
+		placement: 'auto',
+        container: 'body'
+    }).on('show.bs.popover', function(e) {
+        // e.target is the popover trigger..
+        gc_id_to_delete = $(e.target).val();
+    });
 }
 
 function reset_add_form() {
