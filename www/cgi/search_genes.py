@@ -84,30 +84,5 @@ def get_mirna_family_gene_ids(cursor):
 
     return cached_mirna_ids
 
-def get_standard_images(cursor=None, gene_id=None):
-    ## TODO: Make this dynamic later:
-    image_standard_datasets = ['liasdf97-e9a2-po1u-kj11-1k282bjg8j81', 'liasdf96-oi12-n132-i8j2-9sd82bjg8iu9', 'liasdf95-b723-n132-02kd-2dd8yujg8jsi', '9ij23oiu-l12n-oisn-12bn-123b8b0982bn']
-    images = list()
-
-    for dataset_id in image_standard_datasets:
-        if os.path.isfile("../img/standard/{0}/{1}.png".format(dataset_id, gene_id)):
-            images.append({'label': dataset_id,
-                            'ensembl_id': gene_id,
-                            'image_url': "./img/standard/{0}/{1}.png".format(dataset_id, gene_id)})
-        else:
-            images.append({'label': dataset_id,
-                            'ensembl_id': gene_id,
-                            'image_url': "".format(dataset_id, gene_id)})
-
-    return images
-
-
-def get_supplemental_images(cursor=None, label=None, symbol=None):
-    qry = "SELECT ensembl_id, image_url FROM supplemental_images WHERE label = %s AND gene_symbol = %s LIMIT 1"
-    cursor.execute(qry, (label, symbol))
-
-    for row in cursor:
-        return [{'label': label, 'ensembl_id': row[0], 'image_url': row[1]}]
-
 if __name__ == '__main__':
     main()
