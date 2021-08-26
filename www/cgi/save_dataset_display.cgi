@@ -14,11 +14,10 @@ DATASET_PREVIEWS_DIR = "/var/www/img/dataset_previews"
 def make_static_plotly_graph(dataset_id, filename, config):
     """Create (or overwrite) a static plotly PNG image using the existing config."""
 
-    # WARNING: Disabling SSL verification in the POST call
-    result = requests.post("https://localhost/api/plot/{}".format(dataset_id), json=config, verify=False)
-
     # Throw error if things went awry (check apache ssl_error logs)
     try:
+        # WARNING: Disabling SSL verification in the POST call
+        result = requests.post("https://localhost/api/plot/{}".format(dataset_id), json=config, verify=False)
         result.raise_for_status()
     except Exception as e:
         print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
