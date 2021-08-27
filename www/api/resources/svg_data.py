@@ -75,13 +75,13 @@ class SvgData(Resource):
         scores = {
           "dataset": {
             "dataset_id": dataset_id,
-            "min": round(float(adata.X[~np.isnan(adata.X)].min())),
-            "max": round(float(adata.X[~np.isnan(adata.X)].max()))
+            "min": float(adata.X[~np.isnan(adata.X)].min()),
+            "max": float(adata.X[~np.isnan(adata.X)].max())
           },
           "gene": {
             "gene": gene_symbol,
-            "min": round(float(selected.X[~np.isnan(selected.X)].min())),
-            "max": round(float(selected.X[~np.isnan(selected.X)].max()))
+            "min": float(selected.X[~np.isnan(selected.X)].min()),
+            "max": float(selected.X[~np.isnan(selected.X)].max())
           },
           "tissue": dict()
         }
@@ -90,8 +90,8 @@ class SvgData(Resource):
         for tissue in tissues:
           tissue_adata = adata[tissue, :]
           scores['tissue'][tissue] = {
-            "min": round(float(tissue_adata.X[~np.isnan(tissue_adata.X)].min())),
-            "max": round(float(tissue_adata.X[~np.isnan(tissue_adata.X)].max()))
+            "min": float(tissue_adata.X[~np.isnan(tissue_adata.X)].min()),
+            "max": float(tissue_adata.X[~np.isnan(tissue_adata.X)].max())
           }
 
         # Get the average for all cells if there is a cell_type
