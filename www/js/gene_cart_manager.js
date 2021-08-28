@@ -148,6 +148,20 @@ $(document).on('click', '.confirm_gc_delete', function() {
     }); //end ajax for .confirm_delete
 });
 
+$(document).on('click', '.gc_gene_list_toggle', function() {
+    // see if the uncle .gene_list is visible and toggle
+    var gene_list = $(this).parent().next(".gene_list");
+    if (gene_list.is(":visible")) {
+        gene_list.hide();
+        $(this).addClass('btn-outline-secondary');
+        $(this).removeClass('btn-secondary');
+    } else {
+        gene_list.show();
+        $(this).removeClass('btn-outline-secondary');
+        $(this).addClass('btn-secondary');
+    }
+});
+
 $("#btn_create_cart_toggle").click(function(e) {
     if ($("#add_cart_panel").is(":visible")) {
         $("#add_cart_panel").hide();
@@ -296,7 +310,7 @@ function process_search_results(data, result_label) {
         data['gene_carts'][i]['date_added'] = new Date(data['gene_carts'][i]['date_added']);
         data['gene_carts'][i]['date_added'] = data['gene_carts'][i]['date_added'].toDateString();
     }
-    
+
     // For the list view
     var resultsViewTmpl = $.templates("#gc_results_view_tmpl");
     var resultsViewHtml = resultsViewTmpl.render(data['gene_carts']);

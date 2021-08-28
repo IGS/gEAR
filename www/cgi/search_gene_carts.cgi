@@ -37,10 +37,11 @@ def main():
     qry_params = []
 
     selects = ["gc.id", "g.user_name", "gc.gctype", "gc.label", "gc.ldesc", "gc.share_id",
-               "gc.is_public", "gc.date_added"]
-    froms = ["gene_cart gc", "guser g"]
+               "gc.is_public", "gc.date_added", "o.genus", "o.species"]
+    froms = ["gene_cart gc", "guser g", "organism o"]
     wheres = [
-        "gc.user_id = g.id "
+        "gc.user_id = g.id ",
+        "AND gc.organism_id = o.id "
     ]
     orders_by = []
 
@@ -125,6 +126,7 @@ def main():
                              is_public=row[6], date_added=row[7])
         gc.user_name = row[1]
         gc.gene_count = len(gc.genes)
+        gc.organism = "{0} {1}".format(row[8], row[9])
         gene_carts.append(gc)
 
     result['gene_carts'] = gene_carts

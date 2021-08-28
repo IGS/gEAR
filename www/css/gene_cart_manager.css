@@ -106,3 +106,15 @@ ul.controls_filter_options li.selected {
     border: 1px solid #E8EBEE;
     border-radius: 4px;
 }
+ul.gene_list {
+    padding: 0;
+    margin: 10px 0 0 0;
+}
+ul.gene_list li {
+    list-style: none;
+    float: left;
+    background-color: rgb(240,240,240);
+    padding: 3px 5px;
+    margin-right: 7px;
+    border-radius: 5px;
+}

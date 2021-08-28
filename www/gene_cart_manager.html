@@ -178,13 +178,13 @@
                             <div class="col-5">
                                <div class="form-group">
                                  <label for="new_cart_label">Label</label>
-                                 <input type="input" class="form-control" id="new_cart_label" placeholder="">
+                                 <input type="text" class="form-control" id="new_cart_label" placeholder="">
                                </div>
                             </div>
                             <div class="col-4">
                               <div class="form-group">
                                 <label for="new_cart_organism_id">Organism</label>
-                                <select class="form-control" id="new_cart_organism_id" rows="3"></select>
+                                <select class="form-control" id="new_cart_organism_id"></select>
                                 <script id="organism_select_tmpl" type="text/x-jsrender">
                                   <option value="{{:id}}">{{:label}}</option>
                                  </script>
@@ -291,13 +291,13 @@
                          <span class="badge badge-danger">Private gene cart</span>
                          {{/if}}
                        </div>
-                       <div class="col-sm-2"><span class="att_label">Genes</span> {{:gene_count}}</div>
+                       <div class="col-sm-2"><span class="att_label">Organism</span> {{:organism}}</div>
                        <div class="col-sm-2"><span class="att_label">Type</span> {{:gctype}}</div>
                        <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
                        <div class="col-sm-3"><span class="att_label">Added</span> {{:date_added}}</div>
                      </div>
                      <div class="row">
-                       <div class="col-sm-12">
+                       <div class="col-sm-2">
                          <div class="att_buttons btn-group pl-2 pt-2" role="group">
                            <button class="btn btn-default btn-sm btn-outline-secondary view_gc" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View on front page"><i class="fa fa-eye"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-danger delete_gc" value="{{:id}}" data-owner-id="{{:user_id}}" data-toggle="popover" data-placement="bottom" title="Remove cart"><i class="fa fa-trash"></i></button>
@@ -309,7 +309,18 @@
                            <button class="btn btn-default btn-sm btn-outline-primary edit_gc_cancel editable-version" value="{{:id}}" data-dataset-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
                          </div>
                        </div>
-                     </div>
+                       <div class="col-sm-10 pl-2 pt-2">
+                           <div>
+                              <button class="btn btn-default btn-sm btn-outline-secondary gc_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
+                                   data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
+                           </div>
+                           <ul class="gene_list shown_later" id="{{:id}}_gene_list">
+                             {{for genes}}
+                               <li>{{:}}</li>
+                             {{/for}}
+                           </ul>
+                       </div>
+                     </div> <!-- end .row -->
                    </div>
                    <hr class="gc_list_element_divider" />
                  </div> <!-- end .gc_list_element_c -->
