@@ -148,6 +148,31 @@ $(document).on('click', '.confirm_gc_delete', function() {
     }); //end ajax for .confirm_delete
 });
 
+$(document).on('click', '.download_gc', function() {
+    /*
+      Reformats the <ul> containing the gene symbols into a text file with one gene
+      per row.
+     */
+    var gc_id = $(this).data('gc-id');
+    var file_contents = '';
+
+    $("#" + gc_id + "_gene_list li").each(function(idx, li) {
+        var gene_sym = $(li).html();
+        file_contents += gene_sym + "\n";
+    });
+
+    var element = document.createElement("a");
+    element.setAttribute(
+        "href",
+        "data:text/tab-separated-values;charset=utf-8," + encodeURIComponent(file_contents)
+    );
+    element.setAttribute("download", "gene_cart." + $(this).data("gc-share-id") + ".tsv");
+    element.style.display = "none";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+});
+
 $(document).on('click', '.gc_gene_list_toggle', function() {
     // see if the uncle .gene_list is visible and toggle
     var gene_list = $(this).parent().next(".gene_list");
