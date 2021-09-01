@@ -174,8 +174,9 @@ $(document).on('click', '.download_gc', function() {
 });
 
 $(document).on('click', '.gc_gene_list_toggle', function() {
-    // see if the uncle .gene_list is visible and toggle
-    var gene_list = $(this).parent().next(".gene_list");
+    var gc_id = $(this).data('gc-id');
+    // see if the .gene_list is visible and toggle
+    var gene_list = $("#" + gc_id + "_gene_list");
     if (gene_list.is(":visible")) {
         gene_list.hide();
         $(this).addClass('btn-outline-secondary');
@@ -184,6 +185,20 @@ $(document).on('click', '.gc_gene_list_toggle', function() {
         gene_list.show();
         $(this).removeClass('btn-outline-secondary');
         $(this).addClass('btn-secondary');
+    }
+});
+
+$(document).on('click', 'button.share_gc', function() {
+    share_id = $(this).attr('value');
+    var current_url = window.location.href;
+    var current_page = current_url.lastIndexOf("gene_cart_manager.html");
+    var share_url = current_url.substring(0, current_page) + 'p?c=' + share_id;
+    var gc_id = $(this).data('gc-id');
+
+    if (copyToClipboard(share_url)) {
+        show_gc_action_note(gc_id, "URL copied to clipboard");
+    } else {
+        show_gc_action_note(gc_id, "Failed to copy to clipboard. URL: " + share_url);
     }
 });
 
@@ -381,6 +396,14 @@ function reset_add_form() {
 
     $("#new_cart_form_c").hide();
     $("#new_cart_pasted_genes_c").hide();
+}
+
+function show_gc_action_note(gc_id, msg) {
+    var note_selector = "#result_gc_id_" + gc_id + " span.gc_action_note";
+    $(note_selector).html(msg).show();
+    setTimeout(function() {
+        $(note_selector).fadeOut().empty();
+    }, 5000);
 }
 
 function submit_search() {

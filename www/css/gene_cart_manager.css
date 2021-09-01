@@ -72,6 +72,11 @@ span.att_label {
 span.badge {
     font-size: 90%;
 }
+span.gc_action_note {
+    font-size: 90%;
+    font-weight: bold;
+    display: none;
+}
 span.gc-expander:hover {
     cursor: pointer;
 }

@@ -303,7 +303,6 @@
                            <button class="btn btn-default btn-sm btn-outline-secondary download_gc" data-gc-share-id="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Download cart"><i class="fa fa-download"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary share_gc" value="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Share cart"><i class="fa fa-share-alt"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary edit_gc is-editable" value="{{:dataset_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Edit cart"><i class="fa fa-pencil"></i></button>
-                           <span class="dataset_action_note"></span>
                            <button class="btn btn-default btn-sm btn-outline-primary edit_gc_save editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Save edits"><i class="fa fa-floppy-o"></i> Save edits</button>
                            <button class="btn btn-default btn-sm btn-outline-primary edit_gc_cancel editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
                          </div>
@@ -313,13 +312,20 @@
                               <button class="btn btn-default btn-sm btn-outline-secondary gc_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
                                    data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
                            </div>
-                           <ul class="gene_list shown_later" id="{{:id}}_gene_list">
-                             {{for genes}}
-                               <li>{{:}}</li>
-                             {{/for}}
-                           </ul>
                        </div>
                        <div class="col-sm-6 pt-2 pl-0"><span class="att_label">Type</span> {{:gctype}}</div>
+                     </div> <!-- end .row -->
+                     <div class="row">
+                       <div class="col-sm-3 pl-4 pt-2">
+                         <span class="gc_action_note"></span>                         
+                       </div>
+                       <div class="col-sm-9">
+                          <ul class="gene_list shown_later" id="{{:id}}_gene_list">
+                             {{for genes}}
+                               <li class="mt-1">{{:}}</li>
+                             {{/for}}
+                          </ul>
+                       </div>
                      </div> <!-- end .row -->
                    </div>
                    <hr class="gc_list_element_divider" />
