@@ -267,7 +267,6 @@ function handle_login_ui_updates() {
             document.URL.indexOf("dataset_curator.html") >= 0 ||
             document.URL.indexOf("gene_cart_manager.html") >= 0 ||
             document.URL.indexOf("epiviz_panel_designer.html")  >= 0) {
-            console.log("Showing login warning");
             $('div#login_warning').show();
             $('div#login_checking').hide();
             $('div#main_content').hide();
