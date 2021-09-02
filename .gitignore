@@ -2,7 +2,6 @@ docker/docker-compose.yml
 docker/gear.ini.docker
 NOTES
 TODO
-data/analysis_pipeline_template.json
 www/.env
 www/cgi/remove_dataset_from_profile.cgi
 www/css/dataset_manager.css
