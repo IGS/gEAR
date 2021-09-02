@@ -1,0 +1,107 @@
+{
+  "id": null,
+  "user_session_id": null,
+  "dataset_id": null,
+  "type": "public",
+  "label": null,
+  "dataset_is_raw": true,
+  "louvain": {
+    "calculated": false,
+    "n_neighbors": null,
+    "resolution": null,
+    "plot_umap": 0,
+    "plot_tsne": 0
+  },
+  "marker_genes": {
+    "calculated": false,
+    "n_genes": false
+  },
+  "pca": {
+    "calculated": false,
+    "genes_to_color": false
+  },
+  "tsne": {
+    "neighbors_calculated": false,
+    "tsne_calculated": false,
+    "umap_calculated": false,
+    "genes_to_color": false,
+    "n_pcs": null,
+    "n_neighbors": null,
+    "random_state": null,
+    "plot_umap": 0,
+    "plot_tsne": 0
+  },
+  "primary_filter": {
+    "calculated": false,
+    "filter_cells_gt_n_genes": null,
+    "filter_cells_gt_n_genes_selected": false,
+    "filter_cells_lt_n_genes": null,
+    "filter_cells_lt_n_genes_selected": false,
+    "filter_genes_gt_n_cells": null,
+    "filter_genes_gt_n_cells_selected": false,
+    "filter_genes_lt_n_cells": null,
+    "filter_genes_lt_n_cells_selected": false,
+    "filtered_gene_count": null,
+    "filtered_cell_count": null
+  },
+  "qc_by_mito": {
+    "calculated": false,
+    "gene_prefix": null,
+    "filter_mito_perc": null,
+    "filter_mito_count": null,
+    "n_genes": null,
+    "n_obs": null
+  },
+  "select_variable_genes": {
+    "calculated": false,
+    "norm_counts_per_cell": null,
+    "flavor": "seurat",
+    "n_top_genes": null,
+    "min_mean": null,
+    "max_mean": null,
+    "min_dispersion": null,
+    "regress_out": true,
+    "scale_unit_variance": true
+  },
+  "gene_comparison": {
+    "calculated": false,
+    "n_genes": 0,
+    "query_cluster": null,
+    "reference_cluster": null,
+    "method": "t-test_overestim_var",
+    "corr_method": "benjamini-hochberg",
+    "table_json_f": null,
+    "table_json_r": null
+  },
+  "group_labels": [],
+  "genes_of_interest": {},
+  "dataset": {
+    "id": null,
+    "date_added": null,
+    "dtype": null,
+    "geo_id": null,
+    "is_public": 1,
+    "ldesc": null,
+    "load_status": "completed",
+    "has_h5ad": 1,
+    "organism_id": null,
+    "pubmed_id": null,
+    "schematic_image": null,
+    "share_id": null,
+    "tags": [],
+    "title": null,
+    "platform_id": null,
+    "instrument_model": null,
+    "library_selection": null,
+    "library_source": null,
+    "library_strategy": null,
+    "contact_email": null,
+    "contact_institute": null,
+    "contact_name": null,
+    "annotation_source": null,
+    "plot_default": null,
+    "annotation_release": null,
+    "gene_count": null,
+    "obs_count": null
+  }
+}
