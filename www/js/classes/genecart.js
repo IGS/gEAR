@@ -15,6 +15,15 @@ class GeneCart {
     }
 
     add_cart_to_db(callback, gc) {
+        /*
+          This method is to save a cart after it has been built in the 
+          standard way, setting attributes on an instantiated object.
+
+          THIS IS CURRENTLY NOT SUPPORTED AND NEEDS ITS OWN CGI
+        */
+        console.log("ERROR: GeneCart.add_cart_to_db() not currently supported");
+        return false;
+        
         $.ajax({
             type: "POST",
             url: "./cgi/save_new_genecart.cgi",
@@ -23,8 +32,35 @@ class GeneCart {
             dataType: "json",
             success: function(data) {
                 if (callback) {
-                    gc.id = data['id']
-                    callback(gc);
+                    this.id = data['id']
+                    callback(this);
+                }
+            },
+            error: function(msg) {
+                console.log("error: " + msg);
+            }
+        });
+    }
+
+    add_cart_to_db_from_form(callback, form_data) {
+        /*
+          This method is to save a cart by submitting form data.  Once
+          completed the object properties are filled in and the callback
+          is executed.
+        */
+        $.ajax({
+            type: "POST",
+            method: "POST",
+            url: "./cgi/save_new_genecart.cgi",
+            data: form_data,
+            contentType: false,
+           // contentType: 'multipart/form-data',
+            processData: false,
+            cache: false,
+            success: function(data) {
+                if (callback) {
+                    this.id = data['id']
+                    callback(this);
                 }
             },
             error: function(msg) {

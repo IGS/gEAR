@@ -227,6 +227,8 @@ $("#btn_gc_paste_unweighted_list").click(function(e) {
     $("#btn_gc_upload_weighted_list").addClass('disabled');
     $("#new_cart_pasted_genes_c").show();
     $("#new_cart_form_c").show(animation_time);
+    $("#new_cart_upload_type").val('pasted_genes');
+    $("#file_upload_c").hide();
 });
 
 $("#btn_gc_upload_unweighted_list").click(function(e) {
@@ -235,6 +237,8 @@ $("#btn_gc_upload_unweighted_list").click(function(e) {
     $("#btn_gc_upload_weighted_list").addClass('disabled');
     $("#btn_gc_paste_unweighted_list").addClass('disabled');
     $("#new_cart_form_c").show(animation_time);
+    $("#new_cart_upload_type").val('uploaded-unweighted');
+    $("#file_upload_c").show();
 });
 
 $("#btn_gc_upload_weighted_list").click(function(e) {
@@ -243,13 +247,15 @@ $("#btn_gc_upload_weighted_list").click(function(e) {
     $("#btn_gc_upload_unweighted_list").addClass('disabled');
     $("#btn_gc_paste_unweighted_list").addClass('disabled');
     $("#new_cart_form_c").show(animation_time);
+    $("#new_cart_upload_type").val('uploaded-weighted');
+    $("#file_upload_c").show();
 });
 
 $("#btn_new_cart_cancel").click(function(e) {
     $("#btn_create_cart_toggle").trigger('click');
 });
 
-$("#btn_new_cart_save").click(function(e) {
+$('#new_cart_data').on('submit', function(e) {
     session_id = Cookies.get('gear_session_id');
 
     var is_public = 0;
@@ -258,27 +264,19 @@ $("#btn_new_cart_save").click(function(e) {
         is_public = 1;
     }
 
-    var gc = new GeneCart({
-        session_id: session_id,
-        label: $("#new_cart_label").val(),
-        organism_id: $("#new_cart_organism_id").val(),
-        ldesc: $("#new_cart_ldesc").val(),
-        is_public: is_public,
-    });
+    var formData = new FormData($(this)[0]);
+    formData.append('is_public', is_public);
+    formData.append('session_id', session_id);
 
-    // parse the gene names
-    var gene_str = $("#new_cart_pasted_genes").val().replace(',', ' ');
-    gene_str = gene_str.replace('  ', ' ');
-    var gene_symbols = gene_str.split(' ');
+    // https://stackoverflow.com/questions/45594504/upload-file-and-json-data-in-the-same-post-request-using-jquery-ajax
+    var gc = new GeneCart();
+    gc.add_cart_to_db_from_form(gene_cart_saved, formData);
 
-    gene_symbols.forEach(function (gs) {
-        var gene = new Gene({
-            gene_symbol: gs,
-        });
-        gc.add_gene(gene);
-    });
+    return false;
+});
 
-    gc.save(gene_cart_saved);
+$("#btn_new_cart_save").click(function(e) {
+    $('#new_cart_data').trigger("submit");
 });
 
 
@@ -309,6 +307,7 @@ function display_error_bar(msg) {
 function gene_cart_saved() {
     $("#btn_create_cart_toggle").trigger('click');
     submit_search();
+    reset_add_form();
 }
 
 function load_preliminary_data() {
@@ -382,6 +381,7 @@ function reset_add_form() {
     $("#new_cart_label").val('');
     $("#new_cart_ldesc").val('');
     $("#new_cart_pasted_genes").val('');
+    $("#new_cart_file").val('');
     $('#new_cart_is_public').bootstrapToggle('off');
 
     $("#new_cart_unweighted_header").removeClass('bg-primary');

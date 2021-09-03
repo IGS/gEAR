@@ -173,18 +173,19 @@
                     <div class="card">
                       <div class="card-header">New gene cart information</div>
                       <div class="card-body">
-                        <form>
+                        <form id="new_cart_data">
+                          <input type="hidden" id="new_cart_upload_type" name="new_cart_upload_type" value="" />
                           <div class="row">
                             <div class="col-5">
                                <div class="form-group">
                                  <label for="new_cart_label">Label</label>
-                                 <input type="text" class="form-control" id="new_cart_label" placeholder="">
+                                 <input type="text" class="form-control" id="new_cart_label" name="new_cart_label" placeholder="" />
                                </div>
                             </div>
                             <div class="col-4">
                               <div class="form-group">
                                 <label for="new_cart_organism_id">Organism</label>
-                                <select class="form-control" id="new_cart_organism_id"></select>
+                                <select class="form-control" id="new_cart_organism_id" name="new_cart_organism_id"></select>
                                 <script id="organism_select_tmpl" type="text/x-jsrender">
                                   <option value="{{:id}}">{{:label}}</option>
                                  </script>
@@ -193,17 +194,21 @@
                             <div class="col-3">
                                <div class="form-group">
                                  <label for="new_cart_is_public">Visibility</label><br />
-                                 <input type="checkbox" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle" data-on="Public" data-off="Private">
+                                 <input type="checkbox" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle" data-on="Public" data-off="Private" />
                                </div>
                             </div>
                           </div>
                           <div class="form-group">
                             <label for="new_cart_ldesc">Longer description</label>
-                            <textarea class="form-control" id="new_cart_ldesc" rows="3"></textarea>
+                            <textarea class="form-control" id="new_cart_ldesc" name="new_cart_ldesc" rows="3"></textarea>
+                          </div>
+                          <div id="file_upload_c" class="form-group">
+                            <label for="new_cart_file">File upload</label>
+                            <input class="pl-3 pr-3" name="new_cart_file" type="file" id="new_cart_file"/>
                           </div>
                           <div class="form-group shown_later" id="new_cart_pasted_genes_c">
                             <label for="new_cart_pasted_genes">Paste gene symbols, separated by commas or spaces</label>
-                            <textarea class="form-control" id="new_cart_pasted_genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
+                            <textarea class="form-control" id="new_cart_pasted_genes" name="new_cart_pasted_genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
                           </div>
                         </form>
                         <button class="btn btn-sm btn-primary" id="btn_new_cart_save">Save</button>
@@ -298,11 +303,11 @@
                      <div class="row">
                        <div class="col-sm-3">
                          <div class="att_buttons btn-group pl-2 pt-2" role="group">
-                           <button class="btn btn-default btn-sm btn-outline-secondary view_gc" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View on front page"><i class="fa fa-eye"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary view_gc" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View on front page" disabled><i class="fa fa-eye"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-danger delete_gc" value="{{:id}}" data-owner-id="{{:user_id}}" data-toggle="popover" data-placement="bottom" title="Remove cart"><i class="fa fa-trash"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary download_gc" data-gc-share-id="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Download cart"><i class="fa fa-download"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary share_gc" value="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Share cart"><i class="fa fa-share-alt"></i></button>
-                           <button class="btn btn-default btn-sm btn-outline-secondary edit_gc is-editable" value="{{:dataset_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Edit cart"><i class="fa fa-pencil"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary edit_gc is-editable" value="{{:dataset_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Edit cart" disabled><i class="fa fa-pencil"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-primary edit_gc_save editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Save edits"><i class="fa fa-floppy-o"></i> Save edits</button>
                            <button class="btn btn-default btn-sm btn-outline-primary edit_gc_cancel editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
                          </div>

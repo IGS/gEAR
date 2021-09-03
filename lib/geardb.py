@@ -1630,6 +1630,43 @@ class GeneCart:
         conn.commit()
         conn.close()
 
+    def update_from_form_data(self, form_data):
+        """
+        Takes an existing GeneCart object and updates/overrides any attributes provided by the
+        passed data structure.
+        """
+        self.label = form_data.getvalue('new_cart_label')
+        self.organism_id = form_data.getvalue('new_cart_organism_id')
+        #print("DEBUG: Got new_cart_label: ({0})".format(form_data.getvalue('new_cart_label')), file=sys.stderr, flush=True)        
+        user_logged_in = get_user_from_session_id(form_data.getvalue('session_id'))
+        self.user_id = user_logged_in.id
+
+        self.ldesc = form_data.getvalue('new_cart_ldesc')
+        upload_type = form_data.getvalue('new_cart_upload_type')
+
+        if upload_type == 'pasted_genes':
+            self.gctype = 'unweighted-list'
+            pasted_genes = form_data.getvalue('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
+
+            for gene_sym in pasted_genes.split(' '):
+                gene = Gene(gene_symbol=gene_sym)
+                self.add_gene(gene)
+
+        elif upload_type == 'uploaded-unweighted':
+            self.gctype = 'unweighted-list'
+
+            fileitem = form_data.getvalue('new_cart_file')
+            if fileitem.filename:
+                pass
+            else:
+                raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
+
+        elif upload_type == 'uploaded-unweighted':
+            self.gctype = 'weighted-list'
+
+        else:
+            raise Exception("Unrecognized value ({0}) for new_cart_upload_type".format(upload_type))
+
     def update_from_json(self, json_obj):
         """
         Takes an existing GeneCart object and updates/overrides any attributes provided by the
