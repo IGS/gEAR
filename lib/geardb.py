@@ -1655,9 +1655,14 @@ class GeneCart:
         elif upload_type == 'uploaded-unweighted':
             self.gctype = 'unweighted-list'
 
-            fileitem = form_data.getvalue('new_cart_file')
+            fileitem = form_data['new_cart_file']
             if fileitem.filename:
-                pass
+                pasted_genes = fileitem.file.read().decode().replace(",", " ")
+                pasted_genes = re.sub(r"\s+", " ", pasted_genes)
+
+                for gene_sym in pasted_genes.split(' '):
+                    gene = Gene(gene_symbol=gene_sym)
+                    self.add_gene(gene)
             else:
                 raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
 
