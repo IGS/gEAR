@@ -257,12 +257,7 @@ $("#btn_new_cart_cancel").click(function(e) {
 
 $('#new_cart_data').on('submit', function(e) {
     session_id = Cookies.get('gear_session_id');
-
-    var is_public = 0;
-
-    if ($("#new_cart_is_public").val() == 'Public') {
-        is_public = 1;
-    }
+    var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
 
     var formData = new FormData($(this)[0]);
     formData.append('is_public', is_public);

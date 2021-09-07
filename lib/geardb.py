@@ -1556,6 +1556,9 @@ class GeneCart:
         self.is_public = is_public
         self.date_added = date_added
 
+        if not share_id:
+            self.share_id = str(uuid.uuid4()).split('-')[0]
+
         # TODO: This should be a reference to a GeneCollection
         if not genes:
             self.get_genes()
@@ -1637,12 +1640,13 @@ class GeneCart:
         """
         self.label = form_data.getvalue('new_cart_label')
         self.organism_id = form_data.getvalue('new_cart_organism_id')
-        #print("DEBUG: Got new_cart_label: ({0})".format(form_data.getvalue('new_cart_label')), file=sys.stderr, flush=True)        
         user_logged_in = get_user_from_session_id(form_data.getvalue('session_id'))
         self.user_id = user_logged_in.id
 
         self.ldesc = form_data.getvalue('new_cart_ldesc')
         upload_type = form_data.getvalue('new_cart_upload_type')
+
+        self.is_public = form_data.getvalue('is_public')
 
         if upload_type == 'pasted_genes':
             self.gctype = 'unweighted-list'
