@@ -1683,14 +1683,15 @@ class GeneCart:
             file_ext = os.path.splitext(fileitem.filename)[1]
             package_dir = os.path.dirname(os.path.abspath(__file__))
             carts_dir =  os.path.join(package_dir, '..', 'www', 'carts')
-            source_file_path = os.path.join(carts_dir, "cart.{0}{1}".format(self.id, file_ext))
-            h5dest_file_path = os.path.join(carts_dir, "cart.{0}.h5ad".format(self.id))
+            source_file_path = os.path.join(carts_dir, "cart.{0}{1}".format(self.share_id, file_ext))
+            h5dest_file_path = os.path.join(carts_dir, "cart.{0}.h5ad".format(self.share_id))
 
             with open(source_file_path, 'wb') as sfh:
                 sfh.write(fileitem.file.read())
             
             if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
-                pass
+                adata = sc.read_excel(source_file_path)
+                adata.write(filename=h5dest_file_path)
                 
             elif fileitem.filename.endswith('tab'):
                 adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True)
