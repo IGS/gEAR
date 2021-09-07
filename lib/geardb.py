@@ -1670,8 +1670,39 @@ class GeneCart:
             else:
                 raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
 
-        elif upload_type == 'uploaded-unweighted':
+        elif upload_type == 'uploaded-weighted':
+            import scanpy as sc
+            import string
             self.gctype = 'weighted-list'
+
+            # sanitize the file name
+            fileitem = form_data['new_cart_file']
+            valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+            fileitem.filename = ''.join(c for c in fileitem.filename if c in valid_chars)
+            
+            file_ext = os.path.splitext(fileitem.filename)[1]
+            package_dir = os.path.dirname(os.path.abspath(__file__))
+            carts_dir =  os.path.join(package_dir, '..', 'www', 'carts')
+            source_file_path = os.path.join(carts_dir, "cart.{0}{1}".format(self.id, file_ext))
+            h5dest_file_path = os.path.join(carts_dir, "cart.{0}.h5ad".format(self.id))
+
+            with open(source_file_path, 'wb') as sfh:
+                sfh.write(fileitem.file.read())
+            
+            if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
+                pass
+                
+            elif fileitem.filename.endswith('tab'):
+                adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True)
+                adata.write(filename=h5dest_file_path)
+
+            elif fileitem.filename.endswith('csv'):
+                adata = sc.read_csv(source_file_path, first_column_names=True)
+                adata.write(filename=h5dest_file_path)
+
+            else:
+                raise Exception("Unsupported file type for carts uploaded. File name: {0}".format(fileitem.filename))
+
 
         else:
             raise Exception("Unrecognized value ({0}) for new_cart_upload_type".format(upload_type))
