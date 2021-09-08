@@ -317,10 +317,15 @@
                          </div>
                        </div>
                        <div class="col-sm-3 pl-2 pt-2">
-                           <div>
+                         <div>
+                           {{if gctype == "weighted-list" }}
+                              <button class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
+                                      data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> Preview</button>
+                           {{else}}
                               <button class="btn btn-default btn-sm btn-outline-secondary gc_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
-                                   data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
-                           </div>
+                                      data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
+                           {{/if}}
+                         </div>
                        </div>
                        <div class="col-sm-6 pt-2 pl-0"><span class="att_label">Type</span> {{:gctype}}</div>
                      </div> <!-- end .row -->
@@ -365,6 +370,7 @@
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
 
         <script src="js/vendor/js.cookie.js"></script>
+        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jsrender/1.0.11/jsrender.min.js"></script>-->
         <script src="js/vendor/jsrender.20181003.min.js"></script>
 
         <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/js/bootstrap4-toggle.min.js"></script>
