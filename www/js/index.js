@@ -41,7 +41,7 @@ window.onload=function() {
         permalink_id = share_id;
         scope = "permalink";
     } else if (layout_id) {
-        permalink_id = share_id;
+        permalink_id = layout_id;
         scope = "profile";
     }
 
