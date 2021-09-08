@@ -68,7 +68,6 @@ class DatasetCollectionPanel {
                     const listViewHtml = listViewTmpl.render(ds_panel.datasets);
                     $('#dataset_grid').html(listViewHtml);
                 } else {
-                    console.log(ds_panel.datasets);
                     const listViewTmpl = $.templates("#tmpl_datasetbox");
                     const listViewHtml = listViewTmpl.render(ds_panel.datasets);
                     $('#dataset_grid').html(listViewHtml);
