@@ -59,13 +59,15 @@ function get_tag_list() {
         tokenized_tags.push(data["tags"][i]["label"]);
       }
 
-      //initialize tokenfield for tags
-      $("#comment_tag").tokenfield({
-        autocomplete: {
-          source: tokenized_tags,
-        },
-        delimiter: [",", " "],
-      });
+      // Create dropdown of tags for autocomplete
+      $("#comment_tag").select2({
+        allowClear: true,
+        data: tokenized_tags,
+        placeholder: "Examples: mouse sox2 upload issue",
+        tags: true,
+        tokenSeparators: [",", " "]
+      })
+
     } else {
       console.log("Handle a failed report from the CGI");
     }
@@ -105,6 +107,14 @@ $("#actual_submit").click(function (e) {
       "private_check",
       $('#private_check').is(':checked')
     );
+
+    // since comment tags come from "select2" now,
+    // need to format this attribute to only pass a single array instead of multiple scalars
+    formData.delete("comment_tag");
+    comment_tags = $('#comment_tag').select2('data').map(function (elem) {
+      return elem.id;
+    });
+    formData.append("comment_tag", comment_tags);
 
     $.ajax({
       url: "./cgi/create_github_issue.cgi",
