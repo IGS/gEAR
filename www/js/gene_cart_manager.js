@@ -256,6 +256,10 @@ $("#btn_new_cart_cancel").click(function(e) {
 });
 
 $('#new_cart_data').on('submit', function(e) {
+    // disable button and show indicator that it's loading
+    $("#btn_new_cart_save").hide();
+    $("#btn_new_cart_saving").show();
+    
     session_id = Cookies.get('gear_session_id');
     var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
 
@@ -373,6 +377,9 @@ function process_search_results(data, result_label) {
 }
 
 function reset_add_form() {
+    $("#btn_new_cart_saving").hide();
+    $("#btn_new_cart_save").show();
+    
     $("#new_cart_label").val('');
     $("#new_cart_ldesc").val('');
     $("#new_cart_pasted_genes").val('');
