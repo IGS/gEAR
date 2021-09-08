@@ -1127,10 +1127,6 @@ class SVGDisplay extends Display {
               .attr('x2', '100%')
               .attr('y2', '0%');
 
-        // TODO: Issues to resolve here.  The 'atf4' gene in this datasets:
-        //  The Adult Cochlea Response to PTS-Inducing Noise - Summary View
-        // Has a data range of around -0.34 up but here the min is returning as
-        // 0. Is this being converted to an into somewhere?
         const score = data.scores[SCORING_METHOD];
         const {
             min,
