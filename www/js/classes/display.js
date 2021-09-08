@@ -9,13 +9,15 @@ class Display {
         dataset_id,
         user_id,
         label,
-        plot_type
+        plot_type,
+        primary_key
     }) {
         this.id = id;
         this.dataset_id = dataset_id;
         this.user_id = user_id;
         this.label = label;
         this.plot_type = plot_type;
+        this.primary_key = primary_key; // Combination of dataset_id, grid_position, and single/multigene indicator
         this.data = null;
         this.zoomed = false;
     }
@@ -151,12 +153,12 @@ class Display {
      * Hides the display container
      */
     hide_loading() {
-        $('#dataset_' + this.dataset_id + ' .dataset-status-container').hide();
+        $('#dataset_' + this.primary_key + ' .dataset-status-container').hide();
     }
 
     show_loading() {
-        $('#' + this.id + '_dataset_status_c h2').text('Loading...');
-        $('#dataset_' + this.id + ' .dataset-status-container').show();
+        $('#' + this.primary_key + '_dataset_status_c h2').text('Loading...');
+        $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
 
         if (this.dtype === 'svg-expression') {
             // this.hide_Svg();
@@ -164,9 +166,9 @@ class Display {
             this.dtype === 'image-static-standard' ||
             this.dtype === 'image-static'
         ) {
-            $('#dataset_' + this.id + ' .image-static-container').hide();
+            $('#dataset_' + this.primary_key + ' .image-static-container').hide();
         } else {
-            $('#dataset_' + this.id + ' .plot-container').hide();
+            $('#dataset_' + this.primary_key + ' .plot-container').hide();
         } // TODO: Hide other container plot types...
     }
 
@@ -175,9 +177,9 @@ class Display {
      * @param {string} msg - Message returned back from server
      */
     show_error(msg) {
-        $('#' + this.dataset_id + '_dataset_status_c h2').text(msg);
-        $('#dataset_' + this.dataset_id + ' .dataset-status-container').show();
-        $('#dataset_' + this.dataset_id + ' .plot-container').hide();
+        $('#' + this.primary_key + '_dataset_status_c h2').text(msg);
+        $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+        $('#dataset_' + this.primary_key + ' .plot-container').hide();
     }
 
     /**
@@ -189,7 +191,7 @@ class Display {
      * Show the plot container.
      */
     show() {
-        $(`#dataset_${this.dataset_id}_h5ad.plot-container`).show();
+        $(`#dataset_${this.primary_key}_h5ad.plot-container`).show();
     }
 }
 
@@ -229,7 +231,7 @@ class EpiVizDisplay extends Display {
         if (target) {
             this.target = target;
         } else {
-            this.target = `dataset_${this.dataset_id}`;
+            this.target = `dataset_${this.primary_key}`;
         }
 
         this.epiviztemplate = this.epiviz_template(config);
@@ -249,7 +251,7 @@ class EpiVizDisplay extends Display {
 
     draw_zoomed() {
         this.clear_display();
-        $(`#dataset_zoomed div#dataset_${this.dataset_id}`).append(this.template());
+        $(`#dataset_zoomed div#dataset_${this.primary_key}`).append(this.template());
     }
 
     /**
@@ -349,7 +351,7 @@ class EpiVizDisplay extends Display {
 
     clear_display() {
         // $(`#${this.target}_epiviz epiviz-navigation`).remove();
-        if (this.zoomed) $(`#dataset_${this.dataset_id}_epiviz_zoomed`).remove();
+        if (this.zoomed) $(`#dataset_${this.primary_key}_epiviz_zoomed`).remove();
     }
 }
 
@@ -419,11 +421,11 @@ class PlotlyDisplay extends Display {
         this.analysis = analysis;
     }
     clear_display() {
-        $(`#dataset_${this.dataset_id}_h5ad`).remove();
-        if (this.zoomed) $(`#dataset_${this.dataset_id}_h5ad_zoomed`).remove();
+        $(`#dataset_${this.primary_key}_h5ad`).remove();
+        if (this.zoomed) $(`#dataset_${this.primary_key}_h5ad_zoomed`).remove();
     }
     clear_zoomed() {
-        $(`#dataset_${this.dataset_id}_h5ad_zoomed`).remove();
+        $(`#dataset_${this.primary_key}_h5ad_zoomed`).remove();
     }
     /**
      * Query the server for data to draw plotly chart.
@@ -467,14 +469,14 @@ class PlotlyDisplay extends Display {
     draw_chart(data) {
         this.clear_display();
 
-        const target_div = `dataset_${this.dataset_id}_h5ad`;
+        const target_div = `dataset_${this.primary_key}_h5ad`;
         const {
             plot_json,
             plot_config
         } = data;
 
         this.hide_loading();
-        $(`#dataset_${this.dataset_id}`).append(this.template());
+        $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
         var layout_mods = {
@@ -504,11 +506,11 @@ class PlotlyDisplay extends Display {
 
     draw_zoomed() {
         this.clear_display();
-        const target_div = `dataset_${this.dataset_id}_h5ad_zoomed`;
+        const target_div = `dataset_${this.primary_key}_h5ad_zoomed`;
         // const target_div = document
         //   .querySelector(`#dataset_zoomed div#dataset_${this.dataset_id}`);
 
-        $(`#dataset_zoomed div#dataset_${this.dataset_id}`).append(
+        $(`#dataset_zoomed div#dataset_${this.primary_key}`).append(
             this.zoomed_template()
         );
 
@@ -532,12 +534,12 @@ class PlotlyDisplay extends Display {
     }
 
     show() {
-        $('#dataset_' + this.dataset_id + ' .plot-container').show();
+        $('#dataset_' + this.primary_key + ' .plot-container').show();
     }
     template() {
         const template = `
         <div
-          id='dataset_${this.dataset_id}_h5ad'
+          id='dataset_${this.primary_key}_h5ad'
           class="h5ad-container"
           style="position: relative;">
         </div>
@@ -548,7 +550,7 @@ class PlotlyDisplay extends Display {
         const template = `
         <div
           style='height:70vh;'
-          id='dataset_${this.dataset_id}_h5ad_zoomed'
+          id='dataset_${this.primary_key}_h5ad_zoomed'
           class="h5ad-container">
         </div>
       `;
@@ -562,19 +564,19 @@ class PlotlyDisplay extends Display {
 
         const hover_msg = " Hover to see warning."
 
-        const dataset_selector = $( `#dataset_${this.dataset_id}_h5ad` );
+        const dataset_selector = $( `#dataset_${this.primary_key}_h5ad` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.dataset_id}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.dataset_id}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning above the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.dataset_id}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.dataset_id}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -626,17 +628,11 @@ class PlotlyDisplay extends Display {
         this.analysis = analysis;
     }
     clear_display() {
-        $(`#dataset_${this.dataset_id}_mg`).remove();
-        if (this.zoomed) $(`#dataset_${this.dataset_id}_mg_zoomed`).remove();
+        $(`#dataset_${this.primary_key}_mg`).remove();
+        if (this.zoomed) $(`#dataset_${this.primary_key}_mg_zoomed`).remove();
     }
     clear_zoomed() {
-        $(`#dataset_${this.dataset_id}_mg_zoomed`).remove();
-    }
-
-    fetch_h5ad_info() {
-        const base = `./api/h5ad/${this.dataset_id}`;
-        const query = this.analysis ? `?analysis=${this.analysis.id}` : "";
-        return axios.get(`${base}${query}`);
+        $(`#dataset_${this.primary_key}_mg_zoomed`).remove();
     }
 
     /**
@@ -666,14 +662,14 @@ class PlotlyDisplay extends Display {
     draw_chart(data) {
         this.clear_display();
 
-        const target_div = `dataset_${this.dataset_id}_mg`;
+        const target_div = `dataset_${this.primary_key}_mg`;
         const {
             plot_json,
             plot_config
         } = data;
 
         this.hide_loading();
-        $(`#dataset_${this.dataset_id}`).append(this.template());
+        $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
         var layout_mods = {
@@ -701,11 +697,11 @@ class PlotlyDisplay extends Display {
 
     draw_zoomed() {
         this.clear_display();
-        const target_div = `dataset_${this.dataset_id}_mg_zoomed`;
+        const target_div = `dataset_${this.primary_key}_mg_zoomed`;
         // const target_div = document
         //   .querySelector(`#dataset_zoomed div#dataset_${this.dataset_id}`);
 
-        $(`#dataset_zoomed div#dataset_${this.dataset_id}`).append(
+        $(`#dataset_zoomed div#dataset_${this.primary_key}`).append(
             this.zoomed_template()
         );
 
@@ -729,12 +725,12 @@ class PlotlyDisplay extends Display {
     }
 
     show() {
-        $('#dataset_' + this.dataset_id + ' .plot-container').show();
+        $('#dataset_' + this.primary_key + ' .plot-container').show();
     }
     template() {
         const template = `
         <div
-          id='dataset_${this.dataset_id}_mg'
+          id='dataset_${this.primary_key}_mg'
           class="h5ad-container"
           style="position: relative;">
         </div>
@@ -745,7 +741,7 @@ class PlotlyDisplay extends Display {
         const template = `
         <div
           style='max-width:96%; height:70vh;'
-          id='dataset_${this.dataset_id}_mg_zoomed'
+          id='dataset_${this.primary_key}_mg_zoomed'
           class="h5ad-container">
         </div>
       `;
@@ -759,19 +755,19 @@ class PlotlyDisplay extends Display {
 
         const hover_msg = " Hover to see warning."
 
-        const dataset_selector = $( `#dataset_${this.dataset_id}_h5ad` );
+        const dataset_selector = $( `#dataset_${this.primary_key}_h5ad` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.dataset_id}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.dataset_id}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning above the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.dataset_id}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.dataset_id}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -807,7 +803,7 @@ class SVGDisplay extends Display {
         if (target) {
             this.target = target;
         } else {
-            this.target = `dataset_${this.dataset_id}`;
+            this.target = `dataset_${this.primary_key}`;
         }
 
         let config = plotly_config;
@@ -1109,7 +1105,7 @@ class SVGDisplay extends Display {
     draw_legend(data, zoomed = false) {
         let target;
         if (zoomed) {
-            target = `dataset_${this.dataset_id}_svg_cc_zoomed`;
+            target = `dataset_${this.primary_key}_svg_cc_zoomed`;
         } else {
             target = `${this.target}_svg_c`;
         }
@@ -1261,11 +1257,11 @@ class SVGDisplay extends Display {
     zoomed_template() {
         const template = `
     <div
-      id="dataset_${this.dataset_id}_svg_cc_zoomed"
+      id="dataset_${this.primary_key}_svg_cc_zoomed"
       style='display:none'
       class="h5ad-svg-container-zoomed">
       <div
-        id="dataset_${this.dataset_id}_svg_c_zoomed"
+        id="dataset_${this.primary_key}_svg_c_zoomed"
         class="svg-content" data-dataset-id="${this.dataset_id}"
         data-path="datasets_uploaded/${this.dataset_id}.svg">
       </div>
@@ -1281,19 +1277,19 @@ class SVGDisplay extends Display {
 
         const hover_msg = " Hover to see warning."
 
-        const dataset_selector = $( `#dataset_${this.dataset_id}_svg_cc` );
+        const dataset_selector = $( `#dataset_${this.primary_key}_svg_cc` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.dataset_id}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.dataset_id}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning below the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.append(warning_template);
 
-        const warning_selector = $( `#dataset_${this.dataset_id}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.dataset_id}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('bottom', '0').css('z-index', '2');
@@ -1338,7 +1334,7 @@ class TsneDisplay extends Display {
     if (target) {
       this.target = target;
     } else {
-      this.target = `dataset_${this.dataset_id}`;
+      this.target = `dataset_${this.primary_key}`;
     }
   }
   /**
@@ -1417,7 +1413,7 @@ class TsneDisplay extends Display {
 
     clear_display() {
         $(`#${this.target}_tsne`).remove();
-        if (this.zoomed) $(`#dataset_${this.dataset_id}_tsne_zoomed`).remove();
+        if (this.zoomed) $(`#dataset_${this.primary_key}_tsne_zoomed`).remove();
     }
 
     /**
@@ -1427,19 +1423,19 @@ class TsneDisplay extends Display {
 
         const hover_msg = " Hover to see warning."
 
-        const dataset_selector = $( `#dataset_${this.dataset_id}_tsne` );
+        const dataset_selector = $( `#dataset_${this.primary_key}_tsne` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.dataset_id}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.dataset_id}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning above the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.dataset_id}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.dataset_id}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');

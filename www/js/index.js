@@ -13,9 +13,11 @@ var PREVIOUS_SELECTED_RECORD_NUM = null;
 var SCORING_METHOD = 'gene';
 var SELECTED_GENE = null;
 
-var share_id = null; //from permalink
+var share_id = null; //from permalink - dataset share ID
+var layout_id = null; //from permalink - profile grid layout ID
 var permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
 var multigene = false;  // If true, multigene toggle is set
+var multigene_toggled = false;
 
 var annotation_panel = new FunctionalAnnotationPanel();
 var dataset_collection_panel = new DatasetCollectionPanel();
@@ -28,13 +30,22 @@ window.onload=function() {
 
     // Was a permalink found?
     share_id = getUrlParameter('share_id');
-    scope = "permalink";
-    if (!share_id) {
-        // layout_id is a share_id for the profile layout
-        share_id = getUrlParameter('layout_id');
+    // layout_id is a permalink id for the profile layout
+    layout_id = getUrlParameter('layout_id');
+
+    let permalink_id = null;
+    let scope = null;
+
+    // Dataset share ID takes priority over a layout ID
+    if (share_id) {
+        permalink_id = share_id;
+        scope = "permalink";
+    } else if (layout_id) {
+        permalink_id = share_id;
         scope = "profile";
     }
-    if (share_id) {
+
+    if (permalink_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
         $('#viewport_intro').children().hide();
@@ -42,8 +53,8 @@ window.onload=function() {
 
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
-        // validate the share_id. runs load_dataset_frames() on success
-        validate_permalink(share_id, scope);
+        // validate the dataset/layout share_id. runs load_dataset_frames() on success
+        validate_permalink(permalink_id, scope);
     } else {
         get_index_info();
         load_gene_carts();
@@ -105,16 +116,13 @@ window.onload=function() {
     // If toggle is clicked, change some display things
     // TODO: Ideally would love to change after search is clicked
     $('#multigene_plots_input').change(function() {
+        multigene_toggled = true;
         if ( $('#multigene_plots_input').prop("checked") ) {
             // MG enabled
             $('#search_results_c').hide();
-            $(".js-curate").hide();
-            $(".js-mg-curate").show();
         } else {
             // MG disabled
             $('#search_results_c').show();
-            $(".js-curate").show();
-            $(".js-mg-curate").hide();
         }
     });
 
@@ -168,7 +176,7 @@ window.onload=function() {
 
     $(document).on('click', '.domain_choice_c', function() {
         dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
-        share_id = $(this).data('profile-share-id');
+        layout_id = $(this).data('profile-share-id');
     });
 
     $( document ).on("click", ".scope_choice", function() {
@@ -296,6 +304,7 @@ $(document).on('click', 'button#save_user_new_pass', function(){
 });
 
 function validate_permalink(share_id, scope) {
+    // Works for dataset or layout-based share IDs, which is differentiated by scope
     $.ajax({
         url : './cgi/validate_share_id.cgi',
         type: "POST",
@@ -303,8 +312,10 @@ function validate_permalink(share_id, scope) {
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
             if ( data['success'] == 1 ) {
+
+                const opts = (scope == "permalink") ? { share_id, multigene } : { multigene };
                 // query the db and load the images, including permalink dataset
-                dataset_collection_panel.load_frames({ share_id, multigene });
+                dataset_collection_panel.load_frames(opts);
 
             } else {
                 // query the db and load the images
@@ -362,7 +373,7 @@ function load_layouts() {
                 if (item['share_id'] == layout_share_id) {
                     active_layout_id = item['id'];
                     active_layout_label = item['label'];
-                    share_id = item['share_id'];
+                    layout_id = item['share_id'];
                 }
             });
 
@@ -372,7 +383,7 @@ function load_layouts() {
                     if (item['label'] == CURRENT_USER.profile) {
                         active_layout_id = item['id'];
                         active_layout_label = item['label'];
-                        share_id = item['share_id'];
+                        layout_id = item['share_id'];
                         return false;
                     }
                 });
@@ -384,7 +395,7 @@ function load_layouts() {
                     if ( item['is_domain'] == 0 && item['is_current'] == 1 ) {
                         active_layout_id = item['id'];
                         active_layout_label = item['label'];
-                        share_id = item['share_id'];
+                        layout_id = item['share_id'];
                         return false;
                     }
                 });
@@ -396,7 +407,7 @@ function load_layouts() {
                     if ( item['is_domain'] == 1 && item['is_current'] == 1 ) {
                         active_layout_id = item['id'];
                         active_layout_label = item['label'];
-                        share_id = item['share_id'];
+                        layout_id = item['share_id'];
                         return false;
                     }
                 });
@@ -542,9 +553,6 @@ function select_search_result(elm) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    var current_record_number = 0
-    var match_record_number = null
-
     annotation_panel.annotation = search_results[gene_sym];
     annotation_panel.display_first_organism();
 
@@ -635,7 +643,6 @@ $("#gene_search_form").submit(function( event ) {
     $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
     $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
 
-
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
 
@@ -650,10 +657,11 @@ $("#gene_search_form").submit(function( event ) {
     // Update multigene toggle so correct grid widths are loaded.
     multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
 
+    // SAdkins - Should we have a separate history state for dataset share IDs?
     history.pushState(
         // State Info
         {
-            'layout_id': share_id,
+            'layout_id': layout_id,
             'gene_symbol': curated_searched_gene_symbols,
             'gene_symbol_exact_match': $("#exact_match").val(),
             'multigene_plots': $("#multigene_plots").val()
@@ -661,7 +669,7 @@ $("#gene_search_form").submit(function( event ) {
         // State title
         "Gene search",
         // URL
-        "/index.html?layout_id=" + share_id
+        "/index.html?layout_id=" + layout_id
             + "&gene_symbol=" + encodeURIComponent(curated_searched_gene_symbols)
             + "&gene_symbol_exact_match=" + $("#exact_match").val()
             + "&multigene_plots=" + $("#multigene_plots").val()
@@ -670,6 +678,13 @@ $("#gene_search_form").submit(function( event ) {
     $('#search_results').empty();
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
+
+    // Redraw layouts if toggling b/t single and multigene layouts, so that new HTML elements are generated
+    // TODO: "load_frames" may have been called previously if a "set_layouts" function was called.  Clean up so it's only called once
+    if (multigene_toggled) {
+        dataset_collection_panel.load_frames({share_id, multigene});
+        multigene_toggled = false;
+    }
 
     $.ajax({
         url : './cgi/search_genes.py',
@@ -683,11 +698,11 @@ $("#gene_search_form").submit(function( event ) {
             populate_search_result_list(data);
             $('#searching_indicator_c').hide();
             $('#intro_content').hide('fade', {}, 400, function() {
-                // auto-select the first match.  first <a class="list-group-item"
-                first_thing = $('#search_results a.list-group-item').first();
                 if ($('#multigene_plots').val() == 1){
                     dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
                 } else {
+                    // auto-select the first match.  first <a class="list-group-item"
+                    let first_thing = $('#search_results a.list-group-item').first();
                     select_search_result(first_thing);
                 }
             });
@@ -830,10 +845,8 @@ if (window.location.href.indexOf("manual.html") === -1) { //Without this the man
               - Fetch and draw the new DatasetCollectionPanel
               - If a user is logged in, set a cookie with the new layout ID
              */
-
+            layout_id = find_share_id_by_pk(params.layout_id)
             dataset_collection_panel.set_layout(params.layout_id, $('.editable-input select option:selected').text(), true, multigene);
-            share_id = find_share_id_by_pk(params.layout_id)
-            update_datasetframes_generesults();
         },
         title: 'Click to change',
         tpl: '<select style="width:160px"></select>',
@@ -923,8 +936,6 @@ function update_datasetframes_generesults() {
     }
 
     $.when( resubmit_gene_search() ).done(function(){
-        // auto-select the first match.  first <a class="list-group-item"
-        first_thing = $('#search_results a.list-group-item').first();
         if ($('#multigene_plots').val() == 1){
             // split on combination of space and comma (individually or both together.)
             var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
@@ -932,6 +943,8 @@ function update_datasetframes_generesults() {
             var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
             dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
         } else {
+            // auto-select the first match.  first <a class="list-group-item"
+            let first_thing = $('#search_results a.list-group-item').first();
             select_search_result(first_thing);
         }
     });

@@ -10,7 +10,7 @@
 
 // Does not yet require common.js
 class DatasetCollectionPanel {
-    constructor({datasets, layout_id, layout_label, share_id} = {}) {
+    constructor({datasets, layout_id, layout_label} = {}) {
         this.datasets = datasets;
         this.layout_id = layout_id;
         this.layout_label = layout_label;
@@ -42,7 +42,7 @@ class DatasetCollectionPanel {
                 $.each( data['datasets'], function(i, ds) {
                     // Choose single-gene or multigene grid-width
                     let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
-                    var dataset = new DatasetPanel(ds, grid_width);
+                    var dataset = new DatasetPanel( ds, grid_width, multigene );
                     if (dataset.load_status == 'completed') {
                         // reformat the date
                         dataset.date_added = new Date(dataset.date_added);
@@ -63,14 +63,12 @@ class DatasetCollectionPanel {
                     const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
                     const permalinkViewHtml = permalinkViewTmpl.render(data['datasets']);
                     $("#permalink_info").html(permalinkViewHtml);
-                    // const permalinkZoomViewTmpl = $.templates("#tmpl_permalink_zoomed");
-                    // const permalinkZoomViewHtml = permalinkZoomViewTmpl.render(ds_panel.datasets);
-                    // $("#dataset_zoomed_c").html(permalinkZoomViewHtml);
                     const listViewTmpl = $.templates("#tmpl_datasetbox");
                     ds_panel.datasets.forEach(ds => ds.zoomed = true);
                     const listViewHtml = listViewTmpl.render(ds_panel.datasets);
                     $('#dataset_grid').html(listViewHtml);
                 } else {
+                    console.log(ds_panel.datasets);
                     const listViewTmpl = $.templates("#tmpl_datasetbox");
                     const listViewHtml = listViewTmpl.render(ds_panel.datasets);
                     $('#dataset_grid').html(listViewHtml);
@@ -80,21 +78,6 @@ class DatasetCollectionPanel {
                 display_error_bar(jqXHR.status + ' ' + errorThrown.name);
             }
         });
-    }
-
-    redraw_plotly_plots() {
-        for (var dataset of this.datasets) {
-            var plot_id = "dataset_" + dataset.id + "_h5ad";
-
-            // If this doesn't have any children, there is no plot for it.
-            if ( $('#' + plot_id).children().length > 0 ) {
-                var elm = $("#dataset_" + dataset.id);
-                var width = $(elm).width() - 3;
-                var height = $(elm).height() - 3;
-                var update = {width: width, height: height};
-                Plotly.relayout(plot_id, update);
-            }
-        }
     }
 
     reset() {

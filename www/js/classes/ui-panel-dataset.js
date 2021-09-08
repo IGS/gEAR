@@ -1,5 +1,4 @@
 'use strict';
-
 /*
   Requirements
   - JQuery
@@ -8,16 +7,29 @@
   - gear/classes/dataset.js
 */
 
+// If multiple Bootstrap modals are created, multiple "modal-backdrop"
+// divs are created, which can break site functionality.
+// This only keeps a single instance of it.
+// Source: https://stackoverflow.com/a/44588254
+$(document).on('shown.bs.modal', '.modal', function () {
+  if ($(".modal-backdrop").length > -1) {
+      $(".modal-backdrop").not(':first').remove();
+  }
+});
+
 class DatasetPanel extends Dataset {
-  constructor({ grid_position, grid_width, ...args }) {
+  constructor({ grid_position,...args }, grid_width, multigene=false) {
     super(args);
     this.grid_position = grid_position;
-    this.grid_width = grid_width;
+    this.grid_width = grid_width ? grid_width : args.grid_width;
+    this.multigene = Number(multigene); // "true/false" works but keeping consistent with the other bool properties
     this.config = null;
     this.displays = null;
     this.default_display_id = null;
     this.active_display_id = null;
     this.zoomed = false;
+    const single_or_multi = (this.multigene) ? "multi" : "single";
+    this.primary_key = this.id + "_" + this.grid_position + "_" + single_or_multi;
   }
 
   get_dataset_displays(user_id, dataset_id) {
@@ -64,6 +76,8 @@ class DatasetPanel extends Dataset {
       zoom = true;
     }
 
+    data.primary_key = this.primary_key
+
     let display;
     if (
       data.plot_type === 'bar' ||
@@ -101,6 +115,9 @@ class DatasetPanel extends Dataset {
     if (this.display && this.display.zoomed) {
       zoom = true;
     }
+
+    data.primary_key = this.primary_key
+
     let display;
     if (data.plot_type === 'heatmap' ||
       data.plot_type === 'mg_violin' ||
@@ -198,7 +215,7 @@ class DatasetPanel extends Dataset {
     }
   }
 
-  async redraw(display_id, multigene=false) {
+  async redraw(display_id) {
     // This check is here in case there was no
     // default display rendered, and a user tries
     // to toggle to a different display. There would
@@ -206,7 +223,7 @@ class DatasetPanel extends Dataset {
     if (this.display) this.display.clear_display();
 
     this.show_loading();
-    if (multigene) {
+    if (this.multigene) {
       this.draw_chart_mg(this.gene_symbol, display_id);
     } else {
       this.draw_chart(this.gene_symbol, display_id);
@@ -293,21 +310,27 @@ class DatasetPanel extends Dataset {
     }
   }
 
-  register_events(multigene=false) {
+  register_events() {
+    const primary_key = this.primary_key;
+
     // redraw plot when user changes display
-    $(`#dataset_${this.id}`).on('changePlot', (e, display_id) =>
-      this.redraw(display_id, multigene)
+    $(`#dataset_${primary_key}`).on('changePlot', (e, display_id) =>
+      this.redraw(display_id)
     );
 
     // zoom event
-    $(`#dataset_${this.id}_zoom_in_control`).click(event => {
+    $(`#dataset_${primary_key}_zoom_in_control`).click(event => {
       $(`#dataset_grid`).fadeOut(() => {
         this.display.zoom_in();
       });
     });
 
     // info event
-    $(`#dataset_${this.id}_info_launcher`).click(() => {
+    $(`#dataset_${primary_key}_info_launcher`).click(() => {
+      // SAdkins - found bug where if single-gene/multigene is toggled,
+      // two modals will be overlayed.  Dispose of the earlier one.
+      //$(`#dataset_${primary_key}_info`).modal('dispose');
+
       const panel = dataset_collection_panel.datasets.find(
         d => d.id == this.id
       );
@@ -318,16 +341,21 @@ class DatasetPanel extends Dataset {
       const infobox_tmpl = $.templates('#tmpl_infobox');
       const infobox_html = infobox_tmpl.render({
         dataset_id: id,
+        primary_key: this.primary_key,
         title,
         ldesc,
         schematic_image,
       });
       $('#modals_c').html(infobox_html);
-      $(`#dataset_${this.id}_info`).modal({ show: true });
+      $(`#dataset_${primary_key}_info`).modal("show");
     });
 
     // Displays modal events
-    $(`#dataset_${this.id}_displays`).click(() => {
+    $(`#dataset_${primary_key}_displays`).click(() => {
+      // SAdkins - found bug where if single-gene/multigene is toggled,
+      // two modals will be overlayed.  Dispose of the earlier one.
+      //$(`#dataset_${primary_key}_displays_modal`).modal('dispose');
+
       const panel = dataset_collection_panel.datasets.find(
         d => d.id == this.id
       );
@@ -336,6 +364,7 @@ class DatasetPanel extends Dataset {
       const displays_tmpl = $.templates('#tmpl_displays_box');
       const displays_html = displays_tmpl.render({
         dataset_id: id,
+        primary_key: this.primary_key,
         title,
         user_displays,
         owner_displays,
@@ -345,13 +374,12 @@ class DatasetPanel extends Dataset {
       $('#modals_c').html(displays_html);
 
       // change plot when user clicks on a different display
-      const dataset_id = this.id;
       let display_panel = this;
       $('#modals_c div.modal-display').click(function(event) {
         $('#modals_c img.active-display').removeClass('active-display');
         const display_id = this.id.split('-').pop();
         display_panel.active_display_id = display_id;
-        $(`#dataset_${dataset_id}`).trigger('changePlot', display_id);
+        $(`#dataset_${primary_key}`).trigger('changePlot', display_id);
         $(`#modals_c img#modal-display-img-${display_id}`).addClass(
           'active-display'
         );
@@ -371,19 +399,19 @@ class DatasetPanel extends Dataset {
           this.draw_preview_images(display)
         }
       });
-      $(`#dataset_${this.id}_displays_modal`).modal({ show: true });
+      $(`#dataset_${primary_key}_displays_modal`).modal('show');
     });
   }
 
   show_error(msg) {
-    $('#' + this.id + '_dataset_status_c h2').text(msg);
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
-    $('#dataset_' + this.id + ' .plot-container').hide();
+    $('#' + this.primary_key + '_dataset_status_c h2').text(msg);
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $('#dataset_' + this.primary_key + ' .plot-container').hide();
   }
 
   show_loading() {
-    $('#' + this.id + '_dataset_status_c h2').text('Loading...');
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
+    $('#' + this.primary_key + '_dataset_status_c h2').text('Loading...');
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
 
     if (this.dtype === 'svg-expression') {
       // this.hide_Svg();
@@ -391,31 +419,31 @@ class DatasetPanel extends Dataset {
       this.dtype === 'image-static-standard' ||
       this.dtype === 'image-static'
     ) {
-      $('#dataset_' + this.id + ' .image-static-container').hide();
+      $('#dataset_' + this.primary_key + ' .image-static-container').hide();
     } else {
-      $('#dataset_' + this.id + ' .plot-container').hide();
+      $('#dataset_' + this.primary_key + ' .plot-container').hide();
     } // TODO: Hide other container plot types...
   }
 
   show_no_match() {
-    $('#' + this.id + '_dataset_status_c h2').text('Gene not found');
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
-    $('#dataset_' + this.id + ' .plot-container').hide();
+    $('#' + this.primary_key + '_dataset_status_c h2').text('Gene not found');
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $('#dataset_' + this.primary_key + ' .plot-container').hide();
   }
 
   show_plot() {
-    $('#dataset_' + this.id + ' .dataset-status-container').hide();
-    $('#dataset_' + this.id + ' .plot-container').show();
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').hide();
+    $('#dataset_' + this.primary_key + ' .plot-container').show();
   }
 
   show_no_default() {
     const lastForwardSlash = window.location.href.lastIndexOf('/');
     const baseURL = window.location.href.slice(0, lastForwardSlash);
     const link = `${baseURL}/dataset_curator.html#/dataset/${this.id}/displays`;
-    $('#' + this.id + '_dataset_status_c h2').html(
+    $('#' + this.primary_key + '_dataset_status_c h2').html(
       `<a href="${link}"> No default display for this dataset. <br> Click to curate how you\'d like it displayed</a>`
     );
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
-    $('#dataset_' + this.id + ' .plot-container').hide();
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $('#dataset_' + this.primary_key + ' .plot-container').hide();
   }
 }

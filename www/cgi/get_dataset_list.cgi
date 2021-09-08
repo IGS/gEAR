@@ -92,9 +92,6 @@ def main():
         layout_id = form.getvalue('layout_id')
         result['datasets'].extend(get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending))
 
-        # if permalink_id is not None:
-        #     result['datasets'].extend(get_permalink_dataset(cursor, permalink_id))
-
     # If scope is defined, the user is performing a search
     elif scope is not None:
         # If no search terms were defined, we want the whole list
@@ -104,7 +101,6 @@ def main():
         # Search terms defined, so search for matching datasets
         if search_terms is not None:
             # > = Include word, and increase rank if found
-            search_terms_str = '>' + search_terms.replace(' ', ' >')
             search_term_qry = '''   AND MATCH(d.title, d.ldesc, d.geo_id) AGAINST( %s )
                 ORDER BY MATCH(d.title, d.ldesc) AGAINST(%s IN BOOLEAN MODE) DESC
             '''
