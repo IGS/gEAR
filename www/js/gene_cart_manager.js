@@ -369,7 +369,8 @@ function process_search_results(data, result_label) {
 		    "</div>",
 		html: true,
 		placement: 'auto',
-        container: 'body'
+        container: 'body',
+        sanitize: false
     }).on('show.bs.popover', function(e) {
         // e.target is the popover trigger..
         gc_id_to_delete = $(e.target).val();
