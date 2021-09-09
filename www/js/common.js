@@ -10,6 +10,9 @@ const sleep = (milliseconds) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
+// Exclude SVG path elements. We generate their tooltips in main.js:select_search_result()
+var elementsWithTipsList = '[title]:not("path")';
+
 // Do any includes first
 $(document).ready(function() {
     $('#navigation_bar').load('./include/navigation_bar.html');
@@ -85,6 +88,20 @@ $(document).ready(function() {
         }
     });
 
+    /*  This was added by Dustin to handle tooltips globally but I don't think it is
+        necessary any longer.  Leaving for now */
+    /*
+    $('#body_c').on('mouseenter', elementsWithTipsList, function(e){
+        //$(this).tooltip('show');
+        
+    }).on('mouseleave', elementsWithTipsList, function(e){
+        //$(this).tooltip('hide');
+    });
+    $('#body_c').on('click', elementsWithTipsList, function(e){
+        //$(this).tooltip('hide');
+    });
+    */
+    
     check_browser();
 });
 
@@ -528,20 +545,6 @@ var getUrlParameter = function getUrlParameter(sParam) {
         }
     }
 };
-
-// Tooltips for all enabled buttons
-
-// Exclude SVG path elements. We generate their tooltips in main.js:select_search_result()
-var elementsWithTipsList = '[title]:not("path")';
-
-$('#body_c').on('mouseenter', elementsWithTipsList, function(e){
-    $(this).tooltip('show');
-}).on('mouseleave', elementsWithTipsList, function(e){
-    $(this).tooltip('hide');
-});
-$('#body_c').on('click', elementsWithTipsList, function(e){
-    $(this).tooltip('hide');
-});
 
 // error should be html message for user. Example: error = '<p>You cannot do that.</p>'
 function display_error_bar(msg, detail) {
