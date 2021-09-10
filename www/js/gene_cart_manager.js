@@ -173,10 +173,11 @@ $(document).on('click', '.download_gc', function() {
     document.body.removeChild(element);
 });
 
-$(document).on('click', '.gc_gene_list_toggle', function() {
+$(document).on('click', '.gc_unweighted_gene_list_toggle', function() {
     var gc_id = $(this).data('gc-id');
-    // see if the .gene_list is visible and toggle
     var gene_list = $("#" + gc_id + "_gene_list");
+
+    // see if the .gene_list is visible and toggle
     if (gene_list.is(":visible")) {
         gene_list.hide();
         $(this).addClass('btn-outline-secondary');
@@ -186,6 +187,38 @@ $(document).on('click', '.gc_gene_list_toggle', function() {
         $(this).removeClass('btn-outline-secondary');
         $(this).addClass('btn-secondary');
     }
+});
+
+$(document).on('click', '.gc_weighted_gene_list_toggle', function() {
+    var gc_id = $(this).data('gc-id');
+    var gene_list = $("#" + gc_id + "_gene_list");
+    var share_id = $(this).data('gc-share-id');
+
+    $("#btn_gc_" + gc_id + "_preview").hide();
+    $("#btn_gc_" + gc_id + "_loading").show();
+
+    $.ajax({
+        url : './cgi/get_weighted_gene_cart_preview.cgi',
+        type: "POST",
+        data : {'share_id': share_id},
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            process_weighted_gc_list(gc_id, data['preview_json']);
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+	        console.log('textStatus= ', textStatus);
+	        console.log('errorThrown= ', errorThrown);
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    }); //end ajax
+});
+
+$(document).on('click', '.gc_weighted_gene_list_hider', function() {
+    var gc_id = $(this).data('gc-id');
+    $("#" + gc_id + '_gene_list').hide(animation_time);
+    $("#btn_gc_" + gc_id + "_loading").hide();
+    $("#btn_gc_" + gc_id + "_preview").show();
+    $(this).hide();
 });
 
 $(document).on('click', 'button.share_gc', function() {
@@ -375,6 +408,13 @@ function process_search_results(data, result_label) {
         // e.target is the popover trigger..
         gc_id_to_delete = $(e.target).val();
     });
+}
+
+function process_weighted_gc_list(gc_id, jdata) {
+    console.log(jdata);
+    $("#" + gc_id + '_gene_list').show(animation_time);
+    $("#btn_gc_" + gc_id + "_loading").hide();
+    $("#btn_gc_" + gc_id + "_hider").show();
 }
 
 function reset_add_form() {

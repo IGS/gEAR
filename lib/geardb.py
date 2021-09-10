@@ -1690,15 +1690,15 @@ class GeneCart:
                 sfh.write(fileitem.file.read())
             
             if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
-                adata = sc.read_excel(source_file_path)
+                adata = sc.read_excel(source_file_path, index_col=0).transpose()
                 adata.write(filename=h5dest_file_path)
                 
             elif fileitem.filename.endswith('tab'):
-                adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True)
+                adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True).transpose()
                 adata.write(filename=h5dest_file_path)
 
             elif fileitem.filename.endswith('csv'):
-                adata = sc.read_csv(source_file_path, first_column_names=True)
+                adata = sc.read_csv(source_file_path, first_column_names=True).transpose()
                 adata.write(filename=h5dest_file_path)
 
             else:

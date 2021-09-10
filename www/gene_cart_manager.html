@@ -319,11 +319,21 @@
                        <div class="col-sm-3 pl-2 pt-2">
                          <div>
                            {{if gctype == "weighted-list" }}
-                              <button class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
-                                      data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> Preview</button>
+                              <button id="btn_gc_{{:id}}_preview" class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}" data-gc-share-id="{{:share_id}}"
+                                      data-placement="top" title="Show gene list"><i class="fa fa-list-ul"></i> Preview</button>
+                              
+                              <button id="btn_gc_{{:id}}_loading" class="btn btn-default btn-sm btn-outline-secondary shown_later" data-toggle="tooltip" data-gc-id="{{:id}}"
+                                      data-placement="top" title="Loading">
+                                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                  Loading
+                              </button>
+
+                              <button id="btn_gc_{{:id}}_hider" class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_hider shown_later" data-toggle="tooltip" data-gc-id="{{:id}}"
+                                      data-placement="top" title="Hide gene list"><i class="fa fa-eye-slash"></i> Hide</button>
+                              
                            {{else}}
-                              <button class="btn btn-default btn-sm btn-outline-secondary gc_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
-                                      data-placement="top" title="Show/hide gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
+                              <button class="btn btn-default btn-sm btn-outline-secondary gc_unweighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
+                                      data-placement="top" title="Show gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
                            {{/if}}
                          </div>
                        </div>
@@ -334,10 +344,14 @@
                          <span class="gc_action_note"></span>                         
                        </div>
                        <div class="col-sm-9">
-                          <ul class="gene_list shown_later" id="{{:id}}_gene_list">
-                             {{for genes}}
+                         <ul class="gene_list shown_later" id="{{:id}}_gene_list">
+                           {{if gctype == "weighted-list" }}
+                              <div>Weighted gene list preview goes here</div>
+                           {{else}}
+                              {{for genes}}
                                <li class="mt-1">{{:}}</li>
-                             {{/for}}
+                              {{/for}}
+                           {{/if}}
                           </ul>
                        </div>
                      </div> <!-- end .row -->
