@@ -31,8 +31,8 @@ def main():
     adata = sc.read_h5ad(cart_file_path, backed="r")
     adata.var_names_make_unique()
 
-    df = pd.DataFrame(adata.X, adata.obs.index, adata.var.index).head(5)
-    result['preview_json'] = df.to_json()
+    df = pd.DataFrame(adata.X[:,1:5], adata.obs.index, adata.var.index[1:5]).transpose()
+    result['preview_json'] = df.to_html(classes=['dataframe', 'weighted-list'])
     result['success'] = 1
     print(json.dumps(result))
 

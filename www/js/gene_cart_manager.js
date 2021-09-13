@@ -411,10 +411,12 @@ function process_search_results(data, result_label) {
 }
 
 function process_weighted_gc_list(gc_id, jdata) {
-    console.log(jdata);
-    $("#" + gc_id + '_gene_list').show(animation_time);
     $("#btn_gc_" + gc_id + "_loading").hide();
     $("#btn_gc_" + gc_id + "_hider").show();
+
+    // This creates a table with classes dataframe and weighted-list
+    $("#" + gc_id + '_gene_table').html(jdata);
+    $("#" + gc_id + '_gene_table').show(animation_time);
 }
 
 function reset_add_form() {

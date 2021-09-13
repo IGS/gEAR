@@ -344,20 +344,37 @@
                          <span class="gc_action_note"></span>                         
                        </div>
                        <div class="col-sm-9">
-                         <ul class="gene_list shown_later" id="{{:id}}_gene_list">
-                           {{if gctype == "weighted-list" }}
-                              <div>Weighted gene list preview goes here</div>
+                         {{if gctype == "weighted-list" }}
+                           <!--
+                           <table>
+                             <thead>
+                               <tr id="{{:id}}_weighted_gene_list_header_row"></tr>
+                             </thead>
+                             <tbody>
+                               <tr>
+                                 
+                               </tr>
+                             </tbody>
+                           </table>
+                           -->
+                           <div id="{{:id}}_gene_table">
+                             
+                           </div>
                            {{else}}
+                              <ul class="gene_list shown_later" id="{{:id}}_gene_list">
                               {{for genes}}
                                <li class="mt-1">{{:}}</li>
                               {{/for}}
+                              </ul> 
                            {{/if}}
-                          </ul>
                        </div>
                      </div> <!-- end .row -->
                    </div>
                    <hr class="gc_list_element_divider" />
                  </div> <!-- end .gc_list_element_c -->
+              </script>
+              <script id="weighted_gene_list_header_tmpl" type="text/x-jsrender">
+                <td>{{:}}</td>
               </script>
             </div> <!-- gc_list_c -->
           </div> <!-- #view_controls -->
