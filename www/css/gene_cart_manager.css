@@ -58,6 +58,9 @@ div#view_controls {
     border-bottom: 1px solid rgb(220, 220, 220);
     margin-bottom: 15px;
 }
+div.weighted_gene_list_c {
+    overflow-x: auto;
+}
 h4.expandable_control:hover {
     cursor: pointer;
 }
@@ -90,6 +93,17 @@ span#search_clear {
     font-size: 14px;
     cursor: pointer;
     color: #ccc;
+}
+table.weighted-list {
+    margin-top: 15px;
+    border: 1px solid rgb(200,200,200);
+}
+table.weighted-list td,
+table.weighted-list th {
+    padding: 2px 4px;
+}
+table.weighted-list th {
+    text-align: center;
 }
 ul.controls_filter_options {
     margin: 0;

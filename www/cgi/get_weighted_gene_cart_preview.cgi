@@ -15,6 +15,7 @@ import scanpy as sc
 import os, sys
 
 gene_cart_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'carts')
+ROWS_TO_SHOW = 5
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -31,8 +32,8 @@ def main():
     adata = sc.read_h5ad(cart_file_path, backed="r")
     adata.var_names_make_unique()
 
-    df = pd.DataFrame(adata.X[:,1:5], adata.obs.index, adata.var.index[1:5]).transpose()
-    result['preview_json'] = df.to_html(classes=['dataframe', 'weighted-list'])
+    df = pd.DataFrame(adata.X[:,0:ROWS_TO_SHOW], adata.obs.index, adata.var.index[0:ROWS_TO_SHOW]).transpose()
+    result['preview_json'] = df.to_html(classes=['weighted-list'])
     result['success'] = 1
     print(json.dumps(result))
 

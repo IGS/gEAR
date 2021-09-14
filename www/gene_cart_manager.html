@@ -343,23 +343,9 @@
                        <div class="col-sm-3 pl-4 pt-2">
                          <span class="gc_action_note"></span>                         
                        </div>
-                       <div class="col-sm-9">
+                       <div class="col-sm-9 pl-2">
                          {{if gctype == "weighted-list" }}
-                           <!--
-                           <table>
-                             <thead>
-                               <tr id="{{:id}}_weighted_gene_list_header_row"></tr>
-                             </thead>
-                             <tbody>
-                               <tr>
-                                 
-                               </tr>
-                             </tbody>
-                           </table>
-                           -->
-                           <div id="{{:id}}_gene_table">
-                             
-                           </div>
+                           <div class="weighted_gene_list_c" id="{{:id}}_gene_table"></div>
                            {{else}}
                               <ul class="gene_list shown_later" id="{{:id}}_gene_list">
                               {{for genes}}
