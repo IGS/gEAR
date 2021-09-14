@@ -218,7 +218,6 @@ $(document).on('click', '.gc_weighted_gene_list_hider', function() {
     $("#" + gc_id + '_gene_list').hide(animation_time);
     $("#btn_gc_" + gc_id + "_loading").hide();
     $("#btn_gc_" + gc_id + "_preview").show();
-    console.log("Hiding table");
     $("#" + gc_id + "_gene_table").html('');
     $(this).hide();
 });
