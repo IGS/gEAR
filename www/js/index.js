@@ -1,5 +1,5 @@
 var search_results = [];
-var layouts = []; //populated on load by loads_layouts();
+var layouts = []; //populated on load by load_layouts();
 var gene_carts = [];
 
 // key dataset_id, value = Snap paths
