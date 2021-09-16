@@ -541,3 +541,209 @@ function image_loaded(img) {
 
     return true;
 }
+
+/*
+Gene Cart and Profile tree stuff
+*/
+
+// Load all saved gene carts for the current user
+function generateGeneCartTree () {
+    const d = new $.Deferred();
+    if (typeof session_id !== 'undefined') {
+        $.ajax({
+        url: './cgi/get_user_gene_carts.cgi',
+        type: 'post',
+        data: { session_id },
+        dataType: 'json',
+        success: function (data, textStatus, jqXHR) {
+
+            if (data.gene_carts.length > 0) {
+
+                // Create JSON tree structure for the data
+                let treeData = [
+                    {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts"},
+                    {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts"},
+                ];
+                $.each(data.gene_carts, function(i, item){
+                    treeData.push({
+                        'id': item['id'],
+                        'parent': 'user_node',  // Everything private for now
+                        'text':item['label'],
+                        'type': 'gene'
+                    })
+                });
+
+                $('#gene_cart_tree').jstree({
+                    'core':{
+                        'data':treeData,
+                    },
+                    /* Plugins
+                        contextmenu - Allows right-click of node for configurable actions
+                        dnd - Allows drag-and-drop of nodes to rearrange tree
+                        search - search for matching items and expand tree if found
+                        types - Allows you to define node types with nesting rules and icons
+                    */
+                    'plugins': ["search", "types"],
+                    'types': {
+                        'default': {
+                            'icon': 'fa fa-folder-o'
+                        },
+                        'gene': {
+                            'icon': 'fa fa-random',
+                            'valid_children':[]
+                        }
+                    }
+                })
+
+                // Code from "search" section of https://www.jstree.com/plugins/
+                // Sets text input to search as tree search box.
+                let to = false;
+                $('#gene_cart_tree_q').keyup(function () {
+                    if (to) { clearTimeout(to); }
+                    to = setTimeout(function () {
+                    let v = $('#gene_cart_tree_q').val();
+                    $('#gene_cart_tree').jstree(true).search(v);
+                    }, 250);
+                });
+
+            } else {
+                alert("no gene carts");
+            }
+            d.resolve();
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            // display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+            d.fail();
+        }
+        });
+    } else {
+        d.resolve();
+    }
+    d.promise();
+}
+
+function generateProfileTree(target, domain_profiles=[], user_profiles=[]) {
+
+    // Create JSON tree structure for the data
+    let treeData = [
+        {'id':'domain_node', 'parent':'#', 'text':"Public Profiles"},
+        {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
+    ];
+
+    // user_profiles/domain_profiles properties - value, text, share_id
+
+    // Load profiles into the tree data property
+    $.each(domain_profiles, function(i, item){
+        treeData.push({
+            'id': item.value,
+            'parent': 'domain_node',
+            'text': item.text,
+            'type': 'profile',
+            'a_attr': {
+                'class': "domain_choice_c py-0 download-item js-profile-select",
+                'data-profile-label': item.text,
+                'data-profile-id': item.value,
+                'data-profile-share-id': item.share_id
+            }
+        })
+    });
+
+    $.each(user_profiles, function(i, item){
+        treeData.push({
+            'id': item.value,
+            'parent': 'user_node',
+            'text': item.text,
+            'type': 'profile',
+            'a_attr': {
+                'class': "domain_choice_c py-0 download-item js-profile-select",
+                'data-profile-label': item.text,
+                'data-profile-id': item.value,
+                'data-profile-share-id': item.share_id
+            }
+        })
+    });
+
+    // Instantiate the tree
+    $(target).jstree({
+        'core':{
+            'data':treeData,
+        },
+        'plugins': ["search", "types"],
+        'types': {
+            'default': {
+                'icon': 'fa fa-folder-o'
+            },
+            'profile': {
+                'icon': 'fa fa-address-card-o',
+                'valid_children':[]
+            }
+        }
+    })
+
+    // Sets text input to search as tree search box.
+    // Code from "search" section of https://www.jstree.com/plugins/
+    let to = false;
+    $(`${target}_q`).keyup(function () {
+        if (to) { clearTimeout(to); }
+        to = setTimeout(function () {
+        let v = $(`${target}_q`).val();
+        $(target) .jstree(true).search(v);
+        }, 250);
+    });
+}
+
+// Get genes from the selected gene cart
+$('#gene_cart_tree').on('select_node.jstree', function(e, data) {
+    // Though you can select multiple nodes in the tree, let's only select the first
+    const geneCartId = data.selected[0];  // Returns node 'id' property
+    const selectedNode = data.instance.get_node(geneCartId);
+    $('#selected_gene_cart').text(selectedNode.text);
+
+    const params = { session_id: session_id, gene_cart_id: geneCartId };
+    const d = new $.Deferred(); // Causes editable to wait until results are returned
+
+    if (typeof session_id !== 'undefined') {
+        // Get the gene cart members and populate the gene symbol search bar
+        $.ajax({
+        url: './cgi/get_gene_cart_members.cgi',
+        type: 'post',
+        data: params,
+        success: function (data, newValue, oldValue) {
+            if (data.success === 1) {
+                const geneCartSymbols = []
+                // format gene symbols into search string
+                $.each(data.gene_symbols, function (i, item) {
+                    geneCartSymbols.push(item.label);
+                });
+                //deduplicate gene cart
+                const geneCartSymbolsSet = [...new Set(geneCartSymbols)]
+
+                createGeneList(geneCartSymbolsSet);
+            } else {
+                alert("no genes in this cart");
+            }
+
+            d.resolve();
+        }
+        });
+    } else {
+        d.resolve();
+    }
+    return d.promise();
+}).jstree(true);
+
+// When a profile from the tree is selected, close the dropdown menu
+$(document).on('click', '.js-profile-select', async function () {
+    // Though you can select multiple nodes in the tree, let's only select the first
+    let selectedNode = $('#profile_tree').jstree().get_selected(true)[0];
+    $('#search_param_profile').text(selectedNode.text);
+    $('#search_param_profile').dropdown('toggle');  // Close dropdown
+
+});
+
+function createGeneList(genes) {
+    const tmpl = $.templates('#genes_tmpl');
+    const data = { genes: genes };
+    const html = tmpl.render(data);
+    $('#genes_container').html(html);
+}

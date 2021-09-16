@@ -377,6 +377,9 @@ function load_layouts() {
                 }
             });
 
+            // Generate the tree structure for the layouts
+            generateProfileTree('#profile_tree', domain_profiles, user_profiles);
+
             // pass through again and look for one set by a cookie
             if (active_layout_id == null) {
                 $.each(data['layouts'], function(i, item) {
@@ -418,14 +421,6 @@ function load_layouts() {
             if (user_profiles.length > 0) {
                 formattedData.push({text: 'Your profiles', children: user_profiles});
             }
-
-            var layout_items_tmpl = $.templates("#tmpl_intro_search_layouts");
-
-            var domain_items_html = layout_items_tmpl.render(domain_profiles);
-            $(domain_items_html).insertAfter('#intro_domains_header');
-
-            var profile_items_html = layout_items_tmpl.render(user_profiles);
-            $(profile_items_html).insertAfter('#intro_profiles_header');
 
             //Serves as source for #selected_profile editable
             layouts = formattedData;
