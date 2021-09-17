@@ -219,7 +219,7 @@ CREATE TABLE dataset_preference (
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 # Stores custom external URLs to be displayed with each dataset
-CREATE TABLE dataset_links (
+CREATE TABLE dataset_link (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
       resource                  VARCHAR(100) NOT NULL,
       label                     VARCHAR(100) NOT NULL,
