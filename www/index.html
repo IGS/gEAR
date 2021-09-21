@@ -346,9 +346,15 @@
           <div id="leftbar_main" class="col-2">
             <div id="search_container">
               <div id="search_info">
-                <div id="selected_profile_c" class="row">
+                <div id="selected_profile_c" class="row dropdown">
                   Profile:
-                  <span id="selected_profile" data-type="select" value="" data-title="Click to change"></span>
+                  <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></span>
+                  <div class="dropdown-menu" aria-labelledby="selected_profile">
+                    <form class="px-4 py-3">
+                      <input type="text" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                      <div id="selected_profile_tree"></div>
+                    </form>
+                  </div>
                 </div>
                 <div id="selected_gene_cart_c" class="row">
                   Gene Cart:
@@ -844,6 +850,7 @@
     <script>document.write('<script src="js/classes/ui-panel-dataset-collection.' + Math.floor(Math.random() * 10000000) +'.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>'); </script>
     <script>document.write('<script src="js/classes/display.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/index.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>

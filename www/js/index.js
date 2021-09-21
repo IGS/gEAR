@@ -22,6 +22,9 @@ var multigene_toggled = false;
 var annotation_panel = new FunctionalAnnotationPanel();
 var dataset_collection_panel = new DatasetCollectionPanel();
 
+var profile_tree = new ProfileTree();
+var gene_cart_tree = new GeneCartTree();
+
 var search_result_postselection_functions = [];
 
 window.onload=function() {
@@ -378,7 +381,9 @@ function load_layouts() {
             });
 
             // Generate the tree structure for the layouts
-            generateProfileTree('#profile_tree', domain_profiles, user_profiles);
+            profile_tree.domainProfiles = domain_profiles;
+            profile_tree.userProfiles = user_profiles;
+            profile_tree.generateProfileTree('#profile_tree');
 
             // pass through again and look for one set by a cookie
             if (active_layout_id == null) {
@@ -463,6 +468,8 @@ function load_gene_carts() {
                     user_gene_carts.push({value: item['id'], text: item['label'] });
 
                 });
+
+                gene_cart_tree.userGeneCarts = user_gene_carts;
 
                 formattedData = [{text: 'My gene carts', children: user_gene_carts }];
             } else {
