@@ -329,11 +329,11 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     # For scatter plots with a lot of datapoints, use WebGL rendering
     if plot_type == "scattergl":
         plot_type == "scatter"
-        plotting_args["render"] = "webgl"
+        plotting_args["render_mode"] = "webgl"
         
     # For line plots, use svg render since webgl mode does not have spline as a valid line shape (as of plotly 4.14.3)
     if plot_type == "line":
-        plotting_args["render"] = "svg"
+        plotting_args["render_mode"] = "svg"
         plotting_args["line_shape"] = "spline"
 
     # Scatter plots are the only types that let you set marker size by group
