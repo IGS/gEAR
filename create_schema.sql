@@ -221,6 +221,7 @@ CREATE TABLE dataset_preference (
 # Stores custom external URLs to be displayed with each dataset
 CREATE TABLE dataset_link (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
+      dataset_id                VARCHAR(50) NOT NULL,
       resource                  VARCHAR(100) NOT NULL,
       label                     VARCHAR(100) NOT NULL,
       url                       VARCHAR(255) NOT NULL

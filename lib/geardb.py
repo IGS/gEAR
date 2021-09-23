@@ -914,6 +914,19 @@ class Layout:
     # TODO: Need a function to take a DatasetCollection and populate
     #  information on it within a layout
 
+@dataclass
+class DatasetLink:
+    id: int
+    dataset_id: str = None
+    resource: str = None
+    label: str = None
+    url: str = None
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        return self.__dict__
 
 @dataclass
 class Dataset:
@@ -949,6 +962,7 @@ class Dataset:
     obs_count: int = None
     tags: List[str] = field(default_factory=list)
     layouts: List[Layout] = field(default_factory=list)
+    links: List[DatasetLink] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1025,6 +1039,28 @@ class Dataset:
 
         return self.layouts
 
+    def get_links(self):
+        """
+        Populates the dataset links attribute, a list of DatasetLink objects 
+        associated with this dataset.
+
+        First checks to see if self.links is empty.  If already populated, it is
+        just returned.
+        """
+        if len(self.links) < 1:
+            conn = Connection()
+            cursor = conn.get_cursor()
+
+            qry = "SELECT id, resource, label, url FROM dataset_link WHERE dataset_id = %s"
+            cursor.execute(qry, (self.id,))
+
+            for (id, resource, label, url) in cursor:
+                dsl = DatasetLink(dataset_id=self.id, resource=resource, label=label, url=url)
+                self.links.append(dsl)
+            
+            cursor.close()
+            
+        return self.links
 
     def get_shape(self, session_id=None):
         """
@@ -1173,6 +1209,8 @@ class DatasetCollection:
                     dataset.dataset_id = dataset.id
                     dataset.user_id = dataset.owner_id
                     dataset.math_format = dataset.math_default
+
+                    dataset.get_links()
 
                     self.datasets.append(dataset)
 
