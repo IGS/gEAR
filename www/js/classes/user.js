@@ -36,10 +36,9 @@ class User {
             if (! this.profile) {
                 //Get user's default profile
                 this.profile = Cookies.get('gear_default_domain');
-
-                if (! this.profile) {
-                    this.profile = "Hearing (site default)"
-                }
+            }
+            if (! this.profile) {
+                this.profile = "Hearing (site default)"
             }
 
             // Selected profile is empty if user has a domain selected as primary.

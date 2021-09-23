@@ -177,7 +177,7 @@
                       </ul>
                     </div>
                   </nav>
-                  <p class='subnote'>A profile is named group of datasets</p>
+                  <p class='subnote'>A "profile" is a named group of datasets</p>
                   <p id='intro_selected_profile_warning' class='shown_later'>
                     You have selected a profile under active development.  Some gene symbols may not
                     show results currently.
@@ -348,20 +348,26 @@
               <div id="search_info">
                 <div id="selected_profile_c" class="row dropdown">
                   Profile:
-                  <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></span>
+                  <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
                   <div class="dropdown-menu" aria-labelledby="selected_profile">
                     <form class="px-4 py-3">
                       <input type="text" id="selected_profile_tree_q" placeholder="Type to search profiles">
                       <div id="selected_profile_tree"></div>
                     </form>
                   </div>
-                </div>
-                <div id="selected_gene_cart_c" class="row">
+                </div> <!-- end selected_profile_c -->
+                <div id="selected_gene_cart_c" class="row dropdown">
                   Gene Cart:
-                  <span id="selected_gene_cart" data-type="select" value="" data-title="Click to change"></span>
-                </div>
+                  <span id="selected_gene_cart" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
+                  <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
+                    <form class="px-4 py-3">
+                      <input type="text" id="selected_gene_cart_tree_q" placeholder="Type to search profiles">
+                      <div id="selected_gene_cart_tree"></div>
+                    </form>
+                  </div>
+                </div>  <!-- end selected_gene_cart_c -->
                 <div id="selected_gene_cart_loading_c" class="row">
-                  <img id="selected_gene_car_loading" src="img/loading_search.gif" alt="loading" /> loading
+                  <img id="selected_gene_cart_loading" src="img/loading_search.gif" alt="loading" /> loading
                 </div>
               </div>
               <form id="gene_search_form">
