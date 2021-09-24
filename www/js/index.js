@@ -1,6 +1,4 @@
 var search_results = [];
-var layouts = []; //populated on load by load_layouts();
-var gene_carts = [];
 
 // key dataset_id, value = Snap paths
 var svgs = {};
@@ -423,15 +421,6 @@ function load_layouts() {
                 });
             }
 
-            var formattedData = [{text: 'Public profiles', children: domain_profiles}];
-
-            if (user_profiles.length > 0) {
-                formattedData.push({text: 'Your profiles', children: user_profiles});
-            }
-
-            //Serves as source for #selected_profile editable
-            layouts = formattedData;
-
             dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true, multigene);
 
             d.resolve();
@@ -462,7 +451,6 @@ function load_gene_carts() {
         dataType: 'json',
         success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
             var user_gene_carts = [];
-            var formattedData = [];
 
             if (data['gene_carts'].length > 0) {
                 //User has some profiles
@@ -475,13 +463,10 @@ function load_gene_carts() {
                 gene_cart_tree.userGeneCarts = user_gene_carts;
                 gene_cart_tree.generateGeneCartTree('#selected_gene_cart_tree');
 
-                formattedData = [{text: 'My gene carts', children: user_gene_carts }];
             } else {
                 $("#selected_gene_cart_c").hide();
             }
 
-            //Serves as source for #selected_gene_cart editable
-            gene_carts = formattedData;
             d.resolve();
         },
         error: function (jqXHR, textStatus, errorThrown) {
@@ -588,24 +573,6 @@ function show_search_result_info_box() {
         $('.search_result_c_DISABLED').addClass('search_result_c').removeClass('search_result_c_DISABLED');
         // $('div.search_result_c').toggleClass('search_result_c_DISABLED');
     }
-}
-
-function find_share_id_by_pk(pk) {
-    // Given the layout primary key, retrieve the share_id from the array of previously generated layouts
-
-    // layouts -> public/user profiles -> children -> indiv. layouts -> value/text/share_id
-
-    for (i = 0; i < layouts.length; i++) {
-        let found_idx = layouts[i].children.findIndex(function(v) {
-            return v.value === pk;
-        })
-        if (found_idx > 0)
-            return layouts[i].children[found_idx].share_id;
-    }
-
-    // Failsafe if primary key was not found (though this should not happen)
-    console.log("Cannot find share_id for layout with id " + pk + " in list of layouts");
-    return "undefined";
 }
 
 $('#search_results').on("click", "a", function(e) {

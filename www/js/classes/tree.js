@@ -110,7 +110,6 @@ class GeneCartTree extends Tree {
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
         this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first()
-
         this.register_events();
 
     }

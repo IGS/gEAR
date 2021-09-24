@@ -19,14 +19,21 @@ let displayId = null;
 let obsLevels = null;
 let geneSymbols = null;
 
+let geneCartTree = new GeneCartTree();
+
 // Async to ensure data is fetched before proceeding
 (async () => {
   // check if the user is already logged in
   await check_for_login();
 
+  // Load gene carts before the dropdown appears
+  loadGeneCarts();
+
   // Initialize tooltips
   $(function () {
-    $('[data-toggle="tooltip"]').tooltip();
+    $('[data-toggle="tooltip"]').tooltip({
+      trigger: "hover"
+    });
   });
 
   // Initialize datasets available to the user
@@ -336,23 +343,20 @@ function loadGeneCarts () {
       data: { session_id },
       dataType: 'json',
       success: function (data, textStatus, jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
-        const userGeneCarts = [];
+        var userGeneCarts = [];
 
         if (data.gene_carts.length > 0) {
           // User has some profiles
           $.each(data.gene_carts, function (i, item) {
             userGeneCarts.push({ value: item.id, text: item.label });
           });
+
+          // No domain gene carts yet
+          geneCartTree.userGeneCarts = userGeneCarts;
+          geneCartTree.generateGeneCartTree('#selected_gene_cart_tree');
+
           $('#gene_cart_container').show();
-          const tmpl = $.templates('#gene_cart_tmpl');
-          const html = tmpl.render(userGeneCarts);
-          $('#selected_gene_cart').html(html);
-          // Add blank option so select2 will show placeholder
-          $('#selected_gene_cart').prepend("<option value=''></option>").val('');
-          $('#selected_gene_cart').select2({
-            placeholder: 'Select a preloaded set of genes.',
-            allowClear: true
-          });
+
         } else {
           $('#gene_cart_container').hide();
         }
@@ -409,7 +413,6 @@ $('#dataset_select').change(async function () {
   // Get genes for this dataset
   geneSymbols = await fetchGeneSymbols({ datasetId, undefined });
   createGeneDropdown(geneSymbols);
-  loadGeneCarts();
   $('#genes_not_found').hide();
 
   // Get categorical observations for this dataset
@@ -421,7 +424,9 @@ $('#dataset_select').change(async function () {
 
   // Ensure genes and observation columns dropdown toooltip shows
   $(function () {
-    $('[data-toggle="tooltip"]').tooltip();
+    $('[data-toggle="tooltip"]').tooltip({
+      trigger: "hover"
+    });
   });
 
   $('#options_spinner').hide();
@@ -431,7 +436,7 @@ $('#dataset_select').change(async function () {
 
 // Load user's gene carts
 $('#selected_gene_cart').change(function () {
-  const geneCartId = $('#selected_gene_cart').select2('data')[0].id;
+  let geneCartId = $(this).val();
   const params = { session_id: session_id, gene_cart_id: geneCartId };
   const d = new $.Deferred(); // Causes editable to wait until results are returned
   // User is not logged in
@@ -439,8 +444,6 @@ $('#selected_gene_cart').change(function () {
     d.resolve();
   } else {
     // User is logged in
-    $('#search_gene_symbol').prop('disabled', true);
-    $('#selected_gene_cart_loading_c').show();
 
     // Get the gene cart members and populate the gene symbol search bar
     $.ajax({
