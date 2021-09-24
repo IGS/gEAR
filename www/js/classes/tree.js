@@ -122,6 +122,7 @@ class GeneCartTree extends Tree {
             const geneCartId = data.selected[0];  // Returns node 'id' property
             if (["user_node", "domain_node"].includes(geneCartId)) {
                 // Do not toggle if user is navigating a branch node
+                // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
             const selectedNode = data.instance.get_node(geneCartId);
