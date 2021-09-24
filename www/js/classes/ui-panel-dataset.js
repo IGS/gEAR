@@ -30,6 +30,8 @@ class DatasetPanel extends Dataset {
     this.zoomed = false;
     const single_or_multi = (this.multigene) ? "multi" : "single";
     this.primary_key = this.id + "_" + this.grid_position + "_" + single_or_multi;
+    this.links = this.links;
+    this.linksfoo = "foo";  
   }
 
   get_dataset_displays(user_id, dataset_id) {

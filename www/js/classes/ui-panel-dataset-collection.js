@@ -39,10 +39,12 @@ class DatasetCollectionPanel {
                      'layout_id': dsc_panel.layout_id },
             dataType: "json",
             success: function(data, textStatus, jqXHR) {
+                //console.log(data);
                 $.each( data['datasets'], function(i, ds) {
                     // Choose single-gene or multigene grid-width
                     let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
                     var dsp = new DatasetPanel( ds, grid_width, multigene );
+                    console.table(dsp);
                     
                     if (dsp.load_status == 'completed') {
                         // reformat the date

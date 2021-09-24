@@ -207,7 +207,9 @@ def main():
                 matching_dataset_ids.append(row[0])
 
         datasets_coll = geardb.DatasetCollection()
-        result['datasets'].extend(datasets_coll.get_by_dataset_ids(matching_dataset_ids))
+        result['datasets'].extend(
+            datasets_coll.get_by_dataset_ids(ids=matching_dataset_ids, get_links=True)
+        )
 
         # User didn't ask for a specific layout, and didn't pass search terms.  Let's check what
         #  their account says instead.

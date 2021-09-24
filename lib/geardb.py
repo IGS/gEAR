@@ -1139,7 +1139,7 @@ class DatasetCollection:
 
         self.datasets = datasets_to_keep
 
-    def get_by_dataset_ids(self, ids=None):
+    def get_by_dataset_ids(self, ids=None, get_links=False):
         conn = Connection()
         cursor = conn.get_cursor()
 
@@ -1210,7 +1210,8 @@ class DatasetCollection:
                     dataset.user_id = dataset.owner_id
                     dataset.math_format = dataset.math_default
 
-                    dataset.get_links()
+                    if get_links:
+                        dataset.get_links()
 
                     self.datasets.append(dataset)
 
