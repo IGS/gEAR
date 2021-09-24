@@ -36,7 +36,7 @@ CREATE TABLE organism (
        taxon_id       INT
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-## DO NOT change these values without making corresponding changes in the loading scripts
+## DO NOT change these values without making corresponding changes in the annotation loading scripts
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (1, 'Mouse', 'Mus', 'musculus', NULL, 10090);
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
@@ -217,6 +217,15 @@ CREATE TABLE dataset_preference (
       REFERENCES dataset_display(id)
       ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+# Stores custom external URLs to be displayed with each dataset
+CREATE TABLE dataset_link (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      dataset_id                VARCHAR(50) NOT NULL,
+      resource                  VARCHAR(100) NOT NULL,
+      label                     VARCHAR(100) NOT NULL,
+      url                       VARCHAR(255) NOT NULL
+);
 
 CREATE TABLE dataset_shares (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
