@@ -29,47 +29,48 @@ class DatasetCollectionPanel {
         this.reset();
 
         // we have to do this because 'this' gets scoped out within the AJAX call
-        var ds_panel = this;
+        var dsc_panel = this;
 
         $.ajax({
             url : './cgi/get_dataset_list.cgi',
             type: "POST",
             data : { 'session_id': session_id, 'permalink_share_id': share_id,
                      'exclude_pending': 1, 'default_domain': this.layout_label,
-                     'layout_id': ds_panel.layout_id },
+                     'layout_id': dsc_panel.layout_id },
             dataType: "json",
             success: function(data, textStatus, jqXHR) {
                 $.each( data['datasets'], function(i, ds) {
                     // Choose single-gene or multigene grid-width
                     let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
-                    var dataset = new DatasetPanel( ds, grid_width, multigene );
-                    if (dataset.load_status == 'completed') {
+                    var dsp = new DatasetPanel( ds, grid_width, multigene );
+                    
+                    if (dsp.load_status == 'completed') {
                         // reformat the date
-                        dataset.date_added = new Date(dataset.date_added);
+                        dsp.date_added = new Date(dsp.date_added);
 
                         // Insert line-breaks into dataset descriptions if it doesn't look
                         // like HTML already
-                        if (dataset.ldesc && ! /<\/?[a-z][\s\S]*>/i.test(dataset.ldesc)) {
-                            dataset.ldesc = dataset.ldesc.replace(/(\r\n|\n\r|\r|\n)/g, '<br />');
+                        if (dsp.ldesc && ! /<\/?[a-z][\s\S]*>/i.test(dsp.ldesc)) {
+                            dsp.ldesc = dsp.ldesc.replace(/(\r\n|\n\r|\r|\n)/g, '<br />');
                         }
                     }
 
-                    ds_panel.datasets.push(dataset);
+                    dsc_panel.datasets.push(dsp);
                 });
 
-                $('span#domain_choice_info_count').text(ds_panel.datasets.length);
+                $('span#domain_choice_info_count').text(dsc_panel.datasets.length);
 
                 if (share_id) {
                     const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
                     const permalinkViewHtml = permalinkViewTmpl.render(data['datasets']);
                     $("#permalink_info").html(permalinkViewHtml);
                     const listViewTmpl = $.templates("#tmpl_datasetbox");
-                    ds_panel.datasets.forEach(ds => ds.zoomed = true);
-                    const listViewHtml = listViewTmpl.render(ds_panel.datasets);
+                    dsc_panel.datasets.forEach(ds => ds.zoomed = true);
+                    const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
                     $('#dataset_grid').html(listViewHtml);
                 } else {
                     const listViewTmpl = $.templates("#tmpl_datasetbox");
-                    const listViewHtml = listViewTmpl.render(ds_panel.datasets);
+                    const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
                     $('#dataset_grid').html(listViewHtml);
                 }
             },
