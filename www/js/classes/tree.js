@@ -14,8 +14,17 @@ class Tree {
         treeDiv
     } = {}) {
         this.treeDiv = treeDiv;
-        this.tree = (this.treeDiv) ? this.treeDiv.jstree(true) : undefined;
 
+        this.setTree();
+        this.setJSON();
+    }
+
+    setJSON() {
+        this.treeJSON = (this.tree) ? this.tree.get_json() : undefined;
+    }
+
+    setTree() {
+        this.tree = (this.treeDiv) ? this.treeDiv.jstree(true) : undefined;
     }
 }
 
@@ -75,14 +84,16 @@ class GeneCartTree extends Tree {
         this.tree = $(treeDiv).jstree({
             'core':{
                 'data':treeData,
+                // so that right-click->create works
+                //"check_callback" : true
             },
+            //'plugins': ["contextmenu", "dnd", "search", "types"],
             /* Plugins
                 contextmenu - Allows right-click of node for configurable actions
                 dnd - Allows drag-and-drop of nodes to rearrange tree
                 search - search for matching items and expand tree if found
                 types - Allows you to define node types with nesting rules and icons
             */
-            'plugins': ["search", "types"],
             'types': {
                 'default': {
                     'icon': 'fa fa-folder-o'
@@ -120,7 +131,7 @@ class GeneCartTree extends Tree {
         $(this.treeDiv).on('select_node.jstree', function(e, data) {
             // Though you can select multiple nodes in the tree, let's only select the first
             const geneCartId = data.selected[0];  // Returns node 'id' property
-            if (["user_node", "domain_node"].includes(geneCartId)) {
+            if (data.node.type === "default") {
                 // Do not toggle if user is navigating a branch node
                 // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
@@ -131,6 +142,14 @@ class GeneCartTree extends Tree {
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
             $(self.dropdownToggleElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
         }).jstree(true);
+    }
+
+    loadFromDB() {
+        //pass
+    }
+
+    saveToDB() {
+        //pass
     }
 }
 
@@ -196,8 +215,10 @@ class ProfileTree extends Tree {
         this.tree = $(treeDiv).jstree({
             'core':{
                 'data':treeData,
+                // so that right-click->create works
+                //"check_callback" : true
             },
-            'plugins': ["search", "types"],
+            //'plugins': ["contextmenu", "dnd", "search", "types"],
             'types': {
                 'default': {
                     'icon': 'fa fa-folder-o'
@@ -238,8 +259,9 @@ class ProfileTree extends Tree {
 
             // Though you can select multiple nodes in the tree, let's only select the first
             const layoutId = data.selected[0];  // Returns node 'id' property
-            if (["user_node", "domain_node"].includes(layoutId)) {
+            if (data.node.type === "default") {
                 // Do not toggle if user is navigating a branch node
+                // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
             // The dropdown toggle text/val change happens in DatasetCollectionPanel->set_layouts() for the index page
@@ -250,6 +272,14 @@ class ProfileTree extends Tree {
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
 
         }).jstree(true);
+    }
+
+    loadFromDB() {
+        //pass
+    }
+
+    saveToDB() {
+        //pass
     }
 
 }
