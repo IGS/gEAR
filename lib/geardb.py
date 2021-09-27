@@ -1055,6 +1055,7 @@ class Dataset:
             cursor.execute(qry, (self.id,))
 
             for (id, resource, label, url) in cursor:
+                print("DEBUG: a link got added", file=sys.stderr)
                 dsl = DatasetLink(dataset_id=self.id, resource=resource, label=label, url=url)
                 self.links.append(dsl)
             
