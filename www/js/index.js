@@ -14,8 +14,8 @@ var SELECTED_GENE = null;
 var share_id = null; //from permalink - dataset share ID
 var layout_id = null; //from permalink - profile grid layout ID
 var permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
-var multigene = false;  // If true, multigene toggle is set
-var multigene_toggled = false;
+var multigene = false;  // Is this a multigene search?
+var multigene_toggled = false;  // If true, then layouts will be reloaded, toggle between single-gene and multigene views
 
 var annotation_panel = new FunctionalAnnotationPanel();
 var dataset_collection_panel = new DatasetCollectionPanel();
@@ -116,15 +116,16 @@ window.onload=function() {
     });
 
     // If toggle is clicked, change some display things
-    // TODO: Ideally would love to change after search is clicked
     $('#multigene_plots_input').change(function() {
         multigene_toggled = true;
         if ( $('#multigene_plots_input').prop("checked") ) {
             // MG enabled
-            $('#search_results_c').hide();
+            $('#search_results_scrollbox').hide();
+            $('#multigene_search_indicator').show();
         } else {
             // MG disabled
-            $('#search_results_c').show();
+            $('#search_results_scrollbox').show();
+            $('#multigene_search_indicator').hide();
         }
     });
 
