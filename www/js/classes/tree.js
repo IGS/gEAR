@@ -76,7 +76,6 @@ class GeneCartTree extends Tree {
                 'type': 'gene',
                 'a_attr': {
                     'class': "py-0 download-item",
-
                 }
             })
         });
