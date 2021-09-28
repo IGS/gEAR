@@ -8,26 +8,24 @@ Root password is set in the docker-compose.yml file.
 
 ## Pull some backup data into the mysql container (first-time only)
 
-This step only needs to be performed the first time you create the MySQL container on your computer with "docker-compose".  If you have a "mysql" directory already present within this "docker" directory, then this step is most likely not necessary.  This is because in the docker-compose.yml file, the "mysql" service mounts a volume from "/var/lib/mysql" in the container to "./mysql" (assuming the `docker-compsoe up -d` command was run in the same directory as this file).
+This step only needs to be performed the first time you create the MySQL container on your computer with "docker-compose".  If you have a "mysql" directory already present within this "docker" directory, then this step is most likely not necessary.  This is because in the docker-compose.yml file, the "mysql" service mounts a volume from "/var/lib/mysql" in the container to "./mysql" (assuming the `docker-compose up -d` command was run in the same directory as this file).
 
 To pull backup file to your host machine, do:
-`gcloud compute scp gear-devel:/home/jorvis/gear_portal.20191106.sql.gz .`
+`gcloud compute scp <server>:<db_dump.sql> .`
 
 This file, when gunzipped will be about 1.6 Gb.  After this, we copy the file into the Docker "mysql" container.
 
-1. Uncompress the file with `gunzip gear_portal.20191106.sql.gz`
+1. Uncompress the file with `gunzip` if you need to.
 2. Figure out the container ID with `docker ps`.  It should be the first field in the result row where the "IMAGE" is "mysql:5.7"
-3. Run `docker cp ./gear_portal.20191106.sql <container_id>:/tmp/gear_portal.20191106.sql
+3. Run `docker cp ./<db_dump.sql> <container_id>:/tmp/<db_dump.sql>`
 
 NOTE: Change the SQL filename to whatever database dump you are using.
 
 ## Set up the mysql database (first-time only)
 
-1. Do `docker-compose exec mysql /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD> gear\_portal` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
-2. In the mysql client, run `source /tmp/gear\_portal.20191106.sql` to load the SQL dump backup file.
+1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD> gear\_portal` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
+2. In the mysql client, run `source <db_dump.sql>` to load the SQL dump backup file.
 3. After that finishes run `grant select, insert, update, drop, delete on gear\_portal.\* to gear@localhost identified by 'gearadmin';` to set up privileges for the "gear" user.
-4. Run `mysql> create fulltext index text_with_geo_pubmed_idx on dataset(title, ldesc, geo_id, pubmed_id);`
-
 
 ## Issues
 
