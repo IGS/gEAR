@@ -87,6 +87,7 @@ class GeneCartTree extends Tree {
                 // so that right-click->create works
                 //"check_callback" : true
             },
+            'plugins': ["search", "types"],
             //'plugins': ["contextmenu", "dnd", "search", "types"],
             /* Plugins
                 contextmenu - Allows right-click of node for configurable actions
@@ -218,7 +219,9 @@ class ProfileTree extends Tree {
                 // so that right-click->create works
                 //"check_callback" : true
             },
-            //'plugins': ["contextmenu", "dnd", "search", "types"],
+            'plugins': ["search", "types"],
+            // 'plugins': ["contextmenu", "dnd", "search", "types"],
+
             'types': {
                 'default': {
                     'icon': 'fa fa-folder-o'
