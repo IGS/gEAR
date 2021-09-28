@@ -251,11 +251,13 @@ function createVolcanoDropdowns (obsLevels) {
   const html = tmpl.render(obsLevels);
   $('#volcano_condition1').html(html);
   $('#volcano_condition1').select2({
-    placeholder: 'Select the first condition to compare with.'
+    placeholder: 'Select the first condition to compare with.',
+    width: '25%'
   });
   $('#volcano_condition2').html(html);
   $('#volcano_condition2').select2({
-    placeholder: 'Select the second condition to compare with.'
+    placeholder: 'Select the second condition to compare with.',
+    width: '25%'
   });
 }
 
