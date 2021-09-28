@@ -37,7 +37,7 @@ def main():
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
     result = {'success': 0, 'n_obs': None, 'n_genes': None}
-    
+
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id, session_id=session_id )
 
     filter_cells_lt_n_genes = form.getvalue('filter_cells_lt_n_genes')
@@ -62,18 +62,29 @@ def main():
     adata.var_names_make_unique()
     adata.obs_names_make_unique()
 
+    was_filtered = False
+
     # API documentation states one filter param per call
     if filter_genes_lt_n_cells:
+        was_filtered = True
         sc.pp.filter_genes(adata, min_cells=int(filter_genes_lt_n_cells))
 
     if filter_genes_gt_n_cells:
+        was_filtered = True
         sc.pp.filter_genes(adata, max_cells=int(filter_genes_gt_n_cells))
-        
+
     if filter_cells_lt_n_genes:
+        was_filtered = True
         sc.pp.filter_cells(adata, min_genes=int(filter_cells_lt_n_genes))
 
     if filter_cells_gt_n_genes:
+        was_filtered = True
         sc.pp.filter_cells(adata, max_genes=int(filter_cells_gt_n_genes))
+
+    # If no filters were selected, use initial dataset.
+    # Filter to get the n_cells and n_genes obs columns
+    if not was_filtered:
+        sc.pp.filter_cells(adata, min_genes=0)
 
     adata.write(dest_datafile_path)
     (n_obs, n_genes) = adata.shape
@@ -85,7 +96,7 @@ def main():
         result['success'] = 1
     except:
         result['success'] = 0
-        
+
     result['n_obs'] = n_obs
     result['n_genes'] = n_genes
 
