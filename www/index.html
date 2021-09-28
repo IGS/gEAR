@@ -36,6 +36,10 @@
       href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
       rel="stylesheet"
     />
+
+    <!-- Interactive tree structure -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+
     <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
     <script>document.write('<link rel="stylesheet" href="css/index.' +  Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
     <script>document.write('<link rel="stylesheet" href="css/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
@@ -152,30 +156,28 @@
                     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
                       <span class="navbar-toggler-icon"></span>
                     </button>
+
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
                       <ul class="navbar-nav">
                         <li class="nav-item active">
                           <a class="nav-link" href="#">Profile</a>
                         </li>
+
                         <li class="nav-item dropdown">
                           <a class="nav-link dropdown-toggle" href="#" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             Choose one
                           </a>
                           <div class="dropdown-menu" aria-labelledby="search_param_profile">
-                            <h6 class="dropdown-header" id="intro_domains_header">Profiles</h6>
-                            <!-- domains inserted here later -->
-                            <div class="dropdown-divider"></div>
-                            <h6  class="dropdown-header" id="intro_profiles_header">Your profiles</h6>
-                            <!-- user profiles inserted here later -->
+                            <form class="px-4 py-3">
+                              <input type="text" id="profile_tree_q" placeholder="Type to search profiles">
+                              <div id="profile_tree"></div>
+                            </form>
                           </div>
-                          <script id="tmpl_intro_search_layouts" type="text/x-jsrender">
-                            <a class="dropdown-item domain_choice_c py-0" href="#" data-profile-label="{{:text}}" data-profile-id="{{:value}}"  data-profile-share-id="{{:share_id}}">{{:text}}</a>
-                          </script>
                         </li>
                       </ul>
                     </div>
                   </nav>
-                  <p class='subnote'>A profile is named group of datasets</p>
+                  <p class='subnote'>A "profile" is a named group of datasets</p>
                   <p id='intro_selected_profile_warning' class='shown_later'>
                     You have selected a profile under active development.  Some gene symbols may not
                     show results currently.
@@ -344,16 +346,28 @@
           <div id="leftbar_main" class="col-2">
             <div id="search_container">
               <div id="search_info">
-                <div id="selected_profile_c" class="row">
+                <div id="selected_profile_c" class="row dropdown">
                   Profile:
-                  <span id="selected_profile" data-type="select" value="" data-title="Click to change"></span>
-                </div>
-                <div id="selected_gene_cart_c" class="row">
+                  <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
+                  <div class="dropdown-menu" aria-labelledby="selected_profile">
+                    <form class="px-4 py-3">
+                      <input type="text" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                      <div id="selected_profile_tree"></div>
+                    </form>
+                  </div>
+                </div> <!-- end selected_profile_c -->
+                <div id="selected_gene_cart_c" class="row dropdown">
                   Gene Cart:
-                  <span id="selected_gene_cart" data-type="select" value="" data-title="Click to change"></span>
-                </div>
+                  <span id="selected_gene_cart" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
+                  <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
+                    <form class="px-4 py-3">
+                      <input type="text" id="selected_gene_cart_tree_q" placeholder="Type to search profiles">
+                      <div id="selected_gene_cart_tree"></div>
+                    </form>
+                  </div>
+                </div>  <!-- end selected_gene_cart_c -->
                 <div id="selected_gene_cart_loading_c" class="row">
-                  <img id="selected_gene_car_loading" src="img/loading_search.gif" alt="loading" /> loading
+                  <img id="selected_gene_cart_loading" src="img/loading_search.gif" alt="loading" /> loading
                 </div>
               </div>
               <form id="gene_search_form">
@@ -832,6 +846,9 @@
     <!-- Plotly JS-->
     <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
 
+    <!-- JStree -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/classes/dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/ui-panel-annotation.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
@@ -839,6 +856,7 @@
     <script>document.write('<script src="js/classes/ui-panel-dataset-collection.' + Math.floor(Math.random() * 10000000) +'.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>'); </script>
     <script>document.write('<script src="js/classes/display.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/index.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
