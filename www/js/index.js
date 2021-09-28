@@ -198,6 +198,11 @@ window.onload=function() {
         $("#tip").css("left", xpos + "px" );
         $("#tip").css("top" , ypos + "px" );
     });
+
+    if (multigene) {
+        $('#multigene_plots_input').change();   // Set so the correct displays show on page load
+
+    }
 };
 
 function get_index_info() {
