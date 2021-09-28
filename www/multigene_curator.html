@@ -352,7 +352,11 @@
             <img id='modal-display-{{:id}}-loading' class='card-img-top modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
             <img id='modal-display-img-{{:id}}' class='card-img-top'/>
             <div class="card-footer bg-transparent">
-              <button type="button" class="badge btn-purple btn js-save-default" id="{{:id}}_save_default">Make Default</button>
+              {{if is_default }}
+              <button type="button" class="badge btn-secondary btn js-current-default" disabled id="{{:id}}_default">Default</button>
+              {{else}}
+              <button type="button" class="badge btn-purple btn js-save-default" id="{{:id}}_default">Make Default</button>
+              {{/if}}
               <button type="button" class="badge btn-purple btn js-load-display" id="{{:id}}_load">Edit</button>
               <button type="button" class="badge badge-danger btn js-delete-display" id="{{:id}}_delete">Delete</button>
             </div>
@@ -371,7 +375,11 @@
               <img id='modal-display-{{:id}}-loading' class='card-img-top modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
               <img id='modal-display-img-{{:id}}' class='card-img-top'/>
               <div class="card-footer bg-transparent">
-                <button type="button" class="badge btn js-save-default" id="{{:id}}_save_default">Make Default</button>
+                {{if is_default }}
+                <button type="button" class="badge btn-secondary btn js-current-default" disabled id="{{:id}}_default">Default</button>
+                {{else}}
+                <button type="button" class="badge btn-purple btn js-save-default" id="{{:id}}_default">Make Default</button>
+                {{/if}}
                 <button type="button" class="badge btn-purple btn js-load-display" id="{{:id}}_load">Edit</button>
               </div>
             </div>

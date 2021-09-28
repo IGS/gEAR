@@ -15,6 +15,7 @@ let supplementaryGenesFilters = [];
 let plotConfig = {};
 
 let datasetId = null;
+let defaultDisplayId = null;
 let displayId = null;
 let obsLevels = null;
 let geneSymbols = null;
@@ -274,7 +275,7 @@ function curateObservations (obsLevels) {
 }
 
 // Generate a list of saved plot displays the user has access in viewing.
-async function loadSavedDisplays (datasetId) {
+async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
   const datasetData = await fetchDatasetInfo(datasetId);
   const { owner_id: ownerId } = datasetData;
   const userDisplays = await fetchUserDisplays(CURRENT_USER.id, datasetId);
@@ -284,12 +285,19 @@ async function loadSavedDisplays (datasetId) {
   const mgUserDisplays = userDisplays.filter(d => ['heatmap', 'mg_violin', 'volcano'].includes(d.plot_type));
   const mgOwnerDisplays = ownerDisplays.filter(d => ['heatmap', 'mg_violin', 'volcano'].includes(d.plot_type));
 
-  // TODO: Determine default display and hide "make_default" button
-
+  //
   mgUserDisplays.forEach(display => {
+    display.is_default = false;
+    if (defaultDisplayId && display.id === defaultDisplayId ) {
+      display.is_default = true;
+    }
     drawPreviewImage(display);
   });
   mgOwnerDisplays.forEach(display => {
+    display.is_default = false;
+    if (defaultDisplayId && display.id === defaultDisplayId ) {
+      display.is_default = true;
+    }
     drawPreviewImage(display);
   });
 
@@ -399,12 +407,28 @@ function fetchOwnerDisplays (ownerId, datasetId) {
   });
 }
 
+function getDefaultDisplay (datasetId) {
+  return $.ajax({
+    url: './cgi/get_default_display.cgi',
+    type: 'POST',
+    data: {
+      user_id: CURRENT_USER.id,
+      dataset_id: datasetId,
+      is_multigene: 1
+    },
+    dataType: 'json'
+  });
+}
+
 $('#dataset_select').change(async function () {
   datasetId = $('#dataset_select').select2('data')[0].id;
   displayId = null;
 
+  // Obtain default display ID for this dataset
+  const {default_display_id: defaultDisplayId} = await getDefaultDisplay(datasetId);
+
   // Populate saved displays modal
-  loadSavedDisplays(datasetId);
+  loadSavedDisplays(datasetId, defaultDisplayId);
 
   $('#load_saved_plots').show();
   $('#plot_type_container').show();
@@ -817,7 +841,7 @@ $(document).on('click', '.js-save-default', async function () {
   $('#saved_default_confirmation').removeClass('alert-danger');
 
   const id = this.id;
-  const displayId = id.replace('_save_default', '');
+  const displayId = id.replace('_default', '');
 
   const res = await $.ajax({
     url: './cgi/save_default_display.cgi',
@@ -830,6 +854,22 @@ $(document).on('click', '.js-save-default', async function () {
     },
     dataType: 'json'
   });
+
+  // Swap current default buttons
+  $('.js-current-default')
+    .prop('disabled', false)
+    .addClass('js-save-default')
+    .addClass('btn-purple')
+    .removeClass('btn-secondary')
+    .removeClass('js-current-default')
+    .text("Make Default")
+  $(`#${displayId}_default`)
+    .prop('disabled', true)
+    .removeClass('js-save-default')
+    .removeClass('btn-purple')
+    .addClass('btn-secondary')
+    .addClass('js-current-default')
+    .text("Default")
 
   $('#saved_default_confirmation').show();
   if (res && res.success) {
