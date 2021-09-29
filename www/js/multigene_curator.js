@@ -538,7 +538,7 @@ $('#plot_type_select').change(function () {
       $('#cluster_cols_checkbox_container').hide();
       $('#obs_groupby_container').show();
       $('#volcano_options_container').hide();
-      $('adjusted_pvals_checkbox_container').hide();
+      $('#adjusted_pvals_checkbox_container').hide();
       $('#annot_nonsig_checkbox_container').hide();
       break;
     default:
@@ -548,7 +548,7 @@ $('#plot_type_select').change(function () {
       $('.js-obs-groupby').prop('checked', false);
       $('#obs_groupby_container').hide();
       $('#volcano_options_container').show();
-      $('adjusted_pvals_checkbox_container').show();
+      $('#adjusted_pvals_checkbox_container').show();
       $('#annot_nonsig_checkbox_container').show();
   }
 });
