@@ -31,7 +31,7 @@ class DatasetPanel extends Dataset {
     const single_or_multi = (this.multigene) ? "multi" : "single";
     this.primary_key = this.id + "_" + this.grid_position + "_" + single_or_multi;
     //this.links = args.links;
-    //this.linksfoo = "foo";  
+    //this.linksfoo = "foo";
   }
 
   get_dataset_displays(user_id, dataset_id) {
@@ -226,7 +226,7 @@ class DatasetPanel extends Dataset {
 
     this.show_loading();
     if (this.multigene) {
-      this.draw_chart_mg(this.gene_symbol, display_id);
+      this.draw_mg_chart(this.gene_symbol, display_id);
     } else {
       this.draw_chart(this.gene_symbol, display_id);
     }
