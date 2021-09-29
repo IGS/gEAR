@@ -82,10 +82,7 @@ window.onload=function() {
 
         if (multigene) {
             set_multigene_plots('on');
-            // Show multigene-specific search stuff w/o changing '#multigene_plots_input'
-            // (which would cause a toggle and potentially load_frames again)
-            $('#search_results_scrollbox').hide();
-            $('#multigene_search_indicator').show();
+            dataset_collection_panel.load_frames({multigene});
         }
 
         sleep(1000).then(() => {
@@ -202,6 +199,11 @@ window.onload=function() {
         $("#tip").css("left", xpos + "px" );
         $("#tip").css("top" , ypos + "px" );
     });
+
+    if (multigene) {
+        // Change search results to show multigene version
+        $('#multigene_plots_input').change();
+    }
 };
 
 function get_index_info() {
