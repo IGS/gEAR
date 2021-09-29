@@ -226,7 +226,7 @@ class DatasetPanel extends Dataset {
 
     this.show_loading();
     if (this.multigene) {
-      this.draw_mg_chart(this.gene_symbol, display_id);
+      this.draw_mg_chart(this.gene_symbols, display_id);
     } else {
       this.draw_chart(this.gene_symbol, display_id);
     }
