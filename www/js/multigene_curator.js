@@ -456,7 +456,7 @@ $('#dataset_select').change(async function () {
 
   $('#options_spinner').hide();
   $('#update_plot').show();
-  $('#reset_obs').show();
+  $('#reset_opts').show();
 });
 
 // Load user's gene carts
@@ -525,6 +525,7 @@ $('#cluster_cols').change(function () {
 // Some options are specific to certain plot types
 $('#plot_type_select').change(function () {
   $('#advanced_options_container').show()
+  $('#reset_opts').click()  // Reset all options
   switch ($('#plot_type_select').val()) {
     case 'heatmap':
       $('#cluster_cols_checkbox_container').show();
@@ -704,7 +705,7 @@ $(document).on('click', 'g.y5tick text a', async function () {
 });
 
 // Reset observation filters choices to be empty
-$(document).on('click', '#reset_obs', async function () {
+$(document).on('click', '#reset_opts', async function () {
   // Get categorical observations for this dataset
   const data = await fetchH5adInfo({ datasetId, undefined });
   obsLevels = curateObservations(data.obs_levels);
