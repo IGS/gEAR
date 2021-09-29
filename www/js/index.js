@@ -82,6 +82,10 @@ window.onload=function() {
 
         if (multigene) {
             set_multigene_plots('on');
+            // Show multigene-specific search stuff w/o changing '#multigene_plots_input'
+            // (which would cause a toggle and potentially load_frames again)
+            $('#search_results_scrollbox').hide();
+            $('#multigene_search_indicator').show();
         }
 
         sleep(1000).then(() => {
@@ -198,11 +202,6 @@ window.onload=function() {
         $("#tip").css("left", xpos + "px" );
         $("#tip").css("top" , ypos + "px" );
     });
-
-    if (multigene) {
-        $('#multigene_plots_input').change();   // Set so the correct displays show on page load
-
-    }
 };
 
 function get_index_info() {
