@@ -246,7 +246,6 @@ function createObsDropdowns (obsLevels) {
 }
 
 // Render the volcano condition selection dropdown
-// TODO: Dropdowns are condensed unless "reset observations" is clicked.... why?
 function createVolcanoDropdowns (obsLevels) {
   const tmpl = $.templates('#volcano_options_tmpl');
   const html = tmpl.render(obsLevels);
@@ -531,7 +530,8 @@ $('#plot_type_select').change(function () {
       $('#cluster_cols_checkbox_container').show();
       $('#obs_groupby_container').show();
       $('#volcano_options_container').hide();
-      $('adjusted_pvals_checkbox_container').hide();
+      $('#adjusted_pvals_checkbox_container').hide();
+      $('#annot_nonsig_checkbox_container').hide();
       break;
     case 'mg_violin':
       $('#cluster_cols').prop('checked', false);
@@ -539,6 +539,7 @@ $('#plot_type_select').change(function () {
       $('#obs_groupby_container').show();
       $('#volcano_options_container').hide();
       $('adjusted_pvals_checkbox_container').hide();
+      $('#annot_nonsig_checkbox_container').hide();
       break;
     default:
       // volcano
@@ -548,6 +549,7 @@ $('#plot_type_select').change(function () {
       $('#obs_groupby_container').hide();
       $('#volcano_options_container').show();
       $('adjusted_pvals_checkbox_container').show();
+      $('#annot_nonsig_checkbox_container').show();
   }
 });
 
