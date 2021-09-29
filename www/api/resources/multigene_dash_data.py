@@ -553,7 +553,7 @@ class MultigeneDashData(Resource):
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
             df = selected.to_df()
-            filter_indexes = build_obs_group_indexes(selected.obs, filters)
+            #filter_indexes = build_obs_group_indexes(selected.obs, filters)
 
             if groupby_filter:
                 df[groupby_filter] = selected.obs[groupby_filter]
@@ -566,6 +566,13 @@ class MultigeneDashData(Resource):
 
         elif plot_type == "mg_violin":
             df = selected.to_df()
+
+            if not groupby_filter:
+                return {
+                    'success': -1,
+                    'message': "'Groupby filter' option required for violin plots."
+                }
+
             df[groupby_filter] = selected.obs[groupby_filter]
 
             # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings

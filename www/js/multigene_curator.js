@@ -39,13 +39,15 @@ let geneCartTree = new GeneCartTree();
 
   // Initialize datasets available to the user
   $('#dataset_select').select2({
-    placeholder: 'To search, click to select or start typing a dataset name'
+    placeholder: 'To search, click to select or start typing a dataset name',
+    width: 'resolve'
   });
   await populateDatasets();
 
   // Initialize plot types
   $('#plot_type_select').select2({
-    placeholder: 'Choose how to plot'
+    placeholder: 'Choose how to plot',
+    width: 'resolve'
   });
 
   // Hide further configs until a dataset is chosen.
@@ -223,7 +225,8 @@ function createGeneDropdown (genes) {
   $('#gene_dropdown_container').html(html);
   $('#gene_dropdown').select2({
     placeholder: 'To search, click to select or start typing some gene names',
-    allowClear: true
+    allowClear: true,
+    width: 'resolve'
   });
 }
 
@@ -241,7 +244,8 @@ function createObsDropdowns (obsLevels) {
   $('#obs_dropdowns_container').html(html);
   $('select.js-obs-levels').select2({
     placeholder: 'Start typing to filter categories. Click "All" to use all categories',
-    allowClear: true
+    allowClear: true,
+    width: 'resolve'
   });
 }
 
@@ -524,7 +528,7 @@ $('#cluster_cols').change(function () {
 
 // Some options are specific to certain plot types
 $('#plot_type_select').change(function () {
-  $('#advanced_options_container').show()
+  $('#options_container').show()
   $('#reset_opts').click()  // Reset all options
   switch ($('#plot_type_select').val()) {
     case 'heatmap':
@@ -600,6 +604,11 @@ $(document).on('click', '#update_plot', async function () {
 
   if (!(plotType === 'volcano' || genesFilters.length)) {
     window.alert('At least one gene must be provided.');
+    return;
+  }
+
+  if (plotType === 'mg_violin' && !groupbyFilter) {
+    window.alert("Must select a groupby filter for violin plots.");
     return;
   }
 
@@ -692,6 +701,11 @@ $(document).on('click', 'g.y5tick text a', async function () {
 
     // Draw the supplementary chart
     const groupbyFilter = $('input[name="obs_groupby"]:checked').val();
+
+    if (!groupbyFilter) {
+      window.alert("Must select a groupby filter for violin plots.");
+    }
+
     plotConfig = {
       groupby_filter: groupbyFilter,
       plot_type: 'mg_violin',
