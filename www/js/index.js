@@ -389,8 +389,8 @@ function load_layouts() {
             // Generate the tree structure for the layouts
             profile_tree.domainProfiles = domain_profiles;
             profile_tree.userProfiles = user_profiles;
-            profile_tree.generateProfileTree('#profile_tree');
-            profile_tree.generateProfileTree('#selected_profile_tree');
+            profile_tree.generateTree('#profile_tree');
+            profile_tree.generateTree('#selected_profile_tree');
 
             // pass through again and look for one set by a cookie
             if (active_layout_id == null) {
@@ -468,7 +468,7 @@ function load_gene_carts() {
 
                 // No domain gene carts yet
                 gene_cart_tree.userGeneCarts = user_gene_carts;
-                gene_cart_tree.generateGeneCartTree('#selected_gene_cart_tree');
+                gene_cart_tree.generateTree('#selected_gene_cart_tree');
 
             } else {
                 $("#selected_gene_cart_c").hide();

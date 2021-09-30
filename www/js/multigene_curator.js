@@ -366,7 +366,7 @@ function loadGeneCarts () {
 
           // No domain gene carts yet
           geneCartTree.userGeneCarts = userGeneCarts;
-          geneCartTree.generateGeneCartTree('#selected_gene_cart_tree');
+          geneCartTree.generateTree('#selected_gene_cart_tree');
 
           $('#gene_cart_container').show();
 

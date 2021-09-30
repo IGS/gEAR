@@ -26,6 +26,13 @@ class Tree {
     setTree() {
         this.tree = (this.treeDiv) ? this.treeDiv.jstree(true) : undefined;
     }
+
+    // Update the contents of a JSTree object with new data.
+    updateTreeData(newData) {
+        this.tree.settings.core.data = newData;
+        this.tree.refresh();
+    }
+
 }
 
 /*
@@ -46,10 +53,7 @@ class GeneCartTree extends Tree {
 
     }
 
-    // Load all saved gene carts for the current user
-    // TODO: Change based on gene cart manager page code
-    generateGeneCartTree (treeDiv) {
-
+    generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
             {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts"},
@@ -79,10 +83,18 @@ class GeneCartTree extends Tree {
                 }
             })
         });
+        this.treeData = treeData;
+    }
+
+    // Load all saved gene carts for the current user
+    // TODO: Change based on gene cart manager page code
+    generateTree (treeDiv) {
+
+        this.generateTreeData();
 
         this.tree = $(treeDiv).jstree({
             'core':{
-                'data':treeData,
+                'data':this.treeData,
                 // so that right-click->create works
                 //"check_callback" : true
             },
@@ -170,8 +182,7 @@ class ProfileTree extends Tree {
         this.userProfiles = (userProfiles) ? userProfiles : [];
     }
 
-    generateProfileTree(treeDiv) {
-
+    generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
             {'id':'domain_node', 'parent':'#', 'text':"Public Profiles"},
@@ -210,11 +221,17 @@ class ProfileTree extends Tree {
                 }
             })
         });
+        this.treeData = treeData;
+    }
+
+    generateTree(treeDiv) {
+
+        this.generateTreeData();
 
         // Instantiate the tree
         this.tree = $(treeDiv).jstree({
             'core':{
-                'data':treeData,
+                'data':this.treeData,
                 // so that right-click->create works
                 //"check_callback" : true
             },
