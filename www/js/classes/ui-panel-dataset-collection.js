@@ -44,6 +44,9 @@ class DatasetCollectionPanel {
                     let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
                     var dsp = new DatasetPanel( ds, grid_width, multigene );
 
+                    console.log("dsp:");
+                    console.log(dsp);
+
                     if (dsp.load_status == 'completed') {
                         // reformat the date
                         dsp.date_added = new Date(dsp.date_added);

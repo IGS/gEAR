@@ -58,6 +58,7 @@ def main():
     sort_order = form.getvalue('order')
     default_domain_label = form.getvalue('default_domain')
 
+    layout_id = None
     only_types = None
 
     if only_types_str:
@@ -77,7 +78,6 @@ def main():
     # only used to non-redundify
     dataset_ids = list()
 
-    layout_id = None
     join_type = 'AND'
 
     # Permalinks only. Get dataset info and return it
@@ -90,7 +90,12 @@ def main():
      # Was a specific layout ID passed?
     if form.getvalue('layout_id') is not None:
         layout_id = form.getvalue('layout_id')
-        result['datasets'].extend(get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending))
+        layout = geardb.Layout(id=layout_id)
+        layout.load()
+        
+        dsc = geardb.DatasetCollection()
+        dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
+        result['datasets'].extend(dsc.datasets)
 
     # If scope is defined, the user is performing a search
     elif scope is not None:
@@ -211,8 +216,6 @@ def main():
             datasets_coll.get_by_dataset_ids(ids=matching_dataset_ids, get_links=True)
         )
 
-        # User didn't ask for a specific layout, and didn't pass search terms.  Let's check what
-        #  their account says instead.
     else:
         # Do they have a current layout saved?
         saved_layout_query = "SELECT id FROM layout WHERE user_id = %s AND is_current = 1"
@@ -226,9 +229,13 @@ def main():
             for dataset in get_default_layout(cursor, default_domain_label):
                 result['datasets'].append(dataset)
                 dataset_ids.append(dataset['dataset_id'])
-
         else:
-            result['datasets'].extend(get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending))
+            layout = geardb.Layout(id=layout_id)
+            layout.load()
+            
+            dsc = geardb.DatasetCollection()
+            dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
+            result['datasets'].extend(dsc.datasets)
 
     cursor.close()
     cnx.close()
@@ -319,96 +326,6 @@ def get_users_datasets(cursor, user_id):
                 'load_status': row[13],
                 'plot_format': row[14],
                 'tags': tag_list
-            })
-
-    return datasets
-
-def get_layout_by_id(cursor, current_user_id, layout_id, exclude_pending):
-    qry = """
-       SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width, lm.math_preference,
-              d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
-              u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
-              ds.is_allowed, d.marked_for_removal, d.date_added, d.load_status,
-              IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags, d.has_h5ad,
-              d.plot_default, lm.plot_preference, o.id
-         FROM layout_members lm
-              JOIN layout l ON lm.layout_id=l.id
-              JOIN dataset d ON lm.dataset_id=d.id
-              JOIN organism o ON d.organism_id=o.id
-              JOIN guser u ON d.owner_id=u.id
-              LEFT JOIN dataset_shares ds ON d.id=ds.dataset_id
-                  AND ds.user_id = %s
-              LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
-              LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
-        WHERE l.id = %s
-     GROUP BY d.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width, lm.math_preference,
-            d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
-            u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
-            ds.is_allowed, d.marked_for_removal, d.date_added, d.load_status,
-            d.plot_default, lm.plot_preference, o.id
-     ORDER BY lm.grid_position
-    """
-    # print("DEBUGGING: ", qry.format(current_user_id, layout_id), file=sys.stderr)
-    cursor.execute(qry, (current_user_id, layout_id,))
-    datasets = list()
-
-    for row in cursor:
-        # skip dataset if 1) share has been revoked 2) is marked for removal 3)load_status is excluded
-        if row[17] == 0 or row[18] == 1 or (row[20] != 'completed' and exclude_pending == 1):
-            continue
-        else:
-            # does user have a math preference set
-            if row[4] == None:
-                #use dafault
-                math_format = row[16]
-            else:
-                #use user's preference
-                math_format = row[4]
-
-            if row[9] == 1:
-                access_level = 'Public'
-            else:
-                access_level = 'Private'
-
-            date_added = row[19].isoformat()
-
-            if row[21] == 'NULL':
-                tag_list = None
-            else:
-                tag_list = row[21].replace(',', ', ')
-
-            # does user have a plot preference set
-            if row[24] == None:
-                #use default
-                plot_format = row[23]
-            else:
-                #use user's preference
-                plot_format = row[24]
-
-            datasets.append({
-                'dataset_id': row[0],
-                'grid_position': row[1],
-                'grid_width': row[2],
-                'mg_grid_width': row[3],
-                'math_format': math_format,
-                'title': row[5],
-                'organism': row[6],
-                'organism_id': row[25],
-                'pubmed_id': row[7],
-                'geo_id': row[8],
-                'access': access_level,
-                'ldesc': row[10],
-                'dtype': row[11],
-                'user_id': row[12],
-                'user_name': row[13],
-                'schematic_image': row[14],
-                'share_id': row[15],
-                'date_added': date_added,
-                'is_permalink': 0,
-                'load_status': row[20],
-                'tags': tag_list,
-                'has_h5ad': row[22],
-                'plot_format': plot_format
             })
 
     return datasets

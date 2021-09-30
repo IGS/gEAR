@@ -769,6 +769,18 @@ class Layout:
         cursor.close()
         conn.commit()
 
+    def dataset_ids(self):
+        """
+        Returns a list of the unique dataset IDs belonging to this layout
+        """
+        ids = list()
+        
+        for ds in self.members:
+            if ds.dataset_id not in ids:
+                ids.append(ds.dataset_id)
+
+        return ids
+
     def get_members(self):
         """
         Gets all members from the database and populates the 'members' attribute as a
@@ -916,7 +928,7 @@ class Layout:
 
 @dataclass
 class DatasetLink:
-    id: int
+    id: int = None
     dataset_id: str = None
     resource: str = None
     label: str = None
@@ -1213,6 +1225,9 @@ class DatasetCollection:
 
                     if get_links:
                         dataset.get_links()
+                        print("DEBUG: There were {0} links".format(len(dataset.links)), file=sys.stderr)
+                    else:
+                        print("DEBUG: get_links was false", file=sys.stderr)
 
                     self.datasets.append(dataset)
 
