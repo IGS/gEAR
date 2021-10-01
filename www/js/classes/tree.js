@@ -24,12 +24,12 @@ class Tree {
     }
 
     setTree() {
-        this.tree = (this.treeDiv) ? this.treeDiv.jstree(true) : undefined;
+        this.tree = (this.treeDiv) ? $(this.treeDiv).jstree(true) : undefined;
     }
 
     // Update the contents of a JSTree object with new data.
-    updateTreeData(newData) {
-        this.tree.settings.core.data = newData;
+    updateTreeData(newData=null) {
+        this.tree.settings.core.data = newData ? newData : this.treeData;
         this.tree.refresh();
     }
 
@@ -84,51 +84,56 @@ class GeneCartTree extends Tree {
             })
         });
         this.treeData = treeData;
+        return this.treeData;
     }
 
     // Load all saved gene carts for the current user
     // TODO: Change based on gene cart manager page code
-    generateTree (treeDiv) {
+    generateTree () {
 
         this.generateTreeData();
 
-        this.tree = $(treeDiv).jstree({
-            'core':{
-                'data':this.treeData,
-                // so that right-click->create works
-                //"check_callback" : true
-            },
-            'plugins': ["search", "types"],
-            //'plugins': ["contextmenu", "dnd", "search", "types"],
-            /* Plugins
-                contextmenu - Allows right-click of node for configurable actions
-                dnd - Allows drag-and-drop of nodes to rearrange tree
-                search - search for matching items and expand tree if found
-                types - Allows you to define node types with nesting rules and icons
-            */
-            'types': {
-                'default': {
-                    'icon': 'fa fa-folder-o'
+        // Update existing tree or generate new tree if it doesn't exist
+        if (this.tree) {
+            this.updateTreeData()
+        } else {
+            this.tree = $(this.treeDiv).jstree({
+                'core':{
+                    'data':this.treeData,
+                    // so that right-click->create works
+                    //"check_callback" : true
                 },
-                'gene': {
-                    'icon': 'fa fa-random',
-                    'valid_children':[]
+                'plugins': ["search", "types"],
+                //'plugins': ["contextmenu", "dnd", "search", "types"],
+                /* Plugins
+                    contextmenu - Allows right-click of node for configurable actions
+                    dnd - Allows drag-and-drop of nodes to rearrange tree
+                    search - search for matching items and expand tree if found
+                    types - Allows you to define node types with nesting rules and icons
+                */
+                'types': {
+                    'default': {
+                        'icon': 'fa fa-folder-o'
+                    },
+                    'gene': {
+                        'icon': 'fa fa-random',
+                        'valid_children':[]
+                    }
                 }
-            }
-        })
+            })
+        }
 
         // Code from "search" section of https://www.jstree.com/plugins/
         // Sets text input to search as tree search box.
         let to = false;
-        $(`${treeDiv}_q`).keyup(function () {
+        $(`${this.treeDiv}_q`).keyup(function () {
             if (to) { clearTimeout(to); }
             to = setTimeout(function () {
-            let v = $(`${treeDiv}_q`).val();
-            $(treeDiv).jstree(true).search(v);
+            let v = $(`${this.treeDiv}_q`).val();
+            $(this.treeDiv).jstree(true).search(v);
             }, 250);
         });
 
-        this.treeDiv = treeDiv;
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -222,45 +227,50 @@ class ProfileTree extends Tree {
             })
         });
         this.treeData = treeData;
+        return this.treeData;
     }
 
-    generateTree(treeDiv) {
+    generateTree() {
 
         this.generateTreeData();
 
-        // Instantiate the tree
-        this.tree = $(treeDiv).jstree({
-            'core':{
-                'data':this.treeData,
-                // so that right-click->create works
-                //"check_callback" : true
-            },
-            'plugins': ["search", "types"],
-            // 'plugins': ["contextmenu", "dnd", "search", "types"],
-
-            'types': {
-                'default': {
-                    'icon': 'fa fa-folder-o'
+        // Update existing tree or generate new tree if it doesn't exist
+        if (this.tree) {
+            this.updateTreeData()
+        } else {
+            // Instantiate the tree
+            this.tree = $(this.treeDiv).jstree({
+                'core':{
+                    'data':this.treeData,
+                    // so that right-click->create works
+                    //"check_callback" : true
                 },
-                'profile': {
-                    'icon': 'fa fa-address-card-o',
-                    'valid_children':[]
+                'plugins': ["search", "types"],
+                // 'plugins': ["contextmenu", "dnd", "search", "types"],
+
+                'types': {
+                    'default': {
+                        'icon': 'fa fa-folder-o'
+                    },
+                    'profile': {
+                        'icon': 'fa fa-address-card-o',
+                        'valid_children':[]
+                    }
                 }
-            }
-        })
+            })
+        }
 
         // Sets text input to search as tree search box.
         // Code from "search" section of https://www.jstree.com/plugins/
         let to = false;
-        $(`${treeDiv}_q`).keyup(function () {
+        $(`${this.treeDiv}_q`).keyup(function () {
             if (to) { clearTimeout(to); }
             to = setTimeout(function () {
-            let v = $(`${treeDiv}_q`).val();
-            $(treeDiv) .jstree(true).search(v);
+            let v = $(`${this.treeDiv}_q`).val();
+            $(this.treeDiv) .jstree(true).search(v);
             }, 250);
         });
 
-        this.treeDiv = treeDiv;
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake

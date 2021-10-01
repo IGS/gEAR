@@ -240,7 +240,9 @@ $('#navigation_bar').on('click', '#btn_sign_out', function(e){
     $('#search_gene_symbol').focus();
 
     Cookies.remove('gear_session_id');
-    USER_LOGGED_IN = null;
+    // these should be cleared upon page refresh but adding for sanity's sake
+    session_id = undefined;
+    CURRENT_USER = undefined;
     e.preventDefault();
 
     // prevents popover from popping up just before changing url. bootstrap bug?

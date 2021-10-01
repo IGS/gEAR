@@ -20,8 +20,10 @@ var multigene_toggled = false;  // If true, then layouts will be reloaded, toggl
 var annotation_panel = new FunctionalAnnotationPanel();
 var dataset_collection_panel = new DatasetCollectionPanel();
 
-var profile_tree = new ProfileTree();
-var gene_cart_tree = new GeneCartTree();
+var profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
+var selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
+
+var gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
 
 var search_result_postselection_functions = [];
 
@@ -350,7 +352,7 @@ function load_layouts() {
         $("#intro_selected_profile_warning").show();
     }
 
-    //organize user and domain profiles in x-editable format
+    //organize user and domain profiles in a tree format
     $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
@@ -389,8 +391,10 @@ function load_layouts() {
             // Generate the tree structure for the layouts
             profile_tree.domainProfiles = domain_profiles;
             profile_tree.userProfiles = user_profiles;
-            profile_tree.generateTree('#profile_tree');
-            profile_tree.generateTree('#selected_profile_tree');
+            profile_tree.generateTree();
+            selected_profile_tree.domainProfiles = domain_profiles;
+            selected_profile_tree.userProfiles = user_profiles;
+            selected_profile_tree.generateTree();
 
             // pass through again and look for one set by a cookie
             if (active_layout_id == null) {
@@ -468,7 +472,7 @@ function load_gene_carts() {
 
                 // No domain gene carts yet
                 gene_cart_tree.userGeneCarts = user_gene_carts;
-                gene_cart_tree.generateTree('#selected_gene_cart_tree');
+                gene_cart_tree.generateTree();
 
             } else {
                 $("#selected_gene_cart_c").hide();
@@ -844,6 +848,83 @@ $('#selected_gene_cart').change(function() {
     }
     return d.promise();
 });
+
+/*
+// If user changes, update genecart/profile trees
+$('#loggedin_controls').on('DOMSubtreeModified', 'span.user_logged_in', function(){
+
+    console.log("here");
+    //Profiles are generated regardless if user is logged in or not
+    $.ajax({
+        url: './cgi/get_user_layouts.cgi',
+        type: 'post',
+        data: { 'session_id': session_id},
+        dataType: 'json',
+        success: function(data, textStatus, jqXHR) {
+
+            var domain_profiles = [];
+            var user_profiles = [];
+
+            // Pass through once to sort domains from user profiles AND see if it matches a shared layout
+            $.each(data['layouts'], function(i, item){
+                if ( item['is_domain'] == 1 ) {
+                    domain_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id'] });
+                } else {
+                    user_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id']  });
+                }
+            });
+
+            // Generate the tree structure for the layouts
+            profile_tree.domainProfiles = domain_profiles;
+            profile_tree.userProfiles = user_profiles;
+            selected_profile_tree.domainProfiles = domain_profiles;
+            selected_profile_tree.userProfiles = user_profiles;
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    });
+
+    // Gene carts are only user-specific, so these only matter if user is logged in
+    if (session_id) {
+        $.ajax({
+            url: './cgi/get_user_gene_carts.cgi',
+            type: 'post',
+            data: { 'session_id': session_id },
+            dataType: 'json',
+            success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
+                var user_gene_carts = [];
+
+                if (data['gene_carts'].length > 0) {
+                    //User has some profiles
+                    $.each(data['gene_carts'], function(i, item){
+                        user_gene_carts.push({value: item['id'], text: item['label'] });
+
+                    });
+
+                    // No domain gene carts yet
+                    gene_cart_tree.userGeneCarts = user_gene_carts;
+
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+            }
+        });
+    }
+
+    // Update genecart tree with data for current user
+    gene_cart_tree.generateTreeData();
+    gene_cart_tree.setTree();
+
+    // Update profile trees with data for current user
+    profile_tree.generateTreeData();
+    profile_tree.setTree();
+    selected_profile_tree.generateTreeData();
+    selected_profile_tree.setTree();
+
+})
+*/
 
 // automatically reloads dataset grid and resubmits gene search
 function update_datasetframes_generesults() {
