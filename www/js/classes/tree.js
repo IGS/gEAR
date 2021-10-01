@@ -2,6 +2,8 @@
 
 /*
 Gene Cart and Profile tree stuff
+
+Just about everything here uses the JSTree library - jstree.com
 */
 
 /** Base class representing a tree structure */
@@ -24,13 +26,15 @@ class Tree {
     }
 
     setTree() {
-        this.tree = (this.treeDiv) ? $(this.treeDiv).jstree(true) : undefined;
+        this.tree = (this.treeDiv) ? $.jstree.reference(this.treeDiv) : undefined;
+        // $(this.treeDiv).jstree(true) returns the same as $.jstree.reference(this.treeDiv)
+        // so they may be interchanged in the codebase
     }
 
     // Update the contents of a JSTree object with new data.
     updateTreeData(newData=null) {
-        this.tree.settings.core.data = newData ? newData : this.treeData;
-        this.tree.refresh();
+        (this.tree).settings.core.data = newData ? newData : this.treeData;
+        (this.tree).refresh();
     }
 
 }
@@ -96,8 +100,9 @@ class GeneCartTree extends Tree {
         // Update existing tree or generate new tree if it doesn't exist
         if (this.tree) {
             this.updateTreeData()
+            return;
         } else {
-            this.tree = $(this.treeDiv).jstree({
+            $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
                     // so that right-click->create works
@@ -121,6 +126,8 @@ class GeneCartTree extends Tree {
                     }
                 }
             })
+            // The above JSTree call sets the tree, and this returns it
+            this.tree = $(this.treeDiv).jstree(true);
         }
 
         // Code from "search" section of https://www.jstree.com/plugins/
@@ -237,9 +244,10 @@ class ProfileTree extends Tree {
         // Update existing tree or generate new tree if it doesn't exist
         if (this.tree) {
             this.updateTreeData()
+            return;
         } else {
             // Instantiate the tree
-            this.tree = $(this.treeDiv).jstree({
+            $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
                     // so that right-click->create works
@@ -258,6 +266,10 @@ class ProfileTree extends Tree {
                     }
                 }
             })
+
+            // The above JSTree call sets the tree, and this returns it
+            this.tree = $(this.treeDiv).jstree(true);
+
         }
 
         // Sets text input to search as tree search box.

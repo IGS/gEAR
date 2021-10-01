@@ -206,6 +206,17 @@ window.onload=function() {
         // Change search results to show multigene version
         $('#multigene_plots_input').change();
     }
+
+    // Create observer to watch if user changes (ie. successful login does not refresh page)
+    // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+
+    // Select the node that will be observed for mutations
+    const target_node = document.getElementById('user_logged_in');
+    // Options for the observer (which mutations to observe)
+    const config = { attributes: true, childList: false, subtree: false };
+    // Create an observer instance linked to the callback function
+    const observer = new MutationObserver(reload_trees);
+    observer.observe(target_node, config);
 };
 
 function get_index_info() {
@@ -487,6 +498,79 @@ function load_gene_carts() {
       });
   }
   d.promise();
+}
+
+// If user changes, update genecart/profile trees
+function reload_trees(){
+    console.log("here");
+    //Profiles are generated regardless if user is logged in or not
+    $.ajax({
+        url: './cgi/get_user_layouts.cgi',
+        type: 'post',
+        data: { 'session_id': session_id},
+        dataType: 'json',
+        success: function(data, textStatus, jqXHR) {
+
+            var domain_profiles = [];
+            var user_profiles = [];
+
+            // Pass through once to sort domains from user profiles AND see if it matches a shared layout
+            $.each(data['layouts'], function(i, item){
+                if ( item['is_domain'] == 1 ) {
+                    domain_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id'] });
+                } else {
+                    user_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id']  });
+                }
+            });
+
+            // Generate the tree structure for the layouts
+            profile_tree.domainProfiles = domain_profiles;
+            profile_tree.userProfiles = user_profiles;
+            selected_profile_tree.domainProfiles = domain_profiles;
+            selected_profile_tree.userProfiles = user_profiles;
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    });
+
+    // Gene carts are only user-specific, so these only matter if user is logged in
+    if (session_id) {
+        $.ajax({
+            url: './cgi/get_user_gene_carts.cgi',
+            type: 'post',
+            data: { 'session_id': session_id },
+            dataType: 'json',
+            success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
+                var user_gene_carts = [];
+
+                if (data['gene_carts'].length > 0) {
+                    //User has some profiles
+                    $.each(data['gene_carts'], function(i, item){
+                        user_gene_carts.push({value: item['id'], text: item['label'] });
+
+                    });
+
+                    // No domain gene carts yet
+                    gene_cart_tree.userGeneCarts = user_gene_carts;
+
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+            }
+        });
+    }
+
+    // Update genecart tree with data for current user
+    gene_cart_tree.generateTreeData();
+    gene_cart_tree.setTree();
+
+    // Update profile trees with data for current user
+    profile_tree.generateTreeData();
+    profile_tree.setTree();
+    selected_profile_tree.generateTreeData();
+    selected_profile_tree.setTree();
 }
 
 // Hide option menu when scope is changed.
@@ -848,83 +932,6 @@ $('#selected_gene_cart').change(function() {
     }
     return d.promise();
 });
-
-/*
-// If user changes, update genecart/profile trees
-$('#loggedin_controls').on('DOMSubtreeModified', 'span.user_logged_in', function(){
-
-    console.log("here");
-    //Profiles are generated regardless if user is logged in or not
-    $.ajax({
-        url: './cgi/get_user_layouts.cgi',
-        type: 'post',
-        data: { 'session_id': session_id},
-        dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
-
-            var domain_profiles = [];
-            var user_profiles = [];
-
-            // Pass through once to sort domains from user profiles AND see if it matches a shared layout
-            $.each(data['layouts'], function(i, item){
-                if ( item['is_domain'] == 1 ) {
-                    domain_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id'] });
-                } else {
-                    user_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id']  });
-                }
-            });
-
-            // Generate the tree structure for the layouts
-            profile_tree.domainProfiles = domain_profiles;
-            profile_tree.userProfiles = user_profiles;
-            selected_profile_tree.domainProfiles = domain_profiles;
-            selected_profile_tree.userProfiles = user_profiles;
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-        }
-    });
-
-    // Gene carts are only user-specific, so these only matter if user is logged in
-    if (session_id) {
-        $.ajax({
-            url: './cgi/get_user_gene_carts.cgi',
-            type: 'post',
-            data: { 'session_id': session_id },
-            dataType: 'json',
-            success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
-                var user_gene_carts = [];
-
-                if (data['gene_carts'].length > 0) {
-                    //User has some profiles
-                    $.each(data['gene_carts'], function(i, item){
-                        user_gene_carts.push({value: item['id'], text: item['label'] });
-
-                    });
-
-                    // No domain gene carts yet
-                    gene_cart_tree.userGeneCarts = user_gene_carts;
-
-                }
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-            }
-        });
-    }
-
-    // Update genecart tree with data for current user
-    gene_cart_tree.generateTreeData();
-    gene_cart_tree.setTree();
-
-    // Update profile trees with data for current user
-    profile_tree.generateTreeData();
-    profile_tree.setTree();
-    selected_profile_tree.generateTreeData();
-    selected_profile_tree.setTree();
-
-})
-*/
 
 // automatically reloads dataset grid and resubmits gene search
 function update_datasetframes_generesults() {

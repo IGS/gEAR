@@ -210,6 +210,7 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
 
                 $('span.user_logged_in').text(CURRENT_USER.user_name);
                 Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
+                session_id = Cookies.get('gear_session_id');
                 Cookies.set('gear_default_domain', CURRENT_USER.profile);
 
                 // do we process the current page or reload?
