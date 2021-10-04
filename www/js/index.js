@@ -211,12 +211,12 @@ window.onload=function() {
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
 
     // Select the node that will be observed for mutations
-    const target_node = document.getElementById('user_logged_in');
-    // Options for the observer (which mutations to observe)
-    const config = { attributes: true, childList: false, subtree: false };
+    const target_node = document.getElementById('loggedin_controls');
     // Create an observer instance linked to the callback function
     const observer = new MutationObserver(reload_trees);
-    observer.observe(target_node, config);
+    // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
+    // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
+    observer.observe(target_node, { attributes: true });
 };
 
 function get_index_info() {
