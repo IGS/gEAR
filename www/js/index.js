@@ -378,11 +378,11 @@ function load_layouts() {
                 3.  Admin's active domain
              */
 
-            var domain_profiles = [];
-            var user_profiles = [];
+            let domain_profiles = [];
+            let user_profiles = [];
 
-            var active_layout_id = null;
-            var active_layout_label = null;
+            let active_layout_id = null;
+            let active_layout_label = null;
 
             // Pass through once to sort domains from user profiles AND see if it matches a shared layout
             $.each(data['layouts'], function(i, item){
@@ -448,6 +448,8 @@ function load_layouts() {
             d.resolve();
         },
         error: function (jqXHR, textStatus, errorThrown) {
+            profile_tree.generateTree();
+            selected_profile_tree.generateTree();
             display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error loading layouts.');
             d.fail();
         }
@@ -463,6 +465,7 @@ function load_gene_carts() {
   if (!session_id) {
       //User is not logged in. Hide gene carts container
       $("#selected_gene_cart_c").hide();
+      gene_cart_tree.generateTree();
       d.resolve();
   } else {
       $("#selected_gene_cart_c").show(); //Show if hidden
@@ -472,7 +475,7 @@ function load_gene_carts() {
         data: { 'session_id': session_id },
         dataType: 'json',
         success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
-            var user_gene_carts = [];
+            let user_gene_carts = [];
 
             if (data['gene_carts'].length > 0) {
                 //User has some profiles
@@ -492,6 +495,7 @@ function load_gene_carts() {
             d.resolve();
         },
         error: function (jqXHR, textStatus, errorThrown) {
+            gene_cart_tree.generateTree();
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
             d.fail();
         }
@@ -502,17 +506,17 @@ function load_gene_carts() {
 
 // If user changes, update genecart/profile trees
 function reload_trees(){
-    console.log("here");
     //Profiles are generated regardless if user is logged in or not
     $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
         data: { 'session_id': session_id},
+        async: false,
         dataType: 'json',
         success: function(data, textStatus, jqXHR) {
 
-            var domain_profiles = [];
-            var user_profiles = [];
+            let domain_profiles = [];
+            let user_profiles = [];
 
             // Pass through once to sort domains from user profiles AND see if it matches a shared layout
             $.each(data['layouts'], function(i, item){
@@ -540,9 +544,10 @@ function reload_trees(){
             url: './cgi/get_user_gene_carts.cgi',
             type: 'post',
             data: { 'session_id': session_id },
+            async: false,
             dataType: 'json',
             success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
-                var user_gene_carts = [];
+                let user_gene_carts = [];
 
                 if (data['gene_carts'].length > 0) {
                     //User has some profiles
@@ -553,24 +558,26 @@ function reload_trees(){
 
                     // No domain gene carts yet
                     gene_cart_tree.userGeneCarts = user_gene_carts;
-
+                    $("#selected_gene_cart_c").show(); //Show if logged in
                 }
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 display_error_bar(jqXHR.status + ' ' + errorThrown.name);
             }
         });
+    } else {
+        $("#selected_gene_cart_c").hide(); //Hide if logged out
     }
 
     // Update genecart tree with data for current user
     gene_cart_tree.generateTreeData();
-    gene_cart_tree.setTree();
+    gene_cart_tree.updateTreeData();
 
     // Update profile trees with data for current user
     profile_tree.generateTreeData();
-    profile_tree.setTree();
+    profile_tree.updateTreeData();
     selected_profile_tree.generateTreeData();
-    selected_profile_tree.setTree();
+    selected_profile_tree.updateTreeData();
 }
 
 // Hide option menu when scope is changed.

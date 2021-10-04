@@ -21,6 +21,10 @@ class Tree {
         this.setJSON();
     }
 
+    isTree() {
+        return this.tree
+    }
+
     setJSON() {
         this.treeJSON = (this.tree) ? this.tree.get_json() : undefined;
     }
@@ -126,8 +130,7 @@ class GeneCartTree extends Tree {
                     }
                 }
             })
-            // The above JSTree call sets the tree, and this returns it
-            this.tree = $(this.treeDiv).jstree(true);
+            this.setTree();
         }
 
         // Code from "search" section of https://www.jstree.com/plugins/
@@ -266,9 +269,7 @@ class ProfileTree extends Tree {
                     }
                 }
             })
-
-            // The above JSTree call sets the tree, and this returns it
-            this.tree = $(this.treeDiv).jstree(true);
+            this.setTree();
 
         }
 
