@@ -383,6 +383,18 @@ label#coloring_p,
 label#custom_coloring_p {
   font-weight: 400;
 }
+li.dataset-link-cellxgene {
+    list-style-image: url('../img/dataset_link_icons/cellxgene.png');
+    list-style-position: inside;
+}
+li.dataset-link-general {
+    list-style-image: url('../img/dataset_link_icons/general.png');
+    list-style-position: inside;
+}
+li.dataset-link-singlecellportal {
+    list-style-image: url('../img/dataset_link_icons/singlecellportal.png');
+    list-style-position: inside;
+}
 li.dropdown-submenu {
   position: relative;
 }
