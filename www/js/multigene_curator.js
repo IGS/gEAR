@@ -22,6 +22,10 @@ let geneSymbols = null;
 
 let geneCartTree = new GeneCartTree();
 
+const heatmapOptsIds = ["#cluster_cols_checkbox_container", "#obs_groupby_container"];
+const violinOptsIds = ["#obs_groupby_container"];
+const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
+
 // Async to ensure data is fetched before proceeding
 (async () => {
   // check if the user is already logged in
@@ -532,29 +536,38 @@ $('#plot_type_select').change(function () {
   $('#reset_opts').click()  // Reset all options
   switch ($('#plot_type_select').val()) {
     case 'heatmap':
-      $('#cluster_cols_checkbox_container').show();
-      $('#obs_groupby_container').show();
-      $('#volcano_options_container').hide();
-      $('#adjusted_pvals_checkbox_container').hide();
-      $('#annot_nonsig_checkbox_container').hide();
+      violinOptsIds.forEach(id => {
+        $(id).hide();
+      });
+      volcanoOptsIds.forEach(id => {
+        $(id).hide();
+      });
+      heatmapOptsIds.forEach(id => {
+        $(id).show();
+      });
       break;
     case 'mg_violin':
-      $('#cluster_cols').prop('checked', false);
-      $('#cluster_cols_checkbox_container').hide();
-      $('#obs_groupby_container').show();
-      $('#volcano_options_container').hide();
-      $('#adjusted_pvals_checkbox_container').hide();
-      $('#annot_nonsig_checkbox_container').hide();
+      heatmapOptsIds.forEach(id => {
+        $(id).hide();
+      });
+      volcanoOptsIds.forEach(id => {
+        $(id).hide();
+      });
+      violinOptsIds.forEach(id => {
+        $(id).show();
+      });
       break;
     default:
       // volcano
-      $('#cluster_cols').prop('checked', false);
-      $('#cluster_cols_checkbox_container').hide();
-      $('.js-obs-groupby').prop('checked', false);
-      $('#obs_groupby_container').hide();
-      $('#volcano_options_container').show();
-      $('#adjusted_pvals_checkbox_container').show();
-      $('#annot_nonsig_checkbox_container').show();
+      violinOptsIds.forEach(id => {
+        $(id).hide();
+      });
+      heatmapOptsIds.forEach(id => {
+        $(id).hide();
+      });
+      volcanoOptsIds.forEach(id => {
+        $(id).show();
+      });
   }
 });
 
