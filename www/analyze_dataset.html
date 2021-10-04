@@ -697,8 +697,8 @@
                                 <label for="asvg_n_top_genes" class="col-sm-8 col-form-label">
                                   N top genes
                                   <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
-                                        title="Choose a number of variable genes or reach this number by altering parameters in the three boxes below. Reducing the dimensionality of scRNA-seq data is a multi-step process which starts with identifying and keeping genes that are informative of the variability in the dataset. We suggest limiting the maximum number of variable genes to 2,000 for efficient processing of the data. You can also adjust the number of normalized counts per cell, maximum expression value and the minimal dispersion percentage. At the completion of this step press on ‘save these genes’."
-                                        </span>
+                                        title="Choose a number of variable genes or reach this number by altering parameters in the three boxes below. Reducing the dimensionality of scRNA-seq data is a multi-step process which starts with identifying and keeping genes that are informative of the variability in the dataset. We suggest limiting the maximum number of variable genes to 2,000 for efficient processing of the data. You can also adjust the number of normalized counts per cell, maximum expression value and the minimal dispersion percentage. At the completion of this step press on ‘save these genes’.">
+                                  </span>
                                 </label>
                               </div>
                               <hr class="separator" />
@@ -717,23 +717,11 @@
                                 <div class="col-sm-4"><input type="number" class="pull-right form-control form-control-sm input-length-6" name="asvg_min_dispersion" id="asvg_min_dispersion" size="6" value="0.5" step="0.1"/></div>
                                 <label for="asvg_min_dispersion" class="col-sm-8 col-form-label">Min dispersion</label>
                               </div>
-                              <hr class="separator asvg_save_options shown_later"/>
-                              <!--
-                              <div class="row" class="asvg_save_options shown_later">
-                                These options are only used when saving gene selection.
-                              </div>
-
-                              <div class="row form-group form-group-sm asvg_save_options shown_later">
-                                <label><input id='asvg_regress_out' type="checkbox" disabled>
-                                Regress out effects of total counts per cell and percentage of mitochondrial genes expressed.</label>
-                              </div>
-                              <div class="row form-group form-group-sm asvg_save_options shown_later">
-                                <label><input id='asvg_scale_unit_variance' type="checkbox" disabled>
-                                Scale the data to unit variance, clipping values exceeding 10 standard deviations</label>
-                              </div>
                               <hr class="separator" />
-                              -->
+                              <div id="top_genes" style="display:none;"></div>
+                              <hr class="separator asvg_save_options shown_later"/>
                             </form>
+
                             <div class='button-group'>
                               <button id='btn_do_analysis_select_variable_genes' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
                               <button id='btn_asvg_save' type='button' class='btn btn-default btn-sm shown_later'>Save these genes</button>
