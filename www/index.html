@@ -767,7 +767,7 @@
                       <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
                       {{/if}}
                       <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare</a></li>
-                      <li><a class="fa fa-plus-square"
+                      <li><a class="fa fa-plus-square" 
                         {{if multigene}}
                         href="./multigene_curator.html?dataset_id={{:id}}"
                         {{else}}
@@ -777,6 +777,10 @@
                       {{if has_h5ad}}
                       <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> Analyze</a></li>
                       {{/if}}
+                      <!-- Any new resources need CSS added for this class -->
+                      {{for links}}
+                      <li class="dataset-link-{{:resource}}"><a href="{{:url}}" class="fa" target="_blank">{{:label}}</a></li>
+                      {{/for}}
                     </ul>
                   </div>
                 </div> <!-- .dataset_header_menu -->
