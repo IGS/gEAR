@@ -48,7 +48,7 @@ def main():
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user.id)
 
-    genes_to_color = form.getvalue('genes_to_color')
+    genes_to_color = form.getvalue('genes_to_color').rstrip()
     compute_pca = form.getvalue('compute_pca')
 
     if genes_to_color:
@@ -56,8 +56,10 @@ def main():
 
     if genes_to_color and ',' in genes_to_color:
         genes_to_color = genes_to_color.split(',')
-    else:
+    elif genes_to_color:
         genes_to_color = [genes_to_color]
+    else:
+        genes_to_color = []
 
     adata = ana.get_adata()
 
@@ -110,11 +112,12 @@ def main():
             else:
                 missing_gene = 'Unknown'
     else:
-        ax = sc.pl.pca(adata, right_margin=0.2, save=".png")
+        ax = sc.pl.pca(adata, save=".png")
 
     if missing_gene is None:
-        #sc.pl.pca_variance_ratio(adata, log=True, save=".png")
+        sc.pl.pca_variance_ratio(adata, log=True, save=".png")
 
+        """ Broken stick model code.
         # Add variance ratio (and other info) to adata object
         sc.tl.pca(adata, n_comps=20)
         variance_ratios = adata.uns['pca']['variance_ratio'].tolist()
@@ -138,6 +141,7 @@ def main():
         ax.set_ylabel("Variance Ratio")
         ax.legend(loc='upper right')
         fig.savefig('./figures/pca_variance_ratio.png', transparent=True, bbox_inches="tight")
+        """
 
         result = {'success': 1, 'missing_gene': ''}
     else:
