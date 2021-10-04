@@ -174,7 +174,7 @@ def main():
             cursor.execute(query, qry_params)
         except:
             print("The failed SQL was: {0}".format(cursor._executed), file=sys.stderr)
-            raise
+            raise Exception("The failed SQL was: {0}".format(cursor._executed))
 
         for row in cursor:
             matching_dataset_ids.append(row[0])
