@@ -972,6 +972,7 @@ class Dataset:
     # derived, here for convenience
     gene_count: int = None
     obs_count: int = None
+    has_tarball: int = 0
     tags: List[str] = field(default_factory=list)
     layouts: List[Layout] = field(default_factory=list)
     links: List[DatasetLink] = field(default_factory=list)
@@ -1008,6 +1009,17 @@ class Dataset:
                 os.path.dirname(os.path.abspath(__file__)), self.id)
 
             return tab_file_path
+
+    def get_tarball_path(self):
+        """
+        This returns where the path of where a dataset's tarball SHOULD be, it doesn't check that 
+        it's actually there. This allows for it to be used also for any process which wants to 
+        know where to write it.
+        """
+        tarball_file_path = "{0}/../www/datasets/{1}.tar.gz".format(
+            os.path.dirname(os.path.abspath(__file__)), self.id)
+
+        return tarball_file_path
 
     def get_layouts(self, user=None):
         """
@@ -1169,6 +1181,7 @@ class DatasetCollection:
                   LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
                   LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
             WHERE d.id = %s
+              AND d.marked_for_removal != 1
         GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
                    d.dtype, u.id, u.user_name, d.schematic_image, d.share_id,
                    d.math_default, d.marked_for_removal, d.date_added, d.load_status,
@@ -1178,58 +1191,56 @@ class DatasetCollection:
             cursor.execute(qry, (id,))
 
             for row in cursor:
-                # skip datasets marked_for_removal
-                if row[13] == 1:
-                    continue
+                if row[5] == 1:
+                    access_level = 'Public'
                 else:
-                    if row[5] == 1:
-                        access_level = 'Public'
-                    else:
-                        access_level = 'Private'
+                    access_level = 'Private'
 
-                    date_added = row[14].isoformat()
+                date_added = row[14].isoformat()
 
-                    if row[16] == 'NULL':
-                        tag_list = None
-                    else:
-                        tag_list = row[16].replace(',', ', ')
+                if row[16] == 'NULL':
+                    tag_list = None
+                else:
+                    tag_list = row[16].replace(',', ', ')
 
-                    dataset = Dataset(id=row[0],
-                                      title=row[1],
-                                      organism_id=row[19],
-                                      pubmed_id=row[3],
-                                      geo_id=row[4],
-                                      is_public=row[5],
-                                      ldesc=row[6],
-                                      dtype=row[7],
-                                      owner_id=row[8],
-                                      schematic_image=row[10],
-                                      share_id=row[11],
-                                      math_default=row[12],
-                                      date_added=date_added,
-                                      load_status=row[15],
-                                      annotation_source=row[17],
-                                      annotation_release=row[18]
-                    )
+                dataset = Dataset(id=row[0],
+                                  title=row[1],
+                                  organism_id=row[19],
+                                  pubmed_id=row[3],
+                                  geo_id=row[4],
+                                  is_public=row[5],
+                                  ldesc=row[6],
+                                  dtype=row[7],
+                                  owner_id=row[8],
+                                  schematic_image=row[10],
+                                  share_id=row[11],
+                                  math_default=row[12],
+                                  date_added=date_added,
+                                  load_status=row[15],
+                                  annotation_source=row[17],
+                                  annotation_release=row[18]
+                )
 
-                    # Add supplemental attributes this method created previously
-                    dataset.organism = row[2]
-                    dataset.tags = row[16].split(',')
-                    dataset.access = 'access_level'
-                    dataset.user_name = row[9]
+                # Add supplemental attributes this method created previously
+                dataset.organism = row[2]
+                dataset.tags = row[16].split(',')
+                dataset.access = 'access_level'
+                dataset.user_name = row[9]
 
-                    #  TODO: These all need to be tracked through the code and removed
-                    dataset.dataset_id = dataset.id
-                    dataset.user_id = dataset.owner_id
-                    dataset.math_format = dataset.math_default
+                if os.path.exists(dataset.get_tarball_path()):
+                    dataset.has_tarball = 1
+                else:
+                    dataset.has_tarball = 0
 
-                    if get_links:
-                        dataset.get_links()
-                        print("DEBUG: There were {0} links".format(len(dataset.links)), file=sys.stderr)
-                    else:
-                        print("DEBUG: get_links was false", file=sys.stderr)
+                #  TODO: These all need to be tracked through the code and removed
+                dataset.dataset_id = dataset.id
+                dataset.user_id = dataset.owner_id
+                dataset.math_format = dataset.math_default
 
-                    self.datasets.append(dataset)
+                if get_links:
+                    dataset.get_links()
+
+                self.datasets.append(dataset)
 
         cursor.close()
         conn.close()
