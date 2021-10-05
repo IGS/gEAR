@@ -55,6 +55,8 @@ class DatasetCollectionPanel {
                         }
                     }
 
+                    //console.log(dsp);
+
                     dsc_panel.datasets.push(dsp);
                 });
 

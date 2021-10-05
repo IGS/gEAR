@@ -757,9 +757,6 @@
                       </li>
                       <li id="dataset_{{:primary_key}}_zoom_in_control"><a href="javascript:;" class="fa fa-search-plus"> View</a></li>
                       <li id="dataset_{{:primary_key}}_info_launcher" class="more_info" data-dataset_id="{{:id}}"><a href="javascript:;" class="fa fa-info-circle"> Info</a></li>
-                      {{if access == 'Public'}}
-                      <li id="dataset_{{:primary_key}}_info_launcher"><a href="./cgi/download_datafile.cgi?dataset_id={{:id}}" class="fa fa-download"> Download</a></li>
-                      {{/if}}
                       {{if pubmed_id}}
                       <li><a href="http://www.ncbi.nlm.nih.gov/pubmed/?term={{:pubmed_id}}" target="_blank" class="fa fa-graduation-cap"> Publication</a></li>
                       {{/if}}
@@ -781,6 +778,9 @@
                       {{for links}}
                       <li class="dataset-link-{{:resource}}"><a href="{{:url}}" class="fa" target="_blank">{{:label}}</a></li>
                       {{/for}}
+                      {{if has_tarball}}
+                      <li><a href="./cgi/download_tarball.cgi?dataset_id={{:id}}" class="fa fa-download"> Download</a></li>
+                      {{/if}}
                     </ul>
                   </div>
                 </div> <!-- .dataset_header_menu -->
