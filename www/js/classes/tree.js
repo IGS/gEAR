@@ -18,15 +18,10 @@ class Tree {
         this.treeDiv = treeDiv;
 
         this.setTree();
-        this.setJSON();
     }
 
     isTree() {
         return this.tree
-    }
-
-    setJSON() {
-        this.treeJSON = (this.tree) ? this.tree.get_json() : undefined;
     }
 
     setTree() {
@@ -104,7 +99,6 @@ class GeneCartTree extends Tree {
         // Update existing tree or generate new tree if it doesn't exist
         if (this.tree) {
             this.updateTreeData()
-            return;
         } else {
             $(this.treeDiv).jstree({
                 'core':{
@@ -247,7 +241,6 @@ class ProfileTree extends Tree {
         // Update existing tree or generate new tree if it doesn't exist
         if (this.tree) {
             this.updateTreeData()
-            return;
         } else {
             // Instantiate the tree
             $(this.treeDiv).jstree({
@@ -270,7 +263,6 @@ class ProfileTree extends Tree {
                 }
             })
             this.setTree();
-
         }
 
         // Sets text input to search as tree search box.
