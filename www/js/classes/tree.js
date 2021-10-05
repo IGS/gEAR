@@ -21,7 +21,7 @@ class Tree {
     }
 
     isTree() {
-        return this.tree
+        return Boolean(this.tree)
     }
 
     setTree() {
