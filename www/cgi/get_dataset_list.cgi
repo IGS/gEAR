@@ -229,7 +229,7 @@ def main():
         if layout_id is None:
             for dataset in get_default_layout(cursor, default_domain_label):
                 result['datasets'].append(dataset)
-                dataset_ids.append(dataset['dataset_id'])
+                dataset_ids.append(dataset.id)
         else:
             layout = geardb.Layout(id=layout_id)
             layout.load()
