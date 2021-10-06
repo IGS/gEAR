@@ -1079,7 +1079,6 @@ class Dataset:
             cursor.execute(qry, (self.id,))
 
             for (id, resource, label, url) in cursor:
-                print("DEBUG: a link got added", file=sys.stderr)
                 dsl = DatasetLink(dataset_id=self.id, resource=resource, label=label, url=url)
                 self.links.append(dsl)
             
@@ -1151,6 +1150,30 @@ class DatasetCollection:
     def _serialize_json(self):
         # Called when json modules attempts to serialize
         return self.__dict__
+
+    def apply_layout(self, layout=None):
+        """
+        Applying a layout to a dataset collection adds the following attributes to 
+        each of the datasets according to that layout:
+
+          - grid_position
+          - grid_width
+          - mg_grid_width
+
+        """
+        if layout is None:
+            raise Exception("A layout must be passed to DatasetCollection.apply_layout()")
+
+        lm_idx = dict()
+        
+        for lm in layout.members:
+            lm_idx[lm.dataset_id] = lm
+
+        for d in self.datasets:
+            if d.id in lm_idx:
+                d.grid_position = lm_idx[d.id].grid_position
+                d.grid_width = lm_idx[d.id].grid_width
+                d.mg_grid_width = lm_idx[d.id].mg_grid_width
 
     def filter_by_types(self, types=None):
         """

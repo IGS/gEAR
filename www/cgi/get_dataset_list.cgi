@@ -95,6 +95,7 @@ def main():
         
         dsc = geardb.DatasetCollection()
         dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
+        dsc.apply_layout(layout=layout)
         result['datasets'].extend(dsc.datasets)
 
     # If scope is defined, the user is performing a search
@@ -235,6 +236,7 @@ def main():
             
             dsc = geardb.DatasetCollection()
             dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
+            dsc.apply_layout(layout=layout)
             result['datasets'].extend(dsc.datasets)
 
     cursor.close()
@@ -267,7 +269,14 @@ def get_default_layout(cursor, domain_label):
     elif domain_label == "Huntington's disease (default)":
         layout_id = 10001
 
-    return get_layout_by_id(cursor, 0, layout_id, 1)
+    layout =  geardb.Layout(id=layout_id)
+    layout.load()
+
+    dsc = geardb.DatasetCollection()
+    dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
+    dsc.apply_layout(layout=layout)
+
+    return dsc.datasets
 
 def get_users_datasets(cursor, user_id):
     qry = """
