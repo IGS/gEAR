@@ -51,11 +51,9 @@ window.onload=function() {
     if (permalink_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
-        $('#viewport_intro').children().hide();
         $('#searching_indicator_c').hide();
 
         $('#leftbar_main').show();
-        $('#permalink_intro_c').show();
         // validate the dataset/layout share_id. runs load_dataset_frames() on success
         validate_permalink(permalink_id, scope);
     } else {
@@ -92,6 +90,8 @@ window.onload=function() {
             // clear any open tooltips
             $('[data-toggle="tooltip"], .tooltip').tooltip("hide");
         })
+    } else {
+         $('#permalink_intro_c').show();
     }
 
     // The search button starts out disabled, make sure it gets re-enabled.
