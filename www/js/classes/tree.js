@@ -127,6 +127,7 @@ class GeneCartTree extends Tree {
             this.setTree();
         }
 
+        let self = this;
         // Code from "search" section of https://www.jstree.com/plugins/
         // Sets text input to search as tree search box.
         let to = false;
@@ -134,7 +135,7 @@ class GeneCartTree extends Tree {
             if (to) { clearTimeout(to); }
             to = setTimeout(function () {
             let v = $(`${this.treeDiv}_q`).val();
-            $(this.treeDiv).jstree(true).search(v);
+            self.tree.search(v);
             }, 250);
         });
 
@@ -265,14 +266,15 @@ class ProfileTree extends Tree {
             this.setTree();
         }
 
+        let self = this;
         // Sets text input to search as tree search box.
         // Code from "search" section of https://www.jstree.com/plugins/
         let to = false;
         $(`${this.treeDiv}_q`).keyup(function () {
             if (to) { clearTimeout(to); }
             to = setTimeout(function () {
-            let v = $(`${this.treeDiv}_q`).val();
-            $(this.treeDiv) .jstree(true).search(v);
+            let v = $(`${self.treeDiv}_q`).val();
+            self.tree.search(v);
             }, 250);
         });
 
