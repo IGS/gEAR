@@ -1,0 +1,139 @@
+.editable-version {
+    display: none;
+}
+.expanded-view-hidden {
+    display: none;
+}
+div#add_cart_controls_c {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+div#controls {
+    border-right: 1px solid rgb(220,220,220);
+    /* 111px is height of footer, 130 is the expanded profile mgmt box*/
+    height: calc(85vh - 112px + 260px); 
+}
+div#controls_ownership {
+    margin-top: 20px;
+}
+div.filter_subsection {
+    margin-bottom: 20px;
+}
+div.filter_subsection h4,
+div#controls_profile h4 {
+    color: black;
+    padding-bottom: 3px;
+    border-bottom: 2px solid rgb(220,220,220);
+}
+div#gc_count_label_c span {
+    font-size: 120%;
+    font-weight: bold;
+    vertical-align: -0.5em;
+}
+div.gc_list_element_c h5 {
+    color: black;
+    font-weight: bold;
+    font-weight: 110%;
+}
+div#initial_instructions_c {
+    color: white;
+    background-color: var(--main-section-launcher-bg-color-inactive);
+    border-radius: 5px;
+    font-weight: bold;
+}
+div#initial_instructions_body {
+    margin-top: 10px;
+    display: none;
+}
+div#initial_instructions_bar:hover,
+div#initial_instructions_closer:hover {
+    cursor:pointer;
+    
+}
+div#login_checking,
+div#login_warning {
+    margin: 75px 0 0 50px;
+}
+div#view_controls {
+    border-bottom: 1px solid rgb(220, 220, 220);
+    margin-bottom: 15px;
+}
+div.weighted_gene_list_c {
+    overflow-x: auto;
+}
+h4.expandable_control:hover {
+    cursor: pointer;
+}
+hr.gc_list_element_divider {
+    width: 90%;
+    background-color: var(--dataset-panel-header-bg-color);
+}
+span.att_label {
+    font-size: 90%;
+    font-weight: bold;
+}
+span.badge {
+    font-size: 90%;
+}
+span.gc_action_note {
+    font-size: 90%;
+    font-weight: bold;
+    display: none;
+}
+span.gc-expander:hover {
+    cursor: pointer;
+}
+span#search_clear {
+    position: absolute;
+    right: 5px;
+    top: 0;
+    bottom: 0;
+    height: 14px;
+    margin: auto;
+    font-size: 14px;
+    cursor: pointer;
+    color: #ccc;
+}
+table.weighted-list {
+    margin-top: 15px;
+    border: 1px solid rgb(200,200,200);
+}
+table.weighted-list td,
+table.weighted-list th {
+    padding: 2px 4px;
+}
+table.weighted-list th {
+    text-align: center;
+}
+ul.controls_filter_options {
+    margin: 0;
+    padding: 0 0 0 5px;
+    list-style: none;
+}
+ul.controls_filter_options li {
+    padding: 1px 0 1px 5px;
+    /* need to set an invisible border so clicking
+       doesn't make elements jiggle when the 
+       border appears on the selected version */
+    border: 1px solid white;
+}
+ul.controls_filter_options li:hover {
+    cursor: pointer;
+}
+ul.controls_filter_options li.selected {
+    background-color: #E8EBEE;
+    border: 1px solid #E8EBEE;
+    border-radius: 4px;
+}
+ul.gene_list {
+    padding: 0;
+    margin: 10px 0 0 0;
+}
+ul.gene_list li {
+    list-style: none;
+    float: left;
+    background-color: rgb(240,240,240);
+    padding: 3px 5px;
+    margin-right: 7px;
+    border-radius: 5px;
+}

@@ -10,6 +10,9 @@ const sleep = (milliseconds) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
+// Exclude SVG path elements. We generate their tooltips in main.js:select_search_result()
+var elementsWithTipsList = '[title]:not("path")';
+
 // Do any includes first
 $(document).ready(function() {
     $('#navigation_bar').load('./include/navigation_bar.html');
@@ -85,6 +88,20 @@ $(document).ready(function() {
         }
     });
 
+    /*  This was added by Dustin to handle tooltips globally but I don't think it is
+        necessary any longer.  Leaving for now */
+    /*
+    $('#body_c').on('mouseenter', elementsWithTipsList, function(e){
+        //$(this).tooltip('show');
+        
+    }).on('mouseleave', elementsWithTipsList, function(e){
+        //$(this).tooltip('hide');
+    });
+    $('#body_c').on('click', elementsWithTipsList, function(e){
+        //$(this).tooltip('hide');
+    });
+    */
+    
     check_browser();
 });
 
@@ -155,6 +172,29 @@ function common_datetime() {
     var date = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
     var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
     return date + ' ' + time;
+}
+
+function copyToClipboard(text) {
+    // https://stackoverflow.com/a/59594066
+    if (window.clipboardData && window.clipboardData.setData) {
+        // IE specific code path to prevent textarea being shown while dialog is visible.
+        return clipboardData.setData("Text", text); 
+
+    } else if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
+        var textarea = document.createElement("textarea");
+        textarea.textContent = text;
+        textarea.style.position = "fixed";  // Prevent scrolling to bottom of page in MS Edge.
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            return document.execCommand("copy");  // Security exception may be thrown by some browsers.
+        } catch (ex) {
+            console.warn("Copy to clipboard failed.", ex);
+            return false;
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
 }
 
 $('#navigation_bar').on('click', '#btn_sign_in', function(e){
@@ -261,12 +301,14 @@ function handle_login_ui_updates() {
     }
 
     if (CURRENT_USER.session_id == null) {
+        // these are the pages which require a login
         if (document.URL.indexOf("upload_dataset.html") >= 0 ||
             document.URL.indexOf("analyze_dataset.html") >= 0 ||
             document.URL.indexOf("projection.html") >= 0 ||
             document.URL.indexOf("user_profile.html") >= 0 ||
             document.URL.indexOf("upload_epigenetic_data.html") >= 0 ||
             document.URL.indexOf("dataset_curator.html") >= 0 ||
+            document.URL.indexOf("gene_cart_manager.html") >= 0 ||
             document.URL.indexOf("multigene_curator.html") >= 0 ||
             document.URL.indexOf("epiviz_panel_designer.html")  >= 0) {
             $('div#login_warning').show();
@@ -290,6 +332,8 @@ function handle_login_ui_updates() {
             load_preliminary_data();
             $('div#login_checking').hide();
             $("#controls_profile_c").remove();
+        } else if (document.URL.indexOf("gene_cart_manager.html") >= 0) {
+            $('div#login_checking').hide();
         }
 
         $('#login_controls').show();
@@ -322,6 +366,10 @@ function handle_login_ui_updates() {
             $("#controls_profile_nouser_c").remove();
             $("#your_dataset_filter").show();
 
+        } else if (document.URL.indexOf("gene_cart_manager.html") >= 0) {
+            // these are defined in dataset_explorer.js
+            load_preliminary_data();
+
         } else if (document.URL.indexOf("manual.html") >= 0) {
             $('a#manual_link').parent().addClass('active');
 
@@ -331,6 +379,7 @@ function handle_login_ui_updates() {
 
         if (document.URL.indexOf("upload_dataset.html") >= 0 ||
             document.URL.indexOf("dataset_explorer.html") >= 0 ||
+            document.URL.indexOf("gene_cart_manager.html") >= 0 ||
             document.URL.indexOf("analyze_dataset.html") >= 0 ||
             document.URL.indexOf("projection.html") >= 0 ||
             document.URL.indexOf("user_profile.html") >= 0 ||
@@ -501,20 +550,6 @@ var getUrlParameter = function getUrlParameter(sParam) {
         }
     }
 };
-
-// Tooltips for all enabled buttons
-
-// Exclude SVG path elements. We generate their tooltips in main.js:select_search_result()
-var elementsWithTipsList = '[title]:not("path")';
-
-$('#body_c').on('mouseenter', elementsWithTipsList, function(e){
-    $(this).tooltip('show');
-}).on('mouseleave', elementsWithTipsList, function(e){
-    $(this).tooltip('hide');
-});
-$('#body_c').on('click', elementsWithTipsList, function(e){
-    $(this).tooltip('hide');
-});
 
 // error should be html message for user. Example: error = '<p>You cannot do that.</p>'
 function display_error_bar(msg, detail) {

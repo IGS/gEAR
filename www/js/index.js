@@ -30,37 +30,29 @@ var search_result_postselection_functions = [];
 window.onload=function() {
     // check if the user is already logged in
     check_for_login();
+    load_gene_carts(getUrlParameter('gene_cart_share_id'));
 
     // Was a permalink found?
     share_id = getUrlParameter('share_id');
-    // layout_id is a permalink id for the profile layout
-    layout_id = getUrlParameter('layout_id');
-
-    let permalink_id = null;
-    let scope = null;
-
-    // Dataset share ID takes priority over a layout ID
+    scope = "permalink";
+    
     if (share_id) {
-        permalink_id = share_id;
-        scope = "permalink";
-    } else if (layout_id) {
-        permalink_id = layout_id;
-        scope = "profile";
-    }
-
-    if (permalink_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
+        $('#viewport_intro').children().hide();
         $('#searching_indicator_c').hide();
 
         $('#leftbar_main').show();
-        // validate the dataset/layout share_id. runs load_dataset_frames() on success
-        validate_permalink(permalink_id, scope);
+        $('#permalink_intro_c').show();
+        
+        // validate the share_id. runs load_dataset_frames() on success
+        validate_permalink(share_id, scope);
     } else {
+        // layout_id is a share_id for the profile layout
+        share_id = getUrlParameter('layout_id');
+        scope = "profile";
         get_index_info();
     }
-
-    load_gene_carts();
 
     // Was help_id found?
     var help_id = getUrlParameter('help_id');
@@ -450,7 +442,7 @@ function load_layouts() {
     d.promise();
 }
 
-function load_gene_carts() {
+function load_gene_carts(cart_share_id) {
   var d = new $.Deferred();
   var session_id = Cookies.get('gear_session_id');
 
@@ -464,7 +456,7 @@ function load_gene_carts() {
       $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-        data: { 'session_id': session_id },
+          data: { 'session_id': session_id, 'share_id': cart_share_id },
         dataType: 'json',
         success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
             let user_gene_carts = [];
@@ -473,7 +465,6 @@ function load_gene_carts() {
                 //User has some profiles
                 $.each(data['gene_carts'], function(i, item){
                     user_gene_carts.push({value: item['id'], text: item['label'] });
-
                 });
 
                 // No domain gene carts yet
@@ -483,6 +474,10 @@ function load_gene_carts() {
             } else {
                 $("#selected_gene_cart_c").hide();
             }
+
+            //Serves as source for #selected_gene_cart editable
+            gene_carts = formattedData;
+            $('#selected_gene_cart').val(cart_share_id);
 
             d.resolve();
         },
@@ -731,6 +726,7 @@ $("#gene_search_form").submit(function( event ) {
             'layout_id': layout_id,
             'gene_symbol': curated_searched_gene_symbols,
             'gene_symbol_exact_match': $("#exact_match").val(),
+            'gene_cart_share_id': getUrlParameter('gene_cart_share_id'),
             'multigene_plots': $("#multigene_plots").val()
         },
         // State title
@@ -739,6 +735,7 @@ $("#gene_search_form").submit(function( event ) {
         "/index.html?layout_id=" + layout_id
             + "&gene_symbol=" + encodeURIComponent(curated_searched_gene_symbols)
             + "&gene_symbol_exact_match=" + $("#exact_match").val()
+            + "&gene_cart_share_id=" + getUrlParameter('gene_cart_share_id')
             + "&multigene_plots=" + $("#multigene_plots").val()
     )
 
@@ -982,3 +979,4 @@ function set_multigene_plots(mode) {
         $("#multigene_search_icon i").removeClass("fa-gears");
     }
 }
+

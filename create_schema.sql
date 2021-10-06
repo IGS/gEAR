@@ -72,10 +72,16 @@ CREATE TABLE gene (
 CREATE TABLE gene_cart (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        user_id         INT NOT NULL,
+       organism_id     INT NOT NULL,
+       gctype          VARCHAR(50) NOT NULL DEFAULT 'unweighted-list',
        label           VARCHAR(255) NOT NULL,
-       FOREIGN KEY (user_id)
-          REFERENCES guser(id)
-          ON DELETE CASCADE
+       ldesc           TEXT,
+       share_id        VARCHAR(50),
+       is_public       TINYINT DEFAULT 0,
+       date_added      DATETIME DEFAULT CURRENT_TIMESTAMP,
+       FULLTEXT        text_idx (label, ldesc),
+       FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
+       FOREIGN KEY (organism_id) REFERENCES organism(id) ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE gene_cart_member (

@@ -1112,6 +1112,12 @@ class Dataset:
     def to_json(self):
         return str(self)
 
+    def remove(self):
+        """
+        Removes a dataset and its dependencies from the database
+        """
+        raise Exception("Support not yet added to remove dataset via the API")
+
     def save_change(self, attribute=None, value=None):
         """
         Update a dataset attribute, both in the object and the relational database
@@ -1625,14 +1631,24 @@ class GeneCollection:
 
 
 class GeneCart:
-    def __init__(self, id=None, user_id=None, label=None, genes=None):
+    def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None, organism_id=None,
+                 genes=None, share_id=None, is_public=None, date_added=None):
         self.id = id
         self.user_id = user_id
+        self.gctype = gctype
         self.label = label
+        self.organism_id = organism_id
+        self.ldesc = ldesc
+        self.share_id = share_id
+        self.is_public = is_public
+        self.date_added = date_added
+
+        if not share_id:
+            self.share_id = str(uuid.uuid4()).split('-')[0]
 
         # TODO: This should be a reference to a GeneCollection
         if not genes:
-            self.genes = list()
+            self.get_genes()
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1640,6 +1656,40 @@ class GeneCart:
     def add_gene(self, gene):
         self.genes.append(gene)
 
+    def get_genes(self):
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = "SELECT gene_symbol FROM gene_cart_member WHERE gene_cart_id = %s"
+        cursor.execute(qry, (self.id,))
+
+        self.genes = list()
+
+        for row in cursor:
+            self.genes.append(row[0])
+
+        cursor.close()
+        conn.close()
+
+    def remove(self):
+        """
+        Removes a gene cart and its dependencies from the database.  Requires object's
+        'id' attribute to be defined.
+        """
+        if not self.id:
+            raise Exception("Failed to delete a gene cart without an ID")
+        
+        # gene_cart_member entries are deleted by foreign key cascade
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        sql = "DELETE FROM gene_cart WHERE id = %s"
+        cursor.execute(sql, (self.id,))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
     def save(self):
         """
         Will perform a save or an update depending on whether the ID attribute is
@@ -1653,9 +1703,9 @@ class GeneCart:
         if self.id is None:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
-            gc_insert_qry = "INSERT INTO gene_cart (user_id, label) VALUES (%s, %s)"
+            gc_insert_qry = "INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, gctype) VALUES (%s, %s, %s, %s, %s, %s)"
 
-            cursor.execute(gc_insert_qry, (self.user_id, self.label))
+            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public, self.gctype))
             self.id = cursor.lastrowid
 
             for gene in self.genes:
@@ -1669,6 +1719,81 @@ class GeneCart:
         cursor.close()
         conn.commit()
         conn.close()
+
+    def update_from_form_data(self, form_data):
+        """
+        Takes an existing GeneCart object and updates/overrides any attributes provided by the
+        passed data structure.
+        """
+        self.label = form_data.getvalue('new_cart_label')
+        self.organism_id = form_data.getvalue('new_cart_organism_id')
+        user_logged_in = get_user_from_session_id(form_data.getvalue('session_id'))
+        self.user_id = user_logged_in.id
+
+        self.ldesc = form_data.getvalue('new_cart_ldesc')
+        upload_type = form_data.getvalue('new_cart_upload_type')
+
+        self.is_public = form_data.getvalue('is_public')
+
+        if upload_type == 'pasted_genes':
+            self.gctype = 'unweighted-list'
+            pasted_genes = form_data.getvalue('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
+
+            for gene_sym in pasted_genes.split(' '):
+                gene = Gene(gene_symbol=gene_sym)
+                self.add_gene(gene)
+
+        elif upload_type == 'uploaded-unweighted':
+            self.gctype = 'unweighted-list'
+
+            fileitem = form_data['new_cart_file']
+            if fileitem.filename:
+                pasted_genes = fileitem.file.read().decode().replace(",", " ")
+                pasted_genes = re.sub(r"\s+", " ", pasted_genes)
+
+                for gene_sym in pasted_genes.split(' '):
+                    gene = Gene(gene_symbol=gene_sym)
+                    self.add_gene(gene)
+            else:
+                raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
+
+        elif upload_type == 'uploaded-weighted':
+            import scanpy as sc
+            import string
+            self.gctype = 'weighted-list'
+
+            # sanitize the file name
+            fileitem = form_data['new_cart_file']
+            valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+            fileitem.filename = ''.join(c for c in fileitem.filename if c in valid_chars)
+            
+            file_ext = os.path.splitext(fileitem.filename)[1]
+            package_dir = os.path.dirname(os.path.abspath(__file__))
+            carts_dir =  os.path.join(package_dir, '..', 'www', 'carts')
+            source_file_path = os.path.join(carts_dir, "cart.{0}{1}".format(self.share_id, file_ext))
+            h5dest_file_path = os.path.join(carts_dir, "cart.{0}.h5ad".format(self.share_id))
+
+            with open(source_file_path, 'wb') as sfh:
+                sfh.write(fileitem.file.read())
+            
+            if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
+                adata = sc.read_excel(source_file_path, index_col=0).transpose()
+                adata.write(filename=h5dest_file_path)
+                
+            elif fileitem.filename.endswith('tab'):
+                adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True).transpose()
+                adata.write(filename=h5dest_file_path)
+
+            elif fileitem.filename.endswith('csv'):
+                adata = sc.read_csv(source_file_path, first_column_names=True).transpose()
+                adata.write(filename=h5dest_file_path)
+
+            else:
+                raise Exception("Unsupported file type for carts uploaded. File name: {0}".format(fileitem.filename))
+
+
+        else:
+            raise Exception("Unrecognized value ({0}) for new_cart_upload_type".format(upload_type))
 
     def update_from_json(self, json_obj):
         """
@@ -1688,6 +1813,9 @@ class GeneCart:
         if 'label' in json_obj:
             self.label = json_obj['label']
 
+        if 'organism_id' in json_obj:
+            self.organism_id = json_obj['organism_id']
+
         if 'session_id' in json_obj and not self.user_id:
             user_logged_in = get_user_from_session_id(json_obj['session_id'])
             self.user_id = user_logged_in.id
@@ -1696,7 +1824,7 @@ class GeneCart:
             self.genes = list()
 
             for gene_dict in json_obj['genes']:
-                gene = Gene(id=gene_dict['id'], gene_symbol=gene_dict['gene_symbol'])
+                gene = Gene(gene_symbol=gene_dict['gene_symbol'])
                 self.add_gene(gene)
 
 

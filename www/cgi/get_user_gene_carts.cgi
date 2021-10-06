@@ -1,7 +1,8 @@
 #!/opt/bin/python3
 
 """
-Gets a user's gene carts. Returns {'id': 123, 'label': 'my_gene_cart'}
+Gets a user's gene carts. Returns {'id': 123, 'label': 'my_gene_cart'},
+with an additional shared one if a share_id is passed
 """
 
 import cgi, json
@@ -19,6 +20,7 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
+    share_id = form.getvalue('share_id')
     current_user_id = get_user_id_from_session_id(cursor, session_id)
     result = { 'gene_carts':[] }
 
@@ -29,11 +31,16 @@ def main():
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
     else:
         # A user is logged in
-        gene_cart_query = "SELECT id, label FROM gene_cart WHERE user_id = %s"
+        gene_cart_query = "SELECT id, label, share_id FROM gene_cart WHERE user_id = %s"
+        query_args = [current_user_id,]
 
-        cursor.execute(gene_cart_query, (current_user_id,))
+        if share_id:
+            gene_cart_query += " OR share_id = %s"
+            query_args.append(share_id)
+
+        cursor.execute(gene_cart_query, query_args)
         for row in cursor:
-            result['gene_carts'].append({'id': row[0], 'label': row[1]})
+            result['gene_carts'].append({'id': row[0], 'label': row[1], 'share_id': row[2]})
 
     cursor.close()
     cnx.close()
