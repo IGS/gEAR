@@ -333,15 +333,7 @@ function validate_permalink(share_id, scope) {
         data : { 'share_id': share_id, 'scope': scope },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
-            if ( data['success'] == 1 ) {
-
-                const opts = (scope == "permalink") ? { share_id, multigene } : { multigene };
-                // query the db and load the images, including permalink dataset
-                dataset_collection_panel.load_frames(opts);
-
-            } else {
-                // query the db and load the images
-                dataset_collection_panel.load_frames({multigene});
+            if ( data['success'] != 1 ) {
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
