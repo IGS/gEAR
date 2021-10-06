@@ -14,11 +14,10 @@ DATASET_PREVIEWS_DIR = "/var/www/img/dataset_previews"
 def make_static_plotly_graph(dataset_id, filename, config):
     """Create (or overwrite) a static plotly PNG image using the existing config."""
 
-    # WARNING: Disabling SSL verification in the POST call
-    result = requests.post("https://localhost/api/plot/{}".format(dataset_id), json=config, verify=False)
-
     # Throw error if things went awry (check apache ssl_error logs)
     try:
+        # WARNING: Disabling SSL verification in the POST call
+        result = requests.post("https://localhost/api/plot/{}".format(dataset_id), json=config, verify=False)
         result.raise_for_status()
     except Exception as e:
         print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
@@ -35,7 +34,8 @@ def make_static_plotly_graph(dataset_id, filename, config):
 
     plot_json = decoded_result["plot_json"]
 
-    fig = go.Figure(data=plot_json["data"], layout=plot_json["layout"])
+    # We know the figure is valid, so skip potential illegal property issues.
+    fig = go.Figure(data=plot_json["data"], layout=plot_json["layout"], skip_invalid=True)
     fig.write_image(filename)
     try:
         os.chmod(filename, 0o666)

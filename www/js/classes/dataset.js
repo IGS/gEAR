@@ -5,7 +5,7 @@ class Dataset {
                   pubmed_id, schematic_image, share_id, tags=[], title, user_id, gene_count, obs_count,
                   has_h5ad, platform_id, instrument_model, library_selection, library_source, library_strategy,
                   contact_email, contact_institute, contact_name, annotation_source, plot_default,
-                  annotation_release, is_permalink} = {}) {
+                  annotation_release, is_permalink, links, has_tarball} = {}) {
         this.id = id;
         this.is_permalink = is_permalink;
         this.date_added = date_added;
@@ -34,6 +34,8 @@ class Dataset {
         this.annotation_source = annotation_source;
         this.plot_default = plot_default;
         this.annotation_release = annotation_release;
+        this.links = links;
+        this.has_tarball = has_tarball;
 
         // derived
         this.gene_count = gene_count;

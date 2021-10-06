@@ -14,15 +14,19 @@ def main():
     form = cgi.FieldStorage()
     user_id = form.getvalue('user_id')
     dataset_id = form.getvalue('dataset_id')
+    is_multigene = int(form.getvalue('is_multigene', 0))
 
     default_display_id = geardb.get_default_display(
-      user_id=user_id, dataset_id=dataset_id)
-
+      user_id=user_id, dataset_id=dataset_id, is_multigene=is_multigene
+)
     if default_display_id is None:
       # User owner's default
       dataset = geardb.get_dataset_by_id(id=dataset_id)
       default_display_id = geardb.get_default_display(
-        user_id=dataset.owner_id, dataset_id=dataset_id)
+        user_id=dataset.owner_id
+        , dataset_id=dataset_id
+        , is_multigene=is_multigene
+      )
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

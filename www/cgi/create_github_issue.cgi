@@ -9,6 +9,7 @@ import cgi, json, os, requests, sys
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
 from pathlib import Path
+from uuid import uuid4
 
 env_path = Path('..') / '.env'  # .env file is in "www" directory
 load_dotenv(dotenv_path=env_path)
@@ -16,9 +17,12 @@ load_dotenv(dotenv_path=env_path)
 
 GITHUB_ACCESS_TOKEN=os.getenv("GITHUB_ACCESS_TOKEN")
 GEAR_GIT_URL="https://api.github.com/repos/jorvis/gEAR/issues"
-ASSIGNEES=["echrysostomou84"]
+ASSIGNEES=["songeric1107"]
 
-SITE_COMMENTS_PROJ_URL="https://api.github.com/projects/columns/8150789/cards"
+SITE_COMMENTS_PROJ_URL="https://api.github.com/projects/columns/8150789/cards" # Corresponds to jorvis/gEAR
+
+SCREENSHOT_DIR = "contact_screenshots"
+SCREENSHOT_URL = 'https://umgear.org/{}'.format(SCREENSHOT_DIR)
 
 def main():
 
@@ -32,15 +36,28 @@ def main():
     title = form.getvalue('comment_title')
     comment = form.getvalue('comment')
     tag = form.getvalue('comment_tag')
+    screenshot = form.getvalue('screenshot', None)
+    private = form.getvalue('private_check')
 
     if not tag:
         tag = ''
+
+    # If screenshot was provided, get URL and eventually assign to body
+    screenshot_url = "None"
+    if screenshot and not screenshot == "null":
+        ext = os.path.splitext(screenshot)[1]
+        new_basename = str(uuid4()) + ext
+        src = f"../{SCREENSHOT_DIR}/files/{screenshot}"
+        dst = f"../{SCREENSHOT_DIR}/files/{new_basename}"
+        os.symlink(src, dst)
+        screenshot_url = "{}/{}".format(SCREENSHOT_URL, new_basename)
 
     # In an effort to not blow up the "tags" field in github, I will just indicate the tags in the body of the Github issue
     body = (f"**From:** {firstname} {lastname}\n\n"
            f"**Email:** {email}\n\n"
            f"**Msg:** {comment}\n\n"
-           f"**Tags:** {tag.split(', ')}")
+           f"**Tags:** {tag.split(', ')}\n\n"
+           f"**Screenshot:** {screenshot_url}")
 
     # Headers data (i.e. authentication)
     headers = { "Authorization": "token {}".format(GITHUB_ACCESS_TOKEN) }
@@ -53,10 +70,17 @@ def main():
         "assignees":ASSIGNEES
     }
 
+    # If user clicked "private" checkbox, send to private git repo
+    git_url = GEAR_GIT_URL
+    site_comments_url = SITE_COMMENTS_PROJ_URL
+    if private == "false":
+        # "false" is javascript string "false"
+        git_url = GEAR_GIT_URL.replace("jorvis", "IGS")
+        site_comments_url = SITE_COMMENTS_PROJ_URL.replace("8150789", "15595055")
+
     # Code from https://realpython.com/python-requests/
     try:
-        response = requests.post(GEAR_GIT_URL, data = json.dumps(data), headers = headers)
-
+        response = requests.post(git_url, data = json.dumps(data), headers = headers)
         # If the response was successful (200- and 300- level status codes), no Exception will be raised
         response.raise_for_status()
     except HTTPError as http_err:
@@ -67,15 +91,19 @@ def main():
         result["success"] = 1
     print(json.dumps(result))
 
+    # Submission failed :-(
+    if result["success"] == 0:
+        sys.exit(0)
+
     # Add to 'Site comments' projects board
-    headers["Accept"] = 'application/vnd.github.inertia-preview+json'
+    headers["Accept"] = 'application/vnd.github.v3+json'
     content_id = response.json()["id"]   # ID of ticket just created
     data = {
         "content_id": content_id,
         "content_type": "Issue"
     }
     try:
-        response = requests.post(SITE_COMMENTS_PROJ_URL, data = json.dumps(data), headers = headers )
+        response = requests.post(site_comments_url, data = json.dumps(data), headers = headers )
         # If the response was successful (200- and 300- level status codes), no Exception will be raised
         response.raise_for_status()
     except HTTPError as http_err:

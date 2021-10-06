@@ -38,6 +38,16 @@ def calculate_num_legend_cols(group_len):
     """Determine number of columns legend should have in tSNE plot."""
     return ceil(group_len / NUM_LEGENDS_PER_COL)
 
+def create_colorscale_with_zero_gray(colorscale):
+    """Take a predefined colorscale, and change the 0-value color to gray, and return."""
+    # Create custom colorscale with gray at the 0.0 level
+    # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
+    ylorrd = cm.get_cmap(colorscale, 256)
+    newcolors = ylorrd(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
+    gray = np.array([192/256, 192/256, 192/256, 1])
+    newcolors[0, :] = gray
+    return ListedColormap(newcolors)
+
 def sort_legend(figure, sort_order):
     """Sort legend of plot."""
     handles, labels = figure.get_legend_handles_labels()
@@ -171,6 +181,8 @@ class TSNEData(Resource):
         if plot_by_group and plot_by_group not in ["null", "undefined"]:
             skip_gene_plot = None
 
+        new_YlOrRd = create_colorscale_with_zero_gray("YlOrRd")
+
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
         if colorize_by is not None and colorize_by != 'null':
@@ -220,14 +232,6 @@ class TSNEData(Resource):
                 adata.obs["gene_expression"] = [float(x) for x in adata[:,adata.var.index.isin([gene_symbol])].X]
                 max_expression = max(adata.obs["gene_expression"].tolist())
 
-                # Create custom colorscale with gray at the 0.0 level
-                # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
-                ylorrd = cm.get_cmap('YlOrRd', 256)
-                newcolors = ylorrd(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
-                gray = np.array([192/256, 192/256, 192/256, 1])
-                newcolors[0, :] = gray
-                new_YlOrRd = ListedColormap(newcolors)
-
                 row_counter = 0
                 col_counter = 0
 
@@ -249,7 +253,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot or skip_gene_plot == "false":
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map='YlOrRd', ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -277,13 +281,13 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map='YlOrRd', ax=f1, show=False, use_raw=False)
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     (handles, labels) = sort_legend(f2, colorize_by_order)
                     f2.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
 
         else:
-            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map='YlOrRd', return_fig=True, use_raw=False)
+            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, return_fig=True, use_raw=False)
 
         io_pic = io.BytesIO()
         io_fig.savefig(io_pic, format='png', bbox_inches="tight")

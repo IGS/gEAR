@@ -271,10 +271,6 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
                 # Overlay is chosen if color dataseries is same as 'facet_col' dataseries
                 violinmode='overlay'
             )
-    elif plot_type == "line":
-        # Previously subplot spacing was increased before rewrite,
-        # so it may need to be increase again in the future
-        fig.update_traces(line_shape='spline')
     elif plot_type == "bar":
         fig.update_layout(
             barmode='group'
@@ -333,7 +329,12 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     # For scatter plots with a lot of datapoints, use WebGL rendering
     if plot_type == "scattergl":
         plot_type == "scatter"
-        plotting_args["render"] = "webgl"
+        plotting_args["render_mode"] = "webgl"
+        
+    # For line plots, use svg render since webgl mode does not have spline as a valid line shape (as of plotly 4.14.3)
+    if plot_type == "line":
+        plotting_args["render_mode"] = "svg"
+        plotting_args["line_shape"] = "spline"
 
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
@@ -543,7 +544,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     if color_name:
         force_overlay = False
         color_eq_col = False
-        if facet_col:
+        if facet_col and _is_categorical(df[color_name]):
             color_eq_col = df[color_name].equals(df[facet_col])
         color_eq_x = df[color_name].equals(df[x])
         force_overlay = color_eq_x or color_eq_col

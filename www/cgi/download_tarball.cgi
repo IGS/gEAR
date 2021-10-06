@@ -15,41 +15,22 @@ sys.path.append(lib_path)
 import geardb
 
 def main():
-    cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
-
     form = cgi.FieldStorage()
     dataset_id = cgi.escape(form.getvalue('dataset_id'))
+    dataset = geardb.Dataset(id=dataset_id)
+    tarball_path = dataset.get_tarball_path()
 
-    file_types = ['.tab', '.csv', '.txt']
-    for type in file_types:
-        filename = dataset_id + type
-        if os.path.isfile('../datasets_uploaded/'+ filename):
-            break
-
-    result = { "success": 0 }
-
-    access_level = get_dataset_access_level(cursor, dataset_id)
-
-    if access_level == 'Public':
-        result["success"] = 1
-
-        cursor.close()
-        cnx.close()
-
+    if os.path.isfile(tarball_path):
         print("Content-type: application/octet-stream")
-        print("Content-Disposition: attachment; filename={0}".format(filename))
+        print("Content-Disposition: attachment; filename={0}.tar.gz".format(dataset_id))
         print()
         sys.stdout.flush()
 
-        with open('../datasets_uploaded/' + filename,'rb') as binfile:
+        with open(tarball_path, 'rb') as binfile:
             copyfileobj(binfile, sys.stdout.buffer)
 
     else:
-        result["error"] = "Dataset is the private. Unable to download data file."
-
-        cursor.close()
-        cnx.close()
+        result["error"] = "Dataset tarball could not be found. Unable to download data file."
 
         print("Content-type: text/html")
         print()
@@ -65,23 +46,6 @@ def main():
           </body>
         </html>
         """.format(result['error'], 'http://gear.igs.umaryland.edu'))
-
-
-
-def get_dataset_access_level(cursor, dataset_id):
-    query="""
-        SELECT is_public
-        FROM dataset
-        WHERE id = %s
-        """
-    cursor.execute(query, (dataset_id,))
-    access = None
-    for (is_public, ) in cursor:
-        if is_public == 0:
-            access = 'Private'
-        else:
-            access = 'Public'
-    return access
 
 if __name__ == '__main__':
     main()

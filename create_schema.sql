@@ -36,7 +36,7 @@ CREATE TABLE organism (
        taxon_id       INT
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-## DO NOT change these values without making corresponding changes in the loading scripts
+## DO NOT change these values without making corresponding changes in the annotation loading scripts
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (1, 'Mouse', 'Mus', 'musculus', NULL, 10090);
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
@@ -210,7 +210,8 @@ CREATE TABLE dataset_preference (
    user_id        INT NOT NULL,
    dataset_id     VARCHAR(50) NOT NULL,
    display_id     INT NOT NULL,
-   primary key (user_id, dataset_id),
+   is_multigene   TINYINT(1) DEFAULT 0,
+   primary key (user_id, dataset_id, is_multigene),
 
    FOREIGN KEY (dataset_id)
       REFERENCES dataset(id)
@@ -222,6 +223,15 @@ CREATE TABLE dataset_preference (
       REFERENCES dataset_display(id)
       ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+# Stores custom external URLs to be displayed with each dataset
+CREATE TABLE dataset_link (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      dataset_id                VARCHAR(50) NOT NULL,
+      resource                  VARCHAR(100) NOT NULL,
+      label                     VARCHAR(100) NOT NULL,
+      url                       VARCHAR(255) NOT NULL
+);
 
 CREATE TABLE dataset_shares (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
@@ -257,6 +267,7 @@ CREATE TABLE layout_members (
        dataset_id               VARCHAR(50) NOT NULL,
        grid_position            INT NOT NULL,
        grid_width               INT NOT NULL,
+       mg_grid_width            INT NOT NULL,
        math_preference          VARCHAR(50), #options: 'raw', 'log2', 'log10'
        plot_preference          VARCHAR(50), #options: 'bar', 'line', 'violin'
        FOREIGN KEY (layout_id)

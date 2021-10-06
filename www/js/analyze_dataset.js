@@ -1289,6 +1289,8 @@ function run_analysis_select_variable_genes(save_dataset) {
             $(".asvg_save_options").show();
             $("#btn_asvg_save").show();
             $('#btn_do_analysis_select_variable_genes').attr("disabled", false);
+            $('#top_genes').html("Suggested highly-variable genes:<br><strong>" + data['top_genes'] + "<strong>");
+            $('#top_genes').show();
         },
         error: function(xhr, status, msg) {
             report_error("Error identifying variable genes");

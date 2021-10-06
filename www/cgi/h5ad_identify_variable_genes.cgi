@@ -99,7 +99,15 @@ def main():
     adata = adata[:, adata.var['highly_variable']]
 
     (n_obs, n_genes) = adata.shape
-    result = {'n_obs': n_obs, 'n_genes': n_genes}
+
+    # get a list of the top highly variable genes to display, sorted by best normalized dispersion
+    highly_variable_genes = adata.var[adata.var.highly_variable].sort_values('dispersions_norm', ascending=False).gene_symbol
+    if len(highly_variable_genes) > 5:
+        highly_variable_genes = highly_variable_genes[:5]
+
+    top_genes = ", ".join(highly_variable_genes)
+
+    result = {'n_obs': n_obs, 'n_genes': n_genes, 'top_genes': top_genes}
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

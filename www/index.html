@@ -36,6 +36,10 @@
       href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
       rel="stylesheet"
     />
+
+    <!-- Interactive tree structure -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+
     <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
     <script>document.write('<link rel="stylesheet" href="css/index.' +  Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
     <script>document.write('<link rel="stylesheet" href="css/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
@@ -133,6 +137,11 @@
                         </div>
                       </div>
                       <div class="input-group-append">
+                        <div id="multigene_search_icon" class="input-group-text" >
+                          <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays"></i>
+                        </div>
+                      </div>
+                      <div class="input-group-append">
                         <div id="intro_search_icon" class="input-group-text" >
                           <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
                         </div>
@@ -147,30 +156,28 @@
                     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
                       <span class="navbar-toggler-icon"></span>
                     </button>
+
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
                       <ul class="navbar-nav">
                         <li class="nav-item active">
                           <a class="nav-link" href="#">Profile</a>
                         </li>
+
                         <li class="nav-item dropdown">
                           <a class="nav-link dropdown-toggle" href="#" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             Choose one
                           </a>
                           <div class="dropdown-menu" aria-labelledby="search_param_profile">
-                            <h6 class="dropdown-header" id="intro_domains_header">Profiles</h6>
-                            <!-- domains inserted here later -->
-                            <div class="dropdown-divider"></div>
-                            <h6  class="dropdown-header" id="intro_profiles_header">Your profiles</h6>
-                            <!-- user profiles inserted here later -->
+                            <form class="px-4 py-3">
+                              <input type="text" id="profile_tree_q" placeholder="Type to search profiles">
+                              <div id="profile_tree"></div>
+                            </form>
                           </div>
-                          <script id="tmpl_intro_search_layouts" type="text/x-jsrender">
-                            <a class="dropdown-item domain_choice_c py-0" href="#" data-profile-label="{{:text}}" data-profile-id="{{:value}}"  data-profile-share-id="{{:share_id}}">{{:text}}</a>
-                          </script>
                         </li>
                       </ul>
                     </div>
                   </nav>
-                  <p class='subnote'>A profile is named group of datasets</p>
+                  <p class='subnote'>A "profile" is a named group of datasets</p>
                   <p id='intro_selected_profile_warning' class='shown_later'>
                     You have selected a profile under active development.  Some gene symbols may not
                     show results currently.
@@ -193,8 +200,74 @@
           </div>
         </div> <!-- end .section_panels_row -->
 
-
         <div class="section_panels_row card-deck mt-2 pt-3">
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/wrench_purple.png" /> Tools and utilities:</h3>
+              <!--
+                  - Comparison tool
+                  - Analysis workbench
+                  - Dataset uploader
+                -->
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-12">
+
+                  <div class="row mb-3 tool-launcher" data-tool-name="comparison">
+                    <div class="col-4 tool_launcher_c pr-0">
+                      <img class="img-fluid" src="./img/comparison_tool_screenshot.png" />
+                    </div>
+                    <div class="col-8 tool_launcher_c my-auto">
+                      <span>Comparison tool</span>
+                    </div>
+                  </div>
+                  <div class="row tool-launcher" data-tool-name="workbench">
+                    <div class="col-4 tool_launcher_c pr-0">
+                      <img class="img-fluid" src="./img/analyzer_composite_screenshot.png" />
+                    </div>
+                    <div class="col-8 tool_launcher_c my-auto">
+                      <span>Single-cell workbench</span>
+                    </div>
+                  </div> <!-- end subrow -->
+                  <div id="uploader_header_c" class="row">
+                    <div class="col-12">
+                      <h3><img src="./img/icons/upload_purple.png" /> Dataset uploader</h3>
+                      <hr />
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-6 pl-1 pr-1">
+                      <div class="section_launcher section_launcher_double" id="launcher_expression_uploader">
+                        <div class="section_launcher_label">EXPRESSION DATA</div>
+                      </div>
+                    </div>
+                    <div class="col-6 pl-1 pr-1">
+                      <div class="section_launcher section_launcher_double" id="launcher_epigenetic_uploader">
+                        <div class="section_launcher_label">EPIGENETIC DATA</div>
+                      </div>
+                    </div>
+                  </div>
+                </div> <!-- end .col-12 -->
+              </div> <!-- end .row -->
+            </div> <!-- end .card-body -->
+
+          </div> <!-- end Launcher card -->
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/drives_purple.png" /> Getting started video</h3>
+            </div>
+            <div class="card-body">
+              <div class="youtube-video-container">
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/sr_kvm7W4OE" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="section_launcher section_launcher_single" id="launcher_manual">
+                <div class="section_launcher_label">SEE ALL DOCUMENTATION</div>
+              </div>
+            </div>
+          </div> <!-- end youtube card -->
           <div class="card">
             <div class="card-header bg-white pb-0">
               <h3><img src="./img/icons/book_purple.png" /> Learn how to:</h3>
@@ -231,45 +304,22 @@
                 </div> <!-- end .col-12 -->
               </div>
             </div>
-          </div>
-          <div class="card">
-            <div class="card-header bg-white pb-0">
-              <h3><img src="./img/icons/drives_purple.png" /> Getting started video</h3>
-            </div>
-            <div class="card-body">
-              <div class="youtube-video-container">
-                <iframe width="560" height="315" src="https://www.youtube.com/embed/sr_kvm7W4OE" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-              </div>
-            </div>
-            <div class="card-footer bg-white">
-              <div class="section_launcher section_launcher_single" id="launcher_manual">
-                <div class="section_launcher_label">SEE ALL DOCUMENTATION</div>
-              </div>
-            </div>
-          </div>
+          </div> <!-- end Learn how to card -->
         </div> <!-- end .section_panels_row -->
 
         <div class="section_panels_row card-deck pt-3">
           <div class="card">
             <div class="card-header bg-white pb-0">
-              <h3><img src="./img/icons/upload_purple.png" /> Dataset uploader</h3>
+              <h3><img src="./img/icons/citation.png" /> Citation</h3>
             </div>
             <div class="card-body">
-              <p class="card-title">Upload gene expression datasets for private and/or public viewing.</p>
-            </div>
-            <div class="card-footer bg-white">
-              <div class="row">
-                <div class="col-6 pl-1 pr-1">
-                  <div class="section_launcher section_launcher_double" id="launcher_expression_uploader">
-                    <div class="section_launcher_label">UPLOAD EXPRESSION DATASET</div>
-                  </div>
-                </div>
-                <div class="col-6 pl-1 pr-1">
-                  <div class="section_launcher section_launcher_double" id="launcher_epigenetic_uploader">
-                    <div class="section_launcher_label">UPLOAD EPIGENETIC DATASET</div>
-                  </div>
-                </div>
-              </div>
+              <p class="card-title">
+                <strong>gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.</strong><br />
+                <span class="citation_authors">Orvis J, et al.</span>
+                <span class="citation_pub">Nat Methods. 2021 Jun 25. doi: 10.1038/s41592-021-01200-9</span> &nbsp;
+                <span class="citation_pmid">PMID: <u><a href="https://pubmed.ncbi.nlm.nih.gov/34172972/">34172972</a></u></span>.
+              </p>
+
             </div>
           </div>
           <div class="card">
@@ -296,16 +346,28 @@
           <div id="leftbar_main" class="col-2">
             <div id="search_container">
               <div id="search_info">
-                <div id="selected_profile_c" class="row">
+                <div id="selected_profile_c" class="row dropdown">
                   Profile:
-                  <span id="selected_profile" data-type="select" value="" data-title="Click to change"></span>
-                </div>
-                <div id="selected_gene_cart_c" class="row">
+                  <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
+                  <div class="dropdown-menu" aria-labelledby="selected_profile">
+                    <form class="px-4 py-3">
+                      <input type="text" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                      <div id="selected_profile_tree"></div>
+                    </form>
+                  </div>
+                </div> <!-- end selected_profile_c -->
+                <div id="selected_gene_cart_c" class="row dropdown">
                   Gene Cart:
-                  <span id="selected_gene_cart" data-type="select" value="" data-title="Click to change"></span>
-                </div>
+                  <span id="selected_gene_cart" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
+                  <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
+                    <form class="px-4 py-3">
+                      <input type="text" id="selected_gene_cart_tree_q" placeholder="Type to search profiles">
+                      <div id="selected_gene_cart_tree"></div>
+                    </form>
+                  </div>
+                </div>  <!-- end selected_gene_cart_c -->
                 <div id="selected_gene_cart_loading_c" class="row">
-                  <img id="selected_gene_car_loading" src="img/loading_search.gif" alt="loading" /> loading
+                  <img id="selected_gene_cart_loading" src="img/loading_search.gif" alt="loading" /> loading
                 </div>
               </div>
               <form id="gene_search_form">
@@ -317,6 +379,7 @@
                     <!-- Default for Ronna's list of interesting test genes -->
                     <!-- Myo7a Pou4f3 Sox2 Fgfr3 Atoh1 lgr5 Glast RFX3 Pou3f4 -->
                     <input type="hidden" name="exact_match" id="exact_match" value="" />
+                    <input type="hidden" name="multigene_plots" id="multigene_plots" value="" />
 
                     <input id="search_gene_symbol" type="text" class="form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
                   </div>
@@ -327,6 +390,14 @@
                   </div>
                   <div class="col-4">
                     <input id="exact_match_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Limit results to exact matches" />
+                  </div>
+                </div>
+                <div class="row search_option">
+                  <div class="col-8 pl-0 pr-0">
+                    Multigene plots
+                  </div>
+                  <div class="col-4">
+                    <input id="multigene_plots_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Show plots that display all searched genes" />
                   </div>
                 </div>
 
@@ -364,6 +435,9 @@
                 Search results
                 <span id="search_result_count" class="badge"></span>
               </h4>
+              <div id="multigene_search_indicator" class="small alert alert-info" style="display:none;">
+                Selectable genes hidden because 'multigene plots' is enabled.
+              </div>
               <div id="searching_indicator_c">
                 <img id="searching_indicator" src="img/loading_search.gif" alt="searching" />
               </div>
@@ -375,17 +449,20 @@
           </div>
           <!-- #lefbar_main -->
 
-          <div id="viewport_intro" class="main_column col-sm-7 col-md-7 col-lg-7">
+          <div id="viewport_intro" class="main_column col-7">
             <!-- #PERMALINK -->
-            <div id="permalink_intro_c" style="display:none">
+            <div id="permalink_intro_c" class="shown_later">
               <div id="permalink_info" class="container"></div>
               <div class="container">
-                <h3>Instruction for viewing</h3>
-                <p>
-                  To view the dataset, search for a gene or list of genes to the
-                  left. Here's some examples: "atoh1" or "atoh1 gfi1 pou4f3
-                  lfng"
-                </p>
+                <div class="alert alert-info" role="alert">
+                  <h3>Cannot display plots since no genes were searched</h3>
+                  <p>
+                    To view the datasets for this profile, first search for a gene or list of genes in the panel
+                    to the left.
+                    <br><br>
+                    Here are some examples: "atoh1" or "atoh1 gfi1 pou4f3 lfng"
+                  </p>
+                </div>
               </div>
             </div>
             <!-- end permalink -->
@@ -535,7 +612,6 @@
                 </div>
                 <div class="modal-footer">
                   <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                  <!--<button type="button" class="btn btn-primary">Save changes</button>-->
                 </div> <!-- end .modal-footer -->
               </div> <!-- end .modal-content -->
             </div> <!-- end .modal-dialog -->
@@ -558,14 +634,14 @@
         <b>Family:</b> {{:family_label}}
         <ul>
           {{* for (var i=0; i<stemloop_mature_group.length; i++) { }}
-                                                            <li id="mir_stemloop" style="list-style-type:none; margin-left:-25px;"><span class="glyphicon glyphicon-ok gly-rot-45"></span> <b>Stem-loop:</b> {{*:stemloop_mature_group[i]}}
-                                                              <ul>
-                                                                {{* for (var d=0; d<mature_labels.length; d++) { }}
-                                                                                                          <li id="mir_mature" style="list-style-type:none; margin-left:-10px;"><span class="glyphicon glyphicon-ok gly-rot-45"></span> <b>Mature miRNA:</b> {{*:mature_labels[d]}}</li>
-                                                                                                          {{* } }}
-                                                              </ul>
-                                                            </li>
-                                                            {{* } }}
+          <li id="mir_stemloop" style="list-style-type:none; margin-left:-25px;"><span class="glyphicon glyphicon-ok gly-rot-45"></span> <b>Stem-loop:</b> {{*:stemloop_mature_group[i]}}
+            <ul>
+              {{* for (var d=0; d<mature_labels.length; d++) { }}
+              <li id="mir_mature" style="list-style-type:none; margin-left:-10px;"><span class="glyphicon glyphicon-ok gly-rot-45"></span> <b>Mature miRNA:</b> {{*:mature_labels[d]}}</li>
+              {{* } }}
+            </ul>
+          </li>
+          {{* } }}
         </ul>
       </script>
       <script id="tmpl_permalink_info" type="text/x-jsrender">
@@ -586,83 +662,11 @@
         {{/if}}
       </script>
       <!-- end script#permalink_info -->
-      <script id="tmpl_permalink_zoomed" type="text/x-jsrender">
-            {{if is_permalink == 1}}
-            <div class="dataset_cc col-sm-12">
-              <div id="dataset_zoomed" class="dataset_c">
-                <div id="tip_zoomed">&nbsp;Score here</div>
-                <div class="dataset_header container-fluid">
-                  <div class="row">
-                    <div class="dataset_header_title col-sm-10">{{:title}}</div>
-                  </div> <!-- .row -->
-                </div> <!-- .dataset_header -->
-                <div id="{{:dataset_id}}_nodata_c" class="nodata-container">
-                  <h2>No data found for this gene</h2>
-                </div>
-                {{if dtype == 'svg-expression'}}
-                <div id="{{:dataset_id}}_svg_cc" class="svg-container">
-                  <!-- adding height="100%" to this centers the SVG vertically -->
-                  <div id="dataset_{{:dataset_id}}_svg_c" class="svg-content" data-dataset-id="{{:dataset_id}}" data-path="datasets_uploaded/{{:dataset_id}}.svg"></div>
-                </div>
-                {{else dtype == 'image-static'}}
-                <div class="image-static-container">
-                  <img id='dataset_{{:dataset_id}}_image_static' src='' />
-                </div>
-                {{else dtype == 'image-static-standard'}}
-                <div class="image-static-container">
-                  <img id='dataset_{{:dataset_id}}_image_static' src='' />
-                </div>
-                {{else dtype == 'bargraph-standard'}}
-                <div class="bargraph-standard-container">
-                  <div id="dataset_{{:dataset_id}}_bargraph_standard"></div>
-                </div>
-                {{else dtype == 'linegraph-standard'}}
-                <div class="linegraph-standard-container">
-                  <div id="dataset_{{:dataset_id}}_linegraph_standard"></div>
-                </div>
-                {{else dtype == 'violin-standard'}}
-                <div class="violin-standard-container">
-                  <img id='dataset_{{:dataset_id}}_violin_standard' src='' />
-                </div>
-                {{else}}
-                <div id='dataset_{{:id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
-                {{/if}}
-              </div>
-            </div> <!-- #dataset_zoomed -->
-        </div> <!-- end dataset_cc -->
-        {{/if}}
-      </script>
-      <!-- end script#tmpl_permalink_zoomed -->
       <script id="tmpl_infobox" type="text/x-jsrender">
-        <div class="modal fade" id="dataset_{{:dataset_id}}_info" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
+        <div class="modal fade" id="dataset_{{:primary_key}}_info" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
           <div class="modal-dialog modal-lg">
             <div class="modal-content">
               <div class="modal-header">
-                <!-- <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button> -->
-                <h4 class="modal-title">Dataset information</h4>
-              </div>
-              <div class="modal-body">
-                <h3>{{:title}}</h3>
-                <div class="textarea-ldesc">{{:ldesc}}</div>
-              </div>
-              <div class='infograph_illustration_{{:dataset_id}}'></div>
-              {{if schematic_image}}
-              <img class='img-fluid' src="{{:schematic_image}}" alt="Infograph" />
-              {{/if}}
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </script>
-      <!-- script#tmpl_infobox -->
-      <script id="tmpl_infobox" type="text/x-jsrender">
-        <div class="modal fade" id="dataset_{{:dataset_id}}_info" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <!-- <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button> -->
                 <h4 class="modal-title">Dataset information</h4>
               </div>
               <div class="modal-body">
@@ -682,11 +686,10 @@
       </script>
       <!-- script#tmpl_infobox -->
       <script id="tmpl_displays_box" type="text/x-jsrender">
-        <div class="modal fade" id="dataset_{{:dataset_id}}_displays_modal" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
+        <div class="modal fade" id="dataset_{{:primary_key}}_displays_modal" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
           <div class="modal-dialog modal-lg">
             <div class="modal-content">
               <div class="modal-header">
-                <!-- <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button> -->
                 <h4 class="modal-title">Displays for {{:title}}</h4>
               </div>
               <div class="modal-body">
@@ -696,6 +699,7 @@
                    {{for user_displays ~active_display_id=active_display_id}}
                    <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
                         style='height:220px; border: 1px solid rgb(200,200,200)'>
+                        <img id='modal-display-{{:id}}-loading' class='modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
                          <img
                           class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
                           id='modal-display-img-{{:id}}'/>
@@ -735,27 +739,24 @@
       <script id="tmpl_datasetbox" type="text/x-jsrender">
         {{if load_status == 'completed'}}
         <div class="dataset_cc col-sm-{{:grid_width}}" data-dataset-id="{{:id}}">
-          <div id="dataset_{{:id}}" class="dataset_c">
+          <div id="dataset_{{:primary_key}}" class="dataset_c">
             <div class="dataset_header container-fluid">
               <div class="row">
                 <div class="dataset_header_title col-sm-9">{{:title}}</div>
                 <div class="dataset_header_menu col-sm-3">
                   <div class="btn-group pull-right">
-                    <button id="note_launcher_{{:id}}" data-dataset-id="{{:id}}" data-title="{{:title}}" type="button" class="btn btn-sm note_launcher" data-toggle="tooltip" data-placement="bottom" title="Take notes">
+                    <button id="note_launcher_{{:primary_key}}" data-dataset-id="{{:id}}" data-title="{{:title}}" type="button" class="btn btn-sm note_launcher" data-toggle="tooltip" data-placement="bottom" title="Take notes">
                       <span class="fa fa-pencil"></span>
                     </button>
                     <button type="button" class="btn btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-placement="bottom" title="Show options">
                       <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-right" style='z-index:10000'>
-                      <li id="dataset_{{:id}}_displays"class='dropdown-submenu'>
+                      <li id="dataset_{{:primary_key}}_displays"class='dropdown-submenu'>
                         <a href="javascript:;" class="fa fa-clone"> Displays</a>
                       </li>
-                      <li id="dataset_{{:id}}_zoom_in_control"><a href="javascript:;" class="fa fa-search-plus"> View</a></li>
-                      <li id="dataset_{{:id}}_info_launcher" class="more_info" data-dataset_id="{{:id}}"><a href="javascript:;" class="fa fa-info-circle"> Info</a></li>
-                      {{if access == 'Public'}}
-                      <li id="dataset_{{:id}}_info_launcher"><a href="./cgi/download_datafile.cgi?dataset_id={{:id}}" class="fa fa-download"> Download</a></li>
-                      {{/if}}
+                      <li id="dataset_{{:primary_key}}_zoom_in_control"><a href="javascript:;" class="fa fa-search-plus"> View</a></li>
+                      <li id="dataset_{{:primary_key}}_info_launcher" class="more_info" data-dataset_id="{{:id}}"><a href="javascript:;" class="fa fa-info-circle"> Info</a></li>
                       {{if pubmed_id}}
                       <li><a href="http://www.ncbi.nlm.nih.gov/pubmed/?term={{:pubmed_id}}" target="_blank" class="fa fa-graduation-cap"> Publication</a></li>
                       {{/if}}
@@ -763,16 +764,29 @@
                       <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
                       {{/if}}
                       <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare</a></li>
-                      <li><a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate</a></li>
+                      <li><a class="fa fa-plus-square" 
+                        {{if multigene}}
+                        href="./multigene_curator.html?dataset_id={{:id}}"
+                        {{else}}
+                        href="./dataset_curator.html#/dataset/{{:id}}/displays"
+                        {{/if}}
+                      > Curate</a></li>
                       {{if has_h5ad}}
                       <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> Analyze</a></li>
+                      {{/if}}
+                      <!-- Any new resources need CSS added for this class -->
+                      {{for links}}
+                      <li class="dataset-link-{{:resource}}"><a href="{{:url}}" class="fa" target="_blank">{{:label}}</a></li>
+                      {{/for}}
+                      {{if has_tarball}}
+                      <li><a href="./cgi/download_tarball.cgi?dataset_id={{:id}}" class="fa fa-download"> Download</a></li>
                       {{/if}}
                     </ul>
                   </div>
                 </div> <!-- .dataset_header_menu -->
               </div>
             </div> <!-- end .dataset_header -->
-            <div id="{{:id}}_dataset_status_c" class="dataset-status-container">
+            <div id="{{:primary_key}}_dataset_status_c" class="dataset-status-container">
               <div style="height:350px">
                 <h2>Loading...</h2>
               </div>
@@ -784,7 +798,7 @@
       <!-- script#tmpl_datasetbox -->
       <script id="tmpl_dataset_zoomed" type="text/x-jsrender">
         <div class="dataset_cc" data-dataset-id="{{:id}}">
-          <div id="dataset_{{:id}}" class="dataset_c">
+          <div id="dataset_{{:primary_key}}" class="dataset_c">
             <div class="dataset_header container-fluid">
               <div class="row">
                 <div class="dataset_header_title col-sm-9">{{:title}}</div>
@@ -800,7 +814,7 @@
                 </div> <!-- .dataset_header_menu -->
               </div>
             </div> <!-- end .dataset_header -->
-            <div id="{{:id}}_dataset_status_c" class="dataset-status-container" style='display:none;'>
+            <div id="{{:primary_key}}_dataset_status_c" class="dataset-status-container" style='display:none;'>
               <div style="height:70vh">
                 <h2>Loading...</h2>
               </div>
@@ -839,6 +853,9 @@
     <!-- Plotly JS-->
     <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
 
+    <!-- JStree -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/classes/dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/ui-panel-annotation.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
@@ -846,34 +863,20 @@
     <script>document.write('<script src="js/classes/ui-panel-dataset-collection.' + Math.floor(Math.random() * 10000000) +'.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>'); </script>
     <script>document.write('<script src="js/classes/display.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/index.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/sidepanel_notes.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
 
-    <script>
-      (function(i, s, o, g, r, a, m) {
-        i['GoogleAnalyticsObject'] = r;
-        (i[r] =
-          i[r] ||
-          function() {
-            (i[r].q = i[r].q || []).push(arguments);
-          }),
-          (i[r].l = 1 * new Date());
-        (a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]);
-        a.async = 1;
-        a.src = g;
-        m.parentNode.insertBefore(a, m);	// If using content blocker, this will throw "GET about:blank net::ERR_UNKNOWN_URL_SCHEME"
-      })(
-        window,
-        document,
-        'script',
-        '//www.google-analytics.com/analytics.js',
-        'ga'
-      );
+      <!-- Global site tag (gtag.js) - Google Analytics -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
 
-      ga('create', 'UA-59916932-1', 'auto');
-      ga('send', 'pageview');
-    </script>
+        gtag('config', 'UA-59916932-1');
+      </script>
 
   </body>
 </html>

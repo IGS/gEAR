@@ -114,7 +114,7 @@
                             </div>
                             <div class='col-10'>
                               <p>
-                                To upload to the gEAR we first need a metadata document describing your data.  Download the template
+                                To upload your data we first need a metadata document describing your data.  Download the template
                                 on the right, be sure to fill out at least all fields marked as required, and then use the button
                                 below to upload your saved file.
                               </p>
@@ -161,7 +161,7 @@
                         <div id='expression_upload_c'>
                           <div id="expression_instructions_c">
                             <p>
-                              If your expression data is formatted for uploading to gEAR, upload it here. Examples of how data needs to be formatted are listed below.
+                              If your expression data is formatted properly, upload it here. Examples of how data needs to be formatted are listed below.
                             </p>
                             <ul class='list-inline'>
                               <li>
@@ -321,14 +321,16 @@
         <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
         <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
         <script>document.write('<script src="js/upload_dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-  ga('create', 'UA-59916932-1', 'auto');
-  ga('send', 'pageview');
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'UA-59916932-1');
         </script>
+
     </body>
 </html>

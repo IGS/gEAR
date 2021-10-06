@@ -1,6 +1,6 @@
 scanpy[louvain]==1.4.6
 louvain==0.6.1  # Louvain has issue with setting RNG currently -> https://github.com/theislab/scanpy/issues/1191
-pandas==1.0.3
+pandas==1.0.4
 numba==0.48.0
 numpy==1.18.2
 jupyter==1.0.0
@@ -8,6 +8,7 @@ xlrd==1.2.0
 requests==2.23.0
 plotly==4.14.3
 kaleido==0.2.1
+dash-bio==0.6.1
 MulticoreTSNE==0.1
 Pillow==7.1.1
 biopython==1.76
@@ -22,6 +23,7 @@ opencv-python==4.1.1.26
 pathlib==1.0.1
 anndata==0.7.3  # Installed through scanpy but that version breaks things
 h5py==2.10.0    # Installed through scanpy but that version breaks things
+#diffxpy==0.7.4
 #selenium
 #matplotlib==3.2.1   # Installed through scanpy
 #scikit-learn==0.22.2    # Installed through scanpy

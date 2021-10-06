@@ -73,12 +73,14 @@ def main():
         'celltype_a',
         'celltype_b',
         'celltype_colors',
+        'cell_type_colors',
         'class_id',
         'class_label',
         'class_color',
         'cluster_id',
         'cluster_label',
         'cluster_color',
+        'cluster_colors',
         'cross_species_cluster',
         'cross_species_cluster_color',
         'cross_species_cluster_id',
@@ -95,6 +97,7 @@ def main():
         'genes_detected_color',
         'genes_detected_id',
         'genes_detected_label',
+        'group_colors',
         'library_id',
         'louvain',
         'mapped_reads',
@@ -131,6 +134,8 @@ def main():
         'umap_2',
         'uMAP_1',
         'uMAP_2',
+        'UMAP_1',
+        'UMAP_2',
         'umap1_combined',
         'umap2_combined',
         'umi.counts',
@@ -150,7 +155,7 @@ def main():
         "TechRep",
         "color",
         "X"
-        ]
+    ]
 
     if not os.path.exists(h5_path):
         result = dict()

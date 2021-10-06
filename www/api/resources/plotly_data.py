@@ -12,8 +12,47 @@ from gear.plotting import generate_plot, get_config, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 from collections import defaultdict
 
-
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
+
+def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+    """Return analysis object based on various factors."""
+    # If an analysis is posted we want to read from its h5ad
+    if analysis:
+        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=analysis_owner_id)
+
+        if 'type' in analysis:
+            ana.type = analysis['type']
+        else:
+            user = geardb.get_user_from_session_id(session_id)
+            ana.discover_type(current_user_id=user.id)
+    else:
+        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
+        h5_path = ds.get_file_path()
+
+        # Let's not fail if the file isn't there
+        if not os.path.exists(h5_path):
+            return {
+                'success': -1,
+                'message': "No h5 file found for this dataset"
+            }
+        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+    return ana
+
+def order_by_time_point(obs_df):
+    """Order observations by time point column if it exists."""
+    # check if time point order is intially provided in h5ad
+    time_point_order = obs_df.get('time_point_order')
+    if (time_point_order is not None and 'time_point' in obs_df.columns):
+        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
+        # Safety check. Make sure time point is categorical before
+        # calling .cat
+        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
+        col = obs_df['time_point'].cat
+        obs_df['time_point'] = col.reorder_categories(
+            sorted_df.time_point.drop_duplicates(), ordered=True)
+        obs_df = obs_df.drop(['time_point_order'], axis=1)
+    return obs_df
 
 class PlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -74,42 +113,9 @@ class PlotlyData(Resource):
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
-
-        # If an analysis is posted we want to read from its h5ad
-        if analysis:
-            ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                  session_id=session_id, user_id=analysis_owner_id)
-
-            if 'type' in analysis:
-                ana.type = analysis['type']
-            else:
-                ana.discover_type(current_user_id=user.id)
-
-            adata = sc.read_h5ad(ana.dataset_path(), backed='r')
-        else:
-            ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-            h5_path = ds.get_file_path()
-
-            # Let's not fail if the file isn't there
-            if not os.path.exists(h5_path):
-                return {
-                    'success': -1,
-                    'message': "No h5 file found for this dataset"
-                }
-
-            adata = sc.read_h5ad(h5_path, backed='r')
-
-        # check if time point order is intially provided in h5ad
-        time_point_order = adata.obs.get('time_point_order')
-        if (time_point_order is not None and 'time_point' in adata.obs.columns):
-            sorted_df = adata.obs.drop_duplicates().sort_values(by='time_point_order')
-            # Safety check. Make sure time point is categorical before
-            # calling .cat
-            adata.obs['time_point'] = pd.Categorical(adata.obs['time_point'])
-            col = adata.obs['time_point'].cat
-            adata.obs['time_point'] = col.reorder_categories(
-                sorted_df.time_point.drop_duplicates(), ordered=True)
-            adata.obs = adata.obs.drop(['time_point_order'], axis=1)
+        ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        adata = ana.get_adata(backed=True)
+        adata.obs = order_by_time_point(adata.obs)
 
         # Reorder the categorical values in the observation dataframe
         if order:

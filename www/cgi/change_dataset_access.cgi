@@ -3,11 +3,11 @@
 """
 Changes the access_level of a dataset via the 'change access' button in the dataset_manager
 
-This script first checks if the user owns the dataset, then proceeds with the access_level change 
+This script first checks if the user owns the dataset, then proceeds with the access_level change
 if they own it.
 
 If the user does not own the dataset, an error is returned stating that.
-Successful access_level change returns the dataset JSON that was changed. 
+Successful access_level change returns the dataset JSON that was changed.
 
 Requires:
 1) Session id - which contains user_id
@@ -34,19 +34,19 @@ def main():
     session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
     access = form.getvalue('access')
-    
+
     user = geardb.get_user_from_session_id(session_id)
-    
+
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, user.id, dataset_id)
-    
+
     if owns_dataset == True:
         result = { 'dataset':[] }
-    
+
         change_dataset_access(cursor, user.id, dataset_id, access)
         cnx.commit()
 
-        # Make the acceess_level change...    
+        # Make the acceess_level change...
         result['dataset'].extend(get_dataset(cursor, user.id, dataset_id))
 
         cursor.close()
@@ -56,7 +56,7 @@ def main():
 
     else:
         result = { 'error':[] }
-    	
+
         error = "Not able to change dataset's access level. User does not own the dataset."
         result['error'] = error
 
@@ -86,21 +86,21 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
 
     return user_owns_dataset
 
-    
+
 def change_dataset_access(cursor, current_user_id, dataset_id, access):
 
     if access == 'public':
         access_level = 1 #Public
     elif access == 'private':
-        access_level = 0 #Private 
+        access_level = 0 #Private
 
-    qry = """    
+    qry = """
         UPDATE dataset d
         JOIN guser g ON d.owner_id = g.id
         SET d.is_public = %s
         WHERE d.id = %s AND g.id = %s
     """
-    
+
     cursor.execute(qry, (access_level, dataset_id, current_user_id,))
 
 
@@ -113,7 +113,7 @@ def get_dataset(cursor, current_user_id, dataset_id):
     """
     cursor.execute(qry, (dataset_id,))
     dataset = list()
-    
+
     for row in cursor:
         if row[4] == 1:
             access_level = 'Public'
@@ -124,6 +124,7 @@ def get_dataset(cursor, current_user_id, dataset_id):
             'dataset_id': row[0],
             'grid_position': None,
             'grid_width': 4,
+            'mg_grid_width': 4,
             'title': row[1],
             'organism': row[2],
             'pubmed_id': row[3],

@@ -25,7 +25,9 @@ fixed paths have worked fine for decades.
     $ sudo apt install hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
 
     $ ./pip3 install --upgrade pip
-    $ ./pip3 install h5py==2.10.0 scanpy==1.5.1 anndata==0.7.3 pandas==1.0.4 numba==0.50.0 xlrd==1.2.0 numpy==1.18.5 scipy==1.4.1 scikit-learn==0.23.1 jupyter mysql-connector-python==8.0.20 requests plotly==4.14.3 kaleido==0.2.1 louvain MulticoreTSNE Pillow biopython==1.76 biocode==0.9.0 python-dotenv==0.14.0 Flask==1.1.2 SQLAlchemy==1.2.12 Flask-RESTful==0.3.8 mod-wsgi==4.6.5 opencv-python==4.1.1.26 pathlib==1.0.1
+    $ ./pip3 install h5py==2.10.0 scanpy==1.5.1 anndata==0.7.3 pandas==1.0.4 numba==0.50.0 xlrd==1.2.0 numpy==1.18.5 scipy==1.4.1 scikit-learn==0.23.1 jupyter mysql-connector-python==8.0.20 requests plotly==4.14.3 kaleido==0.2.1 louvain MulticoreTSNE Pillow biopython==1.76 biocode==0.9.0 python-dotenv==0.14.0 Flask==1.1.2 SQLAlchemy==1.2.12 Flask-RESTful==0.3.8 mod-wsgi==4.6.5 opencv-python==4.1.1.26 pathlib==1.0.1 dash-bio==0.6.1
+
+SAdkins note - Installing dash-bio (0.6.1) on the devel server by itself upgraded plotly to 5.3.1.  So we need to install dash==1.2.1 and plotly==4.14.3 if they are not this.
 
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-3.7.3/bin/python3 /opt/bin/
@@ -34,3 +36,6 @@ Scanpy (or dependencies) assumes it can write in several directories which the w
 
     $ cd /opt/Python-3.7.3/lib/python3.7/site-packages/scanpy
     $ find ./ -name __pycache__ -exec chmod 777 {} \;
+
+Diffxpy (v0.7.4) is used in the multigene curator, but their version does not allow for free-ordering of conditions (for volcano plots).  I forked their code (adkinsrs/diffxpy), made the fix, and installed
+    $ sudo /opt/Python-3.7.3/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021

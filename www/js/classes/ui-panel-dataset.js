@@ -1,5 +1,4 @@
 'use strict';
-
 /*
   Requirements
   - JQuery
@@ -8,16 +7,31 @@
   - gear/classes/dataset.js
 */
 
+// If multiple Bootstrap modals are created, multiple "modal-backdrop"
+// divs are created, which can break site functionality.
+// This only keeps a single instance of it.
+// Source: https://stackoverflow.com/a/44588254
+$(document).on('shown.bs.modal', '.modal', function () {
+  if ($(".modal-backdrop").length > -1) {
+      $(".modal-backdrop").not(':first').remove();
+  }
+});
+
 class DatasetPanel extends Dataset {
-  constructor({ grid_position, grid_width, ...args }) {
+  constructor({ grid_position,...args }, grid_width, multigene=false) {
     super(args);
     this.grid_position = grid_position;
-    this.grid_width = grid_width;
+    this.grid_width = grid_width ? grid_width : args.grid_width;
+    this.multigene = Number(multigene); // "true/false" works but keeping consistent with the other bool properties
     this.config = null;
     this.displays = null;
     this.default_display_id = null;
     this.active_display_id = null;
     this.zoomed = false;
+    const single_or_multi = (this.multigene) ? "multi" : "single";
+    this.primary_key = this.id + "_" + this.grid_position + "_" + single_or_multi;
+    //this.links = args.links;
+    //this.linksfoo = "foo";
   }
 
   get_dataset_displays(user_id, dataset_id) {
@@ -38,11 +52,11 @@ class DatasetPanel extends Dataset {
     });
   }
 
-  get_default_display(user_id, dataset_id) {
+  get_default_display(user_id, dataset_id, is_multigene=0) {
     return $.ajax({
       url: './cgi/get_default_display.cgi',
       type: 'POST',
-      data: { user_id, dataset_id },
+      data: { user_id, dataset_id, is_multigene },
       dataType: 'json',
     });
   }
@@ -63,6 +77,8 @@ class DatasetPanel extends Dataset {
     if (this.display && this.display.zoomed) {
       zoom = true;
     }
+
+    data.primary_key = this.primary_key
 
     let display;
     if (
@@ -94,6 +110,33 @@ class DatasetPanel extends Dataset {
     if (zoom) display.zoom_in();
   }
 
+  async draw_mg_chart(gene_symbols, display_id) {
+    const data = await this.get_dataset_display(display_id)
+
+    let zoom = false;
+    if (this.display && this.display.zoomed) {
+      zoom = true;
+    }
+
+    data.primary_key = this.primary_key
+
+    let display;
+    if (data.plot_type === 'heatmap' ||
+      data.plot_type === 'mg_violin' ||
+      data.plot_type === 'volcano'
+    ) {
+      display = new MultigeneDisplay(data, gene_symbols)
+    }
+    this.display = display;
+
+    // We first draw with the display then zoom in, so whenever
+    // gene search is updated, the other displays behind the zoomed
+    // is updated too.
+    display.draw_mg(gene_symbols);
+    if (zoom) display.zoom_in();
+  }
+
+  // Draw single-gene plots
   async draw({ gene_symbol } = {}) {
     if (this.display) this.display.clear_display();
 
@@ -102,7 +145,8 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbol = gene_symbol;
 
-    if (this.display) {
+    if (this.display && this.display.gene_symbol) {
+      // Ensure that this display is a single-gene display
       this.draw_chart(gene_symbol, this.display.id);
 
     } else {
@@ -131,6 +175,48 @@ class DatasetPanel extends Dataset {
     }
   }
 
+  // Draw multigene plots
+  /**
+  * Initialize dash display.
+  * @param {Array} gene_symbols - Array of gene symbols
+  */
+  async draw_mg({ gene_symbols } = {}) {
+    if (this.display) this.display.clear_display();
+
+    this.show_loading();
+
+    // cache gene_symbol so we can use it to redraw with different display
+    this.gene_symbols = gene_symbols;
+
+    if (this.display && this.display.gene_symbols) {
+      // Ensure this display is a multigene display
+      this.draw_mg_chart(gene_symbols, this.display.id);
+    } else {
+      // first time searching gene and displays have not been loaded
+      const { default_display_id } = await this.get_default_display(CURRENT_USER.id, this.id, 1);
+
+      if (default_display_id) {
+        this.default_display_id = default_display_id;
+        this.draw_mg_chart(gene_symbols, default_display_id);
+
+        // cache all owner/user displays for this panel;
+        const owner_displays = await this.get_dataset_displays(this.user_id, this.id);
+        this.owner_displays = owner_displays;
+
+        const user_displays = await this.get_dataset_displays(CURRENT_USER.id, this.id);
+        this.user_displays = user_displays;
+
+        this.register_events(multigene=true);
+      } else {
+        // No default display, this really shouldn't happen because
+        // owners should always have atleast done this after upload
+        this.show_error(
+          'No default display. Create one in the multigene curator.'
+        );
+      }
+    }
+  }
+
   async redraw(display_id) {
     // This check is here in case there was no
     // default display rendered, and a user tries
@@ -139,24 +225,114 @@ class DatasetPanel extends Dataset {
     if (this.display) this.display.clear_display();
 
     this.show_loading();
-    this.draw_chart(this.gene_symbol, display_id);
+    if (this.multigene) {
+      this.draw_mg_chart(this.gene_symbols, display_id);
+    } else {
+      this.draw_chart(this.gene_symbol, display_id);
+    }
+  }
+
+  // Generate single-gene preview images (Plotly) or plots
+  draw_preview_images(display) {
+    // check if config has been stringified
+    let gene_symbol;
+    let config
+    if (typeof display.plotly_config == 'string') {
+      config = JSON.parse(display.plotly_config);
+    } else {
+      config = display.plotly_config;
+    }
+    gene_symbol = config.gene_symbol;
+
+    if (gene_symbol) {
+      if (
+        display.plot_type === 'violin' ||
+        display.plot_type === 'bar' ||
+        display.plot_type === 'line' ||
+        display.plot_type === 'scatter' ||
+        display.plot_type === 'contour' ||
+        display.plot_type === 'tsne_dynamic' ||  // legacy
+        display.plot_type === 'tsne/umap_dynamic'
+      ) {
+        const d = new PlotlyDisplay(display);
+        d.get_data(gene_symbol).then(({ data }) => {
+          const { plot_json, plot_config } = data;
+          Plotly.toImage(
+            { ...plot_json, plot_config },
+            { height: 500, width: 500 }
+          ).then(url => {
+            $(`#modal-display-img-${display.id}`).attr('src', url);
+          });
+        });
+      } else if (display.plot_type === 'svg') {
+        const target = `modal-display-${display.id}`;
+        const d = new SVGDisplay(display, null, target);
+        d.get_data(gene_symbol).then(({ data }) => {
+          d.draw_chart(data);
+        });
+      } else {
+        // tsne
+        const target = `modal-display-${display.id}`;
+        const d = new TsneDisplay(display, gene_symbol, target);
+        d.draw(gene_symbol);
+      }
+      $(`#modal-display-${display.id}-loading`).hide();
+    } else {
+      // Hide the container box for the multigene plot
+      $(`#modal-display-${display.id}`).hide();
+    }
+  }
+
+  // Generate multigene preview plots
+  draw_preview_images_mg(display) {
+    // check if config has been stringified
+    let config;
+    if (typeof display.plotly_config === 'string') {
+      config = JSON.parse(display.plotly_config);
+    } else {
+      config = display.plotly_config;
+    }
+    const gene_symbols = config.gene_symbols;
+    // Draw preview image
+    if (gene_symbols) {
+      const d = new MultigeneDisplay(display, gene_symbols)
+      d.get_data(gene_symbols).then(({ data }) => {
+        const { plot_json, plot_config } = data;
+        Plotly.toImage(
+          { ...plot_json, plot_config },
+          { height: 500, width: 500 }
+        ).then(url => {
+          $(`#modal-display-img-${display.id}`).attr('src', url);
+        });
+      });
+      $(`#modal-display-${display.id}-loading`).hide();
+    } else {
+      // Hide the container box for the single-gene plot
+      $(`#modal-display-${display.id}`).hide();
+    }
   }
 
   register_events() {
+    const primary_key = this.primary_key;
+
     // redraw plot when user changes display
-    $(`#dataset_${this.id}`).on('changePlot', (e, display_id) =>
+    $(`#dataset_${primary_key}`).on('changePlot', (e, display_id) =>
       this.redraw(display_id)
     );
 
     // zoom event
-    $(`#dataset_${this.id}_zoom_in_control`).click(event => {
+    $(`#dataset_${primary_key}_zoom_in_control`).click(event => {
       $(`#dataset_grid`).fadeOut(() => {
         this.display.zoom_in();
       });
     });
 
     // info event
-    $(`#dataset_${this.id}_info_launcher`).click(() => {
+    $(`#dataset_${primary_key}_info_launcher`).click(() => {
+      // SAdkins - found bug where if single-gene/multigene is toggled,
+      // two modals will be overlayed.  Dispose of the earlier one.
+      //$(`#dataset_${primary_key}_info`).modal('dispose');
+
       const panel = dataset_collection_panel.datasets.find(
         d => d.id == this.id
       );
@@ -167,16 +343,21 @@ class DatasetPanel extends Dataset {
       const infobox_tmpl = $.templates('#tmpl_infobox');
       const infobox_html = infobox_tmpl.render({
         dataset_id: id,
+        primary_key: this.primary_key,
         title,
         ldesc,
         schematic_image,
       });
       $('#modals_c').html(infobox_html);
-      $(`#dataset_${this.id}_info`).modal({ show: true });
+      $(`#dataset_${primary_key}_info`).modal("show");
     });
 
     // Displays modal events
-    $(`#dataset_${this.id}_displays`).click(() => {
+    $(`#dataset_${primary_key}_displays`).click(() => {
+      // SAdkins - found bug where if single-gene/multigene is toggled,
+      // two modals will be overlayed.  Dispose of the earlier one.
+      //$(`#dataset_${primary_key}_displays_modal`).modal('dispose');
+
       const panel = dataset_collection_panel.datasets.find(
         d => d.id == this.id
       );
@@ -185,6 +366,7 @@ class DatasetPanel extends Dataset {
       const displays_tmpl = $.templates('#tmpl_displays_box');
       const displays_html = displays_tmpl.render({
         dataset_id: id,
+        primary_key: this.primary_key,
         title,
         user_displays,
         owner_displays,
@@ -194,125 +376,44 @@ class DatasetPanel extends Dataset {
       $('#modals_c').html(displays_html);
 
       // change plot when user clicks on a different display
-      const dataset_id = this.id;
       let display_panel = this;
       $('#modals_c div.modal-display').click(function(event) {
         $('#modals_c img.active-display').removeClass('active-display');
         const display_id = this.id.split('-').pop();
         display_panel.active_display_id = display_id;
-        $(`#dataset_${dataset_id}`).trigger('changePlot', display_id);
+        $(`#dataset_${primary_key}`).trigger('changePlot', display_id);
         $(`#modals_c img#modal-display-img-${display_id}`).addClass(
           'active-display'
         );
       });
 
       user_displays.forEach(display => {
-        // check if config has been stringified
-        let gene_symbol;
-        if (typeof display.plot_config == 'string') {
-          const config = JSON.parse(display.plotly_config);
-          gene_symbol = config.gene_symbol;
+        if (multigene) {
+          this.draw_preview_images_mg(display)
         } else {
-          const config = display.plotly_config;
-          gene_symbol = config.gene_symbol;
-        }
-
-        if (
-          display.plot_type === 'violin' ||
-          display.plot_type === 'bar' ||
-          display.plot_type === 'line' ||
-          display.plot_type === 'scatter' ||
-          display.plot_type === 'contour' ||
-          display.plot_type === 'tsne_dynamic' ||  // legacy
-          display.plot_type === 'tsne/umap_dynamic'
-        ) {
-          const d = new PlotlyDisplay(display);
-          d.get_data(gene_symbol).then(({ data }) => {
-            const { plot_json, plot_config } = data;
-            Plotly.toImage(
-              { ...plot_json, plot_config },
-              { height: 500, width: 500 }
-            ).then(url => {
-              $(`#modal-display-img-${display.id}`).attr('src', url);
-            });
-          });
-        } else if (display.plot_type === 'svg') {
-          const target = `modal-display-${display.id}`;
-          const d = new SVGDisplay(display, null, target);
-          d.get_data(gene_symbol).then(({ data }) => {
-            d.draw_chart(data);
-          });
-        } else {
-          // tsne
-          const target = `modal-display-${display.id}`;
-          const d = new TsneDisplay(display, gene_symbol, target);
-          d.draw(gene_symbol);
+          this.draw_preview_images(display)
         }
       });
       owner_displays.forEach(display => {
-        let config;
-        if (typeof display.plot_config == 'string') {
-            config = JSON.parse(display.plotly_config);
+        if (multigene) {
+          this.draw_preview_images_mg(display)
         } else {
-            config = display.plotly_config;
-        }
-        const { gene_symbol } = config;
-
-        if (
-          display.plot_type === 'violin' ||
-          display.plot_type === 'bar' ||
-          display.plot_type === 'line' ||
-          display.plot_type === 'scatter' ||
-          display.plot_type === 'contour' ||
-          display.plot_type === 'tsne_dynamic' ||  // legacy
-          display.plot_type === 'tsne/umap_dynamic'
-        ) {
-            const d = new PlotlyDisplay(display);
-            d.get_data(gene_symbol).then(
-                ({ data }) => {
-                    const { plot_json, plot_config } = data;
-                    Plotly.toImage(
-                        { ...plot_json, plot_config },
-                        { height: 500, width: 500 }
-                    ).then(
-                        url => { $(`#modal-display-img-${display.id}`).attr('src', url) }
-                    ).then(
-                        () => { $(`#modal-display-${display.id}-loading`).hide() }
-                    );
-                }
-            );
-        } else if (display.plot_type === 'svg') {
-            const target = `modal-display-${display.id}`;
-            const d = new SVGDisplay(display, null, target);
-            d.get_data(gene_symbol).then(
-                ({ data }) => {
-                    d.draw_chart(data).then(
-                        () => { $(`#modal-display-${display.id}-loading`).hide() }
-                    )
-                }
-            );
-        } else {
-            // tsne
-            const target = `modal-display-${display.id}`;
-            const d = new TsneDisplay(display, gene_symbol, target);
-
-            d.draw(gene_symbol);
-            $(`#modal-display-${display.id}-loading`).hide();
+          this.draw_preview_images(display)
         }
       });
-      $(`#dataset_${this.id}_displays_modal`).modal({ show: true });
+      $(`#dataset_${primary_key}_displays_modal`).modal('show');
     });
   }
 
   show_error(msg) {
-    $('#' + this.id + '_dataset_status_c h2').text(msg);
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
-    $('#dataset_' + this.id + ' .plot-container').hide();
+    $('#' + this.primary_key + '_dataset_status_c h2').text(msg);
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $('#dataset_' + this.primary_key + ' .plot-container').hide();
   }
 
   show_loading() {
-    $('#' + this.id + '_dataset_status_c h2').text('Loading...');
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
+    $('#' + this.primary_key + '_dataset_status_c h2').text('Loading...');
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
 
     if (this.dtype === 'svg-expression') {
       // this.hide_Svg();
@@ -320,31 +421,31 @@ class DatasetPanel extends Dataset {
       this.dtype === 'image-static-standard' ||
       this.dtype === 'image-static'
     ) {
-      $('#dataset_' + this.id + ' .image-static-container').hide();
+      $('#dataset_' + this.primary_key + ' .image-static-container').hide();
     } else {
-      $('#dataset_' + this.id + ' .plot-container').hide();
+      $('#dataset_' + this.primary_key + ' .plot-container').hide();
     } // TODO: Hide other container plot types...
   }
 
   show_no_match() {
-    $('#' + this.id + '_dataset_status_c h2').text('Gene not found');
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
-    $('#dataset_' + this.id + ' .plot-container').hide();
+    $('#' + this.primary_key + '_dataset_status_c h2').text('Gene not found');
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $('#dataset_' + this.primary_key + ' .plot-container').hide();
   }
 
   show_plot() {
-    $('#dataset_' + this.id + ' .dataset-status-container').hide();
-    $('#dataset_' + this.id + ' .plot-container').show();
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').hide();
+    $('#dataset_' + this.primary_key + ' .plot-container').show();
   }
 
   show_no_default() {
     const lastForwardSlash = window.location.href.lastIndexOf('/');
     const baseURL = window.location.href.slice(0, lastForwardSlash);
     const link = `${baseURL}/dataset_curator.html#/dataset/${this.id}/displays`;
-    $('#' + this.id + '_dataset_status_c h2').html(
+    $('#' + this.primary_key + '_dataset_status_c h2').html(
       `<a href="${link}"> No default display for this dataset. <br> Click to curate how you\'d like it displayed</a>`
     );
-    $('#dataset_' + this.id + ' .dataset-status-container').show();
-    $('#dataset_' + this.id + ' .plot-container').hide();
+    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $('#dataset_' + this.primary_key + ' .plot-container').hide();
   }
 }

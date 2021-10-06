@@ -172,9 +172,9 @@
           <div id='doc_profiles' class='tab-pane' role='tabpanel'>
             <div class='doc_type_c'>
               <h3>Presentation slides</h3>
-              <p>
-                Not yet available.
-              </p>
+              <div class="google-slides-container">
+                <iframe src="https://docs.google.com/presentation/d/e/2PACX-1vTnaebOYCW3S7aCth_2BbbbiNBn3my5DA39mYw8YWTxNneCPA-Sr57irBqrMKuWViChVV-HkxzXVxVK/embed?start=false&loop=false&delayms=3000" frameborder="0" width="960" height="569" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
+              </div>
               <!--
               <div class="google-slides-container">
                 <iframe loading="lazy" src="https://docs.google.com/presentation/d/e/2PACX-1vTnaebOYCW3S7aCth_2BbbbiNBn3my5DA39mYw8YWTxNneCPA-Sr57irBqrMKuWViChVV-HkxzXVxVK/embed?start=false&loop=false&delayms=3000" frameborder="0" width="960" height="569" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
@@ -263,14 +263,15 @@
         <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
         <script>document.write('<script src="js/manual.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
 
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
         <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
 
-  ga('create', 'UA-59916932-1', 'auto');
-  ga('send', 'pageview');
+          gtag('config', 'UA-59916932-1');
         </script>
+
     </body>
 </html>
