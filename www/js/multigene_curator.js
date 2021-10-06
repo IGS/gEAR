@@ -20,7 +20,7 @@ let displayId = null;
 let obsLevels = null;
 let geneSymbols = null;
 
-let geneCartTree = new GeneCartTree();
+let geneCartTree = new GeneCartTree('#selected_gene_cart_tree');
 
 const heatmapOptsIds = ["#cluster_cols_checkbox_container", "#obs_groupby_container"];
 const violinOptsIds = ["#obs_groupby_container"];
@@ -370,7 +370,7 @@ function loadGeneCarts () {
 
           // No domain gene carts yet
           geneCartTree.userGeneCarts = userGeneCarts;
-          geneCartTree.generateTree('#selected_gene_cart_tree');
+          geneCartTree.generateTree();
 
           $('#gene_cart_container').show();
 
