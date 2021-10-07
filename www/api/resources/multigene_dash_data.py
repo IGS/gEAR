@@ -9,7 +9,7 @@ import os, sys
 import geardb
 from gear.plotting import get_config
 from plotly.utils import PlotlyJSONEncoder
-from itertools import cycle, product
+from itertools import cycle, groupby, product
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -61,7 +61,7 @@ PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 ### Heatmap fxns
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, groupby_filter=None):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -79,12 +79,17 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False):
     if is_log10:
         values = df.loc[rows].values
 
+    hidden_labels = None
+    if not groupby_filter:
+        hidden_labels = "col"
+
     # TODO: If just one gene, use go.heatmap instead
 
     return dashbio.Clustergram(
         data=values
         , column_labels=columns
         , row_labels=gene_symbols
+        , hidden_labels = hidden_labels
         , cluster="all" if cluster_cols else "row"
         , color_map="balance"               # Heatmap colors
         , display_ratio=0.5                 # Make dendrogram slightly bigger relative to plot
@@ -182,7 +187,7 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
                         , yref="y"
                     )
 
-def create_volcano_plot(df, use_adj_pvals=False):
+def create_volcano_plot(df, query, ref, use_adj_pvals=False):
     """Generate a volcano plot.  Returns Plotly figure."""
     # Volcano plot
     # https://github.com/plotly/dash-bio/blob/master/dash_bio/component_factory/_volcano.py
@@ -196,7 +201,7 @@ def create_volcano_plot(df, use_adj_pvals=False):
 
     return dashbio.VolcanoPlot(
         dataframe=df
-        , title=None
+        , title="Differences in {} vs {}".format(query, ref)
         , col="lightgrey"
         , effect_size="logfoldchanges"
         , gene="gene_symbol"
@@ -261,8 +266,20 @@ def modify_volcano_plot(fig):
                 )
                 fig.add_trace(trace)
 
-    fig.layout["legend"]["y"] = 1.0
-    fig.layout["legend"]["yanchor"] = "top"
+    fig.update_layout(
+        legend={
+            "x":1
+            ,"xanchor":"left"
+            ,"y":0.5
+            ,"yanchor":"middle"
+        }
+        ,title={
+            "x":0.5
+            ,"xref":"paper"
+            ,"y":0
+            ,"yanchor":"bottom"
+        }
+    )
 
 ### Misc fxns
 
@@ -447,8 +464,8 @@ class MultigeneDashData(Resource):
         cluster_cols = req.get('cluster_cols', False)
         groupby_filter = req.get('groupby_filter', None)
         # Volcano plot options
-        condition1 = req.get('condition1', None)
-        condition2 = req.get('condition2', None)
+        query_condition = req.get('query_condition', None)
+        ref_condition = req.get('ref_condition', None)
         use_adj_pvals = req.get('adj_pvals', False)
         annotate_nonsignificant = req.get('annotate_nonsignificant', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
@@ -507,30 +524,31 @@ class MultigeneDashData(Resource):
 
         if plot_type == "volcano":
 
-            if not (condition1 and condition2):
+            if not (query_condition and ref_condition):
                 return {
                     'success': -1,
                     'message': 'Must pass two conditions in order to generate a volcano plot.'
                 }
 
-            (cond1_key, cond1_val) = condition1.split(';-;')
-            (cond2_key, cond2_val) = condition2.split(';-;')
+            (query_key, query_val) = query_condition.split(';-;')
+            (ref_key, ref_val) = ref_condition.split(';-;')
 
-            if cond1_key != cond2_key:
+            if query_key != ref_key:
                 return {
                     'success': -1,
                     'message': "Both comparable conditions must came from same observation group."
                 }
 
-            de_filter1 = selected.obs[cond1_key].isin([cond1_val])
+            de_filter1 = selected.obs[query_key].isin([query_val])
             selected1 = selected[de_filter1, :]
-            de_filter2 = selected.obs[cond1_key].isin([cond2_val])
+            de_filter2 = selected.obs[query_key].isin([ref_val])
             selected2 = selected[de_filter2, :]
-            de_selected = selected1.concatenate(selected2)
+            # Query needs to be appended onto ref to ensure the test results are not flipped
+            de_selected = selected2.concatenate(selected1)
 
             de_results = de.test.t_test(
                 de_selected
-                , grouping=cond1_key
+                , grouping=query_key
                 , gene_names=de_selected.var["gene_symbol"]
                 , is_logged=is_log10
             )
@@ -544,7 +562,7 @@ class MultigeneDashData(Resource):
             df["SNP"] = df["gene_symbol"] = df["gene"]
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
-            fig = create_volcano_plot(df, use_adj_pvals)
+            fig = create_volcano_plot(df, query_val, ref_val, use_adj_pvals)
             modify_volcano_plot(fig)
             if gene_symbols:
                 add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
@@ -561,7 +579,7 @@ class MultigeneDashData(Resource):
                 df = grouped.agg('mean') \
                     .dropna() \
 
-            (fig, _traces) = create_clustergram(df, gene_symbols, is_log10, cluster_cols)
+            (fig, _traces) = create_clustergram(df, gene_symbols, is_log10, cluster_cols, groupby_filter)
             modify_clustergram(fig)
 
         elif plot_type == "mg_violin":

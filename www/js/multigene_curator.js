@@ -257,13 +257,13 @@ function createObsDropdowns (obsLevels) {
 function createVolcanoDropdowns (obsLevels) {
   const tmpl = $.templates('#volcano_options_tmpl');
   const html = tmpl.render(obsLevels);
-  $('#volcano_condition1').html(html);
-  $('#volcano_condition1').select2({
+  $('#volcano_query_condition').html(html);
+  $('#volcano_query_condition').select2({
     placeholder: 'Select the first condition to compare with.',
     width: '25%'
   });
-  $('#volcano_condition2').html(html);
-  $('#volcano_condition2').select2({
+  $('#volcano_ref_condition').html(html);
+  $('#volcano_ref_condition').select2({
     placeholder: 'Select the second condition to compare with.',
     width: '25%'
   });
@@ -339,10 +339,10 @@ function loadDisplayConfigHtml (plotConfig) {
   }
 
   // Populate volcano conditions.
-  $('#volcano_condition1').val(plotConfig.condition1);
-  $('#volcano_condition1').trigger('change');
-  $('#volcano_condition2').val(plotConfig.condition2);
-  $('#volcano_condition2').trigger('change');
+  $('#volcano_query_condition').val(plotConfig.query_condition);
+  $('#volcano_query_condition').trigger('change');
+  $('#volcano_ref_condition').val(plotConfig.ref_condition);
+  $('#volcano_ref_condition').trigger('change');
 }
 
 // Load all saved gene carts for the current user
@@ -629,31 +629,31 @@ $(document).on('click', '#update_plot', async function () {
   const adjustPvals = $('#adj_pvals').is(':checked');
   const annotNonsig = $('#annot_nonsig').is(':checked');
 
-  const condition1 = $('#volcano_condition1').select2('data')[0].id;
-  const condition2 = $('#volcano_condition2').select2('data')[0].id;
+  const queryCondition = $('#volcano_query_condition').select2('data')[0].id;
+  const refCondition = $('#volcano_ref_condition').select2('data')[0].id;
 
-  if (plotType === 'volcano' && !(condition1 && condition2)) {
+  if (plotType === 'volcano' && !(queryCondition && refCondition)) {
     window.alert('Both comparision conditions must be selected to generate a volcano plot.');
     return;
   }
 
   // Validation related to the conditions
-  if (condition1 && condition2) {
-    const conditionKey = condition1.split(';-;')[0];
-    if (condition1.split(';-;')[0] !== condition2.split(';-;')[0]) {
+  if (queryCondition && refCondition) {
+    const conditionKey = queryCondition.split(';-;')[0];
+    if (queryCondition.split(';-;')[0] !== refCondition.split(';-;')[0]) {
       window.alert('Please choose 2 conditions from the same observation group.');
       return;
     }
 
-    if (condition1.split(';-;')[1] === condition2.split(';-;')[1]) {
+    if (queryCondition.split(';-;')[1] === refCondition.split(';-;')[1]) {
       window.alert('Please choose 2 different conditions.');
       return;
     }
 
     // If condition category was filtered, the selected groups must be present
     if (conditionKey in obsFilters) {
-      if (!(obsFilters[conditionKey].includes(condition1.split(';-;')[1]) &&
-        obsFilters[conditionKey].includes(condition2.split(';-;')[1]))) {
+      if (!(obsFilters[conditionKey].includes(queryCondition.split(';-;')[1]) &&
+        obsFilters[conditionKey].includes(refCondition.split(';-;')[1]))) {
         window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
         return;
       }
@@ -668,8 +668,8 @@ $(document).on('click', '#update_plot', async function () {
     cluster_cols: clusterCols,
     adj_pvals: adjustPvals,
     annotate_nonsignificant: annotNonsig,
-    condition1: condition1,
-    condition2: condition2
+    query_condition: queryCondition,
+    ref_condition: refCondition
   };
 
   // Draw the updated chart
