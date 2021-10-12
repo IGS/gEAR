@@ -167,7 +167,7 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
         for data_idx in range(0 if annot_nonsig else 1, len(fig.data)):
             # TODO: The endswith is fragile and should probably be done differently, maybe with regex.
             gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
-                if fig.data[data_idx].text[idx].endswith("<br>GENE: {}".format(gene))]
+                if fig.data[data_idx].text[idx] == gene]
             for idx in gene_indexes:
                 fig.add_annotation(
                         arg=dict(
