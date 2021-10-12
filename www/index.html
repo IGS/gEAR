@@ -779,7 +779,10 @@
                       <li class="dataset-link-{{:resource}}"><a href="{{:url}}" class="fa" target="_blank">{{:label}}</a></li>
                       {{/for}}
                       {{if has_tarball}}
-                      <li><a href="./cgi/download_tarball.cgi?dataset_id={{:id}}" class="fa fa-download"> Download</a></li>
+                      <li><a href="./cgi/download_source_file.cgi?type=tarball&dataset_id={{:id}}" class="fa fa-download"> Download bundle</a></li>
+                      {{/if}}
+                      {{if has_h5ad}}
+                      <li><a href="./cgi/download_source_file.cgi?type=h5ad&dataset_id={{:id}}" class="fa fa-download"> Download H5AD</a></li>
                       {{/if}}
                     </ul>
                   </div>
