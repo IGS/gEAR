@@ -1,8 +1,8 @@
 // TODO
 //  - Make existing plots disappear right when the user hits 'Plot' to redraw
 
-plot_data = null;
-selected_data = null;
+let plot_data = null;
+let selected_data = null;
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
