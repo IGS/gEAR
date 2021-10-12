@@ -162,7 +162,6 @@ def create_violin_plot(df, gene_map, groupby_filter):
 
 def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=False) -> None:
     """Add annotations to point to each desired gene within the volcano plot. Edits in-place."""
-    # Very hacky way to add annotations. need to redo.
     for gene in gene_symbols_list:
         # Insignificant genes are at index 0.  If you want to skip annotating them, start at index 1
         for data_idx in range(0 if annot_nonsig else 1, len(fig.data)):
@@ -219,6 +218,11 @@ def modify_volcano_plot(fig):
     sig_data = []
     # Keep non-significant data
     for data in fig.data:
+
+        # Get rid of unused SNP info, and "GENE: " label.
+        data['customdata'] = [text.split(' ')[1].split('<br>')[0] for text in data['text']] # ensembl ID (as passed to SNP property)
+        data['text'] = [text.split(' ')[-1] for text in data['text']]   # gene symbol
+
         if not (data["name"] and data["name"] == "Point(s) of interest"):
             new_data.append(data)
         else:
@@ -233,6 +237,7 @@ def modify_volcano_plot(fig):
             downregulated = {
                 "name": "Downregulated Genes"
                 , "text":[]
+                , 'customdata':[]
                 , "x":[]
                 , "y":[]
                 , "marker":{"color":"#636EFA"}
@@ -241,6 +246,7 @@ def modify_volcano_plot(fig):
             upregulated = {
                 "name": "Upregulated Genes"
                 , "text":[]
+                , 'customdata':[]
                 , "x":[]
                 , "y":[]
                 , "marker":{"color":"#EF553B"}
@@ -250,16 +256,21 @@ def modify_volcano_plot(fig):
                     upregulated['x'].append(data['x'][i])
                     upregulated['y'].append(data['y'][i])
                     upregulated['text'].append(data['text'][i])
+                    upregulated['customdata'].append(data['customdata'][i])
+
                 else:
                     downregulated['x'].append(data['x'][i])
                     downregulated['y'].append(data['y'][i])
                     downregulated['text'].append(data['text'][i])
+                    upregulated['customdata'].append(data['customdata'][i])
+
 
             for dataset in [upregulated, downregulated]:
                 trace = go.Scattergl(
                     x=dataset['x']
                     , y=dataset['y']
                     , text=dataset['text']
+                    , customdata=dataset['customdata']
                     , marker=dataset["marker"]
                     , mode="markers"
                     , name=dataset["name"]
@@ -276,8 +287,7 @@ def modify_volcano_plot(fig):
         ,title={
             "x":0.5
             ,"xref":"paper"
-            ,"y":0
-            ,"yanchor":"bottom"
+            ,"y":0.9
         }
     )
 
@@ -466,6 +476,7 @@ class MultigeneDashData(Resource):
         # Volcano plot options
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
+        de_test_algo = req.get("de_test_algo")
         use_adj_pvals = req.get('adj_pvals', False)
         annotate_nonsignificant = req.get('annotate_nonsignificant', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
@@ -546,12 +557,22 @@ class MultigeneDashData(Resource):
             # Query needs to be appended onto ref to ensure the test results are not flipped
             de_selected = selected2.concatenate(selected1)
 
-            de_results = de.test.t_test(
-                de_selected
-                , grouping=query_key
-                , gene_names=de_selected.var["gene_symbol"]
-                , is_logged=is_log10
-            )
+            # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
+            # which makes the ensuing plot inaccurate
+            if de_test_algo == "rank":
+                de_results = de.test.rank_test(
+                    de_selected
+                    , grouping=query_key
+                    , gene_names=de_selected.var["gene_symbol"]
+                    , is_logged=is_log10
+                )
+            else:
+                de_results = de.test.t_test(
+                    de_selected
+                    , grouping=query_key
+                    , gene_names=de_selected.var["gene_symbol"]
+                    , is_logged=is_log10
+                )
 
             # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
             df = de_results.summary()
@@ -559,7 +580,8 @@ class MultigeneDashData(Resource):
             df["pvals"] = df["pval"].fillna(1)      # Unexpressed genes show up as NaN
             df["pvals_adj"] = df["qval"].fillna(1)
             df["logfoldchanges"] = df["log2fc"]
-            df["SNP"] = df["gene_symbol"] = df["gene"]
+            df["SNP"] = df["ensm_id"]   # To easily get the ensembl id later
+            df["gene_symbol"] = df["gene"]
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
             fig = create_volcano_plot(df, query_val, ref_val, use_adj_pvals)

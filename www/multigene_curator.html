@@ -153,22 +153,33 @@
 
       <fieldset id="options_container" style="display:none;">
         <!-- Observation group options -->
-        <div class="form-group row" id="obs_groupby_container"></div>
         <fieldset class="form-group" id="obs_dropdowns_container"></fieldset>
+        <fieldset class="form-group row" id="obs_groupby_container"></fieldset>
         <fieldset class="form-group" id="volcano_options_container" style="display:none;">
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="volcano_condition1">Condition 1</label>
+            <label class="col-2 col-form-label" for="volcano_query_condition">Query Condition</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the first condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
-            <select id="volcano_condition1" class="col form-control"></select>
+            <select id="volcano_query_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="volcano_condition2">Condition 2</label>
+            <label class="col-2 col-form-label" for="volcano_ref_condition">Reference Condition</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the second condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
-            <select id="volcano_condition2" class="col form-control"></select>
+            <select id="volcano_ref_condition" class="col form-control"></select>
+          </div>
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="de_test_select">Differential Expression Test</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the differential expression testing algorithm to determine significance.">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <select class="col form-control" id="de_test_select">
+              <option></option>
+              <option value="t-test">Welch's t-test</option>
+              <option value="rank">Wilcoxon rank-sum test</option>
+            </select>
           </div>
         </fieldset>
 
@@ -185,7 +196,7 @@
               <div class="col-9 form-check">
                 <input class="form-check-input" type="checkbox" value="" id="cluster_cols">
                 <label class="form-check-label" for="cluster_cols">
-                  Cluster observation groups
+                  Also cluster observation groups
                 </label>
               </div>
             </div>
@@ -196,7 +207,7 @@
               <div class="col-9 form-check">
                 <input class="form-check-input" type="checkbox" value="" id="adj_pvals">
                 <label class="form-check-label" for="adj_pvals">
-                  Use adjusted p-values instead of raw
+                  Use adjusted p-values (q-values) instead of raw p-values
                 </label>
               </div>
             </div>
@@ -205,7 +216,7 @@
                 <i class="fa fa-question-circle" aria-hidden="true"></i>
               </span>
               <div class="col-9 form-check">
-                <input class="form-check-input" type="checkbox" value="" id="annot_nonsig">
+                <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
                 <label class="form-check-label" for="annot_nonsig">
                   Annotate nonsignificant genes.
                 </label>
@@ -224,7 +235,20 @@
     </main>
 
     <!-- Plots -->
-    <div id="dataset_plot"></div>
+    <div class="row">
+      <div id="dataset_plot" class="col-8"></div>
+      <div id="selected_genes_c" class="col-4" style="display:none;">
+        <div class="form-group">
+          <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
+        </div>
+        <button type="button" class="btn btn-purple" id="save_gene_cart">Save as gene cart</button>
+        <br>
+        <p id="saved_gene_cart_confirmation" style="display:none;"></p>
+        <h3>Selected Genes:</h3>
+        <ul id="selected_genes_list">
+        </ul>
+      </div>
+    </div>
     <div id="supplementary_plot"></div>
 
     <footer>
@@ -332,11 +356,15 @@
         <div class="form-group row">
           <label class="col-2 col-form-label" for="display_name">Display Name</label>
           <span class="col-1"></span>
-          <input class="col-3" id="display_name" placeholder="Enter name for saved display">
+          <input class="col-3 form-control" id="display_name" placeholder="Enter name for saved display">
         </div>
         <button type="button" class="btn btn-purple" id="save_display_btn">Save new {{:plot_type}}</button>
         <p id="saved_plot_confirmation" style="display:none;"></p>
       </form>
+    </script>
+
+    <script id="selected_genes_tmpl" type="text/x-jsrender">
+      <li class="text-truncate">{{:gene_symbol}}</li>
     </script>
 
     <script id="saved_display_modal_tmpl" type="text/x-jsrender">
