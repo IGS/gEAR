@@ -18,12 +18,7 @@ class GeneCart {
         /*
           This method is to save a cart after it has been built in the 
           standard way, setting attributes on an instantiated object.
-
-          THIS IS CURRENTLY NOT SUPPORTED AND NEEDS ITS OWN CGI
         */
-        console.log("ERROR: GeneCart.add_cart_to_db() not currently supported");
-        return false;
-        
         $.ajax({
             type: "POST",
             url: "./cgi/save_new_genecart.cgi",
