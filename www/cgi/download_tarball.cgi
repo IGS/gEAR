@@ -1,8 +1,8 @@
 #!/opt/bin/python3
 '''
-This script checks if a dataset is "Public" or "Private"
-If "Public", the data file will be downloaded for the user in .tab format
-If "Private", the user will be redirected get the main gEAR page: http://gear.igs.umaryland.edu
+Given a dataset's ID, this allows for the download of that dataset's tarball
+or H5AD file.
+
 '''
 
 from shutil import copyfileobj
@@ -17,10 +17,12 @@ import geardb
 def main():
     form = cgi.FieldStorage()
     dataset_id = cgi.escape(form.getvalue('dataset_id'))
+    dtype = cgi.escape(form.getvalue('type'))
     dataset = geardb.Dataset(id=dataset_id)
     tarball_path = dataset.get_tarball_path()
+    h5ad_path = dataset.get_file_path()
 
-    if os.path.isfile(tarball_path):
+    if dtype == 'tarball' and os.path.isfile(tarball_path):
         print("Content-type: application/octet-stream")
         print("Content-Disposition: attachment; filename={0}.tar.gz".format(dataset_id))
         print()
@@ -29,6 +31,15 @@ def main():
         with open(tarball_path, 'rb') as binfile:
             copyfileobj(binfile, sys.stdout.buffer)
 
+    elif dtype == 'h5ad' and os.path.isfile(tarball_path):
+        print("Content-type: application/octet-stream")
+        print("Content-Disposition: attachment; filename={0}.h5ad".format(dataset_id))
+        print()
+        sys.stdout.flush()
+
+        with open(h5ad_path, 'rb') as binfile:
+            copyfileobj(binfile, sys.stdout.buffer)
+            
     else:
         result["error"] = "Dataset tarball could not be found. Unable to download data file."
 
