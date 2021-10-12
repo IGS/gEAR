@@ -21,6 +21,7 @@ class DatasetCollectionPanel {
     }
 
     load_frames({share_id=null, multigene=false} = {}) {
+        console.log("ui-panel-dataset-collection.js: load_frames called with share_id " + share_id);
         /*
           Queries the database to get the list of datasets in the user's current
           view.  Initializes the dataset frame panels with placeholders for each
