@@ -16,7 +16,7 @@ class GeneCart {
 
     add_cart_to_db(callback, gc) {
         /*
-          This method is to save a cart after it has been built in the 
+          This method is to save a cart after it has been built in the
           standard way, setting attributes on an instantiated object.
         */
         $.ajax({
@@ -63,7 +63,7 @@ class GeneCart {
             }
         });
     }
-    
+
     add_gene(gene) {
         // Pass a Gene object
         this.genes.push(gene)
@@ -83,6 +83,11 @@ class GeneCart {
         } else {
             this.add_cart_to_db(callback, this);
         }
+    }
+
+    update_cart_in_db(callback) {
+        alert("Not implemented yet");
+        return false;
     }
 }
 
