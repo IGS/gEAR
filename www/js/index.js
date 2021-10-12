@@ -35,7 +35,7 @@ window.onload=function() {
     // Was a permalink found?
     share_id = getUrlParameter('share_id');
     scope = "permalink";
-    
+
     if (share_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
@@ -44,7 +44,7 @@ window.onload=function() {
 
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
-        
+
         // validate the share_id. runs load_dataset_frames() on success
         validate_permalink(share_id, scope);
     } else {
@@ -476,7 +476,6 @@ function load_gene_carts(cart_share_id) {
             }
 
             //Serves as source for #selected_gene_cart editable
-            gene_carts = formattedData;
             $('#selected_gene_cart').val(cart_share_id);
 
             d.resolve();
