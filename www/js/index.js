@@ -330,6 +330,10 @@ function validate_permalink(share_id, scope) {
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
             }
+
+            if (data['scope'] == 'permalink') {
+                dataset_collection_panel.load_frames();
+            }
         },
         error: function (jqXHR, textStatus, errorThrown) {
             display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error validating share ID');
