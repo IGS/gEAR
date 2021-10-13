@@ -20,9 +20,7 @@ class DatasetCollectionPanel {
         }
     }
 
-    load_frames({share_id=null, multigene=false} = {}) {
-        console.log("ui-panel-dataset-collection.js: load_frames called with share_id " + share_id);
-        /*
+    load_frames({share_id=null, multigene=false} = {}) {        /*
           Queries the database to get the list of datasets in the user's current
           view.  Initializes the dataset frame panels with placeholders for each
           dataset.
@@ -56,7 +54,6 @@ class DatasetCollectionPanel {
                         }
                     }
 
-                    //console.log(dsp);
 
                     dsc_panel.datasets.push(dsp);
                 });
@@ -102,7 +99,7 @@ class DatasetCollectionPanel {
         // According to this, we shouldn't be manually setting the label:
         //  https://github.com/vitalets/x-editable/issues/332#issuecomment-22379178
         $('#selected_profile').text(layout_label);
-        
+
         $('#selected_profile').val(layout_id);
         $('#search_param_profile').text(layout_label);
 

@@ -318,8 +318,7 @@ $(document).on('click', 'button#save_user_new_pass', function(){
 });
 
 function validate_permalink(scope) {
-    console.log("index.js: calling validate_permalink(" + share_id + ", " + scope + ")");
-    
+
     // Works for dataset or layout-based share IDs, which is differentiated by scope
     $.ajax({
         url : './cgi/validate_share_id.cgi',
@@ -334,10 +333,7 @@ function validate_permalink(scope) {
             }
 
             if (scope == 'permalink') {
-                console.log("index.js: calling load_frames with share_id = " + share_id);
-                dataset_collection_panel.load_frames(share_id=share_id);
-            } else {
-                console.log("Nope, scope is " + data['scope']);
+                dataset_collection_panel.load_frames({share_id});
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
