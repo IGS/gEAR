@@ -14,7 +14,7 @@ class GeneCart {
         this.ldesc = ldesc;
     }
 
-    add_cart_to_db(callback, gc) {
+    add_cart_to_db(callback, errCallback) {
         /*
           This method is to save a cart after it has been built in the
           standard way, setting attributes on an instantiated object.
@@ -33,6 +33,7 @@ class GeneCart {
             },
             error: function(msg) {
                 console.log("error: " + msg);
+                errCallback(this);
             }
         });
     }
@@ -69,7 +70,7 @@ class GeneCart {
         this.genes.push(gene)
     }
 
-    save(callback) {
+    save(callback, errCallback) {
         /*
         If the 'id' is empty, it's assumed to be new, so an INSERT is
         performed.  Otherwise, if ID is populated this does an
@@ -79,13 +80,13 @@ class GeneCart {
         save and the gene cart object is passed to it.
         */
         if (this.id) {
-            this.update_cart_in_db(callback);
+            this.update_cart_in_db(callback, errCallback);
         } else {
-            this.add_cart_to_db(callback, this);
+            this.add_cart_to_db(callback, errCallback);
         }
     }
 
-    update_cart_in_db(callback) {
+    update_cart_in_db(callback, errCallback) {
         alert("Not implemented yet");
         return false;
     }

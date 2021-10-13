@@ -14,7 +14,7 @@ let supplementaryGenesFilters = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
 
-let selectedData = null;  // Data selected in a plot (e.g. volcano with lasso tool)
+let selectedGenes = null;  // Genes selected in a plot (e.g. volcano with lasso tool)
 
 let datasetId = null;
 let defaultDisplayId = null;
@@ -28,7 +28,8 @@ const heatmapOptsIds = ["#cluster_cols_checkbox_container", "#obs_groupby_contai
 const violinOptsIds = ["#obs_groupby_container"];
 const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
-// Async to ensure data is fetched before proceeding
+// Async to ensure data is fetched before proceeding.
+// This self-invoking function loads the initial state of the page.
 (async () => {
   // check if the user is already logged in
   await check_for_login();
@@ -226,8 +227,7 @@ function drawChart (data, datasetId, supplementary = false) {
 
     // Note: the jQuery implementation has slightly different arguments than what is in the plotlyJS implementation
     // We want 'data', which returns the eventData PlotlyJS events normally return
-    selectedData = data;
-    let selectedGenes = [];
+    selectedGenes = [];
 
     data.points.forEach(function (pt) {
       selectedGenes.push({
@@ -279,7 +279,7 @@ function createObsDropdowns (obsLevels) {
   const html = tmpl.render(obsLevels);
   $('#obs_dropdowns_container').html(html);
   $('select.js-obs-levels').select2({
-    placeholder: 'Start typing to filter categories. Click "All" to use all categories',
+    placeholder: 'Start typing to include groups from this category. Click "All" to use all groups',
     allowClear: true,
     width: 'resolve'
   });
@@ -438,18 +438,24 @@ function saveGeneCart () {
 
   selectedGenes.forEach(function (pt) {
     var gene = new Gene({
-      gene_id: pt.gene_id,
+      id: pt.gene_id,
       gene_symbol: pt.gene_symbol,
     });
     gc.add_gene(gene);
   });
 
-  gc.save(updateUIAfterGeneCartSave);
+  gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 }
 
-function updateUIAfterGeneCartSave(gc) {
+function updateUIAfterGeneCartSaveSuccess(gc) {
   $('#saved_gene_cart_confirmation').text('Gene cart successfully saved!');
   $('#saved_gene_cart_confirmation').addClass('text-success');
+  $('#saved_gene_cart_confirmation').show();
+}
+
+function updateUIAfterGeneCartSaveFailure(gc) {
+  $('#saved_gene_cart_confirmation').text('Issue with saving gene cart.');
+  $('#saved_gene_cart_confirmation').addClass('text-danger');
   $('#saved_gene_cart_confirmation').show();
 }
 
@@ -716,7 +722,7 @@ $(document).on('click', '#update_plot', async function () {
   }
 
   if (plotType === 'volcano' && !deTest) {
-    window.alert('Both comparision conditions must be selected to generate a volcano plot.');
+    window.alert('Must select a DE statistical test.');
     return;
   }
 
