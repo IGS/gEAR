@@ -330,7 +330,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     if plot_type == "scattergl":
         plot_type == "scatter"
         plotting_args["render_mode"] = "webgl"
-        
+
     # For line plots, use svg render since webgl mode does not have spline as a valid line shape (as of plotly 4.14.3)
     if plot_type == "line":
         plotting_args["render_mode"] = "svg"
@@ -601,8 +601,8 @@ def get_config():
         modeBarButtonsToRemove=[
             "zoom2d",
             "pan2d",
-            "select2d",
-            "lasso2d",
+            #"select2d",
+            #"lasso2d",
             "zoomIn2d",
             "zoomOut2d",
             "autoScale2d",
