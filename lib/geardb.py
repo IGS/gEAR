@@ -995,20 +995,13 @@ class Dataset:
         This returns where the path SHOULD be, it doesn't check that it's actually there. This
         allows for it to be used also for any process which wants to know where to write it.
         """
-        if self.has_h5ad:
-            if session_id is None:
-                h5ad_file_path = "{0}/../www/datasets/{1}.h5ad".format(
-                    os.path.dirname(os.path.abspath(__file__)), self.id)
-            else:
-                h5ad_file_path = "{0}/{1}/{2}.h5ad".format(this.analysis_base_dir, session_id, self.id)
-
-            return h5ad_file_path
-        else:
-            ## all other types are in the same place
-            tab_file_path = "{0}/../www/datasets_uploaded/{1}.tab".format(
+        if session_id is None:
+            h5ad_file_path = "{0}/../www/datasets/{1}.h5ad".format(
                 os.path.dirname(os.path.abspath(__file__)), self.id)
+        else:
+            h5ad_file_path = "{0}/{1}/{2}.h5ad".format(this.analysis_base_dir, session_id, self.id)
 
-            return tab_file_path
+        return h5ad_file_path
 
     def get_tarball_path(self):
         """
@@ -1260,6 +1253,11 @@ class DatasetCollection:
                     dataset.has_tarball = 1
                 else:
                     dataset.has_tarball = 0
+
+                if os.path.exists(dataset.get_file_path()):
+                    dataset.has_h5ad = 1
+                else:
+                    dataset.has_h5ad = 0
 
                 #  TODO: These all need to be tracked through the code and removed
                 dataset.dataset_id = dataset.id
