@@ -546,6 +546,7 @@ $("#save_gene_cart").on("click", function () {
   } else {
     window.alert("You must be signed in to do that.");
   }
+  $("#save_gene_cart").prop('disabled', false);
 });
 
 // Load user's gene carts
