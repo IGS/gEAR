@@ -556,7 +556,7 @@ function save_gene_cart() {
     gc.add_gene(gene);
   });
 
-  gc.save(update_ui_after_gene_cart_save);
+  gc.save(update_ui_after_gene_cart_save_success, update_ui_after_gene_cart_save_failure);
 }
 
 // Sort selected gene table (using already generated table data)
@@ -638,9 +638,15 @@ function sortTable(n) {
   }
 }
 
-function update_ui_after_gene_cart_save(gc) {
+function update_ui_after_gene_cart_save_success(gc) {
   $("#create_gene_cart_dialog").hide("fade");
   $("#saved_gene_cart_info_c > h3").html("Cart: " + gc.label);
   $("#gene_cart_member_count").html(gc.genes.length);
+  $("#saved_gene_cart_info_c").show();
+}
+
+function update_ui_after_gene_cart_save_failure(gc) {
+  $("#create_gene_cart_dialog").hide("fade");
+  $("#saved_gene_cart_info_c > h3").html("There was an issue saving the gene cart.");
   $("#saved_gene_cart_info_c").show();
 }
