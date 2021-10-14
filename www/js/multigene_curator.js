@@ -174,7 +174,7 @@ function drawChart (data, datasetId, supplementary = false) {
 
   const layoutMods = {
     height: targetDiv.clientHeight,
-    width: targetDiv.clientWidth
+    width: targetDiv.clientWidth,
   };
 
   // NOTE: This will definitely affect the layout on the gene search results page
@@ -185,7 +185,7 @@ function drawChart (data, datasetId, supplementary = false) {
     }
   } else if ($('#plot_type_select').select2('data')[0].id === 'volcano') {
     layoutMods.height = 800;
-    layoutMods.width = 1000;
+    layoutMods.width = 900; // If window is not wide enough, the plotly option icons will overlap contents on the right
   }
 
   // If there was an error in the plot, put alert up
@@ -549,6 +549,16 @@ $("#save_gene_cart").on("click", function () {
   $("#save_gene_cart").prop('disabled', false);
 });
 
+$("#download_plot").on("click", function () {
+  Plotly.downloadImage(
+    `dataset_${datasetId}_h5ad`, {
+      width: $('#plot_download_width').val()
+      , height: $('#plot_download_height').val()
+      , scale: $('#plot_download_scale').val()
+    }
+  )
+});
+
 // Load user's gene carts
 $('#selected_gene_cart').change(function () {
   let geneCartId = $(this).val();
@@ -661,11 +671,6 @@ $(document).on('click', '#update_plot', async function () {
     $('#supplementary_plot').remove();
   }
 
-  // Render dataset plot HTML
-  const plotTemplate = $.templates('#dataset_plot_tmpl');
-  const plotHtml = plotTemplate.render({ dataset_id: datasetId });
-  $('#dataset_plot').html(plotHtml);
-
   const plotType = $('#plot_type_select').select2('data')[0].id;
 
   const groupbyFilter = $('input[name="obs_groupby"]:checked').val();
@@ -763,10 +768,18 @@ $(document).on('click', '#update_plot', async function () {
     de_test_algo: deTest
   };
 
+  // Render dataset plot HTML
+  const plotTemplate = $.templates('#dataset_plot_tmpl');
+  const plotHtml = plotTemplate.render({ dataset_id: datasetId });
+  $('#dataset_plot').html(plotHtml);
+
   // Draw the updated chart
   $('#dataset_spinner').show();
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
+
+  // Show plot download options
+  $('#plot_download_opts').show();
 
   const saveTemplate = $.templates('#save_plot_tmpl');
   const saveHtml = saveTemplate.render({ plot_type: plotType });
@@ -923,6 +936,9 @@ $(document).on('click', '.js-load-display', async function () {
   $('#dataset_plot').html(plotHtml);
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
+
+  // Show plot download options
+  $('#plot_download_opts').show();
 });
 
 // Delete user display

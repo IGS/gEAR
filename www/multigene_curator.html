@@ -238,19 +238,39 @@
     <!-- Plots -->
     <div class="row">
       <div id="dataset_plot" class="col-8"></div>
-      <div id="selected_genes_c" class="col-4" style="display:none;">
-        <div class="form-group">
-          <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
-        </div>
-        <button type="button" class="btn btn-purple mb-3" id="save_gene_cart">Save as gene cart</button>
-        <br>
-        <p id="saved_gene_cart_confirmation" style="display:none;"></p>
-        <h3>Selected Genes:</h3>
-        <ul id="selected_genes_list">
-        </ul>
+      <div class="col-4">
+        <fieldset id="selected_genes_c" style="display:none;">
+          <legend>Selected Genes to Gene Cart</legend>
+          <div class="form-group">
+            <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
+          </div>
+          <button type="button" class="btn btn-purple mb-3" id="save_gene_cart">Save as gene cart</button>
+          <br>
+          <p id="saved_gene_cart_confirmation" style="display:none;"></p>
+          <h3>Selected Genes:</h3>
+          <ul id="selected_genes_list">
+          </ul>
+        </fieldset> <!-- end selected_genes_c-->
+        <fieldset id="plot_download_opts" style="display:none;">
+          <legend>Image Download Options</legend>
+          <div class="form-row">
+            <label class="col-form-label col-3" for="plot_download_height">Height (in px)</label>
+            <input id="plot_download_height" class="form-control col-2" value=450 >
+          </div>
+          <div class="form-row">
+            <label class="col-form-label col-3" for="plot_download_width">Width (in px)</label>
+            <input id="plot_download_width" class="form-control col-2" value=700>
+          </div>
+          <div class="form-row">
+            <label class="col-form-label col-3" for="plot_download_scale">Scale plot size</label>
+            <input id="plot_download_scale" class="form-control col-2" value=1>
+          </div>
+          <button type="button" class="btn btn-purple mb-3" id="download_plot">Download Image</button>
+        </fieldset>
       </div>
+
     </div>
-    <div id="supplementary_plot"></div>
+    <div id="supplementary_plot" class="row"></div>
 
     <footer>
       <div id='funding'>
