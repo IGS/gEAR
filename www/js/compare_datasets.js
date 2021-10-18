@@ -544,8 +544,9 @@ function plot_data_to_graph(data) {
 function save_gene_cart() {
   // must have access to USER_SESSION_ID
   var gc = new GeneCart({
-    session_id: CURRENT_USER.session_id,
-    label: $("#gene_cart_name").val(),
+      session_id: CURRENT_USER.session_id,
+      label: $("#gene_cart_name").val(),
+      gctype: 'unweighted-list'
   });
 
   selected_data.points.forEach(function (pt) {
