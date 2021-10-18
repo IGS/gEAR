@@ -22,7 +22,7 @@ let displayId = null;
 let obsLevels = null;
 let geneSymbols = null;
 
-let geneCartTree = new GeneCartTree('#selected_gene_cart_tree');
+let geneCartTree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
 
 const heatmapOptsIds = ["#cluster_cols_checkbox_container", "#obs_groupby_container"];
 const violinOptsIds = ["#obs_groupby_container"];
@@ -434,9 +434,12 @@ function loadGeneCarts () {
 function saveGeneCart () {
   // must have access to USER_SESSION_ID
   var gc = new GeneCart({
-    session_id: CURRENT_USER.session_id,
-    label: $("#gene_cart_name").val(),
-    gctype: "unweighted-list"
+    session_id: CURRENT_USER.session_id
+    , label: $("#gene_cart_name").val()
+    , gctype: "unweighted-list"
+    , organism_id:  $("#dataset_select").find(':selected').data('organism-id')
+    // Also acceptable - $('#dataset_select').select2('data')[0].element.attributes['data-organism-id'].value;
+    , is_public: 0
   });
 
   selectedGenes.forEach(function (pt) {
