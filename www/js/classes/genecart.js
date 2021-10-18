@@ -19,7 +19,6 @@ class GeneCart {
           This method is to save a cart after it has been built in the
           standard way, setting attributes on an instantiated object.
         */
-        console.log(JSON.stringify(this));
         $.ajax({
             type: "POST",
             url: "./cgi/save_new_genecart_json.cgi",

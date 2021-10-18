@@ -162,7 +162,6 @@ function load_comparison_graph() {
         plot_data = data;
         plot_data_to_graph(data);
       } else {
-        console.log("CGI unsuccessful");
         // Handle graphing failures
         $("#plot_loading").hide();
         $("#ticket_datasetx_id").text($("#dataset_id").val());
@@ -546,7 +545,9 @@ function save_gene_cart() {
   var gc = new GeneCart({
       session_id: CURRENT_USER.session_id,
       label: $("#gene_cart_name").val(),
-      gctype: 'unweighted-list'
+      gctype: 'unweighted-list',
+      organism_id: $("#dataset_id").find(':selected').data('organism-id'),
+      is_public: 0
   });
 
   selected_data.points.forEach(function (pt) {

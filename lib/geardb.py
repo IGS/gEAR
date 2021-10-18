@@ -1743,6 +1743,12 @@ class GeneCart:
             user_logged_in = get_user_from_session_id(json_obj['session_id'])
             self.user_id = user_logged_in.id
 
+        if 'gctype' in json_obj:
+            self.gctype = json_obj['gctype']
+
+        if 'is_public' in json_obj:
+            self.is_public = json_obj['is_public']
+
         if 'genes' in json_obj:
             self.genes = list()
 
