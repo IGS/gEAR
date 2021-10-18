@@ -621,7 +621,6 @@ $('#cluster_cols').change(function () {
 
 // Some options are specific to certain plot types
 $('#plot_type_select').change(function () {
-  $('#options_container').show();
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_c').hide();
   switch ($('#plot_type_select').val()) {
@@ -834,6 +833,8 @@ $(document).on('click', 'g.y5tick text a', async function () {
 
 // Reset observation filters choices to be empty
 $(document).on('click', '#reset_opts', async function () {
+  $('#options_container').show();
+  $('#options_spinner').show();
   // Get categorical observations for this dataset
   const data = await fetchH5adInfo({ datasetId, undefined });
   obsLevels = curateObservations(data.obs_levels);
@@ -849,6 +850,7 @@ $(document).on('click', '#reset_opts', async function () {
       trigger: "hover"
     });
   });
+  $('#options_spinner').hide();
 });
 
 // If advanced options collapsable is clicked, toggle arrow b/t up and down
