@@ -255,6 +255,7 @@ async function draw (datasetId, payload, supplementary = false) {
 }
 
 function createGeneDropdown (genes) {
+  $('#gene_spinner').show();
   const tmpl = $.templates('#gene_dropdown_tmpl');
   const data = { genes: genes };
   const html = tmpl.render(data);
@@ -264,6 +265,7 @@ function createGeneDropdown (genes) {
     allowClear: true,
     width: 'resolve'
   });
+  $('#gene_spinner').hide();
 }
 
 // Render the observation groupby field HTML
@@ -279,7 +281,7 @@ function createObsDropdowns (obsLevels) {
   const html = tmpl.render(obsLevels);
   $('#obs_dropdowns_container').html(html);
   $('select.js-obs-levels').select2({
-    placeholder: 'Start typing to include groups from this category. Click "All" to use all groups',
+    placeholder: 'Start typing to include groups from this category. Click "All" or leave empty to use all groups',
     allowClear: true,
     width: 'resolve'
   });
@@ -434,6 +436,7 @@ function saveGeneCart () {
   var gc = new GeneCart({
     session_id: CURRENT_USER.session_id,
     label: $("#gene_cart_name").val(),
+    gctype: "unweighted-list"
   });
 
   selectedGenes.forEach(function (pt) {
@@ -510,30 +513,21 @@ $('#dataset_select').change(async function () {
 
   $('#load_saved_plots').show();
   $('#plot_type_container').show();
-  $('#options_spinner').show();
-  $('#advanced_options_container').show();
   $('#gene_container').show();
+  $('#advanced_options_container').show();
 
   // Get genes for this dataset
   geneSymbols = await fetchGeneSymbols({ datasetId, undefined });
   createGeneDropdown(geneSymbols);
   $('#genes_not_found').hide();
 
-  // Get categorical observations for this dataset
-  const data = await fetchH5adInfo({ datasetId, undefined });
-  obsLevels = curateObservations(data.obs_levels);
-  createObsDropdowns(obsLevels);
-  createObsGroupbyField(obsLevels);
-  createVolcanoDropdowns(obsLevels);
-
-  // Ensure genes and observation columns dropdown toooltip shows
+  // Ensure genes dropdown tooltip shows
   $(function () {
     $('[data-toggle="tooltip"]').tooltip({
       trigger: "hover"
     });
   });
 
-  $('#options_spinner').hide();
   $('#update_plot').show();
   $('#reset_opts').show();
 });
@@ -845,6 +839,13 @@ $(document).on('click', '#reset_opts', async function () {
   createObsDropdowns(obsLevels);
   createObsGroupbyField(obsLevels);
   createVolcanoDropdowns(obsLevels);
+
+  // Ensure observation options tooltips show
+  $(function () {
+    $('[data-toggle="tooltip"]').tooltip({
+      trigger: "hover"
+    });
+  });
 });
 
 // If advanced options collapsable is clicked, toggle arrow b/t up and down
