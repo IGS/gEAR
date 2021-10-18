@@ -255,6 +255,7 @@ async function draw (datasetId, payload, supplementary = false) {
 }
 
 function createGeneDropdown (genes) {
+  $('#gene_spinner').show();
   const tmpl = $.templates('#gene_dropdown_tmpl');
   const data = { genes: genes };
   const html = tmpl.render(data);
@@ -264,6 +265,7 @@ function createGeneDropdown (genes) {
     allowClear: true,
     width: 'resolve'
   });
+  $('#gene_spinner').hide();
 }
 
 // Render the observation groupby field HTML
@@ -511,9 +513,8 @@ $('#dataset_select').change(async function () {
 
   $('#load_saved_plots').show();
   $('#plot_type_container').show();
-  $('#options_spinner').show();
-  $('#advanced_options_container').show();
   $('#gene_container').show();
+  $('#advanced_options_container').show();
 
   // Get genes for this dataset
   geneSymbols = await fetchGeneSymbols({ datasetId, undefined });
@@ -527,7 +528,6 @@ $('#dataset_select').change(async function () {
     });
   });
 
-  $('#options_spinner').hide();
   $('#update_plot').show();
   $('#reset_opts').show();
 });

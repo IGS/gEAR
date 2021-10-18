@@ -237,7 +237,7 @@ def modify_volcano_plot(fig):
     for data in sig_data:
         if data["name"] and data["name"] == "Point(s) of interest":
             downregulated = {
-                "name": "Downregulated Genes"
+                "name": "Upregulated in Reference"
                 , "text":[]
                 , 'customdata':[]
                 , "x":[]
@@ -246,7 +246,7 @@ def modify_volcano_plot(fig):
             }
 
             upregulated = {
-                "name": "Upregulated Genes"
+                "name": "Upregulated in Query"
                 , "text":[]
                 , 'customdata':[]
                 , "x":[]

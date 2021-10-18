@@ -96,7 +96,22 @@
         </select>
       </div>
 
+      <!-- Plot type selection-->
+      <div class="form-group row" id="plot_type_container">
+        <label class="col-2 col-form-label" for="plot_type_select">Plot type</label>
+        <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the type of plot to draw.">
+          <i class="fa fa-question-circle" aria-hidden="true"></i>
+        </span>
+        <select class="col-3 form-control" id="plot_type_select">
+          <option></option>
+          <option value="heatmap">Heatmap</option>
+          <option value="mg_violin">Violin</option>
+          <option value="volcano">Volcano Plot</option>
+        </select>
+
+        <div class="col-3">
       <!-- Modal -->
+      <span>or&ensp;</span>
       <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
       <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="Choose saved display to load" aria-hidden="true" id="load_plots_modal">
         <div class="modal-dialog modal-lg">
@@ -111,28 +126,15 @@
           </div>
         </div>
       </div>
-
-      <!-- Plot type selection-->
-      <div class="form-group row" id="plot_type_container">
-        <label class="col-2 col-form-label" for="plot_type_select">Plot type</label>
-        <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the type of plot to draw.">
-          <i class="fa fa-question-circle" aria-hidden="true"></i>
-        </span>
-        <select class="col form-control" id="plot_type_select">
-          <option></option>
-          <option value="heatmap">Heatmap</option>
-          <option value="mg_violin">Violin</option>
-          <option value="volcano">Volcano Plot</option>
-        </select>
-      </div>
-
-      <div id="options_spinner" style="display:none;">
-        <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-        <span class="sr-only">Loading...</span>
+        </div>
       </div>
 
       <!-- Gene selection-->
       <fieldset id="gene_container">
+        <div id="gene_spinner" style="display:none;">
+          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+          <span class="sr-only">Loading...</span>
+        </div>
         <div class="row" id="gene_dropdown_container"></div>
         <div class="form-group row" id="gene_cart_container">
           <label class="col-2 col-form-label" for="selected_gene_cart">or Load from Gene Cart</label>
@@ -159,14 +161,14 @@
         <fieldset class="form-group" id="volcano_options_container" style="display:none;">
           <div class="form-group row">
             <label class="col-2 col-form-label" for="volcano_query_condition">Query Condition</label>
-            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the first condition">
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the query condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select id="volcano_query_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
             <label class="col-2 col-form-label" for="volcano_ref_condition">Reference Condition</label>
-            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the second condition">
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the reference condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select id="volcano_ref_condition" class="col form-control"></select>
