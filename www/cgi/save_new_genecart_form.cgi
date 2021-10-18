@@ -4,13 +4,6 @@
 Saves a GeneCart object (from genecart.js) serialized as 
 formData and submitted to this script.  This assumes we're creating 
 a NEW GeneCart object
-
-There are two ways this script is called.
-
-- Via formdata submission, where cgi.FieldStorage is used. This assumes
-  one of those fields is 'new_cart_label' and can't be empty
-- Passing JSON directly
-
 """
 
 import cgi, json
