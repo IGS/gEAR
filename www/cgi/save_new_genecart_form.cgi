@@ -34,7 +34,7 @@ def main():
         pasted_genes = form.getvalue('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
 
         for gene_sym in pasted_genes.split(' '):
-            gene = Gene(gene_symbol=gene_sym)
+            gene = geardb.Gene(gene_symbol=gene_sym)
             gc.add_gene(gene)
 
     elif upload_type == 'uploaded-unweighted':
@@ -46,7 +46,7 @@ def main():
             pasted_genes = re.sub(r"\s+", " ", pasted_genes)
 
             for gene_sym in pasted_genes.split(' '):
-                gene = Gene(gene_symbol=gene_sym)
+                gene = geardb.Gene(gene_symbol=gene_sym)
                 gc.add_gene(gene)
         else:
             raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
