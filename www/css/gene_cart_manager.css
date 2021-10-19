@@ -4,6 +4,10 @@
 .expanded-view-hidden {
     display: none;
 }
+.input-validation-error {
+    border: 1px solid red;
+    background-color: pink;
+}
 div#add_cart_controls_c {
     margin-top: 20px;
     margin-bottom: 30px;
