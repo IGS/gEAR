@@ -40,6 +40,14 @@ window.onload=function() {
         $("#initial_instructions_c").hide();
     });
 
+    $(document).on('blur', '#new_cart_label', function(e){
+        if (! $(this).val()) {
+            $(this).addClass("input-validation-error");
+        } else {
+            $(this).removeClass("input-validation-error");
+        }
+    });
+
     $(document).on('click', 'button.view_gc', function(e){
         window.location = "./p?c=" + $(this).val();
     });
@@ -293,6 +301,16 @@ $('#new_cart_data').on('submit', function(e) {
     // disable button and show indicator that it's loading
     $("#btn_new_cart_save").hide();
     $("#btn_new_cart_saving").show();
+
+    // check required fields
+    if (! $("#new_cart_label").val()) {
+        $("#new_cart_label").addClass("input-validation-error");
+        $("#btn_new_cart_save").show();
+        $("#btn_new_cart_saving").hide();
+        return false;
+    } else {
+        $("#new_cart_label").removeClass("input-validation-error");
+    }
     
     session_id = Cookies.get('gear_session_id');
     var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
