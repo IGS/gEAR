@@ -19,7 +19,7 @@ There are two main differences between the two curator tools:
   a. *Manually select genes.* The text box will filter possible genes as the name is typed. Either clicking the gene from the dropdown list or hitting Tab adds that gene to the selection.
   b. *Load from a gene cart.* You have the option to choose a public gene cart or your own saved gene cart. When a gene cart is chosen, all of those genes will be added to the gene selection box.
 4. Configure plot options. Different plot types have different options available to them. Each option has tooltips to assist with the particular option
-  a. In the case of the "Filter by Category" option, only the chosen groups in each category in each group will be included when creating the plots. However, leaving a category empty or clicking "All" will not filter the category.
+  a. In the case of the "Filter by Category" option, only the chosen groups in each category in each group will be included when creating the plots. Clicking "All" will use all groups in the category.
   b. Each plot type also has advanced options.
 5. Click "Update plot" to generate the plot.
 

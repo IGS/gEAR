@@ -110,22 +110,22 @@
         </select>
 
         <div class="col-3">
-      <!-- Modal -->
-      <span>or&ensp;</span>
-      <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
-      <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="Choose saved display to load" aria-hidden="true" id="load_plots_modal">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2 class="modal-title">Available saved plot displays</h2>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
+          <!-- Modal -->
+          <span>or&ensp;</span>
+          <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
+          <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="Choose saved display to load" aria-hidden="true" id="load_plots_modal">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h2 class="modal-title">Available saved plot displays</h2>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div id="saved_display_modal" class="modal-body"></div>
+              </div>
             </div>
-            <div id="saved_display_modal" class="modal-body"></div>
           </div>
-        </div>
-      </div>
         </div>
       </div>
 
@@ -244,7 +244,7 @@
     <!-- Plots and related -->
     <div class="row">
       <div id="dataset_plot" class="col-8"></div>
-      <aside class="col-4">
+      <aside class="col-3">
         <fieldset id="selected_genes_c" style="display:none;">
           <legend>Selected Genes to Gene Cart</legend>
           <div class="form-group">
@@ -260,15 +260,15 @@
         <fieldset id="plot_download_opts" style="display:none;">
           <legend>Image Download Options</legend>
           <div class="form-row">
-            <label class="col-form-label col-3" for="plot_download_height">Height (in px)</label>
+            <label class="col-form-label col-6" for="plot_download_height">Height (in px)</label>
             <input id="plot_download_height" class="form-control col-2" value=450 >
           </div>
           <div class="form-row">
-            <label class="col-form-label col-3" for="plot_download_width">Width (in px)</label>
+            <label class="col-form-label col-6" for="plot_download_width">Width (in px)</label>
             <input id="plot_download_width" class="form-control col-2" value=700>
           </div>
           <div class="form-row">
-            <label class="col-form-label col-3" for="plot_download_scale">Scale plot size</label>
+            <label class="col-form-label col-6" for="plot_download_scale">Scale plot size</label>
             <input id="plot_download_scale" class="form-control col-2" value=1>
           </div>
           <button type="button" class="btn btn-purple my-3" id="download_plot">Download Image</button>
@@ -318,7 +318,7 @@
     <script id="obs_dropdowns_tmpl" type="text/x-jsrender">
       <div class="row">
         <legend class="col-2 col-form-label">Filter by Category</legend>
-        <span class="col-1" data-toggle="tooltip" data-placement="top" title='Select which groups for a category to filter by, or click "All" to use all groups.'>
+        <span class="col-1" data-toggle="tooltip" data-placement="top" title='Select which groups for a category to include, or click "All" to use all groups.'>
           <i class="fa fa-question-circle" aria-hidden="true"></i>
         </span>
         <div class="col-9">

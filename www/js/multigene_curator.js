@@ -281,7 +281,7 @@ function createObsDropdowns (obsLevels) {
   const html = tmpl.render(obsLevels);
   $('#obs_dropdowns_container').html(html);
   $('select.js-obs-levels').select2({
-    placeholder: 'Start typing to include groups from this category. Click "All" or leave empty to use all groups',
+    placeholder: 'Start typing to include groups from this category. Click "All" to use all groups',
     allowClear: true,
     width: 'resolve'
   });
@@ -360,6 +360,7 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
 }
 
 // Populate the HTML config options based on what was in the plot
+// TODO: This does not seem to work
 function loadDisplayConfigHtml (plotConfig) {
 // Create a few of the dropdown options
   createObsDropdowns(obsLevels);
@@ -843,6 +844,8 @@ $(document).on('click', '#reset_opts', async function () {
   createObsDropdowns(obsLevels);
   createObsGroupbyField(obsLevels);
   createVolcanoDropdowns(obsLevels);
+
+  $('.all').click();  // Include all groups for every category (filter nothing)
 
   // Ensure observation options tooltips show
   $(function () {
