@@ -24,7 +24,7 @@ let geneSymbols = null;
 
 let geneCartTree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
 
-const heatmapOptsIds = ["#cluster_cols_checkbox_container", "#obs_groupby_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
 const violinOptsIds = ["#obs_groupby_container"];
 const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
@@ -276,7 +276,7 @@ function createObsGroupbyField (obsLevels) {
 }
 
 // Render the observation filter dropdowns
-function createObsDropdowns (obsLevels) {
+function createObsFilterDropdowns (obsLevels) {
   const tmpl = $.templates('#obs_dropdowns_tmpl');
   const html = tmpl.render(obsLevels);
   $('#obs_dropdowns_container').html(html);
@@ -287,7 +287,23 @@ function createObsDropdowns (obsLevels) {
   });
 }
 
-// Render the volcano condition selection dropdown
+// Render dropdowns specific to the heatmap plot
+function createHeatmapDropdowns (obsLevels) {
+  createObsGroupbyField (obsLevels)
+
+  // Initialize differential expression test dropdown
+  $('#distance_select').select2({
+    placeholder: 'Choose distance metric',
+    width: '25%'
+  });
+}
+
+// Render dropdowns specific to the violin plot
+function createViolinDropdowns (obsLevels) {
+  createObsGroupbyField (obsLevels)
+}
+
+// Render dropdowns specific to the volcano plot
 function createVolcanoDropdowns (obsLevels) {
   const tmpl = $.templates('#volcano_options_tmpl');
   const html = tmpl.render(obsLevels);
@@ -302,7 +318,7 @@ function createVolcanoDropdowns (obsLevels) {
     width: '25%'
   });
 
-  // Initialize plot types
+  // Initialize differential expression test dropdown
   $('#de_test_select').select2({
     placeholder: 'Choose DE testing algorithm',
     width: '25%'
@@ -362,31 +378,40 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
 // Populate the HTML config options based on what was in the plot
 // TODO: This does not seem to work
 function loadDisplayConfigHtml (plotConfig) {
-// Create a few of the dropdown options
-  createObsDropdowns(obsLevels);
-  createObsGroupbyField(obsLevels);
-  createVolcanoDropdowns(obsLevels);
-
-  // Populate any checkboxes and radio buttons
-  $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
-  $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
-  $('#annot_nonsig').prop('checked', plotConfig.annotate_nonsignificant)
-  $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
-
-  // Populate filter-by dropdowns
+  // Render and populate filter-by dropdowns
+  createObsFilterDropdowns(obsLevels);
   obsFilters = plotConfig.obs_filters;
   for (const property in obsFilters) {
     $(`#${property}_dropdown`).val(obsFilters[property]);
     $(`#${property}_dropdown`).trigger('change');
   }
 
-  // Populate volcano conditions.
-  $('#volcano_query_condition').val(plotConfig.query_condition);
-  $('#volcano_query_condition').trigger('change');
-  $('#volcano_ref_condition').val(plotConfig.ref_condition);
-  $('#volcano_ref_condition').trigger('change');
-  $('#de_test_select').val(plotConfig.de_test_algo);
-  $('#de_test_select').trigger('change');
+  // Render and populate plot type-specific dropdowns and checkbox options
+  switch ($('#plot_type_select').val()) {
+    case 'heatmap':
+      createHeatmapDropdowns(obsLevels);
+      $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
+      $('#flip_axes').prop('checked', plotConfig.flip_axes);
+      $('#distance_select').val(plotConfig.distance_metric);
+      $('#distance_select').trigger('change');
+      break;
+    case 'mg_violin':
+      createViolinDropdowns(obsLevels);
+      $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      break;
+    default:
+      // volcano
+      createVolcanoDropdowns(obsLevels);
+      $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
+      $('#annot_nonsig').prop('checked', plotConfig.annotate_nonsignificant)
+      $('#volcano_query_condition').val(plotConfig.query_condition);
+      $('#volcano_query_condition').trigger('change');
+      $('#volcano_ref_condition').val(plotConfig.ref_condition);
+      $('#volcano_ref_condition').trigger('change');
+      $('#de_test_select').val(plotConfig.de_test_algo);
+      $('#de_test_select').trigger('change');
+  }
 }
 
 // Load all saved gene carts for the current user
@@ -665,12 +690,13 @@ $(document).on('click', '#update_plot', async function () {
   // Remove supplementary plot and reset its genes filter
   if (supplementaryGenesFilters.length) {
     supplementaryGenesFilters = [];
-    $('#supplementary_plot').remove();
+    $(`#dataset_${datasetId}_supplementary`).remove();
   }
 
-  const plotType = $('#plot_type_select').select2('data')[0].id;
+  plotConfig = {};
 
-  const groupbyFilter = $('input[name="obs_groupby"]:checked').val();
+  const plotType = $('#plot_type_select').select2('data')[0].id;
+  plotConfig['plot_type'] = plotType;
 
   // Update filters based on selection
   obsFilters = {};
@@ -685,85 +711,79 @@ $(document).on('click', '#update_plot', async function () {
       delete obsFilters[property];
     }
   }
+  plotConfig['obs_filters'] = obsFilters;
 
   if (!plotType) {
     window.alert('Please select a plot type.');
     return;
   }
 
-  if (!(plotType === 'volcano' || Object.keys(obsFilters).length)) {
-    window.alert('At least one observation must have categories filtered.');
-    return;
-  }
-
-  genesFilters = $('#gene_dropdown').select2('data').map(function (elem) {
+  plotConfig['gene_symbols'] = genesFilters = $('#gene_dropdown').select2('data').map(function (elem) {
     return elem.id;
   });
 
-  if (!(plotType === 'volcano' || genesFilters.length)) {
-    window.alert('At least one gene must be provided.');
-    return;
-  }
-
-  if (plotType === 'mg_violin' && !groupbyFilter) {
-    window.alert("Must select a groupby filter for violin plots.");
-    return;
-  }
-
-  const clusterCols = $('#cluster_cols').is(':checked');
-  const adjustPvals = $('#adj_pvals').is(':checked');
-  const annotNonsig = $('#annot_nonsig').is(':checked');
-
-  const queryCondition = $('#volcano_query_condition').select2('data')[0].id;
-  const refCondition = $('#volcano_ref_condition').select2('data')[0].id;
-
-  const deTest = $('#de_test_select').select2('data')[0].id;
-
-  if (plotType === 'volcano' && !(queryCondition && refCondition)) {
-    window.alert('Both comparision conditions must be selected to generate a volcano plot.');
-    return;
-  }
-
-  if (plotType === 'volcano' && !deTest) {
-    window.alert('Must select a DE statistical test.');
-    return;
-  }
-
-  // Validation related to the conditions
-  if (queryCondition && refCondition) {
-    const conditionKey = queryCondition.split(';-;')[0];
-    if (queryCondition.split(';-;')[0] !== refCondition.split(';-;')[0]) {
-      window.alert('Please choose 2 conditions from the same observation group.');
+  if (!plotType === 'volcano') {
+    if (Object.keys(obsFilters).length) {
+      window.alert('At least one observation must have categories filtered.');
       return;
     }
-
-    if (queryCondition.split(';-;')[1] === refCondition.split(';-;')[1]) {
-      window.alert('Please choose 2 different conditions.');
+    if (genesFilters.length) {
+      window.alert('At least one gene must be provided.');
       return;
     }
+  }
 
-    // If condition category was filtered, the selected groups must be present
-    if (conditionKey in obsFilters) {
-      if (!(obsFilters[conditionKey].includes(queryCondition.split(';-;')[1]) &&
-        obsFilters[conditionKey].includes(refCondition.split(';-;')[1]))) {
-        window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
+  // Add specific plotConfig options depending on plot type
+  switch (plotType) {
+    case 'heatmap':
+      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
+      plotConfig['cluster_cols'] = $('#cluster_cols').is(':checked');
+      plotConfig['flip_axes'] = $('#flip_axes').is(':checked');
+      plotConfig['distance_metric'] = $('#distance_select').select2('data')[0].id;
+      break;
+    case 'mg_violin':
+      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
+      if (!plotConfig['groupby_filter']) {
+        window.alert("Must select a groupby filter for violin plots.");
         return;
       }
-    }
-  }
+      break;
+    default:
+      // volcano
+      plotConfig['adjust_pvals'] = $('#adj_pvals').is(':checked');
+      plotConfig['annotate_nonsignificant'] = $('#annot_nonsig').is(':checked');
+      plotConfig['de_test_algo'] = $('#de_test_select').select2('data')[0].id;
+      if (! plotConfig['de_test_algo']) {
+        window.alert('Must select a DE statistical test.');
+        return;
+      }
+      plotConfig['query_condition'] = $('#volcano_query_condition').select2('data')[0].id;
+      plotConfig['ref_ondition'] = $('#volcano_ref_condition').select2('data')[0].id;
+      // Validation related to the conditions
+      if (!(plotConfig['query_condition'] && plotConfig['ref_ondition'])) {
+        window.alert('Both comparision conditions must be selected to generate a volcano plot.');
+        return;
+      }
+      const conditionKey = plotConfig['query_condition'].split(';-;')[0];
+      if (plotConfig['query_condition'].split(';-;')[0] !== plotConfig['ref_ondition'].split(';-;')[0]) {
+        window.alert('Please choose 2 conditions from the same observation group.');
+        return;
+      }
 
-  plotConfig = {
-    groupby_filter: groupbyFilter,
-    plot_type: plotType,
-    gene_symbols: genesFilters,
-    obs_filters: obsFilters,
-    cluster_cols: clusterCols,
-    adj_pvals: adjustPvals,
-    annotate_nonsignificant: annotNonsig,
-    query_condition: queryCondition,
-    ref_condition: refCondition,
-    de_test_algo: deTest
-  };
+      if (plotConfig['query_condition'].split(';-;')[1] === plotConfig['ref_ondition'].split(';-;')[1]) {
+        window.alert('Please choose 2 different conditions.');
+        return;
+      }
+
+      // If condition category was filtered, the selected groups must be present
+      if (conditionKey in obsFilters) {
+        if (!(obsFilters[conditionKey].includes(plotConfig['query_condition'].split(';-;')[1]) &&
+            obsFilters[conditionKey].includes(plotConfig['ref_ondition'].split(';-;')[1]))) {
+          window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
+          return;
+        }
+      }
+  }
 
   // Render dataset plot HTML
   const plotTemplate = $.templates('#dataset_plot_tmpl');
@@ -793,7 +813,7 @@ $(document).on('click', '.all', function () {
 });
 
 // If gene is clicked in plot, display supplementary violin plot
-$(document).on('click', 'g.y5tick text a', async function () {
+$(document).on('click', 'g.y5tick text a, g.x5tick text a', async function () {
   const gene = $(this).text();
 
   // Add or remove gene depending on if it is already in array
@@ -820,14 +840,14 @@ $(document).on('click', 'g.y5tick text a', async function () {
       window.alert("Must select a groupby filter for violin plots.");
     }
 
-    plotConfig = {
+    const suppPlotConfig = {
       groupby_filter: groupbyFilter,
       plot_type: 'mg_violin',
       gene_symbols: supplementaryGenesFilters,
       obs_filters: obsFilters
     };
     $('#supplementary_spinner').show();
-    await draw(datasetId, plotConfig, true);
+    await draw(datasetId, suppPlotConfig, true);
     $('#supplementary_spinner').hide();
   }
 });
@@ -841,9 +861,18 @@ $(document).on('click', '#reset_opts', async function () {
   obsLevels = curateObservations(data.obs_levels);
 
   // Update fields dependent on dataset observations
-  createObsDropdowns(obsLevels);
-  createObsGroupbyField(obsLevels);
-  createVolcanoDropdowns(obsLevels);
+  createObsFilterDropdowns(obsLevels);
+  switch ($('#plot_type_select').val()) {
+    case 'heatmap':
+      createHeatmapDropdowns(obsLevels);
+      break;
+    case 'mg_violin':
+      createViolinDropdowns(obsLevels);
+      break;
+    default:
+      // volcano
+      createVolcanoDropdowns(obsLevels);
+  }
 
   $('.all').click();  // Include all groups for every category (filter nothing)
 

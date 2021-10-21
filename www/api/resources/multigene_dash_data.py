@@ -63,7 +63,7 @@ PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 ### Heatmap fxns
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, groupby_filter=None):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -73,7 +73,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, gro
 
     # Gene symbols fail with all genes (dataset too large) and with 1 gene (cannot cluster rows)
 
-    df = df.transpose()
+    df = df if flip_axes else df.transpose()
     rows = list(df.index)
     columns = list(df.columns.values)
 
@@ -83,16 +83,22 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, gro
 
     hidden_labels = None
     if not groupby_filter:
-        hidden_labels = "col"
+        hidden_labels = "row" if flip_axes else "col"
+
+    cluster="all"
+    if cluster_cols:
+        cluster = "col" if flip_axes else "row"
 
     # TODO: If just one gene, use go.heatmap instead
 
     return dashbio.Clustergram(
         data=values
-        , column_labels=columns
-        , row_labels=gene_symbols
+        , column_labels=gene_symbols if flip_axes else columns
+        , row_labels= rows if flip_axes else gene_symbols
         , hidden_labels = hidden_labels
-        , cluster="all" if cluster_cols else "row"
+        , cluster=cluster
+        , col_dist=distance_metric
+        , row_dist=distance_metric
         , color_map="balance"               # Heatmap colors
         , display_ratio=0.5                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
@@ -100,13 +106,14 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, gro
         , return_computed_traces=True
     )
 
-def modify_clustergram(fig):
+def modify_clustergram(fig, flip_axes=False):
     """Curate the clustergram. Edits 'fig' inplace."""
+    axis = "xaxis5" if flip_axes else "yaxis5"
     hyperlink_genes = []
-    for gene in fig.layout['yaxis5']['ticktext']:
+    for gene in fig.layout[axis]['ticktext']:
         # Inherit from parent tag. Plotly's default style is to make the "a" tag blue which also messes with hovertext
         hyperlink_genes.append("<a style='fill:inherit;>{}</a>".format(gene))
-    fig.layout['yaxis5']['ticktext'] = hyperlink_genes
+    fig.layout[axis]['ticktext'] = hyperlink_genes
 
 ### Violin fxns
 
@@ -154,8 +161,8 @@ def create_violin_plot(df, gene_map, groupby_filter):
         offsetgroup += 1
 
     fig.update_layout(
-        # This seems counterintuitive, but each gene/groupby filter is on its own trace,
-        # and mode "group" staggers the plots unnecessarily
+        # Since each gene/groupby filter is on its own trace,
+        # plots are overlayed by group.  So change to "group" mode to stagger each group
         violinmode='group'
     )
     return fig
@@ -310,17 +317,6 @@ def build_column_group_markers(traces, filter_indexes):
                 col_group_markers[k][column_id] = {'group': elem}
     return col_group_markers
 
-def build_obs_group_indexes(df, filters):
-    """Build dict of group indexes for filtered groups."""
-    filter_indexes = {}
-    for k, v in filters.items():
-        filter_indexes.setdefault(k, {})
-        for elem in v:
-            obs_index = df.index[df[k] == elem ]
-            # Convert dataframe index to ordinal indexes
-            filter_indexes[k][elem] = [df.index.get_loc(i) for i in obs_index]
-    return filter_indexes
-
 def create_dataframe_gene_filter(df, gene_symbols, plot_type):
     """Create a gene filter to filter a dataframe."""
     gene_filter = None
@@ -473,8 +469,11 @@ class MultigeneDashData(Resource):
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
-        cluster_cols = req.get('cluster_cols', False)
         groupby_filter = req.get('groupby_filter', None)
+        # Heatmap opts
+        cluster_cols = req.get('cluster_cols', False)
+        flip_axes = req.get('flip_axes', False)
+        distance_metric = req.get('distance_metric', "euclidean")
         # Volcano plot options
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
@@ -587,7 +586,11 @@ class MultigeneDashData(Resource):
             df["gene_symbol"] = df["gene"]
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
-            fig = create_volcano_plot(df, query_val, ref_val, use_adj_pvals)
+            fig = create_volcano_plot(df
+                , query_val
+                , ref_val
+                , use_adj_pvals
+                )
             modify_volcano_plot(fig)
             if gene_symbols:
                 add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
@@ -596,7 +599,6 @@ class MultigeneDashData(Resource):
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
             df = selected.to_df()
-            #filter_indexes = build_obs_group_indexes(selected.obs, filters)
 
             if groupby_filter:
                 df[groupby_filter] = selected.obs[groupby_filter]
@@ -604,8 +606,15 @@ class MultigeneDashData(Resource):
                 df = grouped.agg('mean') \
                     .dropna() \
 
-            (fig, _traces) = create_clustergram(df, gene_symbols, is_log10, cluster_cols, groupby_filter)
-            modify_clustergram(fig)
+            (fig, _traces) = create_clustergram(df
+                , gene_symbols
+                , is_log10
+                , cluster_cols
+                , flip_axes
+                , groupby_filter
+                , distance_metric
+                )
+            modify_clustergram(fig, flip_axes)
 
         elif plot_type == "mg_violin":
             df = selected.to_df()
@@ -623,7 +632,10 @@ class MultigeneDashData(Resource):
             for gene in gene_symbols:
                 gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
 
-            fig = create_violin_plot(df, gene_map, groupby_filter)
+            fig = create_violin_plot(df
+                , gene_map
+                , groupby_filter
+                )
         else:
             return {
                 'success': -1,
