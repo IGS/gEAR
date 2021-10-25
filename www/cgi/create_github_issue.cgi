@@ -5,7 +5,7 @@ Creates a Github issue from a submitted comment on the gEAR page.
 
 """
 
-import cgi, json, os, requests, sys
+import cgi, json, os, requests, socket, sys
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
 from pathlib import Path
@@ -52,9 +52,14 @@ def main():
         os.symlink(src, dst)
         screenshot_url = "{}/{}".format(SCREENSHOT_URL, new_basename)
 
+    # Get IP address of the server hosting this CGI script (to determine gEAR flavor)
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+
     # In an effort to not blow up the "tags" field in github, I will just indicate the tags in the body of the Github issue
     body = (f"**From:** {firstname} {lastname}\n\n"
            f"**Email:** {email}\n\n"
+           f"**Server IP:** {ip_address}\n\n"
            f"**Msg:** {comment}\n\n"
            f"**Tags:** {tag.split(', ')}\n\n"
            f"**Screenshot:** {screenshot_url}")
