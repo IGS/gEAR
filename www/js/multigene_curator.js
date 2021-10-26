@@ -173,8 +173,8 @@ function drawChart (data, datasetId, supplementary = false) {
   const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
 
   const layoutMods = {
-    height: targetDiv.clientHeight,
-    width: targetDiv.clientWidth,
+    //height: targetDiv.clientHeight,
+    //width: targetDiv.clientWidth,
   };
 
   // NOTE: This will definitely affect the layout on the gene search results page
@@ -189,7 +189,7 @@ function drawChart (data, datasetId, supplementary = false) {
   }
 
   // If there was an error in the plot, put alert up
-  if (!plotJson.layout && success < 1) {
+  if ( success < 1 && !plotJson.layout) {
     $(targetDiv + '.js-plot-error').text(message);
     $(targetDiv + '.js-plot-error').show();
     return;
@@ -202,7 +202,7 @@ function drawChart (data, datasetId, supplementary = false) {
   };
 
   const configMods = {
-    responsive: false
+    responsive: true
   };
 
   const config = {
@@ -223,7 +223,7 @@ function drawChart (data, datasetId, supplementary = false) {
       return;
     }
 
-    $("#selected_genes_c").show();
+    $("#selected_genes_field").show();
 
     // Note: the jQuery implementation has slightly different arguments than what is in the plotlyJS implementation
     // We want 'data', which returns the eventData PlotlyJS events normally return
@@ -648,7 +648,7 @@ $('#cluster_cols').change(function () {
 // Some options are specific to certain plot types
 $('#plot_type_select').change(function () {
   $('#reset_opts').click();  // Reset all options
-  $('#selected_genes_c').hide();
+  $('#selected_genes_field').hide();
   switch ($('#plot_type_select').val()) {
     case 'heatmap':
       violinOptsIds.forEach(id => {
@@ -758,19 +758,19 @@ $(document).on('click', '#update_plot', async function () {
         return;
       }
       plotConfig['query_condition'] = $('#volcano_query_condition').select2('data')[0].id;
-      plotConfig['ref_ondition'] = $('#volcano_ref_condition').select2('data')[0].id;
+      plotConfig['ref_condition'] = $('#volcano_ref_condition').select2('data')[0].id;
       // Validation related to the conditions
-      if (!(plotConfig['query_condition'] && plotConfig['ref_ondition'])) {
+      if (!(plotConfig['query_condition'] && plotConfig['ref_condition'])) {
         window.alert('Both comparision conditions must be selected to generate a volcano plot.');
         return;
       }
       const conditionKey = plotConfig['query_condition'].split(';-;')[0];
-      if (plotConfig['query_condition'].split(';-;')[0] !== plotConfig['ref_ondition'].split(';-;')[0]) {
+      if (plotConfig['query_condition'].split(';-;')[0] !== plotConfig['ref_condition'].split(';-;')[0]) {
         window.alert('Please choose 2 conditions from the same observation group.');
         return;
       }
 
-      if (plotConfig['query_condition'].split(';-;')[1] === plotConfig['ref_ondition'].split(';-;')[1]) {
+      if (plotConfig['query_condition'].split(';-;')[1] === plotConfig['ref_condition'].split(';-;')[1]) {
         window.alert('Please choose 2 different conditions.');
         return;
       }
@@ -778,7 +778,7 @@ $(document).on('click', '#update_plot', async function () {
       // If condition category was filtered, the selected groups must be present
       if (conditionKey in obsFilters) {
         if (!(obsFilters[conditionKey].includes(plotConfig['query_condition'].split(';-;')[1]) &&
-            obsFilters[conditionKey].includes(plotConfig['ref_ondition'].split(';-;')[1]))) {
+            obsFilters[conditionKey].includes(plotConfig['ref_condition'].split(';-;')[1]))) {
           window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
           return;
         }
@@ -796,11 +796,13 @@ $(document).on('click', '#update_plot', async function () {
   $('#dataset_spinner').hide();
 
   // Show plot download options
-  $('#plot_download_opts').show();
+  $('#plot_download_opts_field').show();
 
+  // Show save display opts
+  $('#save_display_field').show();
   const saveTemplate = $.templates('#save_plot_tmpl');
   const saveHtml = saveTemplate.render({ plot_type: plotType });
-  $('#save_functions').html(saveHtml);
+  $('#save_display_btn').html(saveHtml);
 });
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
@@ -976,7 +978,10 @@ $(document).on('click', '.js-load-display', async function () {
   $('#dataset_spinner').hide();
 
   // Show plot download options
-  $('#plot_download_opts').show();
+  $('#plot_download_opts_field').show();
+
+  // Show save display opts
+  $('#save_display_field').show();
 });
 
 // Delete user display

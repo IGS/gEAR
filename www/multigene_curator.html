@@ -210,13 +210,13 @@
           </button>
           <div class="collapse" id="advanced_options_collapsable">
             <div class="form-group row" id="cluster_cols_checkbox_container">
-              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to cluster observation groups, in addition to genes.  Otherwise only genes are clustered.">
+              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to cluster observation samples, in addition to genes.  Otherwise only genes are clustered. Not compatible with 'Group by Category' option. Cannot currently cluster using just a single gene.">
                 <i class="fa fa-question-circle" aria-hidden="true"></i>
               </span>
               <div class="col-9 form-check">
                 <input class="form-check-input" type="checkbox" value="" id="cluster_cols">
                 <label class="form-check-label" for="cluster_cols">
-                  Also cluster observation groups
+                  Also cluster observation samples
                 </label>
               </div>
             </div>
@@ -261,16 +261,24 @@
       <button type="button" class="btn btn-purple my-3" id="update_plot" style="display:none;">Update Plot</button>
       <button type="button" class="btn btn-purple my-3" id="reset_opts" style="display:none;">Reset Options</button>
       <br>
-      <div id="save_functions"></div>
     </div> <!-- end container -->
     </main>
 
-    <!-- Plots and related -->
+    <!-- Plots and post-plot things -->
     <div class="row">
       <div id="dataset_plot" class="col-8"></div>
       <aside class="col-3">
-        <fieldset id="selected_genes_c" style="display:none;">
-          <legend>Selected Genes to Gene Cart</legend>
+        <fieldset id="save_display_field" style="display:none;">
+          <legend>Save Plot Display</legend>
+          <div class="form-group">
+            <input class="form-control" id="display_name" placeholder="Enter name for saved display">
+          </div>
+          <button type="button" class="btn btn-purple mb-3" id="save_display_btn"></button>
+          <br>
+          <p id="saved_plot_confirmation" style="display:none;"></p>
+        </fieldset>
+        <fieldset id="selected_genes_field" style="display:none;">
+          <legend>Save Gene Cart</legend>
           <div class="form-group">
             <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
           </div>
@@ -281,7 +289,7 @@
           <ul id="selected_genes_list">
           </ul>
         </fieldset> <!-- end selected_genes_c-->
-        <fieldset id="plot_download_opts" style="display:none;">
+        <fieldset id="plot_download_opts_field" style="display:none;">
           <legend>Image Download Options</legend>
           <div class="form-row">
             <label class="col-form-label col-6" for="plot_download_height">Height (in px)</label>
@@ -403,15 +411,7 @@
     </script>
 
     <script id="save_plot_tmpl" type="text/x-jsrender">
-      <form id="save_display_form">
-        <div class="form-group row">
-          <label class="col-2 col-form-label" for="display_name">Display Name</label>
-          <span class="col-1"></span>
-          <input class="col-3 form-control" id="display_name" placeholder="Enter name for saved display">
-        </div>
-        <button type="button" class="btn btn-purple" id="save_display_btn">Save new {{:plot_type}}</button>
-        <p id="saved_plot_confirmation" style="display:none;"></p>
-      </form>
+      Save new {{:plot_type}} plot
     </script>
 
     <script id="selected_genes_tmpl" type="text/x-jsrender">

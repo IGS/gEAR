@@ -85,35 +85,63 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
     if not groupby_filter:
         hidden_labels = "row" if flip_axes else "col"
 
+    # Configuring which axes are clustered or not.
     cluster="all"
+    col_dist = distance_metric
+    row_dist = distance_metric
     if cluster_cols:
         cluster = "col" if flip_axes else "row"
+        if flip_axes:
+            row_dist = None
+        else:
+            col_dist = None
 
-    # TODO: If just one gene, use go.heatmap instead
+    # If just one gene, use go.heatmap instead
+    if len(gene_symbols) == 1:
+        return go.Figure(data=go.Heatmap(
+            z=values
+            , x=gene_symbols if flip_axes else columns
+            , y=rows if flip_axes else gene_symbols
+            , colorscale="balance"
+        ))
 
     return dashbio.Clustergram(
         data=values
         , column_labels=gene_symbols if flip_axes else columns
-        , row_labels= rows if flip_axes else gene_symbols
-        , hidden_labels = hidden_labels
+        , row_labels=rows if flip_axes else gene_symbols
+        , hidden_labels=hidden_labels
         , cluster=cluster
-        , col_dist=distance_metric
-        , row_dist=distance_metric
+        , col_dist=col_dist
+        , row_dist=row_dist
         , color_map="balance"               # Heatmap colors
         , display_ratio=0.5                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
-        , return_computed_traces=True
+        , height=700
+        , width=700
     )
 
-def modify_clustergram(fig, flip_axes=False):
+def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
     """Curate the clustergram. Edits 'fig' inplace."""
-    axis = "xaxis5" if flip_axes else "yaxis5"
-    hyperlink_genes = []
-    for gene in fig.layout[axis]['ticktext']:
-        # Inherit from parent tag. Plotly's default style is to make the "a" tag blue which also messes with hovertext
-        hyperlink_genes.append("<a style='fill:inherit;>{}</a>".format(gene))
-    fig.layout[axis]['ticktext'] = hyperlink_genes
+
+    if gene_sym_len > 1:
+        hyperlink_genes = []
+        axis = "xaxis5" if flip_axes else "yaxis5"
+        for gene in fig.layout[axis]['ticktext']:
+            # Inherit from parent tag. Plotly's default style is to make the "a" tag blue which also messes with hovertext
+            hyperlink_genes.append("<a style='fill:inherit;>{}</a>".format(gene))
+        fig.layout[axis]['ticktext'] = hyperlink_genes
+
+    else:
+        axis = "xaxis" if flip_axes else "yaxis"
+
+        # Make heatmap boxes square. Reference anchor should be the observations, else plot leaves empty space on the sides
+        fig.layout[axis]['scaleanchor'] = 'y' if flip_axes else 'x'
+
+        fig.layout['yaxis']['constrain'] = "domain"
+        fig.layout['yaxis']['constraintoward'] = "right"
+        fig.layout['xaxis']['constrain'] = "domain"
+        fig.layout['xaxis']['constraintoward'] = "right"
 
 ### Violin fxns
 
@@ -177,15 +205,29 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
             # TODO: The endswith is fragile and should probably be done differently, maybe with regex.
             gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
                 if fig.data[data_idx].text[idx] == gene]
+
             for idx in gene_indexes:
+                """
+                # Determine if the arrow tail to head goes left-to-right (negative value) or the other way
+                ax_offset = 0
+                if fig.data[data_idx].x[idx] < 0:
+                    ax_offset = -2
+                elif fig.data[data_idx].x[idx] > 0:
+                    ax_offset = 2
+                """
+
                 fig.add_annotation(
                         arg=dict(
                             font=dict(
-                                color="white"
+                                color=fig.data[data_idx]["marker"]["color"] if data_idx > 0 else "slategrey"
                             )
                         )
                         , arrowcolor="black"
-                        , bgcolor=fig.data[data_idx]["marker"]["color"]
+                        , ax=fig.data[data_idx].x[idx] * 1.2
+                        , ay=fig.data[data_idx].y[idx] + 5
+                        , axref="x"
+                        , ayref="y"
+                        , bordercolor=fig.data[data_idx]["marker"]["color"] if data_idx > 0 else "slategrey"
                         , borderpad=2
                         , showarrow=True
                         , text=gene
@@ -302,21 +344,6 @@ def modify_volcano_plot(fig):
 
 ### Misc fxns
 
-def build_column_group_markers(traces, filter_indexes):
-    """Build dictionaries of group annotations for the clustergram."""
-
-    col_group_markers = {}
-    trace_column_ids = list(traces["column_ids"])
-    # k = obs_category, elem = single observation, i = index position of elem in all observations
-    for k, v in filter_indexes.items():
-        col_group_markers.setdefault(k, [0 for i in trace_column_ids])
-        for elem in v:
-            # Filter indexes in order of clustering. Every index should map to a unique column ID
-            for i in v[elem]:
-                column_id = trace_column_ids.index(i)
-                col_group_markers[k][column_id] = {'group': elem}
-    return col_group_markers
-
 def create_dataframe_gene_filter(df, gene_symbols, plot_type):
     """Create a gene filter to filter a dataframe."""
     gene_filter = None
@@ -324,6 +351,7 @@ def create_dataframe_gene_filter(df, gene_symbols, plot_type):
     message_list = []
     if 'gene_symbol' in df.columns:
         if gene_symbols:
+
             # Get list of duplicated genes for the dataset
             gene_counts_df = df['gene_symbol'].value_counts().to_frame()
             dup_genes = gene_counts_df.index[gene_counts_df['gene_symbol'] > 1].tolist()
@@ -357,7 +385,7 @@ def create_dataframe_gene_filter(df, gene_symbols, plot_type):
                 message_list.append('One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)))
         else:
             if plot_type in ["heatmap", "mg_violin"]:
-                raise PlotError('Must filter genes before creating a plot of type {}'.format(plot_type))
+                raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
     else:
         raise PlotError('Missing gene_symbol column in adata.var')
     message = "\n".join(message_list) if message_list else ""
@@ -425,20 +453,6 @@ def order_by_time_point(obs_df):
             sorted_df.time_point.drop_duplicates(), ordered=True)
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
-
-def set_obs_groups_and_colors(filter_indexes):
-    """Create mapping of groups and colors per observation category."""
-    # TODO: Use observation colors if available instead of Dark24."""
-    groups_and_colors = {}
-    palette_cycler = cycle(PALETTE_CYCLER)
-    for k, v in filter_indexes.items():
-        groups_and_colors.setdefault(k, {"groups":[], "colors":[]})
-        palette = next(palette_cycler)
-        color_cycler = cycle(palette)
-        groups_and_colors[k]["groups"] = [elem for elem in v]
-        groups_and_colors[k]["colors"] = [next(color_cycler) for elem in v]
-    return groups_and_colors
-
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -606,7 +620,7 @@ class MultigeneDashData(Resource):
                 df = grouped.agg('mean') \
                     .dropna() \
 
-            (fig, _traces) = create_clustergram(df
+            fig = create_clustergram(df
                 , gene_symbols
                 , is_log10
                 , cluster_cols
@@ -614,7 +628,8 @@ class MultigeneDashData(Resource):
                 , groupby_filter
                 , distance_metric
                 )
-            modify_clustergram(fig, flip_axes)
+
+            modify_clustergram(fig, flip_axes, len(gene_symbols))
 
         elif plot_type == "mg_violin":
             df = selected.to_df()
