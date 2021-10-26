@@ -22,7 +22,8 @@ let displayId = null;
 let obsLevels = null;
 let geneSymbols = null;
 
-let geneCartTree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
+let datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
+let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
 const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
 const violinOptsIds = ["#obs_groupby_container"];
@@ -45,10 +46,6 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   });
 
   // Initialize datasets available to the user
-  $('#dataset_select').select2({
-    placeholder: 'To search, click to select or start typing a dataset name',
-    width: 'resolve'
-  });
   await populateDatasets();
 
   // Initialize plot types
@@ -66,8 +63,8 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   // If brought here by the "gene search results" page, curate on the dataset ID that referred us
   var linkedDatasetId = getUrlParameter("dataset_id");
   if (linkedDatasetId) {
-    $('#dataset_select').val(linkedDatasetId);
-    $('#dataset_select').trigger('change');
+    $('#dataset').val(linkedDatasetId);
+    $('#dataset').trigger('change');
   }
 })();
 
@@ -107,37 +104,34 @@ async function populateDatasets () {
     dataType: 'json',
     success: function (data) {
       // Populate select box with dataset information owned by the user
+      let userDatasets = [];
       if (data.user.datasets.length > 0) {
-        const userDatasetListTmpl = $.templates('#dataset_list_tmpl');
-        const userDatasetListHtml = userDatasetListTmpl.render(
-          data.user.datasets
-        );
-        $('#dataset_ids_user').html(userDatasetListHtml);
-      } else {
-        $('#dataset_id .user-initial').html('Not logged in');
+        // User has some profiles
+        $.each(data.user.datasets, function (i, item) {
+          userDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+        });
       }
-
       // Next, add datasets shared with the user
+      let sharedDatasets = [];
       if (data.shared_with_user.datasets.length > 0) {
-        const sharedWithUserDatasetListTmpl = $.templates(
-          '#dataset_list_tmpl'
-        );
-        const sharedWithUserDatasetListHtml = sharedWithUserDatasetListTmpl.render(
-          data.shared_with_user.datasets
-        );
-        $('#dataset_ids_shared_with_user').html(
-          sharedWithUserDatasetListHtml
-        );
+        // User has some profiles
+        $.each(data.shared_with_user.datasets, function (i, item) {
+          sharedDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+        });
+      }
+      // Now, add public datasets
+      let domainDatasets = [];
+      if (data.public.datasets.length > 0) {
+        // User has some profiles
+        $.each(data.public.datasets, function (i, item) {
+          domainDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+        });
       }
 
-      // Now, add public datasets
-      if (data.public.datasets.length > 0) {
-        const publicDatasetListTmpl = $.templates('#dataset_list_tmpl');
-        const publicDatasetListHtml = publicDatasetListTmpl.render(
-          data.public.datasets
-        );
-        $('#dataset_ids_public').html(publicDatasetListHtml);
-      }
+      datasetTree.userDatasets = userDatasets;
+      datasetTree.sharedDatasets = sharedDatasets;
+      datasetTree.domainDatasets = domainDatasets;
+      datasetTree.generateTree();
     },
     error: function (xhr, status, msg) {
       console.error('Failed to load dataset list because msg: ' + msg);
@@ -463,8 +457,7 @@ function saveGeneCart () {
     session_id: CURRENT_USER.session_id
     , label: $("#gene_cart_name").val()
     , gctype: "unweighted-list"
-    , organism_id:  $("#dataset_select").find(':selected').data('organism-id')
-    // Also acceptable - $('#dataset_select').select2('data')[0].element.attributes['data-organism-id'].value;
+    , organism_id:  $("#dataset").data('organism-id')
     , is_public: 0
   });
 
@@ -530,8 +523,8 @@ function getDefaultDisplay (datasetId) {
   });
 }
 
-$('#dataset_select').change(async function () {
-  datasetId = $('#dataset_select').select2('data')[0].id;
+$('#dataset').change(async function () {
+  datasetId = $('#dataset').val();
   displayId = null;
 
   // Obtain default display ID for this dataset
@@ -583,7 +576,7 @@ $("#download_plot").on("click", function () {
 });
 
 // Load user's gene carts
-$('#selected_gene_cart').change(function () {
+$('#gene_cart').change(function () {
   let geneCartId = $(this).val();
   const params = { session_id: session_id, gene_cart_id: geneCartId };
   const d = new $.Deferred(); // Causes editable to wait until results are returned
