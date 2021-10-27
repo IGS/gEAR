@@ -10,7 +10,6 @@ import geardb
 import numbers
 from gear.plotting import generate_plot, get_config, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
-from collections import defaultdict
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
