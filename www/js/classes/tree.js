@@ -213,11 +213,11 @@ class ProfileTree extends Tree {
                 'text': item.text,
                 'type': 'profile',
                 'a_attr': {
-                    'class': "domain_choice_c py-0",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
+                    'class': "py-0",
+                },
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
             })
         });
 
@@ -228,11 +228,11 @@ class ProfileTree extends Tree {
                 'text': item.text,
                 'type': 'profile',
                 'a_attr': {
-                    'class': "domain_choice_c py-0",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
+                    'class': "py-0",
+                },
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
             })
         });
         this.treeData = treeData;
@@ -305,11 +305,14 @@ class ProfileTree extends Tree {
                 // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
-            // The dropdown toggle text/val change happens in DatasetCollectionPanel->set_layouts() for the index page
+            // The dropdown toggle text/val change already happens in DatasetCollectionPanel->set_layouts() for the index page,
             // but this should be set to assist with other pages.
             const selectedNode = data.instance.get_node(layoutId);
             $(self.dropdownToggleElt).text(selectedNode.text);
             $(self.dropdownToggleElt).val(layoutId);
+            $(self.dropdownToggleElt).data("profile-id", selectedNode.original.profile_id);
+            $(self.dropdownToggleElt).data("profile-label", selectedNode.original.profile_label);
+            $(self.dropdownToggleElt).data("profile-share-id", selectedNode.original.profile_share_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
             $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
@@ -364,7 +367,8 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
-                'organism_id': item.organism_id            })
+                'organism_id': item.organism_id
+           })
         });
 
         $.each(this.sharedDatasets, function(i, item){
@@ -462,8 +466,6 @@ class DatasetTree extends Tree {
                 // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
-            // The dropdown toggle text/val change happens in DatasetCollectionPanel->set_layouts() for the index page
-            // but this should be set to assist with other pages.
             const selectedNode = data.instance.get_node(datasetId);
             $(self.dropdownToggleElt).text(selectedNode.text);
             $(self.dropdownToggleElt).val(datasetId);
