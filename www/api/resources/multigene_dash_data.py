@@ -254,8 +254,10 @@ def create_volcano_plot(df, query, ref, use_adj_pvals=False):
         , title="Differences in {} vs {}".format(query, ref)
         , col="lightgrey"
         , effect_size="logfoldchanges"
+        , effect_size_line_color="black"
         , gene="gene_symbol"
         , genomewideline_value= -np.log10(0.05)
+        , genomewideline_color="black"
         , highlight_color="black"
         , p="pvals_adj" if use_adj_pvals else "pvals"
         , xlabel="log2FC"
@@ -334,12 +336,14 @@ def modify_volcano_plot(fig):
             ,"xanchor":"left"
             ,"y":0.5
             ,"yanchor":"middle"
+            ,"bgcolor":"rgba(0,0,0,0)",   # transparent background
         }
         ,title={
             "x":0.5
             ,"xref":"paper"
             ,"y":0.9
         }
+        ,template="simple_white"    # change background to pure white
     )
 
 ### Misc fxns

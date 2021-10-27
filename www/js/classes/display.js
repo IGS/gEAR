@@ -689,7 +689,8 @@ class PlotlyDisplay extends Display {
                 y: -0.05,
                 xanchor: "center",
                 yanchor:"top",
-                font: {size:6}
+                bgcolor: plot_json.layout.legend.bgcolor,
+                font: {size:8}
             }
             layout_mods.title = {
                 x: 0.5,
