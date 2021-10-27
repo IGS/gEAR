@@ -86,13 +86,14 @@ def main():
         cursor.close()
         cnx.close()
         print(json.dumps(result))
+        return
 
      # Was a specific layout ID passed?
     if form.getvalue('layout_id') is not None:
         layout_id = form.getvalue('layout_id')
         layout = geardb.Layout(id=layout_id)
         layout.load()
-        
+
         dsc = geardb.DatasetCollection()
         dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
         dsc.apply_layout(layout=layout)
@@ -233,7 +234,7 @@ def main():
         else:
             layout = geardb.Layout(id=layout_id)
             layout.load()
-            
+
             dsc = geardb.DatasetCollection()
             dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
             dsc.apply_layout(layout=layout)
