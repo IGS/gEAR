@@ -422,10 +422,7 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
 
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
-            return {
-                'success': -1,
-                'message': "No h5 file found for this dataset"
-            }
+            raise PlotError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
@@ -496,7 +493,13 @@ class MultigeneDashData(Resource):
         annotate_nonsignificant = req.get('annotate_nonsignificant', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
-        ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        try:
+            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        except PlotError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
 
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=False)
