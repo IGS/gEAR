@@ -480,8 +480,6 @@ class PlotlyDisplay extends Display {
         this.show();
 
         var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
 
         // Overwrite plot layout and config values with custom ones from display
@@ -520,8 +518,6 @@ class PlotlyDisplay extends Display {
             plot_config
         } = this.data;
         var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
 
         // Overwrite plot layout and config values with custom ones from display
@@ -682,9 +678,27 @@ class PlotlyDisplay extends Display {
         this.show();
 
         var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
+
+        // Since these plots are smaller, the legend overlaps the plot.  Move it out of the way
+        // Adjust the title some too.
+        // NOTE: These sizings can look better or worse depending on user's display scaling
+        if (this.plot_type == "volcano") {
+            layout_mods.legend = {
+                x: 1.05,
+                y: -0.05,
+                xanchor: "center",
+                yanchor:"top",
+                font: {size:6}
+            }
+            layout_mods.title = {
+                x: 0.5,
+                xref: "paper",
+                y: 0.8,
+            // Unfortunately, since these are objects, a merge will overwrite the entire obj from the plot layout
+                text: plot_json.layout.title.text
+            }
+        }
 
         // Overwrite plot layout and config values with custom ones from display
         var layout = {
@@ -720,21 +734,7 @@ class PlotlyDisplay extends Display {
             plot_config
         } = this.data;
         let layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
-
-        // Since these plots are smaller, the legend overlaps the plot.  Move it out of the way
-        /*
-        if (this.plot_type == "volcano") {
-            layout_mods.legend = {
-                x: 1,
-                y: 0,
-                xanchor: "right",
-                yanchor:"bottom",
-            }
-        }
-        */
 
         // Overwrite plot layout and config values with custom ones from display
         var layout = {

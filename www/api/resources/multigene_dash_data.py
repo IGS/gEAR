@@ -139,7 +139,7 @@ def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
         fig.layout[axis]['scaleanchor'] = 'y' if flip_axes else 'x'
 
         fig.layout['yaxis']['constrain'] = "domain"
-        fig.layout['yaxis']['constraintoward'] = "right"
+        fig.layout['yaxis']['constraintoward'] = "top"
         fig.layout['xaxis']['constrain'] = "domain"
         fig.layout['xaxis']['constraintoward'] = "right"
 
@@ -280,13 +280,13 @@ def modify_volcano_plot(fig):
             sig_data.append(data)
     fig.data = new_data
 
-    fig.data[0]["name"] = "Nonsignificant genes"
+    fig.data[0]["name"] = "Nonsignificant Genes"
 
     #Split the signifcant data into up- and down-regulated traces
     for data in sig_data:
         if data["name"] and data["name"] == "Point(s) of interest":
             downregulated = {
-                "name": "Upregulated in Reference"
+                "name": "Upregulated in Ref"
                 , "text":[]
                 , 'customdata':[]
                 , "x":[]
