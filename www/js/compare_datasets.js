@@ -43,6 +43,8 @@ const log10_transformed_datasets = [
 , "cee5325d-434f-fefe-d2e6-e0be39421951"
 ];
 
+let datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
+
 window.onload = function () {
   // check if the user is already logged in
   check_for_login();
@@ -144,11 +146,12 @@ function download_selected_genes() {
 }
 
 function load_comparison_graph() {
+  dataset_id = $("#dataset_id").val();
   $.ajax({
     url: "./cgi/get_dataset_comparison.cgi",
     type: "POST",
     data: {
-      dataset1_id: $("#dataset_id").val(),
+      dataset1_id: dataset_id,
       dataset1_condition: $("#dataset1_conditions").val(),
       dataset2_condition: $("#dataset2_conditions").val(),
       fold_change_cutoff: $("#fold_change_cutoff").val(),
@@ -165,9 +168,9 @@ function load_comparison_graph() {
       } else {
         // Handle graphing failures
         $("#plot_loading").hide();
-        $("#ticket_datasetx_id").text($("#dataset_id").val());
+        $("#ticket_datasetx_id").text(dataset_id);
         $("#ticket_datasetx_condition").text($("#dataset1_conditions").val());
-        $("#ticket_datasety_id").text($("#dataset_id").val());
+        $("#ticket_datasety_id").text(dataset_id);
         $("#ticket_datasety_condition").text($("#dataset2_conditions").val());
         $("#ticket_error_msg").text(data["error"]);
         $("#error_loading_c").show();
@@ -176,9 +179,9 @@ function load_comparison_graph() {
     error: function (jqXHR, textStatus, errorThrown) {
       // Handle graphing failures
       $("#plot_loading").hide();
-      $("#ticket_datasetx_id").text($("#dataset_id").val());
+      $("#ticket_datasetx_id").text(dataset_id);
       $("#ticket_datasetx_condition").text($("#dataset1_conditions").val());
-      $("#ticket_datasety_id").text($("#dataset_id").val());
+      $("#ticket_datasety_id").text(dataset_id);
       $("#ticket_datasety_condition").text($("#dataset2_conditions").val());
       $("#error_loading_c").show();
     },
@@ -234,48 +237,48 @@ function populate_condition_selection_control() {
 }
 
 function populate_dataset_selection_controls() {
+  let dataset_id = getUrlParameter("dataset_id");
   $.ajax({
     type: "POST",
     url: "./cgi/get_h5ad_dataset_list.cgi",
     data: {
       session_id: CURRENT_USER.session_id,
       for_page: "compare_dataset",
-      include_dataset_id: getUrlParameter("dataset_id"),
+      include_dataset_id: dataset_id,
     },
     dataType: "json",
     success: function (data) {
-      if (data["user"]["datasets"].length > 0) {
-        var user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-        var user_dataset_list_html = user_dataset_list_tmpl.render(
-          data["user"]["datasets"]
-        );
-        $("#dataset_ids_user").html(user_dataset_list_html);
-      } else {
-        $("#dataset_id .user_initial").html("Not logged in");
+      // Populate select box with dataset information owned by the user
+      let userDatasets = [];
+      if (data.user.datasets.length > 0) {
+        // User has some profiles
+        $.each(data.user.datasets, function (i, item) {
+          userDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+        });
+      }
+      // Next, add datasets shared with the user
+      let sharedDatasets = [];
+      if (data.shared_with_user.datasets.length > 0) {
+        // User has some profiles
+        $.each(data.shared_with_user.datasets, function (i, item) {
+          sharedDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+        });
+      }
+      // Now, add public datasets
+      let domainDatasets = [];
+      if (data.public.datasets.length > 0) {
+        // User has some profiles
+        $.each(data.public.datasets, function (i, item) {
+          domainDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+        });
       }
 
-      if (data["shared_with_user"]["datasets"].length > 0) {
-        var shared_with_user_dataset_list_tmpl = $.templates(
-          "#dataset_list_tmpl"
-        );
-        var shared_with_user_dataset_list_html = shared_with_user_dataset_list_tmpl.render(
-          data["shared_with_user"]["datasets"]
-        );
-        $("#dataset_ids_shared_with_user").html(
-          shared_with_user_dataset_list_html
-        );
-      }
-
-      if (data["public"]["datasets"].length > 0) {
-        var public_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-        var public_dataset_list_html = public_dataset_list_tmpl.render(
-          data["public"]["datasets"]
-        );
-        $("#dataset_ids_public").html(public_dataset_list_html);
-      }
+      datasetTree.userDatasets = userDatasets;
+      datasetTree.sharedDatasets = sharedDatasets;
+      datasetTree.domainDatasets = domainDatasets;
+      datasetTree.generateTree();
 
       // was there a requested dataset ID already?
-      var dataset_id = getUrlParameter("dataset_id");
       if (dataset_id !== undefined) {
         $("#dataset_id").val(dataset_id);
         $("#dataset_id").trigger("change");
@@ -416,7 +419,7 @@ function plot_data_to_graph(data) {
   }
 
   var layout = {
-    title: $("#dataset_id option:selected").text(),
+    title: $("#dataset_id").text(),
     xaxis: {
       title: $("#dataset1_conditions option:selected").text(),
       type: "",
@@ -547,7 +550,7 @@ function save_gene_cart() {
       session_id: CURRENT_USER.session_id,
       label: $("#gene_cart_name").val(),
       gctype: 'unweighted-list',
-      organism_id: $("#dataset_id").find(':selected').data('organism-id'),
+      organism_id: $("#dataset_").data('organism-id'),
       is_public: 0
   });
 

@@ -363,7 +363,7 @@ class DatasetTree extends Tree {
                 'id': item.value,
                 'parent': 'domain_node',
                 'text': item.text,
-                'type': 'profile',
+                'type': 'dataset',
                 'a_attr': {
                     'class': "py-0",
                 },
@@ -376,7 +376,7 @@ class DatasetTree extends Tree {
                 'id': item.value,
                 'parent': 'shared_node',
                 'text': item.text,
-                'type': 'profile',
+                'type': 'dataset',
                 'a_attr': {
                     'class': "py-0",
                 },
@@ -389,7 +389,7 @@ class DatasetTree extends Tree {
                 'id': item.value,
                 'parent': 'user_node',
                 'text': item.text,
-                'type': 'profile',
+                'type': 'dataset',
                 'a_attr': {
                     'class': "py-0",
                 },
@@ -423,7 +423,7 @@ class DatasetTree extends Tree {
                     'default': {
                         'icon': 'fa fa-folder-o'
                     },
-                    'profile': {
+                    'dataset': {
                         'icon': 'fa fa-address-card-o',
                         'valid_children':[]
                     }
