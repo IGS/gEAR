@@ -169,7 +169,12 @@
                           </a>
                           <div class="dropdown-menu" aria-labelledby="search_param_profile">
                             <form class="px-4 py-3">
-                              <input type="text" id="profile_tree_q" placeholder="Type to search profiles">
+                              <div class="input-group input-group-sm mb-3">
+                                <div class="input-group-prepend">
+                                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                                </div>
+                                <input type="text" class="form-control" id="profile_tree_q" placeholder="Type to search profiles">
+                              </div>
                               <div id="profile_tree"></div>
                             </form>
                           </div>
@@ -351,7 +356,12 @@
                   <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
                   <div class="dropdown-menu" aria-labelledby="selected_profile">
                     <form class="px-4 py-3">
-                      <input type="text" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                      <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                        </div>
+                        <input type="text" class="form-control" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                      </div>
                       <div id="selected_profile_tree"></div>
                     </form>
                   </div>
@@ -361,7 +371,12 @@
                   <span id="selected_gene_cart" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
                   <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
                     <form class="px-4 py-3">
-                      <input type="text" id="selected_gene_cart_tree_q" placeholder="Type to search gene carts">
+                      <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                        </div>
+                        <input type="text" class="form-control" id="selected_gene_cart_tree_q" placeholder="Type to search gene carts">
+                      </div>
                       <div id="selected_gene_cart_tree"></div>
                     </form>
                   </div>

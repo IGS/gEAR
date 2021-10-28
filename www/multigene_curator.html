@@ -86,7 +86,12 @@
           <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
           <div class="dropdown-menu" aria-labelledby="dataset">
             <form class="px-4 py-3">
-              <input type="text" id="dataset_tree_q" placeholder="Type to search datasets">
+              <div class="input-group input-group-sm mb-3">
+                <div class="input-group-prepend">
+                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                </div>
+                <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
+              </div>
               <div id="dataset_tree"></div>
             </form>
           </div>
@@ -142,7 +147,12 @@
             <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
             <div class="dropdown-menu" aria-labelledby="gene_cart">
               <form class="px-4 py-3">
-                <input type="text" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                <div class="input-group input-group-sm mb-3">
+                  <div class="input-group-prepend">
+                    <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                  </div>
+                  <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                </div>
                 <div id="gene_cart_tree"></div>
               </form>
             </div>
