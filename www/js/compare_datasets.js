@@ -43,7 +43,7 @@ const log10_transformed_datasets = [
 , "cee5325d-434f-fefe-d2e6-e0be39421951"
 ];
 
-let datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
+let dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload = function () {
   // check if the user is already logged in
@@ -248,35 +248,36 @@ function populate_dataset_selection_controls() {
     },
     dataType: "json",
     success: function (data) {
+      let counter = 0
       // Populate select box with dataset information owned by the user
-      let userDatasets = [];
+      let user_datasets = [];
       if (data.user.datasets.length > 0) {
         // User has some profiles
         $.each(data.user.datasets, function (i, item) {
-          userDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+          user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Next, add datasets shared with the user
-      let sharedDatasets = [];
+      let shared_datasets = [];
       if (data.shared_with_user.datasets.length > 0) {
         // User has some profiles
         $.each(data.shared_with_user.datasets, function (i, item) {
-          sharedDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+          shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
         });
       }
       // Now, add public datasets
-      let domainDatasets = [];
+      let domain_datasets = [];
       if (data.public.datasets.length > 0) {
         // User has some profiles
         $.each(data.public.datasets, function (i, item) {
-          domainDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
+          domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
         });
       }
 
-      datasetTree.userDatasets = userDatasets;
-      datasetTree.sharedDatasets = sharedDatasets;
-      datasetTree.domainDatasets = domainDatasets;
-      datasetTree.generateTree();
+      dataset_tree.userDatasets = user_datasets;
+      dataset_tree.sharedDatasets = shared_datasets;
+      dataset_tree.domainDatasets = domain_datasets;
+      dataset_tree.generateTree();
 
       // was there a requested dataset ID already?
       if (dataset_id !== undefined) {

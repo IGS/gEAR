@@ -348,9 +348,10 @@ class DatasetTree extends Tree {
             {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
         ];
 
-        // user_profiles/domain_profiles properties - value, text, share_id
-
         // Load datasets into the tree data property
+        // NOTE - Datasets can appear in multiple lists, so dataset IDs cannot be used as the node ID
+        // otherwise node leaves can turn into "default" type instead of "dataset" type
+
         $.each(this.domainDatasets, function(i, item){
             treeData.push({
                 'id': item.value,
@@ -360,6 +361,7 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
+                "dataset_id": item.dataset_id,
                 'organism_id': item.organism_id
            })
         });
@@ -373,6 +375,7 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
+                "dataset_id": item.dataset_id,
                 'organism_id': item.organism_id
             })
         });
@@ -386,6 +389,7 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
+                "dataset_id": item.dataset_id,
                 'organism_id': item.organism_id
             })
         });
@@ -459,7 +463,8 @@ class DatasetTree extends Tree {
             }
             const selectedNode = data.instance.get_node(datasetId);
             $(self.dropdownToggleElt).text(selectedNode.text);
-            $(self.dropdownToggleElt).val(datasetId);
+            $(self.dropdownToggleElt).val(selectedNode.original.dataset_id);
+            $(self.dropdownToggleElt).data("dataset-id", selectedNode.original.dataset_id);
             $(self.dropdownToggleElt).data("organism-id", selectedNode.original.organism_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
             $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
