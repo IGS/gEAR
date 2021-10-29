@@ -372,18 +372,17 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
 // Populate the HTML config options based on what was in the plot
 // TODO: This does not seem to work
 function loadDisplayConfigHtml (plotConfig) {
-  // Render and populate filter-by dropdowns
-  createObsFilterDropdowns(obsLevels);
+  // NOTE: The calling function also clicks "#reset_opts", so the options are rendered already
+  // Populate filter-by dropdowns
   obsFilters = plotConfig.obs_filters;
   for (const property in obsFilters) {
     $(`#${property}_dropdown`).val(obsFilters[property]);
     $(`#${property}_dropdown`).trigger('change');
   }
 
-  // Render and populate plot type-specific dropdowns and checkbox options
+  // Populate plot type-specific dropdowns and checkbox options
   switch ($('#plot_type_select').val()) {
     case 'heatmap':
-      createHeatmapDropdowns(obsLevels);
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
       $('#flip_axes').prop('checked', plotConfig.flip_axes);
@@ -391,12 +390,10 @@ function loadDisplayConfigHtml (plotConfig) {
       $('#distance_select').trigger('change');
       break;
     case 'mg_violin':
-      createViolinDropdowns(obsLevels);
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       break;
     default:
       // volcano
-      createVolcanoDropdowns(obsLevels);
       $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
       $('#annot_nonsig').prop('checked', plotConfig.annotate_nonsignificant)
       $('#volcano_query_condition').val(plotConfig.query_condition);
@@ -543,6 +540,10 @@ $('#dataset').change(async function () {
   createGeneDropdown(geneSymbols);
   $('#genes_not_found').hide();
 
+  // Get categorical observations for this dataset
+  const data = await fetchH5adInfo({ datasetId, undefined });
+  obsLevels = curateObservations(data.obs_levels);
+
   // Ensure genes dropdown tooltip shows
   $(function () {
     $('[data-toggle="tooltip"]').tooltip({
@@ -552,6 +553,13 @@ $('#dataset').change(async function () {
 
   $('#update_plot').show();
   $('#reset_opts').show();
+
+  // If a plot type was already selected,
+  // reset the options so configs are populated for the current dataset
+  if ($('#plot_type_select').val() ) {
+    $('#reset_opts').click();
+  }
+
 });
 
 $("#save_gene_cart").on("click", function () {
@@ -851,9 +859,6 @@ $(document).on('click', 'g.y5tick text a, g.x5tick text a', async function () {
 $(document).on('click', '#reset_opts', async function () {
   $('#options_container').show();
   $('#options_spinner').show();
-  // Get categorical observations for this dataset
-  const data = await fetchH5adInfo({ datasetId, undefined });
-  obsLevels = curateObservations(data.obs_levels);
 
   // Update fields dependent on dataset observations
   createObsFilterDropdowns(obsLevels);

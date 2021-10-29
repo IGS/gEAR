@@ -219,15 +219,15 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
                 fig.add_annotation(
                         arg=dict(
                             font=dict(
-                                color=fig.data[data_idx]["marker"]["color"] if data_idx > 0 else "slategrey"
+                                color="white"
                             )
                         )
                         , arrowcolor="black"
-                        , ax=fig.data[data_idx].x[idx] * 1.2
-                        , ay=fig.data[data_idx].y[idx] + 5
+                        , ax=fig.data[data_idx].x[idx] * 1.05
+                        , ay=fig.data[data_idx].y[idx] + 2
                         , axref="x"
                         , ayref="y"
-                        , bordercolor=fig.data[data_idx]["marker"]["color"] if data_idx > 0 else "slategrey"
+                        , bgcolor=fig.data[data_idx]["marker"]["color"] if data_idx > 0 else "slategrey"
                         , borderpad=2
                         , showarrow=True
                         , text=gene
