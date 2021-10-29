@@ -48,6 +48,30 @@ window.onload=function() {
         }
     });
 
+    $(document).on('click', 'button.edit_gc', function() {
+        var gc_id = $(this).data('gc-id');
+        var selector_base = "#result_gc_id_" + gc_id;
+
+        // copy the organism selection list for this row
+        $("#result_gc_id_" + gc_id + "_editable_organism_id").html(
+            $("#new_cart_organism_id").html()
+        );
+
+        // set the current value as selected
+        $("#result_gc_id_" + gc_id + "_editable_organism_id").val(
+            $("#result_gc_id_" + gc_id + "_editable_organism_id").data('original-val')
+        );
+
+        // Show editable versions where there are some and hide the display versions
+        $(selector_base + " .is-editable").hide();
+        $(selector_base + " .editable-version").show();
+
+        // Make sure the view is expanded
+        if ($(selector_base + " .expandable-view").hasClass('expanded-view-hidden')) {
+            $(selector_base + " span.gc-expander").click();
+        }
+    });
+
     $(document).on('click', 'button.view_gc', function(e){
         window.location = "./p?c=" + $(this).val();
     });
@@ -125,6 +149,19 @@ window.onload=function() {
 $(document).on('click', '#cancel_gc_delete', function() {
     gc_id_to_delete = null;
     $('.delete_gc').popover('hide');
+});
+
+$(document).on('click', '.edit_gc_cancel', function() {
+    var gc_id = $(this).data('gc-id');
+    var selector_base = "#result_gc_id_" + gc_id;
+
+    // Show editable versions where there are some and hide the display versions
+    $(selector_base + " .editable-version").hide();
+    $(selector_base + " .is-editable").show();
+
+    // Reset any unsaved/edited values
+    //var visibility = $(selector_base + "_visibility").data("original-val");
+    //$(selector_base + "_visibility").val(visibility);
 });
 
 $(document).on('click', '.confirm_gc_delete', function() {
@@ -371,8 +408,6 @@ function load_preliminary_data() {
 }
 
 function load_organism_list() {
-    session_id = Cookies.get('gear_session_id');
-    
     $.ajax({
         url : './cgi/get_organism_list.cgi',
         type: "GET",
