@@ -300,24 +300,20 @@
                          <span class="badge badge-danger">Private gene cart</span>
                          {{/if}}
                        </div>
-                       <div class="col-sm-3"><span class="att_label">Organism</span> {{:organism}}</div>
+                       <div class="col-sm-3 is-editable"><span class="att_label">Organism</span> {{:organism}}</div>
+                       <div class="col-sm-3 editable-version">
+                         <div class="form-group">
+                           <label for="result_gc_id_{{:id}}_editable_organism_id">Organism</label>
+                           <select class="form-control" id="result_gc_id_{{:id}}_editable_organism_id" data-original-val="{{:organism_id}}"></select>
+                         </div>
+                       </div>
+                       
                        <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
                        <div class="col-sm-3"><span class="att_label">Added</span> {{:date_added}}</div>
                      </div>
                      <div class="row">
-                       <div class="col-sm-3">
-                         <div class="att_buttons btn-group pl-2 pt-2" role="group">
-                           <button class="btn btn-default btn-sm btn-outline-secondary view_gc" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View on front page" disabled><i class="fa fa-eye"></i></button>
-                           <button class="btn btn-default btn-sm btn-outline-danger delete_gc" value="{{:id}}" data-owner-id="{{:user_id}}" data-toggle="popover" data-placement="bottom" title="Remove cart"><i class="fa fa-trash"></i></button>
-                           <button class="btn btn-default btn-sm btn-outline-secondary download_gc" data-gc-share-id="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Download cart"><i class="fa fa-download"></i></button>
-                           <button class="btn btn-default btn-sm btn-outline-secondary share_gc" value="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Share cart"><i class="fa fa-share-alt"></i></button>
-                           <button class="btn btn-default btn-sm btn-outline-secondary edit_gc is-editable" value="{{:dataset_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Edit cart" disabled><i class="fa fa-pencil"></i></button>
-                           <button class="btn btn-default btn-sm btn-outline-primary edit_gc_save editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Save edits"><i class="fa fa-floppy-o"></i> Save edits</button>
-                           <button class="btn btn-default btn-sm btn-outline-primary edit_gc_cancel editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
-                         </div>
-                       </div>
-                       <div class="col-sm-3 pl-2 pt-2">
-                         <div>
+                       <div class="col-sm-3 pt-2">
+                         <div class="pl-2">
                            {{if gctype == "weighted-list" }}
                               <button id="btn_gc_{{:id}}_preview" class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}" data-gc-share-id="{{:share_id}}"
                                       data-placement="top" title="Show gene list"><i class="fa fa-list-ul"></i> Preview</button>
@@ -337,13 +333,27 @@
                            {{/if}}
                          </div>
                        </div>
-                       <div class="col-sm-6 pt-2 pl-0"><span class="att_label">Type</span> {{:gctype}}</div>
+                       <div class="col-sm-6">
+                         <div class="att_buttons btn-group pt-2" role="group">
+                           <button class="btn btn-default btn-sm btn-outline-secondary view_gc" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View on front page" disabled><i class="fa fa-eye"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-danger delete_gc" value="{{:id}}" data-owner-id="{{:user_id}}" data-toggle="popover" data-placement="bottom" title="Remove cart"><i class="fa fa-trash"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary download_gc" data-gc-share-id="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Download cart"><i class="fa fa-download"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary share_gc" value="{{:share_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Share cart"><i class="fa fa-share-alt"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-secondary edit_gc is-editable" value="{{:gc_id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Edit cart"><i class="fa fa-pencil"></i></button>
+                           <button class="btn btn-default btn-sm btn-outline-primary edit_gc_save editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Save edits"><i class="fa fa-floppy-o"></i> Save edits</button>
+                           <button class="btn btn-default btn-sm btn-outline-primary edit_gc_cancel editable-version" value="{{:id}}" data-gc-id="{{:id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
+                         </div>
+                       </div>
+                       <div class="col-sm-3 pt-2 pl-0"><span class="att_label">Type</span> {{:gctype}}</div>
                      </div> <!-- end .row -->
                      <div class="row">
-                       <div class="col-sm-3 pl-4 pt-2">
+                       <div class="col-sm-3"></div>
+                       <div class="col-sm-9 pl-4">
                          <span class="gc_action_note"></span>                         
                        </div>
-                       <div class="col-sm-9 pl-2">
+                     </div> <!-- end .row -->
+                     <div class="row">
+                       <div class="col-sm-12 pl-4">
                          {{if gctype == "weighted-list" }}
                            <div class="weighted_gene_list_c" id="{{:id}}_gene_table"></div>
                            {{else}}
