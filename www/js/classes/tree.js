@@ -70,7 +70,7 @@ class GeneCartTree extends Tree {
                 'text':item.text,
                 'type': 'gene',
                 'a_attr': {
-                    'class': "py-0 download-item",
+                    'class': "py-0",
                 }
             })
         });
@@ -82,7 +82,7 @@ class GeneCartTree extends Tree {
                 'text':item.text,
                 'type': 'gene',
                 'a_attr': {
-                    'class': "py-0 download-item",
+                    'class': "py-0",
                 }
             })
         });
@@ -115,6 +115,9 @@ class GeneCartTree extends Tree {
                     unique - prevents nodes with the same name from coexisting as siblings
                     wholerow - makes each node block-level for easier selection
                 */
+                'search': {
+                    "show_only_matches": true
+                },
                 'types': {
                     'default': {
                         'icon': 'fa fa-folder-o'
@@ -210,11 +213,11 @@ class ProfileTree extends Tree {
                 'text': item.text,
                 'type': 'profile',
                 'a_attr': {
-                    'class': "domain_choice_c py-0 download-item",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
+                    'class': "py-0",
+                },
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
             })
         });
 
@@ -225,11 +228,11 @@ class ProfileTree extends Tree {
                 'text': item.text,
                 'type': 'profile',
                 'a_attr': {
-                    'class': "domain_choice_c py-0 download-item",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
+                    'class': "py-0",
+                },
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
             })
         });
         this.treeData = treeData;
@@ -252,7 +255,9 @@ class ProfileTree extends Tree {
                     //"check_callback" : true
                 },
                 'plugins': ["search", "types", "unique", "wholerow"],
-
+                'search': {
+                    "show_only_matches": true
+                },
                 'types': {
                     'default': {
                         'icon': 'fa fa-folder-o'
@@ -300,12 +305,16 @@ class ProfileTree extends Tree {
                 // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
-            // The dropdown toggle text/val change happens in DatasetCollectionPanel->set_layouts() for the index page
+            // The dropdown toggle text/val change already happens in DatasetCollectionPanel->set_layouts() for the index page,
             // but this should be set to assist with other pages.
             const selectedNode = data.instance.get_node(layoutId);
             $(self.dropdownToggleElt).text(selectedNode.text);
             $(self.dropdownToggleElt).val(layoutId);
+            $(self.dropdownToggleElt).data("profile-id", selectedNode.original.profile_id);
+            $(self.dropdownToggleElt).data("profile-label", selectedNode.original.profile_label);
+            $(self.dropdownToggleElt).data("profile-share-id", selectedNode.original.profile_share_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
     }
@@ -354,28 +363,24 @@ class DatasetTree extends Tree {
                 'id': item.value,
                 'parent': 'domain_node',
                 'text': item.text,
-                'type': 'profile',
+                'type': 'dataset',
                 'a_attr': {
-                    'class': "domain_choice_c py-0 download-item",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
-            })
+                    'class': "py-0",
+                },
+                'organism_id': item.organism_id
+           })
         });
 
         $.each(this.sharedDatasets, function(i, item){
             treeData.push({
                 'id': item.value,
-                'parent': 'domain_node',
+                'parent': 'shared_node',
                 'text': item.text,
-                'type': 'profile',
+                'type': 'dataset',
                 'a_attr': {
-                    'class': "domain_choice_c py-0 download-item",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
+                    'class': "py-0",
+                },
+                'organism_id': item.organism_id
             })
         });
 
@@ -384,13 +389,11 @@ class DatasetTree extends Tree {
                 'id': item.value,
                 'parent': 'user_node',
                 'text': item.text,
-                'type': 'profile',
+                'type': 'dataset',
                 'a_attr': {
-                    'class': "domain_choice_c py-0 download-item",
-                    'data-profile-label': item.text,
-                    'data-profile-id': item.value,
-                    'data-profile-share-id': item.share_id
-                }
+                    'class': "py-0",
+                },
+                'organism_id': item.organism_id
             })
         });
         this.treeData = treeData;
@@ -413,12 +416,14 @@ class DatasetTree extends Tree {
                     //"check_callback" : true
                 },
                 'plugins': ["search", "types", "unique", "wholerow"],
-
+                'search': {
+                    "show_only_matches": true
+                },
                 'types': {
                     'default': {
                         'icon': 'fa fa-folder-o'
                     },
-                    'profile': {
+                    'dataset': {
                         'icon': 'fa fa-address-card-o',
                         'valid_children':[]
                     }
@@ -455,18 +460,18 @@ class DatasetTree extends Tree {
         $(this.treeDiv).on('select_node.jstree', function(e, data) {
 
             // Though you can select multiple nodes in the tree, let's only select the first
-            const layoutId = data.selected[0];  // Returns node 'id' property
+            const datasetId = data.selected[0];  // Returns node 'id' property
             if (data.node.type === "default") {
                 // Do not toggle if user is navigating a branch node
                 // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
-            // The dropdown toggle text/val change happens in DatasetCollectionPanel->set_layouts() for the index page
-            // but this should be set to assist with other pages.
-            const selectedNode = data.instance.get_node(layoutId);
+            const selectedNode = data.instance.get_node(datasetId);
             $(self.dropdownToggleElt).text(selectedNode.text);
-            $(self.dropdownToggleElt).val(layoutId);
+            $(self.dropdownToggleElt).val(datasetId);
+            $(self.dropdownToggleElt).data("organism-id", selectedNode.original.organism_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
     }

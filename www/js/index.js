@@ -49,7 +49,7 @@ window.onload=function() {
         validate_permalink(scope);
     } else {
         // layout_id is a share_id for the profile layout
-        share_id = getUrlParameter('layout_id');
+        layout_id = getUrlParameter('layout_id');
         scope = "profile";
         get_index_info();
     }
@@ -172,7 +172,9 @@ window.onload=function() {
         zoom_out_dataset();
     });
 
-    $(document).on('click', '.domain_choice_c', function() {
+    // If a ProfileTree element is selected, this is changed and the new layout is set
+    // NOTE: I don't think #search_param_profile needs to be a trigger
+    $(document).on('change', '#search_param_profile, #selected_profile', function() {
         dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         layout_id = $(this).data('profile-share-id');
     });
@@ -804,7 +806,8 @@ $("#gene_search_form").submit(function( event ) {
         					'<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
         					'<p class="alert-message"><strong>Oops! </strong>No gene symbol was entered. Enter a gene symbol and try again.</p></div>').show();
 
-      			} else if ( dataset_ids_loaded.length == 0) {
+
+      			} else if ( dataset_collection_panel.datasets.length == 0) {
                 // No datasets in current layout profile
         				$('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
         					'<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +

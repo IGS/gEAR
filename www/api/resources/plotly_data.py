@@ -10,7 +10,6 @@ import geardb
 import numbers
 from gear.plotting import generate_plot, get_config, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
-from collections import defaultdict
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -32,10 +31,7 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
 
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
-            return {
-                'success': -1,
-                'message': "No h5 file found for this dataset"
-            }
+            raise PlotError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
@@ -53,6 +49,12 @@ def order_by_time_point(obs_df):
             sorted_df.time_point.drop_duplicates(), ordered=True)
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
+
+class PlotError(Exception):
+    """Error based on plotting issues."""
+    def __init__(self, message="") -> None:
+        self.message = message
+        super().__init__(self.message)
 
 class PlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -113,7 +115,13 @@ class PlotlyData(Resource):
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
-        ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        try:
+            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        except PlotError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
         adata = ana.get_adata(backed=True)
         adata.obs = order_by_time_point(adata.obs)
 

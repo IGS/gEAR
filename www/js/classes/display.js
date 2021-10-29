@@ -480,8 +480,6 @@ class PlotlyDisplay extends Display {
         this.show();
 
         var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
 
         // Overwrite plot layout and config values with custom ones from display
@@ -520,8 +518,6 @@ class PlotlyDisplay extends Display {
             plot_config
         } = this.data;
         var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
 
         // Overwrite plot layout and config values with custom ones from display
@@ -611,20 +607,26 @@ class PlotlyDisplay extends Display {
             groupby_filter,
             obs_filters,
             cluster_cols,
+            flip_axes,
+            distance_metric,
             adj_pvals,
             annotate_nonsignificant,
-            condition1,
-            condition2,
+            de_test_algo,
+            query_condition,
+            ref_condition,
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
         this.groupby_filter = groupby_filter;
         this.obs_filters = obs_filters;
         this.cluster_cols = cluster_cols;
+        this.flip_axes = flip_axes;
+        this.distance_metric = distance_metric,
         this.adj_pvals = adj_pvals;
         this.annot_nonsig = annotate_nonsignificant;
-        this.condition1 = condition1;
-        this.condition2 = condition2;
+        this.de_test_algo = de_test_algo;
+        this.query_condition = query_condition;
+        this.ref_condition = ref_condition;
         this.analysis = analysis;
     }
     clear_display() {
@@ -648,10 +650,13 @@ class PlotlyDisplay extends Display {
             gene_symbols: gene_symbols,
             obs_filters: this.obs_filters,
             cluster_cols: this.cluster_cols,
+            flip_axes: this.flip_axes,
+            distance_metric: this.distance_metric,
             adj_pvals: this.adj_pvals,
             annotate_nonsignificant: this.annot_nonsig,
-            condition1: this.condition1,
-            condition2: this.condition2,
+            de_test_algo: this.de_test_algo,
+            query_condition: this.query_condition,
+            ref_condition: this.ref_condition,
 
         });
     }
@@ -673,9 +678,28 @@ class PlotlyDisplay extends Display {
         this.show();
 
         var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
         };
+
+        // Since these plots are smaller, the legend overlaps the plot.  Move it out of the way
+        // Adjust the title some too.
+        // NOTE: These sizings can look better or worse depending on user's display scaling
+        if (this.plot_type == "volcano") {
+            layout_mods.legend = {
+                x: 1.05,
+                y: -0.05,
+                xanchor: "center",
+                yanchor:"top",
+                bgcolor: plot_json.layout.legend.bgcolor,
+                font: {size:8}
+            }
+            layout_mods.title = {
+                x: 0.5,
+                xref: "paper",
+                y: 0.8,
+            // Unfortunately, since these are objects, a merge will overwrite the entire obj from the plot layout
+                text: plot_json.layout.title.text
+            }
+        }
 
         // Overwrite plot layout and config values with custom ones from display
         var layout = {
@@ -710,9 +734,7 @@ class PlotlyDisplay extends Display {
             plot_json,
             plot_config
         } = this.data;
-        var layout_mods = {
-            height: target_div.clientHeight,
-            width: target_div.clientWidth,
+        let layout_mods = {
         };
 
         // Overwrite plot layout and config values with custom ones from display

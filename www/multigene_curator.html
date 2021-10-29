@@ -82,18 +82,20 @@
         <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the dataset to use.">
           <i class="fa fa-question-circle" aria-hidden="true"></i>
         </span>
-        <select class="col form-control" id="dataset_select">
-          <option></option>
-          <optgroup id="dataset_ids_user" label="Your datasets">
-            <option class="user-initial" disabled>None found</option>
-          </optgroup>
-          <optgroup id="dataset_ids_shared_with_user" label="Shared with you">
-            <option class="user-initial" disabled>None found</option>
-          </optgroup>
-          <optgroup id="dataset_ids_public" label="Public datasets">
-            <option disabled>None found</option>
-          </optgroup>
-        </select>
+        <div id="dataset_c" class="col form-control dropdown">
+          <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
+          <div class="dropdown-menu" aria-labelledby="dataset">
+            <form class="px-4 py-3">
+              <div class="input-group input-group-sm mb-3">
+                <div class="input-group-prepend">
+                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                </div>
+                <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
+              </div>
+              <div id="dataset_tree"></div>
+            </form>
+          </div>
+        </div>  <!-- end dataset_c -->
       </div>
 
       <!-- Plot type selection-->
@@ -137,19 +139,24 @@
         </div>
         <div class="row" id="gene_dropdown_container"></div>
         <div class="form-group row" id="gene_cart_container">
-          <label class="col-2 col-form-label" for="selected_gene_cart">or Load from Gene Cart</label>
+          <label class="col-2 col-form-label" for="gene_cart">or Load from Gene Cart</label>
           <span class="col-1" data-toggle="tooltip" data-placement="top" title="Optionally load an entry from the saved gene cart to add all genes found in this dataset to the above search.">
             <i class="fa fa-question-circle" aria-hidden="true"></i>
           </span>
-          <div id="selected_gene_cart_c" class="col-3 form-control dropdown">
-            <span id="selected_gene_cart" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</span>
-            <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
+          <div id="gene_cart_c" class="col-3 form-control dropdown">
+            <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
+            <div class="dropdown-menu" aria-labelledby="gene_cart">
               <form class="px-4 py-3">
-                <input type="text" id="selected_gene_cart_tree_q" placeholder="Type to search profiles">
-                <div id="selected_gene_cart_tree"></div>
+                <div class="input-group input-group-sm mb-3">
+                  <div class="input-group-prepend">
+                    <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                  </div>
+                  <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                </div>
+                <div id="gene_cart_tree"></div>
               </form>
             </div>
-          </div>  <!-- end selected_gene_cart_c -->
+          </div>  <!-- end gene_cart_c -->
         </div>  <!-- end gene_cart_container -->
         <div class="form-group row alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
       </fieldset>
@@ -162,6 +169,20 @@
         <!-- Observation group options -->
         <fieldset class="form-group" id="obs_dropdowns_container"></fieldset>
         <fieldset class="form-group row" id="obs_groupby_container"></fieldset>
+        <fieldset class="form-group" id="heatmap_options_container" style="display:none;">
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="distance_select">Pairwise distance metric</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the metric to compute the pairwise distance for genes, and if applicable, observations">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <select class="col form-control" id="distance_select">
+              <!--<option value="braycurtis">Bray-Curtis</option>-->
+              <option value="euclidean" selected="selected">Euclidean</option>
+              <option value="cityblock">Manhattan (Cityblock)</option>
+              <option value="minkowski">Minkowski</option>
+            </select>
+          </div>
+        </fieldset>
         <fieldset class="form-group" id="volcano_options_container" style="display:none;">
           <div class="form-group row">
             <label class="col-2 col-form-label" for="volcano_query_condition">Query Condition</label>
@@ -183,8 +204,7 @@
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select class="col form-control" id="de_test_select">
-              <option></option>
-              <option value="t-test">Welch's t-test</option>
+              <option value="t-test" selected="selected">Welch's t-test</option>
               <option value="rank">Wilcoxon rank-sum test</option>
             </select>
           </div>
@@ -197,13 +217,24 @@
           </button>
           <div class="collapse" id="advanced_options_collapsable">
             <div class="form-group row" id="cluster_cols_checkbox_container">
-              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to cluster observation groups, in addition to genes.  Otherwise only genes are clustered.">
+              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to cluster observation samples, in addition to genes.  Otherwise only genes are clustered. Not compatible with 'Group by Category' option. Cannot currently cluster using just a single gene.">
                 <i class="fa fa-question-circle" aria-hidden="true"></i>
               </span>
               <div class="col-9 form-check">
                 <input class="form-check-input" type="checkbox" value="" id="cluster_cols">
                 <label class="form-check-label" for="cluster_cols">
-                  Also cluster observation groups
+                  Also cluster observation samples
+                </label>
+              </div>
+            </div>
+            <div class="form-group row" id="flip_axes_checkbox_container">
+              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to have genes as columns and observations as rows.">
+                <i class="fa fa-question-circle" aria-hidden="true"></i>
+              </span>
+              <div class="col-9 form-check">
+                <input class="form-check-input" type="checkbox" value="" id="flip_axes">
+                <label class="form-check-label" for="flip_axes">
+                  Flip genes and observations axes
                 </label>
               </div>
             </div>
@@ -237,16 +268,24 @@
       <button type="button" class="btn btn-purple my-3" id="update_plot" style="display:none;">Update Plot</button>
       <button type="button" class="btn btn-purple my-3" id="reset_opts" style="display:none;">Reset Options</button>
       <br>
-      <div id="save_functions"></div>
     </div> <!-- end container -->
     </main>
 
-    <!-- Plots and related -->
+    <!-- Plots and post-plot things -->
     <div class="row">
       <div id="dataset_plot" class="col-8"></div>
       <aside class="col-3">
-        <fieldset id="selected_genes_c" style="display:none;">
-          <legend>Selected Genes to Gene Cart</legend>
+        <fieldset id="save_display_field" style="display:none;">
+          <legend>Save Plot Display</legend>
+          <div class="form-group">
+            <input class="form-control" id="display_name" placeholder="Enter name for saved display">
+          </div>
+          <button type="button" class="btn btn-purple mb-3" id="save_display_btn"></button>
+          <br>
+          <p id="saved_plot_confirmation" style="display:none;"></p>
+        </fieldset>
+        <fieldset id="selected_genes_field" style="display:none;">
+          <legend>Save Gene Cart</legend>
           <div class="form-group">
             <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
           </div>
@@ -257,7 +296,7 @@
           <ul id="selected_genes_list">
           </ul>
         </fieldset> <!-- end selected_genes_c-->
-        <fieldset id="plot_download_opts" style="display:none;">
+        <fieldset id="plot_download_opts_field" style="display:none;">
           <legend>Image Download Options</legend>
           <div class="form-row">
             <label class="col-form-label col-6" for="plot_download_height">Height (in px)</label>
@@ -276,7 +315,7 @@
       </aside>
 
     </div>
-    <div id="supplementary_plot" class="row"></div>
+    <div id="supplementary_plot"></div>
 
     <footer>
       <div id='funding'>
@@ -284,10 +323,6 @@
       </div>
     </footer>
     </div> <!-- /body_c -->
-
-    <script id="dataset_list_tmpl" type="text/x-jsrender">
-      <option value="{{:id}}" data-organism-id="{{:organism_id}}">{{:title}}</option>
-    </script>
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">
       <label class="col-2 col-form-label" for="gene_dropdown">Gene Symbols</label>
@@ -379,15 +414,7 @@
     </script>
 
     <script id="save_plot_tmpl" type="text/x-jsrender">
-      <form id="save_display_form">
-        <div class="form-group row">
-          <label class="col-2 col-form-label" for="display_name">Display Name</label>
-          <span class="col-1"></span>
-          <input class="col-3 form-control" id="display_name" placeholder="Enter name for saved display">
-        </div>
-        <button type="button" class="btn btn-purple" id="save_display_btn">Save new {{:plot_type}}</button>
-        <p id="saved_plot_confirmation" style="display:none;"></p>
-      </form>
+      Save new {{:plot_type}} plot
     </script>
 
     <script id="selected_genes_tmpl" type="text/x-jsrender">
