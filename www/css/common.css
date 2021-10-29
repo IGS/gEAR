@@ -187,13 +187,6 @@ li.active > #comment_link {
 span#new_msg_count_c {
     background-color: #d9534f;
     padding: 7px 7px;
-    /*
-    display: none;
-    position: absolute;
-    border-radius: 50%;
-    bottom: -10px;
-    right: -5px;
-    */
 }
 ul#user_menu {
     z-index: 5;
@@ -204,4 +197,11 @@ ul#user_menu li a {
 ul#user_menu li a i {
     display: inline-block;
     margin-right: 0.5em;
+}
+
+/* Limit JSTree div height */
+div.jstree {
+    height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }

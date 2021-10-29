@@ -103,16 +103,11 @@ class GeneCartTree extends Tree {
             $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
-                    // so that right-click->create works
-                    //"check_callback" : true
                 },
-                'plugins': ["search", "types", "unique", "wholerow"],
+                'plugins': ["search", "types", "wholerow"],
                 /* Plugins
-                    contextmenu - Allows right-click of node for configurable actions
-                    dnd - Allows drag-and-drop of nodes to rearrange tree
                     search - search for matching items and expand tree if found
                     types - Allows you to define node types with nesting rules and icons
-                    unique - prevents nodes with the same name from coexisting as siblings
                     wholerow - makes each node block-level for easier selection
                 */
                 'search': {
@@ -251,10 +246,8 @@ class ProfileTree extends Tree {
             $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
-                    // so that right-click->create works
-                    //"check_callback" : true
                 },
-                'plugins': ["search", "types", "unique", "wholerow"],
+                'plugins': ["search", "types", "wholerow"],
                 'search': {
                     "show_only_matches": true
                 },
@@ -355,9 +348,10 @@ class DatasetTree extends Tree {
             {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
         ];
 
-        // user_profiles/domain_profiles properties - value, text, share_id
-
         // Load datasets into the tree data property
+        // NOTE - Datasets can appear in multiple lists, so dataset IDs cannot be used as the node ID
+        // otherwise node leaves can turn into "default" type instead of "dataset" type
+
         $.each(this.domainDatasets, function(i, item){
             treeData.push({
                 'id': item.value,
@@ -367,6 +361,7 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
+                "dataset_id": item.dataset_id,
                 'organism_id': item.organism_id
            })
         });
@@ -380,6 +375,7 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
+                "dataset_id": item.dataset_id,
                 'organism_id': item.organism_id
             })
         });
@@ -393,6 +389,7 @@ class DatasetTree extends Tree {
                 'a_attr': {
                     'class': "py-0",
                 },
+                "dataset_id": item.dataset_id,
                 'organism_id': item.organism_id
             })
         });
@@ -412,10 +409,8 @@ class DatasetTree extends Tree {
             $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
-                    // so that right-click->create works
-                    //"check_callback" : true
                 },
-                'plugins': ["search", "types", "unique", "wholerow"],
+                'plugins': ["search", "types", "wholerow"],
                 'search': {
                     "show_only_matches": true
                 },
@@ -468,7 +463,8 @@ class DatasetTree extends Tree {
             }
             const selectedNode = data.instance.get_node(datasetId);
             $(self.dropdownToggleElt).text(selectedNode.text);
-            $(self.dropdownToggleElt).val(datasetId);
+            $(self.dropdownToggleElt).val(selectedNode.original.dataset_id);
+            $(self.dropdownToggleElt).data("dataset-id", selectedNode.original.dataset_id);
             $(self.dropdownToggleElt).data("organism-id", selectedNode.original.organism_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
             $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
