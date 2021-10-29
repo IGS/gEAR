@@ -114,7 +114,6 @@ async function populateDatasets () {
       // Next, add datasets shared with the user
       let sharedDatasets = [];
       if (data.shared_with_user.datasets.length > 0) {
-        // User has some profiles
         $.each(data.shared_with_user.datasets, function (i, item) {
           sharedDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
         });
@@ -122,7 +121,6 @@ async function populateDatasets () {
       // Now, add public datasets
       let domainDatasets = [];
       if (data.public.datasets.length > 0) {
-        // User has some profiles
         $.each(data.public.datasets, function (i, item) {
           domainDatasets.push({ value: item.id, text: item.title, organism_id: item.organism_id });
         });

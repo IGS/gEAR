@@ -103,16 +103,11 @@ class GeneCartTree extends Tree {
             $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
-                    // so that right-click->create works
-                    //"check_callback" : true
                 },
-                'plugins': ["search", "types", "unique", "wholerow"],
+                'plugins': ["search", "types", "wholerow"],
                 /* Plugins
-                    contextmenu - Allows right-click of node for configurable actions
-                    dnd - Allows drag-and-drop of nodes to rearrange tree
                     search - search for matching items and expand tree if found
                     types - Allows you to define node types with nesting rules and icons
-                    unique - prevents nodes with the same name from coexisting as siblings
                     wholerow - makes each node block-level for easier selection
                 */
                 'search': {
@@ -251,10 +246,8 @@ class ProfileTree extends Tree {
             $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
-                    // so that right-click->create works
-                    //"check_callback" : true
                 },
-                'plugins': ["search", "types", "unique", "wholerow"],
+                'plugins': ["search", "types", "wholerow"],
                 'search': {
                     "show_only_matches": true
                 },
@@ -412,10 +405,8 @@ class DatasetTree extends Tree {
             $(this.treeDiv).jstree({
                 'core':{
                     'data':this.treeData,
-                    // so that right-click->create works
-                    //"check_callback" : true
                 },
-                'plugins': ["search", "types", "unique", "wholerow"],
+                'plugins': ["search", "types", "wholerow"],
                 'search': {
                     "show_only_matches": true
                 },
