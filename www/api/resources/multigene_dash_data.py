@@ -61,6 +61,25 @@ LIGHT24_COLORS = px.colors.qualitative.Light24
 VIVID_COLORS = px.colors.qualitative.Vivid
 PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
+### Dotplot fxns
+
+def create_dot_plot(df, gene_map):
+    """Creates a dot plot.  Returns the figure."""
+    # x = group
+    # y = gene
+    # color = mean expression
+    # size = percent of cells with gene
+
+    fig = go.Figure(data=go.Heatmap(
+            x=list(df.columns.values)
+            , y=list(gene_map.values())
+            #, name=list(gene_map.keys())
+            #, color=df["mean"]
+    ))
+
+    return fig
+
+
 ### Heatmap fxns
 
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
@@ -71,7 +90,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
     # https://dash.plotly.com/dash-bio/clustergram
     # gene_symbol input will be only genes shown in heatmap, and clustered
 
-    # Gene symbols fail with all genes (dataset too large) and with 1 gene (cannot cluster rows)
+    # Gene symbols fail with all genes (dataset too large)
 
     df = df if flip_axes else df.transpose()
     rows = list(df.index)
@@ -348,8 +367,8 @@ def modify_volcano_plot(fig):
 
 ### Misc fxns
 
-def create_dataframe_gene_filter(df, gene_symbols, plot_type):
-    """Create a gene filter to filter a dataframe."""
+def create_dataframe_gene_mask(df, gene_symbols, plot_type):
+    """Create a gene mask to filter a dataframe."""
     gene_filter = None
     success = 1
     message_list = []
@@ -529,7 +548,7 @@ class MultigeneDashData(Resource):
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
             #var = adata.var.drop_duplicates(subset=['gene_symbol'])
-            gene_filter, success, message = create_dataframe_gene_filter(adata.var, gene_symbols, plot_type)
+            gene_filter, success, message = create_dataframe_gene_mask(adata.var, gene_symbols, plot_type)
         except PlotError as pe:
             return {
                 'success': -1,
@@ -538,7 +557,7 @@ class MultigeneDashData(Resource):
 
         # ADATA - Observations are rows, genes are columns
         selected = adata
-        if plot_type in ['heatmap', 'mg_violin'] and gene_filter is not None:
+        if plot_type in ['dotplot', 'heatmap', 'mg_violin'] and gene_filter is not None:
             selected = selected[:, gene_filter]
 
         # Filter dataframe on the chosen observation filters
@@ -616,6 +635,30 @@ class MultigeneDashData(Resource):
             if gene_symbols:
                 add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
 
+        elif plot_type == "dotplot":
+            df = selected.to_df()
+
+            if not groupby_filter:
+                return {
+                    'success': -1,
+                    'message': "'Groupby filter' option required for dot plots."
+                }
+
+            df[groupby_filter] = selected.obs[groupby_filter]
+            grouped = df.groupby([groupby_filter])
+            df = grouped.agg('mean') \
+                .dropna() \
+
+            # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
+            gene_map = {}
+            for gene in gene_symbols:
+                gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
+
+            fig = create_dot_plot(df
+                , gene_map
+                )
+        elif plot_type == "quadrant":
+            pass
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata

@@ -25,7 +25,11 @@ let geneSymbols = null;
 let datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
 let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
+const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
+
+const dotplotOptsIds = ["#obs_groupby_container"];
 const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
+const quadrantOptsIds = [];
 const violinOptsIds = ["#obs_groupby_container"];
 const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
@@ -281,9 +285,14 @@ function createObsFilterDropdowns (obsLevels) {
   });
 }
 
+// Render dropdowns specific to the dot plot
+function createDotplotDropdowns (obsLevels) {
+  createObsGroupbyField (obsLevels);
+}
+
 // Render dropdowns specific to the heatmap plot
 function createHeatmapDropdowns (obsLevels) {
-  createObsGroupbyField (obsLevels)
+  createObsGroupbyField (obsLevels);
 
   // Initialize differential expression test dropdown
   $('#distance_select').select2({
@@ -294,7 +303,7 @@ function createHeatmapDropdowns (obsLevels) {
 
 // Render dropdowns specific to the violin plot
 function createViolinDropdowns (obsLevels) {
-  createObsGroupbyField (obsLevels)
+  createObsGroupbyField (obsLevels);
 }
 
 // Render dropdowns specific to the volcano plot
@@ -340,8 +349,8 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
   const ownerDisplays = await fetchOwnerDisplays(ownerId, datasetId);
 
   // Filter displays to those only with multigene plot types
-  const mgUserDisplays = userDisplays.filter(d => ['heatmap', 'mg_violin', 'volcano'].includes(d.plot_type));
-  const mgOwnerDisplays = ownerDisplays.filter(d => ['heatmap', 'mg_violin', 'volcano'].includes(d.plot_type));
+  const mgUserDisplays = userDisplays.filter(d => plotTypes.includes(d.plot_type));
+  const mgOwnerDisplays = ownerDisplays.filter(d => plotTypes.includes(d.plot_type));
 
   //
   mgUserDisplays.forEach(display => {
@@ -382,6 +391,10 @@ function loadDisplayConfigHtml (plotConfig) {
 
   // Render and populate plot type-specific dropdowns and checkbox options
   switch ($('#plot_type_select').val()) {
+    case 'dotplot':
+      createDotplotDropdowns(obsLevels);
+      $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      break;
     case 'heatmap':
       createHeatmapDropdowns(obsLevels);
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
@@ -642,37 +655,38 @@ $('#cluster_cols').change(function () {
 $('#plot_type_select').change(function () {
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_field').hide();
+
+  dotplotOptsIds.forEach(id => {
+    $(id).hide();
+  })
+  heatmapOptsIds.forEach(id => {
+    $(id).hide();
+  });
+  violinOptsIds.forEach(id => {
+    $(id).hide();
+  });
+  volcanoOptsIds.forEach(id => {
+    $(id).hide();
+  });
+
   switch ($('#plot_type_select').val()) {
+    case 'dotplot':
+      dotplotOptsIds.forEach(id => {
+        $(id).show();
+      })
+      break;
     case 'heatmap':
-      violinOptsIds.forEach(id => {
-        $(id).hide();
-      });
-      volcanoOptsIds.forEach(id => {
-        $(id).hide();
-      });
       heatmapOptsIds.forEach(id => {
         $(id).show();
       });
       break;
     case 'mg_violin':
-      heatmapOptsIds.forEach(id => {
-        $(id).hide();
-      });
-      volcanoOptsIds.forEach(id => {
-        $(id).hide();
-      });
       violinOptsIds.forEach(id => {
         $(id).show();
       });
       break;
     default:
       // volcano
-      violinOptsIds.forEach(id => {
-        $(id).hide();
-      });
-      heatmapOptsIds.forEach(id => {
-        $(id).hide();
-      });
       volcanoOptsIds.forEach(id => {
         $(id).show();
       });
@@ -728,6 +742,13 @@ $(document).on('click', '#update_plot', async function () {
 
   // Add specific plotConfig options depending on plot type
   switch (plotType) {
+    case 'dotplot':
+      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
+      if (!plotConfig['groupby_filter']) {
+        window.alert("Must select a groupby filter for dot plots.");
+        return;
+      }
+      break;
     case 'heatmap':
       plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
       plotConfig['cluster_cols'] = $('#cluster_cols').is(':checked');
@@ -858,6 +879,9 @@ $(document).on('click', '#reset_opts', async function () {
   // Update fields dependent on dataset observations
   createObsFilterDropdowns(obsLevels);
   switch ($('#plot_type_select').val()) {
+    case 'dotplot':
+      createDotplotDropdowns(obsLevels);
+      break;
     case 'heatmap':
       createHeatmapDropdowns(obsLevels);
       break;
