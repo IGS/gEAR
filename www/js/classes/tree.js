@@ -30,6 +30,21 @@ class Tree {
         // so they may be interchanged in the codebase
     }
 
+    register_search() {
+    // Code from "search" section of https://www.jstree.com/plugins/
+    // Sets text input to search as tree search box.
+    let self = this;
+    let to = false;
+    // Requires searchbox to be named #{treeDiv}_q
+    $(`${this.treeDiv}_q`).keyup(function () {
+        if (to) { clearTimeout(to); }
+        to = setTimeout(function () {
+        let v = $(`${self.treeDiv}_q`).val();
+        self.tree.search(v);
+        }, 250);
+    });
+    }
+
     // Update the contents of a JSTree object with new data.
     updateTreeData(newData=null) {
         (this.tree).settings.core.data = newData ? newData : this.treeData;
@@ -126,18 +141,6 @@ class GeneCartTree extends Tree {
             this.setTree();
         }
 
-        let self = this;
-        // Code from "search" section of https://www.jstree.com/plugins/
-        // Sets text input to search as tree search box.
-        let to = false;
-        $(`${this.treeDiv}_q`).keyup(function () {
-            if (to) { clearTimeout(to); }
-            to = setTimeout(function () {
-            let v = $(`${self.treeDiv}_q`).val();
-            self.tree.search(v);
-            }, 250);
-        });
-
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -148,6 +151,8 @@ class GeneCartTree extends Tree {
 
     register_events() {
         let self = this;
+        this.register_search();
+
         // Get genes from the selected gene cart
         $(this.treeDiv).on('select_node.jstree', function(e, data) {
             // Though you can select multiple nodes in the tree, let's only select the first
@@ -264,18 +269,6 @@ class ProfileTree extends Tree {
             this.setTree();
         }
 
-        let self = this;
-        // Sets text input to search as tree search box.
-        // Code from "search" section of https://www.jstree.com/plugins/
-        let to = false;
-        $(`${this.treeDiv}_q`).keyup(function () {
-            if (to) { clearTimeout(to); }
-            to = setTimeout(function () {
-            let v = $(`${self.treeDiv}_q`).val();
-            self.tree.search(v);
-            }, 250);
-        });
-
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -287,6 +280,7 @@ class ProfileTree extends Tree {
     // Register various ProfileTree events as object properties are updated.
     register_events() {
         let self = this;
+        this.register_search();
 
         // Get layout from the selected node and close dropdown
         $(this.treeDiv).on('select_node.jstree', function(e, data) {
@@ -427,18 +421,6 @@ class DatasetTree extends Tree {
             this.setTree();
         }
 
-        let self = this;
-        // Sets text input to search as tree search box.
-        // Code from "search" section of https://www.jstree.com/plugins/
-        let to = false;
-        $(`${this.treeDiv}_q`).keyup(function () {
-            if (to) { clearTimeout(to); }
-            to = setTimeout(function () {
-            let v = $(`${self.treeDiv}_q`).val();
-            self.tree.search(v);
-            }, 250);
-        });
-
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -450,6 +432,7 @@ class DatasetTree extends Tree {
     // Register various DatasetTree events as object properties are updated.
     register_events() {
         let self = this;
+        this.register_search();
 
         // Get layout from the selected node and close dropdown
         $(this.treeDiv).on('select_node.jstree', function(e, data) {
