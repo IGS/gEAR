@@ -133,7 +133,7 @@ class GeneCartTree extends Tree {
         $(`${this.treeDiv}_q`).keyup(function () {
             if (to) { clearTimeout(to); }
             to = setTimeout(function () {
-            let v = $(`${this.treeDiv}_q`).val();
+            let v = $(`${self.treeDiv}_q`).val();
             self.tree.search(v);
             }, 250);
         });
