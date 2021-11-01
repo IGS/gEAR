@@ -170,6 +170,13 @@ function drawChart (data, datasetId, supplementary = false) {
   const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
   const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
 
+  // If there was an error in the plot, put alert up
+  if ( success < 1 && !plotJson.layout) {
+    $(targetDiv + '.js-plot-error').text(message);
+    $(targetDiv + '.js-plot-error').show();
+    return;
+  }
+
   const layoutMods = {
     //height: targetDiv.clientHeight,
     //width: targetDiv.clientWidth,
@@ -184,13 +191,6 @@ function drawChart (data, datasetId, supplementary = false) {
   } else if ($('#plot_type_select').select2('data')[0].id === 'volcano') {
     layoutMods.height = 800;
     layoutMods.width = 900; // If window is not wide enough, the plotly option icons will overlap contents on the right
-  }
-
-  // If there was an error in the plot, put alert up
-  if ( success < 1 && !plotJson.layout) {
-    $(targetDiv + '.js-plot-error').text(message);
-    $(targetDiv + '.js-plot-error').show();
-    return;
   }
 
   // Overwrite plot layout and config values with custom ones from display
@@ -392,7 +392,6 @@ function loadDisplayConfigHtml (plotConfig) {
   // Populate plot type-specific dropdowns and checkbox options
   switch ($('#plot_type_select').val()) {
     case 'dotplot':
-      createDotplotDropdowns(obsLevels);
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       break;
     case 'heatmap':
@@ -404,6 +403,8 @@ function loadDisplayConfigHtml (plotConfig) {
       break;
     case 'mg_violin':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      break;
+    case 'quadrant':
       break;
     default:
       // volcano

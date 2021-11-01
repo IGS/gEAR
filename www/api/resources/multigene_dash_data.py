@@ -63,19 +63,80 @@ PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 ### Dotplot fxns
 
-def create_dot_plot(df, gene_map):
+def create_dot_plot(df):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
     # color = mean expression
     # size = percent of cells with gene
 
-    fig = go.Figure(data=go.Heatmap(
-            x=list(df.columns.values)
-            , y=list(gene_map.values())
-            #, name=list(gene_map.keys())
-            #, color=df["mean"]
-    ))
+    # Taking a lot of influence from
+    # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
+
+    fig = make_subplots(rows=1, cols=5
+        , specs = [[{"colspan":4}, None, None, None, {}]]
+        , subplot_titles=(None, "Fraction of cells<br>in group (%)")
+    )
+
+    legend_col=5
+
+    fig.add_trace(go.Scatter(
+        x=df["cluster"]
+        , y=df["gene_symbol"]
+        , text = df["value", "count"]
+        , hovertemplate="N: %{text}<br>" +
+            "Percent: %{marker.size:.2f}<br>" +
+            "Mean: %{marker.color:.2f}"
+        , mode="markers"
+        , marker=dict(
+            color=df["value", "mean"]
+            , colorscale=['rgb(0,0,255)','rgb(150,0,90)','rgb(255,0,0)']
+            , size=df["value", "percent"]
+            , sizemode="area"
+            , colorbar=dict(
+                title="mean"
+                )
+            )
+        , showlegend=False
+    ), row=1, col=1)
+
+    # Create a dot size legend
+    max_size = df["value", "percent"].max()
+    steps = 5
+    maxDotSize=20*round(max_size)/100
+    dot_legend=list()
+    for i in range(steps):
+        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
+    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
+
+    fig.add_trace(go.Scatter(
+        x=dot_legend["x"]
+        , y=dot_legend["y"]
+        , text=dot_legend["text"]
+        , mode="markers+text"
+        , marker=dict(
+            color="#888"
+            , size=dot_legend["percent"]
+            , sizemode="area"
+            )
+        , showlegend=False
+        , textposition="top center"
+    ), row=1, col=legend_col)
+
+    fig.update_layout(
+        template="simple_white"    # change background to pure white
+        , title_font_size=4
+    )
+    # Hide dot size legend axes
+    fig.update_xaxes(
+        visible=False
+        , col=legend_col
+    )
+    fig.update_yaxes(
+        range=[-1, 5]  # Give extra clearance so top dot does not overlap with title
+        ,visible=False
+        , col=legend_col
+    )
 
     return fig
 
@@ -202,7 +263,7 @@ def create_violin_plot(df, gene_map, groupby_filter):
                     )
                 , meanline=dict(
                     color="white"
-                )
+                    )
                 , spanmode="hard"   # Do not extend violin tails beyond the min/max values
             )
         offsetgroup += 1
@@ -357,12 +418,12 @@ def modify_volcano_plot(fig):
             ,"yanchor":"middle"
             ,"bgcolor":"rgba(0,0,0,0)",   # transparent background
         }
-        ,title={
+        , title={
             "x":0.5
             ,"xref":"paper"
             ,"y":0.9
         }
-        ,template="simple_white"    # change background to pure white
+        , template="simple_white"    # change background to pure white
     )
 
 ### Misc fxns
@@ -645,18 +706,20 @@ class MultigeneDashData(Resource):
                 }
 
             df[groupby_filter] = selected.obs[groupby_filter]
-            grouped = df.groupby([groupby_filter])
-            df = grouped.agg('mean') \
-                .dropna() \
 
-            # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
-            gene_map = {}
-            for gene in gene_symbols:
-                gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
+            ### Transform the dataframe to prep for the dot plot
+            df = df.melt(id_vars=["cluster"])
+            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
+            df["gene_symbol"] = df["index"].map(ensm_to_gene)
 
-            fig = create_dot_plot(df
-                , gene_map
-                )
+            # Percent of all cells in this group where the gene has expression
+            percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
+            grouped = df.groupby(["gene_symbol", groupby_filter])
+            df = grouped.agg(['mean', 'count', ('percent', percent)]) \
+                .reset_index()
+
+            fig = create_dot_plot(df)
+
         elif plot_type == "quadrant":
             pass
         elif plot_type == "heatmap":
@@ -668,7 +731,7 @@ class MultigeneDashData(Resource):
                 df[groupby_filter] = selected.obs[groupby_filter]
                 grouped = df.groupby([groupby_filter])
                 df = grouped.agg('mean') \
-                    .dropna() \
+                    .dropna()
 
             fig = create_clustergram(df
                 , gene_symbols
