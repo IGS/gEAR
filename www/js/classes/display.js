@@ -595,7 +595,7 @@ class PlotlyDisplay extends Display {
  class MultigeneDisplay extends Display {
     /**
      * Initialize dash display.
-     * @param {Object} Data - Data used to draw heatmap, violin, or volcano plot
+     * @param {Object} Data - Data used to draw any multigene plot
      * @param {Array} gene_symbols - Array of gene symbols
      */
     constructor({

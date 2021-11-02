@@ -171,7 +171,7 @@ function drawChart (data, datasetId, supplementary = false) {
   const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
 
   // If there was an error in the plot, put alert up
-  if ( success < 1 && !plotJson.layout) {
+  if ( success < 1 || !plotJson.layout) {
     $(targetDiv + '.js-plot-error').text(message);
     $(targetDiv + '.js-plot-error').show();
     return;

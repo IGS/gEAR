@@ -63,6 +63,42 @@ PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 ### Dotplot fxns
 
+def create_dot_legend(fig, legend_col):
+    """Creates the dot plot size legend. Edits figure in-place."""
+
+    # Create a dot size legend
+    steps = 5
+    dot_legend=list()
+    for i in range(steps):
+        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
+    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
+
+    fig.add_trace(go.Scatter(
+        x=dot_legend["x"]
+        , y=dot_legend["y"]
+        , text=dot_legend["text"]
+        , hoverinfo="none"  # Do not have hover text
+        , mode="markers+text"
+        , marker=dict(
+            color="#888"
+            , size=dot_legend["percent"]
+            , sizemode="area"
+            )
+        , showlegend=False
+        , textposition="top center"
+    ), row=1, col=legend_col)
+
+    # Hide dot size legend axes
+    fig.update_xaxes(
+        visible=False
+        , col=legend_col
+    )
+    fig.update_yaxes(
+        range=[-1, 5]  # Give extra clearance so top dot does not overlap with title
+        ,visible=False
+        , col=legend_col
+    )
+
 def create_dot_plot(df):
     """Creates a dot plot.  Returns the figure."""
     # x = group
@@ -73,12 +109,12 @@ def create_dot_plot(df):
     # Taking a lot of influence from
     # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
 
-    fig = make_subplots(rows=1, cols=5
-        , specs = [[{"colspan":4}, None, None, None, {}]]
-        , subplot_titles=(None, "Fraction of cells<br>in group (%)")
-    )
-
     legend_col=5
+
+    fig = make_subplots(rows=1, cols=legend_col
+        , specs = [[{"colspan":legend_col-1}, None, None, None, {}]]   # "None" repeat much be legend_col - 2
+        , subplot_titles=("", "Fraction of cells<br>in group (%)")
+    )
 
     fig.add_trace(go.Scatter(
         x=df["cluster"]
@@ -100,46 +136,14 @@ def create_dot_plot(df):
         , showlegend=False
     ), row=1, col=1)
 
-    # Create a dot size legend
-    max_size = df["value", "percent"].max()
-    steps = 5
-    maxDotSize=20*round(max_size)/100
-    dot_legend=list()
-    for i in range(steps):
-        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
-    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
-
-    fig.add_trace(go.Scatter(
-        x=dot_legend["x"]
-        , y=dot_legend["y"]
-        , text=dot_legend["text"]
-        , mode="markers+text"
-        , marker=dict(
-            color="#888"
-            , size=dot_legend["percent"]
-            , sizemode="area"
-            )
-        , showlegend=False
-        , textposition="top center"
-    ), row=1, col=legend_col)
+    create_dot_legend(fig, legend_col)
 
     fig.update_layout(
         template="simple_white"    # change background to pure white
-        , title_font_size=4
-    )
-    # Hide dot size legend axes
-    fig.update_xaxes(
-        visible=False
-        , col=legend_col
-    )
-    fig.update_yaxes(
-        range=[-1, 5]  # Give extra clearance so top dot does not overlap with title
-        ,visible=False
-        , col=legend_col
+        #, title_font_size=4
     )
 
     return fig
-
 
 ### Heatmap fxns
 
