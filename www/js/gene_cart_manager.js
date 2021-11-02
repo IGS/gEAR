@@ -436,10 +436,11 @@ function process_search_results(data, result_label) {
         data['gene_carts'][i]['date_added'] = data['gene_carts'][i]['date_added'].toDateString();
     }
 
-    // For the list view
     var resultsViewTmpl = $.templates("#gc_results_view_tmpl");
     var resultsViewHtml = resultsViewTmpl.render(data['gene_carts']);
     $("#gc_list_results_view_c").html(resultsViewHtml);
+
+    update_gene_cart_list_buttons();
 
     $("#result_count").html(data['gene_carts'].length);
     $("#result_label").html(result_label);
@@ -542,3 +543,20 @@ function submit_search() {
         }
     }); //end ajax for search    
 };
+
+function update_gene_cart_list_buttons() {
+    // Iterates through each of the carts in the result list and makes sure the appropriate
+    //  buttons are visible/hidden
+    $(".gc_list_element_c").each(function() {
+        var gc_id = $(this).data("gc-id");
+
+        // The ability to edit and delete and dataset are currently paired
+        if (CURRENT_USER.id == $(this).find("button.delete_gc").data('owner-id')) {
+            $(this).find("button.delete_gc").show();
+            $(this).find("button.edit_gc").show();
+        } else {
+            $(this).find("button.delete_gc").hide();
+            $(this).find("button.edit_gc").hide();
+        }
+    });
+}
