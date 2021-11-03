@@ -62,6 +62,12 @@ window.onload=function() {
             $("#result_gc_id_" + gc_id + "_editable_organism_id").data('original-val')
         );
 
+        if ($("#result_gc_id_" + gc_id + "_editable_visibility").data('is-public')) {
+            $("#result_gc_id_" + gc_id + "_editable_visibility").bootstrapToggle('on');
+        } else {
+            $("#result_gc_id_" + gc_id + "_editable_visibility").bootstrapToggle('off');
+        }
+
         // Show editable versions where there are some and hide the display versions
         $(selector_base + " .is-editable").hide();
         $(selector_base + " .editable-version").show();
