@@ -48,7 +48,7 @@ div#saved_gene_cart_info_c h3 {
     margin-bottom: 5px;
 }
 div#selected_label {
-    display: none;    
+    display: none;
     margin-bottom: 10px;
 }
 div#sidebar {
@@ -79,4 +79,9 @@ table#tbl_selected_genes td {
 table#tbl_selected_genes th {
     border: 1px solid rgb(200,200,200);
     padding: 3px;
+}
+
+/* Overwritting bootstrap default */
+.nav-tabs .nav-link {
+    border-width: 2px;
 }

@@ -50,8 +50,12 @@ class H5ad(Resource):
                 columns.append('X_pca_1')
                 columns.append('X_pca_2')
 
-        if 'replicate' in columns:
-            columns.remove('replicate')
+        replicate_fields = ["replicate", "BioRep", "TechRep"]
+        has_replicates = 0
+        for rep in replicate_fields:
+            if rep in columns:
+                columns.remove(rep)
+                has_replicates = 1
         if 'time_point_order' in columns:
             columns.remove('time_point_order')
         # get a map of all levels for each column
@@ -68,5 +72,6 @@ class H5ad(Resource):
         return {
             "success": 1,
             "obs_columns": columns,
-            "obs_levels": levels
+            "obs_levels": levels,
+            "has_replicates": has_replicates
         }
