@@ -212,9 +212,9 @@ async function populate_condition_selection_control() {
   const noncat_html = noncat_tmpl.render({noncat_obs});
   $("#noncats").html(noncat_html);
 
-  // shallow copy observations
-  dataset1_condition = {...cat_obs};
-  dataset2_condition = {...cat_obs};
+    // shallow copy observations to set initial state
+    dataset1_condition = {...cat_obs};
+    dataset2_condition = {...cat_obs};
 
   if (obs_data.has_replicates == 1) {
     $("#statistical_test_label").html("");
@@ -229,32 +229,59 @@ async function populate_condition_selection_control() {
 
 $('#dataset1_tab').on('shown.bs.tab', (e) => {
 
-  // Save dataset2_conditions
-  // Load dataset1_conditions
-  for (const property in dataset2_condition) {
-    const propData = $(`#${property}_dropdown`).select2('data');
-    obsFilters[property] = propData.map((elem) => elem.id);
+  dataset2_condition = {};
+  // Create current object of which groups are to be included (checked)
+  $('#conditions_accordion').find('.js-group-check').each(function(){
+    const id = $(this).data("group");
 
-    // If no groups for an observation are selected, delete filter
-    if (!obsFilters[property].length) {
-      delete obsFilters[property];
+    const category = id.split(';-;')[0];
+    const group = id.split(';-;')[1];
+
+    if (Object.keys(dataset2_condition).indexOf(category) === -1) {
+      dataset2_condition[category] = [];
     }
+
+    if ($(this).prop("checked")) {
+      dataset2_condition[category].push(group);
+    }
+  });
+
+  // Load dataset1_conditions
+  $('.js-group-check').prop("checked", false);
+  for (const cat in dataset1_condition) {
+    for (const elem of dataset1_condition[cat]) {
+      $(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
+    }
+    $('.js-group-check').change();  // trigger so the cat checkbox matches up
   }
+
 })
 
 $('#dataset2_tab').on('shown.bs.tab', (e) => {
 
-  // Save dataset1_conditions
-  // Load dataset2_conditions
+  dataset1_condition = {};
+  // Create current object of which groups are to be included (checked)
+  $('#conditions_accordion').find('.js-group-check').each(function(){
+    const id = $(this).data("group");
+    const category = id.split(';-;')[0];
+    const group = id.split(';-;')[1];
 
-  for (const property in dataset1_condition) {
-    const propData = $(`#${property}_dropdown`).select2('data');
-    obsFilters[property] = propData.map((elem) => elem.id);
-
-    // If no groups for an observation are selected, delete filter
-    if (!obsFilters[property].length) {
-      delete obsFilters[property];
+    if (Object.keys(dataset1_condition).indexOf(category) === -1) {
+      dataset1_condition[category] = [];
     }
+
+    if ($(this).prop("checked")) {
+      dataset1_condition[category].push(group);
+    }
+  });
+
+  // Load dataset2_conditions
+  $('.js-group-check').prop("checked", false);
+  for (const cat in dataset2_condition) {
+    for (const elem of dataset2_condition[cat]) {
+      $(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
+    }
+    $('.js-group-check').change();  // trigger so the cat checkbox matches up
   }
 })
 
@@ -282,7 +309,7 @@ $(document).on('change', '.js-group-check', function(e) {
   const checked = $(this).prop("checked");
 
   // Get category name out of the checkbox ID
-  const id = this.id;
+  const id = $(this).data("group");
   const category = id.split(';-;')[0]
   const category_header = $(`#${category}_check`);
   const category_collaspable = $(`#${category}_body`);
@@ -293,7 +320,7 @@ $(document).on('change', '.js-group-check', function(e) {
   $(category_collaspable).find('input[type="checkbox"]').each(function(){
     let return_value = all = ($(this).prop("checked") === checked);
     return return_value;
-  })
+  });
 
   if (all) {
     // All group checkboxes are the same as the category checkbox

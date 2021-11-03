@@ -93,8 +93,7 @@
                     {{props prop}}
                       {{!-- key is list index, prop is the value --}}
                       <div class="form-check">
-                        <input class="form-check-input js-group-check" type="checkbox" value="" id="{{:~category.key}};-;{{:prop}}_check" checked>
-                        <label class="form-check-label" for="{{:~category.key}};-;{{:prop}}_check">{{:prop}}</label>
+                        <label class="form-check-label"><input class="form-check-input js-group-check" type="checkbox" data-group="{{:~category.key}};-;{{:prop}}" value="" checked>{{:prop}}</label>
                       </div>
                     {{/props}}
                     </div>
