@@ -166,8 +166,14 @@ $(document).on('click', '.edit_gc_cancel', function() {
     $(selector_base + " .is-editable").show();
 
     // Reset any unsaved/edited values
-    //var visibility = $(selector_base + "_visibility").data("original-val");
-    //$(selector_base + "_visibility").val(visibility);
+    var visibility = $(selector_base + "_editable_visibility").data("original-val");
+    $(selector_base + "_editable_visibility").val(visibility);
+
+    var title = $(selector_base + "_editable_title").data("original-val");
+    $(selector_base + "_editable_title").val(title);
+
+    var org_id = $(selector_base + "_editable_organism_id").data("original-val");
+    $(selector_base + "_editable_organism_id").val(org_id);
 });
 
 $(document).on('click', '.confirm_gc_delete', function() {
