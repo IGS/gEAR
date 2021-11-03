@@ -4,6 +4,9 @@
 let plot_data = null;
 let selected_data = null;
 
+let dataset1_condition = null;
+let dataset2_condition = null;
+
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 const log10_transformed_datasets = [
@@ -188,8 +191,103 @@ function load_comparison_graph() {
   });
 }
 
+async function fetch_h5ad_observations (dataset_id) {
+  const base = `./api/h5ad/${dataset_id}`;
+  const { data } = await axios.get(`${base}`);
+  return data;
+}
+
+async function populate_condition_selection_control() {
+  const dataset_id = $("#dataset_id").val();
+  $("#conditions_accordion").html("<p>Loading ... </p>");
+  const obs_data = await fetch_h5ad_observations(dataset_id);
+  const cat_obs = obs_data.obs_levels;  // cat->groups
+  const all_obs = obs_data.obs_columns; // Array
+  const noncat_obs = Object.values(all_obs).filter(x => Object.keys(cat_obs).indexOf(x) === -1);  // Array
+
+  // Render templates
+  const selector_tmpl = $.templates("#dataset_condition_options");
+  const selector_html = selector_tmpl.render(cat_obs);
+  $("#conditions_accordion").html(selector_html);
+  const noncat_tmpl = $.templates("#non_categories_list");
+  const noncat_html = noncat_tmpl.render({noncat_obs});
+  $("#noncats").html(noncat_html);
+}
+
+$('#dataset1_tab').on('shown.bs.tab', function (e) {
+  e.target // newly activated tab
+  e.relatedTarget // previous active tab
+
+  // Save dataset2_conditions
+  // Load dataset1_conditions
+})
+
+$('#dataset2_tab').on('shown.bs.tab', function (e) {
+  e.target // newly activated tab
+  e.relatedTarget // previous active tab
+
+  // Save dataset1_conditions
+  // Load dataset2_conditions
+})
+
+$(document).on('change', '.js-cat-check', function (e) {
+  // If turned on, check all group boxes
+  // If turned off, uncheck all group boxes
+  const checked = $(this).prop("checked");
+
+  const id = this.id;
+  const category = id.replace('_check', '');
+  const category_collaspable = $(`#${category}_body`);
+
+  category_collaspable.find('input[type="checkbox"]').prop({
+    checked: checked
+  });
+
+  // Expand collaspable since category was focused on
+  category_collaspable.collapse('show');
+})
+
+$(document).on('change', '.js-group-check', function(e) {
+  // https://css-tricks.com/indeterminate-checkboxes/
+  // After changing checkbox status, check siblings
+  // and determine if category checkbox should be
+  // checked, not checked, or indeterminate
+
+  const checked = $(this).prop("checked");
+
+  // Get category name out of the checkbox ID
+  const id = this.id;
+  const category = id.split(';-;')[0]
+  const category_header = $(`#${category}_check`);
+  const category_collaspable = $(`#${category}_body`);
+
+  // Get checked status of all other checkboxes in this category
+  // If there is a combination of checked/unchecked the "each" loop breaks early
+  let all = true;
+  $(category_collaspable).find('input[type="checkbox"]').each(function(){
+    let return_value = all = ($(this).prop("checked") === checked);
+    return return_value;
+  })
+
+  if (all) {
+    // All group checkboxes are the same as the category checkbox
+    category_header.prop({
+      "indeterminate": false,
+      "checked": checked
+    });
+  } else {
+    // All group checkbox states are mixed.  Category checkbox is indeterminate and unchecked
+    category_header.prop({
+      "indeterminate": true,
+      "checked": false
+    });
+  }
+
+})
+
+/*
 function populate_condition_selection_control() {
-  dataset_id = $("#dataset_id").val();
+  const dataset_id = $("#dataset_id").val();
   $("#dataset1_conditions").attr("disabled", "disabled");
   $("#dataset2_conditions").attr("disabled", "disabled");
   $("#dataset1_conditions").html("<option>Loading ... </option>");
@@ -208,6 +306,7 @@ function populate_condition_selection_control() {
           .html("This dataset is not ready to compare.")
           .attr("selected", "selected");
       } else {
+
         var selectorTmpl = $.templates("#dataset_condition_options");
         var selectorHtml = selectorTmpl.render(data["conditions"]);
         $("#dataset1_conditions").html(selectorHtml);
@@ -235,6 +334,7 @@ function populate_condition_selection_control() {
     },
   });
 }
+*/
 
 function populate_dataset_selection_controls() {
   let dataset_id = getUrlParameter("dataset_id");

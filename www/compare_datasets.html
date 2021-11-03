@@ -65,20 +65,51 @@
               </div>  <!-- end dataset_c -->
             </div>
             <div class="form-group-sm">
-              <!--<label for="dataset1_conditions" class="control-label">Condition(s) on X axis</label>-->
-              <select id="dataset1_conditions" class="form-control form-control-sm">
-                <option value="">Choose condition 1</option>
-              </select>
+              <ul class="nav nav-tabs" id="condition_tabs" role="tablist">
+                <li class="nav-item">
+                  <a id="dataset1_tab" class="nav-link active" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="true">Condition 1</a>
+                </li>
+                <li class="nav-item">
+                  <a id="dataset2_tab" class="nav-link" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="false">Condition 2</a>
+                </li>
+              </ul>
+
+              <div class="form-group-sm" id="conditions_accordion"></div>
+              <br>
+              <div class="card-body" id="noncats"></div>
               <script id="dataset_condition_options" type="text/x-jsrender">
-                <option value="{{:class_label}}">{{:formatted_class_label}}</option>
+                {{props itemVar="~category"}}
+                {{!-- key is categorical observation, prop is the list of unique categories --}}
+                <div class="card" id="{{:key}}_card" role="tabpanel">
+                  <div class="form-check form-check-inline">
+                    <button id="{{:key}}_collapse" class="btn btn-light btn-sm btn-block" data-toggle="collapse" data-target="#{{:key}}_body" aria-expanded="true" aria-controls="{{:key}}_body">
+                      {{:key}}
+                      <i class="fa fa-caret-down" aria-hidden="true"></i>
+                    </button>
+                    <input class="form-check-input js-cat-check" type="checkbox" value="" id="{{:key}}_check" checked>
+                  </div>
+                  <div id="{{:key}}_body" class="collapse" aria-labelledby="{{:key}}_card" data-parent="#conditions_accordion">
+                    <div class="card-body">
+                    {{props prop}}
+                      {{!-- key is list index, prop is the value --}}
+                      <div class="form-check">
+                        <input class="form-check-input js-group-check" type="checkbox" value="" id="{{:~category.key}};-;{{:prop}}_check" checked>
+                        <label class="form-check-label" for="{{:~category.key}};-;{{:prop}}_check">{{:prop}}</label>
+                      </div>
+                    {{/props}}
+                    </div>
+                  </div>
+                </div>
+                {{/props}}
               </script>
-            </div>
-            <div class="form-group-sm">
-              <!--<label for="dataset2_conditions" class="control-label">Condition(s) on X axis</label>-->
-              <select id="dataset2_conditions" class="form-control form-control-sm">
-                <option value="">Choose condition 2</option>
-              </select>
-            </div>
+              <script id="non_categories_list" type="text/x-jsrender">
+                <h5>Non-categorical observations not included:</h5>
+                <ul class="list-group list-group-flush">
+                {{for noncat_obs}}
+                  <li class="list-group-item">{{:}}</li>
+                {{/for}}
+                </ul>
+              </script>
             <hr />
             <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
           </div>
@@ -269,7 +300,7 @@
       </div>
     </footer>
 </div> <!-- /body_c -->
-
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
