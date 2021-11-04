@@ -140,6 +140,31 @@ def get_gene_by_id(gene_id):
     conn.close()
     return gene
 
+def get_gene_cart_by_id(gc_id):
+    """
+    Given a gene_cart_id passed this returns a GeneCart object with all attributes populated. Returns
+    None if no cart is found with that ID.
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+          SELECT user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+            FROM gene_cart
+           WHERE id = %s
+    """
+    cursor.execute(qry, (gc_id,))
+    gene = None
+
+    for (id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
+        gc = GeneCart(id=id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
+                      share_id=share_id, is_public=is_public, date_added=date_added)
+        break
+
+    cursor.close()
+    conn.close()
+    return gc
+
 def get_layout_by_id(layout_id):
     """
     Given a passed layout_id returns a Layout object with all attributes
@@ -1716,6 +1741,33 @@ class GeneCart:
 
         cursor.close()
         conn.commit()
+        conn.close()
+
+    def save_change(self, attribute=None, value=None):
+        """
+        Update a cart attribute, both in the object and the relational database
+        """
+        if self.id is None:
+            raise Exception("Error: no gene cart id. Cannot save change.")
+        if attribute is None:
+            raise Exception("Error: no attribute given. Cannot save change.")
+
+        ## quick sanitization of attribute
+        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
+        setattr(self, attribute, value)
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        save_sql = """
+            UPDATE gene_cart
+            SET {0} = %s
+            WHERE id = %s
+        """.format(attribute)
+        cursor.execute(save_sql, (str(value), self.id))
+
+        conn.commit()
+        cursor.close()
         conn.close()
 
     def update_from_json(self, json_obj):
