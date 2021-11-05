@@ -176,33 +176,56 @@ $(document).on('click', '.edit_gc_cancel', function() {
     $(selector_base + "_editable_organism_id").val(org_id);
 });
 
-$(document).on('click', '.confirm_gc_delete', function() {
-    $('.delete_gc').popover('hide');
-
+$(document).on('click', '.edit_gc_save', function() {
     session_id = Cookies.get('gear_session_id');
+    var gc_id = $(this).data('gc-id');
+    var selector_base = "#result_gc_id_" + gc_id;
+    var new_visibility = $(selector_base + "_editable_visibility").prop("checked") ? 1 : 0;
+    var new_title = $(selector_base + "_editable_title").val();
+    var new_organism_id = $(selector_base + "_editable_organism_id").val();
+    var new_ldesc = $(selector_base + "_editable_ldesc").val();
 
     $.ajax({
-        url : './cgi/remove_gene_cart.cgi',
+        url : './cgi/save_genecart_changes.cgi',
         type: "POST",
-        data : { 'session_id': session_id, 'gene_cart_id': gc_id_to_delete },
+        data : { 'session_id': session_id,
+                 'gc_id': gc_id,
+                 'visibility': new_visibility,
+                 'title': new_title,
+                 'organism_id': new_organism_id,
+                 'ldesc': new_ldesc
+               },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
-            if (data['success'] == 1) {
-                $("#result_gc_id_" + gc_id_to_delete).fadeOut("slow", function() {
-                    $("#result_count").html( $("#result_count").html() - 1  );
-                    $(this).remove();
-                });
-                gc_id_to_delete = null;
+            // Update the UI for the new values
+            $(selector_base + "_editable_visibility").data("is-public", new_visibility);
+
+            if (new_visibility == 1) {
+                $(selector_base + "_display_visibility").html("Public gene cart");
+                $(selector_base + "_display_visibility").removeClass("badge-danger");
+                $(selector_base + "_display_visibility").addClass("badge-light");
             } else {
-                display_error_bar(data['error']);
+                $(selector_base + "_display_visibility").html("Private gene cart");
+                $(selector_base + "_display_visibility").removeClass("badge-light");
+                $(selector_base + "_display_visibility").addClass("badge-danger");
             }
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            console.log('textStatus= ', textStatus);
-            console.log('errorThrown= ', errorThrown);
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+
+            $(selector_base + "_editable_title").data("original-val", new_title);
+            $(selector_base + "_display_title").html(new_title);
+
+            $(selector_base + "_editable_ldesc").data("original-val", new_ldesc);
+            $(selector_base + "_display_ldesc").html(new_ldesc);
+
+            $(selector_base + "_display_organism").html(
+                $(selector_base + "_editable_organism_id > option[value='" + new_organism_id + "']")
+            );            
+            $(selector_base + "_editable_organism_id").data("original-val", new_organism_id);
+
+            // Put interface back to view mode.
+            $(selector_base + " .editable-version").hide();
+            $(selector_base + " .is-editable").show();
         }
-    }); //end ajax for .confirm_delete
+    });
 });
 
 $(document).on('click', '.download_gc', function() {
