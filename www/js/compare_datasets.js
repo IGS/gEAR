@@ -1,6 +1,3 @@
-// TODO
-//  - Make existing plots disappear right when the user hits 'Plot' to redraw
-
 // NOTE: - SAdkins - 11/3/21 - Refactored code using P42 VSCode extension https://p42.ai/documentation/code-action/
 
 let plot_data = null;
@@ -107,23 +104,23 @@ window.onload = () => {
     }
   });
 
-  // initially disable the condition selectors
-  $("#dataset1_conditions").attr("disabled", "disabled");
-  $("#dataset2_conditions").attr("disabled", "disabled");
 };
 
 function download_selected_genes() {
   // Builds a file in memory for the user to download.  Completely client-side.
   // plot_data contains three keys: x, y and symbols
   // build the file string from this
+  dataset1_condition_str = JSON.stringify(dataset1_condition);
+  dataset2_condition_str = JSON.stringify(dataset2_condition);
+
   file_contents =
       $("#log_base").val() == "raw"
     ? "gene_symbol\tp-value\tfold change\t"
-  + $("#dataset1_conditions").val() + "\t"
-  + $("#dataset2_conditions").val() + "\n"
+  + dataset1_condition_str + "\t"
+  + dataset2_condition_str + "\n"
     : "gene_symbol\tp-value\tfold change\t"
-  + $("#dataset1_conditions").val() + " (log" + $("#log_base").val() +")\t"
-  + $("#dataset2_conditions").val() + " (log" + $("#log_base").val() +")\n";
+  + dataset1_condition_str + " (log" + $("#log_base").val() +")\t"
+  + dataset2_condition_str + " (log" + $("#log_base").val() +")\n";
 
   selected_data.points.forEach((pt) => {
     // Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
@@ -148,14 +145,61 @@ function download_selected_genes() {
 }
 
 function load_comparison_graph() {
+  // Save current state of active condition tab
+  if ($("#dataset1_tab").hasClass("active")) {
+    dataset1_condition = {};
+    // Create current object of which groups are to be included (checked)
+    $('#conditions_accordion').find('.js-group-check').each(function(){
+      const id = $(this).data("group");
+
+      const category = id.split(';-;')[0];
+      const group = id.split(';-;')[1];
+
+      if (Object.keys(dataset1_condition).indexOf(category) === -1) {
+        dataset1_condition[category] = [];
+      }
+
+      if ($(this).prop("checked")) {
+        dataset1_condition[category].push(group);
+      }
+    });
+  } else {
+    // on #dataset2_tab
+    dataset2_condition = {};
+    // Create current object of which groups are to be included (checked)
+    $('#conditions_accordion').find('.js-group-check').each(function(){
+      const id = $(this).data("group");
+
+      const category = id.split(';-;')[0];
+      const group = id.split(';-;')[1];
+
+      if (Object.keys(dataset2_condition).indexOf(category) === -1) {
+        dataset2_condition[category] = [];
+      }
+
+      if ($(this).prop("checked")) {
+        dataset2_condition[category].push(group);
+      }
+    });
+  }
+
   dataset_id = $("#dataset_id").val();
+  dataset_text = $("#dataset_id").text();
+  dataset1_string = JSON.stringify(dataset1_condition);
+  dataset2_string = JSON.stringify(dataset2_condition);
+
+  // empty error message, so that user/helper won't get confused
+  $("#ticket_error_msg").empty();
+  $("#error_loading_c").hide();
+  $("#genes_not_found").empty().hide();
+
   $.ajax({
     url: "./cgi/get_dataset_comparison.cgi",
     type: "POST",
     data: {
-      dataset1_id: dataset_id,
-      dataset1_condition: $("#dataset1_conditions").val(),
-      dataset2_condition: $("#dataset2_conditions").val(),
+      dataset_id,
+      dataset1_condition: dataset1_string,
+      dataset2_condition: dataset2_string,
       fold_change_cutoff: $("#fold_change_cutoff").val(),
       std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
       log_transformation: $("#log_base").val(),
@@ -170,21 +214,21 @@ function load_comparison_graph() {
       } else {
         // Handle graphing failures
         $("#plot_loading").hide();
-        $("#ticket_datasetx_id").text(dataset_id);
-        $("#ticket_datasetx_condition").text($("#dataset1_conditions").val());
-        $("#ticket_datasety_id").text(dataset_id);
-        $("#ticket_datasety_condition").text($("#dataset2_conditions").val());
-        $("#ticket_error_msg").text(data.error);
+        $("#ticket_dataset_id").text(dataset_id);
+        $("#ticket_dataset_text").text(dataset_text);
+        $("#ticket_datasetx_condition").text(dataset1_string);
+        $("#ticket_datasety_condition").text(dataset2_string);
+        $("#ticket_error_msg").html(data.error);
         $("#error_loading_c").show();
       }
     },
     error(jqXHR, textStatus, errorThrown) {
       // Handle graphing failures
       $("#plot_loading").hide();
-      $("#ticket_datasetx_id").text(dataset_id);
-      $("#ticket_datasetx_condition").text($("#dataset1_conditions").val());
-      $("#ticket_datasety_id").text(dataset_id);
-      $("#ticket_datasety_condition").text($("#dataset2_conditions").val());
+      $("#ticket_dataset_id").text(dataset_id);
+      $("#ticket_dataset_text").text(dataset_text);
+      $("#ticket_datasetx_condition").text(dataset1_string);
+      $("#ticket_datasety_condition").text(dataset2_string);
       $("#error_loading_c").show();
     },
   });
@@ -208,9 +252,12 @@ async function populate_condition_selection_control() {
   const selector_tmpl = $.templates("#dataset_condition_options");
   const selector_html = selector_tmpl.render(cat_obs);
   $("#conditions_accordion").html(selector_html);
-  const noncat_tmpl = $.templates("#non_categories_list");
-  const noncat_html = noncat_tmpl.render({noncat_obs});
-  $("#noncats").html(noncat_html);
+
+  if (noncat_obs.length) {
+    const noncat_tmpl = $.templates("#non_categories_list");
+    const noncat_html = noncat_tmpl.render({noncat_obs});
+    $("#noncats").html(noncat_html);
+  }
 
     // shallow copy observations to set initial state
     dataset1_condition = {...cat_obs};
@@ -434,7 +481,7 @@ function plot_data_to_graph(data) {
 
     for (i = 0; i < data.x.length; i++) {
       // pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
-      // Probably happened when pulling from AnnData object in get_dataset_comparison.cgi
+      // Caused by rank_genes_groups output (1 inner array per query comparison group)
       data.pvals_adj = data.pvals_adj.flat();
 
       const this_pval = parseFloat(data.pvals_adj[i]);
@@ -456,7 +503,7 @@ function plot_data_to_graph(data) {
         // this one didn't pass the p-value cutoff
         failing.x.push(data.x[i]);
         failing.y.push(data.y[i]);
-        failing.foldchange.push(data.fold_changes);
+        failing.foldchange.push(data.fold_changes[i]);
         failing.labels.push(
           "Gene symbol: " +
             data.symbols[i] +
@@ -520,11 +567,11 @@ function plot_data_to_graph(data) {
   const layout = {
     title: $("#dataset_id").text(),
     xaxis: {
-      title: $("#dataset1_conditions option:selected").text(),
+      title: JSON.stringify(data.dataset1_composite_idx),
       type: "",
     },
     yaxis: {
-      title: $("#dataset2_conditions option:selected").text(),
+      title: JSON.stringify(data.dataset2_composite_idx),
       type: "",
     },
     annotations: [],
