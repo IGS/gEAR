@@ -78,6 +78,14 @@
             <div class="form-group-sm" id="conditions_accordion"></div>
             <br />
             <div id="noncats"></div>
+            <div class="form-group-sm">
+              <label for="x_label">X Label</label>
+              <input class="form-control" id="x_label" placeholder="Name of x-axis label">
+            </div>
+            <div class="form-group-sm">
+              <label for="y_label">Y Label</label>
+              <input class="form-control" id="y_label" placeholder="Name of y-axis label">
+            </div>
             <hr />
             <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
           </div>  <!-- end filter_block -->
@@ -159,6 +167,9 @@
                 </p>
                 <p>
                   For the x-axis and y-axis conditions, you are free to include and exclude any groups from the categorical observations. But if you are performing a significance test between then two conditions, then ensure that just a single differing group is chosen for each condition.
+                </p>
+                <p>
+                  Some observation metadata may be listed as non-categorical, and will be excluded from consideration.  If some observations (such as sample ID or timepoint) are erroneously in this list, it may be because they were loaded in such a way that the dataframe reader interpreted them as continuous (numerical) datatypes.
                 </p>
                 <p>
                   <a href='./contact.html' class="text-primary">Feedback</a> on the dataset comparison tool is welcome.

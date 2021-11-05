@@ -45,6 +45,8 @@ const log10_transformed_datasets = [
 , "cee5325d-434f-fefe-d2e6-e0be39421951"
 ];
 
+// TODO: Have mechanism to convert non-categorical column to categorical if it was erroneously added as numerical
+
 let dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload = () => {
@@ -110,17 +112,18 @@ function download_selected_genes() {
   // Builds a file in memory for the user to download.  Completely client-side.
   // plot_data contains three keys: x, y and symbols
   // build the file string from this
-  dataset1_condition_str = JSON.stringify(dataset1_condition);
-  dataset2_condition_str = JSON.stringify(dataset2_condition);
+
+  x_label = $('#x_label').is(':empty') ? "x-condition" : $('#x_label').val();
+  y_label = $('#y_label').is(':empty') ? "y-condition" : $('#y_label').val();
 
   file_contents =
       $("#log_base").val() == "raw"
     ? "gene_symbol\tp-value\tfold change\t"
-  + dataset1_condition_str + "\t"
-  + dataset2_condition_str + "\n"
+  + x_label + "\t"
+  + y_label + "\n"
     : "gene_symbol\tp-value\tfold change\t"
-  + dataset1_condition_str + " (log" + $("#log_base").val() +")\t"
-  + dataset2_condition_str + " (log" + $("#log_base").val() +")\n";
+  + x_label + " (log" + $("#log_base").val() +")\t"
+  + y_label + " (log" + $("#log_base").val() +")\n";
 
   selected_data.points.forEach((pt) => {
     // Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
@@ -567,11 +570,11 @@ function plot_data_to_graph(data) {
   const layout = {
     title: $("#dataset_id").text(),
     xaxis: {
-      title: JSON.stringify(data.dataset1_composite_idx),
+      title: $('#x_label').is(':empty') ? JSON.stringify(data.dataset1_composite_idx) : $('#x_label').val(),
       type: "",
     },
     yaxis: {
-      title: JSON.stringify(data.dataset2_composite_idx),
+      title: $('#y_label').is(':empty') ? JSON.stringify(data.dataset2_composite_idx) : $('#y_label').val(),
       type: "",
     },
     annotations: [],
