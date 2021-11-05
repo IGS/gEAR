@@ -285,22 +285,32 @@
                          <h5 id="result_gc_id_{{:id}}_display_title">{{:label}}</h5>
                        </div>
                        <div id="editable_title_c" class="col-sm-11 editable-version">
-                        <span class="att_label">Title</span>
-                        <input type="text" class="editable_title" id="result_gc_id_{{:id}}_editable_title" data-original-val="{{:label}}" value="{{:label}}"/>
+                         <div class="form-group">
+                           <span class="att_label">Title</span>
+                           <input type="text" class="form-control form-control-sm editable_title" id="result_gc_id_{{:id}}_editable_title" data-original-val="{{:label}}" value="{{:label}}"/>
+                        </div>
                       </div>
                        <div class="col-sm-1">
                          <!--<span class="gc-expander pull-right" data-gc-id="{{:id}}"><i class="fa fa-expand"></i></span>-->
                        </div>
                      </div>
                      <div class="row no-gutters">
-                       <div class="col-sm-3 pl-2">
+                       <div class="col-sm-3 pl-2 is-editable">
                          {{if is_public == 1}}
-                         <span class="badge badge-light">Public gene cart</span>
+                         <span id="result_gc_id_{{:id}}_display_visibility" class="badge badge-light">Public gene cart</span>
                          {{else}}
-                         <span class="badge badge-danger">Private gene cart</span>
+                         <span id="result_gc_id_{{:id}}_display_visibility" class="badge badge-danger">Private gene cart</span>
                          {{/if}}
                        </div>
-                       <div class="col-sm-3 is-editable"><span class="att_label">Organism</span> {{:organism}}</div>
+                       <div class="col-sm-3 pl-2 editable-version">
+                         <div class="form-group">
+                           <label for="result_gc_id_{{:id}}_editable_visibility">Visibility</label><br />
+                           <input type="checkbox" name="result_gc_id_{{:id}}_editable_visibility" id="result_gc_id_{{:id}}_editable_visibility"
+                                  data-is-public="{{:is_public}}" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle"
+                                  data-on="Public" data-off="Private" />
+                         </div>
+                       </div>
+                       <div class="col-sm-3 is-editable"><span class="att_label">Organism</span> <span id="result_gc_id_{{:id}}_display_organism">{{:organism}}</span></div>
                        <div class="col-sm-3 editable-version">
                          <div class="form-group">
                            <label for="result_gc_id_{{:id}}_editable_organism_id">Organism</label>

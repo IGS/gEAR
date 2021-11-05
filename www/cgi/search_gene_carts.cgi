@@ -37,7 +37,8 @@ def main():
     qry_params = []
 
     selects = ["gc.id", "g.user_name", "gc.gctype", "gc.label", "gc.ldesc", "gc.share_id",
-               "gc.is_public", "gc.date_added", "o.genus", "o.species", "gc.organism_id"]
+               "gc.is_public", "gc.date_added", "o.genus", "o.species", "gc.organism_id",
+               "gc.user_id"]
     froms = ["gene_cart gc", "guser g", "organism o"]
     wheres = [
         "gc.user_id = g.id ",
@@ -123,7 +124,7 @@ def main():
 
     for row in cursor:
         gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
-                             is_public=row[6], date_added=row[7], organism_id=row[10])
+                             is_public=row[6], date_added=row[7], organism_id=row[10], user_id=row[11])
         gc.user_name = row[1]
         gc.gene_count = len(gc.genes)
         gc.organism = "{0} {1}".format(row[8], row[9])
