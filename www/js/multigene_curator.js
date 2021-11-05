@@ -1,7 +1,8 @@
 /*
 SAdkins note - The styling on this page differs from other gEAR JS pages
 I was trying to follow the recommended Javascript style in using camelCase
-in addition to using the StandardJS style ("semistandrd" variant)
+in addition using the StandardJS style linter ("semistandrd" variant)
+with some refactoring done with the P42+ VSCode extension (to modernize code)
 However, code inherited from common.js is still in snake_case rather than camelCase
 */
 
@@ -43,7 +44,7 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   loadGeneCarts();
 
   // Initialize tooltips
-  $(function () {
+  $(() => {
     $('[data-toggle="tooltip"]').tooltip({
       trigger: "hover"
     });
@@ -65,7 +66,7 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   $('#gene_container').hide();
 
   // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-  var linkedDatasetId = getUrlParameter("dataset_id");
+  const linkedDatasetId = getUrlParameter("dataset_id");
   if (linkedDatasetId) {
     $('#dataset').val(linkedDatasetId);
     $('#dataset').trigger('change');
@@ -106,28 +107,28 @@ async function populateDatasets () {
       session_id
     },
     dataType: 'json',
-    success: function (data) {
+    success(data) {
       let counter = 0;
 
       // Populate select box with dataset information owned by the user
       let userDatasets = [];
       if (data.user.datasets.length > 0) {
         // User has some profiles
-        $.each(data.user.datasets, function (i, item) {
+        $.each(data.user.datasets, (_i, item) => {
           userDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Next, add datasets shared with the user
       let sharedDatasets = [];
       if (data.shared_with_user.datasets.length > 0) {
-        $.each(data.shared_with_user.datasets, function (i, item) {
+        $.each(data.shared_with_user.datasets, (_i, item) => {
           sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Now, add public datasets
       let domainDatasets = [];
       if (data.public.datasets.length > 0) {
-        $.each(data.public.datasets, function (i, item) {
+        $.each(data.public.datasets, (_i, item) => {
           domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
@@ -137,8 +138,8 @@ async function populateDatasets () {
       datasetTree.domainDatasets = domainDatasets;
       datasetTree.generateTree();
     },
-    error: function (xhr, status, msg) {
-      console.error('Failed to load dataset list because msg: ' + msg);
+    error(_xhr, _status, msg) {
+      console.error(`Failed to load dataset list because msg: ${msg}`);
     }
   });
 }
@@ -147,11 +148,7 @@ async function populateDatasets () {
 async function drawPreviewImage (display) {
   // check if config has been stringified
   let config;
-  if (typeof display.plotly_config === 'string') {
-    config = JSON.parse(display.plotly_config);
-  } else {
-    config = display.plotly_config;
-  }
+  config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
 
   const { data } = await getData(datasetId, config);
   const { plot_json: plotJson, plot_config: plotConfig } = data;
@@ -172,8 +169,8 @@ function drawChart (data, datasetId, supplementary = false) {
 
   // If there was an error in the plot, put alert up
   if ( success < 1 || !plotJson.layout) {
-    $(targetDiv + '.js-plot-error').text(message);
-    $(targetDiv + '.js-plot-error').show();
+    $(`${targetDiv}.js-plot-error`).text(message);
+    $(`${targetDiv}.js-plot-error`).show();
     return;
   }
 
@@ -210,12 +207,12 @@ function drawChart (data, datasetId, supplementary = false) {
   Plotly.newPlot(targetDiv, plotJson.data, layout, config);
 
   if (message && success > 1) {
-    $(targetDiv + '.js-plot-warning').text(message);
-    $(targetDiv + '.js-plot-warning').show();
+    $(`${targetDiv}.js-plot-warning`).text(message);
+    $(`${targetDiv}.js-plot-warning`).show();
   }
 
   // If plot data is selected, create the right-column table and do other misc things
-  $(`#dataset_${datasetId}_h5ad`).on("plotly_selected", function (e, data) {
+  $(`#dataset_${datasetId}_h5ad`).on("plotly_selected", (_e, data) => {
 
     if (!plotConfig.plot_type == "volcano") {
       return;
@@ -227,7 +224,7 @@ function drawChart (data, datasetId, supplementary = false) {
     // We want 'data', which returns the eventData PlotlyJS events normally return
     selectedGenes = [];
 
-    data.points.forEach(function (pt) {
+    data.points.forEach((pt) => {
       selectedGenes.push({
         gene_id: pt.data.customdata[pt.pointNumber],
         gene_symbol: pt.data.text[pt.pointNumber],
@@ -237,8 +234,8 @@ function drawChart (data, datasetId, supplementary = false) {
     // Sort in alphabetical order
     selectedGenes.sort();
 
-    var template = $.templates("#selected_genes_tmpl");
-    var htmlOutput = template.render(selectedGenes);
+    const template = $.templates("#selected_genes_tmpl");
+    const htmlOutput = template.render(selectedGenes);
     $("#selected_genes_list").html(htmlOutput);
 
   });
@@ -255,7 +252,7 @@ async function draw (datasetId, payload, supplementary = false) {
 function createGeneDropdown (genes) {
   $('#gene_spinner').show();
   const tmpl = $.templates('#gene_dropdown_tmpl');
-  const data = { genes: genes };
+  const data = { genes };
   const html = tmpl.render(data);
   $('#gene_dropdown_container').html(html);
   $('#gene_dropdown').select2({
@@ -433,12 +430,12 @@ function loadGeneCarts () {
       type: 'post',
       data: { session_id },
       dataType: 'json',
-      success: function (data, textStatus, jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
-        var userGeneCarts = [];
+      success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
+        const userGeneCarts = [];
 
         if (data.gene_carts.length > 0) {
           // User has some profiles
-          $.each(data.gene_carts, function (i, item) {
+          $.each(data.gene_carts, (_i, item) => {
             userGeneCarts.push({ value: item.id, text: item.label });
           });
 
@@ -453,7 +450,7 @@ function loadGeneCarts () {
         }
         d.resolve();
       },
-      error: function (jqXHR, textStatus, errorThrown) {
+      error(_jqXHR, _errorThrown) {
         // display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         d.fail();
       }
@@ -464,7 +461,7 @@ function loadGeneCarts () {
 
 function saveGeneCart () {
   // must have access to USER_SESSION_ID
-  var gc = new GeneCart({
+  const gc = new GeneCart({
     session_id: CURRENT_USER.session_id
     , label: $("#gene_cart_name").val()
     , gctype: "unweighted-list"
@@ -472,8 +469,8 @@ function saveGeneCart () {
     , is_public: 0
   });
 
-  selectedGenes.forEach(function (pt) {
-    var gene = new Gene({
+  selectedGenes.forEach((pt) => {
+    const gene = new Gene({
       id: pt.gene_id,
       gene_symbol: pt.gene_symbol,
     });
@@ -559,7 +556,7 @@ $('#dataset').change(async function () {
   obsLevels = curateObservations(data.obs_levels);
 
   // Ensure genes dropdown tooltip shows
-  $(function () {
+  $(() => {
     $('[data-toggle="tooltip"]').tooltip({
       trigger: "hover"
     });
@@ -576,7 +573,7 @@ $('#dataset').change(async function () {
 
 });
 
-$("#save_gene_cart").on("click", function () {
+$("#save_gene_cart").on("click", () => {
   $("#save_gene_cart").prop("disabled", true);
 
   if (CURRENT_USER) {
@@ -587,7 +584,7 @@ $("#save_gene_cart").on("click", function () {
   $("#save_gene_cart").prop('disabled', false);
 });
 
-$("#download_plot").on("click", function () {
+$("#download_plot").on("click", () => {
   Plotly.downloadImage(
     `dataset_${datasetId}_h5ad`, {
       width: $('#plot_download_width').val()
@@ -600,7 +597,7 @@ $("#download_plot").on("click", function () {
 // Load user's gene carts
 $('#gene_cart').change(function () {
   let geneCartId = $(this).val();
-  const params = { session_id: session_id, gene_cart_id: geneCartId };
+  const params = { session_id, gene_cart_id: geneCartId };
   const d = new $.Deferred(); // Causes editable to wait until results are returned
   // User is not logged in
   if (!session_id) {
@@ -613,13 +610,13 @@ $('#gene_cart').change(function () {
       url: './cgi/get_gene_cart_members.cgi',
       type: 'post',
       data: params,
-      success: function (data, newValue, oldValue) {
+      success(data, _newValue, _oldValue) {
         if (data.success === 1) {
           // Append gene symbols to search bar
           const geneCartSymbols = [];
 
           // format gene symbols into search string
-          $.each(data.gene_symbols, function (i, item) {
+          $.each(data.gene_symbols, (_i, item) => {
             geneCartSymbols.push(item.label);
           });
 
@@ -637,7 +634,7 @@ $('#gene_cart').change(function () {
 
           if (difference.length > 0) {
             const differenceString = difference.join(', ');
-            $('#genes_not_found').text('The following gene cart genes were not found in this dataset: ' + differenceString);
+            $('#genes_not_found').text(`The following gene cart genes were not found in this dataset: ${differenceString}`);
             $('#genes_not_found').show();
           } else {
             $('#genes_not_found').hide();
@@ -661,7 +658,7 @@ $('#cluster_cols').change(function () {
 });
 
 // Some options are specific to certain plot types
-$('#plot_type_select').change(function () {
+$('#plot_type_select').change(() => {
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_field').hide();
 
@@ -712,31 +709,27 @@ $(document).on('click', '#update_plot', async function () {
   plotConfig = {};
 
   const plotType = $('#plot_type_select').select2('data')[0].id;
-  plotConfig['plot_type'] = plotType;
+  plotConfig.plot_type = plotType;
 
   // Update filters based on selection
   obsFilters = {};
   for (const property in obsLevels) {
     const propData = $(`#${property}_dropdown`).select2('data');
-    obsFilters[property] = propData.map(function (elem) {
-      return elem.id;
-    });
+    obsFilters[property] = propData.map((elem) => elem.id);
 
     // If no groups for an observation are selected, delete filter
     if (!obsFilters[property].length) {
       delete obsFilters[property];
     }
   }
-  plotConfig['obs_filters'] = obsFilters;
+  plotConfig.obs_filters = obsFilters;
 
   if (!plotType) {
     window.alert('Please select a plot type.');
     return;
   }
 
-  plotConfig['gene_symbols'] = genesFilters = $('#gene_dropdown').select2('data').map(function (elem) {
-    return elem.id;
-  });
+  plotConfig.gene_symbols = genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
 
   if (!plotType === 'volcano') {
     if (Object.keys(obsFilters).length) {
@@ -752,59 +745,58 @@ $(document).on('click', '#update_plot', async function () {
   // Add specific plotConfig options depending on plot type
   switch (plotType) {
     case 'dotplot':
-      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
-      if (!plotConfig['groupby_filter']) {
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      if (!plotConfig.groupby_filter) {
         window.alert("Must select a groupby filter for dot plots.");
         return;
       }
       break;
     case 'heatmap':
-      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
-      plotConfig['cluster_cols'] = $('#cluster_cols').is(':checked');
-      plotConfig['flip_axes'] = $('#flip_axes').is(':checked');
-      plotConfig['distance_metric'] = $('#distance_select').select2('data')[0].id;
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      plotConfig.cluster_cols = $('#cluster_cols').is(':checked');
+      plotConfig.flip_axes = $('#flip_axes').is(':checked');
+      plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
       break;
     case 'mg_violin':
-      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
-      if (!plotConfig['groupby_filter']) {
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      if (!plotConfig.groupby_filter) {
         window.alert("Must select a groupby filter for violin plots.");
         return;
       }
       break;
     default:
       // volcano
-      plotConfig['adjust_pvals'] = $('#adj_pvals').is(':checked');
+      plotConfig.adjust_pvals = $('#adj_pvals').is(':checked');
       plotConfig['annotate_nonsignificant'] = $('#annot_nonsig').is(':checked');
-      plotConfig['de_test_algo'] = $('#de_test_select').select2('data')[0].id;
-      if (! plotConfig['de_test_algo']) {
+      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
+      if (! plotConfig.de_test_algo) {
         window.alert('Must select a DE statistical test.');
         return;
       }
-      plotConfig['query_condition'] = $('#volcano_query_condition').select2('data')[0].id;
-      plotConfig['ref_condition'] = $('#volcano_ref_condition').select2('data')[0].id;
+      plotConfig.query_condition = $('#volcano_query_condition').select2('data')[0].id;
+      plotConfig.ref_condition = $('#volcano_ref_condition').select2('data')[0].id;
       // Validation related to the conditions
-      if (!(plotConfig['query_condition'] && plotConfig['ref_condition'])) {
+      if (!(plotConfig.query_condition && plotConfig.ref_condition)) {
         window.alert('Both comparision conditions must be selected to generate a volcano plot.');
         return;
       }
-      const conditionKey = plotConfig['query_condition'].split(';-;')[0];
-      if (plotConfig['query_condition'].split(';-;')[0] !== plotConfig['ref_condition'].split(';-;')[0]) {
+      const conditionKey = plotConfig.query_condition.split(';-;')[0];
+      if (plotConfig.query_condition.split(';-;')[0] !== plotConfig.ref_condition.split(';-;')[0]) {
         window.alert('Please choose 2 conditions from the same observation group.');
         return;
       }
 
-      if (plotConfig['query_condition'].split(';-;')[1] === plotConfig['ref_condition'].split(';-;')[1]) {
+      if (plotConfig.query_condition.split(';-;')[1] === plotConfig.ref_condition.split(';-;')[1]) {
         window.alert('Please choose 2 different conditions.');
         return;
       }
 
       // If condition category was filtered, the selected groups must be present
-      if (conditionKey in obsFilters) {
-        if (!(obsFilters[conditionKey].includes(plotConfig['query_condition'].split(';-;')[1]) &&
-            obsFilters[conditionKey].includes(plotConfig['ref_condition'].split(';-;')[1]))) {
-          window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
-          return;
-        }
+      if (conditionKey in obsFilters
+        && !(obsFilters[conditionKey].includes(plotConfig.query_condition.split(';-;')[1])
+        && obsFilters[conditionKey].includes(plotConfig.ref_condition.split(';-;')[1]))) {
+        window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
+        return;
       }
   }
 
@@ -902,7 +894,7 @@ $(document).on('click', '#reset_opts', async function () {
   $('.all').click();  // Include all groups for every category (filter nothing)
 
   // Ensure observation options tooltips show
-  $(function () {
+  $(() => {
     $('[data-toggle="tooltip"]').tooltip({
       trigger: "hover"
     });
@@ -911,7 +903,7 @@ $(document).on('click', '#reset_opts', async function () {
 });
 
 // If advanced options collapsable is clicked, toggle arrow b/t up and down
-$(document).on('click', '#advanced_options_button', function () {
+$(document).on('click', '#advanced_options_button', () => {
   if ($('#advanced_options_arrow').hasClass('fa-caret-down')) {
     $('#advanced_options_arrow').removeClass('fa-caret-down');
     $('#advanced_options_arrow').addClass('fa-caret-up');
