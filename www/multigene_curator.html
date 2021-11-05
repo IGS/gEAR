@@ -282,7 +282,7 @@
           <div class="form-group">
             <input class="form-control" id="display_name" placeholder="Enter name for saved display">
           </div>
-          <button type="button" class="btn btn-purple mb-3" id="save_display_btn"></button>
+          <button type="button" class="btn btn-purple mb-3" id="save_display_btn">Save new display</button>
           <br>
           <p id="saved_plot_confirmation" style="display:none;"></p>
         </fieldset>
@@ -410,13 +410,9 @@
           <span class="sr-only">Loading...</span>
         </div>
         <div id='dataset_{{:dataset_id}}_secondary' class="plot-container plotly-container h5ad-container"></div>
-        <div class="alert alert-error js-plot-error" role="alert" style="display:none;"></div>
+        <div class="alert alert-danger js-plot-error" role="alert" style="display:none;"></div>
         <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
       </div>
-    </script>
-
-    <script id="save_plot_tmpl" type="text/x-jsrender">
-      Save new {{:plot_type}} plot
     </script>
 
     <script id="selected_genes_tmpl" type="text/x-jsrender">
