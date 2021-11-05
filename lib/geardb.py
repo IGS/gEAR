@@ -149,15 +149,15 @@ def get_gene_cart_by_id(gc_id):
     cursor = conn.get_cursor()
 
     qry = """
-          SELECT user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+          SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
             FROM gene_cart
            WHERE id = %s
     """
     cursor.execute(qry, (gc_id,))
     gene = None
 
-    for (id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
-        gc = GeneCart(id=id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
+    for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
+        gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
                       share_id=share_id, is_public=is_public, date_added=date_added)
         break
 
