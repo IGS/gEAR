@@ -378,7 +378,6 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
 }
 
 // Populate the HTML config options based on what was in the plot
-// TODO: This does not seem to work
 function loadDisplayConfigHtml (plotConfig) {
   // NOTE: The calling function also clicks "#reset_opts", so the options are rendered already
   // Populate filter-by dropdowns
@@ -940,7 +939,7 @@ $(document).on('click', '#save_display_btn', async function () {
     dataType: 'json'
   });
 
-  if (res && res.success) {
+  if (res?.success) {
     $('#saved_plot_confirmation').text('Plot successfully saved');
     $('#saved_plot_confirmation').addClass('text-success');
     $('#saved_plot_confirmation').show();
@@ -1016,7 +1015,7 @@ $(document).on('click', '.js-delete-display', async function () {
 
   $('#load_plots_modal').modal('hide');
   $('#delete_display_confirmation').show();
-  if (res && res.success) {
+  if (res?.success) {
     $('#delete_display_confirmation_text').text('Display was successfully deleted.');
     $('#delete_display_confirmation').addClass('alert-success');
   } else {
@@ -1066,7 +1065,7 @@ $(document).on('click', '.js-save-default', async function () {
     .text("Default")
 
   $('#saved_default_confirmation').show();
-  if (res && res.success) {
+  if (res?.success) {
     $('#saved_default_confirmation_text').text('Display successfully saved as your new default.');
     $('#saved_default_confirmation').addClass('alert-success');
   } else {
