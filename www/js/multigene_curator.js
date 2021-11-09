@@ -186,7 +186,7 @@ function drawChart (data, datasetId, supplementary = false) {
     if (genesFilters.length > 50) {
       layoutMods.height = genesFilters.length * 10;
     }
-  } else if ($('#plot_type_select').select2('data')[0].id === 'volcano') {
+  } else if (['quadrant', 'volcano'].includes($('#plot_type_select').select2('data')[0].id)) {
     layoutMods.height = 800;
     layoutMods.width = 900; // If window is not wide enough, the plotly option icons will overlap contents on the right
   }
@@ -251,6 +251,7 @@ async function draw (datasetId, payload, supplementary = false) {
   drawChart(data, datasetId, supplementary);
 }
 
+// Render the gene-selection dropdown menu
 function createGeneDropdown (genes) {
   $('#gene_spinner').show();
   const tmpl = $.templates('#gene_dropdown_tmpl');

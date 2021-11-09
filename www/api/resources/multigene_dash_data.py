@@ -73,7 +73,7 @@ def create_dot_legend(fig, legend_col):
         dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
     dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
 
-    fig.add_trace(go.Scatter(
+    fig.add_scatter(
         x=dot_legend["x"]
         , y=dot_legend["y"]
         , text=dot_legend["text"]
@@ -86,7 +86,8 @@ def create_dot_legend(fig, legend_col):
             )
         , showlegend=False
         , textposition="top center"
-    ), row=1, col=legend_col)
+        , row=1
+        , col=legend_col)
 
     # Hide dot size legend axes
     fig.update_xaxes(
@@ -116,7 +117,7 @@ def create_dot_plot(df):
         , subplot_titles=("", "Fraction of cells<br>in group (%)")
     )
 
-    fig.add_trace(go.Scatter(
+    fig.add_scatter(
         x=df["cluster"]
         , y=df["gene_symbol"]
         , text = df["value", "count"]
@@ -134,7 +135,8 @@ def create_dot_plot(df):
                 )
             )
         , showlegend=False
-    ), row=1, col=1)
+        , row=1
+        , col=1)
 
     create_dot_legend(fig, legend_col)
 
@@ -227,6 +229,169 @@ def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
         fig.layout['xaxis']['constrain'] = "domain"
         fig.layout['xaxis']['constraintoward'] = "right"
 
+### Quadrant fxns
+
+def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
+    """Generate a quadrant (fourway) plot.  Returns Plotly figure."""
+
+    # Break the data up into different logfoldchange categories
+    traces = [
+        {
+            "df":df[(df["s1_c_log2FC"] > 0) & (df["s2_c_log2FC"] > 0)]
+            , "name":"UP/UP"
+            , "color":"red"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] < 0) & (df["s2_c_log2FC"] < 0)]
+            , "name":"DOWN/DOWN"
+            , "color":"black"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] > 0) & (df["s2_c_log2FC"] < 0)]
+            , "name":"UP/DOWN"
+            , "color":"lightgreen"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] < 0) & (df["s2_c_log2FC"] > 0)]
+            , "name":"DOWN/UP"
+            , "color":"orange"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] > 0) & (df["s2_c_log2FC"] == 0)]
+            , "name":"UP/NONE"
+            , "color":"brown"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] == 0) & (df["s2_c_log2FC"] > 0)]
+            , "name":"NONE/UP"
+            , "color":"cyan"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] < 0) & (df["s2_c_log2FC"] == 0)]
+            , "name":"DOWN/NONE"
+            , "color":"green"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] == 0) & (df["s2_c_log2FC"] < 0)]
+            , "name":"NONE/DOWN"
+            , "color":"purple"
+        },
+        {
+            "df":df[(df["s1_c_log2FC"] == 0) & (df["s2_c_log2FC"] == 0)]
+            , "name":"NONE/NONE"
+            , "color":"grey"
+        }
+    ]
+
+
+    # Scatter plot
+    # x - query condition expression
+    # y - ref condition expression
+    # Log2-transform the values
+    fig = go.Figure()
+
+    for trace in traces:
+        if trace["df"].empty:
+            continue
+        fig.add_scatter(
+                x=trace["df"]["s1_c_log2FC"]
+                , y=trace["df"]["s2_c_log2FC"]
+                , name="{}:{}".format(trace["name"], str(len(trace["df"].index)))
+                , text=trace["df"]["gene_symbol"]
+                , mode="markers"
+                , marker=dict(
+                    color=trace["color"]
+                    )
+            )
+
+    fig.update_xaxes(title="{} vs {} log2FC".format(compare1_val, control_val))
+    fig.update_yaxes(title="{} vs {} log2FC".format(compare2_val, control_val))
+
+    return fig
+
+def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold=2, fdr_threshold=0.05, is_log10=False):
+    """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
+
+    # Create some filtered AnnData objects based on each individual comparision group
+    de_filter1 = adata.obs[key].isin([compare1_val])
+    selected1 = adata[de_filter1, :]
+    de_filter2 = adata.obs[key].isin([compare2_val])
+    selected2 = adata[de_filter2, :]
+    de_filter3 = adata.obs[key].isin([control_val])
+    selected3 = adata[de_filter3, :]
+    # Query needs to be appended onto ref to ensure the test results are not flipped
+    de_selected1 = selected3.concatenate(selected1)
+    de_selected2 = selected3.concatenate(selected2)
+
+    # Use diffxpy to compute DE statistics for each comparison
+    if de_test_algo == "rank":
+        de_results1 = de.test.rank_test(
+            de_selected1
+            , grouping=key
+            , gene_names=de_selected1.var["gene_symbol"]
+            , is_logged=is_log10
+        )
+        de_results2 = de.test.rank_test(
+            de_selected2
+            , grouping=key
+            , gene_names=de_selected2.var["gene_symbol"]
+            , is_logged=is_log10
+        )
+    else:
+        de_results1 = de.test.t_test(
+            de_selected1
+            , grouping=key
+            , gene_names=de_selected1.var["gene_symbol"]
+            , is_logged=is_log10
+        )
+        de_results2 = de.test.t_test(
+            de_selected2
+            , grouping=key
+            , gene_names=de_selected2.var["gene_symbol"]
+            , is_logged=is_log10
+        )
+
+    # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
+    df1 = de_results1.summary()
+    df2 = de_results2.summary()
+
+    # Build the data for the final dataframe
+    df_data = {
+        "gene_symbol" : df1["gene"].tolist()
+        , "s1_c_log2FC" : df1["log2fc"]
+        , "s2_c_log2FC" : df2["log2fc"]
+        , "s1_c_qval" : df1["qval"]
+        , "s2_c_qval" : df2["qval"]
+        }
+
+    df =  pd.DataFrame.from_dict(df_data)
+
+    # filter dataframe by a specified log2FC threshold and qval (FDR) threshold
+    # Also keep LFCs of 0, since we track those
+    df["s1_c_log2FC_abs"] = df["s1_c_log2FC"].abs()
+    df["s2_c_log2FC_abs"] = df["s2_c_log2FC"].abs()
+    log_threshold = np.log2(fc_threshold)
+    df = df.query(
+    '((s1_c_log2FC == 0) or ((s1_c_log2FC_abs > @log_threshold) and (s1_c_qval > @fdr_threshold)))' \
+    'and ((s2_c_log2FC == 0) or ((s2_c_log2FC_abs > @log_threshold) and (s2_c_qval > @fdr_threshold)))'
+    )
+
+    return df
+
+def validate_quadrant_conditions(control_condition, compare_group1, compare_group2):
+    """Ensure quadrant conditions make sense."""
+    if not (control_condition and compare_group1 and compare_group2):
+        raise PlotError('Must pass three conditions in order to generate a volcano plot.')
+
+    (control_key, control_val) = control_condition.split(';-;')
+    (compare1_key, compare1_val) = compare_group1.split(';-;')
+    (compare2_key, compare2_val) = compare_group2.split(';-;')
+
+    if control_key != compare1_key and control_key != compare2_key:
+        raise PlotError("All comparable conditions must came from same observation group.")
+
+    return control_key, control_val, compare1_val, compare2_val
+
 ### Violin fxns
 
 def create_violin_plot(df, gene_map, groupby_filter):
@@ -291,14 +456,6 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
                 if fig.data[data_idx].text[idx] == gene]
 
             for idx in gene_indexes:
-                """
-                # Determine if the arrow tail to head goes left-to-right (negative value) or the other way
-                ax_offset = 0
-                if fig.data[data_idx].x[idx] < 0:
-                    ax_offset = -2
-                elif fig.data[data_idx].x[idx] > 0:
-                    ax_offset = 2
-                """
 
                 fig.add_annotation(
                         arg=dict(
@@ -344,6 +501,7 @@ def create_volcano_plot(df, query, ref, use_adj_pvals=False):
         , genomewideline_color="black"
         , highlight_color="black"
         , p="pvals_adj" if use_adj_pvals else "pvals"
+        , snp=None
         , xlabel="log2FC"
         , ylabel="-log10(adjusted-P)" if use_adj_pvals else "-log10(P)"
 
@@ -356,8 +514,7 @@ def modify_volcano_plot(fig):
     # Keep non-significant data
     for data in fig.data:
 
-        # Get rid of unused SNP info, and "GENE: " label.
-        data['customdata'] = [text.split(' ')[1].split('<br>')[0] for text in data['text']] # ensembl ID (as passed to SNP property)
+        # Get rid of hover "GENE: " label.
         data['text'] = [text.split(' ')[-1] for text in data['text']]   # gene symbol
 
         if not (data["name"] and data["name"] == "Point(s) of interest"):
@@ -374,7 +531,6 @@ def modify_volcano_plot(fig):
             downregulated = {
                 "name": "Upregulated in Ref"
                 , "text":[]
-                , 'customdata':[]
                 , "x":[]
                 , "y":[]
                 , "marker":{"color":"#636EFA"}
@@ -383,7 +539,6 @@ def modify_volcano_plot(fig):
             upregulated = {
                 "name": "Upregulated in Query"
                 , "text":[]
-                , 'customdata':[]
                 , "x":[]
                 , "y":[]
                 , "marker":{"color":"#EF553B"}
@@ -393,13 +548,11 @@ def modify_volcano_plot(fig):
                     upregulated['x'].append(data['x'][i])
                     upregulated['y'].append(data['y'][i])
                     upregulated['text'].append(data['text'][i])
-                    upregulated['customdata'].append(data['customdata'][i])
 
                 else:
                     downregulated['x'].append(data['x'][i])
                     downregulated['y'].append(data['y'][i])
                     downregulated['text'].append(data['text'][i])
-                    upregulated['customdata'].append(data['customdata'][i])
 
 
             for dataset in [upregulated, downregulated]:
@@ -407,7 +560,6 @@ def modify_volcano_plot(fig):
                     x=dataset['x']
                     , y=dataset['y']
                     , text=dataset['text']
-                    , customdata=dataset['customdata']
                     , marker=dataset["marker"]
                     , mode="markers"
                     , name=dataset["name"]
@@ -429,6 +581,56 @@ def modify_volcano_plot(fig):
         }
         , template="simple_white"    # change background to pure white
     )
+
+def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest", is_log10=False):
+    """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
+    de_filter1 = adata.obs[key].isin([query_val])
+    selected1 = adata[de_filter1, :]
+    de_filter2 = adata.obs[key].isin([ref_val])
+    selected2 = adata[de_filter2, :]
+    # Query needs to be appended onto ref to ensure the test results are not flipped
+    de_selected = selected2.concatenate(selected1)
+
+    # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
+    # which makes the ensuing plot inaccurate
+    # TODO: Figure out how to get wald test to work (and work faster)
+    if de_test_algo == "rank":
+        de_results = de.test.rank_test(
+            de_selected
+            , grouping=key
+            , gene_names=de_selected.var["gene_symbol"]
+            , is_logged=is_log10
+        )
+    else:
+        de_results = de.test.t_test(
+            de_selected
+            , grouping=key
+            , gene_names=de_selected.var["gene_symbol"]
+            , is_logged=is_log10
+        )
+
+    # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
+    df = de_results.summary()
+    df["ensm_id"] = de_selected.var.index
+    df["pvals"] = df["pval"].fillna(1)      # Unexpressed genes show up as NaN
+    df["pvals_adj"] = df["qval"].fillna(1)
+    df["logfoldchanges"] = df["log2fc"]
+    df["gene_symbol"] = df["gene"]
+
+    return df
+
+def validate_volcano_conditions(query_condition, ref_condition):
+    """Ensure volcano conditions make sense."""
+    if not (query_condition and ref_condition):
+        raise PlotError('Must pass two conditions in order to generate a volcano plot.')
+
+    (query_key, query_val) = query_condition.split(';-;')
+    (ref_key, ref_val) = ref_condition.split(';-;')
+
+    if query_key != ref_key:
+        raise PlotError("Both comparable conditions must came from same observation group.")
+
+    return query_key, query_val, ref_val
 
 ### Misc fxns
 
@@ -581,6 +783,14 @@ class MultigeneDashData(Resource):
         annotate_nonsignificant = req.get('annotate_nonsignificant', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
+        """plot_type = "quadrant"
+        control_condition = "cluster;-;TEC"
+        compare_group1 = "cluster;-;HC (i)"
+        compare_group2 = "cluster;-;SC (i)"
+        de_test_algo = "t-test"
+        fc_threshold = 2
+        fdr_threshold = 0.05"""
+
         try:
             ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
         except PlotError as pe:
@@ -622,6 +832,9 @@ class MultigeneDashData(Resource):
 
         # ADATA - Observations are rows, genes are columns
         selected = adata
+
+        # These plot types filter to only the specific genes.
+        # The other plot types use all genes and rather annotate the specific ones.
         if plot_type in ['dotplot', 'heatmap', 'mg_violin'] and gene_filter is not None:
             selected = selected[:, gene_filter]
 
@@ -640,55 +853,20 @@ class MultigeneDashData(Resource):
                 selected = selected[condition_filter, :]
 
         if plot_type == "volcano":
-
-            if not (query_condition and ref_condition):
+            try:
+                key, query_val, ref_val = validate_volcano_conditions(query_condition, ref_condition)
+                df = prep_volcano_dataframe(selected
+                    , key
+                    , query_val
+                    , ref_val
+                    , de_test_algo
+                    , is_log10
+                    )
+            except PlotError as pe:
                 return {
                     'success': -1,
-                    'message': 'Must pass two conditions in order to generate a volcano plot.'
+                    'message': str(pe),
                 }
-
-            (query_key, query_val) = query_condition.split(';-;')
-            (ref_key, ref_val) = ref_condition.split(';-;')
-
-            if query_key != ref_key:
-                return {
-                    'success': -1,
-                    'message': "Both comparable conditions must came from same observation group."
-                }
-
-            de_filter1 = selected.obs[query_key].isin([query_val])
-            selected1 = selected[de_filter1, :]
-            de_filter2 = selected.obs[query_key].isin([ref_val])
-            selected2 = selected[de_filter2, :]
-            # Query needs to be appended onto ref to ensure the test results are not flipped
-            de_selected = selected2.concatenate(selected1)
-
-            # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
-            # which makes the ensuing plot inaccurate
-            # TODO: Figure out how to get wald test to work
-            if de_test_algo == "rank":
-                de_results = de.test.rank_test(
-                    de_selected
-                    , grouping=query_key
-                    , gene_names=de_selected.var["gene_symbol"]
-                    , is_logged=is_log10
-                )
-            else:
-                de_results = de.test.t_test(
-                    de_selected
-                    , grouping=query_key
-                    , gene_names=de_selected.var["gene_symbol"]
-                    , is_logged=is_log10
-                )
-
-            # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
-            df = de_results.summary()
-            df["ensm_id"] = de_selected.var.index
-            df["pvals"] = df["pval"].fillna(1)      # Unexpressed genes show up as NaN
-            df["pvals_adj"] = df["qval"].fillna(1)
-            df["logfoldchanges"] = df["log2fc"]
-            df["SNP"] = df["ensm_id"]   # To easily get the ensembl id later
-            df["gene_symbol"] = df["gene"]
 
             # Volcano plot expects specific parameter names (unless we wish to change the options)
             fig = create_volcano_plot(df
@@ -711,8 +889,9 @@ class MultigeneDashData(Resource):
 
             df[groupby_filter] = selected.obs[groupby_filter]
 
-            ### Transform the dataframe to prep for the dot plot
-            df = df.melt(id_vars=["cluster"])
+            # 1) Flatten to long-form
+            # 2) Create a gene symbol column by mapping to the Ensembl IDs
+            df = df.melt(id_vars=[groupby_filter])
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
             df["gene_symbol"] = df["index"].map(ensm_to_gene)
 
@@ -725,7 +904,27 @@ class MultigeneDashData(Resource):
             fig = create_dot_plot(df)
 
         elif plot_type == "quadrant":
-            pass
+            try:
+                key, control_val, compare1_val, compare2_val = validate_quadrant_conditions(control_condition, compare_group1, compare_group2)
+                df = prep_quadrant_dataframe(selected
+                        , key
+                        , control_val
+                        , compare1_val
+                        , compare2_val
+                        , de_test_algo
+                        , fc_threshold
+                        , fdr_threshold
+                        , is_log10
+                        )
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
+
+            fig = create_quadrant_plot(df, control_val, compare1_val, compare2_val)
+            # Annotate selected genes
+
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
