@@ -28,3 +28,44 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 === Clean up ===
 
 - Delete account
+
+
+== Selenium cheat sheet ==
+
+Common imports
+
+```
+from selenium import webdriver
+browser = webdriver.Chrome()
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+```
+
+Getting an element by ID
+
+```
+name_box = browser.find_element(By.ID, 'inputName')
+```
+
+Typing things
+
+```
+name_box.send_keys('Foo')
+```
+
+Clicking something (link, button, etc.)
+
+```
+submit_box = browser.find_element(By.ID, 'btn_submit')
+submit_box.click()
+```
+
+Checking if an element is visible
+
+```
+email_warning =  browser.find_element(By.ID, 'email_invalid')
+
+if email_warning.is_displayed():
+    print("Initial E-mail wasn't provided")
+```
