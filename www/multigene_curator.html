@@ -185,6 +185,43 @@
             </select>
           </div>
         </fieldset>
+        <fieldset class="form-group" id="quadrant_options_container" style="display:none;">
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="quadrant_compare1_condition">Comparison Condition 1</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the first compare condition to compare to the reference condition">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <select id="quadrant_compare1_condition" class="col form-control"></select>
+          </div>
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="quadrant_compare2_condition">Comparison Condition 2</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the second compare condition to compare to the reference condition">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <select id="quadrant_compare2_condition" class="col form-control"></select>
+          </div>
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="quadrant_ref_condition">Reference Condition</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the reference condition to compare to each of the comparison conditions">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <select id="quadrant_ref_condition" class="col form-control"></select>
+          </div>
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the fold-change threshold that a query/ref comparison must exceed to be included. Will be converted to log2 in plot">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <input id="quadrant_foldchange_cutoff" class="col form-control" type="number" value="2" min="0">
+          </div>
+          <div class="form-group row">
+            <label class="col-2 col-form-label" for="quadrant_fdr_cutoff">FDR cutoff</label>
+            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.">
+              <i class="fa fa-question-circle" aria-hidden="true"></i>
+            </span>
+            <input id="quadrant_fdr_cutoff" class="col form-control" type="number" value="0.05" min="0" max="1">
+          </div>
+        </fieldset>
         <fieldset class="form-group" id="volcano_options_container" style="display:none;">
           <div class="form-group row">
             <label class="col-2 col-form-label" for="volcano_query_condition">Query Condition</label>
@@ -200,17 +237,18 @@
             </span>
             <select id="volcano_ref_condition" class="col form-control"></select>
           </div>
-          <div class="form-group row">
-            <label class="col-2 col-form-label" for="de_test_select">Differential Expression Test</label>
-            <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the differential expression testing algorithm to determine significance.">
-              <i class="fa fa-question-circle" aria-hidden="true"></i>
-            </span>
-            <select class="col form-control" id="de_test_select">
-              <option value="t-test" selected="selected">Welch's t-test</option>
-              <option value="rank">Wilcoxon rank-sum test</option>
-            </select>
-          </div>
         </fieldset>
+
+        <div class="form-group row" id="de_test_container">
+          <label class="col-2 col-form-label" for="de_test_select">Differential Expression Test</label>
+          <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the differential expression testing algorithm to determine significance.">
+            <i class="fa fa-question-circle" aria-hidden="true"></i>
+          </span>
+          <select class="col form-control" id="de_test_select">
+            <option value="t-test" selected="selected">Welch's t-test</option>
+            <option value="rank">Wilcoxon rank-sum test</option>
+          </select>
+        </div>
 
         <!-- Advanced Options -->
         <fieldset class="form-group" id="advanced_options_container" style="display:none;">
@@ -259,6 +297,17 @@
                 <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
                 <label class="form-check-label" for="annot_nonsig">
                   Annotate nonsignificant genes.
+                </label>
+              </div>
+            </div>
+            <div class="form-group row" id="include_zero_foldchange_container">
+              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.">
+                <i class="fa fa-question-circle" aria-hidden="true"></i>
+              </span>
+              <div class="col-9 form-check">
+                <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
+                <label class="form-check-label" for="include_zero_foldchange">
+                  Include genes where the query and ref expression is equal
                 </label>
               </div>
             </div>
@@ -376,7 +425,7 @@
       </div>
     </script>
 
-    <script id="volcano_options_tmpl" type="text/x-jsrender">
+    <script id="select_conditions_tmpl" type="text/x-jsrender">
       <option></option>
       {{props
         itemVar="~category"

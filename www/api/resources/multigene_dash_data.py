@@ -309,7 +309,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
 
     return fig
 
-def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold=2, fdr_threshold=0.05, is_log10=False):
+def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
 
     # Create some filtered AnnData objects based on each individual comparision group
@@ -371,10 +371,12 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
     df["s1_c_log2FC_abs"] = df["s1_c_log2FC"].abs()
     df["s2_c_log2FC_abs"] = df["s2_c_log2FC"].abs()
     log_threshold = np.log2(fc_threshold)
-    df = df.query(
-    '((s1_c_log2FC == 0) or ((s1_c_log2FC_abs > @log_threshold) and (s1_c_qval > @fdr_threshold)))' \
-    'and ((s2_c_log2FC == 0) or ((s2_c_log2FC_abs > @log_threshold) and (s2_c_qval > @fdr_threshold)))'
-    )
+    query = '((s1_c_log2FC_abs > @log_threshold) and (s1_c_qval > @fdr_threshold))' \
+        'and ((s2_c_log2FC_abs > @log_threshold) and (s2_c_qval > @fdr_threshold))'
+    if include_zero_fc:
+        query = '((s1_c_log2FC == 0) or ((s1_c_log2FC_abs > @log_threshold) and (s1_c_qval > @fdr_threshold)))' \
+        'and ((s2_c_log2FC == 0) or ((s2_c_log2FC_abs > @log_threshold) and (s2_c_qval > @fdr_threshold)))'
+    df = df.query(query)
 
     return df
 
@@ -775,21 +777,19 @@ class MultigeneDashData(Resource):
         cluster_cols = req.get('cluster_cols', False)
         flip_axes = req.get('flip_axes', False)
         distance_metric = req.get('distance_metric', "euclidean")
+        # Quadrant plot options
+        compare_group1 = req.get("compare1_condition", None)
+        compare_group2 = req.get("compare2_condition", None)
+        fc_threshold = req.get("fold_change_cutoff", 2)
+        fdr_threshold = req.get("fdr_cutoff", 0.05)
+        include_zero_fc = req.get("include_zero_fc", True)
         # Volcano plot options
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
-        de_test_algo = req.get("de_test_algo")
+        de_test_algo = req.get("de_test_algo", "t-test")
         use_adj_pvals = req.get('adj_pvals', False)
-        annotate_nonsignificant = req.get('annotate_nonsignificant', False)
+        annotate_nonsignificant = req.get('annotate_nonsignificant', True)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
-
-        """plot_type = "quadrant"
-        control_condition = "cluster;-;TEC"
-        compare_group1 = "cluster;-;HC (i)"
-        compare_group2 = "cluster;-;SC (i)"
-        de_test_algo = "t-test"
-        fc_threshold = 2
-        fdr_threshold = 0.05"""
 
         try:
             ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
@@ -905,7 +905,7 @@ class MultigeneDashData(Resource):
 
         elif plot_type == "quadrant":
             try:
-                key, control_val, compare1_val, compare2_val = validate_quadrant_conditions(control_condition, compare_group1, compare_group2)
+                key, control_val, compare1_val, compare2_val = validate_quadrant_conditions(ref_condition, compare_group1, compare_group2)
                 df = prep_quadrant_dataframe(selected
                         , key
                         , control_val
@@ -914,6 +914,7 @@ class MultigeneDashData(Resource):
                         , de_test_algo
                         , fc_threshold
                         , fdr_threshold
+                        , include_zero_fc
                         , is_log10
                         )
             except PlotError as pe:

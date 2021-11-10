@@ -611,8 +611,13 @@ class PlotlyDisplay extends Display {
             distance_metric,
             adj_pvals,
             annotate_nonsignificant,
+            include_zero_fc,
+            fold_change_cutoff,
+            fdr_cutoff,
             de_test_algo,
             query_condition,
+            compare1_condition,
+            compare2_condition,
             ref_condition,
             analysis,   // Analysis
         } = plotly_config;
@@ -624,8 +629,13 @@ class PlotlyDisplay extends Display {
         this.distance_metric = distance_metric,
         this.adj_pvals = adj_pvals;
         this.annot_nonsig = annotate_nonsignificant;
+        this.include_zero_fc = include_zero_fc;
+        this.fold_change_cutoff = fold_change_cutoff;
+        this.fdr_cutoff = fdr_cutoff;
         this.de_test_algo = de_test_algo;
         this.query_condition = query_condition;
+        this.compare1_condition = compare1_condition;
+        this.compare2_condition = compare2_condition;
         this.ref_condition = ref_condition;
         this.analysis = analysis;
     }
@@ -643,19 +653,24 @@ class PlotlyDisplay extends Display {
      */
     async get_data(gene_symbols) {
         return axios.post(`/api/plot/${this.dataset_id}/mg_dash`, {
+            gene_symbols,
             analysis: this.analysis,
             analysis_owner_id: this.user_id,
             groupby_filter: this.groupby_filter,
             plot_type: this.plot_type,
-            gene_symbols: gene_symbols,
             obs_filters: this.obs_filters,
             cluster_cols: this.cluster_cols,
             flip_axes: this.flip_axes,
             distance_metric: this.distance_metric,
             adj_pvals: this.adj_pvals,
             annotate_nonsignificant: this.annot_nonsig,
+            include_zero_fc: this.include_zero_fc,
+            fold_change_cutoff: this.fold_change_cutoff,
+            fdr_cutoff: this.fdr_cutoff,
             de_test_algo: this.de_test_algo,
             query_condition: this.query_condition,
+            compare1_condition: this.compare1_condition,
+            compare2_condition: this.compare2_condition,
             ref_condition: this.ref_condition,
 
         });
@@ -702,12 +717,12 @@ class PlotlyDisplay extends Display {
         }
 
         // Overwrite plot layout and config values with custom ones from display
-        var layout = {
+        const layout = {
             ...plot_json.layout,
             ...layout_mods,
         };
 
-        var config_mods = {
+        const config_mods = {
             responsive: false,
         };
 
@@ -747,7 +762,7 @@ class PlotlyDisplay extends Display {
     }
 
     show() {
-        $('#dataset_' + this.primary_key + ' .plot-container').show();
+        $(`#dataset_${this.primary_key} .plot-container`).show();
     }
     template() {
         const template = `

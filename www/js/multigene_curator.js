@@ -30,9 +30,9 @@ const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
 const dotplotOptsIds = ["#obs_groupby_container"];
 const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
-const quadrantOptsIds = [];
+const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
 const violinOptsIds = ["#obs_groupby_container"];
-const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
+const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
 // Async to ensure data is fetched before proceeding.
 // This self-invoking function loads the initial state of the page.
@@ -301,6 +301,33 @@ function createHeatmapDropdowns (obsLevels) {
   });
 }
 
+// Render dropdowns specific to the quadrant plot
+function createQuadrantDropdowns (obsLevels) {
+  const tmpl = $.templates('#select_conditions_tmpl');
+  const html = tmpl.render(obsLevels);
+  $('#quadrant_compare1_condition').html(html);
+  $('#quadrant_compare1_condition').select2({
+    placeholder: 'Select the first query condition.',
+    width: '25%'
+  });
+  $('#quadrant_compare2_condition').html(html);
+  $('#quadrant_compare2_condition').select2({
+    placeholder: 'Select the second query condition.',
+    width: '25%'
+  });
+  $('#quadrant_ref_condition').html(html);
+  $('#quadrant_ref_condition').select2({
+    placeholder: 'Select the reference condition.',
+    width: '25%'
+  });
+
+  // Initialize differential expression test dropdown
+  $('#de_test_select').select2({
+    placeholder: 'Choose DE testing algorithm',
+    width: '25%'
+  });
+}
+
 // Render dropdowns specific to the violin plot
 function createViolinDropdowns (obsLevels) {
   createObsGroupbyField (obsLevels);
@@ -308,7 +335,7 @@ function createViolinDropdowns (obsLevels) {
 
 // Render dropdowns specific to the volcano plot
 function createVolcanoDropdowns (obsLevels) {
-  const tmpl = $.templates('#volcano_options_tmpl');
+  const tmpl = $.templates('#select_conditions_tmpl');
   const html = tmpl.render(obsLevels);
   $('#volcano_query_condition').html(html);
   $('#volcano_query_condition').select2({
@@ -404,6 +431,18 @@ function loadDisplayConfigHtml (plotConfig) {
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       break;
     case 'quadrant':
+      $('#include_zero_foldchange').prop('checked', plotConfig.include_zero_fc);
+      $("#quadrant_foldchange_cutoff").val(plotConfig.fold_change_cutoff);
+      $("#quadrant_fdr_cutoff").val(plotConfig.fdr_cutoff);
+      $('#quadrant_compare1_condition').val(plotConfig.compare1_condition);
+      $('#quadrant_compare1_condition').trigger('change');
+      $('#quadrant_compare2_condition').val(plotConfig.compare2_condition);
+      $('#quadrant_compare2_condition').trigger('change');
+      $('#quadrant_ref_condition').val(plotConfig.ref_condition);
+      $('#quadrant_ref_condition').trigger('change');
+
+      $('#de_test_select').val(plotConfig.de_test_algo);
+      $('#de_test_select').trigger('change');
       break;
     default:
       // volcano
@@ -670,6 +709,9 @@ $('#plot_type_select').change(() => {
   heatmapOptsIds.forEach(id => {
     $(id).hide();
   });
+  quadrantOptsIds.forEach(id => {
+    $(id).hide();
+  })
   violinOptsIds.forEach(id => {
     $(id).hide();
   });
@@ -693,6 +735,11 @@ $('#plot_type_select').change(() => {
         $(id).show();
       });
       break;
+      case 'quadrant':
+        quadrantOptsIds.forEach(id => {
+          $(id).show();
+        })
+        break;
     default:
       // volcano
       volcanoOptsIds.forEach(id => {
@@ -766,10 +813,23 @@ $(document).on('click', '#update_plot', async function () {
         return;
       }
       break;
+    case 'quadrant':
+      plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
+      plotConfig.fold_change_cutoff = $("#quadrant_foldchange_cutoff").val();
+      plotConfig.fdr_cutoff = $("#quadrant_fdr_cutoff").val();
+      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
+      if (! plotConfig.de_test_algo) {
+        window.alert('Must select a DE statistical test.');
+        return;
+      }
+      plotConfig.compare1_condition = $('#quadrant_compare1_condition').select2('data')[0].id;
+      plotConfig.compare2_condition = $('#quadrant_compare2_condition').select2('data')[0].id;
+      plotConfig.ref_condition = $('#quadrant_ref_condition').select2('data')[0].id;
+      break;
     default:
       // volcano
       plotConfig.adjust_pvals = $('#adj_pvals').is(':checked');
-      plotConfig['annotate_nonsignificant'] = $('#annot_nonsig').is(':checked');
+      plotConfig.annotate_nonsignificant = $('#annot_nonsig').is(':checked');
       plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
       if (! plotConfig.de_test_algo) {
         window.alert('Must select a DE statistical test.');
@@ -884,6 +944,9 @@ $(document).on('click', '#reset_opts', async function () {
       break;
     case 'mg_violin':
       createViolinDropdowns(obsLevels);
+      break;
+    case 'quadrant':
+      createQuadrantDropdowns(obsLevels);
       break;
     default:
       // volcano
