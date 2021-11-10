@@ -1,8 +1,14 @@
 #!/opt/bin/python3
 
 """
-Each test script should return a JSON structure like this:
+Each test script should return a structure like this:
 
+[
+   {"success": 0, "label": "Account creation"},
+   {"success": 1, "label": "Missing input validation"}
+]
+
+In that example the module performed two tests with one failing and one successful.
 
 """
 
@@ -11,12 +17,19 @@ import json
 f = open('test_commands.json')
 cnf = json.load(f)
 
+success_count = 0
+failure_count = 0
+
 for entry in cnf["tests"]:
     print("Running test: {0}".format(entry['label']))
     test_module = __import__(entry['module'])
     results = test_module.main()
     for test in results:
         if test['success']:
+            success_count += 1
             print("\t{0} result: Success".format(test['label']))
         else:
+            failure_count += 1
             print("\t{0} result: Failure".format(test['label']))
+
+print("\n\nFinal test results:\n\tTests passed: {0}\n\tTests failed: {1}\n".format(success_count, failure_count))
