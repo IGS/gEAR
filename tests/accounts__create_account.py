@@ -12,6 +12,7 @@ This testing script performs the following actions:
 
 Future things to test
 
+- Validate that navigation to the account creation page was successful
 - Test error handling if passwords don't match
 - Test error handling if email already exists
 
