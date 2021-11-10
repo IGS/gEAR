@@ -69,6 +69,7 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#ad
   const linkedDatasetId = getUrlParameter("dataset_id");
   if (linkedDatasetId) {
     $('#dataset').val(linkedDatasetId);
+    $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
     $('#dataset').trigger('change');
   }
 })();
