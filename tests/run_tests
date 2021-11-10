@@ -1,0 +1,22 @@
+#!/opt/bin/python3
+
+"""
+Each test script should return a JSON structure like this:
+
+
+"""
+
+import json
+
+f = open('test_commands.json')
+cnf = json.load(f)
+
+for entry in cnf["tests"]:
+    print("Running test: {0}".format(entry['label']))
+    test_module = __import__(entry['module'])
+    results = test_module.main()
+    for test in results:
+        if test['success']:
+            print("\t{0} result: Success".format(test['label']))
+        else:
+            print("\t{0} result: Failure".format(test['label']))

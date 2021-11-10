@@ -1,0 +1,5 @@
+{
+    "tests" : [
+        {"label": "Account creation", "module": "accounts__create_account"}
+    ]
+}
