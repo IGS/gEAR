@@ -625,7 +625,7 @@ $('#dataset').change(async function () {
     });
   });
 
-  $('#update_plot').show();
+  $('#create_plot').show();
   $('#reset_opts').show();
 
   // If a plot type was already selected,
@@ -770,7 +770,7 @@ $('#plot_type_select').change(() => {
   }
 });
 
-$(document).on('click', '#update_plot', async function () {
+$(document).on('click', '#create_plot', async function () {
   // Remove supplementary plot and reset its genes filter
   if (supplementaryGenesFilters.length) {
     supplementaryGenesFilters = [];
