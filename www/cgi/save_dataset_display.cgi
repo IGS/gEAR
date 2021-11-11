@@ -108,6 +108,7 @@ def main():
 
         for (d_id,) in cursor:
             display_id = d_id
+            result["display_id"] = display_id
             break
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))

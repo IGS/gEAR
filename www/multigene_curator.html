@@ -117,19 +117,6 @@
           <!-- Modal -->
           <span>or&ensp;</span>
           <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
-          <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="Choose saved display to load" aria-hidden="true" id="load_plots_modal">
-            <div class="modal-dialog modal-lg">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2 class="modal-title">Available saved plot displays</h2>
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                </div>
-                <div id="saved_display_modal" class="modal-body"></div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -212,14 +199,14 @@
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the fold-change threshold that a query/ref comparison must exceed to be included. Will be converted to log2 in plot">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
-            <input id="quadrant_foldchange_cutoff" class="col form-control" type="number" value="2" min="0">
+            <input id="quadrant_foldchange_cutoff" class="col-1 form-control" type="number" value="2" min="0">
           </div>
           <div class="form-group row">
             <label class="col-2 col-form-label" for="quadrant_fdr_cutoff">FDR cutoff</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
-            <input id="quadrant_fdr_cutoff" class="col form-control" type="number" value="0.05" min="0" max="1">
+            <input id="quadrant_fdr_cutoff" class="col-1 form-control" type="number" value="0.05" min="0" max="1">
           </div>
         </fieldset>
         <fieldset class="form-group" id="volcano_options_container" style="display:none;">
@@ -324,47 +311,12 @@
 
     <!-- Plots and post-plot things -->
     <div class="row container-fluid">
-      <div id="dataset_plot" class="col-8"></div>
-      <aside class="col-3">
-        <fieldset id="save_display_field" style="display:none;">
-          <legend>Save Plot Display</legend>
-          <div class="form-group">
-            <input class="form-control" id="display_name" placeholder="Enter name for saved display">
-          </div>
-          <button type="button" class="btn btn-purple mb-3" id="save_display_btn">Save new display</button>
-          <br>
-          <p id="saved_plot_confirmation" style="display:none;"></p>
-        </fieldset>
-        <fieldset id="selected_genes_field" style="display:none;">
-          <legend>Save Gene Cart</legend>
-          <div class="form-group">
-            <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
-          </div>
-          <button type="button" class="btn btn-purple mb-3" id="save_gene_cart">Save as gene cart</button>
-          <br>
-          <p id="saved_gene_cart_confirmation" style="display:none;"></p>
-          <h3>Selected Genes:</h3>
-          <ul id="selected_genes_list">
-          </ul>
-        </fieldset> <!-- end selected_genes_c-->
-        <fieldset id="plot_download_opts_field" style="display:none;">
-          <legend>Image Download Options</legend>
-          <div class="form-row">
-            <label class="col-form-label col-6" for="plot_download_height">Height (in px)</label>
-            <input id="plot_download_height" class="form-control col-2" value=450 >
-          </div>
-          <div class="form-row">
-            <label class="col-form-label col-6" for="plot_download_width">Width (in px)</label>
-            <input id="plot_download_width" class="form-control col-2" value=700>
-          </div>
-          <div class="form-row">
-            <label class="col-form-label col-6" for="plot_download_scale">Scale plot size</label>
-            <input id="plot_download_scale" class="form-control col-2" value=1>
-          </div>
-          <button type="button" class="btn btn-purple my-3" id="download_plot">Download Image</button>
-        </fieldset>
+      <div id="dataset_plot" class="col-10"></div>
+      <aside id="post_plot_options" class="col-2" style="display:none;">
+        <button type="button" class="btn btn-purple btn-sm btn-block" data-toggle="modal" data-target="#save_display_modal">Save new display</button>
+        <button type="button" class="btn btn-purple btn-sm btn-block" data-toggle="modal" data-target="#save_genes_modal" id="selected_genes_btn" disabled>Save new gene cart</button>
+        <button type="button" class="btn btn-purple btn-sm btn-block" data-toggle="modal" data-target="#download_plot_modal">Download image</button>
       </aside>
-
     </div>
     <div id="supplementary_plot"></div>
 
@@ -374,6 +326,121 @@
       </div>
     </footer>
     </div> <!-- /body_c -->
+
+    <!-- Modals -->
+
+    <!-- Load plots modal-->
+    <div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="Choose saved display to load" aria-hidden="true" id="load_plots_modal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title">Available saved plot displays</h2>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div id="saved_display_modal" class="modal-body"></div>
+        </div>
+      </div>
+    </div>  <!-- end load plots modal-->
+    <!-- Save display modal -->
+    <div class="modal fade" id="save_display_modal" tabindex="-1" role="dialog" aria-labelledby="save_display_label" aria-hidden="true">
+      <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="save_display_label">Save Plot Display</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="display_name">
+                New display name
+              </label>
+              <input class="form-control" id="display_name" placeholder="Enter name for saved display">
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" checked value="" id="save_as_default_check">
+              <label class="form-check-label" for="save_as_default_check">
+                Save display as default display for this dataset
+              </label>
+            </div>
+            <br />
+            <p id="saved_plot_confirmation" style="display:none;"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-purple" id="save_display_btn">Save new display</button>
+          </div>
+        </div>
+      </div>
+    </div> <!-- save_display_modal -->
+
+    <!-- Download plot modal -->
+    <div class="modal fade" id="download_plot_modal" tabindex="-1" role="dialog" aria-labelledby="download_plot_label" aria-hidden="true">
+      <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="download_plot_label">Image Download Options</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <label class="col-form-label col-6" for="plot_download_height">Height (in px)</label>
+              <input id="plot_download_height" type="number" min=1 step=1 class="form-control col-2" value=450 >
+            </div>
+            <div class="form-row">
+              <label class="col-form-label col-6" for="plot_download_width">Width (in px)</label>
+              <input id="plot_download_width" type="number" min=1 step=1 class="form-control col-2" value=700>
+            </div>
+            <div class="form-row">
+              <label class="col-form-label col-6" for="plot_download_scale">Scale plot size</label>
+              <input id="plot_download_scale" type="number" class="form-control col-2" value=1>
+            </div>
+          </div>
+          <br>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-purple" id="download_plot">Download Image</button>
+          </div>
+        </div>
+      </div>
+    </div>  <!-- end download_plot_modal -->
+
+    <!-- Save gene cart modal -->
+    <div class="modal fade" id="save_genes_modal" tabindex="-1" role="dialog" aria-labelledby="save_genes_label" aria-hidden="true">
+      <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="save_genes_label">Save Gene Cart</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-row">
+              <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
+              <label class="form-check-label" for="gene_cart_name">
+                New gene cart name
+              </label>
+            </div>
+            <h3>Selected Genes:</h3>
+            <ul id="selected_genes_list">
+            </ul>
+            <br />
+            <p id="saved_gene_cart_confirmation" style="display:none;"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-purple" id="save_gene_cart">Save as gene cart</button>
+          </div>
+        </div>
+      </div>
+    </div> <!-- end save_genes_modal-->
+    <!-- end modals-->
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">
       <label class="col-2 col-form-label" for="gene_dropdown">Gene Symbols</label>

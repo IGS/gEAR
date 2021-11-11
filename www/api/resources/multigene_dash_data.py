@@ -231,6 +231,45 @@ def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
 
 ### Quadrant fxns
 
+def add_gene_annotations_to_quadrant_plot(fig, gene_symbols_list) -> None:
+    """Add annotations to point to each desired gene within the quadrant plot. Edits in-place."""
+    genes_not_found = set()
+    genes_none_none = set()
+    for gene in gene_symbols_list:
+        # Iterate through all the quadrant traces
+        for data_idx in range(len(fig.data)):
+            gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
+                if fig.data[data_idx].text[idx] == gene]
+
+            for idx in gene_indexes:
+
+                # Do not add annotations at the zero-point of the plot, since they will overlap
+                if "NONE/NONE" in fig.data[data_idx].name:
+                    genes_none_none.add(gene)
+                    break
+
+                fig.add_annotation(
+                        arg=dict(
+                            font=dict(
+                                color="white"
+                            )
+                        )
+                        , arrowcolor="black"
+                        , bgcolor=fig.data[data_idx]["marker"]["color"]
+                        , borderpad=2
+                        , showarrow=True
+                        , text=gene
+                        , x=fig.data[data_idx].x[idx]
+                        , y=fig.data[data_idx].y[idx]
+                        , xref="x"
+                        , yref="y"
+                    )
+            else:
+                # gene wasn't found in filtered plot data
+                genes_not_found.add(gene)
+    return genes_not_found, genes_none_none
+
+
 def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
     """Generate a quadrant (fourway) plot.  Returns Plotly figure."""
 
@@ -306,7 +345,10 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
 
     fig.update_xaxes(title="{} vs {} log2FC".format(compare1_val, control_val))
     fig.update_yaxes(title="{} vs {} log2FC".format(compare2_val, control_val))
-
+    fig.update_layout(
+        legend_title_text="log2 foldchange and number of genes in group"
+        , template="simple_white"    # change background to pure white
+        )
     return fig
 
 def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
@@ -453,7 +495,6 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
     for gene in gene_symbols_list:
         # Insignificant genes are at index 0.  If you want to skip annotating them, start at index 1
         for data_idx in range(0 if annot_nonsig else 1, len(fig.data)):
-            # TODO: The endswith is fragile and should probably be done differently, maybe with regex.
             gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
                 if fig.data[data_idx].text[idx] == gene]
 
@@ -515,7 +556,6 @@ def modify_volcano_plot(fig):
     sig_data = []
     # Keep non-significant data
     for data in fig.data:
-
         # Get rid of hover "GENE: " label.
         data['text'] = [text.split(' ')[-1] for text in data['text']]   # gene symbol
 
@@ -668,15 +708,15 @@ def create_dataframe_gene_mask(df, gene_symbols, plot_type):
 
             if dup_genes_intersection:
                 success = 2
-                message_list.append('The following genes were mapped to 2 or more Ensembl IDs in this dataset, so one was chosen at random for the plot: {}'.format(', '.join(dup_genes_intersection)))
+                message_list.append('<li>The following genes were mapped to 2 or more Ensembl IDs in this dataset, so one was chosen at random for the plot: {}</li>'.format(', '.join(dup_genes_intersection)))
 
             # Note to user which genes were not found in the dataset
             genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
             if genes_not_present:
                 success = 3,
-                message_list.append('One or more genes were not found in the dataset: {}'.format(', '.join(genes_not_present)))
+                message_list.append('<li>One or more genes were not found in the dataset: {}</li>'.format(', '.join(genes_not_present)))
         else:
-            if plot_type in ["heatmap", "mg_violin"]:
+            if plot_type in ["dotplot", "heatmap", "mg_violin"]:
                 raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
     else:
         raise PlotError('Missing gene_symbol column in adata.var')
@@ -780,8 +820,8 @@ class MultigeneDashData(Resource):
         # Quadrant plot options
         compare_group1 = req.get("compare1_condition", None)
         compare_group2 = req.get("compare2_condition", None)
-        fc_threshold = req.get("fold_change_cutoff", 2)
-        fdr_threshold = req.get("fdr_cutoff", 0.05)
+        fc_threshold = float(req.get("fold_change_cutoff", 2))
+        fdr_threshold = float(req.get("fdr_cutoff", 0.05))
         include_zero_fc = req.get("include_zero_fc", True)
         # Volcano plot options
         query_condition = req.get('query_condition', None)
@@ -817,6 +857,13 @@ class MultigeneDashData(Resource):
 
         success = 1
         message = ""
+
+        # Success levels
+        # -1 Failure
+        # 1 Success
+        # 2 Warning - duplicate genes found
+        # 3 Warning - One or more genes could not be processed
+        # NOTE: The success level in a warning can be overridden by another warning or error
 
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
@@ -925,6 +972,15 @@ class MultigeneDashData(Resource):
 
             fig = create_quadrant_plot(df, control_val, compare1_val, compare2_val)
             # Annotate selected genes
+            if gene_symbols:
+                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, gene_symbols)
+                if genes_not_found:
+                    success = 3
+                    message += "<li>One or more genes were did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
+                if genes_none_none:
+                    success = 3
+                    message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
+
 
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe

@@ -40,8 +40,8 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#ad
   // check if the user is already logged in
   await check_for_login();
 
-  // Load gene carts before the dropdown appears
-  loadGeneCarts();
+  // Load gene carts and datasets before the dropdown appears
+  await reloadTrees ();
 
   // Initialize tooltips
   $(() => {
@@ -49,9 +49,6 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#ad
       trigger: "hover"
     });
   });
-
-  // Initialize datasets available to the user
-  await populateDatasets();
 
   // Initialize plot types
   $('#plot_type_select').select2({
@@ -72,6 +69,17 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#ad
     $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
     $('#dataset').trigger('change');
   }
+
+  // Create observer to watch if user changes (ie. successful login does not refresh page)
+  // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+
+  // Select the node that will be observed for mutations
+  const targetNode = document.getElementById('loggedin_controls');
+  // Create an observer instance linked to the callback function
+  const observer = new MutationObserver(reloadTrees);
+  // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
+  // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
+  observer.observe(targetNode, { attributes: true });
 })();
 
 // Call API to return plot JSON data
@@ -100,7 +108,7 @@ async function fetchH5adInfo (payload) {
   return data;
 }
 
-async function populateDatasets () {
+async function loadDatasets () {
   await $.ajax({
     type: 'POST',
     url: './cgi/get_h5ad_dataset_list.cgi',
@@ -172,7 +180,7 @@ function drawChart (data, datasetId, supplementary = false) {
   // If there was an error in the plot, put alert up
   if ( success < 1 || !plotJson.layout) {
     $(`#${parentDiv} .js-plot-error`).show();
-    $(`#${parentDiv} .js-plot-error`).text(message);
+    $(`#${parentDiv} .js-plot-error`).html(message);
     return;
   }
 
@@ -189,7 +197,7 @@ function drawChart (data, datasetId, supplementary = false) {
     }
   } else if (['quadrant', 'volcano'].includes($('#plot_type_select').select2('data')[0].id)) {
     layoutMods.height = 800;
-    layoutMods.width = 900; // If window is not wide enough, the plotly option icons will overlap contents on the right
+    layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
   }
 
   // Overwrite plot layout and config values with custom ones from display
@@ -210,18 +218,18 @@ function drawChart (data, datasetId, supplementary = false) {
 
   // Show any warnings from the API call
   if (message && success > 1) {
-    $(`#${parentDiv} .js-plot-warning`).text(message);
     $(`#${parentDiv} .js-plot-warning`).show();
+    $(`#${parentDiv} .js-plot-warning`).html(`<ul>${message}</ul>`);
   }
 
   // If plot data is selected, create the right-column table and do other misc things
   $(`#dataset_${datasetId}_h5ad`).on("plotly_selected", (_e, data) => {
 
-    if (!plotConfig.plot_type == "volcano") {
+    if (!(['volcano', 'quadrant'].includes(plotConfig.plot_type))) {
       return;
     }
 
-    $("#selected_genes_field").show();
+    $("#selected_genes_btn").prop("disabled", false);
 
     // Note: the jQuery implementation has slightly different arguments than what is in the plotlyJS implementation
     // We want 'data', which returns the eventData PlotlyJS events normally return
@@ -250,6 +258,14 @@ async function draw (datasetId, payload, supplementary = false) {
     data
   } = await getData(datasetId, payload);
   drawChart(data, datasetId, supplementary);
+}
+
+// If user changes, update genecart/profile trees
+async function reloadTrees(){
+
+  // Update dataset and genecart trees in parallel
+  // Works if they were not populated or previously populated
+  await Promise.all([loadDatasets(), loadGeneCarts()]);
 }
 
 // Render the gene-selection dropdown menu
@@ -585,16 +601,21 @@ $('#dataset').change(async function () {
 
   $('#load_saved_plots').show();
   $('#plot_type_container').show();
-  $('#gene_container').show();
   $('#advanced_options_container').show();
 
-  // Get genes for this dataset
-  geneSymbols = await fetchGeneSymbols({ datasetId, undefined });
+  // Create promises to get genes and observations for this dataset
+  const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
+  const h5adPromise =  fetchH5adInfo({ datasetId, undefined });
+
+  // Execute both in parallel
+  geneSymbols = await geneSymbolsPromise;
+  const data = await h5adPromise;
+
+  $('#gene_container').show();
   createGeneDropdown(geneSymbols);
   $('#genes_not_found').hide();
 
   // Get categorical observations for this dataset
-  const data = await fetchH5adInfo({ datasetId, undefined });
   obsLevels = curateObservations(data.obs_levels);
 
   // Ensure genes dropdown tooltip shows
@@ -816,8 +837,8 @@ $(document).on('click', '#update_plot', async function () {
       break;
     case 'quadrant':
       plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
-      plotConfig.fold_change_cutoff = $("#quadrant_foldchange_cutoff").val();
-      plotConfig.fdr_cutoff = $("#quadrant_fdr_cutoff").val();
+      plotConfig.fold_change_cutoff = Number($("#quadrant_foldchange_cutoff").val());
+      plotConfig.fdr_cutoff = Number($("#quadrant_fdr_cutoff").val());
       plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
       if (! plotConfig.de_test_algo) {
         window.alert('Must select a DE statistical test.');
@@ -873,11 +894,9 @@ $(document).on('click', '#update_plot', async function () {
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
 
-  // Show plot download options
-  $('#plot_download_opts_field').show();
-
-  // Show save display opts
-  $('#save_display_field').show();
+  // Show plot options and disable selected genes button (since genes are not selected anymore)
+  $('#post_plot_options').show();
+  $("#selected_genes_btn").prop("disabled", true);
 });
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
@@ -1005,7 +1024,48 @@ $(document).on('click', '#save_display_btn', async function () {
   });
 
   if (res?.success) {
-    $('#saved_plot_confirmation').text('Plot successfully saved');
+
+    let msg = 'Plot successfully saved'
+
+    if ($("#save_as_default_check").is(':checked') && res.display_id) {
+      displayId = res.display_id;
+      const res2 = await $.ajax({
+        url: './cgi/save_default_display.cgi',
+        type: 'POST',
+        data: {
+          user_id: CURRENT_USER.id,
+          dataset_id: datasetId,
+          display_id: displayId,
+          is_multigene: 1
+        },
+        dataType: 'json'
+      });
+
+      if (res2?.success) {
+          // Swap current default buttons
+        $('.js-current-default')
+          .prop('disabled', false)
+          .addClass('js-save-default')
+          .addClass('btn-purple')
+          .removeClass('btn-secondary')
+          .removeClass('js-current-default')
+          .text("Make Default");
+        $(`#${displayId}_default`)
+          .prop('disabled', true)
+          .removeClass('js-save-default')
+          .removeClass('btn-purple')
+          .addClass('btn-secondary')
+          .addClass('js-current-default')
+          .text("Default");
+          msg += " and was set as the default display.";
+      } else {
+          msg += " but there was an issue saving as the default display.";
+      }
+    } else {
+      msg += " but not set as default display."
+    }
+
+    $('#saved_plot_confirmation').text(msg);
     $('#saved_plot_confirmation').addClass('text-success');
     $('#saved_plot_confirmation').show();
   } else {
@@ -1055,11 +1115,9 @@ $(document).on('click', '.js-load-display', async function () {
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
 
-  // Show plot download options
-  $('#plot_download_opts_field').show();
+  // Show plot options
+  $('#post_plot_options').show();
 
-  // Show save display opts
-  $('#save_display_field').show();
 });
 
 // Delete user display
