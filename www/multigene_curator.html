@@ -195,14 +195,14 @@
             <select id="quadrant_ref_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
+            <label class="col-2 col-form-label" for="quadrant_foldchange_cutoff">Fold-change Cutoff</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the fold-change threshold that a query/ref comparison must exceed to be included. Will be converted to log2 in plot">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <input id="quadrant_foldchange_cutoff" class="col-1 form-control" type="number" value="2" min="0">
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_fdr_cutoff">FDR cutoff</label>
+            <label class="col-2 col-form-label" for="quadrant_fdr_cutoff">FDR Cutoff</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
@@ -456,15 +456,17 @@
 
     <script id="obs_groupby_tmpl" type="text/x-jsrender">
       <label class="col-2 col-form-label" for="groupby_obs_dropdown">Group by Category</label>
-      <span class="col-1" data-toggle="tooltip" data-placement="top" title="If a category is checked, the heatmap will display the mean expression for each group in this category instead of the raw expression for all filtered observations">
+      <span class="col-1" data-toggle="tooltip" data-placement="top" title="Determine category to group by before plotting.  For heatmap plots, the plot will display the mean expression for each group in this category instead of the raw expression for all filtered observations">
         <i class="fa fa-question-circle" aria-hidden="true"></i>
       </span>
-      {{props}}
-      <div class="form-check form-check-inline col">
-        <input class="form-check-input js-obs-groupby" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
-        <label class="form-check-label" for="{{:key}}_groupby">{{:key}}</label>
+      <div class="col">
+        {{props}}
+        <div class="form-check">
+          <input class="form-check-input js-obs-groupby" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
+          <label class="form-check-label" for="{{:key}}_groupby">{{:key}}</label>
+        </div>
+        {{/props}}
       </div>
-      {{/props}}
     </script>
 
     <!-- Declare a JsRender template, in a script block: -->
