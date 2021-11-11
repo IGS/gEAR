@@ -128,7 +128,7 @@
         </div>
         <div class="row" id="gene_dropdown_container"></div>
         <div class="form-group row" id="gene_cart_container">
-          <label class="col-2 col-form-label" for="gene_cart">or Load from Gene Cart</label>
+          <label class="col-2 col-form-label" for="gene_cart">or Load from gene cart</label>
           <span class="col-1" data-toggle="tooltip" data-placement="top" title="Optionally load an entry from the saved gene cart to add all genes found in this dataset to the above search.">
             <i class="fa fa-question-circle" aria-hidden="true"></i>
           </span>
@@ -174,35 +174,35 @@
         </fieldset>
         <fieldset class="form-group" id="quadrant_options_container" style="display:none;">
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_compare1_condition">Comparison Condition 1</label>
+            <label class="col-2 col-form-label" for="quadrant_compare1_condition">Comparison condition 1</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the first compare condition to compare to the reference condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select id="quadrant_compare1_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_compare2_condition">Comparison Condition 2</label>
+            <label class="col-2 col-form-label" for="quadrant_compare2_condition">Comparison condition 2</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the second compare condition to compare to the reference condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select id="quadrant_compare2_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_ref_condition">Reference Condition</label>
+            <label class="col-2 col-form-label" for="quadrant_ref_condition">Reference condition</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the reference condition to compare to each of the comparison conditions">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select id="quadrant_ref_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_foldchange_cutoff">Fold-change Cutoff</label>
+            <label class="col-2 col-form-label" for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the fold-change threshold that a query/ref comparison must exceed to be included. Will be converted to log2 in plot">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <input id="quadrant_foldchange_cutoff" class="col-1 form-control" type="number" value="2" min="0">
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="quadrant_fdr_cutoff">FDR Cutoff</label>
+            <label class="col-2 col-form-label" for="quadrant_fdr_cutoff">FDR cutoff</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
@@ -211,14 +211,14 @@
         </fieldset>
         <fieldset class="form-group" id="volcano_options_container" style="display:none;">
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="volcano_query_condition">Query Condition</label>
+            <label class="col-2 col-form-label" for="volcano_query_condition">Query condition</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the query condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
             <select id="volcano_query_condition" class="col form-control"></select>
           </div>
           <div class="form-group row">
-            <label class="col-2 col-form-label" for="volcano_ref_condition">Reference Condition</label>
+            <label class="col-2 col-form-label" for="volcano_ref_condition">Reference condition</label>
             <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the reference condition">
               <i class="fa fa-question-circle" aria-hidden="true"></i>
             </span>
@@ -227,7 +227,7 @@
         </fieldset>
 
         <div class="form-group row" id="de_test_container">
-          <label class="col-2 col-form-label" for="de_test_select">Differential Expression Test</label>
+          <label class="col-2 col-form-label" for="de_test_select">Differential expression test</label>
           <span class="col-1" data-toggle="tooltip" data-placement="top" title="Select the differential expression testing algorithm to determine significance.">
             <i class="fa fa-question-circle" aria-hidden="true"></i>
           </span>
@@ -443,7 +443,7 @@
     <!-- end modals-->
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">
-      <label class="col-2 col-form-label" for="gene_dropdown">Gene Symbols</label>
+      <label class="col-2 col-form-label" for="gene_dropdown">Gene symbols</label>
       <span class="col-1" data-toggle="tooltip" data-placement="top" title="In heatmaps and violin plots, only these genes are shown. In volcano plots, these genes are annotated.">
         <i class="fa fa-question-circle" aria-hidden="true"></i>
       </span>
@@ -455,7 +455,7 @@
     </script>
 
     <script id="obs_groupby_tmpl" type="text/x-jsrender">
-      <label class="col-2 col-form-label" for="groupby_obs_dropdown">Group by Category</label>
+      <label class="col-2 col-form-label" for="groupby_obs_dropdown">Group by category</label>
       <span class="col-1" data-toggle="tooltip" data-placement="top" title="Determine category to group by before plotting.  For heatmap plots, the plot will display the mean expression for each group in this category instead of the raw expression for all filtered observations">
         <i class="fa fa-question-circle" aria-hidden="true"></i>
       </span>
@@ -472,7 +472,7 @@
     <!-- Declare a JsRender template, in a script block: -->
     <script id="obs_dropdowns_tmpl" type="text/x-jsrender">
       <div class="row">
-        <legend class="col-2 col-form-label">Filter by Category</legend>
+        <legend class="col-2 col-form-label">Filter by category</legend>
         <span class="col-1" data-toggle="tooltip" data-placement="top" title='Select which groups for a category to include, or click "All" to use all groups.'>
           <i class="fa fa-question-circle" aria-hidden="true"></i>
         </span>
