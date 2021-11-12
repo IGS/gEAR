@@ -68,8 +68,12 @@ def main():
 
     submit_box.click()
 
+    already_exists_warning = browser.find_element(By.ID, 'email_already_exists')
+    
     if email_warning.is_displayed():
-        results.append({"success": 0, "label": "Account creation"})
+        results.append({"success": 0, "label": "Account creation (E-mail invalid)"})
+    elif already_exists_warning.is_displayed():
+        results.append({"success": 0, "label": "Account creation (Account already exists)"})
     else:
         results.append({"success": 1, "label": "Account creation"})
 
