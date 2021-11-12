@@ -83,7 +83,9 @@ window.onload=function() {
             $('[data-toggle="tooltip"], .tooltip').tooltip("hide");
         })
     } else {
-         $('#permalink_intro_c').show();
+        if (share_id) {
+            $('#permalink_intro_c').show();
+        }
     }
 
     // The search button starts out disabled, make sure it gets re-enabled.
