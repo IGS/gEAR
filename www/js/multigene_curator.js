@@ -64,6 +64,7 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   var linkedDatasetId = getUrlParameter("dataset_id");
   if (linkedDatasetId) {
     $('#dataset').val(linkedDatasetId);
+    $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
     $('#dataset').trigger('change');
   }
 })();
@@ -164,6 +165,7 @@ async function drawPreviewImage (display) {
 // Draw plotly chart in HTML
 function drawChart (data, datasetId, supplementary = false) {
   const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
+  const parentDiv = supplementary ? `dataset_${datasetId}_supplementary` : `dataset_${datasetId}`;
   const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
 
   const layoutMods = {
@@ -184,8 +186,8 @@ function drawChart (data, datasetId, supplementary = false) {
 
   // If there was an error in the plot, put alert up
   if ( success < 1 && !plotJson.layout) {
-    $(targetDiv + '.js-plot-error').text(message);
-    $(targetDiv + '.js-plot-error').show();
+    $(`#${parentDiv} .js-plot-error`).show();
+    $(`#${parentDiv} .js-plot-error`).text(message);
     return;
   }
 
@@ -206,8 +208,8 @@ function drawChart (data, datasetId, supplementary = false) {
   Plotly.newPlot(targetDiv, plotJson.data, layout, config);
 
   if (message && success > 1) {
-    $(targetDiv + '.js-plot-warning').text(message);
-    $(targetDiv + '.js-plot-warning').show();
+    $(`#${parentDiv} .js-plot-warning`).text(message);
+    $(`#${parentDiv} .js-plot-warning`).show();
   }
 
   // If plot data is selected, create the right-column table and do other misc things
@@ -801,9 +803,6 @@ $(document).on('click', '#update_plot', async function () {
 
   // Show save display opts
   $('#save_display_field').show();
-  const saveTemplate = $.templates('#save_plot_tmpl');
-  const saveHtml = saveTemplate.render({ plot_type: plotType });
-  $('#save_display_btn').html(saveHtml);
 });
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
