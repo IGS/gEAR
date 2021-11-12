@@ -30,6 +30,12 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
   * Submitting with duplicate account info
 * Saving of new account info
 
+#### Main Page (index)
+
+* Logging in
+  * With incorrect credentials
+  * With correct credentials
+
 ### Current and pending UI tests
 
 #### Main Page (index)
