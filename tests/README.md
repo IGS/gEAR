@@ -30,6 +30,12 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
   * Submitting with duplicate account info
 * Saving of new account info
 
+#### Main Page (index)
+
+* Logging in
+  * With incorrect credentials
+  * With correct credentials
+
 ### Current and pending UI tests
 
 #### Main Page (index)
@@ -120,4 +126,11 @@ email_warning =  browser.find_element(By.ID, 'email_invalid')
 
 if email_warning.is_displayed():
     print("Initial E-mail wasn't provided")
+```
+
+Clear a form element
+
+```
+name_box = browser.find_element(By.ID, 'inputName')
+name_box.clear()
 ```
