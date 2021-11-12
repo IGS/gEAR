@@ -127,3 +127,10 @@ email_warning =  browser.find_element(By.ID, 'email_invalid')
 if email_warning.is_displayed():
     print("Initial E-mail wasn't provided")
 ```
+
+Clear a form element
+
+```
+name_box = browser.find_element(By.ID, 'inputName')
+name_box.clear()
+```
