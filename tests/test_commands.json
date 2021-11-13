@@ -1,6 +1,6 @@
 {
     "tests" : [
         {"label": "Account creation", "module": "accounts__create_account"},
-        {"label": "Logging in", "module": "accounts__log_in"},
+        {"label": "Logging in", "module": "accounts__log_in"}
     ]
 }
