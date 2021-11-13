@@ -41,7 +41,7 @@ def main():
     browser.get(config['test']['host'])
 
     user_box = browser.find_element(By.ID, 'user_email')
-    pass_box = browser.find_element(By.ID, 'password')
+    pass_box = browser.find_element(By.ID, 'user_pass')
     submit_box = browser.find_element(By.ID, 'btn_sign_in')
     user_logged_in = browser.find_element(By.ID, 'user_logged_in')
 
@@ -58,7 +58,7 @@ def main():
 
     # Now send the corrent user name, password should still be wrong
     user_box.clear()
-    user_box.send_keys(config['test']['user_name'])
+    user_box.send_keys(config['test']['user_email'])
     
     submit_box.click()
     time.sleep(1)
