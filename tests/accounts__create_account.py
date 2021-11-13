@@ -54,6 +54,7 @@ def main():
 
     submit_box = browser.find_element(By.ID, 'btn_account_creation_submit')
     submit_box.click()
+    time.sleep(1)
 
     email_warning =  browser.find_element(By.ID, 'email_invalid')
 
@@ -66,6 +67,7 @@ def main():
     email_box.send_keys(config['test']['user_email'])
 
     submit_box.click()
+    time.sleep(1)
 
     already_exists_warning = browser.find_element(By.ID, 'email_already_exists')
     
@@ -76,7 +78,7 @@ def main():
     else:
         results.append({"success": 1, "label": "Account creation"})
 
-    time.sleep(2)
+    time.sleep(1)
     browser.close()
 
     return results
