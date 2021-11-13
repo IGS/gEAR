@@ -41,7 +41,7 @@ def main():
     browser.get(config['test']['host'])
 
     user_box = browser.find_element(By.ID, 'user_email')
-    pass_box = browser.find_element(By.ID, 'user_pass')
+    pass_box = browser.find_element(By.ID, 'password')
     submit_box = browser.find_element(By.ID, 'btn_sign_in')
     user_logged_in = browser.find_element(By.ID, 'user_logged_in')
 
@@ -69,7 +69,7 @@ def main():
         results.append({"success": 0, "label": "Incorrect password validation"})
 
     pass_box.clear()
-    pass_box.send_keys(config['test']['user_pass'])
+    pass_box.send_keys(config['test']['password'])
     time.sleep(1)
 
     # have to reconnect to the submit box since it was pulled from the DOM
