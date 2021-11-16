@@ -14,7 +14,6 @@ Future things to test
 
 - Validate that navigation to the account creation page was successful
 - Test error handling if passwords don't match
-- Test error handling if email already exists
 
 """
 
@@ -55,6 +54,7 @@ def main():
 
     submit_box = browser.find_element(By.ID, 'btn_account_creation_submit')
     submit_box.click()
+    time.sleep(1)
 
     email_warning =  browser.find_element(By.ID, 'email_invalid')
 
@@ -67,13 +67,18 @@ def main():
     email_box.send_keys(config['test']['user_email'])
 
     submit_box.click()
+    time.sleep(1)
 
+    already_exists_warning = browser.find_element(By.ID, 'email_already_exists')
+    
     if email_warning.is_displayed():
-        results.append({"success": 0, "label": "Account creation"})
+        results.append({"success": 0, "label": "Account creation (E-mail invalid)"})
+    elif already_exists_warning.is_displayed():
+        results.append({"success": 0, "label": "Account creation (Account already exists)"})
     else:
         results.append({"success": 1, "label": "Account creation"})
 
-    time.sleep(2)
+    time.sleep(1)
     browser.close()
 
     return results

@@ -40,10 +40,10 @@ window.onload=function() {
                     $('#loggedin_controls').show();
                     // https://github.com/js-cookie/js-cookie
                     Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
-                }
 
-                // now redirect to the home page
-                window.location.href = "./index.html";
+                    // now redirect to the home page
+                    window.location.href = "./index.html";
+                }
             },
             error: function (jqXHR, textStatus, errorThrown) {
       			$('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +

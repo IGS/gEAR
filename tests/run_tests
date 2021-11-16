@@ -27,9 +27,9 @@ for entry in cnf["tests"]:
     for test in results:
         if test['success']:
             success_count += 1
-            print("\t{0} result: Success".format(test['label']))
+            print("\t{0}: Success".format(test['label']))
         else:
             failure_count += 1
-            print("\t{0} result: Failure".format(test['label']))
+            print("\t{0}: Failure".format(test['label']))
 
 print("\n\nFinal test results:\n\tTests passed: {0}\n\tTests failed: {1}\n".format(success_count, failure_count))
