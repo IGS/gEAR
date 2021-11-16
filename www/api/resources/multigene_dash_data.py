@@ -89,7 +89,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
     cluster="all"
     col_dist = distance_metric
     row_dist = distance_metric
-    if cluster_cols:
+    if not cluster_cols:
         cluster = "col" if flip_axes else "row"
         if flip_axes:
             row_dist = None
