@@ -59,7 +59,6 @@ DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic
 ALPHABET_COLORS = px.colors.qualitative.Alphabet
 LIGHT24_COLORS = px.colors.qualitative.Light24
 VIVID_COLORS = px.colors.qualitative.Vivid
-PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 ### Dotplot fxns
 
@@ -140,11 +139,6 @@ def create_dot_plot(df):
 
     create_dot_legend(fig, legend_col)
 
-    fig.update_layout(
-        template="simple_white"    # change background to pure white
-        #, title_font_size=4
-    )
-
     return fig
 
 ### Heatmap fxns
@@ -175,7 +169,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
     cluster="all"
     col_dist = distance_metric
     row_dist = distance_metric
-    if cluster_cols:
+    if not cluster_cols:
         cluster = "col" if flip_axes else "row"
         if flip_axes:
             row_dist = None
@@ -347,7 +341,6 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
     fig.update_yaxes(title="{} vs {} log2FC".format(compare2_val, control_val))
     fig.update_layout(
         legend_title_text="log2 foldchange and number of genes in group"
-        , template="simple_white"    # change background to pure white
         )
     return fig
 
@@ -550,7 +543,7 @@ def create_volcano_plot(df, query, ref, use_adj_pvals=False):
 
     )
 
-def modify_volcano_plot(fig):
+def modify_volcano_plot(fig, query, ref):
     """Adjust figure data to show up- and down-regulated data differently.  Edits figure in-place."""
     new_data = []
     sig_data = []
@@ -571,7 +564,7 @@ def modify_volcano_plot(fig):
     for data in sig_data:
         if data["name"] and data["name"] == "Point(s) of interest":
             downregulated = {
-                "name": "Upregulated in Ref"
+                "name": "Upregulated in {}".format(ref)
                 , "text":[]
                 , "x":[]
                 , "y":[]
@@ -579,7 +572,7 @@ def modify_volcano_plot(fig):
             }
 
             upregulated = {
-                "name": "Upregulated in Query"
+                "name": "Upregulated in {}".format(query)
                 , "text":[]
                 , "x":[]
                 , "y":[]
@@ -621,7 +614,6 @@ def modify_volcano_plot(fig):
             ,"xref":"paper"
             ,"y":0.9
         }
-        , template="simple_white"    # change background to pure white
     )
 
 def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest", is_log10=False):
@@ -921,7 +913,7 @@ class MultigeneDashData(Resource):
                 , ref_val
                 , use_adj_pvals
                 )
-            modify_volcano_plot(fig)
+            modify_volcano_plot(fig, query_val, ref_val)
             if gene_symbols:
                 add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
 
@@ -1033,6 +1025,11 @@ class MultigeneDashData(Resource):
         # If figure is actualy a JSON error message, send that instead
         if "success" in fig and fig["success"] == -1:
             return fig
+
+        # change background to pure white
+        fig.update_layout(
+            template="simple_white"
+        )
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
