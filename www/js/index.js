@@ -166,6 +166,8 @@ window.onload=function() {
 
         } else if ($(this).data('tool-name') == 'workbench') {
             window.location.replace('./analyze_dataset.html');
+        } else if ($(this).data('tool-name') == 'mg_curator') {
+            window.location.replace('./multigene_curator.html');
         }
     });
 
