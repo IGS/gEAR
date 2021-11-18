@@ -158,30 +158,38 @@
         <fieldset id="heatmap_options_container" style="display:none;">
           <div class="form-group">
             <label for="distance_select">Pairwise distance metric</label>
-            <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
-              <!--<option value="braycurtis">Bray-Curtis</option>-->
-              <option value="euclidean" selected="selected">Euclidean</option>
-              <option value="cityblock">Manhattan (Cityblock)</option>
-              <option value="minkowski">Minkowski</option>
-            </select>
+            <div class="form-row">
+              <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
+                <!--<option value="braycurtis">Bray-Curtis</option>-->
+                <option value="euclidean" selected="selected">Euclidean</option>
+                <option value="cityblock">Manhattan (Cityblock)</option>
+                <option value="minkowski">Minkowski</option>
+              </select>
+            </div>
             <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
           </div>
         </fieldset>
         <fieldset id="quadrant_options_container" style="display:none;">
           <div class="form-group">
             <label for="quadrant_compare1_condition">Comparison condition 1</label>
-            <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
-            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first compare condition to compare to the reference condition.</small>
+            <div class="form-row">
+              <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
+            </div>
+            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_compare2_condition">Comparison condition 2</label>
-            <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
-            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second compare condition to compare to the reference condition.</small>
+            <div class="form-row">
+              <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
+            </div>
+            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_ref_condition">Reference condition</label>
-            <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
-            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the comparison conditions.</small>
+            <div class="form-row">
+              <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
+            </div>
+            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
@@ -194,15 +202,20 @@
             <small id="quadrant_fdr_help" class="form-text text-muted">Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.</small>
           </div>
         </fieldset>
+
         <fieldset id="volcano_options_container" style="display:none;">
           <div class="form-group">
             <label for="volcano_query_condition">Query condition</label>
-            <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
+            <div class="form-row">
+              <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
+            </div>
             <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
           </div>
           <div class="form-group">
             <label for="volcano_ref_condition">Reference condition</label>
-            <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
+            <div class="form-row">
+              <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
+            </div>
             <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same observation as query condition.</small>
           </div>
         </fieldset>
@@ -233,49 +246,48 @@
                 </label>
               </div>
             </div>
-            <div class="form-group row" id="flip_axes_checkbox_container">
-              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Click checkbox if you wish to have genes as columns and observations as rows.">
-                <i class="fa fa-question-circle" aria-hidden="true"></i>
-              </span>
-              <div class="col-9 form-check">
+            <div class="form-group" id="flip_axes_checkbox_container">
+              <div class="form-check" aria-describedby="flip_axes_help">
                 <input class="form-check-input" type="checkbox" value="" id="flip_axes">
                 <label class="form-check-label" for="flip_axes">
                   Flip genes and observations axes
                 </label>
               </div>
+              <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
             </div>
-            <div class="form-group row" id="adjusted_pvals_checkbox_container">
-              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Check to use adjusted p-values instead of raw ones">
-                <i class="fa fa-question-circle" aria-hidden="true"></i>
-              </span>
-              <div class="col-9 form-check">
-                <input class="form-check-input" type="checkbox" value="" id="adj_pvals">
+            <div class="form-group" id="adjusted_pvals_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
                 <label class="form-check-label" for="adj_pvals">
                   Use adjusted p-values (q-values) instead of raw p-values
                 </label>
               </div>
             </div>
-            <div class="form-group row" id="annot_nonsig_checkbox_container">
-              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Check to include annotations of all nonsignificant gene symbols from the input set">
-                <i class="fa fa-question-circle" aria-hidden="true"></i>
-              </span>
-              <div class="col-9 form-check">
+            <div class="form-group" id="annot_nonsig_checkbox_container">
+              <div class="form-check">
                 <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
                 <label class="form-check-label" for="annot_nonsig">
                   Annotate nonsignificant genes.
                 </label>
               </div>
             </div>
-            <div class="form-group row" id="include_zero_foldchange_container">
-              <span class="col-1 offset-2" data-toggle="tooltip" data-placement="top" title="Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.">
-                <i class="fa fa-question-circle" aria-hidden="true"></i>
-              </span>
-              <div class="col-9 form-check">
+            <div class="form-group" id="include_zero_foldchange_container">
+              <div class="form-check" aria-describedby="include_zero_help">
                 <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
                 <label class="form-check-label" for="include_zero_foldchange">
                   Include genes where the query and ref expression is equal
                 </label>
               </div>
+              <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
+            </div>
+            <div class="form-group" id="stack_violins_container">
+              <div class="form-check" aria-describedby="stack_violins_help">
+                <input class="form-check-input" type="checkbox" checked value="" id="stack_violins">
+                <label class="form-check-label" for="stack_violins">
+                  Create stacked violin plot
+                </label>
+              </div>
+              <small id="stack_violins_help" class="form-text text-muted">Each cluster is its own violin plot</small>
             </div>
           </div>
         </fieldset>
@@ -423,11 +435,13 @@
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">
       <label for="gene_dropdown">Gene symbols</label>
-      <select id="gene_dropdown" class="form-control" multiple="multiple">
-        {{for genes}}
-        <option value="{{:#data}}">{{:#data}}</option>
-        {{/for}}
-      </select>
+      <div class="form-row">
+        <select id="gene_dropdown" class="form-control" multiple="multiple">
+          {{for genes}}
+          <option value="{{:#data}}">{{:#data}}</option>
+          {{/for}}
+        </select>
+      </div>
     </script>
 
     <script id="obs_groupby_tmpl" type="text/x-jsrender">

@@ -31,7 +31,7 @@ const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 const dotplotOptsIds = ["#obs_groupby_container"];
 const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
-const violinOptsIds = ["#obs_groupby_container"];
+const violinOptsIds = ["#obs_groupby_container", "stack_violins"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
 // Async to ensure data is fetched before proceeding.
@@ -42,13 +42,6 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#ad
 
   // Load gene carts and datasets before the dropdown appears
   await reloadTrees ();
-
-  // Initialize tooltips
-  $(() => {
-    $('[data-toggle="tooltip"]').tooltip({
-      trigger: "hover"
-    });
-  });
 
   // Initialize plot types
    $('#plot_type_select').select2({
@@ -618,13 +611,6 @@ $('#dataset').change(async function () {
   // Get categorical observations for this dataset
   obsLevels = curateObservations(data.obs_levels);
 
-  // Ensure genes dropdown tooltip shows
-  $(() => {
-    $('[data-toggle="tooltip"]').tooltip({
-      trigger: "hover"
-    });
-  });
-
   $('#create_plot').show();
   $('#reset_opts').show();
 
@@ -987,12 +973,6 @@ $(document).on('click', '#reset_opts', async function () {
 
   $('.all').click();  // Include all groups for every category (filter nothing)
 
-  // Ensure observation options tooltips show
-  $(() => {
-    $('[data-toggle="tooltip"]').tooltip({
-      trigger: "hover"
-    });
-  });
   $('#options_spinner').hide();
 });
 
