@@ -332,7 +332,7 @@ function handle_login_ui_updates() {
             load_preliminary_data();
             $('div#login_checking').hide();
             $("#controls_profile_c").remove();
-        } else if (document.URL.includes("gene_cart_manager.html")
+        } else if (document.URL.includes("gene_cart_manager.html")) {
             $('div#login_checking').hide();
         }
 
