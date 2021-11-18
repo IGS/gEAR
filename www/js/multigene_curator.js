@@ -31,7 +31,7 @@ const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 const dotplotOptsIds = ["#obs_groupby_container"];
 const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
-const violinOptsIds = ["#obs_groupby_container", "stack_violins"];
+const violinOptsIds = ["#obs_groupby_container", "#stack_violins_container"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
 // Async to ensure data is fetched before proceeding.
@@ -762,6 +762,20 @@ $('#plot_type_select').change(() => {
       });
       $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
     }
+});
+
+
+$('#gene_dropdown').change(function () {
+  const genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+
+  // Cannot cluster columns with just one gene (because function is only available
+  // in dash.clustergram which requires 2 or more genes in plot)
+  if (genesFilters.length > 1) {
+    $("#cluster_cols").prop("disabled", false);
+  } else {
+    $("#cluster_cols").prop("disabled", true);
+    $("#cluster_cols").prop("checked", false);
+  }
 });
 
 $(document).on('click', '#create_plot', async function () {
