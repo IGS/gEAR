@@ -51,7 +51,7 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#ad
   });
 
   // Initialize plot types
-  $('#plot_type_select').select2({
+   $('#plot_type_select').select2({
     placeholder: 'Choose how to plot',
     width: '25%'
   });
@@ -746,28 +746,36 @@ $('#plot_type_select').change(() => {
       dotplotOptsIds.forEach(id => {
         $(id).show();
       })
+      $("#gene_selection_help").text("Choose the genes to include in plot.");
+      $("#group_by_help").text("Determine category to group by before plotting.");
       break;
     case 'heatmap':
       heatmapOptsIds.forEach(id => {
         $(id).show();
       });
+      $("#gene_selection_help").text("Choose the genes to include in plot.");
+      $("#group_by_help").text("Optional. Display the mean expression for each group in this category instead of the raw expression for all individual observations");
       break;
     case 'mg_violin':
       violinOptsIds.forEach(id => {
         $(id).show();
       });
+      $("#gene_selection_help").text("Choose the genes to include in plot.");
+      $("#group_by_help").text("Determine category to group by before plotting.");
       break;
-      case 'quadrant':
-        quadrantOptsIds.forEach(id => {
-          $(id).show();
-        })
-        break;
+    case 'quadrant':
+      quadrantOptsIds.forEach(id => {
+        $(id).show();
+      })
+      $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
+      break;
     default:
       // volcano
       volcanoOptsIds.forEach(id => {
         $(id).show();
       });
-  }
+      $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
+    }
 });
 
 $(document).on('click', '#create_plot', async function () {
@@ -776,6 +784,10 @@ $(document).on('click', '#create_plot', async function () {
     supplementaryGenesFilters = [];
     $(`#dataset_${datasetId}_supplementary`).remove();
   }
+
+  // Reset plot errors and warnings for both plots
+  $('.js-plot-error').empty().hide();
+  $('.js-plot-warning').empty().hide();
 
   plotConfig = {};
 
