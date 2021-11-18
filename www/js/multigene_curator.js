@@ -765,7 +765,7 @@ $('#plot_type_select').change(() => {
 });
 
 
-$('#gene_dropdown').change(function () {
+$(document).on('change', '#gene_dropdown', () => {
   const genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
 
   // Cannot cluster columns with just one gene (because function is only available
@@ -778,7 +778,7 @@ $('#gene_dropdown').change(function () {
   }
 });
 
-$(document).on('click', '#create_plot', async function () {
+$(document).on('click', '#create_plot', async () => {
   // Remove supplementary plot and reset its genes filter
   if (supplementaryGenesFilters.length) {
     supplementaryGenesFilters = [];
