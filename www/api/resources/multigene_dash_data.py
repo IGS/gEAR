@@ -439,9 +439,13 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
     # Create series of gene symbols by reverse-lookup of dict created for violin plot
     df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
 
-    groupby_groups = df[groupby_filter].unique().tolist()   # WRONG ORDER
     grouped = df.groupby([groupby_filter, "gene_symbol"])
-    names_in_legend = {}
+    # Add all groupby_filter groups to a list to preserve order
+    groupby_groups = []
+    for group in grouped.groups.keys():
+        if group[0] not in groupby_groups:
+            groupby_groups.append(group[0])
+
     color_cycler = cycle(VIVID_COLORS)
     color_map = {cat: next(color_cycler) for cat in groupby_groups}
 
@@ -467,15 +471,10 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
             , scalegroup="_".join(name) # Name will be a tuple
             , showlegend=False
             , fillcolor=color_map[name[0]]
-            , line=dict(color=color_map[name[0]])
+            , line=dict(color="slategrey")
             , points=False
             , box=dict(
-                visible=True
-                , fillcolor='slategrey'
-                , line=dict(width=0)
-                )
-            , meanline=dict(
-                color="white"
+                visible=False
                 )
             , spanmode="hard"   # Do not extend violin tails beyond the min/max values
             , row=row_idx
@@ -488,7 +487,17 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
             , col=1
         )
 
+    # Color the annotations with the fill color
+    fig.for_each_annotation(lambda a: a.update(font=dict(color=color_map[a.text])))
+
     # Row title annotations are on the right currently.  Reposition them to the left side
+    fig.update_annotations(
+        patch=dict(
+            textangle=0
+            , x=-0
+            , xanchor="right"
+        )
+    )
 
     return fig
 
