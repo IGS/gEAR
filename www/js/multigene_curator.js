@@ -191,6 +191,9 @@ function drawChart (data, datasetId, supplementary = false) {
   } else if (['quadrant', 'volcano'].includes($('#plot_type_select').select2('data')[0].id)) {
     layoutMods.height = 800;
     layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
+  } else if ($('#plot_type_select').select2('data')[0].id === "mg_violin" && $("#stacked_violin").is(":checked")){
+    layoutMods.height = 800;
+    layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
   }
 
   // Overwrite plot layout and config values with custom ones from display
@@ -439,6 +442,7 @@ function loadDisplayConfigHtml (plotConfig) {
       break;
     case 'mg_violin':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      $('#stacked_violin').prop('checked', plotConfig.stacked_violin);
       break;
     case 'quadrant':
       $('#include_zero_foldchange').prop('checked', plotConfig.include_zero_fc);
@@ -607,6 +611,11 @@ $('#dataset').change(async function () {
   $('#gene_container').show();
   createGeneDropdown(geneSymbols);
   $('#genes_not_found').hide();
+
+  // Cannot cluster columns with just one gene (because function is only available
+  // in dash.clustergram which requires 2 or more genes in plot)
+  // Adding a gene will trigger a change to enable the property
+  $("#cluster_cols").prop("disabled", true);
 
   // Get categorical observations for this dataset
   obsLevels = curateObservations(data.obs_levels);
@@ -846,6 +855,7 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for violin plots.");
         return;
       }
+      plotConfig.stacked_violin = $('#stacked_violin').is(':checked');
       break;
     case 'quadrant':
       plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');

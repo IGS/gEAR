@@ -431,18 +431,79 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
+def create_stacked_violin_plot(df, gene_map, groupby_filter):
+    """Create a stacked violin plot.  Returns the figure."""
+
+    # Melt the datafram to make it easier to retrieve the contents for each axis
+    df = df.melt(id_vars=[groupby_filter])
+    # Create series of gene symbols by reverse-lookup of dict created for violin plot
+    df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+
+    groupby_groups = df[groupby_filter].unique().tolist()   # WRONG ORDER
+    grouped = df.groupby([groupby_filter, "gene_symbol"])
+    names_in_legend = {}
+    color_cycler = cycle(VIVID_COLORS)
+    color_map = {cat: next(color_cycler) for cat in groupby_groups}
+
+    # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
+    facet_row_indexes = {group: idx for idx, group in enumerate(groupby_groups, start=1)}
+
+    fig = make_subplots(
+        rows=len(groupby_groups)
+        , cols=1
+        , row_titles=groupby_groups
+        , shared_xaxes=True
+        , shared_yaxes="all"    # to keep the scale the same
+        )
+
+    # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
+    # Group is the 'groupby' dataframe
+    for name, group in grouped:
+        row_idx = facet_row_indexes[name[0]]
+
+        fig.add_violin(
+            x=group["gene_symbol"]
+            , y=group["value"]
+            , scalegroup="_".join(name) # Name will be a tuple
+            , showlegend=False
+            , fillcolor=color_map[name[0]]
+            , line=dict(color=color_map[name[0]])
+            , points=False
+            , box=dict(
+                visible=True
+                , fillcolor='slategrey'
+                , line=dict(width=0)
+                )
+            , meanline=dict(
+                color="white"
+                )
+            , spanmode="hard"   # Do not extend violin tails beyond the min/max values
+            , row=row_idx
+            , col=1
+        )
+
+        fig.update_yaxes(
+            side="right"
+            , row=row_idx
+            , col=1
+        )
+
+    # Row title annotations are on the right currently.  Reposition them to the left side
+
+    return fig
+
 def create_violin_plot(df, gene_map, groupby_filter):
     """Creates a violin plot.  Returns the figure."""
-    fig = go.Figure()
     grouped = df.groupby([groupby_filter])
     names_in_legend = {}
     color_cycler = cycle(VIVID_COLORS)
     offsetgroup = 0
 
+    fig = go.Figure()
+
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
     for gene in gene_map:
-        showlegend = True
         fillcolor = next(color_cycler)
         for name, group in grouped:
             # If facets are present, a legend group trace can appear multiple times.
@@ -455,9 +516,8 @@ def create_violin_plot(df, gene_map, groupby_filter):
                 x=group[groupby_filter]
                 , y=group[gene_map[gene]]
                 , name=gene
-                , legendgroup=gene
                 , scalegroup="{}_{}".format(gene, name)
-                , showlegend=showlegend
+                , showlegend=False
                 , fillcolor=fillcolor
                 , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
                 , line=dict(color=fillcolor)
@@ -821,6 +881,8 @@ class MultigeneDashData(Resource):
         de_test_algo = req.get("de_test_algo", "t-test")
         use_adj_pvals = req.get('adj_pvals', False)
         annotate_nonsignificant = req.get('annotate_nonsignificant', True)
+        # Violin plot options
+        stacked_violin = req.get('stacked_violin', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
@@ -1012,10 +1074,16 @@ class MultigeneDashData(Resource):
             for gene in gene_symbols:
                 gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
 
-            fig = create_violin_plot(df
-                , gene_map
-                , groupby_filter
-                )
+            if stacked_violin:
+                fig = create_stacked_violin_plot(df
+                    , gene_map
+                    , groupby_filter
+                    )
+            else:
+                fig = create_violin_plot(df
+                    , gene_map
+                    , groupby_filter
+                    )
         else:
             return {
                 'success': -1,
