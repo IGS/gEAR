@@ -13,6 +13,7 @@ var SELECTED_GENE = null;
 
 var share_id = null; //from permalink - dataset share ID
 var layout_id = null; //from permalink - profile grid layout ID
+let gene_cart_id = null; //from permalink - gene cart share ID
 var permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
 var multigene = false;  // Is this a multigene search?
 var multigene_toggled = false;  // If true, then layouts will be reloaded, toggle between single-gene and multigene views
@@ -30,7 +31,9 @@ var search_result_postselection_functions = [];
 window.onload=function() {
     // check if the user is already logged in
     check_for_login();
-    load_gene_carts(getUrlParameter('gene_cart_share_id'));
+
+    gene_cart_share_id = getUrlParameter('gene_cart_share_id');
+    load_gene_carts(gene_cart_share_id);
 
     // Was a permalink found?
     share_id = getUrlParameter('share_id');
@@ -472,9 +475,17 @@ function load_gene_carts(cart_share_id) {
         success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
             let user_gene_carts = [];
 
+            let permalink_cart_id = null
+            let permalink_cart_label = null
+
             if (data['gene_carts'].length > 0) {
                 //User has some profiles
                 $.each(data['gene_carts'], function(i, item){
+                    // If gene cart permalink was passed in, retrieve gene_cart_id for future use.
+                    if (cart_share_id && item['share_id'] == cart_share_id) {
+                        permalink_cart_id = item['id'];
+                        permalink_cart_label = item['label'];
+                    }
                     user_gene_carts.push({value: item['id'], text: item['label'] });
                 });
 
@@ -486,8 +497,24 @@ function load_gene_carts(cart_share_id) {
                 $("#selected_gene_cart_c").hide();
             }
 
-            //Serves as source for #selected_gene_cart editable
-            $('#selected_gene_cart').val(cart_share_id);
+            // If gene_cart_permalink was provided:
+            // 1) Set the value in the gene cart tree and gene search bar
+            // 2) Trigger change event to populate the gene search bar with the genes
+            // 3) Click the "search" button on the front page (happens via another process that actually calls load_frames)
+            // 4) show sidebar stuff in the display panel
+            if (permalink_cart_id) {
+                $("#selected_gene_cart").text(permalink_cart_label);
+                $("#selected_gene_cart").val(permalink_cart_id);
+                $("#selected_gene_cart").trigger('change');
+
+                //hide site_into and display the permalink message
+                $('#intro_content').hide();
+                $('#viewport_intro').children().hide();
+                $('#searching_indicator_c').hide();
+
+                $('#leftbar_main').show();
+                $('#permalink_intro_c').show();
+            }
 
             d.resolve();
         },
@@ -568,7 +595,7 @@ function reload_trees(){
 
     // Update genecart tree with data for current user
     gene_cart_tree.generateTreeData();
-    gene_cart_tree.updateTreeData();
+    gene_cart_tree.updateTreeData();    // Believe just generateTree() would suffice for both of these lines
 
     // Update profile trees with data for current user
     profile_tree.generateTreeData();
@@ -768,7 +795,6 @@ $("#gene_search_form").submit(function( event ) {
         success: function(data, textStatus, jqXHR) {
         	// reset search_results
         	search_results = data;
-
             populate_search_result_list(data);
             $('#searching_indicator_c').hide();
             $('#intro_content').hide('fade', {}, 400, function() {
@@ -895,7 +921,7 @@ $(document).on('click', '#gene_details_header, #gene_collapse_btn', function() {
 });
 
 // When a gene cart is selected, populate the gene search bar with its members
-$('#selected_gene_cart').change(function() {
+$('#selected_gene_cart').change( function() {
     let geneCartId = $(this).val();
     const params = { session_id: session_id, gene_cart_id: geneCartId };
     const d = new $.Deferred(); // Causes editable to wait until results are returned
@@ -917,6 +943,7 @@ $('#selected_gene_cart').change(function() {
                 const dedup_gene_symbols_array = [...new Set(gene_symbols_array)]
 
                 gene_symbols = dedup_gene_symbols_array.join(' ')
+                $('#search_gene_symbol_intro').val(gene_symbols);
                 $('#search_gene_symbol').val(gene_symbols);
                 // determine if searching for exact matches
                 if ( $('#exact_match_input').prop("checked") == false ) {
