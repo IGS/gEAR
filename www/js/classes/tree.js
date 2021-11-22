@@ -118,7 +118,7 @@ class GeneCartTree extends Tree {
                         'icon': 'fa fa-folder-o'
                     },
                     'gene': {
-                        'icon': 'fa fa-random',
+                        'icon': 'fa fa-shopping-cart',
                         'valid_children':[]
                     }
                 }
