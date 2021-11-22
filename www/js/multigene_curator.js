@@ -29,9 +29,9 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
 const dotplotOptsIds = ["#obs_groupby_container"];
-const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_groupby_container"];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
-const violinOptsIds = ["#obs_groupby_container", "#stack_violins_container"];
+const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
 // Async to ensure data is fetched before proceeding.
@@ -190,10 +190,9 @@ function drawChart (data, datasetId, supplementary = false) {
     }
   } else if (['quadrant', 'volcano'].includes($('#plot_type_select').select2('data')[0].id)) {
     layoutMods.height = 800;
-    layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
+    //layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
   } else if ($('#plot_type_select').select2('data')[0].id === "mg_violin" && $("#stacked_violin").is(":checked")){
     layoutMods.height = 800;
-    layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
   }
 
   // Overwrite plot layout and config values with custom ones from display
@@ -266,7 +265,6 @@ async function reloadTrees(){
 
 // Render the gene-selection dropdown menu
 function createGeneDropdown (genes) {
-  $('#gene_spinner').show();
   const tmpl = $.templates('#gene_dropdown_tmpl');
   const data = { genes };
   const html = tmpl.render(data);
@@ -443,6 +441,7 @@ function loadDisplayConfigHtml (plotConfig) {
     case 'mg_violin':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       $('#stacked_violin').prop('checked', plotConfig.stacked_violin);
+      $('#violin_add_points').prop('checked', plotConfig.violin_add_points);
       break;
     case 'quadrant':
       $('#include_zero_foldchange').prop('checked', plotConfig.include_zero_fc);
@@ -600,6 +599,10 @@ $('#dataset').change(async function () {
   $('#plot_type_container').show();
   $('#advanced_options_container').show();
 
+  $('#gene_container').show();
+  $('#gene_spinner').show();
+  $('#genes_not_found').hide();
+
   // Create promises to get genes and observations for this dataset
   const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
   const h5adPromise =  fetchH5adInfo({ datasetId, undefined });
@@ -608,9 +611,7 @@ $('#dataset').change(async function () {
   geneSymbols = await geneSymbolsPromise;
   const data = await h5adPromise;
 
-  $('#gene_container').show();
-  createGeneDropdown(geneSymbols);
-  $('#genes_not_found').hide();
+  createGeneDropdown(geneSymbols);  // gene_spinner hidden here
 
   // Cannot cluster columns with just one gene (because function is only available
   // in dash.clustergram which requires 2 or more genes in plot)
@@ -629,6 +630,39 @@ $('#dataset').change(async function () {
     $('#reset_opts').click();
   }
 
+  // Load an initial plot (just to populate the plot space)
+  if (defaultDisplayId) {
+    // Easiest way to do this.  Also populates the conditions
+    $(`#${defaultDisplayId}_load`).click();
+  } else {
+    // Use the first field in our categorical observations for the volcano
+    // but "cluster" takes precedence
+    let field = Object.keys(obsLevels)[0];
+    if ("cluster" in obsLevels) {
+       field = "cluster";
+    }
+    // Cannot make volcano if this field does not have two conditions
+    // Instead of trying to find ways to make the plot, just cut our losses
+    if (obsLevels[field].length < 2) {
+      return;
+    }
+    const loadPlotConfig = {
+      plot_type: 'volcano'
+      , obs_filters: obsLevels // Just keep everything
+      , query_condition: obsLevels[field][0]
+      , ref_condition: obsLevels[field][1]
+      , use_adj_pvals: true
+    };
+
+    // Draw the updated chart
+    $('#dataset_spinner').show();
+    await draw(datasetId, loadPlotConfig);
+    $('#dataset_spinner').hide();
+
+    // Show plot options and disable selected genes button (since genes are not selected anymore)
+    $('#post_plot_options').show();
+    $("#selected_genes_btn").prop("disabled", true);
+  }
 });
 
 $("#save_gene_cart").on("click", () => {
@@ -856,6 +890,7 @@ $(document).on('click', '#create_plot', async () => {
         return;
       }
       plotConfig.stacked_violin = $('#stacked_violin').is(':checked');
+      plotConfig.violin_add_points = $('#violin_add_points').is(':checked');
       break;
     case 'quadrant':
       plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
@@ -1133,6 +1168,7 @@ $(document).on('click', '.js-load-display', async function () {
 
   // Show plot options
   $('#post_plot_options').show();
+  $("#selected_genes_btn").prop("disabled", true);
 
 });
 

@@ -888,10 +888,11 @@ class MultigeneDashData(Resource):
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
         de_test_algo = req.get("de_test_algo", "t-test")
-        use_adj_pvals = req.get('adj_pvals', False)
+        use_adj_pvals = req.get('adj_pvals', True)
         annotate_nonsignificant = req.get('annotate_nonsignificant', True)
         # Violin plot options
         stacked_violin = req.get('stacked_violin', False)
+        violin_add_points = req.get('violin_add_points', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
@@ -1093,6 +1094,15 @@ class MultigeneDashData(Resource):
                     , gene_map
                     , groupby_filter
                     )
+
+            # Add jitter-based args (to make beeswarm plot)
+            if violin_add_points:
+                fig.update_traces(
+                    jitter=0.25
+                    , points="all"
+                    , pointpos=0
+                    , marker=dict(color="#000000")
+                )
         else:
             return {
                 'success': -1,

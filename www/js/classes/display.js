@@ -620,6 +620,7 @@ class PlotlyDisplay extends Display {
             compare2_condition,
             ref_condition,
             stacked_violin,
+            violin_add_points,
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
@@ -639,6 +640,7 @@ class PlotlyDisplay extends Display {
         this.compare2_condition = compare2_condition;
         this.ref_condition = ref_condition;
         this.stacked_violin = stacked_violin;
+        this.violin_add_points = violin_add_points;
         this.analysis = analysis;
     }
     clear_display() {
@@ -675,7 +677,7 @@ class PlotlyDisplay extends Display {
             compare2_condition: this.compare2_condition,
             ref_condition: this.ref_condition,
             stacked_violin: this.stacked_violin,
-
+            violin_add_points: this.violin_add_points,
         });
     }
     /**
