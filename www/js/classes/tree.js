@@ -83,7 +83,7 @@ class GeneCartTree extends Tree {
                 'id': item.value,
                 'parent': 'domain_node',  // All carts private for now
                 'text':item.text,
-                'type': 'gene',
+                'type': 'genecart',
                 'a_attr': {
                     'class': "py-0",
                 }
@@ -95,7 +95,7 @@ class GeneCartTree extends Tree {
                 'id': item.value,
                 'parent': 'user_node',
                 'text':item.text,
-                'type': 'gene',
+                'type': 'genecart',
                 'a_attr': {
                     'class': "py-0",
                 }
@@ -132,7 +132,7 @@ class GeneCartTree extends Tree {
                     'default': {
                         'icon': 'fa fa-folder-o'
                     },
-                    'gene': {
+                    'genecart': {
                         'icon': 'fa fa-shopping-cart',
                         'valid_children':[]
                     }
