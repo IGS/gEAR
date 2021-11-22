@@ -499,6 +499,12 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
         )
     )
 
+    # Thin out the gap between violins. Default is 0.3 for both values.
+    fig.update_layout(
+        violingap=0.15
+        ,violingroupgap=0
+    )
+
     return fig
 
 def create_violin_plot(df, gene_map, groupby_filter):
@@ -529,12 +535,10 @@ def create_violin_plot(df, gene_map, groupby_filter):
                 , showlegend=False
                 , fillcolor=fillcolor
                 , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
-                , line=dict(color=fillcolor)
+                , line=dict(color="slategrey")
                 , points=False
                 , box=dict(
-                    visible=True
-                    , fillcolor='slategrey'
-                    , line=dict(width=0)
+                    visible=False
                     )
                 , meanline=dict(
                     color="white"
