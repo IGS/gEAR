@@ -683,6 +683,7 @@ $('#dataset').change(async function () {
       , ref_condition: `${field};-;${obsLevels[field][1]}`
       , use_adj_pvals: true
     };
+    plotConfig = loadPlotConfig;
 
     // Draw the updated chart
     $('#dataset_spinner').show();
