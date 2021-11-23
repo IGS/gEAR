@@ -34,6 +34,33 @@ const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#
 const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
+// color palettes
+const continuous_palettes = [
+  {
+    label: "Multi-color scales",
+    options: [
+      { value: "YlOrRd", text: "Yellow-Orange-Red" },
+      { value: "Viridis", text: "Viridis" },
+    ],
+  },
+  {
+    label: "Single-color scales",
+    options: [
+      { value: "Greys", text: "Greyscale" },
+      { value: "Blues", text: "Bluescale" },
+      { value: "Purp", text: "Purplescale" },
+    ],
+  },
+  {
+    label: "Diverging Colorscales",
+    options: [
+      { value: "RdBu", text: "Red-Blue" },
+      { value: "PiYG", text: "Pink-Yellow-Green" },
+    ],
+  },
+];
+const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
+
 // Async to ensure data is fetched before proceeding.
 // This self-invoking function loads the initial state of the page.
 (async () => {
@@ -635,6 +662,9 @@ $('#dataset').change(async function () {
     // Easiest way to do this.  Also populates the conditions
     $(`#${defaultDisplayId}_load`).click();
   } else {
+    if (! obsLevels) {
+      return;
+    }
     // Use the first field in our categorical observations for the volcano
     // but "cluster" takes precedence
     let field = Object.keys(obsLevels)[0];
