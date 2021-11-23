@@ -389,20 +389,19 @@
             </button>
           </div>
           <div class="modal-body">
-            <div class="form-row">
+            <div class="form-row form-group">
               <label class=" col-6" for="plot_download_height">Height (in px)</label>
               <input id="plot_download_height" type="number" min=1 step=1 class="form-control col-3" value=450 >
             </div>
-            <div class="form-row">
+            <div class="form-row form-group">
               <label class=" col-6" for="plot_download_width">Width (in px)</label>
               <input id="plot_download_width" type="number" min=1 step=1 class="form-control col-3" value=700>
             </div>
-            <div class="form-row">
+            <div class="form-row form-group">
               <label class=" col-6" for="plot_download_scale">Scale plot size</label>
               <input id="plot_download_scale" type="number" class="form-control col-3" value=1>
             </div>
           </div>
-          <br>
           <div class="modal-footer">
             <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
             <button type="button" class="btn btn-purple" id="download_plot">Download Image</button>
@@ -422,11 +421,9 @@
             </button>
           </div>
           <div class="modal-body">
-            <div class="form-row">
+            <div class="form-group">
+              <label for="gene_cart_name">New gene cart name</label>
               <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
-              <label class="form-check-label" for="gene_cart_name">
-                New gene cart name
-              </label>
             </div>
             <h3>Selected Genes:</h3>
             <ul id="selected_genes_list">
