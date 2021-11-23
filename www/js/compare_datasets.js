@@ -105,6 +105,17 @@ window.onload = function () {
   // initially disable the condition selectors
   $("#dataset1_conditions").attr("disabled", "disabled");
   $("#dataset2_conditions").attr("disabled", "disabled");
+
+  // Create observer to watch if user changes (ie. successful login does not refresh page)
+  // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+
+  // Select the node that will be observed for mutations
+  const target_node = document.getElementById('loggedin_controls');
+  // Create an observer instance linked to the callback function
+  const observer = new MutationObserver(populate_dataset_selection_controls);
+  // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
+  // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
+  observer.observe(target_node, { attributes: true });
 };
 
 function download_selected_genes() {

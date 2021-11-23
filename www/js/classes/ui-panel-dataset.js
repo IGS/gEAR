@@ -121,7 +121,9 @@ class DatasetPanel extends Dataset {
     data.primary_key = this.primary_key
 
     let display;
-    if (data.plot_type === 'heatmap' ||
+    if ( data.plot_type === 'dotplot' ||
+      data.plot_type === 'heatmap' ||
+      data.plot_type === 'quadrant' ||
       data.plot_type === 'mg_violin' ||
       data.plot_type === 'volcano'
     ) {
