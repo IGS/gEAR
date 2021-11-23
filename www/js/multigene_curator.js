@@ -686,6 +686,9 @@ $('#dataset').change(async function () {
 
     // Draw the updated chart
     $('#dataset_spinner').show();
+    const plotTemplate = $.templates('#dataset_plot_tmpl');
+    const plotHtml = plotTemplate.render({ dataset_id: datasetId });
+    $('#dataset_plot').html(plotHtml);
     await draw(datasetId, loadPlotConfig);
     $('#dataset_spinner').hide();
 
