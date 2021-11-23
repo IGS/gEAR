@@ -679,8 +679,8 @@ $('#dataset').change(async function () {
     const loadPlotConfig = {
       plot_type: 'volcano'
       , obs_filters: obsLevels // Just keep everything
-      , query_condition: obsLevels[field][0]
-      , ref_condition: obsLevels[field][1]
+      , query_condition: `${field};-;${obsLevels[field][0]}`
+      , ref_condition: `${field};-;${obsLevels[field][1]}`
       , use_adj_pvals: true
     };
 
