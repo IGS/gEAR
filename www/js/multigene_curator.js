@@ -689,6 +689,7 @@ $('#dataset').change(async function () {
     const plotTemplate = $.templates('#dataset_plot_tmpl');
     const plotHtml = plotTemplate.render({ dataset_id: datasetId });
     $('#dataset_plot').html(plotHtml);
+    //NOTE: Height will not change since select2 element is not updated
     await draw(datasetId, loadPlotConfig);
     $('#dataset_spinner').hide();
 
