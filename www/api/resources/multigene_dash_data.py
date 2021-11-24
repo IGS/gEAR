@@ -99,7 +99,7 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
 
-def create_dot_plot(df):
+def create_dot_plot(df, groupby_filter):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -117,7 +117,7 @@ def create_dot_plot(df):
     )
 
     fig.add_scatter(
-        x=df["cluster"]
+        x=df[groupby_filter]
         , y=df["gene_symbol"]
         , text = df["value", "count"]
         , hovertemplate="N: %{text}<br>" +
@@ -1134,7 +1134,7 @@ class MultigeneDashData(Resource):
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
                 .reset_index()
 
-            fig = create_dot_plot(df)
+            fig = create_dot_plot(df, groupby_filter)
 
         elif plot_type == "quadrant":
             try:

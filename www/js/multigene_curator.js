@@ -180,9 +180,9 @@ async function drawPreviewImage (display) {
   config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
 
   const { data } = await getData(datasetId, config);
-  const { plot_json: plotJson, plot_config: plotConfig } = data;
+  const { plot_json: plotlyJson, plot_config: plotlyConfig } = data;
   Plotly.toImage(
-    { ...plotJson, plotConfig },
+    { ...plotlyJson, plotlyConfig },
     { height: 500, width: 500 }
   ).then(url => {
     $(`#modal-display-img-${display.id}`).prop('src', url);
@@ -195,10 +195,10 @@ async function drawPreviewImage (display) {
 function drawChart (data, datasetId, supplementary = false) {
   const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
   const parentDiv = supplementary ? `dataset_${datasetId}_supplementary` : `dataset_${datasetId}`;
-  const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
+  const { plot_json: plotlyJson, plot_config: plotlyConfig, message, success } = data;
 
   // If there was an error in the plot, put alert up
-  if ( success < 1 || !plotJson.layout) {
+  if ( success < 1 || !plotlyJson.layout) {
     $(`#${parentDiv} .js-plot-error`).show();
     $(`#${parentDiv} .js-plot-error`).html(message);
     return;
@@ -224,7 +224,7 @@ function drawChart (data, datasetId, supplementary = false) {
 
   // Overwrite plot layout and config values with custom ones from display
   const layout = {
-    ...plotJson.layout,
+    ...plotlyJson.layout,
     ...layoutMods
   };
 
@@ -233,10 +233,10 @@ function drawChart (data, datasetId, supplementary = false) {
   };
 
   const config = {
-    ...plotConfig,
+    ...plotlyConfig,
     ...configMods
   };
-  Plotly.newPlot(targetDiv, plotJson.data, layout, config);
+  Plotly.newPlot(targetDiv, plotlyJson.data, layout, config);
 
   // Show any warnings from the API call
   if (message && success > 1) {
@@ -259,7 +259,6 @@ function drawChart (data, datasetId, supplementary = false) {
 
     data.points.forEach((pt) => {
       selectedGenes.push({
-        gene_id: pt.data.customdata[pt.pointNumber],
         gene_symbol: pt.data.text[pt.pointNumber],
       });
     });
@@ -679,13 +678,18 @@ $('#dataset').change(async function () {
     const loadPlotConfig = {
       plot_type: 'volcano'
       , obs_filters: obsLevels // Just keep everything
-      , query_condition: obsLevels[field][0]
-      , ref_condition: obsLevels[field][1]
+      , query_condition: `${field};-;${obsLevels[field][0]}`
+      , ref_condition: `${field};-;${obsLevels[field][1]}`
       , use_adj_pvals: true
     };
+    plotConfig = loadPlotConfig;
 
     // Draw the updated chart
     $('#dataset_spinner').show();
+    const plotTemplate = $.templates('#dataset_plot_tmpl');
+    const plotHtml = plotTemplate.render({ dataset_id: datasetId });
+    $('#dataset_plot').html(plotHtml);
+    //NOTE: Height will not change since select2 element is not updated
     await draw(datasetId, loadPlotConfig);
     $('#dataset_spinner').hide();
 
