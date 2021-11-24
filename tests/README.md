@@ -38,8 +38,6 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 
 ### Current and pending UI tests
 
-#### Main Page (index)
-
 #### Main Page - Display Panel mode
 
 #### Contact Us
@@ -63,6 +61,7 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 
 #### Multigene curator
 
+* Ensure plot is loaded when dataset is chosen (loaded from saved displays or default volcano plot)
 * Create a heatmap
   * Click some genes to bring up secondary violin plot
   * Cluster observations too
@@ -74,6 +73,7 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 * Load an existing plot
 * Save a plot
 * Save a new gene cart
+  * From volcano or quadrant
 
 #### Manual Documentation
 
@@ -86,7 +86,6 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 #### Gene Cart Explorer
 
 #### Epiviz Panel Designer
-
 
 ## Selenium cheat sheet ##
 
