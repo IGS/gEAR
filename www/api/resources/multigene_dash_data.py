@@ -143,6 +143,94 @@ def create_dot_plot(df):
 
 ### Heatmap fxns
 
+def add_clustergram_cluster_bars(fig, traces, filter_indexes, is_log10=False) -> None:
+    """Add column traces for each filtered group.  Edits figure in-place."""
+
+    # Append all traces but the genes dendrogram
+    new_data = []
+    for data in fig.data:
+        if not (data["name"] and "Row" in data["name"]):
+            new_data.append(data)
+    fig.data = new_data
+
+    # Clustergram "color_list" does not seem to work. Change dendrogram line color here.
+    for i in range(len(fig.data) - 1):
+        fig.data[i]["marker"]["color"] = "black"
+
+    # Delete dendrogram axis
+    fig.layout.pop("xaxis4", None)
+    fig.layout.pop("yaxis4", None)
+
+    # Adjust domain of heatmap, and col clusters
+    fig.layout["xaxis2"]["domain"] = [0, 0.95]
+    fig.layout["xaxis5"]["domain"] = [0, 0.95]
+    fig.layout["xaxis8"]["domain"] = [0, 0.95]
+
+    # Move heatmap colorbar to left of plot
+    fig.data[len(fig.data) - 1]["colorbar"]["x"] = -0.1
+    fig.data[len(fig.data) - 1]["colorbar"]["xanchor"] = "left"
+    fig.data[len(fig.data) - 1]["colorbar"].pop("xpad", None)
+    fig.data[len(fig.data) - 1]["colorbar"]["y"] = -0.05    # Align with bottom of heatmap
+    fig.data[len(fig.data) - 1]["colorbar"]["yanchor"] = "bottom"
+    fig.data[len(fig.data) - 1]["colorbar"]["title"]["text"] = "Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+    fig.data[len(fig.data) - 1]["colorbar"]["title"]["side"] = "right"
+
+
+    col_group_markers = build_column_group_markers(traces, filter_indexes)
+    groups_and_colors = set_obs_groups_and_colors(filter_indexes)
+
+    # Create a 2D-heatmap.  Convert the discrete groups into integers.
+    # One heatmap per observation category
+    col_group_labels = []
+
+    # This is derived from the heatmap axis in the figure
+    x=list(range(int(fig.layout["xaxis5"]["range"][0]+5), int(fig.layout["xaxis5"]["range"][1]+5), 10))
+
+    # Offset the obs group colorbar to the right of the heatmap
+    colorbar_x = 1.02
+
+    # Find top of original heatmap and put "groups" heatmap tracks above.  Makes a small space b/t the genes and groups tracks
+    mid_y = max(fig.layout["yaxis5"]["tickvals"]) + 12
+
+    for key, val in col_group_markers.items():
+        # TODO: col_group_markers is out of order.  Needs to be in the order of traces.column_id
+        z = [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
+
+        # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
+        colorscale= []
+        for i in range(len(groups_and_colors[key]["colors"])):
+            # Start of color thresholds
+            colorscale.append(( (i)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
+            # End of color thresholds
+            colorscale.append(( (i+1)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
+
+        trace = go.Heatmap(
+            x=x
+            , y=[mid_y-5, mid_y+5]
+            , z=z
+            , colorbar=dict(
+                ticktext=[group for group in groups_and_colors[key]["groups"]]
+                , tickmode="array"
+                , tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
+                , title=key
+                , x=colorbar_x
+                , y=-0.05   # Align with bottom of heatmap
+                , yanchor="bottom"
+                )
+            , colorscale=colorscale
+        )
+        col_group_labels.append(trace)
+
+        # Add group label to axis tuples
+        fig.layout["yaxis5"]["ticktext"] = fig.layout["yaxis5"]["ticktext"] + (key, )
+        fig.layout["yaxis5"]["tickvals"] = fig.layout["yaxis5"]["tickvals"] + (mid_y, )
+
+        colorbar_x += 0.1
+        mid_y += 12 # add enough gap to space the "group" tracks
+
+    for cgl in col_group_labels:
+        fig.append_trace(cgl, 2, 2)
+
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
@@ -741,6 +829,21 @@ def validate_volcano_conditions(query_condition, ref_condition):
 
 ### Misc fxns
 
+def build_column_group_markers(traces, filter_indexes):
+    """Build dictionaries of group annotations for the clustergram."""
+
+    col_group_markers = {}
+    trace_column_ids = list(traces["column_ids"])
+    # k = obs_category, elem = single observation, i = index position of elem in all observations
+    for k, v in filter_indexes.items():
+        col_group_markers.setdefault(k, [0 for i in trace_column_ids])
+        for elem in v:
+            # Filter indexes in order of clustering. Every index should map to a unique column ID
+            for i in v[elem]:
+                column_id = trace_column_ids.index(i)
+                col_group_markers[k][column_id] = {'group': elem}
+    return col_group_markers
+
 def create_dataframe_gene_mask(df, gene_symbols, plot_type):
     """Create a gene mask to filter a dataframe."""
     gene_filter = None
@@ -847,6 +950,21 @@ def order_by_time_point(obs_df):
             sorted_df.time_point.drop_duplicates(), ordered=True)
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
+
+def set_obs_groups_and_colors(filter_indexes):
+    """Create mapping of groups and colors per observation category."""
+    # TODO: Use observation colors if available instead of Dark24."""
+    PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
+
+    groups_and_colors = {}
+    palette_cycler = cycle(PALETTE_CYCLER)
+    for k, v in filter_indexes.items():
+        groups_and_colors.setdefault(k, {"groups":[], "colors":[]})
+        palette = next(palette_cycler)
+        color_cycler = cycle(palette)
+        groups_and_colors[k]["groups"] = [elem for elem in v]
+        groups_and_colors[k]["colors"] = [next(color_cycler) for elem in v]
+    return groups_and_colors
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -1118,9 +1236,11 @@ class MultigeneDashData(Resource):
             return fig
 
         # change background to pure white
-        fig.update_layout(
-            template="simple_white"
-        )
+        # Heatmap/Clustergram already does this, but this option adds extra ticks
+        if not plot_type == "heatmap":
+            fig.update_layout(
+                template="simple_white"
+            )
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
