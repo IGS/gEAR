@@ -27,10 +27,7 @@ from selenium.webdriver.support.select import Select
 
 import common.multigene_curator as mg
 
-TIMEOUT_PERIOD = 5
-DATASET_TITLE = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
-PLOT_TYPE_TEXT = "Volcano"
-GENECART_NAME = "sadkins_savetest"
+mg_test = mg.MGTest("Volcano")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -53,26 +50,29 @@ def main():
 
         # Check if logged in, and do so
         # Dataset selection
-        if mg.test_dataset_selection(browser, DATASET_TITLE, TIMEOUT_PERIOD):
+        if mg_test.test_dataset_selection(browser):
             results.append({"success": 1, "label": "Dataset selected from tree"})
         else:
             results.append({"success": 0, "label": "Dataset selected from tree"})
 
-        time.sleep(TIMEOUT_PERIOD)
+        time.sleep(mg_test.timeout)
 
         # Select plot type
-        if mg.test_plot_type_selection(browser, PLOT_TYPE_TEXT):
+        if mg_test.test_plot_type_selection(browser):
             results.append({"success": 1, "label": "Plot type selected from select2 dropdown"})
         else:
             results.append({"success": 0, "label": "Plot type selected from select2 dropdown"})
 
         # Choose some genes
-        mg.test_gene_entry(browser, TIMEOUT_PERIOD)
+        if mg_test.test_gene_entry(browser):
+            results.append({"success": 1, "label": "Genes typed in manually"})
+        else:
+            results.append({"success": 0, "label": "Genes typed in manually"})
 
         # Choose some options
 
         # Create Plot
-        if mg.test_plot_creation(browser, TIMEOUT_PERIOD):
+        if mg_test.test_plot_creation(browser):
             results.append({"success": 1, "label": "Heatmap successfully made"})
         else:
             results.append({"success": 0, "label": "Heatmap successfully made"})
