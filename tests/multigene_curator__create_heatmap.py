@@ -19,14 +19,10 @@ import argparse, sys, time
 
 from selenium import webdriver
 
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support.select import Select
 
 import common.multigene_curator as mg
 
-mg_test = mg.MGTest("Heatmap")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -43,13 +39,14 @@ def main():
     results = []
 
     browser = webdriver.Chrome()
+    mg_test = mg.MGTest("Heatmap", browser)
 
     try:
-        browser.get(url)
+        mg_test.browser.get(url)
 
         # Check if logged in, and do so
         # Dataset selection
-        if mg_test.test_dataset_selection(browser):
+        if mg_test.test_dataset_selection():
             results.append({"success": 1, "label": "Dataset selected from tree"})
         else:
             results.append({"success": 0, "label": "Dataset selected from tree"})
@@ -57,32 +54,19 @@ def main():
         time.sleep(mg_test.timeout)
 
         # Select plot type
-        if mg_test.test_plot_type_selection(browser):
+        if mg_test.test_plot_type_selection():
             results.append({"success": 1, "label": "Plot type selected from select2 dropdown"})
         else:
             results.append({"success": 0, "label": "Plot type selected from select2 dropdown"})
 
         # Choose some genes
-        if mg_test.test_gene_entry(browser):
+        if mg_test.test_gene_entry():
             results.append({"success": 1, "label": "Genes typed in manually"})
         else:
             results.append({"success": 0, "label": "Genes typed in manually"})
 
         """
-        print("-- GENE SELECTION - VIA GENE CART")
-        # NOTE: Uses JSTree and requires login
-        genecart_box = WebDriverWait(browser, timeout=mg_test.timeout).until(lambda d: d.find_element(By.ID, 'gene_cart'))
-        genecart_box.click()
-        genecart_search_box = browser.find_element(By.ID, "gene_cart_tree_q")
-        genecart_search_box.send_keys(GENECART_NAME)
-        genecart_tree_items = WebDriverWait(browser, timeout=3).until(lambda d: d.find_elements(By.CLASS_NAME, "jstree-search"))
-        for elt in genecart_tree_items:
-            if elt.text == GENECART_NAME:
-                elt.click()
-                break
-        select2_gene_list = browser.find_element(By.ID, "select2-gene-dropdown-container")
-        select2_gene_list_elts = select2_gene_list.find_elements(By.TAG_NAME, "li")
-        if len(select2_gene_list_elts):
+        if mg_test.test_gene_cart_entry():
             results.append({"success": 1, "label": "Gene cart selected from tree"})
         else:
             results.append({"success": 0, "label": "Gene cart selected from tree"})
@@ -92,7 +76,7 @@ def main():
         """
         print("-- FILTER_BY SELECTION")
         # In this case, all groups in all observations are included.  Need to click 'close' on some groups
-        select2_cluster_filter_by_box = WebDriverWait(browser, timeout=mg_test.timeout).until(lambda d: d.find_element(By.ID,'select2-cluster_dropdown-container'))
+        select2_cluster_filter_by_box = WebDriverWait(mg.browser, timeout=mg.timeout).until(lambda d: d.find_element(By.ID,'select2-cluster_dropdown-container'))
         select2_cluster_filter_by_textarea = select2_cluster_filter_by_box.find_element(By.XPATH,"//span/textarea")
         select2_cluster_filter_by_textarea.click()
         select2_cluster_filter_by_textarea.send_keys("HC (i)" + Keys.ENTER)
@@ -106,13 +90,13 @@ def main():
         """
 
         print("-- GROUP_BY SELECTION")
-        cluster_group_by_radio = browser.find_element(By.ID, "cluster_groupby")
+        cluster_group_by_radio = mg_test.browser.find_element(By.ID, "cluster_groupby")
         cluster_group_by_radio.click()
 
         # Not worrying about distance metric - Euclidean is default
 
         # Create Plot
-        if mg_test.test_plot_creation(browser):
+        if mg_test.test_plot_creation():
             results.append({"success": 1, "label": "Heatmap successfully made"})
         else:
             results.append({"success": 0, "label": "Heatmap successfully made"})
@@ -120,7 +104,7 @@ def main():
     except Exception as e:
         print(str(e), file=sys.stderr)
     finally:
-        browser.quit()
+        mg_test.browser.quit()
         return results
 
 if __name__ == "__main__":

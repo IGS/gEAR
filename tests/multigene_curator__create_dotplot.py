@@ -27,7 +27,6 @@ from selenium.webdriver.support.select import Select
 
 import common.multigene_curator as mg
 
-mg_test = mg.MGTest("Dotplot")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -44,13 +43,14 @@ def main():
     results = []
 
     browser = webdriver.Chrome()
+    mg_test = mg.MGTest("Dotplot", browser)
 
     try:
-        browser.get(url)
+        mg_test.browser.get(url)
 
         # Check if logged in, and do so
         # Dataset selection
-        if mg_test.test_dataset_selection(browser):
+        if mg_test.test_dataset_selection():
             results.append({"success": 1, "label": "Dataset selected from tree"})
         else:
             results.append({"success": 0, "label": "Dataset selected from tree"})
@@ -58,13 +58,13 @@ def main():
         time.sleep(mg_test.timeout)
 
         # Select plot type
-        if mg_test.test_plot_type_selection(browser):
+        if mg_test.test_plot_type_selection():
             results.append({"success": 1, "label": "Plot type selected from select2 dropdown"})
         else:
             results.append({"success": 0, "label": "Plot type selected from select2 dropdown"})
 
         # Choose some genes
-        if mg_test.test_gene_entry(browser):
+        if mg_test.test_gene_entry():
             results.append({"success": 1, "label": "Genes typed in manually"})
         else:
             results.append({"success": 0, "label": "Genes typed in manually"})
@@ -72,13 +72,13 @@ def main():
         # Choose some options
 
         # Create Plot
-        if mg_test.test_plot_creation(browser):
+        if mg_test.test_plot_creation():
             results.append({"success": 1, "label": "Heatmap successfully made"})
         else:
             results.append({"success": 0, "label": "Heatmap successfully made"})
 
     finally:
-        browser.quit()
+        mg_test.browser.quit()
         return results
 
 if __name__ == "__main__":
