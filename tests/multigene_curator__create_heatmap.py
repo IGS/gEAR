@@ -90,8 +90,13 @@ def main():
         """
 
         print("-- GROUP_BY SELECTION")
-        cluster_group_by_radio = mg_test.browser.find_element(By.ID, "cluster_groupby")
-        cluster_group_by_radio.click()
+        try:
+            cluster_group_by_radio = mg_test.browser.find_element(By.ID, "cluster_groupby")
+            cluster_group_by_radio.click()
+            results.append({"success": 1, "label": "Groupby option set"})
+        except:
+            results.append({"success": 0, "label": "Groupby option set"})
+            raise Exception
 
         # Not worrying about distance metric - Euclidean is default
 

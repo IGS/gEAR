@@ -3,14 +3,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class MGTest:
     plot_type: str
     browser: webdriver = webdriver.Chrome()
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
     genecart_to_load: str = "sadkins_savetest"
-    genes: list = ["Pou4f3", "Rfx7", "Sox2"]
+    genes: list = field(default_factory=lambda: ["Pou4f3", "Rfx7", "Sox2"])
     timeout: int = 5
 
     def test_dataset_selection(self) -> bool:
