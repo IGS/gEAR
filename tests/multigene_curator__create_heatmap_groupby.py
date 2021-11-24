@@ -10,6 +10,7 @@ This testing script performs the following actions:
 4. Choose plot type
 5. Choose some genes
 6. Select some options
+   a. Groupby option
 7. Verify plot was generated
 - NOTE: Does not currently verify accuracy of generated plot
 
@@ -85,6 +86,15 @@ def main():
         else:
             results.append({"success": 0, "label": "Filter by 'cluster' category set"})
         """
+
+        print("-- GROUP_BY SELECTION")
+        try:
+            cluster_group_by_radio = mg_test.browser.find_element(By.ID, "cluster_groupby")
+            cluster_group_by_radio.click()
+            results.append({"success": 1, "label": "Groupby option set"})
+        except:
+            results.append({"success": 0, "label": "Groupby option set"})
+            raise Exception
 
         # Not worrying about distance metric - Euclidean is default
 

@@ -56,17 +56,23 @@ def main():
 
         time.sleep(mg_test.timeout)
 
-        # Select plot type
-        if mg_test.test_plot_type_selection():
-            results.append({"success": 1, "label": "Plot type selected from select2 dropdown"})
+        if mg_test.test_plot_load_after_dataset_selection():
+            results.append({"success": 1, "label": "Default plot loaded after dataset selection"})
         else:
-            results.append({"success": 0, "label": "Plot type selected from select2 dropdown"})
+            results.append({"success": 0, "label": "Default plot loaded after dataset selection"})
 
         # Choose some genes
         if mg_test.test_gene_entry():
             results.append({"success": 1, "label": "Genes typed in manually"})
         else:
             results.append({"success": 0, "label": "Genes typed in manually"})
+
+
+        # Select plot type
+        if mg_test.test_plot_type_selection():
+            results.append({"success": 1, "label": "Plot type selected from select2 dropdown"})
+        else:
+            results.append({"success": 0, "label": "Plot type selected from select2 dropdown"})
 
         # Choose some options
 

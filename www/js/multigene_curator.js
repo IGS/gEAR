@@ -197,6 +197,9 @@ function drawChart (data, datasetId, supplementary = false) {
   const parentDiv = supplementary ? `dataset_${datasetId}_supplementary` : `dataset_${datasetId}`;
   const { plot_json: plotlyJson, plot_config: plotlyConfig, message, success } = data;
 
+  // Since default plots are now added after dataset selection, wipe the plot when a new one needs to be drawn
+  $(`#${targetDiv}`).empty()
+
   // If there was an error in the plot, put alert up
   if ( success < 1 || !plotlyJson.layout) {
     $(`#${parentDiv} .js-plot-error`).show();

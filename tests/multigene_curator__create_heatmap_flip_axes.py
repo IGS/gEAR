@@ -10,6 +10,7 @@ This testing script performs the following actions:
 4. Choose plot type
 5. Choose some genes
 6. Select some options
+   a. Flip axes
 7. Verify plot was generated
 - NOTE: Does not currently verify accuracy of generated plot
 
@@ -87,6 +88,12 @@ def main():
         """
 
         # Not worrying about distance metric - Euclidean is default
+
+        # Click checkbox to flip axes
+        advanced_options_button = mg_test.browser.find_element(By.ID, "advanced_options_button")
+        advanced_options_button.click()
+        flip_axes_checkbox = mg_test.browser.find_element(By.ID, "flip_axes")
+        flip_axes_checkbox.click()
 
         # Create Plot
         if mg_test.test_plot_creation():
