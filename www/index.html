@@ -136,11 +136,13 @@
                           <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)" />
                         </div>
                       </div>
+                      <!--
                       <div class="input-group-append">
                         <div id="multigene_search_icon" class="input-group-text" >
                           <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays"></i>
                         </div>
                       </div>
+                      -->
                       <div class="input-group-append">
                         <div id="intro_search_icon" class="input-group-text" >
                           <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
@@ -233,6 +235,14 @@
                     </div>
                     <div class="col-8 tool_launcher_c my-auto">
                       <span>Single-cell workbench</span>
+                    </div>
+                  </div>
+                  <div class="row tool-launcher" data-tool-name="mg_curator">
+                    <div class="col-4 tool_launcher_c pr-0">
+                      <img class="img-fluid" src="./img/heatmap_thumbnail.png" />
+                    </div>
+                    <div class="col-8 tool_launcher_c my-auto">
+                      <span>Create Multigene Displays</span>
                     </div>
                   </div> <!-- end subrow -->
                   <div id="uploader_header_c" class="row">
@@ -407,6 +417,7 @@
                     <input id="exact_match_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Limit results to exact matches" />
                   </div>
                 </div>
+                <!--
                 <div class="row search_option">
                   <div class="col-8 pl-0 pr-0">
                     Multigene plots
@@ -415,6 +426,7 @@
                     <input id="multigene_plots_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Show plots that display all searched genes" />
                   </div>
                 </div>
+                -->
 
                 <div class="form-group">
                   <!-- this gets re-enabled when the page is loaded via javascript -->
@@ -767,7 +779,7 @@
                       <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-right" style='z-index:10000'>
-                      <li id="dataset_{{:primary_key}}_displays"class='dropdown-submenu'>
+                      <li id="dataset_{{:primary_key}}_displays" class='dropdown-submenu'>
                         <a href="javascript:;" class="fa fa-clone"> Displays</a>
                       </li>
                       <li id="dataset_{{:primary_key}}_zoom_in_control"><a href="javascript:;" class="fa fa-search-plus"> View</a></li>
@@ -779,13 +791,10 @@
                       <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
                       {{/if}}
                       <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare</a></li>
-                      <li><a class="fa fa-plus-square"
-                        {{if multigene}}
-                        href="./multigene_curator.html?dataset_id={{:id}}"
-                        {{else}}
-                        href="./dataset_curator.html#/dataset/{{:id}}/displays"
-                        {{/if}}
-                      > Curate</a></li>
+                      <li>
+                        <a class="fa fa-plus-square" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate Display</a>
+                        <a class="fa fa-eye" href="./multigene_curator.html?dataset_id={{:id}}"> Multigene Viewer</a>
+                      </li>
                       {{if has_h5ad}}
                       <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> Analyze</a></li>
                       {{/if}}

@@ -1,7 +1,8 @@
 /*
 SAdkins note - The styling on this page differs from other gEAR JS pages
 I was trying to follow the recommended Javascript style in using camelCase
-in addition to using the StandardJS style ("semistandrd" variant)
+in addition using the StandardJS style linter ("semistandrd" variant)
+with some refactoring done with the P42+ VSCode extension (to modernize code)
 However, code inherited from common.js is still in snake_case rather than camelCase
 */
 
@@ -25,9 +26,40 @@ let geneSymbols = null;
 let datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
 let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
-const heatmapOptsIds = ["#heatmap_options_container", "#cluster_cols_checkbox_container", "#flip_axes_checkbox_container", "#obs_groupby_container"];
-const violinOptsIds = ["#obs_groupby_container"];
-const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
+const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
+
+const dotplotOptsIds = ["#obs_groupby_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_groupby_container"];
+const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
+const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"];
+const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
+
+// color palettes
+const continuous_palettes = [
+  {
+    label: "Multi-color scales",
+    options: [
+      { value: "YlOrRd", text: "Yellow-Orange-Red" },
+      { value: "Viridis", text: "Viridis" },
+    ],
+  },
+  {
+    label: "Single-color scales",
+    options: [
+      { value: "Greys", text: "Greyscale" },
+      { value: "Blues", text: "Bluescale" },
+      { value: "Purp", text: "Purplescale" },
+    ],
+  },
+  {
+    label: "Diverging Colorscales",
+    options: [
+      { value: "RdBu", text: "Red-Blue" },
+      { value: "PiYG", text: "Pink-Yellow-Green" },
+    ],
+  },
+];
+const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
 
 // Async to ensure data is fetched before proceeding.
 // This self-invoking function loads the initial state of the page.
@@ -35,21 +67,11 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   // check if the user is already logged in
   await check_for_login();
 
-  // Load gene carts before the dropdown appears
-  loadGeneCarts();
-
-  // Initialize tooltips
-  $(function () {
-    $('[data-toggle="tooltip"]').tooltip({
-      trigger: "hover"
-    });
-  });
-
-  // Initialize datasets available to the user
-  await populateDatasets();
+  // Load gene carts and datasets before the dropdown appears
+  await reloadTrees ();
 
   // Initialize plot types
-  $('#plot_type_select').select2({
+   $('#plot_type_select').select2({
     placeholder: 'Choose how to plot',
     width: '25%'
   });
@@ -61,11 +83,23 @@ const volcanoOptsIds = ["#volcano_options_container", "#adjusted_pvals_checkbox_
   $('#gene_container').hide();
 
   // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-  var linkedDatasetId = getUrlParameter("dataset_id");
+  const linkedDatasetId = getUrlParameter("dataset_id");
   if (linkedDatasetId) {
     $('#dataset').val(linkedDatasetId);
+    $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
     $('#dataset').trigger('change');
   }
+
+  // Create observer to watch if user changes (ie. successful login does not refresh page)
+  // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+
+  // Select the node that will be observed for mutations
+  const targetNode = document.getElementById('loggedin_controls');
+  // Create an observer instance linked to the callback function
+  const observer = new MutationObserver(reloadTrees);
+  // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
+  // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
+  observer.observe(targetNode, { attributes: true });
 })();
 
 // Call API to return plot JSON data
@@ -94,7 +128,7 @@ async function fetchH5adInfo (payload) {
   return data;
 }
 
-async function populateDatasets () {
+async function loadDatasets () {
   await $.ajax({
     type: 'POST',
     url: './cgi/get_h5ad_dataset_list.cgi',
@@ -102,28 +136,28 @@ async function populateDatasets () {
       session_id
     },
     dataType: 'json',
-    success: function (data) {
+    success(data) {
       let counter = 0;
 
       // Populate select box with dataset information owned by the user
       let userDatasets = [];
       if (data.user.datasets.length > 0) {
         // User has some profiles
-        $.each(data.user.datasets, function (i, item) {
+        $.each(data.user.datasets, (_i, item) => {
           userDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Next, add datasets shared with the user
       let sharedDatasets = [];
       if (data.shared_with_user.datasets.length > 0) {
-        $.each(data.shared_with_user.datasets, function (i, item) {
+        $.each(data.shared_with_user.datasets, (_i, item) => {
           sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Now, add public datasets
       let domainDatasets = [];
       if (data.public.datasets.length > 0) {
-        $.each(data.public.datasets, function (i, item) {
+        $.each(data.public.datasets, (_i, item) => {
           domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
@@ -133,8 +167,8 @@ async function populateDatasets () {
       datasetTree.domainDatasets = domainDatasets;
       datasetTree.generateTree();
     },
-    error: function (xhr, status, msg) {
-      console.error('Failed to load dataset list because msg: ' + msg);
+    error(_xhr, _status, msg) {
+      console.error(`Failed to load dataset list because msg: ${msg}`);
     }
   });
 }
@@ -143,16 +177,12 @@ async function populateDatasets () {
 async function drawPreviewImage (display) {
   // check if config has been stringified
   let config;
-  if (typeof display.plotly_config === 'string') {
-    config = JSON.parse(display.plotly_config);
-  } else {
-    config = display.plotly_config;
-  }
+  config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
 
   const { data } = await getData(datasetId, config);
-  const { plot_json: plotJson, plot_config: plotConfig } = data;
+  const { plot_json: plotlyJson, plot_config: plotlyConfig } = data;
   Plotly.toImage(
-    { ...plotJson, plotConfig },
+    { ...plotlyJson, plotlyConfig },
     { height: 500, width: 500 }
   ).then(url => {
     $(`#modal-display-img-${display.id}`).prop('src', url);
@@ -164,7 +194,15 @@ async function drawPreviewImage (display) {
 // Draw plotly chart in HTML
 function drawChart (data, datasetId, supplementary = false) {
   const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
-  const { plot_json: plotJson, plot_config: plotConfig, message, success } = data;
+  const parentDiv = supplementary ? `dataset_${datasetId}_supplementary` : `dataset_${datasetId}`;
+  const { plot_json: plotlyJson, plot_config: plotlyConfig, message, success } = data;
+
+  // If there was an error in the plot, put alert up
+  if ( success < 1 || !plotlyJson.layout) {
+    $(`#${parentDiv} .js-plot-error`).show();
+    $(`#${parentDiv} .js-plot-error`).html(message);
+    return;
+  }
 
   const layoutMods = {
     //height: targetDiv.clientHeight,
@@ -177,21 +215,16 @@ function drawChart (data, datasetId, supplementary = false) {
     if (genesFilters.length > 50) {
       layoutMods.height = genesFilters.length * 10;
     }
-  } else if ($('#plot_type_select').select2('data')[0].id === 'volcano') {
+  } else if (['quadrant', 'volcano'].includes($('#plot_type_select').select2('data')[0].id)) {
     layoutMods.height = 800;
-    layoutMods.width = 900; // If window is not wide enough, the plotly option icons will overlap contents on the right
-  }
-
-  // If there was an error in the plot, put alert up
-  if ( success < 1 && !plotJson.layout) {
-    $(targetDiv + '.js-plot-error').text(message);
-    $(targetDiv + '.js-plot-error').show();
-    return;
+    //layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
+  } else if ($('#plot_type_select').select2('data')[0].id === "mg_violin" && $("#stacked_violin").is(":checked")){
+    layoutMods.height = 800;
   }
 
   // Overwrite plot layout and config values with custom ones from display
   const layout = {
-    ...plotJson.layout,
+    ...plotlyJson.layout,
     ...layoutMods
   };
 
@@ -200,32 +233,32 @@ function drawChart (data, datasetId, supplementary = false) {
   };
 
   const config = {
-    ...plotConfig,
+    ...plotlyConfig,
     ...configMods
   };
-  Plotly.newPlot(targetDiv, plotJson.data, layout, config);
+  Plotly.newPlot(targetDiv, plotlyJson.data, layout, config);
 
+  // Show any warnings from the API call
   if (message && success > 1) {
-    $(targetDiv + '.js-plot-warning').text(message);
-    $(targetDiv + '.js-plot-warning').show();
+    $(`#${parentDiv} .js-plot-warning`).show();
+    $(`#${parentDiv} .js-plot-warning`).html(`<ul>${message}</ul>`);
   }
 
   // If plot data is selected, create the right-column table and do other misc things
-  $(`#dataset_${datasetId}_h5ad`).on("plotly_selected", function (e, data) {
+  $(`#dataset_${datasetId}_h5ad`).on("plotly_selected", (_e, data) => {
 
-    if (!plotConfig.plot_type == "volcano") {
+    if (!(['volcano', 'quadrant'].includes(plotConfig.plot_type))) {
       return;
     }
 
-    $("#selected_genes_field").show();
+    $("#selected_genes_btn").prop("disabled", false);
 
     // Note: the jQuery implementation has slightly different arguments than what is in the plotlyJS implementation
     // We want 'data', which returns the eventData PlotlyJS events normally return
     selectedGenes = [];
 
-    data.points.forEach(function (pt) {
+    data.points.forEach((pt) => {
       selectedGenes.push({
-        gene_id: pt.data.customdata[pt.pointNumber],
         gene_symbol: pt.data.text[pt.pointNumber],
       });
     });
@@ -233,8 +266,8 @@ function drawChart (data, datasetId, supplementary = false) {
     // Sort in alphabetical order
     selectedGenes.sort();
 
-    var template = $.templates("#selected_genes_tmpl");
-    var htmlOutput = template.render(selectedGenes);
+    const template = $.templates("#selected_genes_tmpl");
+    const htmlOutput = template.render(selectedGenes);
     $("#selected_genes_list").html(htmlOutput);
 
   });
@@ -248,10 +281,18 @@ async function draw (datasetId, payload, supplementary = false) {
   drawChart(data, datasetId, supplementary);
 }
 
+// If user changes, update genecart/profile trees
+async function reloadTrees(){
+
+  // Update dataset and genecart trees in parallel
+  // Works if they were not populated or previously populated
+  await Promise.all([loadDatasets(), loadGeneCarts()]);
+}
+
+// Render the gene-selection dropdown menu
 function createGeneDropdown (genes) {
-  $('#gene_spinner').show();
   const tmpl = $.templates('#gene_dropdown_tmpl');
-  const data = { genes: genes };
+  const data = { genes };
   const html = tmpl.render(data);
   $('#gene_dropdown_container').html(html);
   $('#gene_dropdown').select2({
@@ -281,9 +322,14 @@ function createObsFilterDropdowns (obsLevels) {
   });
 }
 
+// Render dropdowns specific to the dot plot
+function createDotplotDropdowns (obsLevels) {
+  createObsGroupbyField (obsLevels);
+}
+
 // Render dropdowns specific to the heatmap plot
 function createHeatmapDropdowns (obsLevels) {
-  createObsGroupbyField (obsLevels)
+  createObsGroupbyField (obsLevels);
 
   // Initialize differential expression test dropdown
   $('#distance_select').select2({
@@ -292,14 +338,41 @@ function createHeatmapDropdowns (obsLevels) {
   });
 }
 
+// Render dropdowns specific to the quadrant plot
+function createQuadrantDropdowns (obsLevels) {
+  const tmpl = $.templates('#select_conditions_tmpl');
+  const html = tmpl.render(obsLevels);
+  $('#quadrant_compare1_condition').html(html);
+  $('#quadrant_compare1_condition').select2({
+    placeholder: 'Select the first query condition.',
+    width: '25%'
+  });
+  $('#quadrant_compare2_condition').html(html);
+  $('#quadrant_compare2_condition').select2({
+    placeholder: 'Select the second query condition.',
+    width: '25%'
+  });
+  $('#quadrant_ref_condition').html(html);
+  $('#quadrant_ref_condition').select2({
+    placeholder: 'Select the reference condition.',
+    width: '25%'
+  });
+
+  // Initialize differential expression test dropdown
+  $('#de_test_select').select2({
+    placeholder: 'Choose DE testing algorithm',
+    width: '25%'
+  });
+}
+
 // Render dropdowns specific to the violin plot
 function createViolinDropdowns (obsLevels) {
-  createObsGroupbyField (obsLevels)
+  createObsGroupbyField (obsLevels);
 }
 
 // Render dropdowns specific to the volcano plot
 function createVolcanoDropdowns (obsLevels) {
-  const tmpl = $.templates('#volcano_options_tmpl');
+  const tmpl = $.templates('#select_conditions_tmpl');
   const html = tmpl.render(obsLevels);
   $('#volcano_query_condition').html(html);
   $('#volcano_query_condition').select2({
@@ -340,8 +413,8 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
   const ownerDisplays = await fetchOwnerDisplays(ownerId, datasetId);
 
   // Filter displays to those only with multigene plot types
-  const mgUserDisplays = userDisplays.filter(d => ['heatmap', 'mg_violin', 'volcano'].includes(d.plot_type));
-  const mgOwnerDisplays = ownerDisplays.filter(d => ['heatmap', 'mg_violin', 'volcano'].includes(d.plot_type));
+  const mgUserDisplays = userDisplays.filter(d => plotTypes.includes(d.plot_type));
+  const mgOwnerDisplays = ownerDisplays.filter(d => plotTypes.includes(d.plot_type));
 
   //
   mgUserDisplays.forEach(display => {
@@ -370,7 +443,6 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
 }
 
 // Populate the HTML config options based on what was in the plot
-// TODO: This does not seem to work
 function loadDisplayConfigHtml (plotConfig) {
   // NOTE: The calling function also clicks "#reset_opts", so the options are rendered already
   // Populate filter-by dropdowns
@@ -382,6 +454,9 @@ function loadDisplayConfigHtml (plotConfig) {
 
   // Populate plot type-specific dropdowns and checkbox options
   switch ($('#plot_type_select').val()) {
+    case 'dotplot':
+      $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      break;
     case 'heatmap':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
@@ -391,6 +466,22 @@ function loadDisplayConfigHtml (plotConfig) {
       break;
     case 'mg_violin':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      $('#stacked_violin').prop('checked', plotConfig.stacked_violin);
+      $('#violin_add_points').prop('checked', plotConfig.violin_add_points);
+      break;
+    case 'quadrant':
+      $('#include_zero_foldchange').prop('checked', plotConfig.include_zero_fc);
+      $("#quadrant_foldchange_cutoff").val(plotConfig.fold_change_cutoff);
+      $("#quadrant_fdr_cutoff").val(plotConfig.fdr_cutoff);
+      $('#quadrant_compare1_condition').val(plotConfig.compare1_condition);
+      $('#quadrant_compare1_condition').trigger('change');
+      $('#quadrant_compare2_condition').val(plotConfig.compare2_condition);
+      $('#quadrant_compare2_condition').trigger('change');
+      $('#quadrant_ref_condition').val(plotConfig.ref_condition);
+      $('#quadrant_ref_condition').trigger('change');
+
+      $('#de_test_select').val(plotConfig.de_test_algo);
+      $('#de_test_select').trigger('change');
       break;
     default:
       // volcano
@@ -419,12 +510,12 @@ function loadGeneCarts () {
       type: 'post',
       data: { session_id },
       dataType: 'json',
-      success: function (data, textStatus, jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
-        var userGeneCarts = [];
+      success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
+        const userGeneCarts = [];
 
         if (data.gene_carts.length > 0) {
           // User has some profiles
-          $.each(data.gene_carts, function (i, item) {
+          $.each(data.gene_carts, (_i, item) => {
             userGeneCarts.push({ value: item.id, text: item.label });
           });
 
@@ -439,7 +530,7 @@ function loadGeneCarts () {
         }
         d.resolve();
       },
-      error: function (jqXHR, textStatus, errorThrown) {
+      error(_jqXHR, _errorThrown) {
         // display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         d.fail();
       }
@@ -450,7 +541,7 @@ function loadGeneCarts () {
 
 function saveGeneCart () {
   // must have access to USER_SESSION_ID
-  var gc = new GeneCart({
+  const gc = new GeneCart({
     session_id: CURRENT_USER.session_id
     , label: $("#gene_cart_name").val()
     , gctype: "unweighted-list"
@@ -458,8 +549,8 @@ function saveGeneCart () {
     , is_public: 0
   });
 
-  selectedGenes.forEach(function (pt) {
-    var gene = new Gene({
+  selectedGenes.forEach((pt) => {
+    const gene = new Gene({
       id: pt.gene_id,
       gene_symbol: pt.gene_symbol,
     });
@@ -532,26 +623,31 @@ $('#dataset').change(async function () {
 
   $('#load_saved_plots').show();
   $('#plot_type_container').show();
-  $('#gene_container').show();
   $('#advanced_options_container').show();
 
-  // Get genes for this dataset
-  geneSymbols = await fetchGeneSymbols({ datasetId, undefined });
-  createGeneDropdown(geneSymbols);
+  $('#gene_container').show();
+  $('#gene_spinner').show();
   $('#genes_not_found').hide();
 
+  // Create promises to get genes and observations for this dataset
+  const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
+  const h5adPromise =  fetchH5adInfo({ datasetId, undefined });
+
+  // Execute both in parallel
+  geneSymbols = await geneSymbolsPromise;
+  const data = await h5adPromise;
+
+  createGeneDropdown(geneSymbols);  // gene_spinner hidden here
+
+  // Cannot cluster columns with just one gene (because function is only available
+  // in dash.clustergram which requires 2 or more genes in plot)
+  // Adding a gene will trigger a change to enable the property
+  $("#cluster_cols").prop("disabled", true);
+
   // Get categorical observations for this dataset
-  const data = await fetchH5adInfo({ datasetId, undefined });
   obsLevels = curateObservations(data.obs_levels);
 
-  // Ensure genes dropdown tooltip shows
-  $(function () {
-    $('[data-toggle="tooltip"]').tooltip({
-      trigger: "hover"
-    });
-  });
-
-  $('#update_plot').show();
+  $('#create_plot').show();
   $('#reset_opts').show();
 
   // If a plot type was already selected,
@@ -560,9 +656,50 @@ $('#dataset').change(async function () {
     $('#reset_opts').click();
   }
 
+  // Load an initial plot (just to populate the plot space)
+  if (defaultDisplayId) {
+    // Easiest way to do this.  Also populates the conditions
+    $(`#${defaultDisplayId}_load`).click();
+  } else {
+    if (! obsLevels) {
+      return;
+    }
+    // Use the first field in our categorical observations for the volcano
+    // but "cluster" takes precedence
+    let field = Object.keys(obsLevels)[0];
+    if ("cluster" in obsLevels) {
+       field = "cluster";
+    }
+    // Cannot make volcano if this field does not have two conditions
+    // Instead of trying to find ways to make the plot, just cut our losses
+    if (obsLevels[field].length < 2) {
+      return;
+    }
+    const loadPlotConfig = {
+      plot_type: 'volcano'
+      , obs_filters: obsLevels // Just keep everything
+      , query_condition: `${field};-;${obsLevels[field][0]}`
+      , ref_condition: `${field};-;${obsLevels[field][1]}`
+      , use_adj_pvals: true
+    };
+    plotConfig = loadPlotConfig;
+
+    // Draw the updated chart
+    $('#dataset_spinner').show();
+    const plotTemplate = $.templates('#dataset_plot_tmpl');
+    const plotHtml = plotTemplate.render({ dataset_id: datasetId });
+    $('#dataset_plot').html(plotHtml);
+    //NOTE: Height will not change since select2 element is not updated
+    await draw(datasetId, loadPlotConfig);
+    $('#dataset_spinner').hide();
+
+    // Show plot options and disable selected genes button (since genes are not selected anymore)
+    $('#post_plot_options').show();
+    $("#selected_genes_btn").prop("disabled", true);
+  }
 });
 
-$("#save_gene_cart").on("click", function () {
+$("#save_gene_cart").on("click", () => {
   $("#save_gene_cart").prop("disabled", true);
 
   if (CURRENT_USER) {
@@ -573,7 +710,7 @@ $("#save_gene_cart").on("click", function () {
   $("#save_gene_cart").prop('disabled', false);
 });
 
-$("#download_plot").on("click", function () {
+$("#download_plot").on("click", () => {
   Plotly.downloadImage(
     `dataset_${datasetId}_h5ad`, {
       width: $('#plot_download_width').val()
@@ -586,7 +723,7 @@ $("#download_plot").on("click", function () {
 // Load user's gene carts
 $('#gene_cart').change(function () {
   let geneCartId = $(this).val();
-  const params = { session_id: session_id, gene_cart_id: geneCartId };
+  const params = { session_id, gene_cart_id: geneCartId };
   const d = new $.Deferred(); // Causes editable to wait until results are returned
   // User is not logged in
   if (!session_id) {
@@ -599,13 +736,13 @@ $('#gene_cart').change(function () {
       url: './cgi/get_gene_cart_members.cgi',
       type: 'post',
       data: params,
-      success: function (data, newValue, oldValue) {
+      success(data, _newValue, _oldValue) {
         if (data.success === 1) {
           // Append gene symbols to search bar
           const geneCartSymbols = [];
 
           // format gene symbols into search string
-          $.each(data.gene_symbols, function (i, item) {
+          $.each(data.gene_symbols, (_i, item) => {
             geneCartSymbols.push(item.label);
           });
 
@@ -623,7 +760,7 @@ $('#gene_cart').change(function () {
 
           if (difference.length > 0) {
             const differenceString = difference.join(', ');
-            $('#genes_not_found').text('The following gene cart genes were not found in this dataset: ' + differenceString);
+            $('#genes_not_found').text(`The following gene cart genes were not found in this dataset: ${differenceString}`);
             $('#genes_not_found').show();
           } else {
             $('#genes_not_found').hide();
@@ -647,81 +784,112 @@ $('#cluster_cols').change(function () {
 });
 
 // Some options are specific to certain plot types
-$('#plot_type_select').change(function () {
+$('#plot_type_select').change(() => {
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_field').hide();
+
+  dotplotOptsIds.forEach(id => {
+    $(id).hide();
+  })
+  heatmapOptsIds.forEach(id => {
+    $(id).hide();
+  });
+  quadrantOptsIds.forEach(id => {
+    $(id).hide();
+  })
+  violinOptsIds.forEach(id => {
+    $(id).hide();
+  });
+  volcanoOptsIds.forEach(id => {
+    $(id).hide();
+  });
+
   switch ($('#plot_type_select').val()) {
+    case 'dotplot':
+      dotplotOptsIds.forEach(id => {
+        $(id).show();
+      })
+      $("#gene_selection_help").text("Choose the genes to include in plot.");
+      $("#group_by_help").text("Determine category to group by before plotting.");
+      break;
     case 'heatmap':
-      violinOptsIds.forEach(id => {
-        $(id).hide();
-      });
-      volcanoOptsIds.forEach(id => {
-        $(id).hide();
-      });
       heatmapOptsIds.forEach(id => {
         $(id).show();
       });
+      $("#gene_selection_help").text("Choose the genes to include in plot.");
+      $("#group_by_help").text("Optional. Display the mean expression for each group in this category instead of the raw expression for all individual observations");
       break;
     case 'mg_violin':
-      heatmapOptsIds.forEach(id => {
-        $(id).hide();
-      });
-      volcanoOptsIds.forEach(id => {
-        $(id).hide();
-      });
       violinOptsIds.forEach(id => {
         $(id).show();
       });
+      $("#gene_selection_help").text("Choose the genes to include in plot.");
+      $("#group_by_help").text("Determine category to group by before plotting.");
+      break;
+    case 'quadrant':
+      quadrantOptsIds.forEach(id => {
+        $(id).show();
+      })
+      $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
       break;
     default:
       // volcano
-      violinOptsIds.forEach(id => {
-        $(id).hide();
-      });
-      heatmapOptsIds.forEach(id => {
-        $(id).hide();
-      });
       volcanoOptsIds.forEach(id => {
         $(id).show();
       });
+      $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
+    }
+});
+
+
+$(document).on('change', '#gene_dropdown', () => {
+  const genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+
+  // Cannot cluster columns with just one gene (because function is only available
+  // in dash.clustergram which requires 2 or more genes in plot)
+  if (genesFilters.length > 1) {
+    $("#cluster_cols").prop("disabled", false);
+  } else {
+    $("#cluster_cols").prop("disabled", true);
+    $("#cluster_cols").prop("checked", false);
   }
 });
 
-$(document).on('click', '#update_plot', async function () {
+$(document).on('click', '#create_plot', async () => {
   // Remove supplementary plot and reset its genes filter
   if (supplementaryGenesFilters.length) {
     supplementaryGenesFilters = [];
     $(`#dataset_${datasetId}_supplementary`).remove();
   }
 
+  // Reset plot errors and warnings for both plots
+  $('.js-plot-error').empty().hide();
+  $('.js-plot-warning').empty().hide();
+
   plotConfig = {};
 
   const plotType = $('#plot_type_select').select2('data')[0].id;
-  plotConfig['plot_type'] = plotType;
+  plotConfig.plot_type = plotType;
 
   // Update filters based on selection
   obsFilters = {};
   for (const property in obsLevels) {
     const propData = $(`#${property}_dropdown`).select2('data');
-    obsFilters[property] = propData.map(function (elem) {
-      return elem.id;
-    });
+    obsFilters[property] = propData.map((elem) => elem.id);
 
     // If no groups for an observation are selected, delete filter
     if (!obsFilters[property].length) {
       delete obsFilters[property];
     }
   }
-  plotConfig['obs_filters'] = obsFilters;
+  plotConfig.obs_filters = obsFilters;
 
   if (!plotType) {
     window.alert('Please select a plot type.');
     return;
   }
 
-  plotConfig['gene_symbols'] = genesFilters = $('#gene_dropdown').select2('data').map(function (elem) {
-    return elem.id;
-  });
+  plotConfig.gene_symbols = genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
 
   if (!plotType === 'volcano') {
     if (Object.keys(obsFilters).length) {
@@ -736,53 +904,74 @@ $(document).on('click', '#update_plot', async function () {
 
   // Add specific plotConfig options depending on plot type
   switch (plotType) {
+    case 'dotplot':
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      if (!plotConfig.groupby_filter) {
+        window.alert("Must select a groupby filter for dot plots.");
+        return;
+      }
+      break;
     case 'heatmap':
-      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
-      plotConfig['cluster_cols'] = $('#cluster_cols').is(':checked');
-      plotConfig['flip_axes'] = $('#flip_axes').is(':checked');
-      plotConfig['distance_metric'] = $('#distance_select').select2('data')[0].id;
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      plotConfig.cluster_cols = $('#cluster_cols').is(':checked');
+      plotConfig.flip_axes = $('#flip_axes').is(':checked');
+      plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
       break;
     case 'mg_violin':
-      plotConfig['groupby_filter'] = $('input[name="obs_groupby"]:checked').val();
-      if (!plotConfig['groupby_filter']) {
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      if (!plotConfig.groupby_filter) {
         window.alert("Must select a groupby filter for violin plots.");
         return;
       }
+      plotConfig.stacked_violin = $('#stacked_violin').is(':checked');
+      plotConfig.violin_add_points = $('#violin_add_points').is(':checked');
       break;
-    default:
-      // volcano
-      plotConfig['adjust_pvals'] = $('#adj_pvals').is(':checked');
-      plotConfig['annotate_nonsignificant'] = $('#annot_nonsig').is(':checked');
-      plotConfig['de_test_algo'] = $('#de_test_select').select2('data')[0].id;
-      if (! plotConfig['de_test_algo']) {
+    case 'quadrant':
+      plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
+      plotConfig.fold_change_cutoff = Number($("#quadrant_foldchange_cutoff").val());
+      plotConfig.fdr_cutoff = Number($("#quadrant_fdr_cutoff").val());
+      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
+      if (! plotConfig.de_test_algo) {
         window.alert('Must select a DE statistical test.');
         return;
       }
-      plotConfig['query_condition'] = $('#volcano_query_condition').select2('data')[0].id;
-      plotConfig['ref_condition'] = $('#volcano_ref_condition').select2('data')[0].id;
+      plotConfig.compare1_condition = $('#quadrant_compare1_condition').select2('data')[0].id;
+      plotConfig.compare2_condition = $('#quadrant_compare2_condition').select2('data')[0].id;
+      plotConfig.ref_condition = $('#quadrant_ref_condition').select2('data')[0].id;
+      break;
+    default:
+      // volcano
+      plotConfig.adjust_pvals = $('#adj_pvals').is(':checked');
+      plotConfig.annotate_nonsignificant = $('#annot_nonsig').is(':checked');
+      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
+      if (! plotConfig.de_test_algo) {
+        window.alert('Must select a DE statistical test.');
+        return;
+      }
+      plotConfig.query_condition = $('#volcano_query_condition').select2('data')[0].id;
+      plotConfig.ref_condition = $('#volcano_ref_condition').select2('data')[0].id;
       // Validation related to the conditions
-      if (!(plotConfig['query_condition'] && plotConfig['ref_condition'])) {
+      if (!(plotConfig.query_condition && plotConfig.ref_condition)) {
         window.alert('Both comparision conditions must be selected to generate a volcano plot.');
         return;
       }
-      const conditionKey = plotConfig['query_condition'].split(';-;')[0];
-      if (plotConfig['query_condition'].split(';-;')[0] !== plotConfig['ref_condition'].split(';-;')[0]) {
+      const conditionKey = plotConfig.query_condition.split(';-;')[0];
+      if (plotConfig.query_condition.split(';-;')[0] !== plotConfig.ref_condition.split(';-;')[0]) {
         window.alert('Please choose 2 conditions from the same observation group.');
         return;
       }
 
-      if (plotConfig['query_condition'].split(';-;')[1] === plotConfig['ref_condition'].split(';-;')[1]) {
+      if (plotConfig.query_condition.split(';-;')[1] === plotConfig.ref_condition.split(';-;')[1]) {
         window.alert('Please choose 2 different conditions.');
         return;
       }
 
       // If condition category was filtered, the selected groups must be present
-      if (conditionKey in obsFilters) {
-        if (!(obsFilters[conditionKey].includes(plotConfig['query_condition'].split(';-;')[1]) &&
-            obsFilters[conditionKey].includes(plotConfig['ref_condition'].split(';-;')[1]))) {
-          window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
-          return;
-        }
+      if (conditionKey in obsFilters
+        && !(obsFilters[conditionKey].includes(plotConfig.query_condition.split(';-;')[1])
+        && obsFilters[conditionKey].includes(plotConfig.ref_condition.split(';-;')[1]))) {
+        window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
+        return;
       }
   }
 
@@ -796,14 +985,9 @@ $(document).on('click', '#update_plot', async function () {
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
 
-  // Show plot download options
-  $('#plot_download_opts_field').show();
-
-  // Show save display opts
-  $('#save_display_field').show();
-  const saveTemplate = $.templates('#save_plot_tmpl');
-  const saveHtml = saveTemplate.render({ plot_type: plotType });
-  $('#save_display_btn').html(saveHtml);
+  // Show plot options and disable selected genes button (since genes are not selected anymore)
+  $('#post_plot_options').show();
+  $("#selected_genes_btn").prop("disabled", true);
 });
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
@@ -863,11 +1047,17 @@ $(document).on('click', '#reset_opts', async function () {
   // Update fields dependent on dataset observations
   createObsFilterDropdowns(obsLevels);
   switch ($('#plot_type_select').val()) {
+    case 'dotplot':
+      createDotplotDropdowns(obsLevels);
+      break;
     case 'heatmap':
       createHeatmapDropdowns(obsLevels);
       break;
     case 'mg_violin':
       createViolinDropdowns(obsLevels);
+      break;
+    case 'quadrant':
+      createQuadrantDropdowns(obsLevels);
       break;
     default:
       // volcano
@@ -876,17 +1066,11 @@ $(document).on('click', '#reset_opts', async function () {
 
   $('.all').click();  // Include all groups for every category (filter nothing)
 
-  // Ensure observation options tooltips show
-  $(function () {
-    $('[data-toggle="tooltip"]').tooltip({
-      trigger: "hover"
-    });
-  });
   $('#options_spinner').hide();
 });
 
 // If advanced options collapsable is clicked, toggle arrow b/t up and down
-$(document).on('click', '#advanced_options_button', function () {
+$(document).on('click', '#advanced_options_button', () => {
   if ($('#advanced_options_arrow').hasClass('fa-caret-down')) {
     $('#advanced_options_arrow').removeClass('fa-caret-down');
     $('#advanced_options_arrow').addClass('fa-caret-up');
@@ -924,8 +1108,49 @@ $(document).on('click', '#save_display_btn', async function () {
     dataType: 'json'
   });
 
-  if (res && res.success) {
-    $('#saved_plot_confirmation').text('Plot successfully saved');
+  if (res?.success) {
+
+    let msg = 'Plot successfully saved'
+
+    if ($("#save_as_default_check").is(':checked') && res.display_id) {
+      displayId = res.display_id;
+      const res2 = await $.ajax({
+        url: './cgi/save_default_display.cgi',
+        type: 'POST',
+        data: {
+          user_id: CURRENT_USER.id,
+          dataset_id: datasetId,
+          display_id: displayId,
+          is_multigene: 1
+        },
+        dataType: 'json'
+      });
+
+      if (res2?.success) {
+          // Swap current default buttons
+        $('.js-current-default')
+          .prop('disabled', false)
+          .addClass('js-save-default')
+          .addClass('btn-purple')
+          .removeClass('btn-secondary')
+          .removeClass('js-current-default')
+          .text("Make Default");
+        $(`#${displayId}_default`)
+          .prop('disabled', true)
+          .removeClass('js-save-default')
+          .removeClass('btn-purple')
+          .addClass('btn-secondary')
+          .addClass('js-current-default')
+          .text("Default");
+          msg += " and was set as the default display.";
+      } else {
+          msg += " but there was an issue saving as the default display.";
+      }
+    } else {
+      msg += " but not set as default display."
+    }
+
+    $('#saved_plot_confirmation').text(msg);
     $('#saved_plot_confirmation').addClass('text-success');
     $('#saved_plot_confirmation').show();
   } else {
@@ -975,11 +1200,10 @@ $(document).on('click', '.js-load-display', async function () {
   await draw(datasetId, plotConfig);
   $('#dataset_spinner').hide();
 
-  // Show plot download options
-  $('#plot_download_opts_field').show();
+  // Show plot options
+  $('#post_plot_options').show();
+  $("#selected_genes_btn").prop("disabled", true);
 
-  // Show save display opts
-  $('#save_display_field').show();
 });
 
 // Delete user display
@@ -1000,7 +1224,7 @@ $(document).on('click', '.js-delete-display', async function () {
 
   $('#load_plots_modal').modal('hide');
   $('#delete_display_confirmation').show();
-  if (res && res.success) {
+  if (res?.success) {
     $('#delete_display_confirmation_text').text('Display was successfully deleted.');
     $('#delete_display_confirmation').addClass('alert-success');
   } else {
@@ -1050,7 +1274,7 @@ $(document).on('click', '.js-save-default', async function () {
     .text("Default")
 
   $('#saved_default_confirmation').show();
-  if (res && res.success) {
+  if (res?.success) {
     $('#saved_default_confirmation_text').text('Display successfully saved as your new default.');
     $('#saved_default_confirmation').addClass('alert-success');
   } else {

@@ -30,6 +30,21 @@ class Tree {
         // so they may be interchanged in the codebase
     }
 
+    register_search() {
+    // Code from "search" section of https://www.jstree.com/plugins/
+    // Sets text input to search as tree search box.
+    let self = this;
+    let to = false;
+    // Requires searchbox to be named #{treeDiv}_q
+    $(`${this.treeDiv}_q`).keyup(() => {
+        if (to) { clearTimeout(to); }
+        to = setTimeout(() => {
+        let v = $(`${self.treeDiv}_q`).val();
+        self.tree.search(v);
+        }, 250);
+    });
+    }
+
     // Update the contents of a JSTree object with new data.
     updateTreeData(newData=null) {
         (this.tree).settings.core.data = newData ? newData : this.treeData;
@@ -63,24 +78,24 @@ class GeneCartTree extends Tree {
             {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts"},
         ];
 
-        $.each(this.domainGeneCarts, function(i, item){
+        $.each(this.domainGeneCarts, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'domain_node',  // All carts private for now
                 'text':item.text,
-                'type': 'gene',
+                'type': 'genecart',
                 'a_attr': {
                     'class': "py-0",
                 }
             })
         });
 
-        $.each(this.userGeneCarts, function(i, item){
+        $.each(this.userGeneCarts, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'user_node',
                 'text':item.text,
-                'type': 'gene',
+                'type': 'genecart',
                 'a_attr': {
                     'class': "py-0",
                 }
@@ -117,26 +132,14 @@ class GeneCartTree extends Tree {
                     'default': {
                         'icon': 'fa fa-folder-o'
                     },
-                    'gene': {
-                        'icon': 'fa fa-random',
+                    'genecart': {
+                        'icon': 'fa fa-shopping-cart',
                         'valid_children':[]
                     }
                 }
             })
             this.setTree();
         }
-
-        let self = this;
-        // Code from "search" section of https://www.jstree.com/plugins/
-        // Sets text input to search as tree search box.
-        let to = false;
-        $(`${this.treeDiv}_q`).keyup(function () {
-            if (to) { clearTimeout(to); }
-            to = setTimeout(function () {
-            let v = $(`${self.treeDiv}_q`).val();
-            self.tree.search(v);
-            }, 250);
-        });
 
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
@@ -148,8 +151,10 @@ class GeneCartTree extends Tree {
 
     register_events() {
         let self = this;
+        this.register_search();
+
         // Get genes from the selected gene cart
-        $(this.treeDiv).on('select_node.jstree', function(e, data) {
+        $(this.treeDiv).on('select_node.jstree', (_e, data) => {
             // Though you can select multiple nodes in the tree, let's only select the first
             const geneCartId = data.selected[0];  // Returns node 'id' property
             if (data.node.type === "default") {
@@ -201,7 +206,7 @@ class ProfileTree extends Tree {
         // user_profiles/domain_profiles properties - value, text, share_id
 
         // Load profiles into the tree data property
-        $.each(this.domainProfiles, function(i, item){
+        $.each(this.domainProfiles, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'domain_node',
@@ -216,7 +221,7 @@ class ProfileTree extends Tree {
             })
         });
 
-        $.each(this.userProfiles, function(i, item){
+        $.each(this.userProfiles, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'user_node',
@@ -264,18 +269,6 @@ class ProfileTree extends Tree {
             this.setTree();
         }
 
-        let self = this;
-        // Sets text input to search as tree search box.
-        // Code from "search" section of https://www.jstree.com/plugins/
-        let to = false;
-        $(`${this.treeDiv}_q`).keyup(function () {
-            if (to) { clearTimeout(to); }
-            to = setTimeout(function () {
-            let v = $(`${self.treeDiv}_q`).val();
-            self.tree.search(v);
-            }, 250);
-        });
-
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -287,9 +280,10 @@ class ProfileTree extends Tree {
     // Register various ProfileTree events as object properties are updated.
     register_events() {
         let self = this;
+        this.register_search();
 
         // Get layout from the selected node and close dropdown
-        $(this.treeDiv).on('select_node.jstree', function(e, data) {
+        $(this.treeDiv).on('select_node.jstree', (_e, data) => {
 
             // Though you can select multiple nodes in the tree, let's only select the first
             const layoutId = data.selected[0];  // Returns node 'id' property
@@ -352,7 +346,7 @@ class DatasetTree extends Tree {
         // NOTE - Datasets can appear in multiple lists, so dataset IDs cannot be used as the node ID
         // otherwise node leaves can turn into "default" type instead of "dataset" type
 
-        $.each(this.domainDatasets, function(i, item){
+        $.each(this.domainDatasets, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'domain_node',
@@ -366,7 +360,7 @@ class DatasetTree extends Tree {
            })
         });
 
-        $.each(this.sharedDatasets, function(i, item){
+        $.each(this.sharedDatasets, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'shared_node',
@@ -380,7 +374,7 @@ class DatasetTree extends Tree {
             })
         });
 
-        $.each(this.userDatasets, function(i, item){
+        $.each(this.userDatasets, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'user_node',
@@ -427,18 +421,6 @@ class DatasetTree extends Tree {
             this.setTree();
         }
 
-        let self = this;
-        // Sets text input to search as tree search box.
-        // Code from "search" section of https://www.jstree.com/plugins/
-        let to = false;
-        $(`${this.treeDiv}_q`).keyup(function () {
-            if (to) { clearTimeout(to); }
-            to = setTimeout(function () {
-            let v = $(`${self.treeDiv}_q`).val();
-            self.tree.search(v);
-            }, 250);
-        });
-
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -450,9 +432,10 @@ class DatasetTree extends Tree {
     // Register various DatasetTree events as object properties are updated.
     register_events() {
         let self = this;
+        this.register_search();
 
         // Get layout from the selected node and close dropdown
-        $(this.treeDiv).on('select_node.jstree', function(e, data) {
+        $(this.treeDiv).on('select_node.jstree', (_e, data) => {
 
             // Though you can select multiple nodes in the tree, let's only select the first
             const datasetId = data.selected[0];  // Returns node 'id' property
@@ -479,4 +462,4 @@ class DatasetTree extends Tree {
     saveToDB() {
         //pass
     }
- }
+}

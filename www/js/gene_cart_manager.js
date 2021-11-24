@@ -157,6 +157,35 @@ $(document).on('click', '#cancel_gc_delete', function() {
     $('.delete_gc').popover('hide');
 });
 
+$(document).on('click', '#confirm_gc_delete', function() {
+    $('.delete_gc').popover('hide');
+
+    session_id = Cookies.get('gear_session_id');
+
+    $.ajax({
+        url : './cgi/remove_gene_cart.cgi',
+        type: "POST",
+        data : { 'session_id': session_id, 'gene_cart_id': gc_id_to_delete },
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            if (data['success'] == 1) {
+                $("#result_gc_id_" + gc_id_to_delete).fadeOut("slow", function() {
+                    $("#result_count").html( $("#result_count").html() - 1  );
+                    $(this).remove();
+                });
+                gc_id_to_delete = null;
+            } else {
+                display_error_bar(data['error']);
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log('textStatus= ', textStatus);
+            console.log('errorThrown= ', errorThrown);
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+        }
+    }); //end ajax for .confirm_delete
+});
+
 $(document).on('click', '.edit_gc_cancel', function() {
     var gc_id = $(this).data('gc-id');
     var selector_base = "#result_gc_id_" + gc_id;
@@ -487,7 +516,7 @@ function process_search_results(data, result_label) {
 		content: "<p>Are you sure you want to delete this gene cart?</p>" +
 		    "<div class='btn-toolbar' style='width:250px'>" +
             "<span id='gc_id_to_delete'></span>" +
-		    "<button class='btn btn-default btn-danger confirm_gc_delete' data-dismiss='popover'>Delete</button>" +
+		    "<button id='confirm_gc_delete' class='btn btn-default btn-danger confirm_gc_delete' data-dismiss='popover'>Delete</button>" +
 		    "<button id='cancel_gc_delete' class='btn btn-default cancel_delete' value='cancel_delete'>Cancel</button>" +
 		    "</div>",
 		html: true,
