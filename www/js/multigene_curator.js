@@ -648,6 +648,7 @@ $('#dataset').change(async function () {
   obsLevels = curateObservations(data.obs_levels);
 
   $('#create_plot').show();
+  $("#create_plot").prop("disabled", true);
   $('#reset_opts').show();
 
   // If a plot type was already selected,
@@ -696,6 +697,10 @@ $('#dataset').change(async function () {
     // Show plot options and disable selected genes button (since genes are not selected anymore)
     $('#post_plot_options').show();
     $("#selected_genes_btn").prop("disabled", true);
+
+    // Set plot config so that
+    $('#plot_type_select').val(plotConfig.plot_type);
+    $('#plot_type_select').trigger('change');
   }
 });
 
@@ -787,6 +792,8 @@ $('#cluster_cols').change(function () {
 $('#plot_type_select').change(() => {
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_field').hide();
+  $("#create_plot").prop("disabled", false);
+
 
   dotplotOptsIds.forEach(id => {
     $(id).hide();
