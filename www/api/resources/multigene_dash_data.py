@@ -143,40 +143,14 @@ def create_dot_plot(df, groupby_filter):
 
 ### Heatmap fxns
 
-def add_clustergram_cluster_bars(fig, traces, filter_indexes, is_log10=False) -> None:
+def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
-    # Append all traces but the genes dendrogram
-    new_data = []
-    for data in fig.data:
-        if not (data["name"] and "Row" in data["name"]):
-            new_data.append(data)
-    fig.data = new_data
+    # Get list of observations in the order they appear on the heatmap
+    obs_order = fig.layout["yaxis5"]["ticktext"] if flip_axes else fig.layout["xaxis5"]["ticktext"]
 
-    # Clustergram "color_list" does not seem to work. Change dendrogram line color here.
-    for i in range(len(fig.data) - 1):
-        fig.data[i]["marker"]["color"] = "black"
-
-    # Delete dendrogram axis
-    fig.layout.pop("xaxis4", None)
-    fig.layout.pop("yaxis4", None)
-
-    # Adjust domain of heatmap, and col clusters
-    fig.layout["xaxis2"]["domain"] = [0, 0.95]
-    fig.layout["xaxis5"]["domain"] = [0, 0.95]
-    fig.layout["xaxis8"]["domain"] = [0, 0.95]
-
-    # Move heatmap colorbar to left of plot
-    fig.data[len(fig.data) - 1]["colorbar"]["x"] = -0.1
-    fig.data[len(fig.data) - 1]["colorbar"]["xanchor"] = "left"
-    fig.data[len(fig.data) - 1]["colorbar"].pop("xpad", None)
-    fig.data[len(fig.data) - 1]["colorbar"]["y"] = -0.05    # Align with bottom of heatmap
-    fig.data[len(fig.data) - 1]["colorbar"]["yanchor"] = "bottom"
-    fig.data[len(fig.data) - 1]["colorbar"]["title"]["text"] = "Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
-    fig.data[len(fig.data) - 1]["colorbar"]["title"]["side"] = "right"
-
-
-    col_group_markers = build_column_group_markers(traces, filter_indexes)
+    # Assign observations to their categorical groups and assign colors to the groups
+    col_group_markers = build_column_group_markers(filter_indexes, obs_order)
     groups_and_colors = set_obs_groups_and_colors(filter_indexes)
 
     # Create a 2D-heatmap.  Convert the discrete groups into integers.
@@ -186,14 +160,28 @@ def add_clustergram_cluster_bars(fig, traces, filter_indexes, is_log10=False) ->
     # This is derived from the heatmap axis in the figure
     x=list(range(int(fig.layout["xaxis5"]["range"][0]+5), int(fig.layout["xaxis5"]["range"][1]+5), 10))
 
-    # Offset the obs group colorbar to the right of the heatmap
-    colorbar_x = 1.02
+    # Offset the colorbar to the right of the heatmap
+    colorbar_x = 1.1
+    num_colorbars = len(col_group_markers.keys()) + 1
+    curr_y = 0
+
+    # Set colorbar to be half as tall
+    # At this point it's the last trace added
+    fig.data[-1]["colorbar"]["x"] = colorbar_x
+    fig.data[-1]["colorbar"]["xpad"] = 100
+    fig.data[-1]["colorbar"]["len"] = 1/num_colorbars
+    fig.data[-1]["colorbar"]["y"] = curr_y
+    fig.data[-1]["colorbar"]["yanchor"] = "bottom"
+    fig.data[-1]["colorbar"]["title"]["text"] = "Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+    fig.data[-1]["colorbar"]["title"]["side"] = "right"
+    fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
 
     # Find top of original heatmap and put "groups" heatmap tracks above.  Makes a small space b/t the genes and groups tracks
-    mid_y = max(fig.layout["yaxis5"]["tickvals"]) + 12
+    mid_y = max(fig.layout["yaxis5"]["tickvals"]) + 6
 
     for key, val in col_group_markers.items():
-        # TODO: col_group_markers is out of order.  Needs to be in the order of traces.column_id
+        curr_y += 1/num_colorbars
+
         z = [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
 
         # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
@@ -206,7 +194,7 @@ def add_clustergram_cluster_bars(fig, traces, filter_indexes, is_log10=False) ->
 
         trace = go.Heatmap(
             x=x
-            , y=[mid_y-5, mid_y+5]
+            , y=[mid_y-1, mid_y+1]
             , z=z
             , colorbar=dict(
                 ticktext=[group for group in groups_and_colors[key]["groups"]]
@@ -214,8 +202,10 @@ def add_clustergram_cluster_bars(fig, traces, filter_indexes, is_log10=False) ->
                 , tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
                 , title=key
                 , x=colorbar_x
-                , y=-0.05   # Align with bottom of heatmap
+                , xpad=100  # equal to the clustergram's colorbar default
+                , y=curr_y   # Align with bottom of heatmap
                 , yanchor="bottom"
+                , len=1/num_colorbars
                 )
             , colorscale=colorscale
         )
@@ -225,8 +215,13 @@ def add_clustergram_cluster_bars(fig, traces, filter_indexes, is_log10=False) ->
         fig.layout["yaxis5"]["ticktext"] = fig.layout["yaxis5"]["ticktext"] + (key, )
         fig.layout["yaxis5"]["tickvals"] = fig.layout["yaxis5"]["tickvals"] + (mid_y, )
 
-        colorbar_x += 0.1
-        mid_y += 12 # add enough gap to space the "group" tracks
+        mid_y += 2 # add enough gap to space the "group" tracks
+
+    # Shift genes dendropgram to account for new cluster cols
+    if flip_axes:
+        pass
+    else:
+        fig.layout["yaxis4"]["range"] = (fig.layout["yaxis4"]["range"][0], max(fig.layout["yaxis5"]["tickvals"]))
 
     for cgl in col_group_labels:
         fig.append_trace(cgl, 2, 2)
@@ -270,7 +265,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
             z=values
             , x=gene_symbols if flip_axes else columns
             , y=rows if flip_axes else gene_symbols
-            , colorscale="balance"
+            , colorscale="RdYlBu"
+            , reversescale=True
         ))
 
     return dashbio.Clustergram(
@@ -281,8 +277,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         , cluster=cluster
         , col_dist=col_dist
         , row_dist=row_dist
-        , color_map="balance"               # Heatmap colors
-        , display_ratio=0.5                 # Make dendrogram slightly bigger relative to plot
+        , color_map="RdYlBu"               # Heatmap colors
+        , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
         , height=700
@@ -829,20 +825,28 @@ def validate_volcano_conditions(query_condition, ref_condition):
 
 ### Misc fxns
 
-def build_column_group_markers(traces, filter_indexes):
+def build_column_group_markers(filter_indexes, obs_order):
     """Build dictionaries of group annotations for the clustergram."""
-
     col_group_markers = {}
-    trace_column_ids = list(traces["column_ids"])
-    # k = obs_category, elem = single observation, i = index position of elem in all observations
+    # k = obs_category, elem = single observation, i = index position of indiv. observation in observation order list
     for k, v in filter_indexes.items():
-        col_group_markers.setdefault(k, [0 for i in trace_column_ids])
+        col_group_markers.setdefault(k, [0 for obs in obs_order])
         for elem in v:
-            # Filter indexes in order of clustering. Every index should map to a unique column ID
-            for i in v[elem]:
-                column_id = trace_column_ids.index(i)
+            # Filter indexes in order of clustering. Assumes every observation should be a unique name (since it was the index)
+            for obs in v[elem]:
+                column_id = obs_order.index(obs)
                 col_group_markers[k][column_id] = {'group': elem}
     return col_group_markers
+
+def build_obs_group_indexes(df, filters):
+    """Build dict of group indexes for filtered groups."""
+    filter_indexes = {}
+    for k, v in filters.items():
+        filter_indexes.setdefault(k, {})
+        for elem in v:
+            obs_index = df.index[df[k] == elem]
+            filter_indexes[k][elem] = obs_index.tolist()
+    return filter_indexes
 
 def create_dataframe_gene_mask(df, gene_symbols, plot_type):
     """Create a gene mask to filter a dataframe."""
@@ -954,8 +958,8 @@ def order_by_time_point(obs_df):
 def set_obs_groups_and_colors(filter_indexes):
     """Create mapping of groups and colors per observation category."""
     # TODO: Use observation colors if available instead of Dark24."""
-    PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
+    PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
     groups_and_colors = {}
     palette_cycler = cycle(PALETTE_CYCLER)
     for k, v in filter_indexes.items():
@@ -1178,6 +1182,10 @@ class MultigeneDashData(Resource):
                 grouped = df.groupby([groupby_filter])
                 df = grouped.agg('mean') \
                     .dropna()
+            else:
+                if not cluster_cols:
+                    sorted_df = selected.obs.sort_values(by=list(filters.keys()))
+                    df = df.reindex(sorted_df.index.tolist())
 
             fig = create_clustergram(df
                 , gene_symbols
@@ -1189,6 +1197,12 @@ class MultigeneDashData(Resource):
                 )
 
             modify_clustergram(fig, flip_axes, len(gene_symbols))
+
+            traces = None
+
+            if not groupby_filter:
+                filter_indexes = build_obs_group_indexes(selected.obs, filters)
+                add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
 
         elif plot_type == "mg_violin":
             df = selected.to_df()
