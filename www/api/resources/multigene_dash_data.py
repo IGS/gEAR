@@ -277,6 +277,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         , cluster=cluster
         , col_dist=col_dist
         , row_dist=row_dist
+        , center_values=False
         , color_map="RdYlBu"               # Heatmap colors
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
