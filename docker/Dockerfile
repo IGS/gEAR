@@ -14,7 +14,7 @@ ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTH
 ARG GEAR_BRANCH=master
 ARG git_user
 ARG git_pass
-ARG GEAR_URL=https://${git_user}:${git_pass}@github.com/jorvis/gEAR.git
+ARG GEAR_URL=https://${git_user}:${git_pass}@github.com/IGS/gEAR.git
 
 # Install packages to Ubuntu
 RUN apt-get -qq update \
