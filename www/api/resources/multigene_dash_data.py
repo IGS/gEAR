@@ -259,16 +259,6 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         else:
             col_dist = None
 
-    # If just one gene, use go.heatmap instead
-    if len(gene_symbols) == 1:
-        return go.Figure(data=go.Heatmap(
-            z=values
-            , x=gene_symbols if flip_axes else columns
-            , y=rows if flip_axes else gene_symbols
-            , colorscale="RdYlBu"
-            , reversescale=True
-        ))
-
     return dashbio.Clustergram(
         data=values
         , column_labels=gene_symbols if flip_axes else columns
@@ -282,31 +272,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
-        #, height=700   # NOTE: adding dimensions here will affect gene results panel
-        #, width=700
     )
-
-def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
-    """Curate the clustergram. Edits 'fig' inplace."""
-
-    if gene_sym_len > 1:
-        hyperlink_genes = []
-        axis = "xaxis5" if flip_axes else "yaxis5"
-        for gene in fig.layout[axis]['ticktext']:
-            # Inherit from parent tag. Plotly's default style is to make the "a" tag blue which also messes with hovertext
-            hyperlink_genes.append("<a style='fill:inherit;>{}</a>".format(gene))
-        fig.layout[axis]['ticktext'] = hyperlink_genes
-
-    else:
-        axis = "xaxis" if flip_axes else "yaxis"
-
-        # Make heatmap boxes square. Reference anchor should be the observations, else plot leaves empty space on the sides
-        fig.layout[axis]['scaleanchor'] = 'y' if flip_axes else 'x'
-
-        fig.layout['yaxis']['constrain'] = "domain"
-        fig.layout['yaxis']['constraintoward'] = "top"
-        fig.layout['xaxis']['constrain'] = "domain"
-        fig.layout['xaxis']['constraintoward'] = "right"
 
 ### Quadrant fxns
 
@@ -1197,10 +1163,6 @@ class MultigeneDashData(Resource):
                 , distance_metric
                 )
 
-            modify_clustergram(fig, flip_axes, len(gene_symbols))
-
-            traces = None
-
             if not groupby_filter:
                 filter_indexes = build_obs_group_indexes(selected.obs, filters)
                 add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
@@ -1250,12 +1212,18 @@ class MultigeneDashData(Resource):
         if "success" in fig and fig["success"] == -1:
             return fig
 
+        fig.update_layout(autosize=True)
+
         # change background to pure white
         # Heatmap/Clustergram already does this, but this option adds extra ticks
         if not plot_type == "heatmap":
             fig.update_layout(
                 template="simple_white"
             )
+
+        # Pop any default height and widths being added
+        fig["layout"].pop("height", None)
+        fig["layout"].pop("width", None)
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 

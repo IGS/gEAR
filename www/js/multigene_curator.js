@@ -920,6 +920,11 @@ $(document).on('click', '#create_plot', async () => {
       plotConfig.cluster_cols = $('#cluster_cols').is(':checked');
       plotConfig.flip_axes = $('#flip_axes').is(':checked');
       plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
+
+      if ((plotConfig.gene_symbols).length < 2) {
+        window.alert("Must select at least 2 genes to generate a heatmap");
+        return;
+      }
       break;
     case 'mg_violin':
       plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
