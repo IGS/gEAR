@@ -11,7 +11,6 @@ However, code inherited from common.js is still in snake_case rather than camelC
 
 let obsFilters = {};
 let genesFilters = [];
-let supplementaryGenesFilters = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
 
@@ -192,14 +191,14 @@ async function drawPreviewImage (display) {
 }
 
 // Draw plotly chart in HTML
-function drawChart (data, datasetId, supplementary = false) {
-  const targetDiv = supplementary ? `dataset_${datasetId}_secondary` : `dataset_${datasetId}_h5ad`;
-  const parentDiv = supplementary ? `dataset_${datasetId}_supplementary` : `dataset_${datasetId}`;
+function drawChart (data, datasetId) {
+  const targetDiv = `dataset_${datasetId}_h5ad`;
+  const parentDiv = `dataset_${datasetId}`;
   const { plot_json: plotlyJson, plot_config: plotlyConfig, message, success } = data;
 
   // Since default plots are now added after dataset selection, wipe the plot when a new one needs to be drawn
   $(`#${targetDiv}`).empty()
-  
+
   // If there was an error in the plot, put alert up
   if ( success < 1 || !plotlyJson.layout) {
     $(`#${parentDiv} .js-plot-error`).show();
@@ -214,7 +213,7 @@ function drawChart (data, datasetId, supplementary = false) {
 
   // NOTE: This will definitely affect the layout on the gene search results page
   // if the "height" style for the container in CSS is removed.
-  if (!supplementary && $('#plot_type_select').select2('data')[0].id === 'heatmap') {
+  if ($('#plot_type_select').select2('data')[0].id === 'heatmap') {
     if (genesFilters.length > 50) {
       layoutMods.height = genesFilters.length * 10;
     }
@@ -277,11 +276,11 @@ function drawChart (data, datasetId, supplementary = false) {
 }
 
 // Submit API request and draw the HTML
-async function draw (datasetId, payload, supplementary = false) {
+async function draw (datasetId, payload) {
   const {
     data
   } = await getData(datasetId, payload);
-  drawChart(data, datasetId, supplementary);
+  drawChart(data, datasetId);
 }
 
 // If user changes, update genecart/profile trees
@@ -866,11 +865,6 @@ $(document).on('change', '#gene_dropdown', () => {
 });
 
 $(document).on('click', '#create_plot', async () => {
-  // Remove supplementary plot and reset its genes filter
-  if (supplementaryGenesFilters.length) {
-    supplementaryGenesFilters = [];
-    $(`#dataset_${datasetId}_supplementary`).remove();
-  }
 
   // Reset plot errors and warnings for both plots
   $('.js-plot-error').empty().hide();
@@ -1007,46 +1001,6 @@ $(document).on('click', '.all', function () {
 
   $(`#${group}_dropdown`).val(obsLevels[group]);
   $(`#${group}_dropdown`).trigger('change'); // This actually triggers select2 to show the dropdown vals
-});
-
-// If gene is clicked in plot, display supplementary violin plot
-$(document).on('click', 'g.y5tick text a, g.x5tick text a', async function () {
-  const gene = $(this).text();
-
-  // Add or remove gene depending on if it is already in array
-  const index = supplementaryGenesFilters.indexOf(gene);
-  if (index === -1) {
-    supplementaryGenesFilters.push(gene);
-    $(this).parent().css('fill', 'crimson');
-  } else {
-    supplementaryGenesFilters.splice(index, 1);
-    $(this).parent().css('fill', 'rgb(42, 63, 95)'); // original default fill color
-  }
-
-  // Render supplementary plot HTML
-  if (supplementaryGenesFilters.length) {
-    // Render supplementary plot HTML
-    const plotTemplate = $.templates('#supplementary_plot_tmpl');
-    const plotHtml = plotTemplate.render({ dataset_id: datasetId });
-    $('#supplementary_plot').html(plotHtml);
-
-    // Draw the supplementary chart
-    const groupbyFilter = $('input[name="obs_groupby"]:checked').val();
-
-    if (!groupbyFilter) {
-      window.alert("Must select a groupby filter for violin plots.");
-    }
-
-    const suppPlotConfig = {
-      groupby_filter: groupbyFilter,
-      plot_type: 'mg_violin',
-      gene_symbols: supplementaryGenesFilters,
-      obs_filters: obsFilters
-    };
-    $('#supplementary_spinner').show();
-    await draw(datasetId, suppPlotConfig, true);
-    $('#supplementary_spinner').hide();
-  }
 });
 
 // Reset observation filters choices to be empty
