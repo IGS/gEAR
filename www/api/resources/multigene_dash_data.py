@@ -282,8 +282,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
-        , height=700
-        , width=700
+        #, height=700   # NOTE: adding dimensions here will affect gene results panel
+        #, width=700
     )
 
 def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
