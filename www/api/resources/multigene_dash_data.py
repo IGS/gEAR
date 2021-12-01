@@ -488,7 +488,10 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
     # Melt the datafram to make it easier to retrieve the contents for each axis
     df = df.melt(id_vars=[groupby_filter])
     # Create series of gene symbols by reverse-lookup of dict created for violin plot
-    df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+    try:
+        df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+    except:
+        df["gene_symbol"] = df["ensembl_ID"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
 
     grouped = df.groupby([groupby_filter, "gene_symbol"])
     # Add all groupby_filter groups to a list to preserve order
@@ -1097,7 +1100,10 @@ class MultigeneDashData(Resource):
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
             df = df.melt(id_vars=[groupby_filter])
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            df["gene_symbol"] = df["index"].map(ensm_to_gene)
+            try:
+                df["gene_symbol"] = df["index"].map(ensm_to_gene)
+            except:
+                df["gene_symbol"] = df["ensembl_ID"].map(ensm_to_gene)
 
             # Percent of all cells in this group where the gene has expression
             percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
