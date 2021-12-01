@@ -755,25 +755,39 @@ $("#gene_search_form").submit(function( event ) {
 
     // Update multigene toggle so correct grid widths are loaded.
     multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
+    let state_info = {
+        'gene_symbol_exact_match': $("#exact_match").val(),
+        'multigene_plots': $("#multigene_plots").val()
+    };
+
+    let state_url = "/index.html?"
+                + `&gene_symbol_exact_match=${$("#exact_match").val()}`
+                + `&multigene_plots=${$("#multigene_plots").val()}`;
+
+    if (layout_id) {
+        state_info['layout_id'] = layout_id;
+        state_url += `&layout_id=${layout_id}`;
+    }
+
+    if (curated_searched_gene_symbols) {
+        state_info['gene_symbol'] = curated_searched_gene_symbols;
+        state_url += `&gene_symbol=${curated_searched_gene_symbols}`;
+    }
+
+    if (getUrlParameter('gene_cart_share_id')) {
+        state_info['gene_cart_share_id'] = getUrlParameter('gene_cart_share_id');
+        state_url += `&gene_cart_share_id=${getUrlParameter('gene_cart_share_id')}`;
+    }
+
 
     // SAdkins - Should we have a separate history state for dataset share IDs?
     history.pushState(
         // State Info
-        {
-            'layout_id': layout_id,
-            'gene_symbol': curated_searched_gene_symbols,
-            'gene_symbol_exact_match': $("#exact_match").val(),
-            'gene_cart_share_id': getUrlParameter('gene_cart_share_id'),
-            'multigene_plots': $("#multigene_plots").val()
-        },
+        state_info,
         // State title
         "Gene search",
         // URL
-        "/index.html?layout_id=" + layout_id
-            + "&gene_symbol=" + encodeURIComponent(curated_searched_gene_symbols)
-            + "&gene_symbol_exact_match=" + $("#exact_match").val()
-            + "&gene_cart_share_id=" + getUrlParameter('gene_cart_share_id')
-            + "&multigene_plots=" + $("#multigene_plots").val()
+        state_url
     )
 
     $('#search_results').empty();

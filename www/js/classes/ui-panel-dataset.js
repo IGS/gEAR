@@ -208,7 +208,7 @@ class DatasetPanel extends Dataset {
         const user_displays = await this.get_dataset_displays(CURRENT_USER.id, this.id);
         this.user_displays = user_displays;
 
-        this.register_events(multigene=true);
+        this.register_events();
       } else {
         // No default display, this really shouldn't happen because
         // owners should always have atleast done this after upload
