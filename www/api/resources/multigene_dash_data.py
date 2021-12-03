@@ -146,8 +146,21 @@ def create_dot_plot(df, groupby_filter):
 def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
+    # Heatmap is located on xaxis5 and yaxis5
+    obs_axis = "yaxis5" if flip_axes else "xaxis5"
+    gene_axis = "xaxis5" if flip_axes else "yaxis5"
+
+    # Left-side dendrogram is xaxis4 and yaxis4
+    # Top-sie dendrogram is xaxis2 and yaxis2
+    obs_dendro_axis = "yaxis2" if flip_axes else "xaxis4"
+    gene_dendro_axis = "xaxis2" if flip_axes else "yaxis4"
+
+    fig.update_layout(
+        title_text="Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+    )
+
     # Get list of observations in the order they appear on the heatmap
-    obs_order = fig.layout["yaxis5"]["ticktext"] if flip_axes else fig.layout["xaxis5"]["ticktext"]
+    obs_order = fig.layout[obs_axis]["ticktext"]
 
     # Assign observations to their categorical groups and assign colors to the groups
     col_group_markers = build_column_group_markers(filter_indexes, obs_order)
@@ -157,32 +170,36 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # One heatmap per observation category
     col_group_labels = []
 
-    # This is derived from the heatmap axis in the figure
-    x=list(range(int(fig.layout["xaxis5"]["range"][0]+5), int(fig.layout["xaxis5"]["range"][1]+5), 10))
+    # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
+    obs_positions=fig.layout[obs_axis]["tickvals"]
 
     # Offset the colorbar to the right of the heatmap
-    colorbar_x = 1.1
+    # Need to make this work in a way that the bar will also show on the gene search display page
+    colorbar_x = 1
     num_colorbars = len(col_group_markers.keys()) + 1
-    curr_y = 0
+    max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
+    curr_colorbar_y = max_heatmap_domain
 
-    # Set colorbar to be half as tall
+    # Set expression colorbar to be half as tall
     # At this point it's the last trace added
     fig.data[-1]["colorbar"]["x"] = colorbar_x
-    fig.data[-1]["colorbar"]["xpad"] = 100
-    fig.data[-1]["colorbar"]["len"] = 1/num_colorbars
-    fig.data[-1]["colorbar"]["y"] = curr_y
-    fig.data[-1]["colorbar"]["yanchor"] = "bottom"
-    fig.data[-1]["colorbar"]["title"]["text"] = "Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+    fig.data[-1]["colorbar"]["xpad"] = 20
+    fig.data[-1]["colorbar"]["len"] = 0.5
+    fig.data[-1]["colorbar"]["y"] = curr_colorbar_y
+    fig.data[-1]["colorbar"]["yanchor"] = "top"
     fig.data[-1]["colorbar"]["title"]["side"] = "right"
     fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
 
-    # Find top of original heatmap and put "groups" heatmap tracks above.  Makes a small space b/t the genes and groups tracks
-    mid_y = max(fig.layout["yaxis5"]["tickvals"]) + 6
+    # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
+    # Makes a small space b/t the genes and groups tracks
+    next_bar_position = max(fig.layout[gene_axis]["tickvals"]) + 7
 
     for key, val in col_group_markers.items():
-        curr_y += 1/num_colorbars
-
+        # number of elements in z array needs to equal number of observations in x-axis
+        # If axes are flipped, we need one-element arrays equal to number of observations in y-axis
         z = [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
+        if flip_axes:
+            z = [[ groups_and_colors[key]["groups"].index(cgm["group"])] for cgm in val ]
 
         # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
         colorscale= []
@@ -193,8 +210,8 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
             colorscale.append(( (i+1)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
 
         trace = go.Heatmap(
-            x=x
-            , y=[mid_y-1, mid_y+1]
+            x=[next_bar_position-1, next_bar_position+1] if flip_axes else obs_positions
+            , y=obs_positions if flip_axes else [next_bar_position-1, next_bar_position+1]
             , z=z
             , colorbar=dict(
                 ticktext=[group for group in groups_and_colors[key]["groups"]]
@@ -203,25 +220,26 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
                 , title=key
                 , x=colorbar_x
                 , xpad=100  # equal to the clustergram's colorbar default
-                , y=curr_y   # Align with bottom of heatmap
-                , yanchor="bottom"
-                , len=1/num_colorbars
+                , y=curr_colorbar_y   # Align with bottom of heatmap
+                , yanchor="top"
+                , len=0.9/num_colorbars
                 )
             , colorscale=colorscale
         )
         col_group_labels.append(trace)
 
         # Add group label to axis tuples
-        fig.layout["yaxis5"]["ticktext"] = fig.layout["yaxis5"]["ticktext"] + (key, )
-        fig.layout["yaxis5"]["tickvals"] = fig.layout["yaxis5"]["tickvals"] + (mid_y, )
+        fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
+        fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
 
-        mid_y += 2 # add enough gap to space the "group" tracks
+        next_bar_position += 3 # add enough gap to space the "group" tracks
+        curr_colorbar_y -= (max_heatmap_domain * 1/num_colorbars)
 
     # Shift genes dendropgram to account for new cluster cols
-    if flip_axes:
-        pass
-    else:
-        fig.layout["yaxis4"]["range"] = (fig.layout["yaxis4"]["range"][0], max(fig.layout["yaxis5"]["tickvals"]))
+    fig.layout[gene_dendro_axis]["range"] = (min(fig.layout[gene_axis]["tickvals"]), max(fig.layout[gene_axis]["tickvals"]))
+
+    # Discovered "xaxis" range won't autoupdate based on tickvals, so pop it off if it is there
+    fig.layout[gene_axis].pop("range", None)
 
     for cgl in col_group_labels:
         fig.append_trace(cgl, 2, 2)
