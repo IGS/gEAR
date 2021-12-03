@@ -160,7 +160,8 @@ class DatasetPanel extends Dataset {
         this.draw_chart(gene_symbol, default_display_id);
 
         // cache all owner/user displays for this panel;
-        const owner_displays = await this.get_dataset_displays(this.user_id, this.id);
+        // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
+        const owner_displays = CURRENT_USER.id === this.user_id ? [] : await this.get_dataset_displays(this.user_id, this.id);
         this.owner_displays = owner_displays;
 
         const user_displays = await this.get_dataset_displays(CURRENT_USER.id, this.id);
@@ -202,7 +203,8 @@ class DatasetPanel extends Dataset {
         this.draw_mg_chart(gene_symbols, default_display_id);
 
         // cache all owner/user displays for this panel;
-        const owner_displays = await this.get_dataset_displays(this.user_id, this.id);
+        // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
+        const owner_displays = CURRENT_USER.id === this.user_id ? [] : await this.get_dataset_displays(this.user_id, this.id);
         this.owner_displays = owner_displays;
 
         const user_displays = await this.get_dataset_displays(CURRENT_USER.id, this.id);

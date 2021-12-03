@@ -412,7 +412,8 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
   const datasetData = await fetchDatasetInfo(datasetId);
   const { owner_id: ownerId } = datasetData;
   const userDisplays = await fetchUserDisplays(CURRENT_USER.id, datasetId);
-  const ownerDisplays = await fetchOwnerDisplays(ownerId, datasetId);
+  // Do not duplicate user displays in the owner display area as it can cause HTML element issues
+  const ownerDisplays = CURRENT_USER.id === ownerId ? [] : await fetchOwnerDisplays(ownerId, datasetId);
 
   // Filter displays to those only with multigene plot types
   const mgUserDisplays = userDisplays.filter(d => plotTypes.includes(d.plot_type));
