@@ -146,8 +146,21 @@ def create_dot_plot(df, groupby_filter):
 def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
+    # Heatmap is located on xaxis5 and yaxis5
+    obs_axis = "yaxis5" if flip_axes else "xaxis5"
+    gene_axis = "xaxis5" if flip_axes else "yaxis5"
+
+    # Left-side dendrogram is xaxis4 and yaxis4
+    # Top-sie dendrogram is xaxis2 and yaxis2
+    obs_dendro_axis = "yaxis2" if flip_axes else "xaxis4"
+    gene_dendro_axis = "xaxis2" if flip_axes else "yaxis4"
+
+    fig.update_layout(
+        title_text="Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+    )
+
     # Get list of observations in the order they appear on the heatmap
-    obs_order = fig.layout["yaxis5"]["ticktext"] if flip_axes else fig.layout["xaxis5"]["ticktext"]
+    obs_order = fig.layout[obs_axis]["ticktext"]
 
     # Assign observations to their categorical groups and assign colors to the groups
     col_group_markers = build_column_group_markers(filter_indexes, obs_order)
@@ -157,32 +170,36 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # One heatmap per observation category
     col_group_labels = []
 
-    # This is derived from the heatmap axis in the figure
-    x=list(range(int(fig.layout["xaxis5"]["range"][0]+5), int(fig.layout["xaxis5"]["range"][1]+5), 10))
+    # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
+    obs_positions=fig.layout[obs_axis]["tickvals"]
 
     # Offset the colorbar to the right of the heatmap
-    colorbar_x = 1.1
+    # Need to make this work in a way that the bar will also show on the gene search display page
+    colorbar_x = 1
     num_colorbars = len(col_group_markers.keys()) + 1
-    curr_y = 0
+    max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
+    curr_colorbar_y = max_heatmap_domain
 
-    # Set colorbar to be half as tall
+    # Set expression colorbar to be half as tall
     # At this point it's the last trace added
     fig.data[-1]["colorbar"]["x"] = colorbar_x
-    fig.data[-1]["colorbar"]["xpad"] = 100
-    fig.data[-1]["colorbar"]["len"] = 1/num_colorbars
-    fig.data[-1]["colorbar"]["y"] = curr_y
-    fig.data[-1]["colorbar"]["yanchor"] = "bottom"
-    fig.data[-1]["colorbar"]["title"]["text"] = "Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+    fig.data[-1]["colorbar"]["xpad"] = 20
+    fig.data[-1]["colorbar"]["len"] = 0.5
+    fig.data[-1]["colorbar"]["y"] = curr_colorbar_y
+    fig.data[-1]["colorbar"]["yanchor"] = "top"
     fig.data[-1]["colorbar"]["title"]["side"] = "right"
     fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
 
-    # Find top of original heatmap and put "groups" heatmap tracks above.  Makes a small space b/t the genes and groups tracks
-    mid_y = max(fig.layout["yaxis5"]["tickvals"]) + 6
+    # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
+    # Makes a small space b/t the genes and groups tracks
+    next_bar_position = max(fig.layout[gene_axis]["tickvals"]) + 7
 
     for key, val in col_group_markers.items():
-        curr_y += 1/num_colorbars
-
+        # number of elements in z array needs to equal number of observations in x-axis
+        # If axes are flipped, we need one-element arrays equal to number of observations in y-axis
         z = [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
+        if flip_axes:
+            z = [[ groups_and_colors[key]["groups"].index(cgm["group"])] for cgm in val ]
 
         # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
         colorscale= []
@@ -193,8 +210,8 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
             colorscale.append(( (i+1)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
 
         trace = go.Heatmap(
-            x=x
-            , y=[mid_y-1, mid_y+1]
+            x=[next_bar_position-1, next_bar_position+1] if flip_axes else obs_positions
+            , y=obs_positions if flip_axes else [next_bar_position-1, next_bar_position+1]
             , z=z
             , colorbar=dict(
                 ticktext=[group for group in groups_and_colors[key]["groups"]]
@@ -203,25 +220,26 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
                 , title=key
                 , x=colorbar_x
                 , xpad=100  # equal to the clustergram's colorbar default
-                , y=curr_y   # Align with bottom of heatmap
-                , yanchor="bottom"
-                , len=1/num_colorbars
+                , y=curr_colorbar_y   # Align with bottom of heatmap
+                , yanchor="top"
+                , len=0.9/num_colorbars
                 )
             , colorscale=colorscale
         )
         col_group_labels.append(trace)
 
         # Add group label to axis tuples
-        fig.layout["yaxis5"]["ticktext"] = fig.layout["yaxis5"]["ticktext"] + (key, )
-        fig.layout["yaxis5"]["tickvals"] = fig.layout["yaxis5"]["tickvals"] + (mid_y, )
+        fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
+        fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
 
-        mid_y += 2 # add enough gap to space the "group" tracks
+        next_bar_position += 3 # add enough gap to space the "group" tracks
+        curr_colorbar_y -= (max_heatmap_domain * 1/num_colorbars)
 
     # Shift genes dendropgram to account for new cluster cols
-    if flip_axes:
-        pass
-    else:
-        fig.layout["yaxis4"]["range"] = (fig.layout["yaxis4"]["range"][0], max(fig.layout["yaxis5"]["tickvals"]))
+    fig.layout[gene_dendro_axis]["range"] = (min(fig.layout[gene_axis]["tickvals"]), max(fig.layout[gene_axis]["tickvals"]))
+
+    # Discovered "xaxis" range won't autoupdate based on tickvals, so pop it off if it is there
+    fig.layout[gene_axis].pop("range", None)
 
     for cgl in col_group_labels:
         fig.append_trace(cgl, 2, 2)
@@ -488,7 +506,13 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
     # Melt the datafram to make it easier to retrieve the contents for each axis
     df = df.melt(id_vars=[groupby_filter])
     # Create series of gene symbols by reverse-lookup of dict created for violin plot
-    df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+    try:
+        df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+    except:
+        for col in ["ensembl_ID", "Ensembl_ID"]:
+            if col in df.columns:
+                df["gene_symbol"] = df[col].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+                break
 
     grouped = df.groupby([groupby_filter, "gene_symbol"])
     # Add all groupby_filter groups to a list to preserve order
@@ -571,6 +595,7 @@ def create_violin_plot(df, gene_map, groupby_filter):
     # Group is the 'groupby' dataframe
     for gene in gene_map:
         fillcolor = next(color_cycler)
+        showlegend = True
         for name, group in grouped:
             # If facets are present, a legend group trace can appear multiple times.
             # Ensure it only shows once.
@@ -583,16 +608,13 @@ def create_violin_plot(df, gene_map, groupby_filter):
                 , y=group[gene_map[gene]]
                 , name=gene
                 , scalegroup="{}_{}".format(gene, name)
-                , showlegend=False
+                , showlegend=showlegend
                 , fillcolor=fillcolor
                 , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
                 , line=dict(color="slategrey")
                 , points=False
                 , box=dict(
                     visible=False
-                    )
-                , meanline=dict(
-                    color="white"
                     )
                 , spanmode="hard"   # Do not extend violin tails beyond the min/max values
             )
@@ -1079,8 +1101,11 @@ class MultigeneDashData(Resource):
                 , use_adj_pvals
                 )
             modify_volcano_plot(fig, query_val, ref_val)
+
             if gene_symbols:
-                add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
+                dataset_genes = df['gene_symbol'].unique().tolist()
+                normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+                add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
         elif plot_type == "dotplot":
             df = selected.to_df()
@@ -1097,7 +1122,13 @@ class MultigeneDashData(Resource):
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
             df = df.melt(id_vars=[groupby_filter])
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            df["gene_symbol"] = df["index"].map(ensm_to_gene)
+            try:
+                df["gene_symbol"] = df["index"].map(ensm_to_gene)
+            except:
+                for col in ["ensembl_ID", "Ensembl_ID"]:
+                    if col in df.columns:
+                        df["gene_symbol"] = df[col].map(ensm_to_gene)
+                        break
 
             # Percent of all cells in this group where the gene has expression
             percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
@@ -1130,7 +1161,9 @@ class MultigeneDashData(Resource):
             fig = create_quadrant_plot(df, control_val, compare1_val, compare2_val)
             # Annotate selected genes
             if gene_symbols:
-                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, gene_symbols)
+                dataset_genes = df['gene_symbol'].unique().tolist()
+                normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
                 if genes_not_found:
                     success = 3
                     message += "<li>One or more genes were did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
@@ -1180,7 +1213,9 @@ class MultigeneDashData(Resource):
 
             # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
             gene_map = {}
-            for gene in gene_symbols:
+            dataset_genes = selected.var.gene_symbol.unique().tolist()
+            normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+            for gene in normalized_genes_list:
                 gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
 
             if stacked_violin:

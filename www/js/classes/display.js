@@ -719,6 +719,17 @@ class PlotlyDisplay extends Display {
             // Unfortunately, since these are objects, a merge will overwrite the entire obj from the plot layout
                 text: plot_json.layout.title.text
             }
+        } else if (this.plot_type == "heatmap") {
+            // TODO: Explore fixing this in the API call before editing post-API
+            // The colorbar is outside of the graph div.  Need to adjust to bring back in.
+            for (let i = 0; i < plot_json.data.length; i++) {
+                if ("colorbar" in plot_json.data[i]) {
+                        plot_json.data[i].colorbar.xpad = 0;
+                        plot_json.data[i].colorbar.x = -0.25;
+                        plot_json.data[i].colorbar.xanchor = "left";
+                        plot_json.data[i].colorbar.title = {text: "Expression"};
+                }
+            }
         }
 
         // Overwrite plot layout and config values with custom ones from display

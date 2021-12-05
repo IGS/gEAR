@@ -103,9 +103,17 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
 
 // Call API to return plot JSON data
 async function getData (datasetId, payload) {
-  return await axios.post(`/api/plot/${datasetId}/mg_dash`, {
-    ...payload
-  });
+  try {
+    return await axios.post(`/api/plot/${datasetId}/mg_dash`, {
+      ...payload
+    })
+  } catch (e) {
+
+    const message = "There was an error in making this plot. Please contact the gEAR team using the 'Contact' button at the top of the page.";
+    const success = -1;
+    const data = {message, success};
+    return {data};
+  }
 }
 
 // Call API to return a list of the dataset's gene symbols
@@ -179,6 +187,15 @@ async function drawPreviewImage (display) {
   config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
 
   const { data } = await getData(datasetId, config);
+
+  // If there was an error in the plot, put alert up
+  if ( data.success < 1 ) {
+    $(`#modal-display-img-${display.id} + .js-plot-error`).show();
+    $(`#modal-display-img-${display.id} + .js-plot-error`).html(data.message);
+    $(`#modal-display-${display.id}-loading`).hide();
+    return;
+  }
+
   const { plot_json: plotlyJson, plot_config: plotlyConfig } = data;
   Plotly.toImage(
     { ...plotlyJson, plotlyConfig },
@@ -277,9 +294,7 @@ function drawChart (data, datasetId) {
 
 // Submit API request and draw the HTML
 async function draw (datasetId, payload) {
-  const {
-    data
-  } = await getData(datasetId, payload);
+  const {data } = await getData(datasetId, payload);
   drawChart(data, datasetId);
 }
 
@@ -412,7 +427,8 @@ async function loadSavedDisplays (datasetId, defaultDisplayId=null) {
   const datasetData = await fetchDatasetInfo(datasetId);
   const { owner_id: ownerId } = datasetData;
   const userDisplays = await fetchUserDisplays(CURRENT_USER.id, datasetId);
-  const ownerDisplays = await fetchOwnerDisplays(ownerId, datasetId);
+  // Do not duplicate user displays in the owner display area as it can cause HTML element issues
+  const ownerDisplays = CURRENT_USER.id === ownerId ? [] : await fetchOwnerDisplays(ownerId, datasetId);
 
   // Filter displays to those only with multigene plot types
   const mgUserDisplays = userDisplays.filter(d => plotTypes.includes(d.plot_type));
@@ -839,14 +855,14 @@ $('#plot_type_select').change(() => {
       quadrantOptsIds.forEach(id => {
         $(id).show();
       })
-      $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
+      $("#gene_selection_help").text("OPTIONAL: Gene selection is optional for this plot type. Selected genes are annotated in the plot.");
       break;
     default:
       // volcano
       volcanoOptsIds.forEach(id => {
         $(id).show();
       });
-      $("#gene_selection_help").text("Gene selection is optional. Selected genes are annotated in the plot.");
+      $("#gene_selection_help").text("OPTIONAL: Gene selection is optional for this plot type. Selected genes are annotated in the plot.");
     }
 });
 
