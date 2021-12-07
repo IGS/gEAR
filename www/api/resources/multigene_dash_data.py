@@ -156,7 +156,12 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     gene_dendro_axis = "xaxis2" if flip_axes else "yaxis4"
 
     fig.update_layout(
-        title_text="Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+        title={
+            "text":"Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+            ,"x":0.5
+            ,"xref":"paper"
+            ,"y":0.9
+        }
     )
 
     # Get list of observations in the order they appear on the heatmap
@@ -244,7 +249,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     for cgl in col_group_labels:
         fig.append_trace(cgl, 2, 2)
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -267,15 +272,25 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         hidden_labels = "row" if flip_axes else "col"
 
     # Configuring which axes are clustered or not.
-    cluster="all"
-    col_dist = distance_metric
-    row_dist = distance_metric
-    if not cluster_cols:
+    cluster = None
+    col_dist = None
+    row_dist = None
+    if cluster_obs and cluster_genes:
+        cluster = "all"
+        col_dist = distance_metric
+        row_dist = distance_metric
+    elif cluster_obs:
         cluster = "col" if flip_axes else "row"
         if flip_axes:
-            row_dist = None
+            col_dist = distance_metric
         else:
-            col_dist = None
+            row_dist = distance_metric
+    elif cluster_genes:
+        cluster = "row" if flip_axes else "col"
+        if flip_axes:
+            row_dist = distance_metric
+        else:
+            col_dist = distance_metric
 
     return dashbio.Clustergram(
         data=values
@@ -500,7 +515,7 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, gene_map, groupby_filter):
+def create_stacked_violin_plot(df, gene_map, groupby_filter, facet_col=None):
     """Create a stacked violin plot.  Returns the figure."""
 
     # Melt the datafram to make it easier to retrieve the contents for each axis
@@ -582,7 +597,7 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
 
     return fig
 
-def create_violin_plot(df, gene_map, groupby_filter):
+def create_violin_plot(df, gene_map, groupby_filter, facet_col=None):
     """Creates a violin plot.  Returns the figure."""
     grouped = df.groupby([groupby_filter])
     names_in_legend = {}
@@ -989,8 +1004,13 @@ class MultigeneDashData(Resource):
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
         groupby_filter = req.get('groupby_filter', None)
+        sort_order = req.get('sort_order', {})
+        axis_sort_col = req.get('axis_sort_col', None)
+        facet_col = req.get('facet_col', None)
         # Heatmap opts
-        cluster_cols = req.get('cluster_cols', False)
+        matrixplot = req.get('matrixplot', False)
+        cluster_obs = req.get('cluster_obs', False)
+        cluster_genes = req.get('cluster_genes', False)
         flip_axes = req.get('flip_axes', False)
         distance_metric = req.get('distance_metric', "euclidean")
         # Quadrant plot options
@@ -1008,6 +1028,9 @@ class MultigeneDashData(Resource):
         # Violin plot options
         stacked_violin = req.get('stacked_violin', False)
         violin_add_points = req.get('violin_add_points', False)
+        # Misc options
+        title = req.get('plot_title', None)
+        legend_title = req.get('legend_title', None)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
@@ -1022,6 +1045,20 @@ class MultigeneDashData(Resource):
         adata = ana.get_adata(backed=False)
 
         adata.obs = order_by_time_point(adata.obs)
+
+        # Reorder the categorical values in the observation dataframe
+        if sort_order:
+            obs_keys = sort_order.keys()
+            for key in obs_keys:
+                col = adata.obs[key]
+                try:
+                    # Some columns might be numeric, therefore
+                    # we don't want to reorder these
+                    reordered_col = col.cat.reorder_categories(
+                        sort_order[key], ordered=True)
+                    adata.obs[key] = reordered_col
+                except:
+                    pass
 
         # get a map of all levels for each column
         columns = adata.obs.columns.tolist()
@@ -1177,28 +1214,41 @@ class MultigeneDashData(Resource):
             # with expression and its observation metadata
             df = selected.to_df()
 
-            if groupby_filter:
-                df[groupby_filter] = selected.obs[groupby_filter]
-                grouped = df.groupby([groupby_filter])
+            if matrixplot and axis_sort_col:
+                df[axis_sort_col] = selected.obs[axis_sort_col]
+                grouped = df.groupby([axis_sort_col])
                 df = grouped.agg('mean') \
                     .dropna()
-            else:
-                if not cluster_cols:
-                    sorted_df = selected.obs.sort_values(by=list(filters.keys()))
-                    df = df.reindex(sorted_df.index.tolist())
+            #else:
+            #    if not cluster_obs:
+            #        sorted_df = selected.obs.sort_values(by=list(filters.keys()))
+            #        df = df.reindex(sorted_df.index.tolist())
+
+            """
+            if facet_col in sort_order:
+                for key in fig['layout']:
+                    if key.startswith('yaxis'):
+                        fig['layout'][key]['categoryarray'] = sort_order[axis_sort_col]
+            """
 
             fig = create_clustergram(df
                 , gene_symbols
                 , is_log10
-                , cluster_cols
+                , cluster_obs
+                , cluster_genes
                 , flip_axes
                 , groupby_filter
                 , distance_metric
                 )
 
-            if not groupby_filter:
+            if not matrixplot:
                 filter_indexes = build_obs_group_indexes(selected.obs, filters)
                 add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
+
+            if axis_sort_col in sort_order and not cluster_obs:
+                key = "yaxis5" if flip_axes else "xaxis5"
+                fig['layout'][key]['categoryarray'] = sort_order[axis_sort_col]
+
 
         elif plot_type == "mg_violin":
             df = selected.to_df()
@@ -1211,6 +1261,9 @@ class MultigeneDashData(Resource):
 
             df[groupby_filter] = selected.obs[groupby_filter]
 
+            if facet_col:
+                df[facet_col] = selected.obs[facet_col]
+
             # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
             gene_map = {}
             dataset_genes = selected.var.gene_symbol.unique().tolist()
@@ -1222,11 +1275,13 @@ class MultigeneDashData(Resource):
                 fig = create_stacked_violin_plot(df
                     , gene_map
                     , groupby_filter
+                    , facet_col
                     )
             else:
                 fig = create_violin_plot(df
                     , gene_map
                     , groupby_filter
+                    , facet_col
                     )
 
             # Add jitter-based args (to make beeswarm plot)
@@ -1254,6 +1309,23 @@ class MultigeneDashData(Resource):
         if not plot_type == "heatmap":
             fig.update_layout(
                 template="simple_white"
+            )
+
+        if title:
+            fig.update_layout(
+                title={
+                    "text":title
+                    ,"x":0.5
+                    ,"xref":"paper"
+                    ,"y":0.9
+                }
+            )
+
+        if legend_title:
+            fig.update_layout(
+                legened={
+                    "text":legend_title
+                }
             )
 
         # Pop any default height and widths being added

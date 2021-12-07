@@ -10,6 +10,7 @@ However, code inherited from common.js is still in snake_case rather than camelC
 /* global $, axios, Plotly, CURRENT_USER, session_id, check_for_login */
 
 let obsFilters = {};
+let sortCategories = {"facet": null, "axis": null}; // Control sorting order of subplots and axis categories
 let genesFilters = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
@@ -27,10 +28,10 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
-const dotplotOptsIds = ["#obs_groupby_container"];
-const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_groupby_container"];
+const dotplotOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_facet_container", "#obs_sort_container"];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
-const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"];
+const violinOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container", "#adv_violin_opts"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
 // color palettes
@@ -309,8 +310,7 @@ async function reloadTrees(){
 // Render the gene-selection dropdown menu
 function createGeneDropdown (genes) {
   const tmpl = $.templates('#gene_dropdown_tmpl');
-  const data = { genes };
-  const html = tmpl.render(data);
+  const html = tmpl.render({ genes });
   $('#gene_dropdown_container').html(html);
   $('#gene_dropdown').select2({
     placeholder: 'To search, click to select or start typing some gene names',
@@ -329,9 +329,9 @@ function createObsGroupbyField (obsLevels) {
 
 // Render the observation filter dropdowns
 function createObsFilterDropdowns (obsLevels) {
-  const tmpl = $.templates('#obs_dropdowns_tmpl');
+  const tmpl = $.templates('#obs_filters_tmpl');
   const html = tmpl.render(obsLevels);
-  $('#obs_dropdowns_container').html(html);
+  $('#obs_filters_container').html(html);
   $('select.js-obs-levels').select2({
     placeholder: 'Start typing to include groups from this category. Click "All" to use all groups',
     allowClear: true,
@@ -339,14 +339,45 @@ function createObsFilterDropdowns (obsLevels) {
   });
 }
 
+// Render the observation facet field
+function createObsFacetField (obsLevels) {
+  const tmpl = $.templates('#obs_facet_tmpl');
+  const html = tmpl.render(obsLevels);
+  $('#obs_facet_container').html(html);
+}
+
+// Render the observation axis sort field
+function createObsSortField (obsLevels) {
+  const tmpl = $.templates('#obs_axis_sort_tmpl');
+  const html = tmpl.render(obsLevels);
+  $('#obs_axis_sort_container').html(html);
+}
+
+// Render the sortable list for the chosen category
+function createObsSortable (obsLevel, scope) {
+  const propData = $(`#${obsLevel}_dropdown`).select2('data');
+  const sortData = propData.map((elem) => elem.id);
+  const tmpl = $.templates('#obs_sortable_tmpl');
+  const html = tmpl.render({ sortData });
+  $(`#${scope}_sortable`).html(html);
+  $(`#${scope}_sortable`).sortable();
+
+  // Store category name to retrieve later.
+  sortCategories[scope] = obsLevel;
+
+  $(`#${scope}_order_label`).show();
+}
+
 // Render dropdowns specific to the dot plot
 function createDotplotDropdowns (obsLevels) {
   createObsGroupbyField (obsLevels);
+  createObsFacetField(obsLevels);
 }
 
 // Render dropdowns specific to the heatmap plot
 function createHeatmapDropdowns (obsLevels) {
-  createObsGroupbyField (obsLevels);
+  createObsFacetField(obsLevels);
+  createObsSortField(obsLevels);
 
   // Initialize differential expression test dropdown
   $('#distance_select').select2({
@@ -385,6 +416,7 @@ function createQuadrantDropdowns (obsLevels) {
 // Render dropdowns specific to the violin plot
 function createViolinDropdowns (obsLevels) {
   createObsGroupbyField (obsLevels);
+  createObsFacetField(obsLevels);
 }
 
 // Render dropdowns specific to the volcano plot
@@ -474,16 +506,22 @@ function loadDisplayConfigHtml (plotConfig) {
   switch ($('#plot_type_select').val()) {
     case 'dotplot':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      $(`#${plotConfig.facet_col}_facet`).prop('checked', true).click();
       break;
     case 'heatmap':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
-      $('#cluster_cols').prop('checked', plotConfig.cluster_cols);
+      $(`#${plotConfig.axis_sort_col}_sort`).prop('checked', true).click();
+      $(`#${plotConfig.facet_col}_facet`).prop('checked', true).click();
+      $('#matrixplot').prop('checked', plotConfig.matrixplot);
+      $('#cluster_obs').prop('checked', plotConfig.cluster_obs);
+      $('#cluster_genes').prop('checked', plotConfig.cluster_obs);
       $('#flip_axes').prop('checked', plotConfig.flip_axes);
       $('#distance_select').val(plotConfig.distance_metric);
       $('#distance_select').trigger('change');
       break;
     case 'mg_violin':
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
+      $(`#${plotConfig.facet_col}_facet`).prop('checked', true).click();
       $('#stacked_violin').prop('checked', plotConfig.stacked_violin);
       $('#violin_add_points').prop('checked', plotConfig.violin_add_points);
       break;
@@ -657,10 +695,11 @@ $('#dataset').change(async function () {
 
   createGeneDropdown(geneSymbols);  // gene_spinner hidden here
 
-  // Cannot cluster columns with just one gene (because function is only available
+  // Cannot cluster with just one gene (because function is only available
   // in dash.clustergram which requires 2 or more genes in plot)
   // Adding a gene will trigger a change to enable the property
-  $("#cluster_cols").prop("disabled", true);
+  $("#cluster_obs").prop("disabled", true);
+  $("#cluster_genes").prop("disabled", true);
 
   // Get categorical observations for this dataset
   obsLevels = curateObservations(data.obs_levels);
@@ -672,8 +711,12 @@ $('#dataset').change(async function () {
   // If a plot type was already selected,
   // reset the options so configs are populated for the current dataset
   if ($('#plot_type_select').val() ) {
+    $("#create_plot").prop("disabled", false);
     $('#reset_opts').click();
   }
+
+  /* SAdkins - Commenting out for the time being.
+  Am annoyed that I have to wait for the plot to load (when I don't want to use this plot)
 
   // Load an initial plot (just to populate the plot space)
   if (defaultDisplayId) {
@@ -720,6 +763,7 @@ $('#dataset').change(async function () {
     $('#plot_type_select').val(plotConfig.plot_type);
     $('#plot_type_select').trigger('change');
   }
+  */
 });
 
 $("#save_gene_cart").on("click", () => {
@@ -796,16 +840,6 @@ $('#gene_cart').change(function () {
   return d.promise();
 });
 
-// Cannot groupby if observations are going to be clustered
-$('#cluster_cols').change(function () {
-  if (this.checked) {
-    $('.js-obs-groupby').prop('checked', false);
-    $('#obs_groupby_container').hide();
-  } else {
-    $('#obs_groupby_container').show();
-  }
-});
-
 // Some options are specific to certain plot types
 $('#plot_type_select').change(() => {
   $('#reset_opts').click();  // Reset all options
@@ -873,11 +907,25 @@ $(document).on('change', '#gene_dropdown', () => {
   // Cannot cluster columns with just one gene (because function is only available
   // in dash.clustergram which requires 2 or more genes in plot)
   if (genesFilters.length > 1) {
-    $("#cluster_cols").prop("disabled", false);
+    $("#cluster_obs").prop("disabled", false);
+    $("#cluster_genes").prop("disabled", false);
   } else {
-    $("#cluster_cols").prop("disabled", true);
-    $("#cluster_cols").prop("checked", false);
+    $("#cluster_obs").prop("disabled", true);
+    $("#cluster_obs").prop("checked", false);
+    $("#cluster_genes").prop("disabled", true);
+    $("#cluster_genes").prop("checked", false);
   }
+});
+
+// When a column is chosen, populate the sortable list
+$(document).on('change', 'input[name="obs_facet"]', () => {
+  const obsLevel = $('input[name="obs_facet"]:checked').val();
+  createObsSortable(obsLevel, "facet");
+});
+
+$(document).on('change', 'input[name="obs_sort"]', () => {
+  const obsLevel = $('input[name="obs_sort"]:checked').val();
+  createObsSortable(obsLevel, "axis");
 });
 
 $(document).on('click', '#create_plot', async () => {
@@ -922,6 +970,19 @@ $(document).on('click', '#create_plot', async () => {
     }
   }
 
+  let sortOrder = {}
+  if (sortCategories.axis || sortCategories.facet) {
+    // Grab the sorted order of the list and convert to array
+    if (sortCategories.axis) {
+      sortOrder[sortCategories.axis] = $('#axis_sortable').sortable("toArray", {attribute:"value"});
+    }
+    // This should be rare, but just use the axis order if both are the same category
+    if (sortCategories.facet && !(sortCategories.facet === sortCategories.axis)) {
+      sortOrder[sortCategories.facet] = $('#facet_sortable').sortable("toArray", {attribute:"value"});
+    }
+  }
+  plotConfig.sort_order = sortOrder;
+
   // Add specific plotConfig options depending on plot type
   switch (plotType) {
     case 'dotplot':
@@ -930,10 +991,19 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for dot plots.");
         return;
       }
+      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       break;
     case 'heatmap':
       plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
-      plotConfig.cluster_cols = $('#cluster_cols').is(':checked');
+      plotConfig.matrixplot = $('#matrixplot').is(':checked');
+      if (plotConfig.matrixplot && !plotConfig.groupby_filter) {
+        window.alert("Must choose a 'group by' column to aggregate means for the matrixplot.");
+      }
+      plotConfig.axis_sort_col = $('input[name="obs_sort"]:checked').val();
+      plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
+      plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
       plotConfig.flip_axes = $('#flip_axes').is(':checked');
       plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
 
@@ -948,6 +1018,7 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for violin plots.");
         return;
       }
+      plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       plotConfig.stacked_violin = $('#stacked_violin').is(':checked');
       plotConfig.violin_add_points = $('#violin_add_points').is(':checked');
       break;
@@ -1028,6 +1099,11 @@ $(document).on('click', '.all', function () {
 $(document).on('click', '#reset_opts', async function () {
   $('#options_container').show();
   $('#options_spinner').show();
+
+  // Reset sorting order
+  sortCategories = {"facet": null, "axis": null};
+  $(`#axis_order_label`).hide();
+  $(`#facet_order_label`).hide();
 
   // Update fields dependent on dataset observations
   createObsFilterDropdowns(obsLevels);
