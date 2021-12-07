@@ -33,6 +33,9 @@
       rel="stylesheet"
     />
 
+    <!-- for Sortable -->
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
+
     <!-- Efficient select-box tool -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
@@ -156,8 +159,11 @@
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
           <span class="sr-only">Loading...</span>
         </div>
+
         <!-- Observation group options -->
-        <fieldset class="form-group" id="obs_dropdowns_container"></fieldset>
+        <fieldset class="form-group" id="obs_filters_container"></fieldset>
+        <fieldset class="form-group" id="obs_axis_sort_container"></fieldset>
+        <fieldset class="form-group" id="obs_facet_container"></fieldset>
         <fieldset class="form-group" id="obs_groupby_container"></fieldset>
         <fieldset id="heatmap_options_container" style="display:none;">
           <div class="form-group">
@@ -241,11 +247,27 @@
 
           <div class="collapse" id="advanced_options_collapsable">
             <div id="adv_heatmap_opts">
-              <div class="form-group" id="cluster_cols_checkbox_container">
+              <div class="form-group" id="matrixplot_container">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="cluster_cols">
-                  <label class="form-check-label" for="cluster_cols">
-                    Also cluster observation samples
+                  <input class="form-check-input" type="checkbox" value="" id="matrixplot">
+                  <label class="form-check-label" for="matrixplot">
+                    Create matrixplot, which plots mean expression of genes by the chosen 'Sort By' category
+                  </label>
+                </div>
+              </div>
+              <div class="form-group" id="cluster_obs_checkbox_container">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
+                  <label class="form-check-label" for="cluster_obs">
+                    Cluster observation samples.  NOTE: Disables sorting by category
+                  </label>
+                </div>
+              </div>
+              <div class="form-group" id="cluster_genes_checkbox_container">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
+                  <label class="form-check-label" for="cluster_genes">
+                    Cluster genes
                   </label>
                 </div>
               </div>
@@ -306,6 +328,14 @@
           </div>
         </fieldset>
       </fieldset> <!-- end options -->
+
+      <!--<div id="plot_preview">
+        <legend for="plot_preview">Plot Preview</legend>
+        <div id="x_preview">X: <span id="x_column"></span></div>
+        <div id="y_preview">Y: <span id="y_column"></span></div>
+        <div id="colors_preview">Legend colors: <span id="colors_column"></span></div>
+        <div id="facet_col_preview">Facet columns: <span id="facet_col_column"></span></div>
+      </div>-->
 
       <!-- Action buttons-->
       <div id="action_buttons" class="my-3">
@@ -454,8 +484,29 @@
       </div>
     </script>
 
+    <script id="obs_facet_tmpl" type="text/x-jsrender">
+      <div class="row">
+        <label class="col-3">Split by category into subplots</label>
+        <label class="col-3" id="facet_order_label" style="display:none;">Sort Order</label>
+      </div>
+      <div class="row">
+        <div class="col-3">
+        {{props}}
+          <div class="form-check">
+            <input class="form-check-input js-obs-facet" type="radio" name="obs_facet" id="{{:key}}_facet" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_facet">{{:key}}</label>
+          </div>
+        {{/props}}
+        </div>
+        <div class="col-3" id="obs_facet_sortable">
+          <ul id="facet_sortable" class="list-group"></ul>
+        </div>
+      </div>
+      <small id="facet_help" class="form-text text-muted">Determine category to split into multiple subplots. Optionally drag the groups to determine a specific subplot order.</small>
+    </script>
+
     <script id="obs_groupby_tmpl" type="text/x-jsrender">
-      <label for="groupby_obs_dropdown">Group by category</label>
+      <label>Group by category</label>
       {{props}}
       <div class="form-check">
         <input class="form-check-input js-obs-groupby" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
@@ -465,25 +516,50 @@
       <small id="group_by_help" class="form-text text-muted">Determine category to group by before plotting.</small>
     </script>
 
-    <!-- Declare a JsRender template, in a script block: -->
-    <script id="obs_dropdowns_tmpl" type="text/x-jsrender">
-      <div class="form-group">
-        <label>Groups to include</label>
+    <script id="obs_axis_sort_tmpl" type="text/x-jsrender">
+      <div class="row">
+        <label class="col-3">Sort observations on axis</label>
+        <label class="col-3" id="axis_order_label" style="display:none;">Sort Order</label>
+      </div>
+      <div class="row">
+        <div class="col-3">
         {{props}}
-          {{!-- key is categorical observation, prop is the list of unique categories --}}
-          <div class="row form-group" id="{{:key}}_div">
-            <label class="col-2" for="{{:key}}_dropdown">{{:key}}</label>
-            <select id="{{:key}}_dropdown" class="js-obs-levels col form-control" multiple="multiple">
-              {{props prop}}
-                {{!-- key is list index, prop is the value --}}
-                <option value="{{:prop}}">{{:prop}}</option>
-              {{/props}}
-            </select>
-            <button type='button' class="close all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
+          <div class="form-check">
+            <input class="form-check-input js-obs-sort" type="radio" name="obs_sort" id="{{:key}}_sort" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_sort">{{:key}}</label>
           </div>
         {{/props}}
-        <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
+        </div>
+        <div class="col-3" id="obs_axis_sortable">
+          <ul id="axis_sortable" class="list-group"></ul>
+        </div>
       </div>
+      <small id="sort_help" class="form-text text-muted">Select the category to sort the observations by on the axis. Optionally drag the groups to determine a specific sort order.</small>
+    </script>
+
+    <script id="obs_sortable_tmpl" type="text/x-jsrender">
+      {{for sortData}}
+      <li class="ui-state-default list-group-item" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
+      {{/for}}
+    </script>
+
+    <!-- Declare a JsRender template, in a script block: -->
+    <script id="obs_filters_tmpl" type="text/x-jsrender">
+      <label>Groups to include</label>
+      {{props}}
+        {{!-- key is categorical observation, prop is the list of unique categories --}}
+        <div class="row form-group" id="{{:key}}_div">
+          <label class="col-2" for="{{:key}}_dropdown">{{:key}}</label>
+          <select id="{{:key}}_dropdown" class="js-obs-levels col form-control" multiple="multiple">
+            {{props prop}}
+              {{!-- key is list index, prop is the value --}}
+              <option value="{{:prop}}">{{:prop}}</option>
+            {{/props}}
+          </select>
+          <button type='button' class="close all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
+        </div>
+      {{/props}}
+      <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
     </script>
 
     <script id="select_conditions_tmpl" type="text/x-jsrender">
@@ -581,7 +657,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
 
+    <!-- for Sortable -->
+    <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.js"></script>
+
+
     <script src="js/vendor/js.cookie.js"></script>
+
 
     <!-- Load JsRender latest version, from www.jsviews.com: -->
     <script src="https://www.jsviews.com/download/jsrender.js"></script>

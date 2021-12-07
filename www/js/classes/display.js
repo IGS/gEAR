@@ -606,7 +606,9 @@ class PlotlyDisplay extends Display {
         const {
             groupby_filter,
             obs_filters,
-            cluster_cols,
+            matrixplot,
+            cluster_obs,
+            cluster_genes,
             flip_axes,
             distance_metric,
             adj_pvals,
@@ -626,7 +628,9 @@ class PlotlyDisplay extends Display {
         this.gene_symbols = gene_symbols;
         this.groupby_filter = groupby_filter;
         this.obs_filters = obs_filters;
-        this.cluster_cols = cluster_cols;
+        this.matrixplot = matrixplot;
+        this.cluster_obs = cluster_obs;
+        this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
         this.distance_metric = distance_metric,
         this.adj_pvals = adj_pvals;
@@ -663,7 +667,9 @@ class PlotlyDisplay extends Display {
             groupby_filter: this.groupby_filter,
             plot_type: this.plot_type,
             obs_filters: this.obs_filters,
-            cluster_cols: this.cluster_cols,
+            matrixplot: this.matrixplot,
+            cluster_obs: this.cluster_obs,
+            cluster_genes: this.cluster_genes,
             flip_axes: this.flip_axes,
             distance_metric: this.distance_metric,
             adj_pvals: this.adj_pvals,
