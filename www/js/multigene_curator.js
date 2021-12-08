@@ -29,7 +29,7 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
 const dotplotOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container"];
-const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_facet_container", "#obs_sort_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_sort_container"];//, "#obs_facet_container",];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
 const violinOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container", "#adv_violin_opts"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
@@ -671,6 +671,8 @@ $('#dataset').change(async function () {
   datasetId = $('#dataset').val();
   displayId = null;
 
+  $('#post_dataset_spinner').show();
+
   // Obtain default display ID for this dataset
   const {default_display_id: defaultDisplayId} = await getDefaultDisplay(datasetId);
 
@@ -694,6 +696,8 @@ $('#dataset').change(async function () {
   const data = await h5adPromise;
 
   createGeneDropdown(geneSymbols);  // gene_spinner hidden here
+
+  $('#post_dataset_spinner').hide();
 
   // Cannot cluster with just one gene (because function is only available
   // in dash.clustergram which requires 2 or more genes in plot)
@@ -997,11 +1001,12 @@ $(document).on('click', '#create_plot', async () => {
     case 'heatmap':
       plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
       plotConfig.matrixplot = $('#matrixplot').is(':checked');
-      if (plotConfig.matrixplot && !plotConfig.groupby_filter) {
-        window.alert("Must choose a 'group by' column to aggregate means for the matrixplot.");
-      }
       plotConfig.axis_sort_col = $('input[name="obs_sort"]:checked').val();
       plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      if (plotConfig.matrixplot && !plotConfig.axis_sort_col) {
+        window.alert("Must choose a 'Sort observations on axis' category to aggregate means for the matrixplot.");
+        return
+      }
       plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
       plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
       plotConfig.flip_axes = $('#flip_axes').is(':checked');

@@ -16,6 +16,8 @@ import plotly.graph_objects as go
 import dash_bio as dashbio
 from plotly.subplots import make_subplots
 
+import scipy.cluster.hierarchy as sch
+
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 LOG10_TRANSFORMED_DATASETS = [
@@ -216,7 +218,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
 
         trace = go.Heatmap(
             x=[next_bar_position-1, next_bar_position+1] if flip_axes else obs_positions
-            , y=obs_positions if flip_axes else [next_bar_position-1, next_bar_position+1]
+            , y=obs_positions if flip_axes else [next_bar_position-2, next_bar_position+2]
             , z=z
             , colorbar=dict(
                 ticktext=[group for group in groups_and_colors[key]["groups"]]
@@ -237,7 +239,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
         fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
         fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
 
-        next_bar_position += 3 # add enough gap to space the "group" tracks
+        next_bar_position += 3 if flip_axes else 4 # add enough gap to space the "group" tracks
         curr_colorbar_y -= (max_heatmap_domain * 1/num_colorbars)
 
     # Shift genes dendropgram to account for new cluster cols
@@ -249,7 +251,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     for cgl in col_group_labels:
         fig.append_trace(cgl, 2, 2)
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, matrixplot=False, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -268,7 +270,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         values = df.loc[rows].values
 
     hidden_labels = None
-    if not groupby_filter:
+    if not matrixplot:
         hidden_labels = "row" if flip_axes else "col"
 
     # Configuring which axes are clustered or not.
@@ -280,17 +282,17 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         col_dist = distance_metric
         row_dist = distance_metric
     elif cluster_obs:
-        cluster = "col" if flip_axes else "row"
-        if flip_axes:
-            col_dist = distance_metric
-        else:
-            row_dist = distance_metric
-    elif cluster_genes:
         cluster = "row" if flip_axes else "col"
         if flip_axes:
             row_dist = distance_metric
         else:
             col_dist = distance_metric
+    elif cluster_genes:
+        cluster = "col" if flip_axes else "row"
+        if flip_axes:
+            col_dist = distance_metric
+        else:
+            row_dist = distance_metric
 
     return dashbio.Clustergram(
         data=values
@@ -300,6 +302,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , cluster=cluster
         , col_dist=col_dist
         , row_dist=row_dist
+        #, link_fun=lambda x, **kwargs: sch.linkage(x, "complete", **kwargs)    # this is default
         , center_values=False
         , color_map="RdYlBu"               # Heatmap colors
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
@@ -1219,17 +1222,10 @@ class MultigeneDashData(Resource):
                 grouped = df.groupby([axis_sort_col])
                 df = grouped.agg('mean') \
                     .dropna()
-            #else:
-            #    if not cluster_obs:
-            #        sorted_df = selected.obs.sort_values(by=list(filters.keys()))
-            #        df = df.reindex(sorted_df.index.tolist())
-
-            """
-            if facet_col in sort_order:
-                for key in fig['layout']:
-                    if key.startswith('yaxis'):
-                        fig['layout'][key]['categoryarray'] = sort_order[axis_sort_col]
-            """
+            else:
+                if not cluster_obs:
+                    sorted_df = selected.obs.sort_values(by=[axis_sort_col] if axis_sort_col else list(filters.keys()))
+                    df = df.reindex(sorted_df.index.tolist())
 
             fig = create_clustergram(df
                 , gene_symbols
@@ -1237,17 +1233,13 @@ class MultigeneDashData(Resource):
                 , cluster_obs
                 , cluster_genes
                 , flip_axes
-                , groupby_filter
+                , matrixplot
                 , distance_metric
                 )
 
             if not matrixplot:
                 filter_indexes = build_obs_group_indexes(selected.obs, filters)
                 add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
-
-            if axis_sort_col in sort_order and not cluster_obs:
-                key = "yaxis5" if flip_axes else "xaxis5"
-                fig['layout'][key]['categoryarray'] = sort_order[axis_sort_col]
 
 
         elif plot_type == "mg_violin":
