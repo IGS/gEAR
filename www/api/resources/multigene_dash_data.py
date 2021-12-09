@@ -221,7 +221,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
             tickvals.append((colorscale[-1][0] + colorscale[-2][0]) / 2 * (len(groups_and_colors[key]["groups"])-1))
 
         trace = go.Heatmap(
-            x=[next_bar_position-1, next_bar_position+1] if flip_axes else obs_positions
+            x=[next_bar_position-2, next_bar_position+2] if flip_axes else obs_positions
             , y=obs_positions if flip_axes else [next_bar_position-2, next_bar_position+2]
             , z=z
             , colorbar=dict(
@@ -243,7 +243,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
         fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
         fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
 
-        next_bar_position += 3 if flip_axes else 4 # add enough gap to space the "group" tracks
+        next_bar_position += 4 # add enough gap to space the "group" tracks
         curr_colorbar_y -= (max_heatmap_domain * 1/num_colorbars)
 
     # Shift genes dendropgram to account for new cluster cols

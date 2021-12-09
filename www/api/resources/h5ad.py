@@ -67,6 +67,7 @@ class H5ad(Resource):
 
         return {
             "success": 1,
+            "num_obs": adata.n_obs,
             "obs_columns": columns,
             "obs_levels": levels
         }

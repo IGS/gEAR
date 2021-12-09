@@ -9,6 +9,8 @@ However, code inherited from common.js is still in snake_case rather than camelC
 'use strict';
 /* global $, axios, Plotly, CURRENT_USER, session_id, check_for_login */
 
+let numObs = 0; // dummy value to initialize with
+
 let obsFilters = {};
 let sortCategories = {"facet": null, "axis": null, "groupby": null}; // Control sorting order of subplots and axis categories
 let genesFilters = [];
@@ -392,6 +394,8 @@ function createHeatmapDropdowns (obsLevels) {
     placeholder: 'Choose distance metric',
     width: '25%'
   });
+
+  $('#cluster_obs_warning').hide();
 }
 
 // Render dropdowns specific to the quadrant plot
@@ -696,6 +700,7 @@ $('#dataset').change(async function () {
   $('#gene_container').show();
   $('#gene_spinner').show();
   $('#genes_not_found').hide();
+  $('#too_many_genes_warning').hide();
   $('#gene_cart').text('Choose gene cart'); // Reset gene cart text
 
   // Create promises to get genes and observations for this dataset
@@ -718,6 +723,7 @@ $('#dataset').change(async function () {
 
   // Get categorical observations for this dataset
   obsLevels = curateObservations(data.obs_levels);
+  numObs = data.num_obs;
 
   $('#create_plot').show();
   $("#create_plot").prop("disabled", true);
@@ -913,9 +919,21 @@ $('#plot_type_select').change(() => {
     }
 });
 
+$(document).on('change', '#cluster_obs', () => {
+  $('#cluster_obs_warning').hide();
+  if ($('#cluster_obs').is(':checked') && numObs >= 1000){
+    $('#cluster_obs_warning').show();
+  }
+});
 
 $(document).on('change', '#gene_dropdown', () => {
   const genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+  // Show warning if too many genes are entered
+  $("#too_many_genes_warning").hide();
+  if (genesFilters.length > 10) {
+    $("#too_many_genes_warning").text(`There are currently ${genesFilters.length} genes to be plotted. Be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
+    $("#too_many_genes_warning").show();
+  }
 
   // Cannot cluster columns with just one gene (because function is only available
   // in dash.clustergram which requires 2 or more genes in plot)
