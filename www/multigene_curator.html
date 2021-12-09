@@ -83,6 +83,10 @@
       <!-- Dataset selection -->
       <fieldset class="form-group">
         <legend for="dataset">Step 1: Dataset selection</legend>
+        <div id="pre_dataset_spinner" style="display:none;">
+          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+          <span>Loading datasets...</span>
+        </div>
         <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
           <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
           <div class="dropdown-menu w-100" aria-labelledby="dataset">
@@ -168,11 +172,12 @@
 
         <!-- Observation group options -->
         <fieldset class="form-group" id="obs_filters_container"></fieldset>
-        <fieldset class="form-group" id="obs_groupby_container"></fieldset>
-        <fieldset class="form-group" id="obs_axis_sort_container"></fieldset>
-        <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
-        <fieldset class="form-group" id="obs_facet_container"></fieldset>
+        <fieldset class="form-group" id="obs_groupby_container" style="display:none;"></fieldset>
+        <fieldset class="form-group" id="obs_facet_container" style="display:none;"></fieldset>
         <fieldset id="heatmap_options_container" style="display:none;">
+          <fieldset class="form-group" id="obs_axis_sort_container"></fieldset>
+          <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
+
           <div class="form-group">
             <label for="distance_select">Pairwise distance metric</label>
             <div class="form-row">

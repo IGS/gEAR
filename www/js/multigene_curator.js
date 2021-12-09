@@ -30,8 +30,8 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
-const dotplotOptsIds = ["#obs_groupby_container",]; //, "#obs_facet_container",];
-const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "obs_clusterbar_container", "#obs_sort_container"];//, "#obs_facet_container",];
+const dotplotOptsIds = ["#obs_groupby_container"]; //, "#obs_facet_container",];
+const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts"];//, "#obs_facet_container",];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
 const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"]; //, "#obs_facet_container",];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
@@ -66,23 +66,25 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
 // Async to ensure data is fetched before proceeding.
 // This self-invoking function loads the initial state of the page.
 (async () => {
+  // Hide further configs until a dataset is chosen.
+  // Changing the dataset will start triggering these to show
+  $('#plot_type_container').hide();
+  $('#advanced_options_container').hide();
+  $('#gene_container').hide();
+
   // check if the user is already logged in
   await check_for_login();
 
+  $('#pre_dataset_spinner').show();
   // Load gene carts and datasets before the dropdown appears
   await reloadTrees ();
+  $('#pre_dataset_spinner').hide();
 
   // Initialize plot types
    $('#plot_type_select').select2({
     placeholder: 'Choose how to plot',
     width: '25%'
   });
-
-  // Hide further configs until a dataset is chosen.
-  // Changing the dataset will start triggering these to show
-  $('#plot_type_container').hide();
-  $('#advanced_options_container').hide();
-  $('#gene_container').hide();
 
   // If brought here by the "gene search results" page, curate on the dataset ID that referred us
   const linkedDatasetId = getUrlParameter("dataset_id");
@@ -996,13 +998,9 @@ $(document).on('click', '#create_plot', async () => {
 
   plotConfig.gene_symbols = genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
 
-  if (!plotType === 'volcano') {
+  if (!["volcano", "quadrant"].includes(plotType)) {
     if (Object.keys(obsFilters).length) {
       window.alert('At least one observation must have categories filtered.');
-      return;
-    }
-    if (genesFilters.length) {
-      window.alert('At least one gene must be provided.');
       return;
     }
   }
@@ -1030,6 +1028,10 @@ $(document).on('click', '#create_plot', async () => {
   // Add specific plotConfig options depending on plot type
   switch (plotType) {
     case 'dotplot':
+      if ((plotConfig.gene_symbols).length < 1) {
+        window.alert('At least one gene must be provided.');
+        return;
+      }
       plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
       if (!plotConfig.groupby_filter) {
         window.alert("Must select a groupby filter for dot plots.");
@@ -1039,6 +1041,10 @@ $(document).on('click', '#create_plot', async () => {
       plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       break;
     case 'heatmap':
+      if ((plotConfig.gene_symbols).length < 2) {
+        window.alert("Must select at least 2 genes to generate a heatmap");
+        return;
+      }
       plotConfig.clusterbar_fields = [];
       $('input[name="obs_clusterbar"]:checked').each( (idx, elem) => {
         plotConfig.clusterbar_fields.push($(elem).val());
@@ -1054,13 +1060,12 @@ $(document).on('click', '#create_plot', async () => {
       plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
       plotConfig.flip_axes = $('#flip_axes').is(':checked');
       plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
-
-      if ((plotConfig.gene_symbols).length < 2) {
-        window.alert("Must select at least 2 genes to generate a heatmap");
-        return;
-      }
       break;
     case 'mg_violin':
+      if ((plotConfig.gene_symbols).length < 1) {
+        window.alert('At least one gene must be provided.');
+        return;
+      }
       plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
       if (!plotConfig.groupby_filter) {
         window.alert("Must select a groupby filter for violin plots.");

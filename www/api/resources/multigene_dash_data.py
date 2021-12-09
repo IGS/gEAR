@@ -522,27 +522,11 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, gene_map, groupby_filter, facet_col=None):
+def create_stacked_violin_plot(df, groupby_filter, sort_order, facet_col=None):
     """Create a stacked violin plot.  Returns the figure."""
 
-    # Melt the datafram to make it easier to retrieve the contents for each axis
-    df = df.melt(id_vars=[groupby_filter])
-    # Create series of gene symbols by reverse-lookup of dict created for violin plot
-    try:
-        df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
-    except:
-        for col in ["ensembl_ID", "Ensembl_ID"]:
-            if col in df.columns:
-                df["gene_symbol"] = df[col].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
-                break
-
-    grouped = df.groupby([groupby_filter, "gene_symbol"])
-    # Add all groupby_filter groups to a list to preserve order
-    groupby_groups = []
-    for group in grouped.groups.keys():
-        if group[0] not in groupby_groups:
-            groupby_groups.append(group[0])
-
+    grouped = df.groupby([groupby_filter, "gene_symbol"])   # grouping by multiple columns does not preserve sort order
+    groupby_groups = sort_order[groupby_filter] if groupby_filter in sort_order else df[groupby_filter].unique().tolist()
     color_cycler = cycle(VIVID_COLORS)
     color_map = {cat: next(color_cycler) for cat in groupby_groups}
 
@@ -593,6 +577,8 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter, facet_col=None):
             textangle=0
             , x=-0
             , xanchor="right"
+            , font_size=12
+            , borderpad=5   # Unsure if this does anything but it should ensure the row titles don't come too close to the edge
         )
     )
 
@@ -1155,6 +1141,7 @@ class MultigeneDashData(Resource):
                 add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
         elif plot_type == "dotplot":
+            var_index = selected.var.index.name
             df = selected.to_df()
 
             if not groupby_filter:
@@ -1169,13 +1156,7 @@ class MultigeneDashData(Resource):
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
             df = df.melt(id_vars=[groupby_filter])
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            try:
-                df["gene_symbol"] = df["index"].map(ensm_to_gene)
-            except:
-                for col in ["ensembl_ID", "Ensembl_ID"]:
-                    if col in df.columns:
-                        df["gene_symbol"] = df[col].map(ensm_to_gene)
-                        break
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
             # Percent of all cells in this group where the gene has expression
             percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
@@ -1267,6 +1248,7 @@ class MultigeneDashData(Resource):
 
 
         elif plot_type == "mg_violin":
+            var_index = selected.var.index.name
             df = selected.to_df()
 
             if not groupby_filter:
@@ -1288,9 +1270,14 @@ class MultigeneDashData(Resource):
                 gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
 
             if stacked_violin:
+                # Melt the datafram to make it easier to retrieve the contents for each axis
+                df = df.melt(id_vars=[groupby_filter])
+                # Create series of gene symbols by reverse-lookup of dict created for violin plot
+                df["gene_symbol"] = df[var_index].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
+
                 fig = create_stacked_violin_plot(df
-                    , gene_map
                     , groupby_filter
+                    , sort_order
                     , facet_col
                     )
             else:
