@@ -167,10 +167,10 @@
 
         <!-- Observation group options -->
         <fieldset class="form-group" id="obs_filters_container"></fieldset>
+        <fieldset class="form-group" id="obs_groupby_container"></fieldset>
         <fieldset class="form-group" id="obs_axis_sort_container"></fieldset>
         <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
         <fieldset class="form-group" id="obs_facet_container"></fieldset>
-        <fieldset class="form-group" id="obs_groupby_container"></fieldset>
         <fieldset id="heatmap_options_container" style="display:none;">
           <div class="form-group">
             <label for="distance_select">Pairwise distance metric</label>
@@ -497,13 +497,23 @@
     </script>
 
     <script id="obs_groupby_tmpl" type="text/x-jsrender">
-      <label>Group by category</label>
-      {{props}}
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
-        <label class="form-check-label" for="{{:key}}_groupby">{{:key}}</label>
+      <div class="row">
+        <label class="col-3">Category to plot on axis</label>
+        <label class="col-3" id="groupby_order_label" style="display:none;">Sort Order</label>
       </div>
-      {{/props}}
+      <div class="row">
+        <div class="col-3">
+          {{props}}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_groupby">{{:key}}</label>
+          </div>
+          {{/props}}
+        </div>
+        <div class="col-3" id="obs_groupby_sortable">
+          <ul id="groupby_sortable" class="list-group"></ul>
+        </div>
+      </div>
       <small id="group_by_help" class="form-text text-muted">Determine category to group by before plotting. These groups will be on the axis</small>
     </script>
 

@@ -10,7 +10,7 @@ However, code inherited from common.js is still in snake_case rather than camelC
 /* global $, axios, Plotly, CURRENT_USER, session_id, check_for_login */
 
 let obsFilters = {};
-let sortCategories = {"facet": null, "axis": null}; // Control sorting order of subplots and axis categories
+let sortCategories = {"facet": null, "axis": null, "groupby": null}; // Control sorting order of subplots and axis categories
 let genesFilters = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
@@ -28,10 +28,10 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
-const dotplotOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container"];
+const dotplotOptsIds = ["#obs_groupby_container",]; //, "#obs_facet_container",];
 const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "obs_clusterbar_container", "#obs_sort_container"];//, "#obs_facet_container",];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
-const violinOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container", "#adv_violin_opts"];
+const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"]; //, "#obs_facet_container",];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
 
 // color palettes
@@ -378,12 +378,12 @@ function createObsSortable (obsLevel, scope) {
 // Render dropdowns specific to the dot plot
 function createDotplotDropdowns (obsLevels) {
   createObsGroupbyField (obsLevels);
-  createObsFacetField(obsLevels);
+  //createObsFacetField//(obsLevels);
 }
 
 // Render dropdowns specific to the heatmap plot
 function createHeatmapDropdowns (obsLevels) {
-  createObsFacetField(obsLevels);
+  //createObsFacetField(obsLevels);
   createObsSortField(obsLevels);
   createObsClusterBarField(obsLevels);
 
@@ -424,7 +424,7 @@ function createQuadrantDropdowns (obsLevels) {
 // Render dropdowns specific to the violin plot
 function createViolinDropdowns (obsLevels) {
   createObsGroupbyField (obsLevels);
-  createObsFacetField(obsLevels);
+  //createObsFacetField(obsLevels);
 }
 
 // Render dropdowns specific to the volcano plot
@@ -860,7 +860,7 @@ $('#plot_type_select').change(() => {
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_field').hide();
   $("#create_plot").prop("disabled", false);
-
+  $('#advanced_options_container').show();
 
   dotplotOptsIds.forEach(id => {
     $(id).hide();
@@ -911,8 +911,6 @@ $('#plot_type_select').change(() => {
       });
       $("#gene_selection_help").text("OPTIONAL: Gene selection is optional for this plot type. Selected genes are annotated in the plot.");
     }
-
-
 });
 
 
@@ -941,6 +939,12 @@ $(document).on('change', 'input[name="obs_facet"]', () => {
 $(document).on('change', 'input[name="obs_sort"]', () => {
   const obsLevel = $('input[name="obs_sort"]:checked').val();
   createObsSortable(obsLevel, "axis");
+});
+
+// "obs_groupby" stuff controls the plot axis content like "obs_sort"
+$(document).on('change', 'input[name="obs_groupby"]', () => {
+  const obsLevel = $('input[name="obs_groupby"]:checked').val();
+  createObsSortable(obsLevel, "groupby");
 });
 
 $(document).on('click', '#create_plot', async () => {
@@ -985,16 +989,23 @@ $(document).on('click', '#create_plot', async () => {
     }
   }
 
-  let sortOrder = {}
-  if (sortCategories.axis || sortCategories.facet) {
+  let sortOrder = {};
+  let categoriesUsed = [];
+  if (sortCategories.axis || sortCategories.groupby) {
     // Grab the sorted order of the list and convert to array
     if (sortCategories.axis) {
       sortOrder[sortCategories.axis] = $('#axis_sortable').sortable("toArray", {attribute:"value"});
+      categoriesUsed.push(sortCategories.axis);
     }
-    // This should be rare, but just use the axis order if both are the same category
-    if (sortCategories.facet && !(sortCategories.facet === sortCategories.axis)) {
-      sortOrder[sortCategories.facet] = $('#facet_sortable').sortable("toArray", {attribute:"value"});
+    if (sortCategories.groupby) {
+      sortOrder[sortCategories.groupby] = $('#groupby_sortable').sortable("toArray", {attribute:"value"});
+      categoriesUsed.push(sortCategories.groupby);
     }
+
+  }
+  // This should be rare, but just use the axis order if both are the same category
+  if (sortCategories.facet && !(cats_used.includes(sortCategories.facet))) {
+    sortOrder[sortCategories.facet] = $('#facet_sortable').sortable("toArray", {attribute:"value"});
   }
   plotConfig.sort_order = sortOrder;
 
@@ -1010,7 +1021,6 @@ $(document).on('click', '#create_plot', async () => {
       plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       break;
     case 'heatmap':
-      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
       plotConfig.clusterbar_fields = [];
       $('input[name="obs_clusterbar"]:checked').each( (idx, elem) => {
         plotConfig.clusterbar_fields.push($(elem).val());
@@ -1121,7 +1131,7 @@ $(document).on('click', '#reset_opts', async function () {
   $('#options_spinner').show();
 
   // Reset sorting order
-  sortCategories = {"facet": null, "axis": null};
+  sortCategories = {"facet": null, "axis": null, "groupby": null};
   $(`#axis_order_label`).hide();
   $(`#facet_order_label`).hide();
 
