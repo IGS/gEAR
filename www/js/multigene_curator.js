@@ -692,7 +692,6 @@ $('#dataset').change(async function () {
 
   $('#load_saved_plots').show();
   $('#plot_type_container').show();
-  $('#advanced_options_container').show();
 
   $('#gene_container').show();
   $('#gene_spinner').show();
@@ -885,21 +884,19 @@ $('#plot_type_select').change(() => {
         $(id).show();
       })
       $("#gene_selection_help").text("Choose the genes to include in plot.");
-      $("#group_by_help").text("Determine category to group by before plotting.");
+      $('#advanced_options_container').hide();  // no advanced opts yet for this plottype
       break;
     case 'heatmap':
       heatmapOptsIds.forEach(id => {
         $(id).show();
       });
       $("#gene_selection_help").text("Choose the genes to include in plot.");
-      $("#group_by_help").text("Optional. Display the mean expression for each group in this category instead of the raw expression for all individual observations");
       break;
     case 'mg_violin':
       violinOptsIds.forEach(id => {
         $(id).show();
       });
       $("#gene_selection_help").text("Choose the genes to include in plot.");
-      $("#group_by_help").text("Determine category to group by before plotting.");
       break;
     case 'quadrant':
       quadrantOptsIds.forEach(id => {
@@ -914,6 +911,8 @@ $('#plot_type_select').change(() => {
       });
       $("#gene_selection_help").text("OPTIONAL: Gene selection is optional for this plot type. Selected genes are annotated in the plot.");
     }
+
+
 });
 
 
