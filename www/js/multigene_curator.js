@@ -29,7 +29,7 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
 const dotplotOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container"];
-const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "#obs_sort_container"];//, "#obs_facet_container",];
+const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts", "obs_clusterbar_container", "#obs_sort_container"];//, "#obs_facet_container",];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
 const violinOptsIds = ["#obs_facet_container", "#obs_groupby_container", "#obs_sort_container", "#adv_violin_opts"];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
@@ -353,6 +353,13 @@ function createObsSortField (obsLevels) {
   $('#obs_axis_sort_container').html(html);
 }
 
+// Render the observation axis sort field
+function createObsClusterBarField (obsLevels) {
+  const tmpl = $.templates('#obs_clusterbar_tmpl');
+  const html = tmpl.render(obsLevels);
+  $('#obs_clusterbar_container').html(html);
+}
+
 // Render the sortable list for the chosen category
 function createObsSortable (obsLevel, scope) {
   const propData = $(`#${obsLevel}_dropdown`).select2('data');
@@ -378,6 +385,7 @@ function createDotplotDropdowns (obsLevels) {
 function createHeatmapDropdowns (obsLevels) {
   createObsFacetField(obsLevels);
   createObsSortField(obsLevels);
+  createObsClusterBarField(obsLevels);
 
   // Initialize differential expression test dropdown
   $('#distance_select').select2({
@@ -512,6 +520,9 @@ function loadDisplayConfigHtml (plotConfig) {
       $(`#${plotConfig.groupby_filter}_groupby`).prop('checked', true).click();
       $(`#${plotConfig.axis_sort_col}_sort`).prop('checked', true).click();
       $(`#${plotConfig.facet_col}_facet`).prop('checked', true).click();
+      for (const field in plotConfig.clusterbar_fields) {
+        $(`#${field}_clusterbar`).prop('checked', true).click();
+      }
       $('#matrixplot').prop('checked', plotConfig.matrixplot);
       $('#cluster_obs').prop('checked', plotConfig.cluster_obs);
       $('#cluster_genes').prop('checked', plotConfig.cluster_obs);
@@ -686,6 +697,7 @@ $('#dataset').change(async function () {
   $('#gene_container').show();
   $('#gene_spinner').show();
   $('#genes_not_found').hide();
+  $('#gene_cart').text('Choose gene cart'); // Reset gene cart text
 
   // Create promises to get genes and observations for this dataset
   const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
@@ -1000,6 +1012,10 @@ $(document).on('click', '#create_plot', async () => {
       break;
     case 'heatmap':
       plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
+      plotConfig.clusterbar_fields = [];
+      $('input[name="obs_clusterbar"]:checked').each( (idx, elem) => {
+        plotConfig.clusterbar_fields.push($(elem).val());
+      });
       plotConfig.matrixplot = $('#matrixplot').is(':checked');
       plotConfig.axis_sort_col = $('input[name="obs_sort"]:checked').val();
       plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();

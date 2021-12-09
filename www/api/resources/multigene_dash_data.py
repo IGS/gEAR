@@ -183,7 +183,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # Offset the colorbar to the right of the heatmap
     # Need to make this work in a way that the bar will also show on the gene search display page
     colorbar_x = 1
-    num_colorbars = len(col_group_markers.keys()) + 1
+    num_colorbars = len(col_group_markers.keys())
     max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
     curr_colorbar_y = max_heatmap_domain
 
@@ -194,7 +194,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     fig.data[-1]["colorbar"]["len"] = 0.5
     fig.data[-1]["colorbar"]["y"] = curr_colorbar_y
     fig.data[-1]["colorbar"]["yanchor"] = "top"
-    fig.data[-1]["colorbar"]["title"]["side"] = "right"
+    #fig.data[-1]["colorbar"]["title"]["side"] = "right"
     fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
 
     # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
@@ -209,12 +209,16 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
             z = [[ groups_and_colors[key]["groups"].index(cgm["group"])] for cgm in val ]
 
         # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
-        colorscale= []
+        colorscale = []
+        # Normally tickvals will stretch to the min and max of the colorbar range. We also need to center the groups in the middle of the color
+        tickvals = []
         for i in range(len(groups_and_colors[key]["colors"])):
             # Start of color thresholds
             colorscale.append(( (i)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
             # End of color thresholds
             colorscale.append(( (i+1)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
+            # Center the group name in its color
+            tickvals.append((colorscale[-1][0] + colorscale[-2][0]) / 2 * (len(groups_and_colors[key]["groups"])-1))
 
         trace = go.Heatmap(
             x=[next_bar_position-1, next_bar_position+1] if flip_axes else obs_positions
@@ -222,14 +226,14 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
             , z=z
             , colorbar=dict(
                 ticktext=[group for group in groups_and_colors[key]["groups"]]
-                , tickmode="array"
-                , tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
+                #, tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
+                , tickvals=tickvals
                 , title=key
                 , x=colorbar_x
                 , xpad=100  # equal to the clustergram's colorbar default
                 , y=curr_colorbar_y   # Align with bottom of heatmap
                 , yanchor="top"
-                , len=0.9/num_colorbars
+                , len=0.8/num_colorbars
                 )
             , colorscale=colorscale
         )
@@ -845,10 +849,12 @@ def build_column_group_markers(filter_indexes, obs_order):
                 col_group_markers[k][column_id] = {'group': elem}
     return col_group_markers
 
-def build_obs_group_indexes(df, filters):
+def build_obs_group_indexes(df, filters, clusterbar_fields):
     """Build dict of group indexes for filtered groups."""
     filter_indexes = {}
     for k, v in filters.items():
+        if k not in clusterbar_fields:
+            continue
         filter_indexes.setdefault(k, {})
         for elem in v:
             obs_index = df.index[df[k] == elem]
@@ -1011,6 +1017,7 @@ class MultigeneDashData(Resource):
         axis_sort_col = req.get('axis_sort_col', None)
         facet_col = req.get('facet_col', None)
         # Heatmap opts
+        clusterbar_fields = req.get('clusterbar_fields', [])
         matrixplot = req.get('matrixplot', False)
         cluster_obs = req.get('cluster_obs', False)
         cluster_genes = req.get('cluster_genes', False)
@@ -1237,9 +1244,26 @@ class MultigeneDashData(Resource):
                 , distance_metric
                 )
 
+            # Clustergram has a bug where the space where dendrograms should appear is still whitespace
+            # Need to adjust the domains of those subplots if no clustering is required
+            if not (cluster_genes or cluster_obs):
+                fig.layout["xaxis4"]["domain"] = [0,0]
+                fig.layout["xaxis5"]["domain"] = [0,0.95]
+                fig.layout["yaxis2"]["domain"] = [1,1]
+                fig.layout["yaxis5"]["domain"] = [0,1]
+
             if not matrixplot:
-                filter_indexes = build_obs_group_indexes(selected.obs, filters)
+                filter_indexes = build_obs_group_indexes(selected.obs, filters, clusterbar_fields)
                 add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
+            else:
+                fig.update_layout(
+                    title={
+                        "text":"Log10 Mean Gene Expression" if is_log10 else "Log2 Mean Gene Expression"
+                        ,"x":0.5
+                        ,"xref":"paper"
+                        ,"y":0.9
+                    }
+                )
 
 
         elif plot_type == "mg_violin":
