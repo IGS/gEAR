@@ -263,7 +263,7 @@
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" value="" id="matrixplot">
                   <label class="form-check-label" for="matrixplot">
-                    Create matrixplot, which plots mean expression of genes by the chosen 'Sort observations on axis' category
+                    Create matrixplot, which plots mean expression of genes by the chosen 'Cluster by observations' category
                   </label>
                 </div>
                 <small class="form-text text-muted">
@@ -274,19 +274,19 @@
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
                   <label class="form-check-label" for="cluster_obs">
-                    Cluster observation samples.
+                    Hierarchical clustering of observation samples.
                   </label>
                 </div>
                 <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
                 <small class="form-text text-muted">
-                  NOTE: Disables sorting by category
+                  NOTE: Disables "cluster by observations" option
                 </small>
               </div>
               <div class="form-group" id="cluster_genes_checkbox_container">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
                   <label class="form-check-label" for="cluster_genes">
-                    Cluster genes
+                    Hierarchical clustering of genes
                   </label>
                 </div>
               </div>
@@ -505,7 +505,7 @@
 
     <script id="obs_groupby_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Category to plot on axis</label>
+        <label class="col-3">Cluster observations by/label>
         <label class="col-3" id="groupby_order_label" style="display:none;">Sort Order</label>
       </div>
       <div class="row">
@@ -521,7 +521,7 @@
           <ul id="groupby_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="group_by_help" class="form-text text-muted">Determine category to group by before plotting. These groups will be on the axis</small>
+      <small id="group_by_help" class="form-text text-muted">Determine category to cluster by before plotting. These groups will be on the axis</small>
     </script>
 
     <script id="obs_clusterbar_tmpl" type="text/x-jsrender">

@@ -998,12 +998,14 @@ $(document).on('click', '#create_plot', async () => {
 
   plotConfig.gene_symbols = genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
 
+  /*
   if (!["volcano", "quadrant"].includes(plotType)) {
     if (Object.keys(obsFilters).length) {
       window.alert('At least one observation must have categories filtered.');
       return;
     }
   }
+  */
 
   let sortOrder = {};
   let categoriesUsed = [];
