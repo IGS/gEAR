@@ -955,22 +955,26 @@ $(document).on('change', '#gene_dropdown', () => {
 // When a column is chosen, populate the sortable list
 $(document).on('change', 'input[name="obs_facet"]', () => {
   const obsLevel = $('input[name="obs_facet"]:checked').val();
-  if (! obsLevel === "None") {
+  if (obsLevel !== "none") {
     createObsSortable(obsLevel, "facet");
-  }});
+  } else {
+    $('#facet_sortable').empty();
+  }
+});
 
 $(document).on('change', 'input[name="obs_sort"]', (e) => {
   const obsLevel = $('input[name="obs_sort"]:checked').val();
-  if (! obsLevel === "None") {
+  if ( obsLevel !== "none") {
     createObsSortable(obsLevel, "axis");
-  }});
+  } else {
+    $('#axis_sortable').empty();
+  }
+});
 
 // "obs_groupby" stuff controls the plot axis content like "obs_sort"
 $(document).on('change', 'input[name="obs_groupby"]', () => {
   const obsLevel = $('input[name="obs_groupby"]:checked').val();
-  if (! obsLevel === "None") {
-    createObsSortable(obsLevel, "groupby");
-  }
+  createObsSortable(obsLevel, "groupby"); // groupby is always required for its plots
 });
 
 $(document).on('click', '#create_plot', async () => {
@@ -1045,7 +1049,7 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for dot plots.");
         return;
       }
-      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+      if ($('input[name="obs_facet"]:checked').val() !== "none"){
         plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       }
       break;
@@ -1059,10 +1063,10 @@ $(document).on('click', '#create_plot', async () => {
         plotConfig.clusterbar_fields.push($(elem).val());
       });
       plotConfig.matrixplot = $('#matrixplot').is(':checked');
-      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+      if ($('input[name="obs_facet"]:checked').val() !== "none"){
         plotConfig.axis_sort_col = $('input[name="obs_sort"]:checked').val();
       }
-      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+      if ($('input[name="obs_facet"]:checked').val() !== "none"){
         plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       }
       if (plotConfig.matrixplot && !plotConfig.axis_sort_col) {
@@ -1084,14 +1088,14 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for violin plots.");
         return;
       }
-      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+      if ($('input[name="obs_facet"]:checked').val() !== "none"){
         plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       }
       plotConfig.stacked_violin = $('#stacked_violin').is(':checked');
       plotConfig.violin_add_points = $('#violin_add_points').is(':checked');
       break;
     case 'quadrant':
-      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+      if ($('input[name="obs_facet"]:checked').val() !== "none"){
         plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       }
       plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
@@ -1108,7 +1112,7 @@ $(document).on('click', '#create_plot', async () => {
       break;
     default:
       // volcano
-      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+      if ($('input[name="obs_facet"]:checked').val() !== "none"){
         plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
       }
       plotConfig.adjust_pvals = $('#adj_pvals').is(':checked');
