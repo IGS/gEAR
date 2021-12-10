@@ -31,7 +31,7 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
 const dotplotOptsIds = ["#obs_groupby_container"]; //, "#obs_facet_container",];
-const heatmapOptsIds = ["#heatmap_options_container", "#adv_heatmap_opts"];//, "#obs_facet_container",];
+const heatmapOptsIds = ["#heatmap_options_container", "#obs_facet_container", "#adv_heatmap_opts"];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
 const violinOptsIds = ["#obs_groupby_container", "#adv_violin_opts"]; //, "#obs_facet_container",];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
@@ -387,8 +387,8 @@ function createDotplotDropdowns (obsLevels) {
 
 // Render dropdowns specific to the heatmap plot
 function createHeatmapDropdowns (obsLevels) {
-  //createObsFacetField(obsLevels);
   createObsSortField(obsLevels);
+  createObsFacetField(obsLevels);
   createObsClusterBarField(obsLevels);
 
   // Initialize differential expression test dropdown
@@ -821,6 +821,7 @@ $('#gene_cart').change(function () {
   } else {
     // User is logged in
 
+    $('#gene_spinner').show();
     // Get the gene cart members and populate the gene symbol search bar
     $.ajax({
       url: './cgi/get_gene_cart_members.cgi',
@@ -859,6 +860,7 @@ $('#gene_cart').change(function () {
         d.resolve();
       }
     });
+    $('#gene_spinner').hide();
   }
   return d.promise();
 });
@@ -956,7 +958,7 @@ $(document).on('change', 'input[name="obs_facet"]', () => {
   createObsSortable(obsLevel, "facet");
 });
 
-$(document).on('change', 'input[name="obs_sort"]', () => {
+$(document).on('change', 'input[name="obs_sort"]', (e) => {
   const obsLevel = $('input[name="obs_sort"]:checked').val();
   createObsSortable(obsLevel, "axis");
 });
@@ -1022,7 +1024,7 @@ $(document).on('click', '#create_plot', async () => {
 
   }
   // This should be rare, but just use the axis order if both are the same category
-  if (sortCategories.facet && !(cats_used.includes(sortCategories.facet))) {
+  if (sortCategories.facet && !(categoriesUsed.includes(sortCategories.facet))) {
     sortOrder[sortCategories.facet] = $('#facet_sortable').sortable("toArray", {attribute:"value"});
   }
   plotConfig.sort_order = sortOrder;

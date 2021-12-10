@@ -1205,14 +1205,21 @@ class MultigeneDashData(Resource):
             # with expression and its observation metadata
             df = selected.to_df()
 
-            if matrixplot and axis_sort_col:
-                df[axis_sort_col] = selected.obs[axis_sort_col]
-                grouped = df.groupby([axis_sort_col])
+            groupby_filters = []
+            if facet_col:
+                groupby_filters.append(facet_col)
+            if axis_sort_col:
+                groupby_filters.append(axis_sort_col)
+
+            if matrixplot and groupby_filters:
+                for gb in groupby_filters:
+                    df[gb] = selected.obs[gb]
+                grouped = df.groupby(groupby_filters)
                 df = grouped.agg('mean') \
                     .dropna()
             else:
                 if not cluster_obs:
-                    sorted_df = selected.obs.sort_values(by=[axis_sort_col] if axis_sort_col else list(filters.keys()))
+                    sorted_df = selected.obs.sort_values(by=groupby_filters if groupby_filters else list(filters.keys()))
                     df = df.reindex(sorted_df.index.tolist())
 
             fig = create_clustergram(df
@@ -1233,10 +1240,7 @@ class MultigeneDashData(Resource):
                 fig.layout["yaxis2"]["domain"] = [1,1]
                 fig.layout["yaxis5"]["domain"] = [0,1]
 
-            if not matrixplot:
-                filter_indexes = build_obs_group_indexes(selected.obs, filters, clusterbar_fields)
-                add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
-            else:
+            if matrixplot:
                 fig.update_layout(
                     title={
                         "text":"Log10 Mean Gene Expression" if is_log10 else "Log2 Mean Gene Expression"
@@ -1245,7 +1249,9 @@ class MultigeneDashData(Resource):
                         ,"y":0.9
                     }
                 )
-
+            else:
+                filter_indexes = build_obs_group_indexes(selected.obs, filters, clusterbar_fields)
+                add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
 
         elif plot_type == "mg_violin":
             var_index = selected.var.index.name

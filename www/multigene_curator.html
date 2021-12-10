@@ -505,7 +505,7 @@
 
     <script id="obs_groupby_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Cluster observations by/label>
+        <label class="col-3">Group observations by/label>
         <label class="col-3" id="groupby_order_label" style="display:none;">Sort Order</label>
       </div>
       <div class="row">
@@ -521,7 +521,7 @@
           <ul id="groupby_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="group_by_help" class="form-text text-muted">Determine category to cluster by before plotting. These groups will be on the axis</small>
+      <small id="group_by_help" class="form-text text-muted">Determine category to group by before plotting. Optionally drag the groups to determine a specific order along the axis.</small>
     </script>
 
     <script id="obs_clusterbar_tmpl" type="text/x-jsrender">
@@ -558,7 +558,7 @@
 
     <script id="obs_axis_sort_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Sort observations on axis</label>
+        <label class="col-3">Cluster observations by</label>
         <label class="col-3" id="axis_order_label" style="display:none;">Sort Order</label>
       </div>
       <div class="row">
@@ -574,7 +574,7 @@
           <ul id="axis_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="sort_help" class="form-text text-muted">Select the category to sort the observations by on the axis. Optionally drag the groups to determine a specific sort order.</small>
+      <small id="sort_help" class="form-text text-muted">Select the category to cluster the observations by along the axis. Optionally drag the groups to determine a specific sort order.</small>
     </script>
 
     <script id="obs_sortable_tmpl" type="text/x-jsrender">
