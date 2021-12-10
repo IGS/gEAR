@@ -79,13 +79,14 @@
             <br />
             <div id="noncats"></div>
             <div class="form-group-sm">
-              <label for="x_label">X Label</label>
+              <label for="x_label">X Label (optional)</label>
               <input class="form-control" id="x_label" placeholder="Name of x-axis label">
             </div>
             <div class="form-group-sm">
-              <label for="y_label">Y Label</label>
+              <label for="y_label">Y Label (optional)</label>
               <input class="form-control" id="y_label" placeholder="Name of y-axis label">
             </div>
+            <small class="form-text text-muted">Supplied axes labels will overwrite the default axes labels</small>
             <hr />
             <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
           </div>  <!-- end filter_block -->
@@ -289,18 +290,18 @@
     {{!-- key is categorical observation, prop is the list of unique categories --}}
     <div class="card" id="{{:key}}_card" role="tabpanel">
       <div class="form-check form-check-inline">
+        <input class="form-check-input js-cat-check" type="checkbox" value="" id="{{:key}}_check">
         <button id="{{:key}}_collapse" class="btn btn-light btn-sm btn-block" data-toggle="collapse" data-target="#{{:key}}_body" aria-expanded="true" aria-controls="{{:key}}_body">
           {{:key}}
           <i class="fa fa-caret-down" aria-hidden="true"></i>
         </button>
-        <input class="form-check-input js-cat-check" type="checkbox" value="" id="{{:key}}_check" checked>
       </div>
       <div id="{{:key}}_body" class="collapse" aria-labelledby="{{:key}}_card" data-parent="#conditions_accordion">
         <div class="card-body">
         {{props prop}}
           {{!-- key is list index, prop is the value --}}
           <div class="form-check">
-            <label class="form-check-label"><input class="form-check-input js-group-check" type="checkbox" data-group="{{:~category.key}};-;{{:prop}}" value="" checked>{{:prop}}</label>
+            <label class="form-check-label"><input class="form-check-input js-group-check" type="checkbox" data-group="{{:~category.key}};-;{{:prop}}" value="">{{:prop}}</label>
           </div>
         {{/props}}
         </div>

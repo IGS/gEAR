@@ -82,6 +82,6 @@ table#tbl_selected_genes th {
 }
 
 /* Overwritting bootstrap default */
-.nav-tabs .nav-link {
-    border-width: 2px;
+.nav-tabs .nav-link.active {
+    text-decoration-line: underline;
 }
