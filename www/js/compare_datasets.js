@@ -262,9 +262,8 @@ async function populate_condition_selection_control() {
     $("#noncats").html(noncat_html);
   }
 
-    // shallow copy observations to set initial state
-    dataset1_condition = {...cat_obs};
-    dataset2_condition = {...cat_obs};
+  // Since we want the default state of the category groups to be unchecked,
+  // we do not set an initial state of stored checked conditions
 
   if (obs_data.has_replicates == 1) {
     $("#statistical_test_label").html("");
