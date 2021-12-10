@@ -955,18 +955,22 @@ $(document).on('change', '#gene_dropdown', () => {
 // When a column is chosen, populate the sortable list
 $(document).on('change', 'input[name="obs_facet"]', () => {
   const obsLevel = $('input[name="obs_facet"]:checked').val();
-  createObsSortable(obsLevel, "facet");
-});
+  if (! obsLevel === "None") {
+    createObsSortable(obsLevel, "facet");
+  }});
 
 $(document).on('change', 'input[name="obs_sort"]', (e) => {
   const obsLevel = $('input[name="obs_sort"]:checked').val();
-  createObsSortable(obsLevel, "axis");
-});
+  if (! obsLevel === "None") {
+    createObsSortable(obsLevel, "axis");
+  }});
 
 // "obs_groupby" stuff controls the plot axis content like "obs_sort"
 $(document).on('change', 'input[name="obs_groupby"]', () => {
   const obsLevel = $('input[name="obs_groupby"]:checked').val();
-  createObsSortable(obsLevel, "groupby");
+  if (! obsLevel === "None") {
+    createObsSortable(obsLevel, "groupby");
+  }
 });
 
 $(document).on('click', '#create_plot', async () => {
@@ -1041,8 +1045,9 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for dot plots.");
         return;
       }
-      plotConfig.groupby_filter = $('input[name="obs_groupby"]:checked').val();
-      plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+        plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      }
       break;
     case 'heatmap':
       if ((plotConfig.gene_symbols).length < 2) {
@@ -1054,10 +1059,14 @@ $(document).on('click', '#create_plot', async () => {
         plotConfig.clusterbar_fields.push($(elem).val());
       });
       plotConfig.matrixplot = $('#matrixplot').is(':checked');
-      plotConfig.axis_sort_col = $('input[name="obs_sort"]:checked').val();
-      plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+        plotConfig.axis_sort_col = $('input[name="obs_sort"]:checked').val();
+      }
+      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+        plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      }
       if (plotConfig.matrixplot && !plotConfig.axis_sort_col) {
-        window.alert("Must choose a 'Sort observations on axis' category to aggregate means for the matrixplot.");
+        window.alert("Must choose at least a primary split-by category to aggregate means for the matrixplot.");
         return
       }
       plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
@@ -1075,11 +1084,16 @@ $(document).on('click', '#create_plot', async () => {
         window.alert("Must select a groupby filter for violin plots.");
         return;
       }
-      plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+        plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      }
       plotConfig.stacked_violin = $('#stacked_violin').is(':checked');
       plotConfig.violin_add_points = $('#violin_add_points').is(':checked');
       break;
     case 'quadrant':
+      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+        plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      }
       plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
       plotConfig.fold_change_cutoff = Number($("#quadrant_foldchange_cutoff").val());
       plotConfig.fdr_cutoff = Number($("#quadrant_fdr_cutoff").val());
@@ -1094,6 +1108,9 @@ $(document).on('click', '#create_plot', async () => {
       break;
     default:
       // volcano
+      if (!$('input[name="obs_facet"]:checked').val() === "None"){
+        plotConfig.facet_col = $('input[name="obs_facet"]:checked').val();
+      }
       plotConfig.adjust_pvals = $('#adj_pvals').is(':checked');
       plotConfig.annotate_nonsignificant = $('#annot_nonsig').is(':checked');
       plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;

@@ -263,7 +263,7 @@
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" value="" id="matrixplot">
                   <label class="form-check-label" for="matrixplot">
-                    Create matrixplot, which plots mean expression of genes by the chosen 'Cluster by observations' category
+                    Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories
                   </label>
                 </div>
                 <small class="form-text text-muted">
@@ -537,7 +537,7 @@
 
     <script id="obs_facet_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Split by category into subplots</label>
+        <label class="col-3">Primary category split</label>
         <label class="col-3" id="facet_order_label" style="display:none;">Sort Order</label>
       </div>
       <div class="row">
@@ -548,17 +548,21 @@
             <label class="form-check-label" for="{{:key}}_facet">{{:key}}</label>
           </div>
         {{/props}}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="obs_facet" id="none_facet" value="none">
+            <label class="form-check-label" for="none_facet">None</label>
+          </div>
         </div>
         <div class="col-3" id="obs_facet_sortable">
           <ul id="facet_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="facet_help" class="form-text text-muted">Determine category to split into multiple subplots. Optionally drag the groups to determine a specific subplot order.</small>
+      <small id="facet_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific sort order.</small>
     </script>
 
     <script id="obs_axis_sort_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Cluster observations by</label>
+        <label class="col-3">Secondary category split</label>
         <label class="col-3" id="axis_order_label" style="display:none;">Sort Order</label>
       </div>
       <div class="row">
@@ -569,12 +573,16 @@
             <label class="form-check-label" for="{{:key}}_sort">{{:key}}</label>
           </div>
         {{/props}}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="obs_sort" id="none_sort" value="none">
+            <label class="form-check-label" for="none_sort">None</label>
+          </div>
         </div>
         <div class="col-3" id="obs_axis_sortable">
           <ul id="axis_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="sort_help" class="form-text text-muted">Select the category to cluster the observations by along the axis. Optionally drag the groups to determine a specific sort order.</small>
+      <small id="sort_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific sort order.</small>
     </script>
 
     <script id="obs_sortable_tmpl" type="text/x-jsrender">
