@@ -142,9 +142,9 @@
         </div>
         <div class="form-group" id="gene_dropdown_container" aria-describedby="gene_selection_help"></div>
         <div class="alert alert-warning" role="alert" id="too_many_genes_warning" style="display:none;"></div>
-        <div class="form-group" id="gene_cart_container">
-          <label for="gene_cart"><strong>or </strong>Load from gene cart</label>
-          <div id="gene_cart_c" class="w-50 form-control dropdown">
+        <div class="form-group row" id="gene_cart_container">
+          <label class="col-2" for="gene_cart"><strong>or </strong>Load from gene cart</label>
+          <div id="gene_cart_c" class="w-50 form-control dropdown col-6">
             <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
             <div class="dropdown-menu" aria-labelledby="gene_cart">
               <form class="px-4 py-3">
@@ -158,8 +158,9 @@
               </form>
             </div>
           </div>  <!-- end gene_cart_c -->
-          <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
+          <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
         </div>  <!-- end gene_cart_container -->
+        <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
         <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
       </fieldset>
 
@@ -172,10 +173,9 @@
 
         <!-- Observation group options -->
         <fieldset class="form-group" id="obs_filters_container"></fieldset>
-        <fieldset class="form-group" id="obs_groupby_container" style="display:none;"></fieldset>
-        <fieldset class="form-group" id="obs_facet_container" style="display:none;"></fieldset>
+        <fieldset class="form-group" id="obs_primary_container" style="display:none;"></fieldset>
+        <fieldset class="form-group" id="obs_secondary_container" style="display:none;"></fieldset>
         <fieldset id="heatmap_options_container" style="display:none;">
-          <fieldset class="form-group" id="obs_axis_sort_container"></fieldset>
           <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
 
           <div class="form-group">
@@ -503,25 +503,60 @@
       </div>
     </script>
 
-    <script id="obs_groupby_tmpl" type="text/x-jsrender">
+    <script id="obs_primary_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Group observations by/label>
-        <label class="col-3" id="groupby_order_label" style="display:none;">Sort Order</label>
+        <label class="col-3">Primary category split</label>
+        <label class="col-3" id="primary_order_label" style="display:none;">Sort Order</label>
       </div>
       <div class="row">
         <div class="col-3">
-          {{props}}
+        {{props}}
           <div class="form-check">
-            <input class="form-check-input" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
-            <label class="form-check-label" for="{{:key}}_groupby">{{:key}}</label>
+            <input class="form-check-input" type="radio" name="obs_primary" id="{{:key}}_primary" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_primary">{{:key}}</label>
           </div>
-          {{/props}}
+        {{/props}}
+          <div class="form-check" id="none_primary_group">
+            <input class="form-check-input" type="radio" name="obs_primary" id="none_primary" value="none">
+            <label class="form-check-label" for="none_primary">None</label>
+          </div>
         </div>
-        <div class="col-3" id="obs_groupby_sortable">
-          <ul id="groupby_sortable" class="list-group"></ul>
+        <div class="col-3">
+          <ul id="primary_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="group_by_help" class="form-text text-muted">Determine category to group by before plotting. Optionally drag the groups to determine a specific order along the axis.</small>
+      <small id="primary_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific order.</small>
+    </script>
+
+    <script id="obs_secondary_tmpl" type="text/x-jsrender">
+      <div class="row">
+        <label class="col-3">Secondary category split</label>
+        <label class="col-3" id="secondary_order_label" style="display:none;">Sort Order</label>
+      </div>
+      <div class="row">
+        <div class="col-3">
+        {{props}}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="obs_secondary" id="{{:key}}_secondary" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_secondary">{{:key}}</label>
+          </div>
+        {{/props}}
+          <div class="form-check" id="none_secondary_group">
+            <input class="form-check-input" type="radio" name="obs_secondary" id="none_secondary" value="none">
+            <label class="form-check-label" for="none_secondary">None</label>
+          </div>
+        </div>
+        <div class="col-3">
+          <ul id="secondary_sortable" class="list-group"></ul>
+        </div>
+      </div>
+      <small id="secondary_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific order.</small>
+    </script>
+
+    <script id="obs_sortable_tmpl" type="text/x-jsrender">
+      {{for sortData}}
+      <li class="ui-state-default list-group-item p-1" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
+      {{/for}}
     </script>
 
     <script id="obs_clusterbar_tmpl" type="text/x-jsrender">
@@ -533,62 +568,6 @@
       </div>
       {{/props}}
       <small id="clusterbar_help" class="form-text text-muted">Check the categories you wish to show a cluster colorbar for in the heatmap.</small>
-    </script>
-
-    <script id="obs_facet_tmpl" type="text/x-jsrender">
-      <div class="row">
-        <label class="col-3">Primary category split</label>
-        <label class="col-3" id="facet_order_label" style="display:none;">Sort Order</label>
-      </div>
-      <div class="row">
-        <div class="col-3">
-        {{props}}
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="obs_facet" id="{{:key}}_facet" value="{{:key}}">
-            <label class="form-check-label" for="{{:key}}_facet">{{:key}}</label>
-          </div>
-        {{/props}}
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="obs_facet" id="none_facet" value="none">
-            <label class="form-check-label" for="none_facet">None</label>
-          </div>
-        </div>
-        <div class="col-3" id="obs_facet_sortable">
-          <ul id="facet_sortable" class="list-group"></ul>
-        </div>
-      </div>
-      <small id="facet_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific sort order.</small>
-    </script>
-
-    <script id="obs_axis_sort_tmpl" type="text/x-jsrender">
-      <div class="row">
-        <label class="col-3">Secondary category split</label>
-        <label class="col-3" id="axis_order_label" style="display:none;">Sort Order</label>
-      </div>
-      <div class="row">
-        <div class="col-3">
-        {{props}}
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="obs_sort" id="{{:key}}_sort" value="{{:key}}">
-            <label class="form-check-label" for="{{:key}}_sort">{{:key}}</label>
-          </div>
-        {{/props}}
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="obs_sort" id="none_sort" value="none">
-            <label class="form-check-label" for="none_sort">None</label>
-          </div>
-        </div>
-        <div class="col-3" id="obs_axis_sortable">
-          <ul id="axis_sortable" class="list-group"></ul>
-        </div>
-      </div>
-      <small id="sort_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific sort order.</small>
-    </script>
-
-    <script id="obs_sortable_tmpl" type="text/x-jsrender">
-      {{for sortData}}
-      <li class="ui-state-default list-group-item p-1" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
-      {{/for}}
     </script>
 
     <!-- Declare a JsRender template, in a script block: -->
@@ -604,7 +583,7 @@
               <option value="{{:prop}}">{{:prop}}</option>
             {{/props}}
           </select>
-          <button type='button' class="close all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
+          <button type='button' class="close js-all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
         </div>
       {{/props}}
       <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
@@ -627,7 +606,7 @@
 
     <script id="dataset_plot_tmpl" type="text/x-jsrender">
       <div id="dataset_{{:dataset_id}}" class="dataset_c">
-        <div id="dataset_spinner" style="display:none;">
+        <div id="plot_spinner" style="display:none;">
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
           <span>Loading plot...</span>
         </div>

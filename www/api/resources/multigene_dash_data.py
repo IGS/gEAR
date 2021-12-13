@@ -9,7 +9,7 @@ import os, sys
 import geardb
 from gear.plotting import get_config
 from plotly.utils import PlotlyJSONEncoder
-from itertools import cycle, groupby, product
+from itertools import cycle, product
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -96,12 +96,12 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
     fig.update_yaxes(
-        range=[-1, 5]  # Give extra clearance so top dot does not overlap with title
-        ,visible=False
+        range=[-0.5, 5]  # Give extra clearance so top dot does not overlap with title
+        , visible=False
         , col=legend_col
     )
 
-def create_dot_plot(df, groupby_filter):
+def create_dot_plot(df, groupby_filters, plot_title=None):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -111,15 +111,28 @@ def create_dot_plot(df, groupby_filter):
     # Taking a lot of influence from
     # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
 
+    # Specify the subplot grid
     legend_col=5
+    spec_row = [{"colspan":legend_col-1}]
+    spec_row.extend([None for i in range(legend_col-2)])
+    spec_row.append({})
 
     fig = make_subplots(rows=1, cols=legend_col
-        , specs = [[{"colspan":legend_col-1}, None, None, None, {}]]   # "None" repeat much be legend_col - 2
-        , subplot_titles=("", "Fraction of cells<br>in group (%)")
+        , specs = [spec_row]   # "None" repeat much be legend_col - 2
+        , subplot_titles=(plot_title, "Fraction of cells<br>in group (%)")
     )
 
+    # Create the multicategory axis
+    multicategory = []
+    for col in groupby_filters:
+        multicategory.append(df[col].tolist())
+    # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly
+    if len(groupby_filters) < 2:
+        multicategory = df[groupby_filters[0]].tolist()
+    print(df, file=sys.stderr)
+
     fig.add_scatter(
-        x=df[groupby_filter]
+        x=multicategory
         , y=df["gene_symbol"]
         , text = df["value", "count"]
         , hovertemplate="N: %{text}<br>" +
@@ -132,7 +145,7 @@ def create_dot_plot(df, groupby_filter):
             , size=df["value", "percent"]
             , sizemode="area"
             , colorbar=dict(
-                title="mean"
+                title="Mean Expression"
                 )
             )
         , showlegend=False
@@ -522,11 +535,14 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, groupby_filter, sort_order, facet_col=None):
+def create_stacked_violin_plot(df, groupby_filters, sort_order):
     """Create a stacked violin plot.  Returns the figure."""
+    #groupby = []
+    #groupby.extend(groupby_filters)
+    #groupby.append("gene_symbol")
 
-    grouped = df.groupby([groupby_filter, "gene_symbol"])   # grouping by multiple columns does not preserve sort order
-    groupby_groups = sort_order[groupby_filter] if groupby_filter in sort_order else df[groupby_filter].unique().tolist()
+    grouped = df.groupby(["gene_symbol"])   # grouping by multiple columns does not preserve sort order
+    groupby_groups = sort_order[groupby_filters[0]] if groupby_filters[0] in sort_order else df[groupby_filters[0]].unique().tolist()
     color_cycler = cycle(VIVID_COLORS)
     color_map = {cat: next(color_cycler) for cat in groupby_groups}
 
@@ -590,42 +606,46 @@ def create_stacked_violin_plot(df, groupby_filter, sort_order, facet_col=None):
 
     return fig
 
-def create_violin_plot(df, gene_map, groupby_filter, facet_col=None):
+def create_violin_plot(df, groupby_filters):
     """Creates a violin plot.  Returns the figure."""
-    grouped = df.groupby([groupby_filter])
-    names_in_legend = {}
     color_cycler = cycle(VIVID_COLORS)
     offsetgroup = 0
 
     fig = go.Figure()
 
+    # Group by gene symbol
+    grouped = df.groupby(["gene_symbol"])
+
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
-    for gene in gene_map:
+    for name, group in grouped:
+        gene_sym = name
         fillcolor = next(color_cycler)
-        showlegend = True
-        for name, group in grouped:
-            # If facets are present, a legend group trace can appear multiple times.
-            # Ensure it only shows once.
-            if gene in names_in_legend:
-                showlegend = False
-            names_in_legend[gene] = True
 
-            fig.add_violin(
-                x=group[groupby_filter]
-                , y=group[gene_map[gene]]
-                , name=gene
-                , scalegroup="{}_{}".format(gene, name)
-                , showlegend=showlegend
-                , fillcolor=fillcolor
-                , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
-                , line=dict(color="slategrey")
-                , points=False
-                , box=dict(
-                    visible=False
-                    )
-                , spanmode="hard"   # Do not extend violin tails beyond the min/max values
-            )
+        # Create the multicategory axis
+        multicategory = []
+        for col in groupby_filters:
+            multicategory.append(group[col].tolist())
+        # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly
+        if len(groupby_filters) < 2:
+            multicategory = group[groupby_filters[0]].tolist()
+
+        # NOTE: Previously I set the scalegroup so all violins would have the maximum width, like in the single-gene curator
+        # However, I find it difficult to adjust with the control loop this way. Will work to fix this if people complain
+        fig.add_violin(
+            x=multicategory
+            , y=group["value"]
+            , name=gene_sym
+           # , scalegroup="{}_{}".format(gene_sym)
+            , fillcolor=fillcolor
+            , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
+            , line=dict(color="slategrey")
+            , points=False
+            , box=dict(
+                visible=False
+                )
+            , spanmode="hard"   # Do not extend violin tails beyond the min/max values
+        )
         offsetgroup += 1
 
     fig.update_layout(
@@ -998,10 +1018,12 @@ class MultigeneDashData(Resource):
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
-        groupby_filter = req.get('groupby_filter', None)
+        primary_col = req.get('primary_col', None)
+        secondary_col = req.get('secondary_col', None)
+        #groupby_filter = req.get('groupby_filter', None)
         sort_order = req.get('sort_order', {})
-        axis_sort_col = req.get('axis_sort_col', None)
-        facet_col = req.get('facet_col', None)
+        #axis_sort_col = req.get('axis_sort_col', None)
+        #facet_col = req.get('facet_col', None)
         # Heatmap opts
         clusterbar_fields = req.get('clusterbar_fields', [])
         matrixplot = req.get('matrixplot', False)
@@ -1144,27 +1166,37 @@ class MultigeneDashData(Resource):
             var_index = selected.var.index.name
             df = selected.to_df()
 
-            if not groupby_filter:
+            if not primary_col:
                 return {
                     'success': -1,
-                    'message': "'Groupby filter' option required for dot plots."
+                    'message': "The 'primary_col' option required for dot plots."
                 }
 
-            df[groupby_filter] = selected.obs[groupby_filter]
+            groupby_filters = set()
+            if primary_col:
+                groupby_filters.add(primary_col)
+            if secondary_col:
+                groupby_filters.add(secondary_col)
+            groupby_filters = list(groupby_filters)
+
+            for gb in groupby_filters:
+                df[gb] = selected.obs[gb]
 
             # 1) Flatten to long-form
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
-            df = df.melt(id_vars=[groupby_filter])
+            df = df.melt(id_vars=groupby_filters)
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
             df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
             # Percent of all cells in this group where the gene has expression
             percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
-            grouped = df.groupby(["gene_symbol", groupby_filter])
+            groupby = ["gene_symbol"]
+            groupby.extend(groupby_filters)
+            grouped = df.groupby(groupby)
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
                 .reset_index()
 
-            fig = create_dot_plot(df, groupby_filter)
+            fig = create_dot_plot(df, groupby_filters, title)
 
         elif plot_type == "quadrant":
             try:
@@ -1205,11 +1237,12 @@ class MultigeneDashData(Resource):
             # with expression and its observation metadata
             df = selected.to_df()
 
-            groupby_filters = []
-            if facet_col:
-                groupby_filters.append(facet_col)
-            if axis_sort_col:
-                groupby_filters.append(axis_sort_col)
+            groupby_filters = set()
+            if primary_col:
+                groupby_filters.add(primary_col)
+            if secondary_col:
+                groupby_filters.add(secondary_col)
+            groupby_filters = list(groupby_filters)
 
             if matrixplot and groupby_filters:
                 for gb in groupby_filters:
@@ -1257,40 +1290,36 @@ class MultigeneDashData(Resource):
             var_index = selected.var.index.name
             df = selected.to_df()
 
-            if not groupby_filter:
+            if not primary_col:
                 return {
                     'success': -1,
-                    'message': "'Groupby filter' option required for violin plots."
+                    'message': "The 'primary_col' option required for violin plots."
                 }
 
-            df[groupby_filter] = selected.obs[groupby_filter]
+            groupby_filters = set()
+            if primary_col:
+                groupby_filters.add(primary_col)
+            if secondary_col:
+                groupby_filters.add(secondary_col)
+            groupby_filters = list(groupby_filters)
 
-            if facet_col:
-                df[facet_col] = selected.obs[facet_col]
+            for gb in groupby_filters:
+                df[gb] = selected.obs[gb]
 
-            # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
-            gene_map = {}
-            dataset_genes = selected.var.gene_symbol.unique().tolist()
-            normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
-            for gene in normalized_genes_list:
-                gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
+            # 1) Flatten to long-form
+            # 2) Create a gene symbol column by mapping to the Ensembl IDs
+            df = df.melt(id_vars=groupby_filters)
+            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
             if stacked_violin:
-                # Melt the datafram to make it easier to retrieve the contents for each axis
-                df = df.melt(id_vars=[groupby_filter])
-                # Create series of gene symbols by reverse-lookup of dict created for violin plot
-                df["gene_symbol"] = df[var_index].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
-
                 fig = create_stacked_violin_plot(df
-                    , groupby_filter
+                    , groupby_filters
                     , sort_order
-                    , facet_col
                     )
             else:
                 fig = create_violin_plot(df
-                    , gene_map
-                    , groupby_filter
-                    , facet_col
+                    , groupby_filters
                     )
 
             # Add jitter-based args (to make beeswarm plot)
@@ -1320,7 +1349,9 @@ class MultigeneDashData(Resource):
                 template="simple_white"
             )
 
-        if title:
+        # Title is addressed in the creation of dotplot subplots
+        # But we can add it here for other plots
+        if title and not plot_type == "dotplot":
             fig.update_layout(
                 title={
                     "text":title
