@@ -62,10 +62,12 @@ window.onload = function () {
   $("#create_gene_cart").on("click", function () {
     $("#create_gene_cart_dialog").show("fade");
   });
+    
   $("#cancel_save_gene_cart").on("click", function () {
     $("#create_gene_cart_dialog").hide("fade");
     $("#gene_cart_name").val("");
   });
+    
   $("#gene_cart_name").on("input", function () {
     if ($(this).val() == "") {
       $("#save_gene_cart").prop("disabled", true);
@@ -73,6 +75,7 @@ window.onload = function () {
       $("#save_gene_cart").prop("disabled", false);
     }
   });
+    
   $("#save_gene_cart").on("click", function () {
     $("#save_gene_cart").prop("disabled", true);
 
