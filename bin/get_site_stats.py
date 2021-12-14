@@ -55,12 +55,12 @@ def main():
 
     #get counts for each MySQL table
     for table in tables_to_count:
-        raw_count = get_count(cursor=cursor, column='id', table=table)
-
         if table == 'expression':
             h5ad_count = get_h5ad_count()
             raw_count += h5ad_count
-
+        else:
+            raw_count = get_count(cursor=cursor, column='id', table=table)
+            
         result[table + '_count'] = raw_count
 
     # Get count of select commands performed and format it
