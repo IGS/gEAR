@@ -62,26 +62,34 @@
                   </div>
                   <div id="dataset_tree"></div>
                 </form>
-              </div>  <!-- end dataset_c -->
+              </div>  <!-- end dropdown-menu -->
+            </div>  <!-- end dataset_c -->
+            <div class="form-group-sm">
+              <ul class="nav nav-tabs" id="condition_tabs" role="tablist">
+                <li class="nav-item">
+                  <a id="dataset1_tab" class="nav-link active" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="true">X Condition</a>
+                </li>
+                <li class="nav-item">
+                  <a id="dataset2_tab" class="nav-link" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="false">Y Condition</a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="form-group-sm" id="conditions_accordion"></div>
+            <br />
+            <div id="noncats"></div>
+            <div class="form-group-sm">
+              <label for="x_label" class="control-label mb-0 mt-2">X Label (optional)</label>
+              <input class="form-control form-control-sm" id="x_label" placeholder="Name of x-axis label">
             </div>
             <div class="form-group-sm">
-              <!--<label for="dataset1_conditions" class="control-label">Condition(s) on X axis</label>-->
-              <select id="dataset1_conditions" class="form-control form-control-sm">
-                <option value="">Choose condition 1</option>
-              </select>
-              <script id="dataset_condition_options" type="text/x-jsrender">
-                <option value="{{:class_label}}">{{:formatted_class_label}}</option>
-              </script>
+              <label for="y_label" class="control-label mb-0 mt-2">Y Label (optional)</label>
+              <input class="form-control form-control-sm" id="y_label" placeholder="Name of y-axis label">
             </div>
-            <div class="form-group-sm">
-              <!--<label for="dataset2_conditions" class="control-label">Condition(s) on X axis</label>-->
-              <select id="dataset2_conditions" class="form-control form-control-sm">
-                <option value="">Choose condition 2</option>
-              </select>
-            </div>
+            <small class="form-text text-muted">Supplied axes labels will overwrite the default axes labels</small>
             <hr />
             <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
-          </div>
+          </div>  <!-- end filter_block -->
 
           <div id="chart_settings">
             <h3>Data filters / settings</h3>
@@ -155,26 +163,32 @@
               </div>
               <h3 class='initial_instructions'>Instructions</h3>
               <div class='initial_instructions'>
-                <p class>
-                  This is an experimental release of our dataset comparison tool.  <a href='./contact.html'>Feedback</a> is welcome.
-                </p>
                 <p>
                   Choose a dataset and condition for each axis using the controls on the left.
+                </p>
+                <p>
+                  For the x-axis and y-axis conditions, you are free to include and exclude any groups from the categorical observations. But if you are performing a significance test between then two conditions, then ensure that just a single differing group is chosen for each condition.
+                </p>
+                <p>
+                  Some observation metadata may be listed as non-categorical, and will be excluded from consideration.  If some observations (such as sample ID or timepoint) are erroneously in this list, it may be because they were loaded in such a way that the dataframe reader interpreted them as continuous (numerical) datatypes.
+                </p>
+                <p>
+                  <a href='./contact.html' class="text-primary">Feedback</a> on the dataset comparison tool is welcome.
                 </p>
               </div>
               <div id='error_loading_c'>
                 <p>
                   There was a problem loading this comparison graph.  Please
-                  <a href='./contact.html' alt='Submit for help'>submit for help</a> with the
+                  <a href='./contact.html' alt='Submit for help' class="text-primary">submit for help</a> with the
                   following information:
                 </p>
                 <div class="code">
                   <ul>
-                    <li>Dataset X: <span id='ticket_datasetx_id'></span></li>
+                    <li>Dataset ID: <span id='ticket_dataset_id'></span></li>
+                    <li>Dataset Name: <span id='ticket_dataset_text'></span></li>
                     <li>Dataset X condition: <span id='ticket_datasetx_condition'></span></li>
-                    <li>Dataset Y: <span id='ticket_datasety_id'></span></li>
                     <li>Dataset Y condition: <span id='ticket_datasety_condition'></span></li>
-		    <li><strong>Error:</strong> <span id='ticket_error_msg'></span></li>
+                    <li><strong>Error:</strong> <span id='ticket_error_msg'></span></li>
                   </ul>
                 </div>
               </div> <!-- end #error_loading_c -->
@@ -252,7 +266,7 @@
                   <script id="selected_genes_tmpl" type="text/x-jsrender">
                     <tr>
                       <td class="text-truncate">{{:gene_symbol}}</td>
-		                  <td>{{:foldchange}}</td>
+                      <td>{{:foldchange}}</td>
                       <td>{{:pvals}}</td>
                     </tr>
                   </script>
@@ -268,8 +282,44 @@
         <!-- content here inserted via common.js -->
       </div>
     </footer>
-</div> <!-- /body_c -->
+  </div> <!-- /body_c -->
 
+  <!-- JSRender templates -->
+  <script id="dataset_condition_options" type="text/x-jsrender">
+    {{props itemVar="~category"}}
+    {{!-- key is categorical observation, prop is the list of unique categories --}}
+    <div class="card" id="{{:key}}_card" role="tabpanel">
+      <div class="form-check form-check-inline">
+        <input class="form-check-input js-cat-check" type="checkbox" value="" id="{{:key}}_check">
+        <button id="{{:key}}_collapse" class="btn btn-light btn-sm btn-block" data-toggle="collapse" data-target="#{{:key}}_body" aria-expanded="true" aria-controls="{{:key}}_body">
+          {{:key}}
+          <i class="fa fa-caret-down" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div id="{{:key}}_body" class="collapse" aria-labelledby="{{:key}}_card" data-parent="#conditions_accordion">
+        <div class="card-body">
+        {{props prop}}
+          {{!-- key is list index, prop is the value --}}
+          <div class="form-check">
+            <label class="form-check-label"><input class="form-check-input js-group-check" type="checkbox" data-group="{{:~category.key}};-;{{:prop}}" value="">{{:prop}}</label>
+          </div>
+        {{/props}}
+        </div>
+      </div>
+    </div>
+    {{/props}}
+  </script>
+
+  <script id="non_categories_list" type="text/x-jsrender">
+    <h5>Non-categorical observations excluded:</h5>
+    <ul class="list-unstyled">
+    {{for noncat_obs}}
+      <li><small>{{:}}</small></li>
+    {{/for}}
+    </ul>
+  </script>
+
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 

@@ -6,6 +6,7 @@ import sys
 import os
 import statistics
 import pandas as pd
+from itertools import product
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -23,7 +24,7 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset1_id')
+    dataset_id = form.getvalue('dataset_id')
     condition1 = form.getvalue('dataset1_condition')
     condition2 = form.getvalue('dataset2_condition')
     std_dev_num_cutoff = float(form.getvalue('std_dev_num_cutoff'))
@@ -34,146 +35,13 @@ def main():
     dataset = Dataset(id=dataset_id, has_h5ad=1)
     h5_path = dataset.get_file_path()
 
-    # This needs to match the list in get_condition_list.cgi
-    # this is for the NeMO demo do handle the datasets overloaded with columns
-    skip_columns = [
-        'Amp_Date',
-        'Amp_Name',
-        'Amp_PCR_cyles',
-        'ATAC_cluster_label',
-        'ATAC_cluster_color',
-        'Cell_Capture',
-        'DNAm_cluster_color',
-        'DNAm_cluster_label',
-        'Donor',
-        'Gender',
-        'Lib_Cells',
-        'Lib_Date',
-        'Lib_Name',
-        'Lib_PCR_cycles',
-        'Lib_PassFail',
-        'Lib_type',
-        'Live_Cells',
-        'Live_percent',
-        'Mean_Reads_perCell',
-        'Median_Genes_perCell',
-        'Median_UMI_perCell',
-        'Region',
-        'Replicate_Lib',
-        'RNA_cluster_color',
-        'RNA_cluster_id',
-        'RNA_cluster_label',
-        'Saturation',
-        'Seq_batch',
-        'Total_Cells',
-        'age_in_weeks',
-        'aggr_num',
-        'barcode',
-        'cellType',
-        'celltype_a',
-        'celltype_b',
-        'celltype_colors',
-        'cell_type_colors',
-        'class_id',
-        'class_label',
-        'class_color',
-        'cluster_id',
-        'cluster_label',
-        'cluster_color',
-        'cluster_colors',
-        'cross_species_cluster',
-        'cross_species_cluster_color',
-        'cross_species_cluster_id',
-        'cross_species_cluster_label',
-        'donor_id',
-        'donor_sex',
-        'donor_sex_color',
-        'donor_sex_id',
-        'donor_sex_label',
-        'doublet.score',
-        'exp_component_name',
-        'gene.counts',
-        'genes_detected',
-        'genes_detected_color',
-        'genes_detected_id',
-        'genes_detected_label',
-        'group_colors',
-        'library_id',
-        'louvain',
-        'mapped_reads',
-        'method',
-        'nonconf_mapped_reads',
-        'sample_id',
-        'species_color',
-        'subclass_color',
-        'subclass_id',
-        #'subclass_label',  # Leave this as displayed for NeMO datasets
-        'tSNE_1',
-        'tSNE_2',
-        'total.reads',
-        'total_UMIs',
-        'total_UMIs_color',
-        'total_UMIs_id',
-        'total_UMIs_label',
-        'tsne1_combined',
-        'tsne2_combined',
-        'tsne_1',
-        'tsne_2',
-        'tsne1',
-        'tsne2',
-        'tSNE1',
-        'tSNE2',
-        'tsne_x',
-        'tsne_y',
-        'tube_barcode',
-        'UMAP1',
-        'UMAP2',
-        'umap1',
-        'umap2',
-        'umap_1',
-        'umap_2',
-        'uMAP_1',
-        'uMAP_2',
-        'UMAP_1',
-        'UMAP_2',
-        'umap1_combined',
-        'umap2_combined',
-        'umi.counts',
-        'unmapped_reads',
-        # NeMOAnalytics columns to skip
-        "RNANumber",
-        "BRNumDigit",
-        "RIN",
-        "AgeYR",
-        "TotalNumReads",
-        "TotalNumMapped",
-        "log10(AgeYR+0.8)",
-        "color",
-        "AgeRND",
-        "SampleID",
-        "BioRep",
-        "TechRep",
-        "color",
-        "X"
-    ]
-
     if not os.path.exists(h5_path):
-        result = dict()
-        result['success'] = 0
-        result['error'] = "No h5 file found for this dataset"
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
-        sys.exit()
+        msg = "No h5 file found for this dataset"
+        return_error_response(msg)
 
     if condition1 == condition2:
-        result = dict()
-        result['success'] = 0
-        result['error'] = "Selected conditions are identical. Please select different conditions."
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
-        sys.exit()
+        msg = "Selected conditions are identical. Please select different conditions."
+        return_error_response(msg)
 
     # To support some options passed we have to do some stats
     perform_ranking = False
@@ -182,8 +50,8 @@ def main():
 
     adata = sc.read(h5_path)
 
-    # Add the composite column
-    cols_x = adata.obs.columns.tolist()
+    # Get all categorical columns
+    cols_x = [col for col in adata.obs.columns if adata.obs[col].dtype.name == 'category']
 
     # If there are multiple columns, create a composite
     if len(cols_x) > 0:
@@ -194,25 +62,55 @@ def main():
         if 'TechRep' in cols_x:
             cols_x.remove('TechRep')
 
-        for unwanted_col in skip_columns:
-            if unwanted_col in cols_x:
-                cols_x.remove(unwanted_col)
+    # Add new column to combine various groups into a single index
+    adata.obs['comparison_composite_index'] = adata.obs[cols_x].apply(lambda x: ';'.join(map(str,x)), axis=1)
+    adata.obs['comparison_composite_index'] = adata.obs['comparison_composite_index'].astype('category')
+    unique_composite_indexes = adata.obs["comparison_composite_index"].unique()
 
-        composite_index = adata.obs[cols_x].apply(lambda x: ';'.join(map(str,x)), axis=1)
-        adata.obs['comparison_composite_index'] = composite_index.tolist()
+    # Only want to keep indexes that match chosen filters
+    dataset1_composite_idx = create_filtered_composite_indexes(json.loads(condition1), unique_composite_indexes.tolist())
+    dataset2_composite_idx = create_filtered_composite_indexes(json.loads(condition2), unique_composite_indexes.tolist())
 
-        # add the composite column for ranked grouping
-        if perform_ranking == True:
-            sc.pp.filter_cells(adata, min_genes=10)
-            sc.pp.filter_genes(adata, min_cells=1)
-            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=True, groups=[condition1], reference=condition2, n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
+    # Exit with error if there is no valid composite index mask created
+    # Example would be a duplicated obs column where only A was selected in col1 and only B was selected in col2
+    if not dataset1_composite_idx:
+        msg = "The X-axis condition selected combination does not exist for this dataset"
+        return_error_response(msg)
 
-        # Set the index as the composite column so we can more easily match the dataset condition being searched.
-        # Our condition has the convention of <column_name>;<column_name>;...
-        # In order to index our dataframe on our condition, we need to map over each
-        # row and set its levels with the same convention. For example, the condition
-        # cochlea;GFP+;E16 would be set as an index so it can be sliced.
-        adata.obs = adata.obs.set_index('comparison_composite_index')
+    if not dataset2_composite_idx:
+        msg = "The Y-axis condition selected combination does not exist for this dataset"
+        return_error_response(msg)
+
+    # add the composite column for ranked grouping
+    if perform_ranking == True:
+        sc.pp.filter_cells(adata, min_genes=10)
+        sc.pp.filter_genes(adata, min_cells=1)
+
+        # Scanpy.rank_genes_groups can handle multiple groups, but our output is designed for just one gropu
+        if len(dataset1_composite_idx) > 1:
+            msg = "Detected multiple possible conditions for the X-axis condition (the query condition)." + \
+                "In order to perform a significance test, please ensure that your set conditions are such so that only 1 possible combination of conditions can be used as the query condition." + \
+                "<br />Curated set conditions: {}".format(dataset1_composite_idx)
+            return_error_response(msg)
+
+        if len(dataset2_composite_idx) > 1:
+            msg = "Detected multiple possible conditions for the Y-axis condition (the reference condition)." + \
+                "In order to perform a significance test, please ensure that your set conditions are such so that only 1 possible combination of conditions can be used as the reference condition." + \
+                "<br />Curated set conditions: {}".format(dataset2_composite_idx)
+            return_error_response(msg)
+
+        try:
+            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=True, groups=dataset1_composite_idx, reference=dataset2_composite_idx[0], n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
+        except Exception as e:
+            msg = "scanpy.rank_genes_groups failed.\n{}".format(str(e))
+            return_error_response(msg)
+
+    # Set the index as the composite column so we can more easily match the dataset condition being searched.
+    # Our condition has the convention of <column_name>;<column_name>;...
+    # In order to index our dataframe on our condition, we need to map over each
+    # row and set its levels with the same convention. For example, the condition
+    # cochlea;GFP+;E16 would be set as an index so it can be sliced.
+    adata.obs = adata.obs.set_index('comparison_composite_index')
 
     # AnnData does not yet allow slices on both rows and columns
     # with boolean indices, so first filter genes and then grab
@@ -221,8 +119,8 @@ def main():
     # Match the condition (ex. A1;ADULT;F) to all
     # the rows in obs, and use this to aggregate the mean
     # SAdkins - This works with and without replicates
-    condition_x_repls_filter = adata.obs.index == condition1
-    condition_y_repls_filter = adata.obs.index == condition2
+    condition_x_repls_filter = adata.obs.index.isin(dataset1_composite_idx)
+    condition_y_repls_filter = adata.obs.index.isin(dataset2_composite_idx)
     adata_x_subset = adata[condition_x_repls_filter, :]
     adata_y_subset = adata[condition_y_repls_filter, :]
 
@@ -236,12 +134,6 @@ def main():
 
     if perform_ranking:
         df_x['pvals_adj'] = adata.uns['rank_genes_groups']['pvals_adj']
-
-    # Adding e1_condition here instead of inside DataFrame
-    # constructor so we can spread the single condition string
-    # across all rows in the column.
-    df_x['e1_condition'] = condition1
-    df_x['e2_condition'] = condition2
 
     result = {
                'fold_change_std_dev': None,
@@ -369,9 +261,24 @@ def main():
         result['y'] = filtered_y
 
     result['fold_change_std_dev'] = "{0:.2f}".format(fold_change_std_dev)
+    result['dataset1_composite_idx'] = dataset1_composite_idx
+    result['dataset2_composite_idx'] = dataset2_composite_idx
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
+
+def create_filtered_composite_indexes(filters, composite_indexes):
+    """Create an index based on the 'comparison_composite_index' column."""
+    all_vals = [v for k, v in filters.items()]  # List of lists
+
+    # itertools.product returns a combation of every value from every list
+    # Essentially  ((x,y) for x in A for y in B)
+    filter_combinations = product(*all_vals)
+    string_filter_combinations = [";".join(v) for v in filter_combinations]
+
+    # This contains combinations of indexes that may not exist in the dataframe.
+    # Use composite indexes from dataframe to return valid filtered indexes
+    return intersection(string_filter_combinations, composite_indexes)
 
 def fold_change(x, y):
     if x >= y:
@@ -403,5 +310,18 @@ def get_log2(val):
         except ValueError:
             return None
 
+def intersection(lst1, lst2):
+    """Intersection of two lists."""
+    return list(set(lst1) & set(lst2))
+
 if __name__ == '__main__':
     main()
+
+def return_error_response(msg):
+    result = dict()
+    result['success'] = 0
+    result['error'] = msg
+    sys.stdout = original_stdout
+    print('Content-Type: application/json\n\n')
+    print(json.dumps(result))
+    sys.exit()
