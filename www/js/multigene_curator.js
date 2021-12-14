@@ -424,7 +424,7 @@ function createQuadrantDropdowns (obsLevels) {
 // Render dropdowns specific to the violin plot
 function createViolinDropdowns (obsLevels) {
   createObsPrimaryField (obsLevels);
-  $('#none_primary').hide();  // Primary is required
+  $('#none_primary_group').hide();  // Primary is required
   createObsSecondaryField(obsLevels);
 }
 

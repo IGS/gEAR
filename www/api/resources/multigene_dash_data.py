@@ -535,39 +535,47 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, groupby_filters, sort_order):
+def create_stacked_violin_plot(df, groupby_filters):
     """Create a stacked violin plot.  Returns the figure."""
-    #groupby = []
-    #groupby.extend(groupby_filters)
-    #groupby.append("gene_symbol")
 
-    grouped = df.groupby(["gene_symbol"])   # grouping by multiple columns does not preserve sort order
-    groupby_groups = sort_order[groupby_filters[0]] if groupby_filters[0] in sort_order else df[groupby_filters[0]].unique().tolist()
+    # Preserve sort order passed to plot, and assign colors to primary category groups
+    primary_groups = df[groupby_filters[0]].unique().tolist()
+    secondary_groups = df[groupby_filters[1]].unique().tolist() if len(groupby_filters) > 1 else []
+
     color_cycler = cycle(VIVID_COLORS)
-    color_map = {cat: next(color_cycler) for cat in groupby_groups}
+    color_map = {cat: next(color_cycler) for cat in primary_groups}
 
     # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
-    facet_row_indexes = {group: idx for idx, group in enumerate(groupby_groups, start=1)}
+    facet_row_indexes = {group: idx for idx, group in enumerate(primary_groups, start=1)}
+    facet_col_indexes = {group: idx for idx, group in enumerate(secondary_groups, start=1)}
 
     fig = make_subplots(
-        rows=len(groupby_groups)
-        , cols=1
-        , row_titles=groupby_groups
+        rows=len(facet_row_indexes.keys())
+        , cols=len(facet_col_indexes.keys()) if facet_col_indexes else 1
+        , row_titles=primary_groups
+        , column_titles=secondary_groups if len(secondary_groups) else None
         , shared_xaxes=True
-        , shared_yaxes="all"    # to keep the scale the same
+        , shared_yaxes="all"    # to keep the scale the same for all row facets
         )
+
+    groupby = ["gene_symbol"]
+    groupby.extend(groupby_filters)
+    # Create groupings for traces
+    grouped = df.groupby(groupby)
 
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
     for name, group in grouped:
-        row_idx = facet_row_indexes[name[0]]
+        # name[0] is gene_sym, name[1] is primary category, name[2] is secondary category
+        row_idx = facet_row_indexes[name[1]]
+        col_idx = facet_col_indexes[name[2]] if len(name) > 2 else 1
 
         fig.add_violin(
             x=group["gene_symbol"]
             , y=group["value"]
-            , scalegroup="_".join(name) # Name will be a tuple
+            , scalegroup=",".join(name) # Name will be a tuple
             , showlegend=False
-            , fillcolor=color_map[name[0]]
+            , fillcolor=color_map[name[1]]
             , line=dict(color="slategrey")
             , points=False
             , box=dict(
@@ -575,28 +583,32 @@ def create_stacked_violin_plot(df, groupby_filters, sort_order):
                 )
             , spanmode="hard"   # Do not extend violin tails beyond the min/max values
             , row=row_idx
-            , col=1
+            , col=col_idx
         )
 
+        # Want annotation text to left but axis tick labels on right
         fig.update_yaxes(
             side="right"
+            , showticklabels=True
             , row=row_idx
-            , col=1
+            , col=col_idx
         )
 
-    # Color the annotations with the fill color
-    fig.for_each_annotation(lambda a: a.update(font=dict(color=color_map[a.text])))
-
-    # Row title annotations are on the right currently.  Reposition them to the left side
-    fig.update_annotations(
-        patch=dict(
-            textangle=0
-            , x=-0
+    # Color the row annotations with the fill color
+    # Also, row title annotations are on the right currently.  Reposition them to the left side
+    # Am attempting to do this based on the assumption that row facet titles will never have a y-position of 1
+    fig.for_each_annotation(
+        lambda a: a.update(
+            font=dict(color=color_map[a.text])
+            , textangle=0
+            , x=0
             , xanchor="right"
             , font_size=12
             , borderpad=5   # Unsure if this does anything but it should ensure the row titles don't come too close to the edge
         )
+        , selector=lambda a: not a.y == 1
     )
+
 
     # Thin out the gap between violins. Default is 0.3 for both values.
     fig.update_layout(
@@ -609,18 +621,27 @@ def create_stacked_violin_plot(df, groupby_filters, sort_order):
 def create_violin_plot(df, groupby_filters):
     """Creates a violin plot.  Returns the figure."""
     color_cycler = cycle(VIVID_COLORS)
-    offsetgroup = 0
 
     fig = go.Figure()
 
-    # Group by gene symbol
-    grouped = df.groupby(["gene_symbol"])
+    genes_to_color = { gene: next(color_cycler) for gene in df["gene_symbol"].unique().tolist() }
+    names_in_legend = {}
+
+    groupby = ["gene_symbol"]
+    groupby.extend(groupby_filters)
+    # Create groupings for traces
+    grouped = df.groupby(groupby)
 
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
     for name, group in grouped:
-        gene_sym = name
-        fillcolor = next(color_cycler)
+        gene_sym = name[0]
+        fillcolor = genes_to_color[gene_sym]
+
+        # If facets are present, a legend group trace can appear multiple times.
+        # Ensure it only shows once.
+        showlegend = False if gene_sym in names_in_legend else True
+        names_in_legend[gene_sym] = True
 
         # Create the multicategory axis
         multicategory = []
@@ -630,15 +651,16 @@ def create_violin_plot(df, groupby_filters):
         if len(groupby_filters) < 2:
             multicategory = group[groupby_filters[0]].tolist()
 
-        # NOTE: Previously I set the scalegroup so all violins would have the maximum width, like in the single-gene curator
-        # However, I find it difficult to adjust with the control loop this way. Will work to fix this if people complain
         fig.add_violin(
             x=multicategory
             , y=group["value"]
             , name=gene_sym
-           # , scalegroup="{}_{}".format(gene_sym)
+            # Scalegroup must be unique for all violins to have max equal width.
+            # Hence why we have to do a 3-dimensional groupby to make unique traces
+            , scalegroup="{}".format(','.join(name))
             , fillcolor=fillcolor
-            , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
+            , offsetgroup=gene_sym   # Cleans up some weird grouping stuff, making plots thicker
+            , showlegend=showlegend
             , line=dict(color="slategrey")
             , points=False
             , box=dict(
@@ -646,7 +668,6 @@ def create_violin_plot(df, groupby_filters):
                 )
             , spanmode="hard"   # Do not extend violin tails beyond the min/max values
         )
-        offsetgroup += 1
 
     fig.update_layout(
         # Since each gene/groupby filter is on its own trace,
@@ -1172,12 +1193,9 @@ class MultigeneDashData(Resource):
                     'message': "The 'primary_col' option required for dot plots."
                 }
 
-            groupby_filters = set()
-            if primary_col:
-                groupby_filters.add(primary_col)
-            if secondary_col:
-                groupby_filters.add(secondary_col)
-            groupby_filters = list(groupby_filters)
+            groupby_filters = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
 
             for gb in groupby_filters:
                 df[gb] = selected.obs[gb]
@@ -1237,12 +1255,11 @@ class MultigeneDashData(Resource):
             # with expression and its observation metadata
             df = selected.to_df()
 
-            groupby_filters = set()
+            groupby_filters = []
             if primary_col:
-                groupby_filters.add(primary_col)
-            if secondary_col:
-                groupby_filters.add(secondary_col)
-            groupby_filters = list(groupby_filters)
+                groupby_filters.append(primary_col)
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
 
             if matrixplot and groupby_filters:
                 for gb in groupby_filters:
@@ -1296,12 +1313,9 @@ class MultigeneDashData(Resource):
                     'message': "The 'primary_col' option required for violin plots."
                 }
 
-            groupby_filters = set()
-            if primary_col:
-                groupby_filters.add(primary_col)
-            if secondary_col:
-                groupby_filters.add(secondary_col)
-            groupby_filters = list(groupby_filters)
+            groupby_filters = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
 
             for gb in groupby_filters:
                 df[gb] = selected.obs[gb]
@@ -1315,7 +1329,6 @@ class MultigeneDashData(Resource):
             if stacked_violin:
                 fig = create_stacked_violin_plot(df
                     , groupby_filters
-                    , sort_order
                     )
             else:
                 fig = create_violin_plot(df
@@ -1328,7 +1341,10 @@ class MultigeneDashData(Resource):
                     jitter=0.25
                     , points="all"
                     , pointpos=0
-                    , marker=dict(color="#000000")
+                    , marker=dict(
+                        color="#000000"
+                        , size = 6 if len(groupby_filters) == 1 else 3
+                    )
                 )
         else:
             return {
