@@ -74,8 +74,8 @@ class GeneCartTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts"},
-            {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts"},
+            {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
@@ -199,8 +199,8 @@ class ProfileTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles"},
-            {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
+            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your Profiles", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // user_profiles/domain_profiles properties - value, text, share_id
@@ -337,9 +337,9 @@ class DatasetTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles"},
-            {'id':'shared_node', 'parent':'#', 'text':"Shared Profiles"},
-            {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
+            {'id':'domain_node', 'parent':'#', 'text':"Public Datasets", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':"Shared Datasets", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your Datasets", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // Load datasets into the tree data property
