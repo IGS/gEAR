@@ -31,10 +31,10 @@ let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
 const dotplotOptsIds = ["#obs_primary_container", "#obs_secondary_container"];
-const heatmapOptsIds = ["#heatmap_options_container", "#obs_primary_container", "#obs_secondary_container", "#adv_heatmap_opts"];
-const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container", "#include_zero_foldchange_container"];
-const violinOptsIds = ["#obs_primary_container", "#obs_secondary_container", "#adv_violin_opts"];
-const volcanoOptsIds = ["#volcano_options_container", "#de_test_container", "#adjusted_pvals_checkbox_container", "#annot_nonsig_checkbox_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#obs_primary_container", "#obs_secondary_container"];
+const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container"];
+const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#obs_secondary_container"];
+const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 
 // color palettes
 const continuous_palettes = [
@@ -69,7 +69,6 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
   // Hide further configs until a dataset is chosen.
   // Changing the dataset will start triggering these to show
   $('#plot_type_container').hide();
-  $('#advanced_options_container').hide();
   $('#gene_container').hide();
 
   // check if the user is already logged in
@@ -860,7 +859,6 @@ $('#plot_type_select').change(() => {
   $('#reset_opts').click();  // Reset all options
   $('#selected_genes_field').hide();
   $("#create_plot").prop("disabled", false);
-  $('#advanced_options_container').show();
 
   dotplotOptsIds.forEach(id => {
     $(id).hide();
@@ -884,7 +882,6 @@ $('#plot_type_select').change(() => {
         $(id).show();
       })
       $("#gene_selection_help").text("Choose the genes to include in plot.");
-      $('#advanced_options_container').hide();  // no advanced opts yet for this plottype
       break;
     case 'heatmap':
       heatmapOptsIds.forEach(id => {
@@ -1180,17 +1177,6 @@ $(document).on('click', '#reset_opts', async function () {
   $('.js-all').click();  // Include all groups for every category (filter nothing)
 
   $('#options_spinner').hide();
-});
-
-// If advanced options collapsable is clicked, toggle arrow b/t up and down
-$(document).on('click', '#advanced_options_button', () => {
-  if ($('#advanced_options_arrow').hasClass('fa-caret-down')) {
-    $('#advanced_options_arrow').removeClass('fa-caret-down');
-    $('#advanced_options_arrow').addClass('fa-caret-up');
-  } else {
-    $('#advanced_options_arrow').addClass('fa-caret-down');
-    $('#advanced_options_arrow').removeClass('fa-caret-up');
-  }
 });
 
 // Save plot

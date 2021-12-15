@@ -190,6 +190,46 @@
             </div>
             <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
           </div>
+          <div class="form-group" id="matrixplot_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="matrixplot">
+              <label class="form-check-label" for="matrixplot">
+                Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories
+              </label>
+            </div>
+            <small class="form-text text-muted">
+              NOTE: This will remove cluster colorbars from the heatmap
+            </small>
+          </div>
+          <div class="form-group" id="cluster_obs_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
+              <label class="form-check-label" for="cluster_obs">
+                Hierarchical clustering of observation samples.
+              </label>
+            </div>
+            <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
+            <small class="form-text text-muted">
+              NOTE: Disables splitting by primary and/or secondary categories
+            </small>
+          </div>
+          <div class="form-group" id="cluster_genes_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
+              <label class="form-check-label" for="cluster_genes">
+                Hierarchical clustering of genes
+              </label>
+            </div>
+          </div>
+          <div class="form-group" id="flip_axes_checkbox_container">
+            <div class="form-check" aria-describedby="flip_axes_help">
+              <input class="form-check-input" type="checkbox" value="" id="flip_axes">
+              <label class="form-check-label" for="flip_axes">
+                Flip genes and observations axes
+              </label>
+            </div>
+            <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
+          </div>
         </fieldset>
         <fieldset id="quadrant_options_container" style="display:none;">
           <div class="form-group">
@@ -223,6 +263,15 @@
             <input id="quadrant_fdr_cutoff" class="form-control w-25" type="number" value="0.05" min="0" max="1" aria-describedby="quadrant_fdr_help">
             <small id="quadrant_fdr_help" class="form-text text-muted">Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.</small>
           </div>
+          <div class="form-group" id="include_zero_foldchange_container">
+            <div class="form-check" aria-describedby="include_zero_help">
+              <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
+              <label class="form-check-label" for="include_zero_foldchange">
+                Include genes where the query and ref expression is equal
+              </label>
+            </div>
+            <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
+          </div>
         </fieldset>
 
         <fieldset id="volcano_options_container" style="display:none;">
@@ -240,7 +289,43 @@
             </div>
             <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same observation as query condition.</small>
           </div>
-        </fieldset>
+          <div class="form-group" id="annot_nonsig_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
+              <label class="form-check-label" for="annot_nonsig">
+                Annotate nonsignificant genes.
+              </label>
+            </div>
+          </div>
+          <div class="form-group" id="adjusted_pvals_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
+              <label class="form-check-label" for="adj_pvals">
+                Use adjusted p-values (q-values) instead of raw p-values
+              </label>
+            </div>
+          </div>
+        </fieldset><!-- end volcano_options_container -->
+
+        <fieldset id="violin_options_container">
+          <div class="form-group" id="stacked_violin_container">
+            <div class="form-check" aria-describedby="stacked_violin_help">
+              <input class="form-check-input" type="checkbox" value="" id="stacked_violin">
+              <label class="form-check-label" for="stacked_violin">
+                Create stacked violin plot
+              </label>
+            </div>
+            <small id="stacked_violin_help" class="form-text text-muted">Each category group is in its own violin plot</small>
+          </div>
+          <div class="form-group" id="violin_add_points_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="violin_add_points">
+              <label class="form-check-label" for="violin_add_points">
+                Add data points to violin plot
+              </label>
+            </div>
+          </div>
+        </fieldset><!-- end violin_options_container -->
 
         <div class="form-group" id="de_test_container">
           <label for="de_test_select">Differential expression test</label>
@@ -250,102 +335,6 @@
           </select>
           <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
         </div>
-
-        <!-- Advanced Options -->
-        <fieldset class="form-group" id="advanced_options_container" style="display:none;">
-          <button class="btn btn-outline-purple btn-sm my-3" type="button" data-toggle="collapse" id="advanced_options_button" data-target="#advanced_options_collapsable" role="button" aria-expanded="false" aria-controls="advanced_options_collapsable">
-          Advanced Options <i class="fa fa-caret-down" aria-hidden="true" id="advanced_options_arrow"></i>
-          </button>
-
-          <div class="collapse" id="advanced_options_collapsable">
-            <div id="adv_heatmap_opts">
-              <div class="form-group" id="matrixplot_container">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="matrixplot">
-                  <label class="form-check-label" for="matrixplot">
-                    Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories
-                  </label>
-                </div>
-                <small class="form-text text-muted">
-                  NOTE: This will remove cluster colorbars from the heatmap
-                </small>
-              </div>
-              <div class="form-group" id="cluster_obs_checkbox_container">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
-                  <label class="form-check-label" for="cluster_obs">
-                    Hierarchical clustering of observation samples.
-                  </label>
-                </div>
-                <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
-                <small class="form-text text-muted">
-                  NOTE: Disables splitting by primary and/or secondary categories
-                </small>
-              </div>
-              <div class="form-group" id="cluster_genes_checkbox_container">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
-                  <label class="form-check-label" for="cluster_genes">
-                    Hierarchical clustering of genes
-                  </label>
-                </div>
-              </div>
-              <div class="form-group" id="flip_axes_checkbox_container">
-                <div class="form-check" aria-describedby="flip_axes_help">
-                  <input class="form-check-input" type="checkbox" value="" id="flip_axes">
-                  <label class="form-check-label" for="flip_axes">
-                    Flip genes and observations axes
-                  </label>
-                </div>
-                <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
-              </div>
-            </div><!-- end adv_heatmap_opts-->
-            <div class="form-group" id="annot_nonsig_checkbox_container">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
-                <label class="form-check-label" for="annot_nonsig">
-                  Annotate nonsignificant genes.
-                </label>
-              </div>
-            </div>
-            <div class="form-group" id="adjusted_pvals_checkbox_container">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
-                <label class="form-check-label" for="adj_pvals">
-                  Use adjusted p-values (q-values) instead of raw p-values
-                </label>
-              </div>
-            </div>
-            <div class="form-group" id="include_zero_foldchange_container">
-              <div class="form-check" aria-describedby="include_zero_help">
-                <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
-                <label class="form-check-label" for="include_zero_foldchange">
-                  Include genes where the query and ref expression is equal
-                </label>
-              </div>
-              <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
-            </div>
-            <div id="adv_violin_opts">
-              <div class="form-group" id="stacked_violin_container">
-                <div class="form-check" aria-describedby="stacked_violin_help">
-                  <input class="form-check-input" type="checkbox" value="" id="stacked_violin">
-                  <label class="form-check-label" for="stacked_violin">
-                    Create stacked violin plot
-                  </label>
-                </div>
-                <small id="stacked_violin_help" class="form-text text-muted">Each category group is in its own violin plot</small>
-              </div>
-              <div class="form-group" id="violin_add_points_container">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="violin_add_points">
-                  <label class="form-check-label" for="violin_add_points">
-                    Add data points to violin plot
-                  </label>
-                </div>
-              </div>
-            </div><!-- end adv_violin_opts -->
-          </div>
-        </fieldset>
       </fieldset> <!-- end options -->
 
       <!--<div id="plot_preview">
