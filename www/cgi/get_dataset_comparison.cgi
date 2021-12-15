@@ -27,8 +27,10 @@ def main():
     dataset_id = form.getvalue('dataset_id')
     condition1 = form.getvalue('dataset1_condition')
     condition2 = form.getvalue('dataset2_condition')
-    std_dev_num_cutoff = float(form.getvalue('std_dev_num_cutoff'))
-    fold_change_cutoff = float(form.getvalue('fold_change_cutoff'))
+    std_dev_num_cutoff = form.getvalue('std_dev_num_cutoff')
+    std_dev_num_cutoff = float(std_dev_num_cutoff) if std_dev_num_cutoff else None
+    fold_change_cutoff = form.getvalue('fold_change_cutoff')
+    fold_change_cutoff = float(fold_change_cutoff) if fold_change_cutoff else None
     log_transformation = form.getvalue('log_transformation')
     statistical_test = form.getvalue('statistical_test')
 
@@ -54,13 +56,17 @@ def main():
     cols_x = [col for col in adata.obs.columns if adata.obs[col].dtype.name == 'category']
 
     # If there are multiple columns, create a composite
-    if len(cols_x) > 0:
-        if "replicate" in cols_x:
-            cols_x.remove("replicate")
-        if 'BioRep' in cols_x:
-            cols_x.remove('BioRep')
-        if 'TechRep' in cols_x:
-            cols_x.remove('TechRep')
+    # Only keep columns that had a group selected in the UI
+    # NOTE: There may be an edge case where the user selected a group for cond. 1 and nothing for cond. 2 which would leave the column being omitted from the composite
+    cond1 = json.loads(condition1)
+    for col in cond1:
+        if not cond1[col] and col in cols_x:
+            cols_x.remove(col)
+
+    cond2 = json.loads(condition2)
+    for col in cond2:
+        if not cond2[col] and col in cols_x:
+            cols_x.remove(col)
 
     # Add new column to combine various groups into a single index
     adata.obs['comparison_composite_index'] = adata.obs[cols_x].apply(lambda x: ';'.join(map(str,x)), axis=1)
@@ -68,8 +74,8 @@ def main():
     unique_composite_indexes = adata.obs["comparison_composite_index"].unique()
 
     # Only want to keep indexes that match chosen filters
-    dataset1_composite_idx = create_filtered_composite_indexes(json.loads(condition1), unique_composite_indexes.tolist())
-    dataset2_composite_idx = create_filtered_composite_indexes(json.loads(condition2), unique_composite_indexes.tolist())
+    dataset1_composite_idx = create_filtered_composite_indexes(cond1, unique_composite_indexes.tolist())
+    dataset2_composite_idx = create_filtered_composite_indexes(cond2, unique_composite_indexes.tolist())
 
     # Exit with error if there is no valid composite index mask created
     # Example would be a duplicated obs column where only A was selected in col1 and only B was selected in col2
@@ -270,6 +276,8 @@ def main():
 def create_filtered_composite_indexes(filters, composite_indexes):
     """Create an index based on the 'comparison_composite_index' column."""
     all_vals = [v for k, v in filters.items()]  # List of lists
+    # Remove empty nested lists (list should now have nested lists equal to number of categories with selected groups)
+    all_vals = [x for x in all_vals if x]
 
     # itertools.product returns a combation of every value from every list
     # Essentially  ((x,y) for x in A for y in B)
@@ -314,9 +322,6 @@ def intersection(lst1, lst2):
     """Intersection of two lists."""
     return list(set(lst1) & set(lst2))
 
-if __name__ == '__main__':
-    main()
-
 def return_error_response(msg):
     result = dict()
     result['success'] = 0
@@ -325,3 +330,6 @@ def return_error_response(msg):
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
     sys.exit()
+
+if __name__ == '__main__':
+    main()
