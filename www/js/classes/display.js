@@ -604,7 +604,9 @@ class PlotlyDisplay extends Display {
     }, gene_symbols) {
         super(args);
         const {
-            groupby_filter,
+            primary_col,
+            secondary_col,
+            sort_order,
             obs_filters,
             clusterbar_fields,
             matrixplot,
@@ -627,7 +629,9 @@ class PlotlyDisplay extends Display {
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
-        this.groupby_filter = groupby_filter;
+        this.primary_col = primary_col;
+        this.secondary_col = secondary_col;
+        this.sort_order = sort_order;
         this.obs_filters = obs_filters;
         this.clusterbar_fields = clusterbar_fields;
         this.matrixplot = matrixplot;
@@ -666,7 +670,9 @@ class PlotlyDisplay extends Display {
             gene_symbols,
             analysis: this.analysis,
             analysis_owner_id: this.user_id,
-            groupby_filter: this.groupby_filter,
+            primary_col: this.primary_col,
+            secondary_col: this.secondary_col,
+            sort_order: this.sort_order,
             plot_type: this.plot_type,
             obs_filters: this.obs_filters,
             clusterbar_fields: this.clusterbar_fields,

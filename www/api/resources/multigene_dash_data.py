@@ -1041,10 +1041,7 @@ class MultigeneDashData(Resource):
         filters = req.get('obs_filters', {})    # Dict of lists
         primary_col = req.get('primary_col', None)
         secondary_col = req.get('secondary_col', None)
-        #groupby_filter = req.get('groupby_filter', None)
         sort_order = req.get('sort_order', {})
-        #axis_sort_col = req.get('axis_sort_col', None)
-        #facet_col = req.get('facet_col', None)
         # Heatmap opts
         clusterbar_fields = req.get('clusterbar_fields', [])
         matrixplot = req.get('matrixplot', False)
