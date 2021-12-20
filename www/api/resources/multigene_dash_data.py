@@ -554,7 +554,7 @@ def create_stacked_violin_plot(df, groupby_filters):
         , cols=len(facet_col_indexes.keys()) if facet_col_indexes else 1
         , row_titles=primary_groups
         , column_titles=secondary_groups if len(secondary_groups) else None
-        , shared_xaxes=True
+        #, shared_xaxes=True
         , shared_yaxes="all"    # to keep the scale the same for all row facets
         )
 

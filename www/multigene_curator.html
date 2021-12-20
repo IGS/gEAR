@@ -116,13 +116,13 @@
           <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
             <option></option>
             <optgroup label="Genes as Axis">
-              <option value="dotplot">Dotplot</option>
-              <option value="heatmap">Heatmap</option>
-              <option value="mg_violin">Violin</option>
+              <option value="dotplot" id="dotplot_opt">Dotplot</option>
+              <option value="heatmap" id="heatmap_opt">Heatmap</option>
+              <option value="mg_violin" id="mg_violin_opt">Violin</option>
             </optgroup>
             <optgroup label="Genes as Data Points">
-              <option value="quadrant">Quadrant</option>
-              <option value="volcano">Volcano</option>
+              <option value="quadrant" id="quadrant_opt">Quadrant</option>
+              <option value="volcano" id="volcano_opt">Volcano</option>
             </optgroup>
           </select>
           <div class="col-6">
@@ -165,7 +165,7 @@
       </fieldset>
 
       <fieldset id="options_container" style="display:none;">
-        <legend for="options_container">Step 4: Plot-specfic options</legend>
+        <legend for="options_container">Step 4: Plot-specific options</legend>
         <div id="options_spinner" style="display:none;">
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
           <span>Loading plot options...</span>
@@ -691,13 +691,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/gene.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/genecart.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/plot_display_config.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/multigene_curator.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

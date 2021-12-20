@@ -227,29 +227,20 @@ function drawChart (data, datasetId) {
     return;
   }
 
-  const layoutMods = {
-    //height: targetDiv.clientHeight,
-    //width: targetDiv.clientWidth,
-  };
-
   // NOTE: This will definitely affect the layout on the gene search results page
   // if the "height" style for the container in CSS is removed.
-  if ($('#plot_type_select').select2('data')[0].id === 'heatmap') {
-    if (genesFilters.length > 50) {
-      layoutMods.height = genesFilters.length * 10;
-    }
-  } else if (['quadrant', 'volcano'].includes($('#plot_type_select').select2('data')[0].id)) {
-    layoutMods.height = 800;
-    //layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
-  } else if ($('#plot_type_select').select2('data')[0].id === "mg_violin" && $("#stacked_violin").is(":checked")){
-    layoutMods.height = 800;
+  const plotType = $('#plot_type_select').select2('data')[0].id;
+  if (plotType === 'heatmap') {
+    setHeatmapHeightBasedOnGenes(plotlyJson.layout, genesFilter);
+  } else if (plotType=== "mg_violin" && $("#stacked_violin").is(":checked")){
+    adjustStackedViolinHeight(plotlyJson.layout);
   }
 
-  // Overwrite plot layout and config values with custom ones from display
-  const layout = {
-    ...plotlyJson.layout,
-    ...layoutMods
-  };
+
+  else if (['quadrant', 'volcano'].includes(plotType)) {
+    plotlyJson.layout.height = 800;
+    //layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
+  }
 
   const configMods = {
     responsive: true
@@ -259,7 +250,17 @@ function drawChart (data, datasetId) {
     ...plotlyConfig,
     ...configMods
   };
-  Plotly.newPlot(targetDiv, plotlyJson.data, layout, config);
+  Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, config);
+
+  // Update plot with custom plot config stuff stored in plot_display_config.js
+  for (const conf in post_plotly_config.curator) {
+    // Get config (data and/or layout info) for the plot type chosen, if it exists
+    if (conf.plot_type == plotType) {
+      const update_data = "data" in conf.curator ? conf.curator.data : {}
+      const update_layout = "layout" in conf.curator ? conf.curator.layout : {}
+      Plotly.update(targetDiv, update_data, update_layout)
+    }
+  }
 
   // Show any warnings from the API call
   if (message && success > 1) {
@@ -395,8 +396,16 @@ function createHeatmapDropdowns (obsLevels) {
 
 // Render dropdowns specific to the quadrant plot
 function createQuadrantDropdowns (obsLevels) {
+  // Filter only categories with at least 3 conditions
+  const goodObsLevels = {}
+  for (const category in obsLevels) {
+    if (obsLevels[category].length >= 3) {
+      goodObsLevels[category] = obsLevels[category]
+    }
+  }
+
   const tmpl = $.templates('#select_conditions_tmpl');
-  const html = tmpl.render(obsLevels);
+  const html = tmpl.render(goodObsLevels);
   $('#quadrant_compare1_condition').html(html);
   $('#quadrant_compare1_condition').select2({
     placeholder: 'Select the first query condition.',
@@ -429,8 +438,16 @@ function createViolinDropdowns (obsLevels) {
 
 // Render dropdowns specific to the volcano plot
 function createVolcanoDropdowns (obsLevels) {
+  // Filter only categories wtih at least 2 conditions
+  const goodObsLevels = {}
+  for (const category in obsLevels) {
+    if (obsLevels[category].length >= 2) {
+      goodObsLevels[category] = obsLevels[category]
+    }
+  }
+
   const tmpl = $.templates('#select_conditions_tmpl');
-  const html = tmpl.render(obsLevels);
+  const html = tmpl.render(goodObsLevels);
   $('#volcano_query_condition').html(html);
   $('#volcano_query_condition').select2({
     placeholder: 'Select the query condition.',
@@ -715,6 +732,28 @@ $('#dataset').change(async function () {
   // Get categorical observations for this dataset
   obsLevels = curateObservations(data.obs_levels);
   numObs = data.num_obs;
+
+  // Determine if at least one category has at least two groups (for volcanos) or at least three groups (for quadrants)
+  // If condition is not met, disable the plot option
+  let hasTwoGroupCategory = false;
+  let hasThreeGroupCategory = false;
+
+  for (const category in obsLevels) {
+    if (obsLevels[category].length >= 3) {
+      hasThreeGroupCategory = true;
+    } else if (obsLevels[category].length >= 2) {
+      hasTwoGroupCategory = true;
+    }
+    if (hasTwoGroupCategory && hasThreeGroupCategory) {
+      break;
+    }
+  }
+  if (!hasTwoGroupCategory) {
+    $('#volcano_opt').prop("disabled", true);
+  }
+  if (!hasThreeGroupCategory) {
+    $('#quadrant_opt').prop("disabled", true);
+  }
 
   $('#create_plot').show();
   $("#create_plot").prop("disabled", true);
