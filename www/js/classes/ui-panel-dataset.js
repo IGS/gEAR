@@ -11,7 +11,7 @@
 // divs are created, which can break site functionality.
 // This only keeps a single instance of it.
 // Source: https://stackoverflow.com/a/44588254
-$(document).on('shown.bs.modal', '.modal', function () {
+$(document).on('shown.bs.modal', '.modal', () => {
   if ($(".modal-backdrop").length > -1) {
       $(".modal-backdrop").not(':first').remove();
   }
@@ -29,7 +29,7 @@ class DatasetPanel extends Dataset {
     this.active_display_id = null;
     this.zoomed = false;
     const single_or_multi = (this.multigene) ? "multi" : "single";
-    this.primary_key = this.id + "_" + this.grid_position + "_" + single_or_multi;
+    this.primary_key = `${this.id}_${this.grid_position}_${single_or_multi}`;
     //this.links = args.links;
     //this.linksfoo = "foo";
   }
@@ -74,7 +74,7 @@ class DatasetPanel extends Dataset {
     const data = await this.get_dataset_display(display_id)
 
     let zoom = false;
-    if (this.display && this.display.zoomed) {
+    if (this.display?.zoomed) {
       zoom = true;
     }
 
@@ -114,7 +114,7 @@ class DatasetPanel extends Dataset {
     const data = await this.get_dataset_display(display_id)
 
     let zoom = false;
-    if (this.display && this.display.zoomed) {
+    if (this.display?.zoomed) {
       zoom = true;
     }
 
@@ -147,7 +147,7 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbol = gene_symbol;
 
-    if (this.display && this.display.gene_symbol) {
+    if (this.display?.gene_symbol) {
       // Ensure that this display is a single-gene display
       this.draw_chart(gene_symbol, this.display.id);
 
@@ -191,7 +191,7 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbols = gene_symbols;
 
-    if (this.display && this.display.gene_symbols) {
+    if (this.display ?. gene_symbols) {
       // Ensure this display is a multigene display
       this.draw_mg_chart(gene_symbols, this.display.id);
     } else {
@@ -241,11 +241,7 @@ class DatasetPanel extends Dataset {
     // check if config has been stringified
     let gene_symbol;
     let config
-    if (typeof display.plotly_config == 'string') {
-      config = JSON.parse(display.plotly_config);
-    } else {
-      config = display.plotly_config;
-    }
+    config = typeof display.plotly_config == 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
     gene_symbol = config.gene_symbol;
 
     if (gene_symbol) {
@@ -291,11 +287,7 @@ class DatasetPanel extends Dataset {
   draw_preview_images_mg(display) {
     // check if config has been stringified
     let config;
-    if (typeof display.plotly_config === 'string') {
-      config = JSON.parse(display.plotly_config);
-    } else {
-      config = display.plotly_config;
-    }
+    config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
     const gene_symbols = config.gene_symbols;
     // Draw preview image
     if (gene_symbols) {
@@ -380,7 +372,7 @@ class DatasetPanel extends Dataset {
       $('#modals_c').html(displays_html);
 
       // change plot when user clicks on a different display
-      let display_panel = this;
+      const display_panel = this;
       $('#modals_c div.modal-display').click(function(event) {
         $('#modals_c img.active-display').removeClass('active-display');
         const display_id = this.id.split('-').pop();
@@ -410,46 +402,46 @@ class DatasetPanel extends Dataset {
   }
 
   show_error(msg) {
-    $('#' + this.primary_key + '_dataset_status_c h2').text(msg);
-    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
-    $('#dataset_' + this.primary_key + ' .plot-container').hide();
+    $(`#${this.primary_key}_dataset_status_c h2`).text(msg);
+    $(`#dataset_${this.primary_key} .dataset-status-container`).show();
+    $(`#dataset_${this.primary_key} .plot-container`).hide();
   }
 
   show_loading() {
-    $('#' + this.primary_key + '_dataset_status_c h2').text('Loading...');
-    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+    $(`#${this.primary_key}_dataset_status_c h2`).text('Loading...');
+    $(`#dataset_${this.primary_key} .dataset-status-container`).show();
 
-    if (this.dtype === 'svg-expression') {
-      // this.hide_Svg();
-    } else if (
-      this.dtype === 'image-static-standard' ||
-      this.dtype === 'image-static'
-    ) {
-      $('#dataset_' + this.primary_key + ' .image-static-container').hide();
-    } else {
-      $('#dataset_' + this.primary_key + ' .plot-container').hide();
-    } // TODO: Hide other container plot types...
+    if (this.dtype !== 'svg-expression') {
+      if (
+        this.dtype === 'image-static-standard' ||
+        this.dtype === 'image-static'
+      ) {
+        $(`#dataset_${this.primary_key} .image-static-container`).hide();
+      } else {
+        $(`#dataset_${this.primary_key} .plot-container`).hide();
+      } // TODO: Hide other container plot types...
+    }
   }
 
   show_no_match() {
-    $('#' + this.primary_key + '_dataset_status_c h2').text('Gene not found');
-    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
-    $('#dataset_' + this.primary_key + ' .plot-container').hide();
+    $(`#${this.primary_key}_dataset_status_c h2`).text('Gene not found');
+    $(`#dataset_${this.primary_key} .dataset-status-container`).show();
+    $(`#dataset_${this.primary_key} .plot-container`).hide();
   }
 
   show_plot() {
-    $('#dataset_' + this.primary_key + ' .dataset-status-container').hide();
-    $('#dataset_' + this.primary_key + ' .plot-container').show();
+    $(`#dataset_${this.primary_key} .dataset-status-container`).hide();
+    $(`#dataset_${this.primary_key} .plot-container`).show();
   }
 
   show_no_default() {
     const lastForwardSlash = window.location.href.lastIndexOf('/');
     const baseURL = window.location.href.slice(0, lastForwardSlash);
     const link = `${baseURL}/dataset_curator.html#/dataset/${this.id}/displays`;
-    $('#' + this.primary_key + '_dataset_status_c h2').html(
+    $(`#${this.primary_key}_dataset_status_c h2`).html(
       `<a href="${link}"> No default display for this dataset. <br> Click to curate how you\'d like it displayed</a>`
     );
-    $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
-    $('#dataset_' + this.primary_key + ' .plot-container').hide();
+    $(`#dataset_${this.primary_key} .dataset-status-container`).show();
+    $(`#dataset_${this.primary_key} .plot-container`).hide();
   }
 }

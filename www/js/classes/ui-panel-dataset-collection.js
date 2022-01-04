@@ -28,7 +28,7 @@ class DatasetCollectionPanel {
         this.reset();
 
         // we have to do this because 'this' gets scoped out within the AJAX call
-        var dsc_panel = this;
+        const dsc_panel = this;
 
         $.ajax({
             url : './cgi/get_dataset_list.cgi',
@@ -37,11 +37,11 @@ class DatasetCollectionPanel {
                      'exclude_pending': 1, 'default_domain': this.layout_label,
                      'layout_id': dsc_panel.layout_id },
             dataType: "json",
-            success: function(data, textStatus, jqXHR) {
-                $.each( data['datasets'], function(i, ds) {
+            success(data) {
+                $.each( data['datasets'], (_i, ds) => {
                     // Choose single-gene or multigene grid-width
-                    let grid_width = (multigene) ? ds["mg_grid_width"] : ds["grid_width"];
-                    var dsp = new DatasetPanel( ds, grid_width, multigene );
+                    const grid_width = (multigene) ? ds.mg_grid_width : ds.grid_width;
+                    const dsp = new DatasetPanel( ds, grid_width, multigene );
 
                     if (dsp.load_status == 'completed') {
                         // reformat the date
@@ -66,16 +66,13 @@ class DatasetCollectionPanel {
                     $("#permalink_info").html(permalinkViewHtml);
                     const listViewTmpl = $.templates("#tmpl_datasetbox");
                     dsc_panel.datasets.forEach(ds => ds.zoomed = true);
-                    const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
-                    $('#dataset_grid').html(listViewHtml);
-                } else {
-                    const listViewTmpl = $.templates("#tmpl_datasetbox");
-                    const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
-                    $('#dataset_grid').html(listViewHtml);
                 }
+                const listViewTmpl = $.templates("#tmpl_datasetbox");
+                const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
+                $('#dataset_grid').html(listViewHtml);
             },
-            error: function (jqXHR, textStatus, errorThrown) {
-                display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+            error(jqXHR, _textStatus, errorThrown) {
+                display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             }
         });
     }
@@ -89,7 +86,7 @@ class DatasetCollectionPanel {
         /*
           Updates this object, the user's stored cookie, and the database and UI labels
         */
-        var d = new $.Deferred();
+        const d = new $.Deferred();
 
         Cookies.set('gear_default_domain', layout_label);
 
@@ -116,8 +113,8 @@ class DatasetCollectionPanel {
                 url: './cgi/set_primary_layout.cgi',
                 type: 'post',
                 data: {'session_id': CURRENT_USER.session_id, 'layout_id': layout_id},
-                success: function(data, newValue, oldValue) {
-                    if (data['success'] == 1) {
+                success(data) {
+                    if (data.success == 1) {
                         //Was a search already performed?
                         if ($('#search_gene_symbol').val()) {
                             // User has already searched, automatically update datasets and gene searches
@@ -126,7 +123,7 @@ class DatasetCollectionPanel {
                     } else {
                         $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                                                    '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                                                   '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
+                                                   '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
                     }
                     d.resolve();
                 }
@@ -140,11 +137,11 @@ class DatasetCollectionPanel {
 
     // Single-gene displays
     update_by_search_result(entry) {
-        for (var dataset of this.datasets) {
+        for (const dataset of this.datasets) {
             if (typeof entry !== 'undefined' &&
-                dataset.organism_id in entry['by_organism']) {
-                var gene = JSON.parse(entry['by_organism'][dataset.organism_id][0]);
-                var gene_symbol = gene.gene_symbol;
+                dataset.organism_id in entry.by_organism) {
+                const gene = JSON.parse(entry.by_organism[dataset.organism_id][0]);
+                    const gene_symbol = gene.gene_symbol;
                 dataset.draw({'gene_symbol':gene_symbol});
             } else {
                 if (dataset.display) dataset.display.clear_display();
@@ -155,7 +152,7 @@ class DatasetCollectionPanel {
 
     // Multigene displays
     update_by_all_results(entries) {
-        for (var dataset of this.datasets) {
+        for (const dataset of this.datasets) {
             if (typeof entries !== 'undefined' ) {
                 // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
                 // 'entries' is array of gene_symbols
