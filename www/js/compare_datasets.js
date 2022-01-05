@@ -360,6 +360,16 @@ $(document).on('change', '.js-cat-check', function (e) {
   category_collaspable.collapse('show');
 })
 
+$(document).on('click', '.js-cat-collapse', function (e) {
+  // If category was clicked, then toggle collapsable element
+  // Controlling via JS instead of "data-target" since we may need to escape CSS selectors
+  const id = this.id;
+  const category = id.replace('_collapse', '');
+  const escapedCategory = $.escapeSelector(category);
+  const category_collaspable = $(`#${escapedCategory}_body`);
+  category_collaspable.collapse('toggle');
+})
+
 $(document).on('change', '.js-group-check', function(e) {
   // https://css-tricks.com/indeterminate-checkboxes/
   // After changing checkbox status, check siblings
