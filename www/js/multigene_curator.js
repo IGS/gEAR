@@ -13,7 +13,7 @@ let numObs = 0; // dummy value to initialize with
 
 let obsFilters = {};
 let sortCategories = {"primary": null, "secondary": null}; // Control sorting order of chosen categories
-let genesFilters = [];
+let genesFilter = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
 
@@ -25,8 +25,8 @@ let displayId = null;
 let obsLevels = null;
 let geneSymbols = null;
 
-let datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
-let geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
+const datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
+const geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
 const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
 
@@ -151,7 +151,7 @@ async function loadDatasets () {
       let counter = 0;
 
       // Populate select box with dataset information owned by the user
-      let userDatasets = [];
+      const userDatasets = [];
       if (data.user.datasets.length > 0) {
         // User has some profiles
         $.each(data.user.datasets, (_i, item) => {
@@ -159,14 +159,14 @@ async function loadDatasets () {
         });
       }
       // Next, add datasets shared with the user
-      let sharedDatasets = [];
+      const sharedDatasets = [];
       if (data.shared_with_user.datasets.length > 0) {
         $.each(data.shared_with_user.datasets, (_i, item) => {
           sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Now, add public datasets
-      let domainDatasets = [];
+      const domainDatasets = [];
       if (data.public.datasets.length > 0) {
         $.each(data.public.datasets, (_i, item) => {
           domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
@@ -227,19 +227,12 @@ function drawChart (data, datasetId) {
     return;
   }
 
-  // NOTE: This will definitely affect the layout on the gene search results page
-  // if the "height" style for the container in CSS is removed.
+  // Make some complex edits to the plotly layout
   const plotType = $('#plot_type_select').select2('data')[0].id;
   if (plotType === 'heatmap') {
     setHeatmapHeightBasedOnGenes(plotlyJson.layout, genesFilter);
   } else if (plotType=== "mg_violin" && $("#stacked_violin").is(":checked")){
     adjustStackedViolinHeight(plotlyJson.layout);
-  }
-
-
-  else if (['quadrant', 'volcano'].includes(plotType)) {
-    plotlyJson.layout.height = 800;
-    //layoutMods.width = 1080; // If window is not wide enough, the plotly option icons will overlap contents on the right
   }
 
   const configMods = {
@@ -359,7 +352,8 @@ function createObsClusterBarField (obsLevels) {
 
 // Render the sortable list for the chosen category
 function createObsSortable (obsLevel, scope) {
-  const propData = $(`#${obsLevel}_dropdown`).select2('data');
+  const escapedObsLevel = $.escapeSelector(obsLevel);
+  const propData = $(`#${escapedObsLevel}_dropdown`).select2('data');
   const sortData = propData.map((elem) => elem.id);
   const tmpl = $.templates('#obs_sortable_tmpl');
   const html = tmpl.render({ sortData });
@@ -523,12 +517,16 @@ function loadDisplayConfigHtml (plotConfig) {
   // Populate filter-by dropdowns
   obsFilters = plotConfig.obs_filters;
   for (const property in obsFilters) {
-    $(`#${property}_dropdown`).val(obsFilters[property]);
-    $(`#${property}_dropdown`).trigger('change');
+    const escapedProperty = $.escapeSelector(property);
+    $(`#${escapedProperty}_dropdown`).val(obsFilters[property]);
+    $(`#${escapedProperty}_dropdown`).trigger('change');
   }
 
-  $(`#${plotConfig.primary_col}_primary`).prop('checked', true).click();
-  $(`#${plotConfig.secondary_col}_secondary`).prop('checked', true).click();
+  const escapedPrimary = $.escapeSelector(plotConfig.primary_col);
+  const escapedSecondary = $.escapeSelector(plotConfig.secondary_col);
+
+  $(`#${escapedPrimary}_primary`).prop('checked', true).click();
+  $(`#${escapedSecondary}_secondary`).prop('checked', true).click();
 
   // Populate plot type-specific dropdowns and checkbox options
   switch ($('#plot_type_select').val()) {
@@ -536,7 +534,8 @@ function loadDisplayConfigHtml (plotConfig) {
       break;
     case 'heatmap':
       for (const field in plotConfig.clusterbar_fields) {
-        $(`#${field}_clusterbar`).prop('checked', true).click();
+        const escapedField = $.escapeSelector(field);
+        $(`#${escapedField}_clusterbar`).prop('checked', true).click();
       }
       $('#matrixplot').prop('checked', plotConfig.matrixplot);
       $('#cluster_obs').prop('checked', plotConfig.cluster_obs);
@@ -840,7 +839,7 @@ $("#download_plot").on("click", () => {
 
 // Load user's gene carts
 $('#gene_cart').change(function () {
-  let geneCartId = $(this).val();
+  const geneCartId = $(this).val();
   const params = { session_id, gene_cart_id: geneCartId };
   const d = new $.Deferred(); // Causes editable to wait until results are returned
   // User is not logged in
@@ -957,17 +956,17 @@ $(document).on('change', '#cluster_obs', () => {
 });
 
 $(document).on('change', '#gene_dropdown', () => {
-  const genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+  const genesFilter = $('#gene_dropdown').select2('data').map((elem) => elem.id);
   // Show warning if too many genes are entered
   $("#too_many_genes_warning").hide();
-  if (genesFilters.length > 10) {
-    $("#too_many_genes_warning").text(`There are currently ${genesFilters.length} genes to be plotted. Be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
+  if (genesFilter.length > 10) {
+    $("#too_many_genes_warning").text(`There are currently ${genesFilter.length} genes to be plotted. Be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
     $("#too_many_genes_warning").show();
   }
 
   // Cannot cluster columns with just one gene (because function is only available
   // in dash.clustergram which requires 2 or more genes in plot)
-  if (genesFilters.length > 1) {
+  if (genesFilter.length > 1) {
     $("#cluster_obs").prop("disabled", false);
     $("#cluster_genes").prop("disabled", false);
   } else {
@@ -1011,7 +1010,8 @@ $(document).on('click', '#create_plot', async () => {
   // Update filters based on selection
   obsFilters = {};
   for (const property in obsLevels) {
-    const propData = $(`#${property}_dropdown`).select2('data');
+    const escapedProperty = $.escapeSelector(property);
+    const propData = $(`#${escapedProperty}_dropdown`).select2('data');
     obsFilters[property] = propData.map((elem) => elem.id);
 
     // If no groups for an observation are selected, delete filter
@@ -1026,25 +1026,14 @@ $(document).on('click', '#create_plot', async () => {
     return;
   }
 
-  plotConfig.gene_symbols = genesFilters = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+  plotConfig.gene_symbols = genesFilter = $('#gene_dropdown').select2('data').map((elem) => elem.id);
 
-  /*
-  if (!["volcano", "quadrant"].includes(plotType)) {
-    if (Object.keys(obsFilters).length) {
-      window.alert('At least one observation must have categories filtered.');
-      return;
-    }
-  }
-  */
-
-  let sortOrder = {};
-  let categoriesUsed = [];
-  if (sortCategories.primary || sortCategories.secondary) {
-    // Grab the sorted order of the list and convert to array
-    if (sortCategories.primary) {
-      sortOrder[sortCategories.primary] = $('#primary_sortable').sortable("toArray", {attribute:"value"});
-      categoriesUsed.push(sortCategories.primary);
-    }
+  const sortOrder = {};
+  const categoriesUsed = [];
+  // Grab the sorted order of the list and convert to array
+  if (sortCategories.primary) {
+    sortOrder[sortCategories.primary] = $('#primary_sortable').sortable("toArray", {attribute:"value"});
+    categoriesUsed.push(sortCategories.primary);
   }
   // This should be rare, but just use the primary order if both are the same category
   if (sortCategories.secondary && !(categoriesUsed.includes(sortCategories.secondary))) {
@@ -1170,9 +1159,10 @@ $(document).on('click', '#create_plot', async () => {
 $(document).on('click', '.js-all', function () {
   const id = this.id;
   const group = id.replace('_all', '');
+  const escapedGroup = $.escapeSelector(group);
 
-  $(`#${group}_dropdown`).val(obsLevels[group]);
-  $(`#${group}_dropdown`).trigger('change'); // This actually triggers select2 to show the dropdown vals
+  $(`#${escapedGroup}_dropdown`).val(obsLevels[group]);
+  $(`#${escapedGroup}_dropdown`).trigger('change'); // This actually triggers select2 to show the dropdown vals
 });
 
 // Clear gene cart
@@ -1247,8 +1237,7 @@ $(document).on('click', '#save_display_btn', async function () {
   });
 
   if (res?.success) {
-
-    let msg = 'Plot successfully saved'
+let msg = 'Plot successfully saved'
 
     if ($("#save_as_default_check").is(':checked') && res.display_id) {
       displayId = res.display_id;
@@ -1290,12 +1279,11 @@ $(document).on('click', '#save_display_btn', async function () {
 
     $('#saved_plot_confirmation').text(msg);
     $('#saved_plot_confirmation').addClass('text-success');
-    $('#saved_plot_confirmation').show();
   } else {
     $('#saved_plot_confirmation').text('There was an issue saving the plot');
     $('#saved_plot_confirmation').addClass('text-danger');
-    $('#saved_plot_confirmation').show();
   }
+  $('#saved_plot_confirmation').show();
 
   // Update saved displays modal so new plot is included
   loadSavedDisplays(datasetId);

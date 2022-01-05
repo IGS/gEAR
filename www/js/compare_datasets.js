@@ -47,7 +47,7 @@ const log10_transformed_datasets = [
 
 // TODO: Have mechanism to convert non-categorical column to categorical if it was erroneously added as numerical
 
-let dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
+const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload = () => {
   // check if the user is already logged in
@@ -249,7 +249,7 @@ function load_comparison_graph() {
 
 async function fetch_h5ad_observations (dataset_id) {
   const base = `./api/h5ad/${dataset_id}`;
-  const { data } = await axios.get(`${base}`);
+  const { data } = await axios.get(base);
   return data;
 }
 
@@ -351,7 +351,8 @@ $(document).on('change', '.js-cat-check', function (e) {
 
   const id = this.id;
   const category = id.replace('_check', '');
-  const category_collaspable = $(`#${category}_body`);
+  const escapedCategory = $.escapeSelector(category);
+  const category_collaspable = $(`#${escapedCategory}_body`);
 
   category_collaspable.find('input[type="checkbox"]').prop({checked});
 
@@ -370,14 +371,15 @@ $(document).on('change', '.js-group-check', function(e) {
   // Get category name out of the checkbox ID
   const id = $(this).data("group");
   const category = id.split(';-;')[0]
-  const category_header = $(`#${category}_check`);
-  const category_collaspable = $(`#${category}_body`);
+  const escapedCategory = $.escapeSelector(category);
+  const category_header = $(`#${escapedCategory}_check`);
+  const category_collaspable = $(`#${escapedCategory}_body`);
 
   // Get checked status of all other checkboxes in this category
   // If there is a combination of checked/unchecked the "each" loop breaks early
   let all = true;
   $(category_collaspable).find('input[type="checkbox"]').each(function(){
-    let return_value = all = ($(this).prop("checked") === checked);
+    const return_value = all = ($(this).prop("checked") === checked);
     return return_value;
   });
 
@@ -398,7 +400,7 @@ $(document).on('change', '.js-group-check', function(e) {
 })
 
 function populate_dataset_selection_controls() {
-  let dataset_id = getUrlParameter("dataset_id");
+  const dataset_id = getUrlParameter("dataset_id");
   $.ajax({
     type: "POST",
     url: "./cgi/get_h5ad_dataset_list.cgi",
@@ -411,26 +413,26 @@ function populate_dataset_selection_controls() {
     success(data) {
       let counter = 0
       // Populate select box with dataset information owned by the user
-      let user_datasets = [];
+      const user_datasets = [];
       if (data.user.datasets.length > 0) {
         // User has some profiles
-        $.each(data.user.datasets, (i, item) => {
+        $.each(data.user.datasets, (_i, item) => {
           user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
         });
       }
       // Next, add datasets shared with the user
-      let shared_datasets = [];
+      const shared_datasets = [];
       if (data.shared_with_user.datasets.length > 0) {
         // User has some profiles
-        $.each(data.shared_with_user.datasets, (i, item) => {
+        $.each(data.shared_with_user.datasets, (_i, item) => {
           shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
         });
       }
       // Now, add public datasets
-      let domain_datasets = [];
+      const domain_datasets = [];
       if (data.public.datasets.length > 0) {
         // User has some profiles
-        $.each(data.public.datasets, (i, item) => {
+        $.each(data.public.datasets, (_i, item) => {
           domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
         });
       }
@@ -456,7 +458,7 @@ function plot_data_to_graph(data) {
   $("#tbl_selected_genes").hide();
   $("#selection_methods_c").show();
 
-  let point_labels = [];
+  const point_labels = [];
   let perform_ranking = false;
 
   if ($("#statistical_test").val()) {
@@ -488,8 +490,8 @@ function plot_data_to_graph(data) {
     ];
   } else {
     const pval_cutoff = parseFloat($("#test_pval_cutoff").val());
-    let passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
-    let failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+    const passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+    const failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
 
     for (i = 0; i < data.x.length; i++) {
       // pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
@@ -593,7 +595,7 @@ function plot_data_to_graph(data) {
   };
 
   // Take genes to search for and highlight their datapoint in the plot
-  let genes_not_found = [];
+  const genes_not_found = [];
   if ($('#highlighted_genes').val()) {
     const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
     searched_genes.forEach((gene) => {
