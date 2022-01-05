@@ -77,7 +77,6 @@ window.onload=function() {
 
         if (multigene) {
             set_multigene_plots('on');
-            dataset_collection_panel.load_frames({multigene});
         }
 
         sleep(1000).then(() => {
