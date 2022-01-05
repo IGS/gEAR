@@ -129,7 +129,6 @@ def create_dot_plot(df, groupby_filters, plot_title=None):
     # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly
     if len(groupby_filters) < 2:
         multicategory = df[groupby_filters[0]].tolist()
-    print(df, file=sys.stderr)
 
     fig.add_scatter(
         x=multicategory
@@ -193,26 +192,25 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
     obs_positions=fig.layout[obs_axis]["tickvals"]
 
-    # Offset the colorbar to the right of the heatmap
-    # Need to make this work in a way that the bar will also show on the gene search display page
-    colorbar_x = 1
-    num_colorbars = len(col_group_markers.keys())
-    max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
-    curr_colorbar_y = max_heatmap_domain
-
-    # Set expression colorbar to be half as tall
+    # Offset the expresison colorbar to the right of the heatmap
     # At this point it's the last trace added
-    fig.data[-1]["colorbar"]["x"] = colorbar_x
-    fig.data[-1]["colorbar"]["xpad"] = 20
-    fig.data[-1]["colorbar"]["len"] = 0.5
-    fig.data[-1]["colorbar"]["y"] = curr_colorbar_y
-    fig.data[-1]["colorbar"]["yanchor"] = "top"
-    #fig.data[-1]["colorbar"]["title"]["side"] = "right"
+    # NOTE: The bar may need to be adjusted on the gene search display page
+    fig.data[-1]["colorbar"]["x"] = 1
+    fig.data[-1]["colorbar"]["xpad"] = 30
+    fig.data[-1]["colorbar"]["len"] = 0.5   # Set expression colorbar to be half as tall
+    fig.data[-1]["colorbar"]["y"] = 0.5
+    fig.data[-1]["colorbar"]["yanchor"] = "middle"
     fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
+    fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
 
     # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
     # Makes a small space b/t the genes and groups tracks
     next_bar_position = max(fig.layout[gene_axis]["tickvals"]) + 7
+
+    # Information that will help posittion the "groups" colorbars
+    num_colorbars = len(col_group_markers.keys())
+    max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
+    curr_colorbar_y = max_heatmap_domain
 
     for key, val in col_group_markers.items():
         # number of elements in z array needs to equal number of observations in x-axis
@@ -242,11 +240,11 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
                 #, tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
                 , tickvals=tickvals
                 , title=key
-                , x=colorbar_x
+                , x=1
                 , xpad=100  # equal to the clustergram's colorbar default
                 , y=curr_colorbar_y   # Align with bottom of heatmap
                 , yanchor="top"
-                , len=0.8/num_colorbars
+                , len=1.1/num_colorbars
                 )
             , colorscale=colorscale
         )
@@ -554,7 +552,6 @@ def create_stacked_violin_plot(df, groupby_filters):
         , cols=len(facet_col_indexes.keys()) if facet_col_indexes else 1
         , row_titles=primary_groups
         , column_titles=secondary_groups if len(secondary_groups) else None
-        #, shared_xaxes=True
         , shared_yaxes="all"    # to keep the scale the same for all row facets
         )
 
