@@ -87,6 +87,7 @@
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
           <span>Loading datasets...</span>
         </div>
+        <small id="dataset_help" class="form-text text-muted">Select a dataset to use.</small>
         <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
           <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
           <div class="dropdown-menu w-100" aria-labelledby="dataset">
@@ -101,7 +102,6 @@
             </form>
           </div>
         </div>  <!-- end dataset_c -->
-        <small id="dataset_help" class="form-text text-muted">Select a dataset to use.</small>
       </fieldset>
 
       <div id="post_dataset_spinner" style="display:none;">
@@ -112,6 +112,7 @@
       <!-- Plot type selection-->
       <fieldset class="form-group" id="plot_type_container">
         <legend for="plot_type_select">Step 2: Plot type selection</legend>
+        <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
         <div class="form-row">
           <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
             <option></option>
@@ -130,7 +131,6 @@
             <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
           </div>
         </div>
-        <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
       </fieldset>
 
       <!-- Gene selection-->
@@ -140,6 +140,7 @@
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
           <span>Loading genes for dataset...</span>
         </div>
+        <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
         <div class="form-group" id="gene_dropdown_container" aria-describedby="gene_selection_help"></div>
         <div class="alert alert-warning" role="alert" id="too_many_genes_warning" style="display:none;"></div>
         <div class="form-group row" id="gene_cart_container">
@@ -161,7 +162,6 @@
           <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
         </div>  <!-- end gene_cart_container -->
         <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
-        <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
       </fieldset>
 
       <fieldset id="options_container" style="display:none;">
@@ -180,6 +180,7 @@
 
           <div class="form-group">
             <label for="distance_select">Pairwise distance metric</label>
+            <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
             <div class="form-row">
               <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
                 <!--<option value="braycurtis">Bray-Curtis</option>-->
@@ -188,7 +189,6 @@
                 <option value="minkowski">Minkowski</option>
               </select>
             </div>
-            <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
           </div>
           <div class="form-group" id="matrixplot_container">
             <div class="form-check">
@@ -234,24 +234,24 @@
         <fieldset id="quadrant_options_container" style="display:none;">
           <div class="form-group">
             <label for="quadrant_compare1_condition">Comparison condition 1</label>
+            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
             <div class="form-row">
               <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
             </div>
-            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_compare2_condition">Comparison condition 2</label>
+            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
             <div class="form-row">
               <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
             </div>
-            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_ref_condition">Reference condition</label>
+            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions. All conditions must come from the same category.</small>
             <div class="form-row">
               <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
             </div>
-            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
@@ -277,17 +277,17 @@
         <fieldset id="volcano_options_container" style="display:none;">
           <div class="form-group">
             <label for="volcano_query_condition">Query condition</label>
+            <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
             <div class="form-row">
               <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
             </div>
-            <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
           </div>
           <div class="form-group">
             <label for="volcano_ref_condition">Reference condition</label>
+            <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same category as query condition.</small>
             <div class="form-row">
               <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
             </div>
-            <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same observation as query condition.</small>
           </div>
           <div class="form-group" id="annot_nonsig_checkbox_container">
             <div class="form-check">
@@ -329,11 +329,11 @@
 
         <div class="form-group" id="de_test_container">
           <label for="de_test_select">Differential expression test</label>
+          <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
           <select class="form-control" id="de_test_select" aria-describedby="de_test_help">
             <option value="t-test" selected="selected">Welch's t-test</option>
             <option value="rank">Wilcoxon rank-sum test</option>
           </select>
-          <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
         </div>
       </fieldset> <!-- end options -->
 
@@ -497,6 +497,7 @@
         <label class="col-3">Primary category split</label>
         <label class="col-3" id="primary_order_label" style="display:none;">Sort Order</label>
       </div>
+      <small id="primary_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific order.</small>
       <div class="row">
         <div class="col-3">
         {{props}}
@@ -514,7 +515,6 @@
           <ul id="primary_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="primary_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific order.</small>
     </script>
 
     <script id="obs_secondary_tmpl" type="text/x-jsrender">
@@ -522,6 +522,7 @@
         <label class="col-3">Secondary category split</label>
         <label class="col-3" id="secondary_order_label" style="display:none;">Sort Order</label>
       </div>
+      <small id="secondary_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific order.</small>
       <div class="row">
         <div class="col-3">
         {{props}}
@@ -539,7 +540,6 @@
           <ul id="secondary_sortable" class="list-group"></ul>
         </div>
       </div>
-      <small id="secondary_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific order.</small>
     </script>
 
     <script id="obs_sortable_tmpl" type="text/x-jsrender">
@@ -550,18 +550,19 @@
 
     <script id="obs_clusterbar_tmpl" type="text/x-jsrender">
       <label>Cluster colorbars</label>
+      <small id="clusterbar_help" class="form-text text-muted">Check the categories you wish to show a cluster colorbar for in the heatmap.</small>
       {{props}}
       <div class="form-check" aria-describedby="clusterbar_help">
         <input class="form-check-input" type="checkbox" name="obs_clusterbar" id="{{:key}}_clusterbar" value="{{:key}}">
         <label class="form-check-label" for="{{:key}}_clusterbar">{{:key}}</label>
       </div>
       {{/props}}
-      <small id="clusterbar_help" class="form-text text-muted">Check the categories you wish to show a cluster colorbar for in the heatmap.</small>
     </script>
 
     <!-- Declare a JsRender template, in a script block: -->
     <script id="obs_filters_tmpl" type="text/x-jsrender">
       <label>Groups to include</label>
+      <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
       {{props}}
         {{!-- key is categorical observation, prop is the list of unique categories --}}
         <div class="row form-group" id="{{:key}}_div">
@@ -575,7 +576,6 @@
           <button type='button' class="close js-all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
         </div>
       {{/props}}
-      <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
     </script>
 
     <script id="select_conditions_tmpl" type="text/x-jsrender">
