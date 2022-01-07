@@ -4,6 +4,8 @@ plot_display_config.js - This script can be passed to various scripts that gener
     Examples include trying to adjust layout parameters so that a plot looks better on a particular page.
 */
 
+// These assume a grid_width of 4 and an mg_grid_width of 6
+
 const post_plotly_config = {
     "index":[
         {
@@ -26,11 +28,13 @@ const post_plotly_config = {
             "plot_type":"heatmap"
             , "layout":{
                 "margin": {
-                    "l":0
-                    ,"r":100
-                    ,"b":0
-                    ,"t":0
+                    "b":10
                 }
+                /*, "title": {
+                    "pad": {
+                        "b":10
+                    }
+                }*/
             }
         }
     ]
@@ -52,15 +56,25 @@ const post_plotly_config = {
 
 // Functions that cannot be encapsulated by a general config change
 
-function moveHeatmapColorbarLeft(plotData) {
-    // TODO: Explore fixing this in the API call before editing post-API
+function adjustExpressionColorbar(plotData) {
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
     for (let i = 0; i < plotData.length; i++) {
-        if ("colorbar" in plotData[i]) {
-            plotData[i].colorbar.xpad = 0;
-            plotData[i].colorbar.x = -0.25;
-            plotData[i].colorbar.xanchor = "left";
+        if ("colorbar" in plotData[i] && plotData[i].name === "expression") {
+            plotData[i].colorbar.len = 0.7;
+            plotData[i].colorbar.xpad = 10;
+            plotData[i].colorbar.x = 1.15;
             plotData[i].colorbar.title = {text: "Expression"};
+        }
+    }
+}
+
+function adjustClusterColorbars(plotData) {
+    // The colorbar is outside of the graph div.  Need to adjust to bring back in.
+    for (let i = 0; i < plotData.length; i++) {
+        if ("colorbar" in plotData[i] && plotData[i].name === "clusterbar") {
+            plotData[i].colorbar.xpad = 10;
+            plotData[i].colorbar.x = -0.3;
+            plotData[i].colorbar.xanchor = "left";
         }
     }
 }

@@ -678,8 +678,9 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-         if (this.plot_type == "heatmap") {
-           // moveHeatmapColorbarLeft(plot_json.data)
+        if (this.plot_type == "heatmap") {
+            adjustExpressionColorbar(plot_json.data);
+            adjustClusterColorbars(plot_json.data);
         }
 
         const config_mods = {

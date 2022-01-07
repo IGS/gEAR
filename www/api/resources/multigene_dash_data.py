@@ -245,12 +245,13 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
                 , tickvals=tickvals
                 , title=key
                 , x=1
-                , xpad=100  # equal to the clustergram's colorbar default
+                , xpad=100  # spaced far enough from the expression bar.  Needs to be adjusted for gene display panels.
                 , y=curr_colorbar_y   # Align with bottom of heatmap
                 , yanchor="top"
                 , len=1.1/num_colorbars
                 )
             , colorscale=colorscale
+            , name="clusterbar"
         )
         col_group_labels.append(trace)
 
