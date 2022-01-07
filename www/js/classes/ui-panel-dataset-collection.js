@@ -25,6 +25,10 @@ class DatasetCollectionPanel {
           view.  Initializes the dataset frame panels with placeholders for each
           dataset.
         */
+        console.log("load frames");
+        console.log(`share_id: ${share_id}`);
+        console.log(`multigene: ${multigene}`);
+
         this.reset();
 
         // we have to do this because 'this' gets scoped out within the AJAX call
@@ -86,6 +90,12 @@ class DatasetCollectionPanel {
         /*
           Updates this object, the user's stored cookie, and the database and UI labels
         */
+        console.log("set layout");
+        console.log(`layout_id: ${layout_id}`);
+        console.log(`layout_label: ${layout_label}`);
+        console.log(`do_load_frames: ${do_load_frames}`);
+        console.log(`multigene: ${multigene}`);
+        console.log(`SESSION ID: ${CURRENT_USER.session_id}`)
         const d = new $.Deferred();
 
         Cookies.set('gear_default_domain', layout_label);
@@ -116,6 +126,8 @@ class DatasetCollectionPanel {
                 success(data) {
                     if (data.success == 1) {
                         //Was a search already performed?
+                        console.log("search gene symbol");
+                        console.log($('#search_gene_symbol').val());
                         if ($('#search_gene_symbol').val()) {
                             // User has already searched, automatically update datasets and gene searches
                             update_datasetframes_generesults();

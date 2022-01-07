@@ -1,34 +1,33 @@
-var search_results = [];
+let search_results = [];
 
 // key dataset_id, value = Snap paths
-var svgs = {};
+const svgs = {};
 
-var SCROLLBAR_DRAWN = false;
-var GO_TERM_SCROLLBAR_DRAWN = false;
-var AT_FIRST_MATCH_RECORD = false;
-var AT_LAST_MATCH_RECORD  = false;
-var PREVIOUS_SELECTED_RECORD_NUM = null;
-var SCORING_METHOD = 'gene';
-var SELECTED_GENE = null;
+let SCROLLBAR_DRAWN = false;
+const GO_TERM_SCROLLBAR_DRAWN = false;
+const AT_FIRST_MATCH_RECORD = false;
+const AT_LAST_MATCH_RECORD  = false;
+const PREVIOUS_SELECTED_RECORD_NUM = null;
+let SCORING_METHOD = 'gene';
+let SELECTED_GENE = null;
 
-var share_id = null; //from permalink - dataset share ID
-var layout_id = null; //from permalink - profile grid layout ID
-let gene_cart_id = null; //from permalink - gene cart share ID
-var permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
-var multigene = false;  // Is this a multigene search?
-var multigene_toggled = false;  // If true, then layouts will be reloaded, toggle between single-gene and multigene views
+let share_id = null; //from permalink - dataset share ID
+let layout_id = null; //from permalink - profile grid layout ID
+const gene_cart_id = null; //from permalink - gene cart share ID
+const permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
+let multigene = false;  // Is this a multigene search?
 
-var annotation_panel = new FunctionalAnnotationPanel();
-var dataset_collection_panel = new DatasetCollectionPanel();
+const annotation_panel = new FunctionalAnnotationPanel();
+const dataset_collection_panel = new DatasetCollectionPanel();
 
-var profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
-var selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
+const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
+const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
 
-var gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
+const gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
 
-var search_result_postselection_functions = [];
+const search_result_postselection_functions = [];
 
-window.onload=function() {
+window.onload=() => {
     // check if the user is already logged in
     check_for_login();
 
@@ -51,6 +50,11 @@ window.onload=function() {
         // validate the share_id. runs load_dataset_frames() on success
         validate_permalink(scope);
     } else {
+        if (document.URL.includes("index.html") ||
+        window.location.pathname == '/' ) {
+            console.log("index -- load_layouts");
+            load_layouts();
+        }
         // layout_id is a share_id for the profile layout
         layout_id = getUrlParameter('layout_id');
         scope = "profile";
@@ -58,14 +62,14 @@ window.onload=function() {
     }
 
     // Was help_id found?
-    var help_id = getUrlParameter('help_id');
+    const help_id = getUrlParameter('help_id');
     if (help_id) {
         validate_help_id(help_id);
     }
 
-    var permalinked_gene_symbol = getUrlParameter('gene_symbol');
-    var permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
-    var permalinked_multigene_plots = getUrlParameter('multigene_plots');
+    const permalinked_gene_symbol = getUrlParameter('gene_symbol');
+    const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
+    const permalinked_multigene_plots = getUrlParameter('multigene_plots');
     multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
 
     if (permalinked_gene_symbol) {
@@ -77,23 +81,20 @@ window.onload=function() {
 
         if (multigene) {
             set_multigene_plots('on');
+            set_exact_match('on');  // Multigene searches are exact.  This should speed up search_genes.py
         }
 
         sleep(1000).then(() => {
             $('#intro_search_icon').trigger('click');
-            // clear any open tooltips
-            $('[data-toggle="tooltip"], .tooltip').tooltip("hide");
         })
-    } else {
-        if (share_id) {
-            $('#permalink_intro_c').show();
-        }
+    } else if (share_id) {
+        $('#permalink_intro_c').show();
     }
 
     // The search button starts out disabled, make sure it gets re-enabled.
     $("button#submit_search").prop( "disabled", false );
 
-    $('#exact_match_icon').click(function() {
+    $('#exact_match_icon').click(() => {
         // handle if it was already in the on position
         if ( $('#exact_match_input').prop("checked") ) {
             set_exact_match('off');
@@ -104,7 +105,7 @@ window.onload=function() {
     });
 
     // If MG search icon on front page is clicked
-    $('#multigene_search_icon').click(function() {
+    $('#multigene_search_icon').click(() => {
         // handle if it was already in the on position
         if ( $('#multigene_plots_input').prop("checked") ) {
             set_multigene_plots('off');
@@ -115,8 +116,7 @@ window.onload=function() {
     });
 
     // If toggle is clicked, change some display things
-    $('#multigene_plots_input').change(function() {
-        multigene_toggled = true;
+    $('#multigene_plots_input').change(() => {
         if ( $('#multigene_plots_input').prop("checked") ) {
             // MG enabled
             $('#search_results_scrollbox').hide();
@@ -128,7 +128,7 @@ window.onload=function() {
         }
     });
 
-    $('#intro_search_form').on('submit', function(e) {
+    $('#intro_search_form').on('submit', (e) => {
         // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
         e.preventDefault();
         $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
@@ -141,24 +141,24 @@ window.onload=function() {
         $("#submit_search").trigger( "click" );
     });
 
-    $('#intro_search_icon').click(function() {
+    $('#intro_search_icon').click(() => {
         $('#intro_search_form').submit();
     });
 
-    $('#dataset_search_form').on('submit', function(e) {
+    $('#dataset_search_form').on('submit', (e) => {
         e.preventDefault();
-        window.location.replace("./dataset_explorer.html?search_terms=" + encodeURI($('#search_dataset_intro').val()));
+        window.location.replace(`./dataset_explorer.html?search_terms=${encodeURI($('#search_dataset_intro').val())}`);
     });
 
-    $('#launcher_manual').click(function() {
+    $('#launcher_manual').click(() => {
         window.location.replace('./manual.html');
     });
 
-    $('#launcher_expression_uploader').click(function() {
+    $('#launcher_expression_uploader').click(() => {
         window.location.replace('./upload_dataset.html');
     });
 
-    $('#launcher_epigenetic_uploader').click(function() {
+    $('#launcher_epigenetic_uploader').click(() => {
         window.location.replace('./upload_epigenetic_data.html');
     });
 
@@ -174,13 +174,14 @@ window.onload=function() {
     });
 
     // add post-page load listeners
-    $( "#dataset_zoomed_zoom_out_control" ).click(function() {
+    $( "#dataset_zoomed_zoom_out_control" ).click(() => {
         zoom_out_dataset();
     });
 
     // If a ProfileTree element is selected, this is changed and the new layout is set
     // NOTE: I don't think #search_param_profile needs to be a trigger
     $(document).on('change', '#search_param_profile, #selected_profile', function() {
+        console.log("index -- set_layout");
         dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         layout_id = $(this).data('profile-share-id');
     });
@@ -193,13 +194,13 @@ window.onload=function() {
     });
 
     // track the mouse movement so we can display scoring tooltips
-    $( document ).on( "mousemove", function( event ) {
+    $( document ).on( "mousemove", (event) => {
         // Positioning for dataset_grid tips
         // Why is this pixel adjustment necessary?
         xpos = event.pageX - 240;
         ypos = event.pageY - 130 - 30;
-        $("#tip").css("left", xpos + "px" );
-        $("#tip").css("top" , ypos + "px" );
+        $("#tip").css("left", `${xpos}px` );
+        $("#tip").css("top" , `${ypos}px` );
     });
 
     if (multigene) {
@@ -224,13 +225,13 @@ function get_index_info() {
         url: './cgi/get_index_info.cgi',
         type: 'GET',
         dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
+        success(data) {
 
-            $('#stats_dataset_count').text(data['dataset_count'])
-            $('#stats_user_count').text(data['user_count'])
+            $('#stats_dataset_count').text(data.dataset_count);
+            $('#stats_user_count').text(data.user_count);
         },
-        error: function(jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error getting index info.');
+        error(jqXHR, _textStatus, errorThrown) {
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
         }
     });
 };
@@ -242,29 +243,26 @@ function validate_help_id(help_id) {
         type: 'POST',
         data: {'help_id': help_id},
         dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
-            if ( data['success'] == 1 ) {
+        success(data) {
+            if ( data.success == 1 ) {
                 // Add help_id to form
                 $('#user_help_id').val(help_id);
 
                 // Greet user by name (a subtle confirmation they know it's their account)
-                if (data['user_name'].length > 0) {
-                    var user_first_name = ' ' + data['user_name'].split(' ')[0] + '!';
+                if (data.user_name.length > 0) {
+                    const user_first_name = ` ${data.user_name.split(' ')[0]}!`;
                     $('#forgot_password_user_name').text(user_first_name);
                 }
-
-                $('#forgot_password_modal').modal('show');
             } else {
                 // Invalid help_id, display invalid message
                 $("#valid_forgot_pass_modal_body_c").hide();
                 $("#save_user_new_pass").hide();
                 $("#invalid_forgot_pass_modal_body_c").show();
-
-                $('#forgot_password_modal').modal('show');
             }
+            $('#forgot_password_modal').modal('show');
         },
-        error: function(jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error validating help ID');
+        error(jqXHR, _textStatus, errorThrown) {
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating help ID');
         }
     });
 };
@@ -351,9 +349,9 @@ function validate_permalink(scope) {
 }
 
 function load_layouts() {
-    var d = new $.Deferred();
-    var session_id = Cookies.get('gear_session_id');
-    var layout_share_id = getUrlParameter('layout_id');
+    const d = new $.Deferred();
+    const session_id = Cookies.get('gear_session_id');
+    const layout_share_id = getUrlParameter('layout_id');
 
     // Temporary hack for Heller lab
     if (layout_share_id == '8d38b600' || layout_share_id == 'afd2eb77') {
@@ -364,9 +362,10 @@ function load_layouts() {
     $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
+        async: false,
         data: { 'session_id': session_id, 'layout_share_id': layout_share_id },
         dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
+        success(data, textStatus, jqXHR) {
             /*
               Priority of displayed profile:
                 0.  Passed layout ID via layout_id URL parameter
@@ -375,14 +374,14 @@ function load_layouts() {
                 3.  Admin's active domain
              */
 
-            let domain_profiles = [];
-            let user_profiles = [];
+            const domain_profiles = [];
+            const user_profiles = [];
 
             let active_layout_id = null;
             let active_layout_label = null;
 
             // Pass through once to sort domains from user profiles AND see if it matches a shared layout
-            $.each(data['layouts'], function(i, item){
+            $.each(data['layouts'], (i, item) => {
                 if ( item['is_domain'] == 1 ) {
                     domain_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id'] });
                 } else {
@@ -406,11 +405,11 @@ function load_layouts() {
 
             // pass through again and look for one set by a cookie
             if (active_layout_id == null) {
-                $.each(data['layouts'], function(i, item) {
-                    if (item['label'] == CURRENT_USER.profile) {
-                        active_layout_id = item['id'];
-                        active_layout_label = item['label'];
-                        layout_id = item['share_id'];
+                $.each(data.layouts, (_i, item) => {
+                    if (item.label == CURRENT_USER.profile) {
+                        active_layout_id = item.id;
+                        active_layout_label = item.label;
+                        layout_id = item.share_id;
                         return false;
                     }
                 });
@@ -418,11 +417,11 @@ function load_layouts() {
 
             // pass through again and look for one set as current by the user
             if (active_layout_id == null) {
-                $.each(data['layouts'], function(i, item) {
-                    if ( item['is_domain'] == 0 && item['is_current'] == 1 ) {
-                        active_layout_id = item['id'];
-                        active_layout_label = item['label'];
-                        layout_id = item['share_id'];
+                $.each(data.layouts, (_i, item) => {
+                    if ( item['is_domain'] == 0 && item.is_current == 1 ) {
+                        active_layout_id = item.id;
+                        active_layout_label = item.label;
+                        layout_id = item.share_id;
                         return false;
                     }
                 });
@@ -430,24 +429,24 @@ function load_layouts() {
 
             // pass through again if no active layout was found for user and choose the admin's
             if (active_layout_id == null) {
-                $.each(data['layouts'], function(i, item) {
-                    if ( item['is_domain'] == 1 && item['is_current'] == 1 ) {
-                        active_layout_id = item['id'];
-                        active_layout_label = item['label'];
-                        layout_id = item['share_id'];
+                $.each(data.layouts, (_i, item) => {
+                    if ( item['is_domain'] == 1 && item.is_current == 1 ) {
+                        active_layout_id = item.id;
+                        active_layout_label = item.label;
+                        layout_id = item.share_id;
                         return false;
                     }
                 });
             }
 
-            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, true, multigene);
+            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
 
             d.resolve();
         },
-        error: function (jqXHR, textStatus, errorThrown) {
+        error(jqXHR, _textStatus, errorThrown) {
             profile_tree.generateTree();
             selected_profile_tree.generateTree();
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error loading layouts.');
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
             d.fail();
         }
     });
@@ -737,6 +736,9 @@ $("#gene_search_form").submit(function( event ) {
     $("#viewport_intro").hide();
     $("#viewport_main").show();
 
+    // clear any open tooltips
+    $('[data-toggle="tooltip"], .tooltip').tooltip("hide");
+
     // determine if searching for exact matches (convert from bool to 1 or 0)
     $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
     $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
@@ -793,12 +795,7 @@ $("#gene_search_form").submit(function( event ) {
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
-    // Redraw layouts if toggling b/t single and multigene layouts, so that new HTML elements are generated
-    // TODO: "load_frames" may have been called previously if a "set_layouts" function was called.  Clean up so it's only called once
-    if (multigene_toggled) {
-        dataset_collection_panel.load_frames({share_id, multigene});
-        multigene_toggled = false;
-    }
+    dataset_collection_panel.load_frames({share_id, multigene});
 
     $.ajax({
         url : './cgi/search_genes.py',
@@ -983,19 +980,21 @@ $('#selected_gene_cart').change( function() {
 // automatically reloads dataset grid and resubmits gene search
 function update_datasetframes_generesults() {
     function resubmit_gene_search() {
-        $('#gene_search_form').trigger('submit');
+        return;
+        // SAdkins - 1/6/22 - commenting out since it loads double the frames
+        //$('#gene_search_form').trigger('submit');
     }
 
-    $.when( resubmit_gene_search() ).done(function(){
+    $.when( resubmit_gene_search() ).done(() => {
         if ($('#multigene_plots').val() == 1){
             // split on combination of space and comma (individually or both together.)
-            var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+            const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
             // Remove duplicates in gene search if they exist
-            var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+            const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
             dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
         } else {
             // auto-select the first match.  first <a class="list-group-item"
-            let first_thing = $('#search_results a.list-group-item').first();
+            const first_thing = $('#search_results a.list-group-item').first();
             select_search_result(first_thing);
         }
     });
@@ -1017,15 +1016,11 @@ function set_multigene_plots(mode) {
     if (mode == 'on') {
         $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
         $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays ").tooltip('show');
-        //$("#multigene_search_icon i").addClass("fa-inverse");
-        //$("#multigene_search_icon").addClass("btn-purple");
         $("#multigene_search_icon i").addClass("fa-gears");
         $("#multigene_search_icon i").removeClass("fa-gear");
     } else if (mode == 'off') {
         $('#multigene_plots_input').bootstrapToggle('off');
         $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays").tooltip('show');
-        //$("#multigene_search_icon i").removeClass("fa-inverse");
-        //$("#multigene_search_icon").removeClass("btn-purple");
         $("#multigene_search_icon i").addClass("fa-gear");
         $("#multigene_search_icon i").removeClass("fa-gears");
     }
