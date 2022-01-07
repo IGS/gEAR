@@ -149,6 +149,7 @@ function check_for_login() {
         $.ajax({
             url : './cgi/get_session_info.cgi',
             type: "POST",
+            async: false,
             data : { 'session_id': session_id },
             dataType:"json",
             success: function(data, textStatus, jqXHR) {
