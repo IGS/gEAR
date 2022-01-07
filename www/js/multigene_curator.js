@@ -246,14 +246,17 @@ function drawChart (data, datasetId) {
   Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, config);
 
   // Update plot with custom plot config stuff stored in plot_display_config.js
-  for (const conf in post_plotly_config.curator) {
+  const curator_conf = post_plotly_config.curator;
+  for (const idx in curator_conf) {
+    const conf = curator_conf[idx];
     // Get config (data and/or layout info) for the plot type chosen, if it exists
     if (conf.plot_type == plotType) {
-      const update_data = "data" in conf.curator ? conf.curator.data : {}
-      const update_layout = "layout" in conf.curator ? conf.curator.layout : {}
+      const update_data = "data" in conf ? conf.data : {};
+      const update_layout = "layout" in conf ? conf.layout : {};
       Plotly.update(targetDiv, update_data, update_layout)
     }
   }
+
 
   // Show any warnings from the API call
   if (message && success > 1) {
@@ -792,7 +795,7 @@ $('#dataset').change(async function () {
       , obs_filters: obsLevels // Just keep everything
       , query_condition: `${field};-;${obsLevels[field][0]}`
       , ref_condition: `${field};-;${obsLevels[field][1]}`
-      , use_adj_pvals: true
+      , adj_pvals: true
     };
     plotConfig = loadPlotConfig;
 
@@ -1095,24 +1098,24 @@ $(document).on('click', '#create_plot', async () => {
       plotConfig.include_zero_fc = $('#include_zero_foldchange').is(':checked');
       plotConfig.fold_change_cutoff = Number($("#quadrant_foldchange_cutoff").val());
       plotConfig.fdr_cutoff = Number($("#quadrant_fdr_cutoff").val());
-      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
-      if (! plotConfig.de_test_algo) {
+      if (! $('#de_test_select').select2('data')[0].id) {
         window.alert('Must select a DE statistical test.');
         return;
       }
+      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
       plotConfig.compare1_condition = $('#quadrant_compare1_condition').select2('data')[0].id;
       plotConfig.compare2_condition = $('#quadrant_compare2_condition').select2('data')[0].id;
       plotConfig.ref_condition = $('#quadrant_ref_condition').select2('data')[0].id;
       break;
     default:
       // volcano
-      plotConfig.adjust_pvals = $('#adj_pvals').is(':checked');
+      plotConfig.adj_pvals = $('#adj_pvals').is(':checked');
       plotConfig.annotate_nonsignificant = $('#annot_nonsig').is(':checked');
-      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
-      if (! plotConfig.de_test_algo) {
+      if (! $('#de_test_select').select2('data')[0].id) {
         window.alert('Must select a DE statistical test.');
         return;
       }
+      plotConfig.de_test_algo = $('#de_test_select').select2('data')[0].id;
       plotConfig.query_condition = $('#volcano_query_condition').select2('data')[0].id;
       plotConfig.ref_condition = $('#volcano_ref_condition').select2('data')[0].id;
       // Validation related to the conditions

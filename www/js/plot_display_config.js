@@ -22,6 +22,16 @@ const post_plotly_config = {
                     y: 0.8,
                 }
             }
+        }, {
+            "plot_type":"heatmap"
+            , "layout":{
+                "margin": {
+                    "l":0
+                    ,"r":100
+                    ,"b":0
+                    ,"t":0
+                }
+            }
         }
     ]
     , "curator":[
@@ -56,11 +66,15 @@ function moveHeatmapColorbarLeft(plotData) {
 }
 
 function setHeatmapHeightBasedOnGenes(plotLayout, genesFilter) {
-    if (genesFilter.length > 50) {
-        plotLayout.height = genesFilter.length * 10;
+    if (genesFilter.length > 20) {
+        plotLayout.height = genesFilter.length * 20;
       }
 }
 
 function adjustStackedViolinHeight(plotLayout) {
     plotLayout.height = 800;
+}
+
+function adjustStackedViolinSharedAxes(plotLayout) {
+    return;
 }

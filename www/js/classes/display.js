@@ -679,7 +679,7 @@ class PlotlyDisplay extends Display {
         this.show();
 
          if (this.plot_type == "heatmap") {
-            moveHeatmapColorbarLeft(this.plot_type)
+           // moveHeatmapColorbarLeft(plot_json.data)
         }
 
         const config_mods = {
@@ -693,13 +693,15 @@ class PlotlyDisplay extends Display {
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
 
-          // Update plot with custom plot config stuff stored in plot_display_config.js
-        for (const conf in post_plotly_config.index) {
-            // Get config (data and/or layout info) for the plot type chosen, if it exists
-            if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf.index ? conf.index.data : {}
-            const update_layout = "layout" in conf.index ? conf.index.layout : {}
-            Plotly.update(targetDiv, update_data, update_layout)
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const index_conf = post_plotly_config.index;
+        for (const idx in index_conf) {
+        const conf = index_conf[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == this.plot_type) {
+            const update_data = "data" in conf ? conf.data : {}
+            const update_layout = "layout" in conf ? conf.layout : {}
+            Plotly.update(target_div, update_data, update_layout)
             }
         }
     }
