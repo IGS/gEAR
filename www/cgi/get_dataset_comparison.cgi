@@ -25,8 +25,8 @@ sc.settings.verbosity = 0
 def main():
     form = cgi.FieldStorage()
     dataset_id = form.getvalue('dataset_id')
-    condition1 = form.getvalue('dataset1_condition')
-    condition2 = form.getvalue('dataset2_condition')
+    condition1 = form.getvalue('condition_x')
+    condition2 = form.getvalue('condition_y')
     std_dev_num_cutoff = form.getvalue('std_dev_num_cutoff')
     std_dev_num_cutoff = float(std_dev_num_cutoff) if std_dev_num_cutoff else None
     fold_change_cutoff = form.getvalue('fold_change_cutoff')
@@ -53,37 +53,37 @@ def main():
     adata = sc.read(h5_path)
 
     # Get all categorical columns
-    cols_x = [col for col in adata.obs.columns if adata.obs[col].dtype.name == 'category']
+    #cols_x = [col for col in adata.obs.columns if adata.obs[col].dtype.name == 'category']
 
     # If there are multiple columns, create a composite
     # Only keep columns that had a group selected in the UI
     # NOTE: There may be an edge case where the user selected a group for cond. 1 and nothing for cond. 2 which would leave the column being omitted from the composite
+    cols_to_keep = set()
     cond1 = json.loads(condition1)
     for col in cond1:
-        if not cond1[col] and col in cols_x:
-            cols_x.remove(col)
-
+        cols_to_keep.add(col)
     cond2 = json.loads(condition2)
     for col in cond2:
-        if not cond2[col] and col in cols_x:
-            cols_x.remove(col)
+        cols_to_keep.add(col)
+
+    cols_to_keep = list(cols_to_keep)
 
     # Add new column to combine various groups into a single index
-    adata.obs['comparison_composite_index'] = adata.obs[cols_x].apply(lambda x: ';'.join(map(str,x)), axis=1)
+    adata.obs['comparison_composite_index'] = adata.obs[cols_to_keep].apply(lambda x: ';'.join(map(str,x)), axis=1)
     adata.obs['comparison_composite_index'] = adata.obs['comparison_composite_index'].astype('category')
     unique_composite_indexes = adata.obs["comparison_composite_index"].unique()
 
     # Only want to keep indexes that match chosen filters
-    dataset1_composite_idx = create_filtered_composite_indexes(cond1, unique_composite_indexes.tolist())
-    dataset2_composite_idx = create_filtered_composite_indexes(cond2, unique_composite_indexes.tolist())
+    cond1_composite_idx = create_filtered_composite_indexes(cond1, unique_composite_indexes.tolist())
+    cond2_composite_idx = create_filtered_composite_indexes(cond2, unique_composite_indexes.tolist())
 
     # Exit with error if there is no valid composite index mask created
     # Example would be a duplicated obs column where only A was selected in col1 and only B was selected in col2
-    if not dataset1_composite_idx:
+    if not cond1_composite_idx:
         msg = "The X-axis condition selected combination does not exist for this dataset"
         return_error_response(msg)
 
-    if not dataset2_composite_idx:
+    if not cond2_composite_idx:
         msg = "The Y-axis condition selected combination does not exist for this dataset"
         return_error_response(msg)
 
@@ -93,20 +93,20 @@ def main():
         sc.pp.filter_genes(adata, min_cells=1)
 
         # Scanpy.rank_genes_groups can handle multiple groups, but our output is designed for just one gropu
-        if len(dataset1_composite_idx) > 1:
+        if len(cond1_composite_idx) > 1:
             msg = "Detected multiple possible conditions for the X-axis condition (the query condition)." + \
                 "In order to perform a significance test, please ensure that your set conditions are such so that only 1 possible combination of conditions can be used as the query condition." + \
-                "<br />Curated set conditions: {}".format(dataset1_composite_idx)
+                "<br />Curated set conditions: {}".format(cond1_composite_idx)
             return_error_response(msg)
 
-        if len(dataset2_composite_idx) > 1:
+        if len(cond2_composite_idx) > 1:
             msg = "Detected multiple possible conditions for the Y-axis condition (the reference condition)." + \
                 "In order to perform a significance test, please ensure that your set conditions are such so that only 1 possible combination of conditions can be used as the reference condition." + \
-                "<br />Curated set conditions: {}".format(dataset2_composite_idx)
+                "<br />Curated set conditions: {}".format(cond2_composite_idx)
             return_error_response(msg)
 
         try:
-            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=True, groups=dataset1_composite_idx, reference=dataset2_composite_idx[0], n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
+            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=True, groups=cond1_composite_idx, reference=cond2_composite_idx[0], n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
         except Exception as e:
             msg = "scanpy.rank_genes_groups failed.\n{}".format(str(e))
             return_error_response(msg)
@@ -125,8 +125,8 @@ def main():
     # Match the condition (ex. A1;ADULT;F) to all
     # the rows in obs, and use this to aggregate the mean
     # SAdkins - This works with and without replicates
-    condition_x_repls_filter = adata.obs.index.isin(dataset1_composite_idx)
-    condition_y_repls_filter = adata.obs.index.isin(dataset2_composite_idx)
+    condition_x_repls_filter = adata.obs.index.isin(cond1_composite_idx)
+    condition_y_repls_filter = adata.obs.index.isin(cond2_composite_idx)
     adata_x_subset = adata[condition_x_repls_filter, :]
     adata_y_subset = adata[condition_y_repls_filter, :]
 
@@ -267,8 +267,8 @@ def main():
         result['y'] = filtered_y
 
     result['fold_change_std_dev'] = "{0:.2f}".format(fold_change_std_dev)
-    result['dataset1_composite_idx'] = dataset1_composite_idx
-    result['dataset2_composite_idx'] = dataset2_composite_idx
+    result['condition_x_idx'] = cond1_composite_idx
+    result['condition_y_idx'] = cond2_composite_idx
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

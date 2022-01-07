@@ -3,8 +3,8 @@
 let plot_data = null;
 let selected_data = null;
 
-let dataset1_condition = null;
-let dataset2_condition = null;
+let condition_x = null;
+let condition_y = null;
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -127,10 +127,10 @@ function download_selected_genes() {
   // plot_data contains three keys: x, y and symbols
   // build the file string from this
 
-  x_label = $('#x_label').is(':empty') ? "x-condition" : $('#x_label').val();
-  y_label = $('#y_label').is(':empty') ? "y-condition" : $('#y_label').val();
+  const x_label = $('#x_label').val().length ? $('#x_label').val() : "x-condition";
+  const y_label = $('#y_label').val().length ? $('#y_label').val() : "y-condition";
 
-  file_contents =
+  const file_contents =
       $("#log_base").val() == "raw"
     ? "gene_symbol\tp-value\tfold change\t"
   + x_label + "\t"
@@ -161,49 +161,42 @@ function download_selected_genes() {
   document.body.removeChild(element);
 }
 
+// Build list of selected categories and groups
+function update_selected_conditions() {
+  const condition = {};
+  // Create current object of which groups are to be included (checked)
+  $('#conditions_accordion').find('.js-group-check').each(function(){
+    const id = $(this).data("group");
+
+    const category = id.split(';-;')[0];
+    const group = id.split(';-;')[1];
+
+    if (Object.keys(condition).indexOf(category) === -1) {
+      condition[category] = [];
+    }
+
+    if ($(this).prop("checked")) {
+      condition[category].push(group);
+    }
+  });
+  return condition;
+}
+
 function load_comparison_graph() {
   // Save current state of active condition tab
-  if ($("#dataset1_tab").hasClass("active")) {
-    dataset1_condition = {};
-    // Create current object of which groups are to be included (checked)
-    $('#conditions_accordion').find('.js-group-check').each(function(){
-      const id = $(this).data("group");
-
-      const category = id.split(';-;')[0];
-      const group = id.split(';-;')[1];
-
-      if (Object.keys(dataset1_condition).indexOf(category) === -1) {
-        dataset1_condition[category] = [];
-      }
-
-      if ($(this).prop("checked")) {
-        dataset1_condition[category].push(group);
-      }
-    });
+  if ($("#condition_x_tab").hasClass("active")) {
+    condition_x = update_selected_conditions();
   } else {
-    // on #dataset2_tab
-    dataset2_condition = {};
-    // Create current object of which groups are to be included (checked)
-    $('#conditions_accordion').find('.js-group-check').each(function(){
-      const id = $(this).data("group");
-
-      const category = id.split(';-;')[0];
-      const group = id.split(';-;')[1];
-
-      if (Object.keys(dataset2_condition).indexOf(category) === -1) {
-        dataset2_condition[category] = [];
-      }
-
-      if ($(this).prop("checked")) {
-        dataset2_condition[category].push(group);
-      }
-    });
+    // on #condition_y_tab
+    condition_y = update_selected_conditions();
   }
 
-  dataset_id = $("#dataset_id").val();
-  dataset_text = $("#dataset_id").text();
-  dataset1_string = JSON.stringify(dataset1_condition);
-  dataset2_string = JSON.stringify(dataset2_condition);
+  const dataset_id = $("#dataset_id").val();
+  const dataset_text = $("#dataset_id").text();
+  const sanitized_condition_x = sanitize_condition(condition_x);
+  const sanitized_condition_y = sanitize_condition(condition_y);
+  const condition_x_string = JSON.stringify(sanitized_condition_x);
+  const condition_y_string = JSON.stringify(sanitized_condition_y);
 
   // empty error message, so that user/helper won't get confused
   $("#ticket_error_msg").empty();
@@ -215,8 +208,8 @@ function load_comparison_graph() {
     type: "POST",
     data: {
       dataset_id,
-      dataset1_condition: dataset1_string,
-      dataset2_condition: dataset2_string,
+      condition_x: condition_x_string,
+      condition_y: condition_y_string,
       fold_change_cutoff: $("#fold_change_cutoff").val(),
       std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
       log_transformation: $("#log_base").val(),
@@ -233,8 +226,8 @@ function load_comparison_graph() {
         $("#plot_loading").hide();
         $("#ticket_dataset_id").text(dataset_id);
         $("#ticket_dataset_text").text(dataset_text);
-        $("#ticket_datasetx_condition").text(dataset1_string);
-        $("#ticket_datasety_condition").text(dataset2_string);
+        $("#ticket_datasetx_condition").text(condition_x_string);
+        $("#ticket_datasety_condition").text(condition_y_string);
         $("#ticket_error_msg").html(data.error);
         $("#error_loading_c").show();
       }
@@ -244,8 +237,8 @@ function load_comparison_graph() {
       $("#plot_loading").hide();
       $("#ticket_dataset_id").text(dataset_id);
       $("#ticket_dataset_text").text(dataset_text);
-      $("#ticket_datasetx_condition").text(dataset1_string);
-      $("#ticket_datasety_condition").text(dataset2_string);
+      $("#ticket_datasetx_condition").text(condition_x_string);
+      $("#ticket_datasety_condition").text(condition_y_string);
       $("#error_loading_c").show();
     },
   });
@@ -290,29 +283,15 @@ async function populate_condition_selection_control() {
   }
 }
 
-$('#dataset1_tab').on('shown.bs.tab', (e) => {
+$('#condition_x_tab').on('shown.bs.tab', (e) => {
 
-  dataset2_condition = {};
-  // Create current object of which groups are to be included (checked)
-  $('#conditions_accordion').find('.js-group-check').each(function(){
-    const id = $(this).data("group");
+  condition_y = update_selected_conditions();
 
-    const category = id.split(';-;')[0];
-    const group = id.split(';-;')[1];
-
-    if (Object.keys(dataset2_condition).indexOf(category) === -1) {
-      dataset2_condition[category] = [];
-    }
-
-    if ($(this).prop("checked")) {
-      dataset2_condition[category].push(group);
-    }
-  });
-
-  // Load dataset1_conditions
+  // Load condition_x stuff
+  $('.js-cat-check').prop("checked", false);
   $('.js-group-check').prop("checked", false);
-  for (const cat in dataset1_condition) {
-    for (const elem of dataset1_condition[cat]) {
+  for (const cat in condition_x) {
+    for (const elem of condition_x[cat]) {
       $(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
     }
     $('.js-group-check').change();  // trigger so the cat checkbox matches up
@@ -320,28 +299,15 @@ $('#dataset1_tab').on('shown.bs.tab', (e) => {
 
 })
 
-$('#dataset2_tab').on('shown.bs.tab', (e) => {
+$('#condition_y_tab').on('shown.bs.tab', (e) => {
 
-  dataset1_condition = {};
-  // Create current object of which groups are to be included (checked)
-  $('#conditions_accordion').find('.js-group-check').each(function(){
-    const id = $(this).data("group");
-    const category = id.split(';-;')[0];
-    const group = id.split(';-;')[1];
+  condition_x = update_selected_conditions();
 
-    if (Object.keys(dataset1_condition).indexOf(category) === -1) {
-      dataset1_condition[category] = [];
-    }
-
-    if ($(this).prop("checked")) {
-      dataset1_condition[category].push(group);
-    }
-  });
-
-  // Load dataset2_conditions
+  // Load condition_y stuff
+  $('.js-cat-check').prop("checked", false);
   $('.js-group-check').prop("checked", false);
-  for (const cat in dataset2_condition) {
-    for (const elem of dataset2_condition[cat]) {
+  for (const cat in condition_y) {
+    for (const elem of condition_y[cat]) {
       $(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
     }
     $('.js-group-check').change();  // trigger so the cat checkbox matches up
@@ -362,6 +328,25 @@ $(document).on('change', '.js-cat-check', function (e) {
 
   // Expand collaspable since category was focused on
   category_collaspable.collapse('show');
+
+  // Update the selected conditons div and the "axis label" input boxes
+  const template = $.templates("#selected_conditions_list");
+
+  if ($("#condition_x_tab").hasClass("active")) {
+    const curr_condition_x = update_selected_conditions();
+    const sanitized_condition_x = sanitize_condition(curr_condition_x);
+    const htmlOutput = template.render(sanitized_condition_x);
+    $('#selected_x_condition').html(htmlOutput);
+    $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
+
+  } else {
+    // on #condition_y_tab
+    const curr_condition_y = update_selected_conditions();
+    const sanitized_condition_y = sanitize_condition(curr_condition_y);
+    const htmlOutput = template.render(sanitized_condition_y);
+    $('#selected_y_condition').html(htmlOutput);
+    $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
+  }
 })
 
 $(document).on('click', '.js-cat-collapse', function (e) {
@@ -411,7 +396,35 @@ $(document).on('change', '.js-group-check', function(e) {
     });
   }
 
+  // Update the selected conditons div and the "axis label" input boxes
+  const template = $.templates("#selected_conditions_list");
+  if ($("#condition_x_tab").hasClass("active")) {
+    const curr_condition_x = update_selected_conditions();
+    const sanitized_condition_x = sanitize_condition(curr_condition_x);
+    const htmlOutput = template.render(sanitized_condition_x);
+    $('#selected_x_condition').html(htmlOutput);
+    $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
+
+  } else {
+    // on #condition_y_tab
+    const curr_condition_y = update_selected_conditions();
+    const sanitized_condition_y = sanitize_condition(curr_condition_y);
+    const htmlOutput = template.render(sanitized_condition_y);
+    $('#selected_y_condition').html(htmlOutput);
+    $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
+  }
 })
+
+function sanitize_condition(condition) {
+  const sanitized_condition = {}
+  for (const property in condition) {
+    // If no groups for an observation are selected, delete filter
+    if (condition[property].length) {
+      sanitized_condition[property] = condition[property];
+    }
+  }
+  return sanitized_condition;
+}
 
 async function populate_dataset_selection_controls() {
   const dataset_id = getUrlParameter("dataset_id");
@@ -598,11 +611,11 @@ function plot_data_to_graph(data) {
   const layout = {
     title: $("#dataset_id").text(),
     xaxis: {
-      title: $('#x_label').is(':empty') ? JSON.stringify(data.dataset1_composite_idx) : $('#x_label').val(),
+      title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
       type: "",
     },
     yaxis: {
-      title: $('#y_label').is(':empty') ? JSON.stringify(data.dataset2_composite_idx) : $('#y_label').val(),
+      title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
       type: "",
     },
     annotations: [],
