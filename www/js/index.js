@@ -52,7 +52,6 @@ window.onload=() => {
     } else {
         if (document.URL.includes("index.html") ||
         window.location.pathname == '/' ) {
-            console.log("index -- load_layouts");
             load_layouts();
         }
         // layout_id is a share_id for the profile layout
@@ -181,7 +180,6 @@ window.onload=() => {
     // If a ProfileTree element is selected, this is changed and the new layout is set
     // NOTE: I don't think #search_param_profile needs to be a trigger
     $(document).on('change', '#search_param_profile, #selected_profile', function() {
-        console.log("index -- set_layout");
         dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         layout_id = $(this).data('profile-share-id');
     });
