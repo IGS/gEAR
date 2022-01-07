@@ -413,9 +413,10 @@ $(document).on('change', '.js-group-check', function(e) {
 
 })
 
-function populate_dataset_selection_controls() {
+async function populate_dataset_selection_controls() {
   const dataset_id = getUrlParameter("dataset_id");
-  $.ajax({
+  $('#pre_dataset_spinner').show();
+  await $.ajax({
     type: "POST",
     url: "./cgi/get_h5ad_dataset_list.cgi",
     data: {
@@ -459,6 +460,7 @@ function populate_dataset_selection_controls() {
       // was there a requested dataset ID already?
       if (dataset_id !== undefined) {
         $("#dataset_id").val(dataset_id);
+        $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
         $("#dataset_id").trigger("change");
       }
     },
@@ -466,6 +468,7 @@ function populate_dataset_selection_controls() {
       report_error(`Failed to load dataset list because msg: ${msg}`);
     },
   });
+  $('#pre_dataset_spinner').hide();
 }
 
 function plot_data_to_graph(data) {

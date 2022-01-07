@@ -72,12 +72,10 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
   $('#gene_container').hide();
 
   // check if the user is already logged in
-  await check_for_login();
+  check_for_login();
 
-  $('#pre_dataset_spinner').show();
   // Load gene carts and datasets before the dropdown appears
   await reloadTrees ();
-  $('#pre_dataset_spinner').hide();
 
   // Initialize plot types
    $('#plot_type_select').select2({
@@ -140,6 +138,7 @@ async function fetchH5adInfo (payload) {
 }
 
 async function loadDatasets () {
+  $('#pre_dataset_spinner').show();
   await $.ajax({
     type: 'POST',
     url: './cgi/get_h5ad_dataset_list.cgi',
@@ -182,6 +181,7 @@ async function loadDatasets () {
       console.error(`Failed to load dataset list because msg: ${msg}`);
     }
   });
+  $('#pre_dataset_spinner').hide();
 }
 
 // Draw plotly chart to image
@@ -301,7 +301,6 @@ async function draw (datasetId, payload) {
 
 // If user changes, update genecart/profile trees
 async function reloadTrees(){
-
   // Update dataset and genecart trees in parallel
   // Works if they were not populated or previously populated
   await Promise.all([loadDatasets(), loadGeneCarts()]);
