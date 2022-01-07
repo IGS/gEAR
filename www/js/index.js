@@ -114,19 +114,6 @@ window.onload=() => {
         }
     });
 
-    // If toggle is clicked, change some display things
-    $('#multigene_plots_input').change(() => {
-        if ( $('#multigene_plots_input').prop("checked") ) {
-            // MG enabled
-            $('#search_results_scrollbox').hide();
-            $('#multigene_search_indicator').show();
-        } else {
-            // MG disabled
-            $('#search_results_scrollbox').show();
-            $('#multigene_search_indicator').hide();
-        }
-    });
-
     $('#intro_search_form').on('submit', (e) => {
         // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
         e.preventDefault();
@@ -200,11 +187,6 @@ window.onload=() => {
         $("#tip").css("left", `${xpos}px` );
         $("#tip").css("top" , `${ypos}px` );
     });
-
-    if (multigene) {
-        // Change search results to show multigene version
-        $('#multigene_plots_input').change();
-    }
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -778,6 +760,15 @@ $("#gene_search_form").submit(function( event ) {
         state_url += `&gene_cart_share_id=${getUrlParameter('gene_cart_share_id')}`;
     }
 
+    if (multigene) {
+        // MG enabled
+        $('#search_results_scrollbox').hide();
+        $('#multigene_search_indicator').show();
+    } else {
+        // MG disabled
+        $('#search_results_scrollbox').show();
+        $('#multigene_search_indicator').hide();
+    }
 
     // SAdkins - Should we have a separate history state for dataset share IDs?
     history.pushState(
