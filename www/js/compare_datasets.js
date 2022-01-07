@@ -43,6 +43,10 @@ const log10_transformed_datasets = [
 , "4cb2ac62-c283-86a9-83cb-2c1b381948f2"
 , "d0659d69-1a33-8b84-252c-f7ded46aa3d6"
 , "cee5325d-434f-fefe-d2e6-e0be39421951"
+, "34f8f131-8158-db83-7df9-db9003797dff"
+, "7ddb4965-e710-faf7-ee26-4ce95d7602a8"
+, "f122cac5-c79f-8ea2-166e-42415916db11"
+, "173ab634-a2b1-87bc-f1ef-d288de0bcd1a"
 ];
 
 // TODO: Have mechanism to convert non-categorical column to categorical if it was erroneously added as numerical

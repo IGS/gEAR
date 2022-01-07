@@ -55,6 +55,10 @@ LOG10_TRANSFORMED_DATASETS = [
 , "4cb2ac62-c283-86a9-83cb-2c1b381948f2"
 , "d0659d69-1a33-8b84-252c-f7ded46aa3d6"
 , "cee5325d-434f-fefe-d2e6-e0be39421951"    # Unsure if log2 or log10 but necessary for correct output
+, "34f8f131-8158-db83-7df9-db9003797dff"    # same as above
+, "7ddb4965-e710-faf7-ee26-4ce95d7602a8"    # same as above
+, "f122cac5-c79f-8ea2-166e-42415916db11"    # ""
+, "173ab634-a2b1-87bc-f1ef-d288de0bcd1a"    # ""
 ]
 
 DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic if more groups are chosen
