@@ -5,14 +5,11 @@ Searches the reference annotations for genes and returns them and their complete
 
 import cgi, json
 import sys
-import mysql.connector
 import os
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-# TODO: next line will go away after conversion to geardb is complete
-import gear.db
 
 # results will not be shown after this count
 MAX_GENE_SEARCH_LIMIT = 100000
