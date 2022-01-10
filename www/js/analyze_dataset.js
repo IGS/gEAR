@@ -257,10 +257,33 @@ window.onload=function() {
     });
 
     $("#marker_genes_table").click(function(e) {
-        var clicked_cell = $(e.target).closest("td");
-        var goi = clicked_cell.text().trim();
+        const clicked_cell = $(e.target).closest("td");
+        const goi = clicked_cell.text().trim();
 
-        if (clicked_cell.hasClass('highlighted')) {
+        // If row index was clicked, operate on whole row. Otherwise, just on individual cells.
+        if (clicked_cell.hasClass('js-row-idx')) {
+            const row_cells = clicked_cell.siblings();
+            // note - jQuery map, not array.prototype map
+            const gois = row_cells.map((i, el) => {
+                // clicked cell is a row index, so do not add to genes of interest
+                if (clicked_cell.text() != el.innerText) {
+                    return el.innerText.trim();
+                }
+            }).get();
+            if (clicked_cell.hasClass('highlighted')) {
+                row_cells.removeClass("highlighted");
+                gois.forEach(el => {
+                    clicked_marker_genes.delete(el);
+                    current_analysis.remove_gene_of_interest(el);
+                });
+            } else {
+                row_cells.addClass("highlighted");
+                gois.forEach(el => {
+                    clicked_marker_genes.add(el);
+                    current_analysis.add_gene_of_interest(el);
+                });
+            }
+        } else if (clicked_cell.hasClass('highlighted')) {
             clicked_cell.removeClass("highlighted");
             clicked_marker_genes.delete(goi);
             current_analysis.remove_gene_of_interest(goi);
@@ -270,8 +293,9 @@ window.onload=function() {
             current_analysis.add_gene_of_interest(goi);
         }
 
+
         $('#marker_genes_selected_count').text(clicked_marker_genes.size);
-        var counter_set = new Set([...entered_marker_genes, ...clicked_marker_genes]);
+        const counter_set = new Set([...entered_marker_genes, ...clicked_marker_genes]);
         $('#marker_genes_unique_count').text(counter_set.size);
     });
 
