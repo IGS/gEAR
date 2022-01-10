@@ -272,12 +272,14 @@ window.onload=function() {
             }).get();
             if (clicked_cell.hasClass('highlighted')) {
                 row_cells.removeClass("highlighted");
+                clicked_cell.removeClass("highlighted");
                 gois.forEach(el => {
                     clicked_marker_genes.delete(el);
                     current_analysis.remove_gene_of_interest(el);
                 });
             } else {
                 row_cells.addClass("highlighted");
+                clicked_cell.addClass("highlighted");
                 gois.forEach(el => {
                     clicked_marker_genes.add(el);
                     current_analysis.add_gene_of_interest(el);
