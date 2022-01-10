@@ -264,12 +264,7 @@ window.onload=function() {
         if (clicked_cell.hasClass('js-row-idx')) {
             const row_cells = clicked_cell.siblings();
             // note - jQuery map, not array.prototype map
-            const gois = row_cells.map((i, el) => {
-                // clicked cell is a row index, so do not add to genes of interest
-                if (clicked_cell.text() != el.innerText) {
-                    return el.innerText.trim();
-                }
-            }).get();
+            const gois = row_cells.map((i, el) => {el.innerText.trim();}).get();
             if (clicked_cell.hasClass('highlighted')) {
                 row_cells.removeClass("highlighted");
                 clicked_cell.removeClass("highlighted");
