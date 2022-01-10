@@ -267,7 +267,7 @@ window.onload=() => {
         if (clicked_cell.hasClass('js-row-idx')) {
             const row_cells = clicked_cell.siblings();
             // note - jQuery map, not array.prototype map
-            const gois = row_cells.map((i, el) => {el.innerText.trim();}).get();
+            const gois = row_cells.map((i, el) => el.innerText.trim()).get();
             if (clicked_cell.hasClass('highlighted')) {
                 row_cells.removeClass("highlighted");
                 clicked_cell.removeClass("highlighted");
