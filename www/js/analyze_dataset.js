@@ -10,7 +10,9 @@ var analysis_labels = new Set();
 // TODO:  Louvain options are escaping their box
 // TODO:  Make sure all plotting buttons either disable or show something else while the compute runs
 
-window.onload=function() {
+const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
+
+window.onload=() => {
     // check if the user is already logged in
     check_for_login();
     session_id = Cookies.get('gear_session_id');
@@ -26,7 +28,8 @@ window.onload=function() {
         delay: { "show": 100, "hide": 2000 }
     });
 
-    $( "#dataset_id" ).on('change', function() {
+
+    $( "#dataset_id" ).on('change', () => {
         show_working("Loading dataset");
 
         if (current_analysis != null) {
@@ -434,6 +437,18 @@ window.onload=function() {
             $('#new_analysis_label_save').prop("disabled", false);
         }
     });
+
+    // Create observer to watch if user changes (ie. successful login does not refresh page)
+    // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+
+    // Select the node that will be observed for mutations
+    const target_node = document.getElementById('loggedin_controls');
+    // Create an observer instance linked to the callback function
+    const observer = new MutationObserver(populate_dataset_selection);
+    // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
+    // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
+    observer.observe(target_node, { attributes: true });
+
 }
 
 function get_tsne_image_data(gene_symbol, config) {
@@ -723,8 +738,9 @@ function load_stored_analysis(analysis_id, analysis_type, dataset_id) {
     });
 }
 
-function populate_dataset_selection() {
-    $.ajax({
+async function populate_dataset_selection() {
+    $('#pre_dataset_spinner').show();
+    await $.ajax({
         type: "POST",
         url: "./cgi/get_h5ad_dataset_list.cgi",
         data: {
@@ -733,41 +749,52 @@ function populate_dataset_selection() {
             'include_dataset_id': getUrlParameter('dataset_id')
         },
         dataType: "json",
-        success: function(data) {
-            if (data['user']['datasets'].length > 0) {
-                var user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-                var user_dataset_list_html = user_dataset_list_tmpl.render(data['user']['datasets']);
-                $("#dataset_ids_user").html(user_dataset_list_html);
+        success(data) {
+            let counter = 0
+            // Populate select box with dataset information owned by the user
+            const user_datasets = [];
+            if (data.user.datasets.length > 0) {
+              // User has some profiles
+              $.each(data.user.datasets, (_i, item) => {
+                user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+              });
+            }
+            // Next, add datasets shared with the user
+            const shared_datasets = [];
+            if (data.shared_with_user.datasets.length > 0) {
+              // User has some profiles
+              $.each(data.shared_with_user.datasets, (_i, item) => {
+                shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+              });
+            }
+            // Now, add public datasets
+            const domain_datasets = [];
+            if (data.public.datasets.length > 0) {
+              // User has some profiles
+              $.each(data.public.datasets, (_i, item) => {
+                domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+              });
             }
 
-            if (data['shared_with_user']['datasets'].length > 0) {
-                var shared_with_user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-                var shared_with_user_dataset_list_html = shared_with_user_dataset_list_tmpl.render(data['shared_with_user']['datasets']);
-                $("#dataset_ids_shared_with_user").html(shared_with_user_dataset_list_html);
-            }
-
-            if (data['public']['datasets'].length > 0) {
-                var public_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-                var public_dataset_list_html = public_dataset_list_tmpl.render(data['public']['datasets']);
-                $("#dataset_ids_public").html(public_dataset_list_html);
-            }
+            dataset_tree.userDatasets = user_datasets;
+            dataset_tree.sharedDatasets = shared_datasets;
+            dataset_tree.domainDatasets = domain_datasets;
+            dataset_tree.generateTree();
 
             // was there a requested dataset ID already?
-            var dataset_id = getUrlParameter('dataset_id');
-            var share_id = getUrlParameter('share_id');
-
+            const dataset_id = getUrlParameter('dataset_id');
             if (dataset_id !== undefined) {
-                $('#dataset_id').val(dataset_id);
-                $( "#dataset_id" ).trigger( "change" );
-            }
+            $("#dataset_id").val(dataset_id);
+            $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
+            $("#dataset_id").trigger("change");
+          }
 
-            // Update the select box
-            $('select#dataset_id').selectpicker('refresh');
         },
-        error: function(xhr, status, msg) {
-            report_error("Failed to load dataset list because msg: " + msg);
+        error(xhr, status, msg) {
+            report_error(`Failed to load dataset list because msg: ${msg}`);
         }
     });
+    $('#pre_dataset_spinner').hide();
 }
 
 function process_manual_marker_gene_entries(gene_str) {
