@@ -10,6 +10,7 @@ Just about everything here uses the JSTree library - jstree.com
 class Tree {
     /**
      * Initialize tree.
+     * @constructor
      * @param {Object} - Tree data.
      */
     constructor({
@@ -53,13 +54,14 @@ class Tree {
 
 }
 
-/*
+/**
  * Class representing a gene cart selection tree
  * @extends Tree
  */
 class GeneCartTree extends Tree {
     /**
      * Initialize GeneCartTree
+     * @constructor
      * @param {Object} Data - Tree data
      */
     constructor({
@@ -186,6 +188,7 @@ class GeneCartTree extends Tree {
 class ProfileTree extends Tree {
     /**
      * Initialize ProfileTree
+     * @constructor
      * @param {Object} Data - Tree data
      */
     constructor({
@@ -323,6 +326,7 @@ class ProfileTree extends Tree {
 class DatasetTree extends Tree {
     /**
      * Initialize ProfileTree
+     * @constructor
      * @param {Object} Data - Tree data
      */
     constructor({

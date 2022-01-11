@@ -435,30 +435,31 @@ function load_layouts() {
 }
 
 function load_gene_carts(cart_share_id) {
-  var d = new $.Deferred();
-  var session_id = Cookies.get('gear_session_id');
+    const d = new $.Deferred();
+    const session_id = Cookies.get('gear_session_id');
 
-  if (!session_id) {
-      //User is not logged in. Hide gene carts container
-      $("#selected_gene_cart_c").hide();
-      gene_cart_tree.generateTree();
-      d.resolve();
-  } else {
-      $("#selected_gene_cart_c").show(); //Show if hidden
-      $.ajax({
+    if (!session_id) {
+        //User is not logged in. Hide gene carts container
+        $("#selected_gene_cart_c").hide();
+        gene_cart_tree.generateTree();
+        d.resolve();
+    } else {
+        $("#selected_gene_cart_c").show(); //Show if hidden
+        $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-          data: { 'session_id': session_id, 'share_id': cart_share_id },
+            data: { 'session_id': session_id, 'share_id': cart_share_id },
         dataType: 'json',
-        success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
-            let user_gene_carts = [];
+        success(data, textStatus, jqXHR) { //source https://stackoverflow.com/a/20915207/2900840
+            const domain_gene_carts = [];
+            const user_gene_carts = [];
 
             let permalink_cart_id = null
             let permalink_cart_label = null
 
             if (data['gene_carts'].length > 0) {
                 //User has some profiles
-                $.each(data['gene_carts'], function(i, item){
+                $.each(data['gene_carts'], (_i, item) => {
                     // If gene cart permalink was passed in, retrieve gene_cart_id for future use.
                     if (cart_share_id && item['share_id'] == cart_share_id) {
                         permalink_cart_id = item['id'];
@@ -466,12 +467,25 @@ function load_gene_carts(cart_share_id) {
                     }
                     user_gene_carts.push({value: item['id'], text: item['label'] });
                 });
+            }
 
-                // No domain gene carts yet
-                gene_cart_tree.userGeneCarts = user_gene_carts;
-                gene_cart_tree.generateTree();
+            // Now load public gene carts
+            if (data['domain_gene_carts'].length > 0) {
+                $.each(data['domain_gene_carts'], (_i, item) => {
+                    // If gene cart permalink was passed in, retrieve gene_cart_id for future use.
+                    if (cart_share_id && item['share_id'] == cart_share_id) {
+                        permalink_cart_id = item['id'];
+                        permalink_cart_label = item['label'];
+                    }
+                    domainGeneCarts.push({ value: item.id, text: item.label });
+                });
+            }
 
-            } else {
+            gene_cart_tree.domainGeneCarts = domain_gene_carts;
+            gene_cart_tree.userGeneCarts = user_gene_carts;
+            gene_cart_tree.generateTree();
+
+            if (! (user_gene_carts || domain_gene_carts) ) {
                 $("#selected_gene_cart_c").hide();
             }
 
@@ -496,14 +510,14 @@ function load_gene_carts(cart_share_id) {
 
             d.resolve();
         },
-        error: function (jqXHR, textStatus, errorThrown) {
+        error(jqXHR, textStatus, errorThrown) {
             gene_cart_tree.generateTree();
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             d.fail();
         }
-      });
-  }
-  d.promise();
+        });
+    }
+    d.promise();
 }
 
 // If user changes, update genecart/profile trees

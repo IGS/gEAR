@@ -601,6 +601,7 @@ function loadGeneCarts () {
       data: { session_id },
       dataType: 'json',
       success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
+        const domainGeneCarts = [];
         const userGeneCarts = [];
 
         if (data.gene_carts.length > 0) {
@@ -608,15 +609,21 @@ function loadGeneCarts () {
           $.each(data.gene_carts, (_i, item) => {
             userGeneCarts.push({ value: item.id, text: item.label });
           });
+        }
 
-          // No domain gene carts yet
-          geneCartTree.userGeneCarts = userGeneCarts;
-          geneCartTree.generateTree();
+          // Now, add public gene carts
+        if (data.domain_gene_carts.length > 0) {
+          $.each(data.domain_gene_carts, (_i, item) => {
+            domainGeneCarts.push({ value: item.id, text: item.label });
+          });
+        }
 
+        geneCartTree.domainGeneCarts = domainGeneCarts;
+        geneCartTree.userGeneCarts = userGeneCarts;
+        geneCartTree.generateTree();
+
+        if (user_gene_carts || domain_gene_carts) {
           $('#gene_cart_container').show();
-
-        } else {
-          $('#gene_cart_container').hide();
         }
         d.resolve();
       },
