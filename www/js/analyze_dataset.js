@@ -293,6 +293,8 @@ window.onload=() => {
             current_analysis.add_gene_of_interest(goi);
         }
 
+        clicked_marker_genes = clicked_marker_genes.filter(el => el.length);
+
 
         $('#marker_genes_selected_count').text(clicked_marker_genes.size);
         const counter_set = new Set([...entered_marker_genes, ...clicked_marker_genes]);
@@ -756,7 +758,9 @@ async function populate_dataset_selection() {
             if (data.user.datasets.length > 0) {
               // User has some profiles
               $.each(data.user.datasets, (_i, item) => {
-                user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+                if (item) {
+                    user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+                }
               });
             }
             // Next, add datasets shared with the user
@@ -764,7 +768,9 @@ async function populate_dataset_selection() {
             if (data.shared_with_user.datasets.length > 0) {
               // User has some profiles
               $.each(data.shared_with_user.datasets, (_i, item) => {
-                shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+                if (item) {
+                    shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+                }
               });
             }
             // Now, add public datasets
@@ -772,7 +778,9 @@ async function populate_dataset_selection() {
             if (data.public.datasets.length > 0) {
               // User has some profiles
               $.each(data.public.datasets, (_i, item) => {
-                domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+                  if (item) {
+                    domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+                  }
               });
             }
 

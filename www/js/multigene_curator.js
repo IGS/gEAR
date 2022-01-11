@@ -154,21 +154,27 @@ async function loadDatasets () {
       if (data.user.datasets.length > 0) {
         // User has some profiles
         $.each(data.user.datasets, (_i, item) => {
-          userDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          if (item) {
+            userDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          }
         });
       }
       // Next, add datasets shared with the user
       const sharedDatasets = [];
       if (data.shared_with_user.datasets.length > 0) {
         $.each(data.shared_with_user.datasets, (_i, item) => {
-          sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          if (item) {
+            sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          }
         });
       }
       // Now, add public datasets
       const domainDatasets = [];
       if (data.public.datasets.length > 0) {
         $.each(data.public.datasets, (_i, item) => {
-          domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          if (item) {
+            domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          }
         });
       }
 
@@ -766,56 +772,6 @@ $('#dataset').change(async function () {
     $("#create_plot").prop("disabled", false);
     $('#reset_opts').click();
   }
-
-  /* SAdkins - Commenting out for the time being.
-  Am annoyed that I have to wait for the plot to load (when I don't want to use this plot)
-
-  // Load an initial plot (just to populate the plot space)
-  if (defaultDisplayId) {
-    // Easiest way to do this.  Also populates the conditions
-    $(`#${defaultDisplayId}_load`).click();
-  } else {
-    if (! obsLevels) {
-      return;
-    }
-    // Use the first field in our categorical observations for the volcano
-    // but "cluster" takes precedence
-    let field = Object.keys(obsLevels)[0];
-    if ("cluster" in obsLevels) {
-       field = "cluster";
-    }
-    // Cannot make volcano if this field does not have two conditions
-    // Instead of trying to find ways to make the plot, just cut our losses
-    if (obsLevels[field].length < 2) {
-      return;
-    }
-    const loadPlotConfig = {
-      plot_type: 'volcano'
-      , obs_filters: obsLevels // Just keep everything
-      , query_condition: `${field};-;${obsLevels[field][0]}`
-      , ref_condition: `${field};-;${obsLevels[field][1]}`
-      , adj_pvals: true
-    };
-    plotConfig = loadPlotConfig;
-
-    // Draw the updated chart
-    $('#dataset_spinner').show();
-    const plotTemplate = $.templates('#dataset_plot_tmpl');
-    const plotHtml = plotTemplate.render({ dataset_id: datasetId });
-    $('#dataset_plot').html(plotHtml);
-    //NOTE: Height will not change since select2 element is not updated
-    await draw(datasetId, loadPlotConfig);
-    $('#dataset_spinner').hide();
-
-    // Show plot options and disable selected genes button (since genes are not selected anymore)
-    $('#post_plot_options').show();
-    $("#selected_genes_btn").prop("disabled", true);
-
-    // Set plot config so that
-    $('#plot_type_select').val(plotConfig.plot_type);
-    $('#plot_type_select').trigger('change');
-  }
-  */
 });
 
 $("#save_gene_cart").on("click", () => {

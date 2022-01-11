@@ -93,14 +93,14 @@ window.onload = () => {
   /***** end gene cart stuff *****/
 
   $("#dataset_id").on("change", () => {
-      populate_condition_selection_control();
-      // Change the default if the dataset is already log10 transformed
-      if (log10_transformed_datasets.includes($('#dataset_id').val())) {
-        $('#log_base').val('10');
-      } else {
-        $('#log_base').val('2');
-      }
-    });
+    populate_condition_selection_control();
+    // Change the default if the dataset is already log10 transformed
+    if (log10_transformed_datasets.includes($('#dataset_id').val())) {
+      $('#log_base').val('10');
+    } else {
+      $('#log_base').val('2');
+    }
+  });
 
   $("#statistical_test").on("change", () => {
     if ($("#statistical_test").val()) {
@@ -445,7 +445,9 @@ async function populate_dataset_selection_controls() {
       if (data.user.datasets.length > 0) {
         // User has some profiles
         $.each(data.user.datasets, (_i, item) => {
-          user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          if (item) {
+            user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          }
         });
       }
       // Next, add datasets shared with the user
@@ -453,7 +455,9 @@ async function populate_dataset_selection_controls() {
       if (data.shared_with_user.datasets.length > 0) {
         // User has some profiles
         $.each(data.shared_with_user.datasets, (_i, item) => {
-          shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+          if (item) {
+            shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+          }
         });
       }
       // Now, add public datasets
@@ -461,7 +465,9 @@ async function populate_dataset_selection_controls() {
       if (data.public.datasets.length > 0) {
         // User has some profiles
         $.each(data.public.datasets, (_i, item) => {
-          domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+          if (item) {
+            domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+          }
         });
       }
 
