@@ -74,6 +74,7 @@ window.onload = () => {
     $("#create_gene_cart_dialog").hide("fade");
     $("#gene_cart_name").val("");
   });
+
   $("#gene_cart_name").on("input", function () {
     if ($(this).val() == "") {
       $("#save_gene_cart").prop("disabled", true);
