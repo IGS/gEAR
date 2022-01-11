@@ -35,7 +35,7 @@ class MGTest:
         print("-- FILTER_BY SELECTION")
         try:
             # In this case, all groups in all observations are included.  Need to click 'close' on some groups
-            select2_cluster_filter_by_box = WebDriverWait(mg.browser, timeout=mg.timeout).until(lambda d: d.find_element(By.ID,'select2-cluster_dropdown-container'))
+            select2_cluster_filter_by_box = WebDriverWait(self.browser, timeout=self.timeout).until(lambda d: d.find_element(By.ID,'select2-cluster_dropdown-container'))
             select2_cluster_filter_by_textarea = select2_cluster_filter_by_box.find_element(By.XPATH,"//span/textarea")
             select2_cluster_filter_by_textarea.click()
             for cat in self.filter_by:
@@ -99,18 +99,184 @@ class MGTest:
 
     def test_plot_type_selection(self) -> bool:
         print("-- PLOT TYPE SELECTION")
+        select_id = "plot_type_select"
         try:
             # NOTE: Select2 is actually used in the page, and uses a different set of HTML tags to abstract the select element
-            select2_plot = self.browser.find_element(By.ID, 'select2-plot_type_select-container')
-            select2_plot.click()
-            select2_plot_list = self.browser.find_element(By.ID, 'select2-plot_type_select-results')
-            select2_plot_list_elts = select2_plot_list.find_elements(By.TAG_NAME, "li")
-            for elt in select2_plot_list_elts:
+            select2 = self.browser.find_element(By.ID, 'select2-{}-container'.format(select_id))
+            select2.click()
+            select2_list = self.browser.find_element(By.ID, 'select2-{}-results'.format(select_id))
+            select2_list_elts = select2_list.find_elements(By.TAG_NAME, "li")
+            for elt in select2_list_elts:
                 if elt.text == self.plot_type:
                     elt.click()
                     break
 
             # For some reason the correct plot is selected, but not displayed in the select2 closed dropdown
-            return True if select2_plot.text == self.plot_type else False
+            return True if select2.text == self.plot_type else False
         except:
             return False
+
+    def test_quadrant_group_selection(self) -> bool:
+        pass
+
+    def test_volcano_group_selection(self) -> bool:
+        pass
+
+    ### OPTIONS TESTING
+
+    def test_annotate_nonsignficant(self) -> bool:
+        print("-- ANNOTATE NONSIGNIFICANT POINTS CHECKBOX SELECTION")
+        try:
+            annot_nonsig_checkbox = self.browser.find_element(By.ID, "annot_nonsig")
+            annot_nonsig_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_clusterbar(self) -> bool:
+        print(" -- CLUSTERBAR CATEGORY SELECTION")
+
+    def test_cluster_observations(self) -> bool:
+        print("-- CLUSTER OBSERVATIONS CHECKBOX SELECTION")
+        try:
+            cluster_obs_checkbox = self.browser.find_element(By.ID, "cluster_obs")
+            cluster_obs_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_cluster_genesw(self) -> bool:
+        print("-- CLUSTER GENES CHECKBOX SELECTION")
+        try:
+            cluster_genes_checkbox = self.browser.find_element(By.ID, "cluster_genes")
+            cluster_genes_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_de_algo(self) -> bool:
+        print("-- DE ALGORITHM SELECTION")
+        select_id = "de_test_select"
+        try:
+            # NOTE: Select2 is actually used in the page, and uses a different set of HTML tags to abstract the select element
+            select2 = self.browser.find_element(By.ID, 'select2-{}-container'.format(select_id))
+            select2.click()
+            select2_list = self.browser.find_element(By.ID, 'select2-{}-results'.format(select_id))
+            select2_list_elts = select2_list.find_elements(By.TAG_NAME, "li")
+            for elt in select2_list_elts:
+                if elt.text == "Welch's t-test":
+                    elt.click()
+                    break
+
+            return True if select2.text == "Welch's t-test" else False
+        except:
+            return False
+
+    def test_distance_metric(self) -> bool:
+        print("-- DISTANCE METRIC SELECTION")
+        select_id = "distance_select"
+        try:
+            # NOTE: Select2 is actually used in the page, and uses a different set of HTML tags to abstract the select element
+            select2 = self.browser.find_element(By.ID, 'select2-{}-container'.format(select_id))
+            select2.click()
+            select2_list = self.browser.find_element(By.ID, 'select2-{}-results'.format(select_id))
+            select2_list_elts = select2_list.find_elements(By.TAG_NAME, "li")
+            for elt in select2_list_elts:
+                if elt.text == "Euclidean":
+                    elt.click()
+                    break
+
+            return True if select2.text == "Euclidean" else False
+        except:
+            return False
+
+    def test_fdr_cutoff(self) -> bool:
+        print("-- FDR CUTOFF INPUT")
+        try:
+            fdr_input = self.browser.find_element(By.ID, "quadrant_foldchange_cutoff")
+            fdr_input.send_keys("0.05")   # The default
+            fdr_input.click()
+            return True
+        except:
+            return False
+
+    def test_flip_axes(self) -> bool:
+        print("-- FLIP AXES CHECKBOX SELECTION")
+        try:
+            flip_axes_checkbox = self.browser.find_element(By.ID, "flip_axes")
+            flip_axes_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_fold_change_cutoff(self) -> bool:
+        print("-- FOLDCHANGE CUTOFF INPUT")
+        try:
+            foldchange_input = self.browser.find_element(By.ID, "quadrant_foldchange_cutoff")
+            foldchange_input.send_keys("2")   # The default
+            foldchange_input.click()
+            return True
+        except:
+            return False
+
+    def test_include_zero_foldchange(self) -> bool:
+        print("-- INCLUDE ZERO FOLDCHANGE CHECKBOX SELECTION")
+        try:
+            include_zero_foldchange_checkbox = self.browser.find_element(By.ID, "include_zero_foldchange")
+            include_zero_foldchange_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_matrixplot(self) -> bool:
+        print("-- MATRIXPLOT CHECKBOX SELECTION")
+        try:
+            matrixplot_checkbox = self.browser.find_element(By.ID, "matrixplot")
+            matrixplot_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_primary_category(self) -> bool:
+        pass
+
+    def test_secondary_category(self) -> bool:
+        pass
+
+    def test_sortable_primary_order(self) -> bool:
+        pass
+
+    def test_stacked_violin_plot(self) -> bool:
+        print("-- STACKED VIOLIN CHECKBOX SELECTION")
+        try:
+            stacked_violin_checkbox = self.browser.find_element(By.ID, "stacked_violin")
+            stacked_violin_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_use_adjusted_pvals(self) -> bool:
+        print("-- USE ADJUSTED P-VALUES CHECKBOX SELECTION")
+        try:
+            adj_pvals_checkbox = self.browser.find_element(By.ID, "adj_pvals")
+            adj_pvals_checkbox.click()
+            return True
+        except:
+            return False
+
+    def test_violin_jitter(self) -> bool:
+        print("-- JITTER POINTS CHECKBOX SELECTION")
+        try:
+            violin_add_points_checkbox = self.browser.find_element(By.ID, "violin_add_points")
+            violin_add_points_checkbox.click()
+            return True
+        except:
+            return False
+
+    ### POST-PLOT OPTIONS
+
+    def test_save_new_display(self) -> bool:
+        pass
+
+    def test_save_new_genecart(self) -> bool:
+        pass

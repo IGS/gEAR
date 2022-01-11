@@ -77,9 +77,9 @@ def main():
 
         # Create Plot
         if mg_test.test_plot_creation():
-            results.append({"success": 1, "label": "Heatmap successfully made"})
+            results.append({"success": 1, "label": "Violin successfully made"})
         else:
-            results.append({"success": 0, "label": "Heatmap successfully made"})
+            results.append({"success": 0, "label": "Violin successfully made"})
 
     finally:
         mg_test.browser.quit()
