@@ -479,8 +479,12 @@ async function populate_dataset_selection_controls() {
       // was there a requested dataset ID already?
       if (dataset_id !== undefined) {
         $("#dataset_id").val(dataset_id);
-        $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
-        $("#dataset_id").trigger("change");
+        try {
+            $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
+            $("#dataset_id").trigger("change");
+        } catch {
+            console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
+        }
       }
     },
     error(xhr, status, msg) {

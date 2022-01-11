@@ -87,8 +87,12 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
   const linkedDatasetId = getUrlParameter("dataset_id");
   if (linkedDatasetId) {
     $('#dataset').val(linkedDatasetId);
-    $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
-    $('#dataset').trigger('change');
+    try {
+        $('#dataset').text(dataset_tree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
+        $("#dataset").trigger("change");
+    } catch {
+        console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
+    }
   }
 
   // Create observer to watch if user changes (ie. successful login does not refresh page)
