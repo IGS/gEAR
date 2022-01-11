@@ -293,7 +293,8 @@ window.onload=() => {
             current_analysis.add_gene_of_interest(goi);
         }
 
-        clicked_marker_genes = clicked_marker_genes.filter(el => {el.length});
+        // Occasionally an empty string finds its way in here, which can throw off counts.
+        clicked_marker_genes.delete('');
 
 
         $('#marker_genes_selected_count').text(clicked_marker_genes.size);
