@@ -293,7 +293,7 @@ window.onload=() => {
             current_analysis.add_gene_of_interest(goi);
         }
 
-        clicked_marker_genes = clicked_marker_genes.filter(el => el.length);
+        clicked_marker_genes = clicked_marker_genes.filter(el => {el.length});
 
 
         $('#marker_genes_selected_count').text(clicked_marker_genes.size);
