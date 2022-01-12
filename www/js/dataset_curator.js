@@ -242,6 +242,9 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
       low_color: {
         default: "",
       },
+      mid_color: {
+        default: "",
+      },
       high_color: {
         default: "",
       },
@@ -287,6 +290,9 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
       low_color() {
         this.color_svg();
       },
+      mid_color() {
+        this.color_svg();
+      },
       high_color() {
         this.color_svg();
       },
@@ -313,16 +319,18 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
     },
     methods: {
       color_svg(data) {
-        let chart_data, low_color, high_color;
+        let chart_data, low_color, mid_color, high_color;
         if (data) {
           const { plotly_config } = this.display_data;
           const { colors } = { ...plotly_config };
           low_color = colors.low_color;
+          mid_color = colors.mid_color;
           high_color = colors.high_color;
           chart_data = data;
         } else {
           chart_data = this.chart_data;
           low_color = this.low_color;
+          mid_color = this.mid_color;
           high_color = this.high_color;
         }
 
@@ -334,10 +342,34 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
           this.scoring_method === "dataset"
         ) {
           const { min, max } = score;
-          const color = d3
-            .scaleLinear()
-            .domain([min, max])
-            .range([low_color, high_color]); // these colors should be stored in config
+          let color = null;
+          // are we doing a three- or two-color gradient?
+          if (this.mid_color) {
+              if (min >= 0) {
+                  // All values greater than 0, do right side of three-color
+                  color = d3
+                      .scaleLinear()
+                      .domain([min, max])
+                      .range([mid_color, high_color]);
+              } else if (max <= 0) {
+                  // All values under 0, do left side of three-color
+                  color = d3
+                      .scaleLinear()
+                      .domain([min, max])
+                      .range([low_color, mid_color]);
+              } else {
+                  // We have a good value range, do the three-color
+                  color = d3
+                      .scaleLinear()
+                      .domain([min, 0, max])
+                      .range([low_color, mid_color, high_color]);
+              }
+          } else {
+              color = d3
+                  .scaleLinear()
+                  .domain([min, max])
+                  .range([low_color, high_color]);
+          }
 
           const tissues = Object.keys(chart_data.data);
 
@@ -2011,6 +2043,15 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
                   </b-form-input>
               </b-row>
               <b-row>
+                <label for="mid">Mid Color</label>
+                <b-form-input
+                  type="color"
+                  name="mid"
+                  v-model='mid_color'
+                >
+                </b-form-input>
+              </b-row>
+              <b-row>
                 <label for="high">High Color</label>
                 <b-form-input
                   type="color"
@@ -2070,6 +2111,14 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
         },
         set(color) {
           this.set_color({ name: "low_color", color });
+        },
+      },
+      mid_color: {
+        get() {
+          return this.config.colors.mid_color;
+        },
+        set(color) {
+          this.set_color({ name: "mid_color", color });
         },
       },
       high_color: {
@@ -2739,6 +2788,7 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
               :chart_data='chart_data'
               class="sticky-chart"
               :low_color="config.colors.low_color"
+              :mid_color="config.colors.mid_color"
               :high_color="config.colors.high_color">
             </svg-chart>
             <tsne-chart
@@ -2815,6 +2865,7 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
               :chart_data='chart_data'
               class="sticky-chart"
               :low_color="config.colors.low_color"
+              :mid_color="config.colors.mid_color"
               :high_color="config.colors.high_color">
             </svg-chart>
             <tsne-chart
@@ -3020,6 +3071,7 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
           Vue.set(state.config, "colors", {
             // arbituary default colors (purple)
             low_color: "#e7d1d5",
+            mid_color: null,
             high_color: "#401362",
           });
         } else if (
