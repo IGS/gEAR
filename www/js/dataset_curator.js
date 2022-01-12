@@ -43,7 +43,7 @@ window.onload=() => {
       >
        <div class='mt-4 pt-5 card-body text-center id="add-display-btn"'>
          <div class='display-4'>
-           <i class="fas fa-plus"></i>
+           <i class="fa fa-plus"></i>
          </div>
          <p class='card-text'>Add Display</p>
        </div>

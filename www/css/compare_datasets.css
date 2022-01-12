@@ -29,9 +29,7 @@ div#create_gene_cart_dialog {
     display: none;
     margin: 15px 0 15px 0;
 }
-div#gene_list_c {
-    /*margin-top: 20px;*/
-}
+
 div.loading_indicator {
     display: none;
 }
