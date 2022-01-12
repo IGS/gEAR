@@ -344,7 +344,7 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
           const { min, max } = score;
           let color = null;
           // are we doing a three- or two-color gradient?
-          if (this.mid_color) {
+          if (mid_color) {
               if (min >= 0) {
                   // All values greater than 0, do right side of three-color
                   color = d3
