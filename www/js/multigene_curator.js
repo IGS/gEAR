@@ -622,7 +622,7 @@ function loadGeneCarts () {
         geneCartTree.userGeneCarts = userGeneCarts;
         geneCartTree.generateTree();
 
-        if (user_gene_carts || domain_gene_carts) {
+        if (userGeneCarts || domainGeneCarts) {
           $('#gene_cart_container').show();
         }
         d.resolve();
