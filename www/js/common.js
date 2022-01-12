@@ -88,20 +88,6 @@ $(document).ready(function() {
         }
     });
 
-    /*  This was added by Dustin to handle tooltips globally but I don't think it is
-        necessary any longer.  Leaving for now */
-    /*
-    $('#body_c').on('mouseenter', elementsWithTipsList, function(e){
-        //$(this).tooltip('show');
-
-    }).on('mouseleave', elementsWithTipsList, function(e){
-        //$(this).tooltip('hide');
-    });
-    $('#body_c').on('click', elementsWithTipsList, function(e){
-        //$(this).tooltip('hide');
-    });
-    */
-
     check_browser();
 });
 
@@ -162,6 +148,7 @@ function check_for_login() {
         });
     } else {
         handle_login_ui_updates();
+        d.resolve();
     }
 
     d.promise();
