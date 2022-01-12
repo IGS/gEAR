@@ -26,6 +26,10 @@
     <!--<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.0/css/all.css" integrity="sha384-aOkxzJ5uQz7WBObEZcHvV5JvRW3TUc2rNPA7pe3AwnsUohiw1Vj2Rgx2KSOkF5+h" crossorigin="anonymous">-->
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
+    <!-- Interactive tree structure -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+
+
     <!-- Ensures we always get a new version (during our current active development cycles) -->
     <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
     <script>document.write('<link rel="stylesheet" href="css/analyze_dataset.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
@@ -61,25 +65,25 @@
         <div id='main_row' class="row">
           <div id="sidebar" class="col-2">
             <div class="control_block">
-              <form>
-                <div class="form-group-sm">
-                  <label for="dataset_id" class="control-label">Choose dataset</label>
-                  <select id="dataset_id" class="form-control form-control-sm">
-                    <option value="">Choose one</option>
-                    <optgroup id="dataset_ids_user" label="Your datasets">
-                      <option disabled>None found</option>
-                    </optgroup>
-                    <optgroup id="dataset_ids_shared_with_user" label="Shared with you">
-                      <option disabled>None found</option>
-                    </optgroup>
-                    <optgroup id="dataset_ids_public" label="Public datasets">
-                      <option disabled>None found</option>
-                    </optgroup>
-                  </select>
+              <div class="form-group dropdown" id="dataset_c">
+                <div id="pre_dataset_spinner" style="display:none;">
+                  <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+                  <span>Loading datasets...</span>
                 </div>
-                <script id="dataset_list_tmpl" type="text/x-jsrender">
-                  <option value="{{:id}}">{{:title}}</option>
-                </script>
+                <div id="dataset_id" value="" data-title="Click to change" class="form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
+                <div class="dropdown-menu" aria-labelledby="dataset_id">
+                  <form class="px-4 py-3">
+                    <div class="input-group input-group-sm mb-3">
+                      <div class="input-group-prepend">
+                        <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                      </div>
+                      <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
+                    </div>
+                    <div id="dataset_tree"></div>
+                  </form>
+                </div>  <!-- end dropdown-menu -->
+              </div>  <!-- end dataset_c -->
+              <form>
                 <div id='stored_analyses_c' class='shown_later'>
                   <div class="form-group-sm">
                     <label for="analysis_id" class="control-label">Stored analyses</label>
@@ -435,7 +439,7 @@
                       </script>
                       <script id="marker_genes_table_body_tmpl" type="text/x-jsrender">
                         <tr>
-                          <td>{{:rowid}}</td>
+                          <td class="js-row-idx">{{:rowid}}</td>
                           {{for columns}}
                           <td>{{:label}}</td>
                           {{/for}}
@@ -921,11 +925,15 @@
     <script src="js/vendor/jsrender.20181003.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
 
+    <!-- JSTree -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/classes/dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/ui-panel-dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/analysis.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/analyze_dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
 

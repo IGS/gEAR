@@ -1,8 +1,10 @@
-// TODO
-//  - Make existing plots disappear right when the user hits 'Plot' to redraw
+// NOTE: - SAdkins - 11/3/21 - Refactored code using P42 VSCode extension https://p42.ai/documentation/code-action/
 
 let plot_data = null;
 let selected_data = null;
+
+let condition_x = null;
+let condition_y = null;
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -41,16 +43,22 @@ const log10_transformed_datasets = [
 , "4cb2ac62-c283-86a9-83cb-2c1b381948f2"
 , "d0659d69-1a33-8b84-252c-f7ded46aa3d6"
 , "cee5325d-434f-fefe-d2e6-e0be39421951"
+, "34f8f131-8158-db83-7df9-db9003797dff"
+, "7ddb4965-e710-faf7-ee26-4ce95d7602a8"
+, "f122cac5-c79f-8ea2-166e-42415916db11"
+, "173ab634-a2b1-87bc-f1ef-d288de0bcd1a"
 ];
 
-let dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
+// TODO: Have mechanism to convert non-categorical column to categorical if it was erroneously added as numerical
 
-window.onload = function () {
+const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
+
+window.onload = () => {
   // check if the user is already logged in
   check_for_login();
   session_id = Cookies.get("gear_session_id");
 
-  $(".btn-apply-filter").on("click", function () {
+  $(".btn-apply-filter").on("click", () => {
     $(".initial_instructions").hide();
     $("#myChart").html("");
     $("#error_loading_c").hide();
@@ -59,15 +67,14 @@ window.onload = function () {
   });
 
   /***** gene cart stuff *****/
-  $("#create_gene_cart").on("click", function () {
+  $("#create_gene_cart").on("click", () => {
     $("#create_gene_cart_dialog").show("fade");
   });
-    
-  $("#cancel_save_gene_cart").on("click", function () {
+  $("#cancel_save_gene_cart").on("click", () => {
     $("#create_gene_cart_dialog").hide("fade");
     $("#gene_cart_name").val("");
   });
-    
+
   $("#gene_cart_name").on("input", function () {
     if ($(this).val() == "") {
       $("#save_gene_cart").prop("disabled", true);
@@ -75,8 +82,7 @@ window.onload = function () {
       $("#save_gene_cart").prop("disabled", false);
     }
   });
-    
-  $("#save_gene_cart").on("click", function () {
+  $("#save_gene_cart").on("click", () => {
     $("#save_gene_cart").prop("disabled", true);
 
     if (CURRENT_USER) {
@@ -87,27 +93,23 @@ window.onload = function () {
   });
   /***** end gene cart stuff *****/
 
-  $("#dataset_id").on("change", function () {
+  $("#dataset_id").on("change", () => {
     populate_condition_selection_control();
     // Change the default if the dataset is already log10 transformed
     if (log10_transformed_datasets.includes($('#dataset_id').val())) {
-        $('#log_base').val('10');
+      $('#log_base').val('10');
     } else {
-        $('#log_base').val('2');
+      $('#log_base').val('2');
     }
   });
 
-  $("#statistical_test").on("change", function () {
+  $("#statistical_test").on("change", () => {
     if ($("#statistical_test").val()) {
       $("#test_pval_cutoff").prop("disabled", false);
     } else {
       $("#test_pval_cutoff").prop("disabled", true);
     }
   });
-
-  // initially disable the condition selectors
-  $("#dataset1_conditions").attr("disabled", "disabled");
-  $("#dataset2_conditions").attr("disabled", "disabled");
 
   // Create observer to watch if user changes (ie. successful login does not refresh page)
   // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -125,32 +127,33 @@ function download_selected_genes() {
   // Builds a file in memory for the user to download.  Completely client-side.
   // plot_data contains three keys: x, y and symbols
   // build the file string from this
-  if ($("#log_base").val() == "raw") {
-    file_contents =
-      "gene_symbol\tp-value\tfold change\t"
-      + $("#dataset1_conditions").val() + "\t"
-      + $("#dataset2_conditions").val() + "\n";
-  } else {
-    file_contents =
-      "gene_symbol\tp-value\tfold change\t"
-      + $("#dataset1_conditions").val() + " (log" + $("#log_base").val() +")\t"
-      + $("#dataset2_conditions").val() + " (log" + $("#log_base").val() +")\n"
-  }
 
-  selected_data.points.forEach(function (pt) {
+  const x_label = $('#x_label').val().length ? $('#x_label').val() : "x-condition";
+  const y_label = $('#y_label').val().length ? $('#y_label').val() : "y-condition";
+
+  const file_contents =
+      $("#log_base").val() == "raw"
+    ? "gene_symbol\tp-value\tfold change\t"
+  + x_label + "\t"
+  + y_label + "\n"
+    : "gene_symbol\tp-value\tfold change\t"
+  + x_label + " (log" + $("#log_base").val() +")\t"
+  + y_label + " (log" + $("#log_base").val() +")\n";
+
+  selected_data.points.forEach((pt) => {
     // Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
     file_contents +=
-      pt.data.id[pt.pointNumber] + "\t"
+      `${pt.data.id[pt.pointNumber]}\t`
       + ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
       + pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
       + pt.x.toFixed(1) + "\t"
       + pt.y.toFixed(1) + "\n";
   });
 
-  var element = document.createElement("a");
+  const element = document.createElement("a");
   element.setAttribute(
     "href",
-    "data:text/tab-separated-values;charset=utf-8," + encodeURIComponent(file_contents)
+    `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(file_contents)}`
   );
   element.setAttribute("download", "selected_genes.tsv");
   element.style.display = "none";
@@ -159,100 +162,275 @@ function download_selected_genes() {
   document.body.removeChild(element);
 }
 
+// Build list of selected categories and groups
+function update_selected_conditions() {
+  const condition = {};
+  // Create current object of which groups are to be included (checked)
+  $('#conditions_accordion').find('.js-group-check').each(function(){
+    const id = $(this).data("group");
+
+    const category = id.split(';-;')[0];
+    const group = id.split(';-;')[1];
+
+    if (Object.keys(condition).indexOf(category) === -1) {
+      condition[category] = [];
+    }
+
+    if ($(this).prop("checked")) {
+      condition[category].push(group);
+    }
+  });
+  return condition;
+}
+
 function load_comparison_graph() {
-  dataset_id = $("#dataset_id").val();
+  // Save current state of active condition tab
+  if ($("#condition_x_tab").hasClass("active")) {
+    condition_x = update_selected_conditions();
+  } else {
+    // on #condition_y_tab
+    condition_y = update_selected_conditions();
+  }
+
+  const dataset_id = $("#dataset_id").val();
+  const dataset_text = $("#dataset_id").text();
+  const sanitized_condition_x = sanitize_condition(condition_x);
+  const sanitized_condition_y = sanitize_condition(condition_y);
+  const condition_x_string = JSON.stringify(sanitized_condition_x);
+  const condition_y_string = JSON.stringify(sanitized_condition_y);
+
+  // empty error message, so that user/helper won't get confused
+  $("#ticket_error_msg").empty();
+  $("#error_loading_c").hide();
+  $("#genes_not_found").empty().hide();
+
   $.ajax({
     url: "./cgi/get_dataset_comparison.cgi",
     type: "POST",
     data: {
-      dataset1_id: dataset_id,
-      dataset1_condition: $("#dataset1_conditions").val(),
-      dataset2_condition: $("#dataset2_conditions").val(),
+      dataset_id,
+      condition_x: condition_x_string,
+      condition_y: condition_y_string,
       fold_change_cutoff: $("#fold_change_cutoff").val(),
       std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
       log_transformation: $("#log_base").val(),
       statistical_test: $("#statistical_test").val(),
     },
     dataType: "json",
-    success: function (data, textStatus, jqXHR) {
-      if (data["success"] == 1) {
-        $("#fold_change_std_dev").html(data["fold_change_std_dev"]);
+    success(data, textStatus, jqXHR) {
+      if (data.success == 1) {
+        $("#fold_change_std_dev").html(data.fold_change_std_dev);
         plot_data = data;
         plot_data_to_graph(data);
       } else {
         // Handle graphing failures
         $("#plot_loading").hide();
-        $("#ticket_datasetx_id").text(dataset_id);
-        $("#ticket_datasetx_condition").text($("#dataset1_conditions").val());
-        $("#ticket_datasety_id").text(dataset_id);
-        $("#ticket_datasety_condition").text($("#dataset2_conditions").val());
-        $("#ticket_error_msg").text(data["error"]);
+        $("#ticket_dataset_id").text(dataset_id);
+        $("#ticket_dataset_text").text(dataset_text);
+        $("#ticket_datasetx_condition").text(condition_x_string);
+        $("#ticket_datasety_condition").text(condition_y_string);
+        $("#ticket_error_msg").html(data.error);
         $("#error_loading_c").show();
       }
     },
-    error: function (jqXHR, textStatus, errorThrown) {
+    error(jqXHR, textStatus, errorThrown) {
       // Handle graphing failures
       $("#plot_loading").hide();
-      $("#ticket_datasetx_id").text(dataset_id);
-      $("#ticket_datasetx_condition").text($("#dataset1_conditions").val());
-      $("#ticket_datasety_id").text(dataset_id);
-      $("#ticket_datasety_condition").text($("#dataset2_conditions").val());
+      $("#ticket_dataset_id").text(dataset_id);
+      $("#ticket_dataset_text").text(dataset_text);
+      $("#ticket_datasetx_condition").text(condition_x_string);
+      $("#ticket_datasety_condition").text(condition_y_string);
       $("#error_loading_c").show();
     },
   });
 }
 
-function populate_condition_selection_control() {
-  dataset_id = $("#dataset_id").val();
-  $("#dataset1_conditions").attr("disabled", "disabled");
-  $("#dataset2_conditions").attr("disabled", "disabled");
-  $("#dataset1_conditions").html("<option>Loading ... </option>");
-  $("#dataset2_conditions").html("<option>Loading ... </option>");
-
-  $.ajax({
-    url: "./cgi/get_condition_list.cgi",
-    type: "POST",
-    data: { dataset_id: dataset_id },
-    dataType: "json",
-    success: function (data, textStatus, jqXHR) {
-      if (data["success"] === 0) {
-        display_error_bar(data["error"]);
-      } else if (data["success"] === -1) {
-        $("#dataset1_conditions > option")
-          .html("This dataset is not ready to compare.")
-          .attr("selected", "selected");
-      } else {
-        var selectorTmpl = $.templates("#dataset_condition_options");
-        var selectorHtml = selectorTmpl.render(data["conditions"]);
-        $("#dataset1_conditions").html(selectorHtml);
-        $("#dataset2_conditions").html(selectorHtml);
-
-        $("#dataset1_conditions").removeAttr("disabled");
-        $("#dataset2_conditions").removeAttr("disabled");
-
-        if (data["has_replicates"] == 1) {
-          $("#statistical_test_label").html("");
-          $("#statistical_test").attr("disabled", false);
-        } else {
-          $("#statistical_test_label").html(
-            "Not applicable since this dataset has no replicates"
-          );
-          $("#statistical_test").attr("disabled", true);
-        }
-      }
-    },
-    error: function (jqXHR, textStatus, errorThrown) {
-      //alert("Failure!  Status: (" + textStatus + ") Error: (" + errorThrown + ")");
-      console.log("textStatus= ", textStatus);
-      console.log("errorThrown= ", errorThrown);
-      display_error_bar(jqXHR.status + " " + errorThrown.name);
-    },
-  });
+async function fetch_h5ad_observations (dataset_id) {
+  const base = `./api/h5ad/${dataset_id}`;
+  const { data } = await axios.get(base);
+  return data;
 }
 
-function populate_dataset_selection_controls() {
-  let dataset_id = getUrlParameter("dataset_id");
-  $.ajax({
+async function populate_condition_selection_control() {
+  const dataset_id = $("#dataset_id").val();
+  $("#conditions_accordion").html("<p>Loading ... </p>");
+  const obs_data = await fetch_h5ad_observations(dataset_id);
+  const cat_obs = obs_data.obs_levels;  // cat->groups
+  const all_obs = obs_data.obs_columns; // Array
+  const noncat_obs = Object.values(all_obs).filter(x => Object.keys(cat_obs).indexOf(x) === -1);  // Array
+
+  // Render templates
+  const selector_tmpl = $.templates("#dataset_condition_options");
+  const selector_html = selector_tmpl.render(cat_obs);
+  $("#conditions_accordion").html(selector_html);
+
+  if (noncat_obs.length) {
+    const noncat_tmpl = $.templates("#non_categories_list");
+    const noncat_html = noncat_tmpl.render({noncat_obs});
+    $("#noncats").html(noncat_html);
+  }
+
+  // Since we want the default state of the category groups to be unchecked,
+  // we do not set an initial state of stored checked conditions
+
+  if (obs_data.has_replicates == 1) {
+    $("#statistical_test_label").html("");
+    $("#statistical_test").attr("disabled", false);
+  } else {
+    $("#statistical_test_label").html(
+      "Not applicable since this dataset has no replicates"
+    );
+    $("#statistical_test").attr("disabled", true);
+  }
+}
+
+$('#condition_x_tab').on('shown.bs.tab', (e) => {
+
+  condition_y = update_selected_conditions();
+
+  // Load condition_x stuff
+  $('.js-cat-check').prop("checked", false);
+  $('.js-group-check').prop("checked", false);
+  for (const cat in condition_x) {
+    for (const elem of condition_x[cat]) {
+      $(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
+    }
+    $('.js-group-check').change();  // trigger so the cat checkbox matches up
+  }
+
+})
+
+$('#condition_y_tab').on('shown.bs.tab', (e) => {
+
+  condition_x = update_selected_conditions();
+
+  // Load condition_y stuff
+  $('.js-cat-check').prop("checked", false);
+  $('.js-group-check').prop("checked", false);
+  for (const cat in condition_y) {
+    for (const elem of condition_y[cat]) {
+      $(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
+    }
+    $('.js-group-check').change();  // trigger so the cat checkbox matches up
+  }
+})
+
+$(document).on('change', '.js-cat-check', function (e) {
+  // If turned on, check all group boxes
+  // If turned off, uncheck all group boxes
+  const checked = $(this).prop("checked");
+
+  const id = this.id;
+  const category = id.replace('_check', '');
+  const escapedCategory = $.escapeSelector(category);
+  const category_collaspable = $(`#${escapedCategory}_body`);
+
+  category_collaspable.find('input[type="checkbox"]').prop({checked});
+
+  // Expand collaspable since category was focused on
+  category_collaspable.collapse('show');
+
+  // Update the selected conditons div and the "axis label" input boxes
+  const template = $.templates("#selected_conditions_list");
+
+  if ($("#condition_x_tab").hasClass("active")) {
+    const curr_condition_x = update_selected_conditions();
+    const sanitized_condition_x = sanitize_condition(curr_condition_x);
+    const htmlOutput = template.render(sanitized_condition_x);
+    $('#selected_x_condition').html(htmlOutput);
+    $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
+
+  } else {
+    // on #condition_y_tab
+    const curr_condition_y = update_selected_conditions();
+    const sanitized_condition_y = sanitize_condition(curr_condition_y);
+    const htmlOutput = template.render(sanitized_condition_y);
+    $('#selected_y_condition').html(htmlOutput);
+    $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
+  }
+})
+
+$(document).on('click', '.js-cat-collapse', function (e) {
+  // If category was clicked, then toggle collapsable element
+  // Controlling via JS instead of "data-target" since we may need to escape CSS selectors
+  const id = this.id;
+  const category = id.replace('_collapse', '');
+  const escapedCategory = $.escapeSelector(category);
+  const category_collaspable = $(`#${escapedCategory}_body`);
+  category_collaspable.collapse('toggle');
+})
+
+$(document).on('change', '.js-group-check', function(e) {
+  // https://css-tricks.com/indeterminate-checkboxes/
+  // After changing checkbox status, check siblings
+  // and determine if category checkbox should be
+  // checked, not checked, or indeterminate
+
+  const checked = $(this).prop("checked");
+
+  // Get category name out of the checkbox ID
+  const id = $(this).data("group");
+  const category = id.split(';-;')[0]
+  const escapedCategory = $.escapeSelector(category);
+  const category_header = $(`#${escapedCategory}_check`);
+  const category_collaspable = $(`#${escapedCategory}_body`);
+
+  // Get checked status of all other checkboxes in this category
+  // If there is a combination of checked/unchecked the "each" loop breaks early
+  let all = true;
+  $(category_collaspable).find('input[type="checkbox"]').each(function(){
+    const return_value = all = ($(this).prop("checked") === checked);
+    return return_value;
+  });
+
+  if (all) {
+    // All group checkboxes are the same as the category checkbox
+    category_header.prop({
+      "indeterminate": false,
+      "checked": checked
+    });
+  } else {
+    // All group checkbox states are mixed.  Category checkbox is indeterminate and unchecked
+    category_header.prop({
+      "indeterminate": true,
+      "checked": false
+    });
+  }
+
+  // Update the selected conditons div and the "axis label" input boxes
+  const template = $.templates("#selected_conditions_list");
+  if ($("#condition_x_tab").hasClass("active")) {
+    const curr_condition_x = update_selected_conditions();
+    const sanitized_condition_x = sanitize_condition(curr_condition_x);
+    const htmlOutput = template.render(sanitized_condition_x);
+    $('#selected_x_condition').html(htmlOutput);
+    $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
+
+  } else {
+    // on #condition_y_tab
+    const curr_condition_y = update_selected_conditions();
+    const sanitized_condition_y = sanitize_condition(curr_condition_y);
+    const htmlOutput = template.render(sanitized_condition_y);
+    $('#selected_y_condition').html(htmlOutput);
+    $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
+  }
+})
+
+function sanitize_condition(condition) {
+  const sanitized_condition = {}
+  for (const property in condition) {
+    // If no groups for an observation are selected, delete filter
+    if (condition[property].length) {
+      sanitized_condition[property] = condition[property];
+    }
+  }
+  return sanitized_condition;
+}
+
+async function populate_dataset_selection_controls() {
+  const dataset_id = getUrlParameter("dataset_id");
+  $('#pre_dataset_spinner').show();
+  await $.ajax({
     type: "POST",
     url: "./cgi/get_h5ad_dataset_list.cgi",
     data: {
@@ -261,30 +439,36 @@ function populate_dataset_selection_controls() {
       include_dataset_id: dataset_id,
     },
     dataType: "json",
-    success: function (data) {
+    success(data) {
       let counter = 0
       // Populate select box with dataset information owned by the user
-      let user_datasets = [];
+      const user_datasets = [];
       if (data.user.datasets.length > 0) {
         // User has some profiles
-        $.each(data.user.datasets, function (i, item) {
-          user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+        $.each(data.user.datasets, (_i, item) => {
+          if (item) {
+            user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+          }
         });
       }
       // Next, add datasets shared with the user
-      let shared_datasets = [];
+      const shared_datasets = [];
       if (data.shared_with_user.datasets.length > 0) {
         // User has some profiles
-        $.each(data.shared_with_user.datasets, function (i, item) {
-          shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+        $.each(data.shared_with_user.datasets, (_i, item) => {
+          if (item) {
+            shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+          }
         });
       }
       // Now, add public datasets
-      let domain_datasets = [];
+      const domain_datasets = [];
       if (data.public.datasets.length > 0) {
         // User has some profiles
-        $.each(data.public.datasets, function (i, item) {
-          domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+        $.each(data.public.datasets, (_i, item) => {
+          if (item) {
+            domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+          }
         });
       }
 
@@ -296,132 +480,46 @@ function populate_dataset_selection_controls() {
       // was there a requested dataset ID already?
       if (dataset_id !== undefined) {
         $("#dataset_id").val(dataset_id);
-        $("#dataset_id").trigger("change");
+        try {
+            $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
+            $("#dataset_id").trigger("change");
+        } catch {
+            console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
+        }
       }
     },
-    error: function (xhr, status, msg) {
-      report_error("Failed to load dataset list because msg: " + msg);
+    error(xhr, status, msg) {
+      report_error(`Failed to load dataset list because msg: ${msg}`);
     },
   });
+  $('#pre_dataset_spinner').hide();
 }
 
 function plot_data_to_graph(data) {
   $("#tbl_selected_genes").hide();
   $("#selection_methods_c").show();
 
-  var point_labels = [];
-  var perform_ranking = false;
+  const point_labels = [];
+  let perform_ranking = false;
 
   if ($("#statistical_test").val()) {
     perform_ranking = true;
   }
 
-  var plotdata = null;
+  let plotdata = null;
 
-  if (perform_ranking) {
-    var pval_cutoff = parseFloat($("#test_pval_cutoff").val());
-    var passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
-    var failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
-
-    for (i = 0; i < data["x"].length; i++) {
-      // pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
-      // Probably happened when pulling from AnnData object in get_dataset_comparison.cgi
-      data["pvals_adj"] = data["pvals_adj"].flat();
-
-      var this_pval = parseFloat(data["pvals_adj"][i]);
-
-      if (this_pval <= pval_cutoff) {
-        // good scoring match
-        passing["x"].push(data["x"][i]);
-        passing["y"].push(data["y"][i]);
-        passing["foldchange"].push(data["fold_changes"][i]);
-        passing["labels"].push(
-          "Gene symbol: " +
-            data["symbols"][i] +
-            "   P-value: " +
-            this_pval.toPrecision(6)
-        );
-        passing["id"].push(data["symbols"][i]);
-        passing["pvals"].push(data["pvals_adj"][i]);
-      } else {
-        // this one didn't pass the p-value cutoff
-        failing["x"].push(data["x"][i]);
-        failing["y"].push(data["y"][i]);
-        failing["foldchange"].push(data["fold_changes"][i]);
-        failing["labels"].push(
-          "Gene symbol: " +
-            data["symbols"][i] +
-            "   P-value: " +
-            this_pval.toPrecision(6)
-        );
-        failing["id"].push(data["symbols"][i]);
-        failing["pvals"].push(data["pvals_adj"][i]);
-      }
-    }
-
-    if ($("input[name='stat_action']:checked").val() == "colorize") {
-      plotdata = [
-        {
-          id: passing["id"],
-          pvals: passing["pvals"],
-          x: passing["x"],
-          y: passing["y"],
-          foldchange: passing["foldchange"],
-          mode: "markers",
-          name: "Passed cutoff",
-          type: "scatter",
-          text: passing["labels"],
-          marker: {
-            color: "#FF0000",
-            size: 4,
-          },
-        },
-        {
-          id: failing["id"],
-          pvals: failing["pvals"],
-          x: failing["x"],
-          y: failing["y"],
-          foldchange: failing["foldchange"],
-          mode: "markers",
-          name: "Did not pass cutoff",
-          type: "scatter",
-          text: failing["labels"],
-          marker: {
-            color: "#A1A1A1",
-            size: 4,
-          },
-        },
-      ];
-    } else {
-      plotdata = [
-        {
-          id: passing["id"],
-          pvals: passing["pvals"],
-          x: passing["x"],
-          y: passing["y"],
-          foldchange: passing["foldchange"],
-          mode: "markers",
-          type: "scatter",
-          text: passing["labels"],
-          marker: {
-            color: "#2F103E",
-            size: 4,
-          },
-        },
-      ];
-    }
-  } else {
-    for (i = 0; i < data["symbols"].length; i++) {
-      point_labels.push("Gene symbol: " + data["symbols"][i]);
+  if (!perform_ranking) {
+    for (i = 0; i < data.symbols.length; i++) {
+      point_labels.push(`Gene symbol: ${data.symbols[i]}`);
     }
 
     plotdata = [
       {
-        id: data["symbols"],
-        pvals: data["pvals_adj"],
-        x: data["x"],
-        y: data["y"],
-        foldchange: data["fold_changes"],
+        id: data.symbols,
+        pvals: data.pvals_adj,
+        x: data.x,
+        y: data.y,
+        foldchange: data.fold_changes,
         mode: "markers",
         type: "scatter",
         text: point_labels,
@@ -431,16 +529,104 @@ function plot_data_to_graph(data) {
         },
       },
     ];
+  } else {
+    const pval_cutoff = parseFloat($("#test_pval_cutoff").val());
+    const passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+    const failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+
+    for (i = 0; i < data.x.length; i++) {
+      // pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
+      // Caused by rank_genes_groups output (1 inner array per query comparison group)
+      data.pvals_adj = data.pvals_adj.flat();
+
+      const this_pval = parseFloat(data.pvals_adj[i]);
+
+      if ((this_pval <= pval_cutoff)) {
+        // good scoring match
+        passing.x.push(data.x[i]);
+        passing.y.push(data.y[i]);
+        passing.foldchange.push(data.fold_changes[i]);
+        passing.labels.push(
+          "Gene symbol: " +
+            data.symbols[i] +
+            "   P-value: " +
+            this_pval.toPrecision(6)
+        );
+        passing.id.push(data.symbols[i]);
+        passing.pvals.push(data.pvals_adj[i]);
+      } else {
+        // this one didn't pass the p-value cutoff
+        failing.x.push(data.x[i]);
+        failing.y.push(data.y[i]);
+        failing.foldchange.push(data.fold_changes[i]);
+        failing.labels.push(
+          "Gene symbol: " +
+            data.symbols[i] +
+            "   P-value: " +
+            this_pval.toPrecision(6)
+        );
+        failing.id.push(data.symbols[i]);
+        failing.pvals.push(data.pvals_adj[i]);
+      }
+    }
+
+    plotdata = $("input[name='stat_action']:checked").val() == "colorize" ? [
+      {
+        id: passing.id,
+        pvals: passing.pvals,
+        x: passing.x,
+        y: passing.y,
+        foldchange: passing.foldchange,
+        mode: "markers",
+        name: "Passed cutoff",
+        type: "scatter",
+        text: passing.labels,
+        marker: {
+          color: "#FF0000",
+          size: 4,
+        },
+      },
+      {
+        id: failing.id,
+        pvals: failing.pvals,
+        x: failing.x,
+        y: failing.y,
+        foldchange: failing.foldchange,
+        mode: "markers",
+        name: "Did not pass cutoff",
+        type: "scatter",
+        text: failing.labels,
+        marker: {
+          color: "#A1A1A1",
+          size: 4,
+        },
+      },
+    ] : [
+      {
+        id: passing.id,
+        pvals: passing.pvals,
+        x: passing.x,
+        y: passing.y,
+        foldchange: passing.foldchange,
+        mode: "markers",
+        type: "scatter",
+        text: passing.labels,
+        marker: {
+          color: "#2F103E",
+          size: 4,
+        },
+      },
+    ];
   }
 
-  var layout = {
+  const layout = {
     title: $("#dataset_id").text(),
     xaxis: {
-      title: $("#dataset1_conditions option:selected").text(),
+      title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
       type: "",
     },
     yaxis: {
-      title: $("#dataset2_conditions option:selected").text(),
+      title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
       type: "",
     },
     annotations: [],
@@ -450,11 +636,11 @@ function plot_data_to_graph(data) {
   };
 
   // Take genes to search for and highlight their datapoint in the plot
-  var genes_not_found = [];
+  const genes_not_found = [];
   if ($('#highlighted_genes').val()) {
-    var searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
+    const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
     searched_genes.forEach((gene) => {
-      var found = false;
+      let found = false;
       plots:
       for (i = 0; i < plotdata.length; i++) {
         genes:
@@ -486,26 +672,26 @@ function plot_data_to_graph(data) {
 
 
   $("#plot_loading").hide();
-  var graphDiv = document.getElementById("myChart");
+  const graphDiv = document.getElementById("myChart");
   Plotly.newPlot(graphDiv, plotdata, layout, { showLink: false });
   $("#selected_label").hide();
   $("#controls_label").show();
 
   // If searched-for genes were not found, display under plot
   if (genes_not_found.length) {
-    var genes_not_found_str = genes_not_found.join(", ");
-    $("#genes_not_found").text("Searched genes not found: " + genes_not_found_str);
+    const genes_not_found_str = genes_not_found.join(", ");
+    $("#genes_not_found").text(`Searched genes not found: ${genes_not_found_str}`);
     $("#genes_not_found").show();
   } else {
     $("#genes_not_found").hide();
   }
 
   // If plot data is selected, create the right-column table and do other misc things
-  graphDiv.on("plotly_selected", function (eventData) {
+  graphDiv.on("plotly_selected", (eventData) => {
     selected_data = eventData;
     selected_gene_data = [];
 
-    eventData.points.forEach(function (pt) {
+    eventData.points.forEach((pt) => {
       // Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
       // Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
       selected_gene_data.push({
@@ -520,16 +706,16 @@ function plot_data_to_graph(data) {
     if ($("#statistical_test").val())
       selected_gene_data.sort((a, b) => a.pvals - b.pvals);
 
-    var template = $.templates("#selected_genes_tmpl");
-    var htmlOutput = template.render(selected_gene_data);
+    const template = $.templates("#selected_genes_tmpl");
+    const htmlOutput = template.render(selected_gene_data);
     $("#selected_genes_c").html(htmlOutput);
 
     // Highlight table rows that match searched genes
     if ($('#highlighted_genes').val()) {
-      var searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
+      const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
       // Select the first column (gene_symbols) in each row
       $("#selected_genes_c tr td:first-child").each(function() {
-        var table_gene = $(this).text();
+        const table_gene = $(this).text();
         searched_genes.forEach((gene) => {
           if (gene.toLowerCase() === table_gene.toLowerCase() ) {
             $(this).parent().addClass("table-success");
@@ -549,19 +735,19 @@ function plot_data_to_graph(data) {
     if ($("#log_base").val() == "raw") {
       $("#tbl_selected_genes_transformation_row").hide();
     } else {
-      $("#table_transformation_label").text("Log" + $("#log_base").val());
+      $("#table_transformation_label").text(`Log${$("#log_base").val()}`);
       $("#tbl_selected_genes_transformation_row").show();
     }
   });
 
-  window.onresize = function () {
+  window.onresize = () => {
     Plotly.Plots.resize(graphDiv);
   };
 }
 
 function save_gene_cart() {
   // must have access to USER_SESSION_ID
-  var gc = new GeneCart({
+  const gc = new GeneCart({
       session_id: CURRENT_USER.session_id,
       label: $("#gene_cart_name").val(),
       gctype: 'unweighted-list',
@@ -569,10 +755,10 @@ function save_gene_cart() {
       is_public: 0
   });
 
-  selected_data.points.forEach(function (pt) {
-    var gene = new Gene({
-      id: plot_data["gene_ids"][pt.pointNumber],
-      gene_symbol: plot_data["symbols"][pt.pointNumber],
+  selected_data.points.forEach((pt) => {
+    const gene = new Gene({
+      id: plot_data.gene_ids[pt.pointNumber],
+      gene_symbol: plot_data.symbols[pt.pointNumber],
     });
     gc.add_gene(gene);
   });
@@ -583,15 +769,15 @@ function save_gene_cart() {
 // Sort selected gene table (using already generated table data)
 // Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
 function sortTable(n) {
-  var table,
-    rows,
-    switching,
-    i,
-    x,
-    y,
-    shouldSwitch,
-    dir,
-    switchcount = 0;
+  let table;
+  let rows;
+  let switching;
+  let i;
+  let x;
+  let y;
+  let shouldSwitch;
+  let dir;
+  let switchcount = 0;
   table = document.getElementById("tbl_selected_genes");
 
   switching = true;
@@ -616,24 +802,20 @@ function sortTable(n) {
         based on the direction, asc or desc: */
       if (dir == "asc") {
         // First column is gene_symbol... rest are numbers
-        if (n === 0) {
-          if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-            // If so, mark as a switch and break the loop:
-            shouldSwitch = true;
-            break;
-          }
+        if (n === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+          // If so, mark as a switch and break the loop:
+          shouldSwitch = true;
+          break;
         }
         if (Number(x.innerHTML) > Number(y.innerHTML)) {
           shouldSwitch = true;
           break;
         }
       } else if (dir == "desc") {
-        if (n === 0) {
-          if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-            // If so, mark as a switch and break the loop:
-            shouldSwitch = true;
-            break;
-          }
+        if (n === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+          // If so, mark as a switch and break the loop:
+          shouldSwitch = true;
+          break;
         }
         if (Number(x.innerHTML) < Number(y.innerHTML)) {
           shouldSwitch = true;
@@ -661,7 +843,7 @@ function sortTable(n) {
 
 function update_ui_after_gene_cart_save_success(gc) {
   $("#create_gene_cart_dialog").hide("fade");
-  $("#saved_gene_cart_info_c > h3").html("Cart: " + gc.label);
+  $("#saved_gene_cart_info_c > h3").html(`Cart: ${gc.label}`);
   $("#gene_cart_member_count").html(gc.genes.length);
   $("#saved_gene_cart_info_c").show();
 }

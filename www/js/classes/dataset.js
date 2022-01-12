@@ -43,7 +43,7 @@ class Dataset {
     }
 
     shape() {
-        return this.gene_count + " genes x " + this.obs_count + " obs";
+        return `${this.gene_count} genes x ${this.obs_count} obs`;
     }
 
 }

@@ -47,7 +47,7 @@ class Display {
                     const display = dataset.display;
                     // check for display data, it could be null
                     // if gene was not found.
-                    if (display && display.data) {
+                    if (display?.data) {
                         // TODO: Handle here if it's a 0-white color range
                         display.draw_chart(display.data);
                         // Exit status 2 is status to show plot but append warning message
@@ -77,7 +77,7 @@ class Display {
             if (this.zoomed) {
                 this.draw_zoomed();
             } else {
-                var attempts_left = 3;
+                let attempts_left = 3;
 
                 while (attempts_left) {
                     var draw_success = this.draw_chart(data);
@@ -87,16 +87,14 @@ class Display {
                     // if it didn't work, wait one second and try again
                     if (draw_success) {
                         attempts_left = 0;
-                    } else {
-                        if (attempts_left) {
-                            // else the scope is lost in the anon function below
-                            var that = this;
-                            setTimeout(
-                                function() {
-                                    draw_success = that.draw_chart(data);
-                                    attempts_left -= 1;
-                                }, 1000);
-                        }
+                    } else if (attempts_left) {
+                        // else the scope is lost in the anon function below
+                        var that = this;
+                        setTimeout(
+                            () => {
+                                draw_success = that.draw_chart(data);
+                                attempts_left -= 1;
+                            }, 1000);
                     }
                 }
             }
@@ -121,7 +119,7 @@ class Display {
             if (this.zoomed) {
                 this.draw_zoomed();
             } else {
-                var attempts_left = 3;
+                let attempts_left = 3;
 
                 while (attempts_left) {
                     var draw_success = this.draw_chart(data);
@@ -131,16 +129,14 @@ class Display {
                     // if it didn't work, wait one second and try again
                     if (draw_success) {
                         attempts_left = 0;
-                    } else {
-                        if (attempts_left) {
-                            // else the scope is lost in the anon function below
-                            var that = this;
-                            setTimeout(
-                                function() {
-                                    draw_success = that.draw_chart(data);
-                                    attempts_left -= 1;
-                                }, 1000);
-                        }
+                    } else if (attempts_left) {
+                        // else the scope is lost in the anon function below
+                        var that = this;
+                        setTimeout(
+                            () => {
+                                draw_success = that.draw_chart(data);
+                                attempts_left -= 1;
+                            }, 1000);
                     }
                 }
             }
@@ -153,23 +149,23 @@ class Display {
      * Hides the display container
      */
     hide_loading() {
-        $('#dataset_' + this.primary_key + ' .dataset-status-container').hide();
+        $(`#dataset_${this.primary_key} .dataset-status-container`).hide();
     }
 
     show_loading() {
-        $('#' + this.primary_key + '_dataset_status_c h2').text('Loading...');
-        $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
+        $(`#${this.primary_key}_dataset_status_c h2`).text('Loading...');
+        $(`#dataset_${this.primary_key} .dataset-status-container`).show();
 
-        if (this.dtype === 'svg-expression') {
-            // this.hide_Svg();
-        } else if (
-            this.dtype === 'image-static-standard' ||
-            this.dtype === 'image-static'
-        ) {
-            $('#dataset_' + this.primary_key + ' .image-static-container').hide();
-        } else {
-            $('#dataset_' + this.primary_key + ' .plot-container').hide();
-        } // TODO: Hide other container plot types...
+        if (this.dtype !== 'svg-expression') {
+            if (
+                this.dtype === 'image-static-standard' ||
+                this.dtype === 'image-static'
+            ) {
+                $(`#dataset_${this.primary_key} .image-static-container`).hide();
+            } else {
+                $(`#dataset_${this.primary_key} .plot-container`).hide();
+            } // TODO: Hide other container plot types...
+        }
     }
 
     /**
@@ -177,9 +173,9 @@ class Display {
      * @param {string} msg - Message returned back from server
      */
     show_error(msg) {
-        $('#' + this.primary_key + '_dataset_status_c h2').text(msg);
-        $('#dataset_' + this.primary_key + ' .dataset-status-container').show();
-        $('#dataset_' + this.primary_key + ' .plot-container').hide();
+        $(`#${this.primary_key}_dataset_status_c h2`).text(msg);
+        $(`#dataset_${this.primary_key} .dataset-status-container`).show();
+        $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
 
     /**
@@ -218,21 +214,13 @@ class EpiVizDisplay extends Display {
         this.econfig = config;
         this.extendRangeRatio = 10;
 
-        var genes_track = plotly_config["tracks"]["EPIVIZ-GENES-TRACK"];
+        const genes_track = plotly_config.tracks["EPIVIZ-GENES-TRACK"];
         if (genes_track.length > 0) {
-            var gttrack = genes_track[0];
-            if (gttrack.measurements) {
-                this.genome = gttrack.measurements[0]["id"];
-            } else {
-                this.genome = gttrack.id[0]["id"];
-            }
+            const gttrack = genes_track[0];
+            this.genome = gttrack.measurements ? gttrack.measurements[0].id : gttrack.id[0].id;
         }
 
-        if (target) {
-            this.target = target;
-        } else {
-            this.target = `dataset_${this.primary_key}`;
-        }
+        this.target = target ? target : `dataset_${this.primary_key}`;
 
         this.epiviztemplate = this.epiviz_template(config);
     }
@@ -265,8 +253,6 @@ class EpiVizDisplay extends Display {
         if ($(`#${this.target}_epiviznav`).length == 0) {
             const target_div = `#${this.target}`;
             $(target_div).append(this.template());
-            this.hide_loading();
-            this.show();
         } else {
             // epiviz container already exists, so only update gneomic position in the browser
             const epiviznav = document.querySelector(`#${this.target}_epiviznav`);
@@ -276,35 +262,32 @@ class EpiVizDisplay extends Display {
             epiviznav.setAttribute("start", nstart);
             epiviznav.setAttribute("end", nend);
             epiviznav.range = epiviznav.getGenomicRange(this.data.chr, nstart, nend);
-            this.hide_loading();
-            this.show();
         }
+
+        this.hide_loading();
+
+        this.show();
 
         return true;
     }
 
     epiviz_template(config) {
-
-        var epiviztemplate = "";
+let epiviztemplate = "";
         for (const track in config.tracks) {
             const track_config = config.tracks[track];
-            track_config.forEach(function(tc) {
-                var temp_track = "<" + track + " slot='charts' ";
-                if (Object.keys(tc).includes("id")) {
-                    temp_track += " dim-s='" + JSON.stringify(tc.id) + "' ";
-                } else {
-                    temp_track += " measurements='" + JSON.stringify(tc.measurements) + "' ";
-                }
+            track_config.forEach((tc) => {
+                var temp_track = `<${track} slot='charts' `;
+                temp_track += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
 
                 if (tc.colors != null) {
-                    temp_track += " chart-colors='" + JSON.stringify(tc.colors) + "' ";
+                    temp_track += ` chart-colors='${JSON.stringify(tc.colors)}' `;
                 }
 
                 if (tc.settings != null) {
-                    temp_track += " chart-settings='" + JSON.stringify(tc.settings) + "' ";
+                    temp_track += ` chart-settings='${JSON.stringify(tc.settings)}' `;
                 }
 
-                temp_track += " style='min-height:200px;'></" + track + "> ";
+                temp_track += ` style='min-height:200px;'></${track}> `;
 
                 epiviztemplate += temp_track;
             })
@@ -341,7 +324,7 @@ class EpiVizDisplay extends Display {
           chr='${this.data.chr}'
           start=${this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
           end=${this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
-          viewer=${"/epiviz.html?dataset_id=" + this.id + "&chr=" + this.data.chr + "&start=" + this.data.start + "&end=" + this.data.end}
+          viewer=${`/epiviz.html?dataset_id=${this.id}&chr=${this.data.chr}&start=${this.data.start}&end=${this.data.end}`}
         >
           ${this.epiviztemplate}
         </epiviz-navigation>
@@ -479,16 +462,7 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-        var layout_mods = {
-        };
-
-        // Overwrite plot layout and config values with custom ones from display
-        var layout = {
-            ...plot_json.layout,
-            ...layout_mods,
-        };
-
-        var config_mods = {
+        const config_mods = {
             responsive: false,
         };
 
@@ -497,7 +471,7 @@ class PlotlyDisplay extends Display {
             ...config_mods,
         };
 
-        Plotly.newPlot(target_div, plot_json.data, layout, config);
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
 
         return true;
     }
@@ -517,20 +491,12 @@ class PlotlyDisplay extends Display {
             plot_json,
             plot_config
         } = this.data;
-        var layout_mods = {
-        };
 
-        // Overwrite plot layout and config values with custom ones from display
-        var layout = {
-            ...plot_json.layout,
-            ...layout_mods,
-        };
-
-        Plotly.newPlot(target_div, plot_json.data, layout, plot_config);
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
     }
 
     show() {
-        $('#dataset_' + this.primary_key + ' .plot-container').show();
+        $(`#dataset_${this.primary_key} .plot-container`).show();
     }
     template() {
         const template = `
@@ -578,10 +544,10 @@ class PlotlyDisplay extends Display {
         warning_selector.css('position', 'absolute').css('z-index', '2');
 
         // Add hover events (via jQuery)
-        warning_selector.mouseover(function() {
-            msg_selector.text(" " + msg);
+        warning_selector.mouseover(() => {
+            msg_selector.text(` ${msg}`);
         });
-        warning_selector.mouseout(function() {
+        warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
        });
     }
@@ -604,9 +570,14 @@ class PlotlyDisplay extends Display {
     }, gene_symbols) {
         super(args);
         const {
-            groupby_filter,
+            primary_col,
+            secondary_col,
+            sort_order,
             obs_filters,
-            cluster_cols,
+            clusterbar_fields,
+            matrixplot,
+            cluster_obs,
+            cluster_genes,
             flip_axes,
             distance_metric,
             adj_pvals,
@@ -624,9 +595,14 @@ class PlotlyDisplay extends Display {
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
-        this.groupby_filter = groupby_filter;
+        this.primary_col = primary_col;
+        this.secondary_col = secondary_col;
+        this.sort_order = sort_order;
         this.obs_filters = obs_filters;
-        this.cluster_cols = cluster_cols;
+        this.clusterbar_fields = clusterbar_fields;
+        this.matrixplot = matrixplot;
+        this.cluster_obs = cluster_obs;
+        this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
         this.distance_metric = distance_metric,
         this.adj_pvals = adj_pvals;
@@ -660,10 +636,15 @@ class PlotlyDisplay extends Display {
             gene_symbols,
             analysis: this.analysis,
             analysis_owner_id: this.user_id,
-            groupby_filter: this.groupby_filter,
+            primary_col: this.primary_col,
+            secondary_col: this.secondary_col,
+            sort_order: this.sort_order,
             plot_type: this.plot_type,
             obs_filters: this.obs_filters,
-            cluster_cols: this.cluster_cols,
+            clusterbar_fields: this.clusterbar_fields,
+            matrixplot: this.matrixplot,
+            cluster_obs: this.cluster_obs,
+            cluster_genes: this.cluster_genes,
             flip_axes: this.flip_axes,
             distance_metric: this.distance_metric,
             adj_pvals: this.adj_pvals,
@@ -697,35 +678,10 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-        var layout_mods = {
-        };
-
-        // Since these plots are smaller, the legend overlaps the plot.  Move it out of the way
-        // Adjust the title some too.
-        // NOTE: These sizings can look better or worse depending on user's display scaling
-        if (this.plot_type == "volcano") {
-            layout_mods.legend = {
-                x: 1.05,
-                y: -0.05,
-                xanchor: "center",
-                yanchor:"top",
-                bgcolor: plot_json.layout.legend.bgcolor,
-                font: {size:8}
-            }
-            layout_mods.title = {
-                x: 0.5,
-                xref: "paper",
-                y: 0.8,
-            // Unfortunately, since these are objects, a merge will overwrite the entire obj from the plot layout
-                text: plot_json.layout.title.text
-            }
+        if (this.plot_type == "heatmap") {
+            adjustExpressionColorbar(plot_json.data);
+            adjustClusterColorbars(plot_json.data);
         }
-
-        // Overwrite plot layout and config values with custom ones from display
-        const layout = {
-            ...plot_json.layout,
-            ...layout_mods,
-        };
 
         const config_mods = {
             responsive: false,
@@ -736,7 +692,19 @@ class PlotlyDisplay extends Display {
             ...config_mods,
         };
 
-        Plotly.newPlot(target_div, plot_json.data, layout, config);
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
+
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const index_conf = post_plotly_config.index;
+        for (const idx in index_conf) {
+        const conf = index_conf[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == this.plot_type) {
+            const update_data = "data" in conf ? conf.data : {}
+            const update_layout = "layout" in conf ? conf.layout : {}
+            Plotly.update(target_div, update_data, update_layout)
+            }
+        }
     }
 
     draw_zoomed() {
@@ -754,16 +722,8 @@ class PlotlyDisplay extends Display {
             plot_json,
             plot_config
         } = this.data;
-        let layout_mods = {
-        };
 
-        // Overwrite plot layout and config values with custom ones from display
-        var layout = {
-            ...plot_json.layout,
-            ...layout_mods,
-        };
-
-        Plotly.newPlot(target_div, plot_json.data, layout, plot_config);
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
     }
 
     show() {
@@ -815,10 +775,10 @@ class PlotlyDisplay extends Display {
         warning_selector.css('position', 'absolute').css('z-index', '2');
 
         // Add hover events (via jQuery)
-        warning_selector.mouseover(function() {
-            msg_selector.text(" " + msg);
+        warning_selector.mouseover(() => {
+            msg_selector.text(` ${msg}`);
         });
-        warning_selector.mouseout(function() {
+        warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
        });
     }
@@ -842,15 +802,13 @@ class SVGDisplay extends Display {
         super(args);
         this.grid_width = grid_width;
 
-        if (target) {
-            this.target = target;
-        } else {
-            this.target = `dataset_${this.primary_key}`;
-        }
+        this.target = target ? target : `dataset_${this.primary_key}`;
 
-        let config = plotly_config;
+        const config = plotly_config;
 
-        let high_color, mid_color, low_color;
+        let high_color;
+        let mid_color;
+        let low_color;
         // some cases where colors was not saved
         if (config.colors && Object.entries(config.colors).length !== 0) {
             low_color = config.colors.low_color;
@@ -897,7 +855,7 @@ class SVGDisplay extends Display {
         Snap.load(imgSrc, svg => {
             //console.log("Snap loaded:");
             //console.log(svg);
-            let paths = svg.selectAll('path, circle, rect, ellipse');
+            const paths = svg.selectAll('path, circle, rect, ellipse');
             svgs[this.dataset_id] = paths;
             snap.append(svg);
         });
@@ -911,7 +869,7 @@ class SVGDisplay extends Display {
         const snap = Snap(id);
         const imgSrc = svg.data('path');
         Snap.load(imgSrc, svg => {
-            let paths = svg.selectAll('path, circle, rect, ellipse');
+            const paths = svg.selectAll('path, circle, rect, ellipse');
             this.zoomed_paths = paths;
             snap.append(svg);
             this.draw_chart(this.data, true);
@@ -930,11 +888,7 @@ class SVGDisplay extends Display {
         const NA_FIELD_COLOR = '#808080';
 
         let paths;
-        if (zoomed) {
-            paths = this.zoomed_paths;
-        } else {
-            paths = svgs[this.dataset_id];
-        }
+        paths = zoomed ? this.zoomed_paths : svgs[this.dataset_id];
 
         const {
             data: expression
@@ -1088,7 +1042,7 @@ class SVGDisplay extends Display {
 
                 tissue_classes.forEach(tissue => {
                     if (tissue && color[tissue]) {
-                        let color_scale = color[tissue];
+                        const color_scale = color[tissue];
                         path.attr('fill', color_scale(expression[tissue]));
 
                         if (!this.target.includes('modal')) {
@@ -1146,11 +1100,7 @@ class SVGDisplay extends Display {
      */
     draw_legend(data, zoomed = false) {
         let target;
-        if (zoomed) {
-            target = `dataset_${this.primary_key}_svg_cc_zoomed`;
-        } else {
-            target = `${this.target}_svg_c`;
-        }
+        target = zoomed ? `dataset_${this.primary_key}_svg_cc_zoomed` : `${this.target}_svg_c`;
         const node = document.getElementById(target);
         // Create our legend svg
         const legend = d3
@@ -1206,7 +1156,7 @@ class SVGDisplay extends Display {
                 //  it, so we can do a proper three-color range
                 // midpoint offset calculation, so the mid color is at 0
                 //var mid_offset = (1 - (min / max - min))*100;
-                var mid_offset = (Math.abs(min)/(max + Math.abs(min)))*100;
+                const mid_offset = (Math.abs(min)/(max + Math.abs(min)))*100;
 
                 linear_gradient
                     .append('stop')
@@ -1214,7 +1164,7 @@ class SVGDisplay extends Display {
                     .attr('stop-color', this.low_color);
                 linear_gradient
                     .append('stop')
-                    .attr('offset', mid_offset + '%')
+                    .attr('offset', `${mid_offset}%`)
                     .attr('stop-color', this.mid_color);
                 linear_gradient
                     .append('stop')
@@ -1267,7 +1217,7 @@ class SVGDisplay extends Display {
         if (this.zoomed) $(`#${this.target}_svg_cc_zoomed`).show();
     }
     template() {
-        let svg_class =
+        const svg_class =
             this.grid_width == 8 ?
             'grid-width-8' :
             this.grid_width == 12 ?
@@ -1337,10 +1287,10 @@ class SVGDisplay extends Display {
         warning_selector.css('position', 'absolute').css('bottom', '0').css('z-index', '2');
 
         // Add hover events (via jQuery)
-        warning_selector.mouseover(function() {
-            msg_selector.text(" " + msg);
+        warning_selector.mouseover(() => {
+            msg_selector.text(` ${msg}`);
         });
-        warning_selector.mouseout(function() {
+        warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
        });
     }
@@ -1373,11 +1323,7 @@ class TsneDisplay extends Display {
     this.x_axis = config.x_axis;
     this.y_axis = config.y_axis;
 
-    if (target) {
-      this.target = target;
-    } else {
-      this.target = `dataset_${this.primary_key}`;
-    }
+    this.target = target ? target : `dataset_${this.primary_key}`;
   }
   /**
    * Get data for the tsne. This return the tsne image, and
@@ -1417,7 +1363,7 @@ class TsneDisplay extends Display {
     const target_div = `#${this.target}`;
     const target_div_img = `#${this.target}_tsne img`;
     $(target_div).append(this.template());
-    $(target_div_img).attr('src', "data:image/png;base64," + this.data.image);
+    $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
     this.hide_loading();
     this.show();
     return true;
@@ -1429,7 +1375,7 @@ class TsneDisplay extends Display {
     const target_div = `#dataset_zoomed div#${this.target}`;
     const target_div_img = `${target_div}_tsne_zoomed img`;
     $(target_div).append(this.zoomed_template());
-    $(target_div_img).attr('src', "data:image/png;base64," + this.data.image);
+    $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
     this.hide_loading();
     this.show();
   }
@@ -1483,10 +1429,10 @@ class TsneDisplay extends Display {
         warning_selector.css('position', 'absolute').css('z-index', '2');
 
         // Add hover events (via jQuery)
-        warning_selector.mouseover(function() {
-            msg_selector.text(" " + msg);
+        warning_selector.mouseover(() => {
+            msg_selector.text(` ${msg}`);
         });
-        warning_selector.mouseout(function() {
+        warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
        });
     }

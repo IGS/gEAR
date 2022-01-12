@@ -6,15 +6,12 @@ FROM ubuntu:bionic
 
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
-ARG PYTHON_VERSION=3.7.3
+#ARG PYTHON_VERSION=3.7.3
+ARG PYTHON_VERSION=3.9.9
 ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz
 
-# To assign $git_user run `docker build --build-arg git_user=<user> --build-arg git_pass=<pass> .`
-# Avoiding using my personal username and password for this
-ARG GEAR_BRANCH=master
-ARG git_user
-ARG git_pass
-ARG GEAR_URL=https://${git_user}:${git_pass}@github.com/jorvis/gEAR.git
+ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
+ARG GEAR_BRANCH=main
 
 # Install packages to Ubuntu
 RUN apt-get -qq update \
@@ -45,8 +42,10 @@ RUN apt-get -qq update \
   unzip \
   software-properties-common \
   build-essential \
-  python-dev \
+  gcc \
+  python3-dev \
   openssh-server \
+  llvm-9* \
   # Apache2 and PHP
   apache2-dev \
   apache2 \
@@ -56,6 +55,8 @@ RUN apt-get -qq update \
   && apt-get -qq clean autoclean \
   && apt-get -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
+
+ENV LLVM_CONFIG=/usr/bin/llvm-config-9
 
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
@@ -84,10 +85,10 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 # NOTE: Installing custom version of diffxpy that I forked and fixed a function to work
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
-RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.7m.so.1.0 /usr/lib/ \
+RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.9.so.1.0 /usr/lib/ \
   && ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  && /opt/Python-${PYTHON_VERSION}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021 \
+  && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021 \
   && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)

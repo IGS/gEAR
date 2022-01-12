@@ -149,6 +149,7 @@ function check_for_login() {
         $.ajax({
             url : './cgi/get_session_info.cgi',
             type: "POST",
+            async: false,
             data : { 'session_id': session_id },
             dataType:"json",
             success: function(data, textStatus, jqXHR) {
@@ -293,13 +294,6 @@ $('#navigation_bar').on('click', '#btn_sign_out', function(e){
 });
 
 function handle_login_ui_updates() {
-    if (document.URL.includes("index.html") ||
-        window.location.pathname == '/' ) {
-        if (! getUrlParameter('share_id')) {
-            load_layouts();
-        }
-    }
-
     if (CURRENT_USER.session_id == null) {
         // these are the pages which require a login
         if (document.URL.includes("upload_dataset.html") ||

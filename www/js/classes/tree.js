@@ -10,6 +10,7 @@ Just about everything here uses the JSTree library - jstree.com
 class Tree {
     /**
      * Initialize tree.
+     * @constructor
      * @param {Object} - Tree data.
      */
     constructor({
@@ -53,13 +54,14 @@ class Tree {
 
 }
 
-/*
+/**
  * Class representing a gene cart selection tree
  * @extends Tree
  */
 class GeneCartTree extends Tree {
     /**
      * Initialize GeneCartTree
+     * @constructor
      * @param {Object} Data - Tree data
      */
     constructor({
@@ -74,8 +76,8 @@ class GeneCartTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts"},
-            {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts"},
+            {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
@@ -186,6 +188,7 @@ class GeneCartTree extends Tree {
 class ProfileTree extends Tree {
     /**
      * Initialize ProfileTree
+     * @constructor
      * @param {Object} Data - Tree data
      */
     constructor({
@@ -199,8 +202,8 @@ class ProfileTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles"},
-            {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
+            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your Profiles", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // user_profiles/domain_profiles properties - value, text, share_id
@@ -323,6 +326,7 @@ class ProfileTree extends Tree {
 class DatasetTree extends Tree {
     /**
      * Initialize ProfileTree
+     * @constructor
      * @param {Object} Data - Tree data
      */
     constructor({
@@ -337,9 +341,9 @@ class DatasetTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles"},
-            {'id':'shared_node', 'parent':'#', 'text':"Shared Profiles"},
-            {'id':'user_node', 'parent':'#', 'text':"Your Profiles"},
+            {'id':'domain_node', 'parent':'#', 'text':"Public Datasets", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':"Shared Datasets", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your Datasets", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // Load datasets into the tree data property

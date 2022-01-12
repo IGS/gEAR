@@ -9,12 +9,14 @@ import os, sys
 import geardb
 from gear.plotting import get_config
 from plotly.utils import PlotlyJSONEncoder
-from itertools import cycle, groupby, product
+from itertools import cycle, product
 
 import plotly.express as px
 import plotly.graph_objects as go
 import dash_bio as dashbio
 from plotly.subplots import make_subplots
+
+import scipy.cluster.hierarchy as sch
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -53,6 +55,10 @@ LOG10_TRANSFORMED_DATASETS = [
 , "4cb2ac62-c283-86a9-83cb-2c1b381948f2"
 , "d0659d69-1a33-8b84-252c-f7ded46aa3d6"
 , "cee5325d-434f-fefe-d2e6-e0be39421951"    # Unsure if log2 or log10 but necessary for correct output
+, "34f8f131-8158-db83-7df9-db9003797dff"    # same as above
+, "7ddb4965-e710-faf7-ee26-4ce95d7602a8"    # same as above
+, "f122cac5-c79f-8ea2-166e-42415916db11"    # ""
+, "173ab634-a2b1-87bc-f1ef-d288de0bcd1a"    # ""
 ]
 
 DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic if more groups are chosen
@@ -94,12 +100,12 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
     fig.update_yaxes(
-        range=[-1, 5]  # Give extra clearance so top dot does not overlap with title
-        ,visible=False
+        range=[-0.5, 5]  # Give extra clearance so top dot does not overlap with title
+        , visible=False
         , col=legend_col
     )
 
-def create_dot_plot(df, groupby_filter):
+def create_dot_plot(df, groupby_filters, plot_title=None):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -109,15 +115,27 @@ def create_dot_plot(df, groupby_filter):
     # Taking a lot of influence from
     # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
 
+    # Specify the subplot grid
     legend_col=5
+    spec_row = [{"colspan":legend_col-1}]
+    spec_row.extend([None for i in range(legend_col-2)])
+    spec_row.append({})
 
     fig = make_subplots(rows=1, cols=legend_col
-        , specs = [[{"colspan":legend_col-1}, None, None, None, {}]]   # "None" repeat much be legend_col - 2
-        , subplot_titles=("", "Fraction of cells<br>in group (%)")
+        , specs = [spec_row]   # "None" repeat much be legend_col - 2
+        , subplot_titles=(plot_title, "Fraction of cells<br>in group (%)")
     )
 
+    # Create the multicategory axis
+    multicategory = []
+    for col in groupby_filters:
+        multicategory.append(df[col].tolist())
+    # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly
+    if len(groupby_filters) < 2:
+        multicategory = df[groupby_filters[0]].tolist()
+
     fig.add_scatter(
-        x=df[groupby_filter]
+        x=multicategory
         , y=df["gene_symbol"]
         , text = df["value", "count"]
         , hovertemplate="N: %{text}<br>" +
@@ -130,7 +148,7 @@ def create_dot_plot(df, groupby_filter):
             , size=df["value", "percent"]
             , sizemode="area"
             , colorbar=dict(
-                title="mean"
+                title="Mean Expression"
                 )
             )
         , showlegend=False
@@ -143,7 +161,117 @@ def create_dot_plot(df, groupby_filter):
 
 ### Heatmap fxns
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, flip_axes=False, groupby_filter=None, distance_metric="euclidean"):
+def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=False) -> None:
+    """Add column traces for each filtered group.  Edits figure in-place."""
+
+    # Heatmap is located on xaxis5 and yaxis5
+    obs_axis = "yaxis5" if flip_axes else "xaxis5"
+    gene_axis = "xaxis5" if flip_axes else "yaxis5"
+
+    # Left-side dendrogram is xaxis4 and yaxis4
+    # Top-sie dendrogram is xaxis2 and yaxis2
+    obs_dendro_axis = "yaxis2" if flip_axes else "xaxis4"
+    gene_dendro_axis = "xaxis2" if flip_axes else "yaxis4"
+
+    fig.update_layout(
+        title={
+            "text":"Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+            ,"x":0.5
+            ,"xref":"paper"
+            ,"y":0.9
+        }
+    )
+
+    # Get list of observations in the order they appear on the heatmap
+    obs_order = fig.layout[obs_axis]["ticktext"]
+
+    # Assign observations to their categorical groups and assign colors to the groups
+    col_group_markers = build_column_group_markers(filter_indexes, obs_order)
+    groups_and_colors = set_obs_groups_and_colors(filter_indexes)
+
+    # Create a 2D-heatmap.  Convert the discrete groups into integers.
+    # One heatmap per observation category
+    col_group_labels = []
+
+    # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
+    obs_positions=fig.layout[obs_axis]["tickvals"]
+
+    # Offset the expresison colorbar to the right of the heatmap
+    # At this point it's the last trace added
+    # NOTE: The bar may need to be adjusted on the gene search display page
+    fig.data[-1]["colorbar"]["x"] = 1
+    fig.data[-1]["colorbar"]["xpad"] = 30
+    fig.data[-1]["colorbar"]["len"] = 0.5   # Set expression colorbar to be half as tall
+    fig.data[-1]["colorbar"]["y"] = 0.5
+    fig.data[-1]["colorbar"]["yanchor"] = "middle"
+    fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
+    fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
+
+    # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
+    # Makes a small space b/t the genes and groups tracks
+    next_bar_position = max(fig.layout[gene_axis]["tickvals"]) + 7
+
+    # Information that will help posittion the "groups" colorbars
+    num_colorbars = len(col_group_markers.keys())
+    max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
+    curr_colorbar_y = max_heatmap_domain
+
+    for key, val in col_group_markers.items():
+        # number of elements in z array needs to equal number of observations in x-axis
+        # If axes are flipped, we need one-element arrays equal to number of observations in y-axis
+        z = [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
+        if flip_axes:
+            z = [[ groups_and_colors[key]["groups"].index(cgm["group"])] for cgm in val ]
+
+        # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
+        colorscale = []
+        # Normally tickvals will stretch to the min and max of the colorbar range. We also need to center the groups in the middle of the color
+        tickvals = []
+        for i in range(len(groups_and_colors[key]["colors"])):
+            # Start of color thresholds
+            colorscale.append(( (i)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
+            # End of color thresholds
+            colorscale.append(( (i+1)/len(groups_and_colors[key]["colors"]), groups_and_colors[key]["colors"][i] ))
+            # Center the group name in its color
+            tickvals.append((colorscale[-1][0] + colorscale[-2][0]) / 2 * (len(groups_and_colors[key]["groups"])-1))
+
+        trace = go.Heatmap(
+            x=[next_bar_position-2, next_bar_position+2] if flip_axes else obs_positions
+            , y=obs_positions if flip_axes else [next_bar_position-2, next_bar_position+2]
+            , z=z
+            , colorbar=dict(
+                ticktext=[group for group in groups_and_colors[key]["groups"]]
+                #, tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
+                , tickvals=tickvals
+                , title=key
+                , x=1
+                , xpad=100  # spaced far enough from the expression bar.  Needs to be adjusted for gene display panels.
+                , y=curr_colorbar_y   # Align with bottom of heatmap
+                , yanchor="top"
+                , len=1.1/num_colorbars
+                )
+            , colorscale=colorscale
+            , name="clusterbar"
+        )
+        col_group_labels.append(trace)
+
+        # Add group label to axis tuples
+        fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
+        fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
+
+        next_bar_position += 4 # add enough gap to space the "group" tracks
+        curr_colorbar_y -= (max_heatmap_domain * 1/num_colorbars)
+
+    # Shift genes dendropgram to account for new cluster cols
+    fig.layout[gene_dendro_axis]["range"] = (min(fig.layout[gene_axis]["tickvals"]), max(fig.layout[gene_axis]["tickvals"]))
+
+    # Discovered "xaxis" range won't autoupdate based on tickvals, so pop it off if it is there
+    fig.layout[gene_axis].pop("range", None)
+
+    for cgl in col_group_labels:
+        fig.append_trace(cgl, 2, 2)
+
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, matrixplot=False, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -162,28 +290,29 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         values = df.loc[rows].values
 
     hidden_labels = None
-    if not groupby_filter:
+    if not matrixplot:
         hidden_labels = "row" if flip_axes else "col"
 
     # Configuring which axes are clustered or not.
-    cluster="all"
-    col_dist = distance_metric
-    row_dist = distance_metric
-    if not cluster_cols:
+    cluster = None
+    col_dist = None
+    row_dist = None
+    if cluster_obs and cluster_genes:
+        cluster = "all"
+        col_dist = distance_metric
+        row_dist = distance_metric
+    elif cluster_obs:
+        cluster = "row" if flip_axes else "col"
+        if flip_axes:
+            row_dist = distance_metric
+        else:
+            col_dist = distance_metric
+    elif cluster_genes:
         cluster = "col" if flip_axes else "row"
         if flip_axes:
-            row_dist = None
+            col_dist = distance_metric
         else:
-            col_dist = None
-
-    # If just one gene, use go.heatmap instead
-    if len(gene_symbols) == 1:
-        return go.Figure(data=go.Heatmap(
-            z=values
-            , x=gene_symbols if flip_axes else columns
-            , y=rows if flip_axes else gene_symbols
-            , colorscale="balance"
-        ))
+            row_dist = distance_metric
 
     return dashbio.Clustergram(
         data=values
@@ -193,35 +322,13 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_cols=False, fli
         , cluster=cluster
         , col_dist=col_dist
         , row_dist=row_dist
-        , color_map="balance"               # Heatmap colors
-        , display_ratio=0.5                 # Make dendrogram slightly bigger relative to plot
+        #, link_fun=lambda x, **kwargs: sch.linkage(x, "complete", **kwargs)    # this is default
+        , center_values=False
+        , color_map="RdYlBu"               # Heatmap colors
+        , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
-        , height=700
-        , width=700
     )
-
-def modify_clustergram(fig, flip_axes=False, gene_sym_len=1):
-    """Curate the clustergram. Edits 'fig' inplace."""
-
-    if gene_sym_len > 1:
-        hyperlink_genes = []
-        axis = "xaxis5" if flip_axes else "yaxis5"
-        for gene in fig.layout[axis]['ticktext']:
-            # Inherit from parent tag. Plotly's default style is to make the "a" tag blue which also messes with hovertext
-            hyperlink_genes.append("<a style='fill:inherit;>{}</a>".format(gene))
-        fig.layout[axis]['ticktext'] = hyperlink_genes
-
-    else:
-        axis = "xaxis" if flip_axes else "yaxis"
-
-        # Make heatmap boxes square. Reference anchor should be the observations, else plot leaves empty space on the sides
-        fig.layout[axis]['scaleanchor'] = 'y' if flip_axes else 'x'
-
-        fig.layout['yaxis']['constrain'] = "domain"
-        fig.layout['yaxis']['constraintoward'] = "top"
-        fig.layout['xaxis']['constrain'] = "domain"
-        fig.layout['xaxis']['constraintoward'] = "right"
 
 ### Quadrant fxns
 
@@ -431,46 +538,46 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, gene_map, groupby_filter):
+def create_stacked_violin_plot(df, groupby_filters):
     """Create a stacked violin plot.  Returns the figure."""
 
-    # Melt the datafram to make it easier to retrieve the contents for each axis
-    df = df.melt(id_vars=[groupby_filter])
-    # Create series of gene symbols by reverse-lookup of dict created for violin plot
-    df["gene_symbol"] = df["index"].apply(lambda x: next((k for k, v in gene_map.items() if v == x), None))
-
-    grouped = df.groupby([groupby_filter, "gene_symbol"])
-    # Add all groupby_filter groups to a list to preserve order
-    groupby_groups = []
-    for group in grouped.groups.keys():
-        if group[0] not in groupby_groups:
-            groupby_groups.append(group[0])
+    # Preserve sort order passed to plot, and assign colors to primary category groups
+    primary_groups = df[groupby_filters[0]].unique().tolist()
+    secondary_groups = df[groupby_filters[1]].unique().tolist() if len(groupby_filters) > 1 else []
 
     color_cycler = cycle(VIVID_COLORS)
-    color_map = {cat: next(color_cycler) for cat in groupby_groups}
+    color_map = {cat: next(color_cycler) for cat in primary_groups}
 
     # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
-    facet_row_indexes = {group: idx for idx, group in enumerate(groupby_groups, start=1)}
+    facet_row_indexes = {group: idx for idx, group in enumerate(primary_groups, start=1)}
+    facet_col_indexes = {group: idx for idx, group in enumerate(secondary_groups, start=1)}
 
     fig = make_subplots(
-        rows=len(groupby_groups)
-        , cols=1
-        , row_titles=groupby_groups
-        , shared_xaxes=True
-        , shared_yaxes="all"    # to keep the scale the same
+        rows=len(facet_row_indexes.keys())
+        , cols=len(facet_col_indexes.keys()) if facet_col_indexes else 1
+        , row_titles=primary_groups
+        , column_titles=secondary_groups if len(secondary_groups) else None
+        , shared_yaxes="all"    # to keep the scale the same for all row facets
         )
+
+    groupby = ["gene_symbol"]
+    groupby.extend(groupby_filters)
+    # Create groupings for traces
+    grouped = df.groupby(groupby)
 
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
     for name, group in grouped:
-        row_idx = facet_row_indexes[name[0]]
+        # name[0] is gene_sym, name[1] is primary category, name[2] is secondary category
+        row_idx = facet_row_indexes[name[1]]
+        col_idx = facet_col_indexes[name[2]] if len(name) > 2 else 1
 
         fig.add_violin(
             x=group["gene_symbol"]
             , y=group["value"]
-            , scalegroup="_".join(name) # Name will be a tuple
+            , scalegroup=",".join(name) # Name will be a tuple
             , showlegend=False
-            , fillcolor=color_map[name[0]]
+            , fillcolor=color_map[name[1]]
             , line=dict(color="slategrey")
             , points=False
             , box=dict(
@@ -478,26 +585,32 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
                 )
             , spanmode="hard"   # Do not extend violin tails beyond the min/max values
             , row=row_idx
-            , col=1
+            , col=col_idx
         )
 
+        # Want annotation text to left but axis tick labels on right
         fig.update_yaxes(
             side="right"
+            , showticklabels=True
             , row=row_idx
-            , col=1
+            , col=col_idx
         )
 
-    # Color the annotations with the fill color
-    fig.for_each_annotation(lambda a: a.update(font=dict(color=color_map[a.text])))
-
-    # Row title annotations are on the right currently.  Reposition them to the left side
-    fig.update_annotations(
-        patch=dict(
-            textangle=0
-            , x=-0
+    # Color the row annotations with the fill color
+    # Also, row title annotations are on the right currently.  Reposition them to the left side
+    # Am attempting to do this based on the assumption that row facet titles will never have a y-position of 1
+    fig.for_each_annotation(
+        lambda a: a.update(
+            font=dict(color=color_map[a.text])
+            , textangle=0
+            , x=0
             , xanchor="right"
+            , font_size=12
+            , borderpad=5   # Unsure if this does anything but it should ensure the row titles don't come too close to the edge
         )
+        , selector=lambda a: not a.y == 1
     )
+
 
     # Thin out the gap between violins. Default is 0.3 for both values.
     fig.update_layout(
@@ -507,45 +620,56 @@ def create_stacked_violin_plot(df, gene_map, groupby_filter):
 
     return fig
 
-def create_violin_plot(df, gene_map, groupby_filter):
+def create_violin_plot(df, groupby_filters):
     """Creates a violin plot.  Returns the figure."""
-    grouped = df.groupby([groupby_filter])
-    names_in_legend = {}
     color_cycler = cycle(VIVID_COLORS)
-    offsetgroup = 0
 
     fig = go.Figure()
 
+    genes_to_color = { gene: next(color_cycler) for gene in df["gene_symbol"].unique().tolist() }
+    names_in_legend = {}
+
+    groupby = ["gene_symbol"]
+    groupby.extend(groupby_filters)
+    # Create groupings for traces
+    grouped = df.groupby(groupby)
+
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
-    for gene in gene_map:
-        fillcolor = next(color_cycler)
-        for name, group in grouped:
-            # If facets are present, a legend group trace can appear multiple times.
-            # Ensure it only shows once.
-            if gene in names_in_legend:
-                showlegend = False
-            names_in_legend[gene] = True
+    for name, group in grouped:
+        gene_sym = name[0]
+        fillcolor = genes_to_color[gene_sym]
 
-            fig.add_violin(
-                x=group[groupby_filter]
-                , y=group[gene_map[gene]]
-                , name=gene
-                , scalegroup="{}_{}".format(gene, name)
-                , showlegend=False
-                , fillcolor=fillcolor
-                , offsetgroup=offsetgroup   # Cleans up some weird grouping stuff, making plots thicker
-                , line=dict(color="slategrey")
-                , points=False
-                , box=dict(
-                    visible=False
-                    )
-                , meanline=dict(
-                    color="white"
-                    )
-                , spanmode="hard"   # Do not extend violin tails beyond the min/max values
-            )
-        offsetgroup += 1
+        # If facets are present, a legend group trace can appear multiple times.
+        # Ensure it only shows once.
+        showlegend = False if gene_sym in names_in_legend else True
+        names_in_legend[gene_sym] = True
+
+        # Create the multicategory axis
+        multicategory = []
+        for col in groupby_filters:
+            multicategory.append(group[col].tolist())
+        # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly
+        if len(groupby_filters) < 2:
+            multicategory = group[groupby_filters[0]].tolist()
+
+        fig.add_violin(
+            x=multicategory
+            , y=group["value"]
+            , name=gene_sym
+            # Scalegroup must be unique for all violins to have max equal width.
+            # Hence why we have to do a 3-dimensional groupby to make unique traces
+            , scalegroup="{}".format(','.join(name))
+            , fillcolor=fillcolor
+            , offsetgroup=gene_sym   # Cleans up some weird grouping stuff, making plots thicker
+            , showlegend=showlegend
+            , line=dict(color="slategrey")
+            , points=False
+            , box=dict(
+                visible=False
+                )
+            , spanmode="hard"   # Do not extend violin tails beyond the min/max values
+        )
 
     fig.update_layout(
         # Since each gene/groupby filter is on its own trace,
@@ -741,6 +865,31 @@ def validate_volcano_conditions(query_condition, ref_condition):
 
 ### Misc fxns
 
+def build_column_group_markers(filter_indexes, obs_order):
+    """Build dictionaries of group annotations for the clustergram."""
+    col_group_markers = {}
+    # k = obs_category, elem = single observation, i = index position of indiv. observation in observation order list
+    for k, v in filter_indexes.items():
+        col_group_markers.setdefault(k, [0 for obs in obs_order])
+        for elem in v:
+            # Filter indexes in order of clustering. Assumes every observation should be a unique name (since it was the index)
+            for obs in v[elem]:
+                column_id = obs_order.index(obs)
+                col_group_markers[k][column_id] = {'group': elem}
+    return col_group_markers
+
+def build_obs_group_indexes(df, filters, clusterbar_fields):
+    """Build dict of group indexes for filtered groups."""
+    filter_indexes = {}
+    for k, v in filters.items():
+        if k not in clusterbar_fields:
+            continue
+        filter_indexes.setdefault(k, {})
+        for elem in v:
+            obs_index = df.index[df[k] == elem]
+            filter_indexes[k][elem] = obs_index.tolist()
+    return filter_indexes
+
 def create_dataframe_gene_mask(df, gene_symbols, plot_type):
     """Create a gene mask to filter a dataframe."""
     gene_filter = None
@@ -848,6 +997,21 @@ def order_by_time_point(obs_df):
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
 
+def set_obs_groups_and_colors(filter_indexes):
+    """Create mapping of groups and colors per observation category."""
+    # TODO: Use observation colors if available instead of Dark24."""
+
+    PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
+    groups_and_colors = {}
+    palette_cycler = cycle(PALETTE_CYCLER)
+    for k, v in filter_indexes.items():
+        groups_and_colors.setdefault(k, {"groups":[], "colors":[]})
+        palette = next(palette_cycler)
+        color_cycler = cycle(palette)
+        groups_and_colors[k]["groups"] = [elem for elem in v]
+        groups_and_colors[k]["colors"] = [next(color_cycler) for elem in v]
+    return groups_and_colors
+
 class PlotError(Exception):
     """Error based on plotting issues."""
     def __init__(self, message="") -> None:
@@ -877,9 +1041,14 @@ class MultigeneDashData(Resource):
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
-        groupby_filter = req.get('groupby_filter', None)
+        primary_col = req.get('primary_col', None)
+        secondary_col = req.get('secondary_col', None)
+        sort_order = req.get('sort_order', {})
         # Heatmap opts
-        cluster_cols = req.get('cluster_cols', False)
+        clusterbar_fields = req.get('clusterbar_fields', [])
+        matrixplot = req.get('matrixplot', False)
+        cluster_obs = req.get('cluster_obs', False)
+        cluster_genes = req.get('cluster_genes', False)
         flip_axes = req.get('flip_axes', False)
         distance_metric = req.get('distance_metric', "euclidean")
         # Quadrant plot options
@@ -897,6 +1066,9 @@ class MultigeneDashData(Resource):
         # Violin plot options
         stacked_violin = req.get('stacked_violin', False)
         violin_add_points = req.get('violin_add_points', False)
+        # Misc options
+        title = req.get('plot_title', None)
+        legend_title = req.get('legend_title', None)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
@@ -911,6 +1083,20 @@ class MultigeneDashData(Resource):
         adata = ana.get_adata(backed=False)
 
         adata.obs = order_by_time_point(adata.obs)
+
+        # Reorder the categorical values in the observation dataframe
+        if sort_order:
+            obs_keys = sort_order.keys()
+            for key in obs_keys:
+                col = adata.obs[key]
+                try:
+                    # Some columns might be numeric, therefore
+                    # we don't want to reorder these
+                    reordered_col = col.cat.reorder_categories(
+                        sort_order[key], ordered=True)
+                    adata.obs[key] = reordered_col
+                except:
+                    pass
 
         # get a map of all levels for each column
         columns = adata.obs.columns.tolist()
@@ -990,33 +1176,44 @@ class MultigeneDashData(Resource):
                 , use_adj_pvals
                 )
             modify_volcano_plot(fig, query_val, ref_val)
+
             if gene_symbols:
-                add_gene_annotations_to_volcano_plot(fig, gene_symbols, annotate_nonsignificant)
+                dataset_genes = df['gene_symbol'].unique().tolist()
+                normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+                add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
         elif plot_type == "dotplot":
+            var_index = selected.var.index.name
             df = selected.to_df()
 
-            if not groupby_filter:
+            if not primary_col:
                 return {
                     'success': -1,
-                    'message': "'Groupby filter' option required for dot plots."
+                    'message': "The 'primary_col' option required for dot plots."
                 }
 
-            df[groupby_filter] = selected.obs[groupby_filter]
+            groupby_filters = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
+
+            for gb in groupby_filters:
+                df[gb] = selected.obs[gb]
 
             # 1) Flatten to long-form
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
-            df = df.melt(id_vars=[groupby_filter])
+            df = df.melt(id_vars=groupby_filters)
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            df["gene_symbol"] = df["index"].map(ensm_to_gene)
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
             # Percent of all cells in this group where the gene has expression
             percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
-            grouped = df.groupby(["gene_symbol", groupby_filter])
+            groupby = ["gene_symbol"]
+            groupby.extend(groupby_filters)
+            grouped = df.groupby(groupby)
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
                 .reset_index()
 
-            fig = create_dot_plot(df, groupby_filter)
+            fig = create_dot_plot(df, groupby_filters, title)
 
         elif plot_type == "quadrant":
             try:
@@ -1041,7 +1238,9 @@ class MultigeneDashData(Resource):
             fig = create_quadrant_plot(df, control_val, compare1_val, compare2_val)
             # Annotate selected genes
             if gene_symbols:
-                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, gene_symbols)
+                dataset_genes = df['gene_symbol'].unique().tolist()
+                normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
                 if genes_not_found:
                     success = 3
                     message += "<li>One or more genes were did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
@@ -1055,48 +1254,84 @@ class MultigeneDashData(Resource):
             # with expression and its observation metadata
             df = selected.to_df()
 
-            if groupby_filter:
-                df[groupby_filter] = selected.obs[groupby_filter]
-                grouped = df.groupby([groupby_filter])
+            groupby_filters = []
+            if primary_col:
+                groupby_filters.append(primary_col)
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
+
+            if matrixplot and groupby_filters:
+                for gb in groupby_filters:
+                    df[gb] = selected.obs[gb]
+                grouped = df.groupby(groupby_filters)
                 df = grouped.agg('mean') \
                     .dropna()
+            else:
+                if not cluster_obs:
+                    sorted_df = selected.obs.sort_values(by=groupby_filters if groupby_filters else list(filters.keys()))
+                    df = df.reindex(sorted_df.index.tolist())
 
             fig = create_clustergram(df
                 , gene_symbols
                 , is_log10
-                , cluster_cols
+                , cluster_obs
+                , cluster_genes
                 , flip_axes
-                , groupby_filter
+                , matrixplot
                 , distance_metric
                 )
 
-            modify_clustergram(fig, flip_axes, len(gene_symbols))
+            # Clustergram has a bug where the space where dendrograms should appear is still whitespace
+            # Need to adjust the domains of those subplots if no clustering is required
+            if not (cluster_genes or cluster_obs):
+                fig.layout["xaxis4"]["domain"] = [0,0]
+                fig.layout["xaxis5"]["domain"] = [0,0.95]
+                fig.layout["yaxis2"]["domain"] = [1,1]
+                fig.layout["yaxis5"]["domain"] = [0,1]
+
+            if matrixplot:
+                fig.update_layout(
+                    title={
+                        "text":"Log10 Mean Gene Expression" if is_log10 else "Log2 Mean Gene Expression"
+                        ,"x":0.5
+                        ,"xref":"paper"
+                        ,"y":0.9
+                    }
+                )
+            else:
+                filter_indexes = build_obs_group_indexes(selected.obs, filters, clusterbar_fields)
+                add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
 
         elif plot_type == "mg_violin":
+            var_index = selected.var.index.name
             df = selected.to_df()
 
-            if not groupby_filter:
+            if not primary_col:
                 return {
                     'success': -1,
-                    'message': "'Groupby filter' option required for violin plots."
+                    'message': "The 'primary_col' option required for violin plots."
                 }
 
-            df[groupby_filter] = selected.obs[groupby_filter]
+            groupby_filters = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
 
-            # Naive approach of mapping gene to ensembl ID, in cases of one-to-many mappings
-            gene_map = {}
-            for gene in gene_symbols:
-                gene_map[gene] = selected.var[selected.var.gene_symbol == gene].index.tolist()[0]
+            for gb in groupby_filters:
+                df[gb] = selected.obs[gb]
+
+            # 1) Flatten to long-form
+            # 2) Create a gene symbol column by mapping to the Ensembl IDs
+            df = df.melt(id_vars=groupby_filters)
+            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
             if stacked_violin:
                 fig = create_stacked_violin_plot(df
-                    , gene_map
-                    , groupby_filter
+                    , groupby_filters
                     )
             else:
                 fig = create_violin_plot(df
-                    , gene_map
-                    , groupby_filter
+                    , groupby_filters
                     )
 
             # Add jitter-based args (to make beeswarm plot)
@@ -1105,7 +1340,10 @@ class MultigeneDashData(Resource):
                     jitter=0.25
                     , points="all"
                     , pointpos=0
-                    , marker=dict(color="#000000")
+                    , marker=dict(
+                        color="#000000"
+                        , size = 6 if len(groupby_filters) == 1 else 3
+                    )
                 )
         else:
             return {
@@ -1117,11 +1355,37 @@ class MultigeneDashData(Resource):
         if "success" in fig and fig["success"] == -1:
             return fig
 
+        fig.update_layout(autosize=True)
+
         # change background to pure white
-        if plot_type != "heatmap":
+        # Heatmap/Clustergram already does this, but this option adds extra ticks
+        if not plot_type == "heatmap":
             fig.update_layout(
                 template="simple_white"
             )
+
+        # Title is addressed in the creation of dotplot subplots
+        # But we can add it here for other plots
+        if title and not plot_type == "dotplot":
+            fig.update_layout(
+                title={
+                    "text":title
+                    ,"x":0.5
+                    ,"xref":"paper"
+                    ,"y":0.9
+                }
+            )
+
+        if legend_title:
+            fig.update_layout(
+                legened={
+                    "text":legend_title
+                }
+            )
+
+        # Pop any default height and widths being added
+        fig["layout"].pop("height", None)
+        fig["layout"].pop("width", None)
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 

@@ -33,6 +33,9 @@
       rel="stylesheet"
     />
 
+    <!-- for Sortable -->
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
+
     <!-- Efficient select-box tool -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
@@ -80,6 +83,11 @@
       <!-- Dataset selection -->
       <fieldset class="form-group">
         <legend for="dataset">Step 1: Dataset selection</legend>
+        <div id="pre_dataset_spinner" style="display:none;">
+          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+          <span>Loading datasets...</span>
+        </div>
+        <small id="dataset_help" class="form-text text-muted">Select a dataset to use.</small>
         <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
           <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
           <div class="dropdown-menu w-100" aria-labelledby="dataset">
@@ -94,20 +102,50 @@
             </form>
           </div>
         </div>  <!-- end dataset_c -->
-        <small id="dataset_help" class="form-text text-muted">Select a dataset to use.</small>
+      </fieldset>
+
+      <div id="post_dataset_spinner" style="display:none;">
+        <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+        <span>Loading dataset information...</span>
+      </div>
+
+      <!-- Plot type selection-->
+      <fieldset class="form-group" id="plot_type_container">
+        <legend for="plot_type_select">Step 2: Plot type selection</legend>
+        <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
+        <div class="form-row">
+          <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
+            <option></option>
+            <optgroup label="Genes as Axis">
+              <option value="dotplot" id="dotplot_opt">Dotplot</option>
+              <option value="heatmap" id="heatmap_opt">Heatmap</option>
+              <option value="mg_violin" id="mg_violin_opt">Violin</option>
+            </optgroup>
+            <optgroup label="Genes as Data Points">
+              <option value="quadrant" id="quadrant_opt">Quadrant</option>
+              <option value="volcano" id="volcano_opt">Volcano</option>
+            </optgroup>
+          </select>
+          <div class="col-6">
+            <span>or&ensp;</span>
+            <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
+          </div>
+        </div>
       </fieldset>
 
       <!-- Gene selection-->
       <fieldset class="form-group" id="gene_container">
-        <legend for="gene_dropdown_container">Step 2: Gene selection</legend>
+        <legend for="gene_dropdown_container">Step 3: Gene selection</legend>
         <div id="gene_spinner" style="display:none;">
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span class="sr-only">Loading...</span>
+          <span>Loading genes for dataset...</span>
         </div>
+        <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
         <div class="form-group" id="gene_dropdown_container" aria-describedby="gene_selection_help"></div>
-        <div class="form-group" id="gene_cart_container">
-          <label for="gene_cart"><strong>or </strong>Load from gene cart</label>
-          <div id="gene_cart_c" class="w-50 form-control dropdown">
+        <div class="alert alert-warning" role="alert" id="too_many_genes_warning" style="display:none;"></div>
+        <div class="form-group row" id="gene_cart_container">
+          <label class="col-2" for="gene_cart"><strong>or </strong>Load from gene cart</label>
+          <div id="gene_cart_c" class="w-50 form-control dropdown col-6">
             <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
             <div class="dropdown-menu" aria-labelledby="gene_cart">
               <form class="px-4 py-3">
@@ -121,43 +159,28 @@
               </form>
             </div>
           </div>  <!-- end gene_cart_c -->
+          <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
         </div>  <!-- end gene_cart_container -->
-        <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
-        <div class="form-group row alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
-      </fieldset>
-
-      <!-- Plot type selection-->
-      <fieldset class="form-group" id="plot_type_container">
-        <legend for="plot_type_select">Step 3: Plot type selection</legend>
-        <div class="form-row">
-          <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
-            <option></option>
-            <option value="dotplot">Dotplot</option>
-            <option value="heatmap">Heatmap</option>
-            <option value="quadrant">Quadrant</option>
-            <option value="mg_violin">Violin</option>
-            <option value="volcano">Volcano</option>
-          </select>
-          <div class="col-6">
-            <span>or&ensp;</span>
-            <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
-          </div>
-        </div>
-        <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
+        <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
       </fieldset>
 
       <fieldset id="options_container" style="display:none;">
-        <legend for="options_container">Step 4: Plot-specfic options</legend>
+        <legend for="options_container">Step 4: Plot-specific options</legend>
         <div id="options_spinner" style="display:none;">
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span class="sr-only">Loading...</span>
+          <span>Loading plot options...</span>
         </div>
+
         <!-- Observation group options -->
-        <fieldset class="form-group" id="obs_dropdowns_container"></fieldset>
-        <fieldset class="form-group" id="obs_groupby_container"></fieldset>
+        <fieldset class="form-group" id="obs_filters_container"></fieldset>
+        <fieldset class="form-group" id="obs_primary_container" style="display:none;"></fieldset>
+        <fieldset class="form-group" id="obs_secondary_container" style="display:none;"></fieldset>
         <fieldset id="heatmap_options_container" style="display:none;">
+          <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
+
           <div class="form-group">
             <label for="distance_select">Pairwise distance metric</label>
+            <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
             <div class="form-row">
               <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
                 <!--<option value="braycurtis">Bray-Curtis</option>-->
@@ -166,30 +189,69 @@
                 <option value="minkowski">Minkowski</option>
               </select>
             </div>
-            <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
+          </div>
+          <div class="form-group" id="matrixplot_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="matrixplot">
+              <label class="form-check-label" for="matrixplot">
+                Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories.
+              </label>
+            </div>
+            <small class="form-text text-muted">
+              NOTE: This will remove cluster colorbars from the heatmap.
+            </small>
+          </div>
+          <div class="form-group" id="cluster_obs_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
+              <label class="form-check-label" for="cluster_obs">
+                Hierarchical clustering of observation samples.
+              </label>
+            </div>
+            <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
+            <small class="form-text text-muted">
+              NOTE: Disables splitting by primary and/or secondary categories.
+            </small>
+          </div>
+          <div class="form-group" id="cluster_genes_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
+              <label class="form-check-label" for="cluster_genes">
+                Hierarchical clustering of genes.
+              </label>
+            </div>
+          </div>
+          <div class="form-group" id="flip_axes_checkbox_container">
+            <div class="form-check" aria-describedby="flip_axes_help">
+              <input class="form-check-input" type="checkbox" value="" id="flip_axes">
+              <label class="form-check-label" for="flip_axes">
+                Flip genes and observations axes.
+              </label>
+            </div>
+            <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
           </div>
         </fieldset>
         <fieldset id="quadrant_options_container" style="display:none;">
           <div class="form-group">
             <label for="quadrant_compare1_condition">Comparison condition 1</label>
+            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
             <div class="form-row">
               <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
             </div>
-            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_compare2_condition">Comparison condition 2</label>
+            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
             <div class="form-row">
               <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
             </div>
-            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_ref_condition">Reference condition</label>
+            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions. All conditions must come from the same category.</small>
             <div class="form-row">
               <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
             </div>
-            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions.</small>
           </div>
           <div class="form-group">
             <label for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
@@ -201,125 +263,104 @@
             <input id="quadrant_fdr_cutoff" class="form-control w-25" type="number" value="0.05" min="0" max="1" aria-describedby="quadrant_fdr_help">
             <small id="quadrant_fdr_help" class="form-text text-muted">Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.</small>
           </div>
+          <div class="form-group" id="include_zero_foldchange_container">
+            <div class="form-check" aria-describedby="include_zero_help">
+              <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
+              <label class="form-check-label" for="include_zero_foldchange">
+                Include genes where the query and ref expression is equal.
+              </label>
+            </div>
+            <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
+          </div>
         </fieldset>
 
         <fieldset id="volcano_options_container" style="display:none;">
           <div class="form-group">
             <label for="volcano_query_condition">Query condition</label>
+            <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
             <div class="form-row">
               <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
             </div>
-            <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
           </div>
           <div class="form-group">
             <label for="volcano_ref_condition">Reference condition</label>
+            <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same category as query condition.</small>
             <div class="form-row">
               <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
             </div>
-            <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same observation as query condition.</small>
           </div>
-        </fieldset>
+          <div class="form-group" id="annot_nonsig_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
+              <label class="form-check-label" for="annot_nonsig">
+                Annotate nonsignificant genes.
+              </label>
+            </div>
+          </div>
+          <div class="form-group" id="adjusted_pvals_checkbox_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
+              <label class="form-check-label" for="adj_pvals">
+                Use adjusted p-values (q-values) instead of raw p-values.
+              </label>
+            </div>
+          </div>
+        </fieldset><!-- end volcano_options_container -->
+
+        <fieldset id="violin_options_container">
+          <div class="form-group" id="stacked_violin_container">
+            <div class="form-check" aria-describedby="stacked_violin_help">
+              <input class="form-check-input" type="checkbox" value="" id="stacked_violin">
+              <label class="form-check-label" for="stacked_violin">
+                Create stacked violin plot.
+              </label>
+            </div>
+            <small id="stacked_violin_help" class="form-text text-muted">Each category group is in its own violin plot.</small>
+          </div>
+          <div class="form-group" id="violin_add_points_container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="violin_add_points">
+              <label class="form-check-label" for="violin_add_points">
+                Add data points to violin plot.
+              </label>
+            </div>
+          </div>
+        </fieldset><!-- end violin_options_container -->
 
         <div class="form-group" id="de_test_container">
           <label for="de_test_select">Differential expression test</label>
+          <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
           <select class="form-control" id="de_test_select" aria-describedby="de_test_help">
             <option value="t-test" selected="selected">Welch's t-test</option>
             <option value="rank">Wilcoxon rank-sum test</option>
           </select>
-          <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
         </div>
-
-        <!-- Advanced Options -->
-        <fieldset class="form-group" id="advanced_options_container" style="display:none;">
-          <button class="btn btn-outline-purple btn-sm" type="button" data-toggle="collapse" id="advanced_options_button" data-target="#advanced_options_collapsable" role="button" aria-expanded="false" aria-controls="advanced_options_collapsable">
-          Advanced Options <i class="fa fa-caret-down" aria-hidden="true" id="advanced_options_arrow"></i>
-          </button>
-
-          <div class="collapse" id="advanced_options_collapsable">
-            <div id="adv_heatmap_opts">
-              <div class="form-group" id="cluster_cols_checkbox_container">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="cluster_cols">
-                  <label class="form-check-label" for="cluster_cols">
-                    Also cluster observation samples
-                  </label>
-                </div>
-              </div>
-              <div class="form-group" id="flip_axes_checkbox_container">
-                <div class="form-check" aria-describedby="flip_axes_help">
-                  <input class="form-check-input" type="checkbox" value="" id="flip_axes">
-                  <label class="form-check-label" for="flip_axes">
-                    Flip genes and observations axes
-                  </label>
-                </div>
-                <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
-              </div>
-            </div><!-- end adv_heatmap_opts-->
-            <div class="form-group" id="annot_nonsig_checkbox_container">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
-                <label class="form-check-label" for="annot_nonsig">
-                  Annotate nonsignificant genes.
-                </label>
-              </div>
-            </div>
-            <div class="form-group" id="adjusted_pvals_checkbox_container">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
-                <label class="form-check-label" for="adj_pvals">
-                  Use adjusted p-values (q-values) instead of raw p-values
-                </label>
-              </div>
-            </div>
-            <div class="form-group" id="include_zero_foldchange_container">
-              <div class="form-check" aria-describedby="include_zero_help">
-                <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
-                <label class="form-check-label" for="include_zero_foldchange">
-                  Include genes where the query and ref expression is equal
-                </label>
-              </div>
-              <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
-            </div>
-            <div id="adv_violin_opts">
-              <div class="form-group" id="stacked_violin_container">
-                <div class="form-check" aria-describedby="stacked_violin_help">
-                  <input class="form-check-input" type="checkbox" value="" id="stacked_violin">
-                  <label class="form-check-label" for="stacked_violin">
-                    Create stacked violin plot
-                  </label>
-                </div>
-                <small id="stacked_violin_help" class="form-text text-muted">Each category group is in its own violin plot</small>
-              </div>
-              <div class="form-group" id="violin_add_points_container">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="violin_add_points">
-                  <label class="form-check-label" for="violin_add_points">
-                    Add data points to violin plot
-                  </label>
-                </div>
-              </div>
-            </div><!-- end adv_violin_opts -->
-          </div>
-        </fieldset>
       </fieldset> <!-- end options -->
 
+      <!--<div id="plot_preview">
+        <legend for="plot_preview">Plot Preview</legend>
+        <div id="x_preview">X: <span id="x_column"></span></div>
+        <div id="y_preview">Y: <span id="y_column"></span></div>
+        <div id="colors_preview">Legend colors: <span id="colors_column"></span></div>
+        <div id="facet_col_preview">Facet columns: <span id="facet_col_column"></span></div>
+      </div>-->
+
       <!-- Action buttons-->
-      <button type="button" class="btn btn-outline-purple my-3" id="reset_opts" style="display:none;">Reset Options</button>
-      <button type="button" class="btn btn-purple my-3" id="create_plot" style="display:none;">Create Plot</button>
-      <br>
+      <div id="action_buttons" class="my-3">
+        <button type="button" class="btn btn-outline-purple" id="reset_opts" style="display:none;">Reset Options</button>
+        <button type="button" class="btn btn-purple" id="create_plot" style="display:none;">Create Plot</button>
+        <aside id="post_plot_options" class="float-right" style="display:none;">
+          <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_display_modal">Save New Display</button>
+          <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_genes_modal" id="selected_genes_btn" disabled>Save New Genecart</button>
+          <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#download_plot_modal">Download Image</button>
+        </aside>
+      </div>
+      <hr>
     </div> <!-- end container -->
     </main>
 
-    <!-- Plots and post-plot things -->
-    <div class="row container-fluid">
-      <div id="dataset_plot" class="col-10"></div>
-      <aside id="post_plot_options" class="col-2" style="display:none;">
-        <button type="button" class="btn btn-purple btn-sm btn-block" data-toggle="modal" data-target="#save_display_modal">Save New Display</button>
-        <button type="button" class="btn btn-purple btn-sm btn-block" data-toggle="modal" data-target="#save_genes_modal" id="selected_genes_btn" disabled>Save New Genecart</button>
-        <button type="button" class="btn btn-purple btn-sm btn-block" data-toggle="modal" data-target="#download_plot_modal">Download Image</button>
-      </aside>
-    </div>
-    <div id="supplementary_plot"></div>
+    <!-- Plotly plot area-->
+    <div id="dataset_plot"></div>
 
     <footer>
       <div id='funding'>
@@ -364,7 +405,7 @@
             <div class="form-check">
               <input class="form-check-input" type="checkbox" checked value="" id="save_as_default_check">
               <label class="form-check-label" for="save_as_default_check">
-                Save display as default display for this dataset
+                Save display as default display for this dataset.
               </label>
             </div>
             <br />
@@ -451,36 +492,90 @@
       </div>
     </script>
 
-    <script id="obs_groupby_tmpl" type="text/x-jsrender">
-      <label for="groupby_obs_dropdown">Group by category</label>
+    <script id="obs_primary_tmpl" type="text/x-jsrender">
+      <div class="row">
+        <label class="col-3">Primary category split</label>
+        <label class="col-3" id="primary_order_label" style="display:none;">Sort Order</label>
+      </div>
+      <small id="primary_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific order.</small>
+      <div class="row">
+        <div class="col-3">
+        {{props}}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="obs_primary" id="{{:key}}_primary" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_primary">{{:key}}</label>
+          </div>
+        {{/props}}
+          <div class="form-check" id="none_primary_group">
+            <input class="form-check-input" type="radio" name="obs_primary" id="none_primary" value="none">
+            <label class="form-check-label" for="none_primary">None</label>
+          </div>
+        </div>
+        <div class="col-3">
+          <ul id="primary_sortable" class="list-group"></ul>
+        </div>
+      </div>
+    </script>
+
+    <script id="obs_secondary_tmpl" type="text/x-jsrender">
+      <div class="row">
+        <label class="col-3">Secondary category split</label>
+        <label class="col-3" id="secondary_order_label" style="display:none;">Sort Order</label>
+      </div>
+      <small id="secondary_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific order.</small>
+      <div class="row">
+        <div class="col-3">
+        {{props}}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="obs_secondary" id="{{:key}}_secondary" value="{{:key}}">
+            <label class="form-check-label" for="{{:key}}_secondary">{{:key}}</label>
+          </div>
+        {{/props}}
+          <div class="form-check" id="none_secondary_group">
+            <input class="form-check-input" type="radio" name="obs_secondary" id="none_secondary" value="none">
+            <label class="form-check-label" for="none_secondary">None</label>
+          </div>
+        </div>
+        <div class="col-3">
+          <ul id="secondary_sortable" class="list-group"></ul>
+        </div>
+      </div>
+    </script>
+
+    <script id="obs_sortable_tmpl" type="text/x-jsrender">
+      {{for sortData}}
+      <li class="ui-state-default list-group-item p-1" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
+      {{/for}}
+    </script>
+
+    <script id="obs_clusterbar_tmpl" type="text/x-jsrender">
+      <label>Cluster colorbars</label>
+      <small id="clusterbar_help" class="form-text text-muted">Check the categories you wish to show a cluster colorbar for in the heatmap.</small>
       {{props}}
-      <div class="form-check">
-        <input class="form-check-input js-obs-groupby" type="radio" name="obs_groupby" id="{{:key}}_groupby" value="{{:key}}">
-        <label class="form-check-label" for="{{:key}}_groupby">{{:key}}</label>
+      <div class="form-check" aria-describedby="clusterbar_help">
+        <input class="form-check-input" type="checkbox" name="obs_clusterbar" id="{{:key}}_clusterbar" value="{{:key}}">
+        <label class="form-check-label" for="{{:key}}_clusterbar">{{:key}}</label>
       </div>
       {{/props}}
-      <small id="group_by_help" class="form-text text-muted">Determine category to group by before plotting.</small>
     </script>
 
     <!-- Declare a JsRender template, in a script block: -->
-    <script id="obs_dropdowns_tmpl" type="text/x-jsrender">
-      <div class="form-group">
-        <label>Filter by category</label>
-        {{props}}
-          {{!-- key is categorical observation, prop is the list of unique categories --}}
-          <div class="row form-group" id="{{:key}}_div">
-            <label class="col-2" for="{{:key}}_dropdown">{{:key}}</label>
-            <select id="{{:key}}_dropdown" class="js-obs-levels col form-control" multiple="multiple">
-              {{props prop}}
-                {{!-- key is list index, prop is the value --}}
-                <option value="{{:prop}}">{{:prop}}</option>
-              {{/props}}
-            </select>
-            <button type='button' class="close all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
-          </div>
-        {{/props}}
-        <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include, or click "All" to use all groups.</small>
-      </div>
+    <script id="obs_filters_tmpl" type="text/x-jsrender">
+      <label>Groups to include</label>
+      <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
+      {{props}}
+        {{!-- key is categorical observation, prop is the list of unique categories --}}
+        <div class="row form-group" id="{{:key}}_div">
+          <label class="col-2" for="{{:key}}_dropdown">{{:key}}</label>
+          <select id="{{:key}}_dropdown" class="js-obs-levels col form-control" multiple="multiple">
+            {{props prop}}
+              {{!-- key is list index, prop is the value --}}
+              <option value="{{:prop}}">{{:prop}}</option>
+            {{/props}}
+          </select>
+          <button type='button' class="close js-all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
+        </div>
+      {{/props}}
     </script>
 
     <script id="select_conditions_tmpl" type="text/x-jsrender">
@@ -500,23 +595,11 @@
 
     <script id="dataset_plot_tmpl" type="text/x-jsrender">
       <div id="dataset_{{:dataset_id}}" class="dataset_c">
-        <div id="dataset_spinner" style="display:none;">
+        <div id="plot_spinner" style="display:none;">
           <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span class="sr-only">Loading...</span>
+          <span>Loading plot...</span>
         </div>
         <div id='dataset_{{:dataset_id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
-        <div class="alert alert-error js-plot-error" role="alert" style="display:none;"></div>
-        <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
-      </div>
-    </script>
-
-    <script id="supplementary_plot_tmpl" type="text/x-jsrender">
-      <div id="dataset_{{:dataset_id}}_supplementary" class="dataset_c">
-        <div id="supplementary_spinner" style="display:none;">
-          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span class="sr-only">Loading...</span>
-        </div>
-        <div id='dataset_{{:dataset_id}}_secondary' class="plot-container plotly-container h5ad-container"></div>
         <div class="alert alert-danger js-plot-error" role="alert" style="display:none;"></div>
         <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
       </div>
@@ -540,6 +623,7 @@
             </div>
             <img id='modal-display-{{:id}}-loading' class='card-img-top modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
             <img id='modal-display-img-{{:id}}' class='card-img-top'/>
+            <div class="alert alert-danger js-plot-error" role="alert" style="display:none;"></div>
             <div class="card-footer bg-transparent">
               {{if is_default }}
               <button type="button" class="badge btn-secondary btn js-current-default" disabled id="{{:id}}_default">Default</button>
@@ -563,6 +647,7 @@
               </div>
               <img id='modal-display-{{:id}}-loading' class='card-img-top modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
               <img id='modal-display-img-{{:id}}' class='card-img-top'/>
+              <div class="alert alert-danger js-plot-error" role="alert" style="display:none;"></div>
               <div class="card-footer bg-transparent">
                 {{if is_default }}
                 <button type="button" class="badge btn-secondary btn js-current-default" disabled id="{{:id}}_default">Default</button>
@@ -588,7 +673,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
 
+    <!-- for Sortable -->
+    <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.js"></script>
+
+
     <script src="js/vendor/js.cookie.js"></script>
+
 
     <!-- Load JsRender latest version, from www.jsviews.com: -->
     <script src="https://www.jsviews.com/download/jsrender.js"></script>
@@ -601,13 +691,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/gene.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/genecart.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/plot_display_config.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
     <script>document.write('<script src="js/multigene_curator.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
