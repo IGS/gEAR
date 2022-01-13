@@ -1809,6 +1809,84 @@ class GeneCart:
                 self.add_gene(gene)
 
 
+@dataclass
+class GeneCartCollection:
+    carts: List[GeneCart] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def _row_to_cart_object(self, row):
+        """
+        Utility function so we don't have to repeat the SQL->Python object conversion
+        """
+        cart = GeneCart(
+                    id=row['id'],
+                    user_id=row['user_id'],
+                    organism_id=row['organism_id'],
+                    gctype=row['gctype'],
+                    label=row['label'],
+                    ldesc=row['ldesc'],
+                    share_id=row['share_id'],
+                    is_public=row['is_public'],
+                    date_added=row['date_added'].isoformat()
+                )
+        return cart
+
+    def get_by_cart_ids(self, ids=None):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = """
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+                FROM gene_cart
+               WHERE id = %s
+        """
+
+        for id in ids:
+            cursor.execute(qry, (id,))
+
+            for row in cursor:
+                cart = self._row_to_cart_object(row)
+                self.carts.append(cart)
+        
+        cursor.close()
+        conn.close()
+        return self.carts
+
+    def get_by_group_ids(self):
+        """
+        Put here as it will be needed in the future. User groups not yet supported.
+        """
+        return []
+    
+    def get_by_share_ids(self, share_ids=None):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = """
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+                FROM gene_cart
+               WHERE share_id = %s
+        """
+
+        for share_id in share_ids:
+            cursor.execute(qry, (share_id,))
+
+            for row in cursor:
+                cart = self._row_to_cart_object(row)
+                self.carts.append(cart)
+        
+        cursor.close()
+        conn.close()
+        return self.carts
+
+
+
 class LayoutMember:
     def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None, mg_grid_width=None):
         self.id = id
@@ -1872,8 +1950,8 @@ class User:
     Important note.  Because 'pass' is a reserved word in Python this field differs from the database
     table column name.
     """
-    def __init__(self, id=None, user_name=None, email=None, institution=None, password=None, updates_wanted=None,
-                 is_admin=None, is_gear_curator=None, help_id=None):
+    def __init__(self, id=None, user_name=None, email=None, institution=None, password=None,
+                 updates_wanted=None, is_admin=None, is_gear_curator=None, help_id=None):
         self.id = id
         self.user_name = user_name
         self.email = email

@@ -16,6 +16,10 @@ Returns {'user_carts': [
                         {'id': 312, 'label': 'my_gene_cart'}
                         {'id': 413, 'label': 'my_gene_cart'}
                        ],
+         'group_carts': [
+                        {'id': 3122, 'label': 'my_gene_cart'}
+                        {'id': 4113, 'label': 'my_gene_cart'}
+                       ],
          'shared_carts': [
                         {'id': 1212, 'label': 'my_gene_cart'}
                        ],
@@ -31,6 +35,8 @@ it fits below, starting with the top.
 of general interest.
 
 - User carts are those owned by the user.
+
+- Group carts are any shared with a group the user belongs to.
 
 - Shared carts are those explicitly shared with the current user by URL, even
 if private.  This list will usually only contain one cart since the system
@@ -56,11 +62,16 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('share_id')
-    current_user_id = get_user_id_from_session_id(cursor, session_id)
-    result = { 'gene_carts':[], 'domain_gene_carts':[] }
-
+    current_user = geardb.get_user_from_session_id(session_id)
+    current_user_id = current_user.id
+    result = { 'domain_carts':[], 'gene_carts':[], 'public_carts':[],
+               'shared_carts':[], 'user_carts':[] }
+ 
     # Does the user have a current, saved layout?
     layout_id = None
+
+    # Track the cart IDs already stored so we don't duplicate
+    carts_found = set()
 
     if current_user_id is None:
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
@@ -75,25 +86,17 @@ def main():
 
         cursor.execute(gene_cart_query, query_args)
         for row in cursor:
-            result['gene_carts'].append({'id': row[0], 'label': row[1], 'share_id': row[2]})
+            if row[2] == share_id:
+                result['shared_carts'].append({'id': row[0], 'label': row[1], 'share_id': row[2]})
+            else:
+                result['gene_carts'].append({'id': row[0], 'label': row[1], 'share_id': row[2]})
 
     cursor.close()
     cnx.close()
 
     #Alphabetize gene carts
     result['gene_carts'].sort(key=lambda a: a['label'].lower())
-
     print(json.dumps(result))
-
-def get_user_id_from_session_id(cursor, session_id):
-    qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
-    cursor.execute(qry, (session_id, ) )
-    user_id = None
-
-    for (uid,) in cursor:
-        user_id = uid
-
-    return user_id
 
 if __name__ == '__main__':
     main()
