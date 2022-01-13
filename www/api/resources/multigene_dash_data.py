@@ -66,6 +66,9 @@ ALPHABET_COLORS = px.colors.qualitative.Alphabet
 LIGHT24_COLORS = px.colors.qualitative.Light24
 VIVID_COLORS = px.colors.qualitative.Vivid
 
+# Fractional count to add to all values so log can be computed on non-expressed (0) values
+LOG_COUNT_ADJUSTER = 1
+
 ### Dotplot fxns
 
 def create_dot_legend(fig, legend_col):
@@ -135,7 +138,7 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
         multicategory = df[groupby_filters[0]].tolist()
 
     # log-transform dataset if it came in raw
-    mean = np.log2(df['value', 'mean'] + 1)
+    mean = np.log2(df['value', 'mean'] + LOG_COUNT_ADJUSTER)
     if is_log10:
         mean = df['value', 'mean']
 
@@ -289,7 +292,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     rows = list(df.index)
     columns = list(df.columns.values)
 
-    values = df.loc[rows].values + 1
+    values = df.loc[rows].values + LOG_COUNT_ADJUSTER
     if is_log10:
         values = df.loc[rows].values
 
@@ -469,8 +472,8 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
     de_selected2 = selected3.concatenate(selected2)
 
     if not is_log10:
-        de_selected1.X = de_selected1.X + 1
-        de_selected2.X = de_selected2.X + 1
+        de_selected1.X = de_selected1.X + LOG_COUNT_ADJUSTER
+        de_selected2.X = de_selected2.X + LOG_COUNT_ADJUSTER
 
     # Use diffxpy to compute DE statistics for each comparison
     if de_test_algo == "rank":
@@ -850,7 +853,7 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
     de_selected = selected2.concatenate(selected1)
 
     if not is_log10:
-        de_selected.X = de_selected.X + 1
+        de_selected.X = de_selected.X + LOG_COUNT_ADJUSTER
 
     # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
     # which makes the ensuing plot inaccurate
