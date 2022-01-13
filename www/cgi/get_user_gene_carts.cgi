@@ -64,9 +64,6 @@ def main():
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'shared_carts':[], 'user_carts':[] }
  
-    # Does the user have a current, saved layout?
-    layout_id = None
-
     # Track the cart IDs already stored so we don't duplicate
     cart_ids_found = set()
 
