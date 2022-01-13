@@ -54,49 +54,51 @@ sys.path.append(lib_path)
 import geardb
 
 def main():
-    cnx = geardb.Connection()
-
     print('Content-Type: application/json\n\n')
 
-    cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('share_id')
     current_user = geardb.get_user_from_session_id(session_id)
     current_user_id = current_user.id
-    result = { 'domain_carts':[], 'gene_carts':[], 'public_carts':[],
+    result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'shared_carts':[], 'user_carts':[] }
  
     # Does the user have a current, saved layout?
     layout_id = None
 
     # Track the cart IDs already stored so we don't duplicate
-    carts_found = set()
+    cart_ids_found = set()
 
     if current_user_id is None:
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
     else:
-        # A user is logged in
-        gene_cart_query = "SELECT id, label, share_id FROM gene_cart WHERE user_id = %s"
-        query_args = [current_user_id,]
+        domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
+        user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
+        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups())
+        shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
+        public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
 
-        if share_id:
-            gene_cart_query += " OR share_id = %s"
-            query_args.append(share_id)
+        result = { 'domain_carts':domain_carts,
+                   'group_carts':group_carts,
+                   'public_carts':public_carts,
+                   'shared_carts':shared_carts,
+                   'user_carts':user_carts }
 
-        cursor.execute(gene_cart_query, query_args)
-        for row in cursor:
-            if row[2] == share_id:
-                result['shared_carts'].append({'id': row[0], 'label': row[1], 'share_id': row[2]})
-            else:
-                result['gene_carts'].append({'id': row[0], 'label': row[1], 'share_id': row[2]})
+    # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
+    print(json.dumps(result, default=lambda o: o.__dict__))
 
-    cursor.close()
-    cnx.close()
+def filter_any_previous(ids, new_carts):
+    carts = []
 
-    #Alphabetize gene carts
-    result['gene_carts'].sort(key=lambda a: a['label'].lower())
-    print(json.dumps(result))
+    for cart in new_carts:
+        if cart.id not in ids:
+            carts.append(cart)
+            ids.add(cart.id)
 
+    return carts
+    # fails to return rows when I try to sort.
+    #return carts.sort(key=lambda a: a.__dict__['label'].lower())
+    
 if __name__ == '__main__':
     main()
