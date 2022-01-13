@@ -78,6 +78,7 @@ CREATE TABLE gene_cart (
        ldesc           TEXT,
        share_id        VARCHAR(50),
        is_public       TINYINT DEFAULT 0,
+       is_domain       TINYINT DEFAULT 0,
        date_added      DATETIME DEFAULT CURRENT_TIMESTAMP,
        FULLTEXT        text_idx (label, ldesc),
        FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
