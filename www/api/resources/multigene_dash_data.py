@@ -105,7 +105,7 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
 
-def create_dot_plot(df, groupby_filters, plot_title=None):
+def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -134,6 +134,11 @@ def create_dot_plot(df, groupby_filters, plot_title=None):
     if len(groupby_filters) < 2:
         multicategory = df[groupby_filters[0]].tolist()
 
+    # log-transform dataset if it came in raw
+    mean = np.log2(df['value', 'mean'] + 1)
+    if is_log10:
+        mean = df['value', 'mean']
+
     fig.add_scatter(
         x=multicategory
         , y=df["gene_symbol"]
@@ -143,12 +148,12 @@ def create_dot_plot(df, groupby_filters, plot_title=None):
             "Mean: %{marker.color:.2f}"
         , mode="markers"
         , marker=dict(
-            color=df["value", "mean"]
+            color=mean
             , colorscale=['rgb(0,0,255)','rgb(150,0,90)','rgb(255,0,0)']
             , size=df["value", "percent"]
             , sizemode="area"
             , colorbar=dict(
-                title="Mean Expression"
+                title="Log10 Mean Expression" if is_log10 else "Log2 Mean Expression"
                 )
             )
         , showlegend=False
@@ -204,7 +209,6 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     fig.data[-1]["colorbar"]["len"] = 0.5   # Set expression colorbar to be half as tall
     fig.data[-1]["colorbar"]["y"] = 0.5
     fig.data[-1]["colorbar"]["yanchor"] = "middle"
-    fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
     fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
 
     # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
@@ -322,7 +326,6 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , cluster=cluster
         , col_dist=col_dist
         , row_dist=row_dist
-        #, link_fun=lambda x, **kwargs: sch.linkage(x, "complete", **kwargs)    # this is default
         , center_values=False
         , color_map="RdYlBu"               # Heatmap colors
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
@@ -465,6 +468,10 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
     de_selected1 = selected3.concatenate(selected1)
     de_selected2 = selected3.concatenate(selected2)
 
+    if not is_log10:
+        de_selected1.X = de_selected1.X + 1
+        de_selected2.X = de_selected2.X + 1
+
     # Use diffxpy to compute DE statistics for each comparison
     if de_test_algo == "rank":
         de_results1 = de.test.rank_test(
@@ -538,7 +545,7 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, groupby_filters):
+def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
     """Create a stacked violin plot.  Returns the figure."""
 
     # Preserve sort order passed to plot, and assign colors to primary category groups
@@ -571,6 +578,10 @@ def create_stacked_violin_plot(df, groupby_filters):
         # name[0] is gene_sym, name[1] is primary category, name[2] is secondary category
         row_idx = facet_row_indexes[name[1]]
         col_idx = facet_col_indexes[name[2]] if len(name) > 2 else 1
+
+        # log-transform dataset if it came in raw
+        if not is_log10:
+            group['value'] = np.log2(group['value'])
 
         fig.add_violin(
             x=group["gene_symbol"]
@@ -615,12 +626,18 @@ def create_stacked_violin_plot(df, groupby_filters):
     # Thin out the gap between violins. Default is 0.3 for both values.
     fig.update_layout(
         violingap=0.15
-        ,violingroupgap=0
+        , violingroupgap=0
+        , title={
+            "text":"Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+            ,"x":0.5
+            ,"xref":"paper"
+            ,"y":0.9
+        }
     )
 
     return fig
 
-def create_violin_plot(df, groupby_filters):
+def create_violin_plot(df, groupby_filters, is_log10=False):
     """Creates a violin plot.  Returns the figure."""
     color_cycler = cycle(VIVID_COLORS)
 
@@ -653,6 +670,10 @@ def create_violin_plot(df, groupby_filters):
         if len(groupby_filters) < 2:
             multicategory = group[groupby_filters[0]].tolist()
 
+        # log-transform dataset if it came in raw
+        if not is_log10:
+            group['value'] = np.log2(group['value'])
+
         fig.add_violin(
             x=multicategory
             , y=group["value"]
@@ -675,6 +696,12 @@ def create_violin_plot(df, groupby_filters):
         # Since each gene/groupby filter is on its own trace,
         # plots are overlayed by group.  So change to "group" mode to stagger each group
         violinmode='group'
+        , title={
+            "text":"Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+            ,"x":0.5
+            ,"xref":"paper"
+            ,"y":0.9
+        }
     )
     return fig
 
@@ -809,7 +836,7 @@ def modify_volcano_plot(fig, query, ref):
         , title={
             "x":0.5
             ,"xref":"paper"
-            ,"y":0.9
+            ,"y":1
         }
     )
 
@@ -821,6 +848,9 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
     selected2 = adata[de_filter2, :]
     # Query needs to be appended onto ref to ensure the test results are not flipped
     de_selected = selected2.concatenate(selected1)
+
+    if not is_log10:
+        de_selected.X = de_selected.X + 1
 
     # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
     # which makes the ensuing plot inaccurate
@@ -1213,7 +1243,7 @@ class MultigeneDashData(Resource):
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
                 .reset_index()
 
-            fig = create_dot_plot(df, groupby_filters, title)
+            fig = create_dot_plot(df, groupby_filters, is_log10, title)
 
         elif plot_type == "quadrant":
             try:
@@ -1281,6 +1311,8 @@ class MultigeneDashData(Resource):
                 , distance_metric
                 )
 
+            fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
+
             # Clustergram has a bug where the space where dendrograms should appear is still whitespace
             # Need to adjust the domains of those subplots if no clustering is required
             if not (cluster_genes or cluster_obs):
@@ -1328,10 +1360,12 @@ class MultigeneDashData(Resource):
             if stacked_violin:
                 fig = create_stacked_violin_plot(df
                     , groupby_filters
+                    , is_log10
                     )
             else:
                 fig = create_violin_plot(df
                     , groupby_filters
+                    , is_log10
                     )
 
             # Add jitter-based args (to make beeswarm plot)
