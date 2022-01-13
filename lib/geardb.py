@@ -1873,7 +1873,7 @@ class GeneCartCollection:
                 FROM gene_cart
                WHERE share_id = %s
         """
-
+        
         for share_id in share_ids:
             cursor.execute(qry, (share_id,))
 
@@ -1885,7 +1885,71 @@ class GeneCartCollection:
         conn.close()
         return self.carts
 
+    def get_by_user(self, user=None):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
 
+        qry = """
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+                FROM gene_cart
+               WHERE user_id = %s
+        """
+
+        cursor.execute(qry, (user.id,))
+
+        for row in cursor:
+            cart = self._row_to_cart_object(row)
+            #print("Adding cart with label: {0}".format(cart.label))
+            self.carts.append(cart)
+        
+        cursor.close()
+        conn.close()
+        return self.carts
+
+    def get_by_user_groups(self, user=None):
+        """
+        Put here as it will be needed in the future. User groups not yet supported.
+        """
+        return []
+
+    def get_domain(self):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = """
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+                FROM gene_cart
+               WHERE is_domain = 1
+        """
+        cursor.execute(qry)
+
+        for row in cursor:
+            cart = self._row_to_cart_object(row)
+            self.carts.append(cart)
+        
+        cursor.close()
+        conn.close()
+        return self.carts
+
+    def get_public(self):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = """
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+                FROM gene_cart
+               WHERE is_public = 1
+        """
+        cursor.execute(qry)
+
+        for row in cursor:
+            cart = self._row_to_cart_object(row)
+            self.carts.append(cart)
+        
+        cursor.close()
+        conn.close()
+        return self.carts
+    
 
 class LayoutMember:
     def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None, mg_grid_width=None):
