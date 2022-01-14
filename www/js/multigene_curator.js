@@ -768,9 +768,11 @@ $('#dataset').change(async function () {
       break;
     }
   }
+  $('#volcano_opt').prop("disabled", false);
   if (!hasTwoGroupCategory) {
     $('#volcano_opt').prop("disabled", true);
   }
+  $('#quadrant_opt').prop("disabled", false);
   if (!hasThreeGroupCategory) {
     $('#quadrant_opt').prop("disabled", true);
   }
