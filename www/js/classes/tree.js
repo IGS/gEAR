@@ -66,7 +66,7 @@ class GeneCartTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainGeneCarts, groupGeneCarts, userGeneCarts) {
+    }={}, domainGeneCarts, groupGeneCarts, userGeneCarts, sharedGeneCarts, publicGeneCarts) {
         super(args);
         this.domainGeneCarts = (domainGeneCarts) ? domainGeneCarts : [];
         this.userGeneCarts = (userGeneCarts) ? userGeneCarts : [] ;
@@ -89,7 +89,7 @@ class GeneCartTree extends Tree {
         $.each(this.domainGeneCarts, (_i, item) => {
             treeData.push({
                 'id': item.value,
-                'parent': 'domain_node',  // All carts private for now
+                'parent': 'domain_node',  
                 'text':item.text,
                 'type': 'genecart',
                 'a_attr': {
@@ -109,6 +109,43 @@ class GeneCartTree extends Tree {
                 }
             })
         });
+
+        $.each(this.groupGeneCarts, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'group_node',
+                'text':item.text,
+                'type': 'genecart',
+                'a_attr': {
+                    'class': "py-0",
+                }
+            })
+        });
+
+        $.each(this.sharedGeneCarts, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'shared_node',
+                'text':item.text,
+                'type': 'genecart',
+                'a_attr': {
+                    'class': "py-0",
+                }
+            })
+        });
+
+        $.each(this.publicGeneCarts, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'public_node',
+                'text':item.text,
+                'type': 'genecart',
+                'a_attr': {
+                    'class': "py-0",
+                }
+            })
+        });
+        
         this.treeData = treeData;
         return this.treeData;
     }
@@ -116,7 +153,6 @@ class GeneCartTree extends Tree {
     // Load all saved gene carts for the current user
     // TODO: Change based on gene cart manager page code
     generateTree () {
-
         this.generateTreeData();
 
         // Update existing tree or generate new tree if it doesn't exist
