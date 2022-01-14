@@ -1415,7 +1415,7 @@ class MultigeneDashData(Resource):
 
         if legend_title:
             fig.update_layout(
-                legened={
+                legend={
                     "text":legend_title
                 }
             )

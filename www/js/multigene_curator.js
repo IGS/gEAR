@@ -540,6 +540,8 @@ function loadDisplayConfigHtml (plotConfig) {
   $(`#${escapedPrimary}_primary`).prop('checked', true).click();
   $(`#${escapedSecondary}_secondary`).prop('checked', true).click();
 
+  $('#plot_title').val(plotConfig.plot_title);
+
   // Populate plot type-specific dropdowns and checkbox options
   switch ($('#plot_type_select').val()) {
     case 'dotplot':
@@ -1016,6 +1018,8 @@ $(document).on('click', '#create_plot', async () => {
   if ($('input[name="obs_secondary"]:checked').val() !== "none"){
     plotConfig.secondary_col = $('input[name="obs_secondary"]:checked').val();
   }
+
+  plotConfig.plot_title = $('#plot_title').val();
 
   // Add specific plotConfig options depending on plot type
   switch (plotType) {

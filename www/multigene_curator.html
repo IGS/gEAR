@@ -104,14 +104,13 @@
         </div>  <!-- end dataset_c -->
       </fieldset>
 
-      <div id="post_dataset_spinner" style="display:none;">
-        <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-        <span>Loading dataset information...</span>
-      </div>
-
       <!-- Plot type selection-->
       <fieldset class="form-group" id="plot_type_container">
         <legend for="plot_type_select">Step 2: Plot type selection</legend>
+        <div id="post_dataset_spinner" style="display:none;">
+          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+          <span>Loading dataset information...</span>
+        </div>
         <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
         <div class="form-row">
           <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
@@ -179,7 +178,7 @@
           <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
 
           <div class="form-group">
-            <label for="distance_select">Pairwise distance metric</label>
+            <label class="form-check-label" for="distance_select">Pairwise distance metric</label>
             <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
             <div class="form-row">
               <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
@@ -233,33 +232,33 @@
         </fieldset>
         <fieldset id="quadrant_options_container" style="display:none;">
           <div class="form-group">
-            <label for="quadrant_compare1_condition">Comparison condition 1</label>
+            <label class="form-check-label" for="quadrant_compare1_condition">Comparison condition 1</label>
             <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
             <div class="form-row">
               <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
             </div>
           </div>
           <div class="form-group">
-            <label for="quadrant_compare2_condition">Comparison condition 2</label>
+            <label class="form-check-label" for="quadrant_compare2_condition">Comparison condition 2</label>
             <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
             <div class="form-row">
               <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
             </div>
           </div>
           <div class="form-group">
-            <label for="quadrant_ref_condition">Reference condition</label>
+            <label class="form-check-label" for="quadrant_ref_condition">Reference condition</label>
             <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions. All conditions must come from the same category.</small>
             <div class="form-row">
               <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
             </div>
           </div>
           <div class="form-group">
-            <label for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
+            <label class="form-check-label" for="quadrant_foldchange_cutoff">Fold-change cutoff</label>
             <input id="quadrant_foldchange_cutoff" class="form-control w-25" type="number" value="2" min="0" aria-describedby="quadrant_foldchange_help">
             <small id="quadrant_foldchange_help" class="form-text text-muted">Choose the fold-change threshold that a query/ref comparison must exceed to be included. Will be converted to log2 in plot.</small>
           </div>
           <div class="form-group">
-            <label for="quadrant_fdr_cutoff">FDR cutoff</label>
+            <label class="form-check-label" for="quadrant_fdr_cutoff">FDR cutoff</label>
             <input id="quadrant_fdr_cutoff" class="form-control w-25" type="number" value="0.05" min="0" max="1" aria-describedby="quadrant_fdr_help">
             <small id="quadrant_fdr_help" class="form-text text-muted">Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.</small>
           </div>
@@ -276,14 +275,14 @@
 
         <fieldset id="volcano_options_container" style="display:none;">
           <div class="form-group">
-            <label for="volcano_query_condition">Query condition</label>
+            <label class="form-check-label" for="volcano_query_condition">Query condition</label>
             <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
             <div class="form-row">
               <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
             </div>
           </div>
           <div class="form-group">
-            <label for="volcano_ref_condition">Reference condition</label>
+            <label class="form-check-label" for="volcano_ref_condition">Reference condition</label>
             <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same category as query condition.</small>
             <div class="form-row">
               <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
@@ -328,12 +327,18 @@
         </fieldset><!-- end violin_options_container -->
 
         <div class="form-group" id="de_test_container">
-          <label for="de_test_select">Differential expression test</label>
+          <label class="form-check-label" for="de_test_select">Differential expression test</label>
           <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
           <select class="form-control" id="de_test_select" aria-describedby="de_test_help">
             <option value="t-test" selected="selected">Welch's t-test</option>
             <option value="rank">Wilcoxon rank-sum test</option>
           </select>
+        </div>
+
+        <div>
+          <label class="form-check-label" for="plot_title">Plot title</label>
+          <small id="plot_title_help" class="form-text text-muted">If left blank, plot will have a default title or no title.</small>
+          <input class="form-control col-6" id="plot_title" placeholder="Enter name of title.">
         </div>
       </fieldset> <!-- end options -->
 
@@ -397,16 +402,12 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label for="display_name">
-                New display name
-              </label>
+              <label for="display_name">New display name</label>
               <input class="form-control" id="display_name" placeholder="Enter name for saved display">
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" checked value="" id="save_as_default_check">
-              <label class="form-check-label" for="save_as_default_check">
-                Save display as default display for this dataset.
-              </label>
+              <label class="form-check-label" for="save_as_default_check">Save display as default display for this dataset.</label>
             </div>
             <br />
             <p id="saved_plot_confirmation" style="display:none;"></p>
@@ -494,7 +495,7 @@
 
     <script id="obs_primary_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Primary category split</label>
+        <label class="col-3 form-check-label">Primary category split</label>
         <label class="col-3" id="primary_order_label" style="display:none;">Sort Order</label>
       </div>
       <small id="primary_help" class="form-text text-muted">Determine primary category to split groups into. Optionally drag the groups to determine a specific order.</small>
@@ -519,7 +520,7 @@
 
     <script id="obs_secondary_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3">Secondary category split</label>
+        <label class="col-3 form-check-label">Secondary category split</label>
         <label class="col-3" id="secondary_order_label" style="display:none;">Sort Order</label>
       </div>
       <small id="secondary_help" class="form-text text-muted">Determine secondary category to split groups into. Optionally drag the groups to determine a specific order.</small>
@@ -549,7 +550,7 @@
     </script>
 
     <script id="obs_clusterbar_tmpl" type="text/x-jsrender">
-      <label>Cluster colorbars</label>
+      <label class="form-check-label">Cluster colorbars</label>
       <small id="clusterbar_help" class="form-text text-muted">Check the categories you wish to show a cluster colorbar for in the heatmap.</small>
       {{props}}
       <div class="form-check" aria-describedby="clusterbar_help">
@@ -561,7 +562,7 @@
 
     <!-- Declare a JsRender template, in a script block: -->
     <script id="obs_filters_tmpl" type="text/x-jsrender">
-      <label>Groups to include</label>
+      <label class="form-check-label">Groups to include</label>
       <small id="filter_by_help" class="form-text text-muted">Select which groups for a category to include when making the plot, or click "All" to use all groups.</small>
       {{props}}
         {{!-- key is categorical observation, prop is the list of unique categories --}}
