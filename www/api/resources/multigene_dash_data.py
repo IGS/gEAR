@@ -213,6 +213,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     fig.data[-1]["colorbar"]["y"] = 0.5
     fig.data[-1]["colorbar"]["yanchor"] = "middle"
     fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
+    fig.data[-1]["colorbar"]["title"] = "Log10 Expr." if is_log10 else "Log2 Expr."
 
     # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
     # Makes a small space b/t the genes and groups tracks
