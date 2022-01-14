@@ -66,18 +66,24 @@ class GeneCartTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainGeneCarts, userGeneCarts) {
+    }={}, domainGeneCarts, groupGeneCarts, userGeneCarts) {
         super(args);
         this.domainGeneCarts = (domainGeneCarts) ? domainGeneCarts : [];
         this.userGeneCarts = (userGeneCarts) ? userGeneCarts : [] ;
+        this.groupGeneCarts = (groupGeneCarts) ? groupGeneCarts : [];
+        this.sharedGeneCarts = (sharedGeneCarts) ? sharedGeneCarts : [] ;
+        this.publicGeneCarts = (publicGeneCarts) ? publicGeneCarts : [] ;
 
     }
 
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'#', 'text':"Highlighted gene carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your gene carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':"Group gene carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':"Gene carts shared with you", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'public_node', 'parent':'#', 'text':"Public carts from other users", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {

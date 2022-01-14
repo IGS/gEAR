@@ -451,8 +451,9 @@ function load_gene_carts(cart_share_id) {
             data: { 'session_id': session_id, 'share_id': cart_share_id },
         dataType: 'json',
         success(data, textStatus, jqXHR) { //source https://stackoverflow.com/a/20915207/2900840
-            const domain_gene_carts = [];
             const user_gene_carts = [];
+            const domain_gene_carts = [];
+            
 
             let permalink_cart_id = null
             let permalink_cart_label = null
