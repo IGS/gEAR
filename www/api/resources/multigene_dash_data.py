@@ -221,7 +221,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # Information that will help posittion the "groups" colorbars
     num_colorbars = len(col_group_markers.keys())
     max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
-    curr_colorbar_y = max_heatmap_domain
+    curr_colorbar_y = 0
 
     for key, val in col_group_markers.items():
         # number of elements in z array needs to equal number of observations in x-axis
@@ -254,8 +254,8 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
                 , x=1
                 , xpad=100  # spaced far enough from the expression bar.  Needs to be adjusted for gene display panels.
                 , y=curr_colorbar_y   # Align with bottom of heatmap
-                , yanchor="top"
-                , len=1.1/num_colorbars
+                , yanchor="bottom"
+                , len=1/num_colorbars
                 )
             , colorscale=colorscale
             , name="clusterbar"
@@ -267,7 +267,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
         fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
 
         next_bar_position += 4 # add enough gap to space the "group" tracks
-        curr_colorbar_y -= (max_heatmap_domain * 1/num_colorbars)
+        curr_colorbar_y += (max_heatmap_domain * 1/num_colorbars)
 
     # Shift genes dendropgram to account for new cluster cols
     fig.layout[gene_dendro_axis]["range"] = (min(fig.layout[gene_axis]["tickvals"]), max(fig.layout[gene_axis]["tickvals"]))
