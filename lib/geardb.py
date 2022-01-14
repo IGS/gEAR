@@ -1655,7 +1655,7 @@ class GeneCollection:
 
 class GeneCart:
     def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None, organism_id=None,
-                 genes=None, share_id=None, is_public=None, date_added=None):
+                 genes=None, share_id=None, is_public=None, is_domain=None, date_added=None):
         self.id = id
         self.user_id = user_id
         self.gctype = gctype
@@ -1664,6 +1664,7 @@ class GeneCart:
         self.ldesc = ldesc
         self.share_id = share_id
         self.is_public = is_public
+        self.is_domain = is_domain
         self.date_added = date_added
 
         if not share_id:
@@ -1726,9 +1727,12 @@ class GeneCart:
         if self.id is None:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
-            gc_insert_qry = "INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, gctype) VALUES (%s, %s, %s, %s, %s, %s)"
+            gc_insert_qry = """
+                            INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, is_domain, gctype) 
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
 
-            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public, self.gctype))
+            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public, self.is_domain, self.gctype))
             self.id = cursor.lastrowid
 
             for gene in self.genes:
@@ -1801,6 +1805,9 @@ class GeneCart:
         if 'is_public' in json_obj:
             self.is_public = json_obj['is_public']
 
+        if 'is_domain' in json_obj:
+            self.is_domain = json_obj['is_domain']
+
         if 'genes' in json_obj:
             self.genes = list()
 
@@ -1833,6 +1840,7 @@ class GeneCartCollection:
                     ldesc=row['ldesc'],
                     share_id=row['share_id'],
                     is_public=row['is_public'],
+                    is_domain=row['is_domain'],
                     date_added=row['date_added'].isoformat()
                 )
         return cart
@@ -1842,7 +1850,7 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
                 FROM gene_cart
                WHERE id = %s
         """
@@ -1869,7 +1877,7 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
                 FROM gene_cart
                WHERE share_id = %s
         """
@@ -1890,7 +1898,7 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
                 FROM gene_cart
                WHERE user_id = %s
         """
@@ -1917,7 +1925,7 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
                 FROM gene_cart
                WHERE is_domain = 1
         """
@@ -1936,7 +1944,7 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
                 FROM gene_cart
                WHERE is_public = 1
         """

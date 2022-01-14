@@ -1,7 +1,7 @@
 "use strict";
 
 class GeneCart {
-    constructor ({id, session_id, label, organism_id, share_id, is_public,
+    constructor ({id, session_id, label, organism_id, share_id, is_public, is_domain,
                   genes = [], gctype, ldesc} = {}) {
         this.id = id;
         this.session_id = session_id;
@@ -9,6 +9,7 @@ class GeneCart {
         this.organism_id = organism_id;
         this.share_id = share_id;
         this.is_public = is_public;
+        this.is_domain = is_domain;
         this.genes = genes;
         this.gctype = gctype;
         this.ldesc = ldesc;
