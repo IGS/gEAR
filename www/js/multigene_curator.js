@@ -761,7 +761,8 @@ $('#dataset').change(async function () {
   for (const category in obsLevels) {
     if (obsLevels[category].length >= 3) {
       hasThreeGroupCategory = true;
-    } else if (obsLevels[category].length >= 2) {
+    }
+    if (obsLevels[category].length >= 2) {
       hasTwoGroupCategory = true;
     }
     if (hasTwoGroupCategory && hasThreeGroupCategory) {
