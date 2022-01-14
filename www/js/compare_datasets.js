@@ -330,22 +330,16 @@ $(document).on('change', '.js-cat-check', function (e) {
   // Expand collaspable since category was focused on
   category_collaspable.collapse('show');
 
-  // Update the selected conditons div and the "axis label" input boxes
-  const template = $.templates("#selected_conditions_list");
-
+  // Update the "axis label" input boxes
   if ($("#condition_x_tab").hasClass("active")) {
     const curr_condition_x = update_selected_conditions();
     const sanitized_condition_x = sanitize_condition(curr_condition_x);
-    const htmlOutput = template.render(sanitized_condition_x);
-    $('#selected_x_condition').html(htmlOutput);
     $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
 
   } else {
     // on #condition_y_tab
     const curr_condition_y = update_selected_conditions();
     const sanitized_condition_y = sanitize_condition(curr_condition_y);
-    const htmlOutput = template.render(sanitized_condition_y);
-    $('#selected_y_condition').html(htmlOutput);
     $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
   }
 })
@@ -397,21 +391,16 @@ $(document).on('change', '.js-group-check', function(e) {
     });
   }
 
-  // Update the selected conditons div and the "axis label" input boxes
-  const template = $.templates("#selected_conditions_list");
+  // Update the "axis label" input boxes
   if ($("#condition_x_tab").hasClass("active")) {
     const curr_condition_x = update_selected_conditions();
     const sanitized_condition_x = sanitize_condition(curr_condition_x);
-    const htmlOutput = template.render(sanitized_condition_x);
-    $('#selected_x_condition').html(htmlOutput);
     $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
 
   } else {
     // on #condition_y_tab
     const curr_condition_y = update_selected_conditions();
     const sanitized_condition_y = sanitize_condition(curr_condition_y);
-    const htmlOutput = template.render(sanitized_condition_y);
-    $('#selected_y_condition').html(htmlOutput);
     $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
   }
 })
