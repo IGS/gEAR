@@ -588,52 +588,56 @@ function loadDisplayConfigHtml (plotConfig) {
 
 // Load all saved gene carts for the current user
 function loadGeneCarts () {
-  const d = new $.Deferred();
+    const d = new $.Deferred();
 
-  if (!session_id) {
-    // User is not logged in. Hide gene carts container
-    $('#gene_cart_container').hide();
-    d.resolve();
-  } else {
-    $.ajax({
-      url: './cgi/get_user_gene_carts.cgi',
-      type: 'post',
-      data: { session_id },
-      dataType: 'json',
-      success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
-        const domainGeneCarts = [];
-        const userGeneCarts = [];
-
-        if (data.gene_carts.length > 0) {
-          // User has some profiles
-          $.each(data.gene_carts, (_i, item) => {
-            userGeneCarts.push({ value: item.id, text: item.label });
-          });
-        }
-
-          // Now, add public gene carts
-        if (data.domain_gene_carts.length > 0) {
-          $.each(data.domain_gene_carts, (_i, item) => {
-            domainGeneCarts.push({ value: item.id, text: item.label });
-          });
-        }
-
-        geneCartTree.domainGeneCarts = domainGeneCarts;
-        geneCartTree.userGeneCarts = userGeneCarts;
-        geneCartTree.generateTree();
-
-        if (user_gene_carts || domain_gene_carts) {
-          $('#gene_cart_container').show();
-        }
+    if (!session_id) {
+        // User is not logged in. Hide gene carts container
+        $('#gene_cart_container').hide();
         d.resolve();
-      },
-      error(_jqXHR, _errorThrown) {
-        // display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-        d.fail();
-      }
-    });
-  }
-  d.promise();
+    } else {
+        $.ajax({
+            url: './cgi/get_user_gene_carts.cgi',
+            type: 'post',
+            data: { session_id },
+            dataType: 'json',
+            success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
+                const carts = {};
+                let cart_types = ['domain', 'user', 'group', 'shared', 'public'];
+                let carts_found = false;
+
+                for (const ctype of cart_types) {
+                    carts[ctype] = [];
+
+                    if (data[ctype + '_carts'].length > 0) {
+                        carts_found = true;
+
+                        //User has some profiles
+                        $.each(data[ctype + '_carts'], (_i, item) => {
+                            carts[ctype].push({value: item['id'], text: item['label'] });
+                        });
+                    }
+                }
+
+                geneCartTree.domainGeneCarts = carts['domain'];
+                geneCartTree.userGeneCarts = carts['user'];
+                geneCartTree.groupGeneCarts = carts['group'];
+                geneCartTree.sharedGeneCarts = carts['shared'];
+                geneCartTree.publicGeneCarts = carts['public'];
+                geneCartTree.generateTree();
+
+                if (! carts_found ) {
+                    $('#gene_cart_container').show();
+                }
+                
+                d.resolve();
+            },
+            error(_jqXHR, _errorThrown) {
+                // display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+                d.fail();
+            }
+        });
+    }
+    d.promise();
 }
 
 function saveGeneCart () {
