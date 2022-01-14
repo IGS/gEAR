@@ -62,14 +62,36 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 #### Multigene curator
 
 * Ensure plot is loaded when dataset is chosen (loaded from saved displays or default volcano plot)
+* Volcanoes should be disabled when no categories have 2+ groups
+* Quadrants should be disabled when no categories have 3+ groups
 * Create a heatmap
-  * Click some genes to bring up secondary violin plot
-  * Cluster observations too
-  * Second heatmap with axes flipped
+  * Must have 2+ genes
+  * Alt heatmap with cluster observations checkbox
+  * Alt heatmap with cluster genes checkbox
+  * Alt heatmap with axes flipped
+  * Distance metric for clustering observations/genes
 * Create a violin
+  * Stacked violin plot
+  * With jitter
 * Create a volcano
+  * Categories should be not available from select if they have <2 groups
+  * REQUIRED - query/ref conditions
+    * Window alert if not chosen or category is different
+  * DE Algorithm
+  * Annotate non-signficant p-values
+  * Use adjusted p-vals
 * Create a dotplot
 * Create a quadrant plot
+  * Categories should be not available from select if they have <3 groups
+  * REQUIRED - query1/query2/ref conditions
+    * Window alert if not chosen or category is different
+  * DE Algorithm
+  * Foldchange cutuff
+  * FDR cutoff
+* Misc.
+  * Primary category
+  * Secondary category (may need to choose a new dataset)
+  * Sort category (either primary or secondary)
 * Load an existing plot
 * Save a plot
 * Save a new gene cart

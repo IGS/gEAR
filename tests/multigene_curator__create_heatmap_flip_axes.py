@@ -90,10 +90,10 @@ def main():
         # Not worrying about distance metric - Euclidean is default
 
         # Click checkbox to flip axes
-        advanced_options_button = mg_test.browser.find_element(By.ID, "advanced_options_button")
-        advanced_options_button.click()
-        flip_axes_checkbox = mg_test.browser.find_element(By.ID, "flip_axes")
-        flip_axes_checkbox.click()
+        if mg_test.test_flip_axes():
+            results.append({"success": 1, "label": "'Flip axes' checkbox set"})
+        else:
+            results.append({"success": 0, "label": "'Flip axes' checkbox set"})
 
         # Create Plot
         if mg_test.test_plot_creation():
