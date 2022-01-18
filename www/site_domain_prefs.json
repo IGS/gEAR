@@ -4,6 +4,7 @@
     "domain_url":"https://umgear.org",
     "enabled_plugins": {"deafness_gene_annotation": ["index.html"]},
     "links_out": {
-        "DVD": true
+        "DVD": true,
+        "HomoloGene": true
     }
 }

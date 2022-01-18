@@ -48,15 +48,23 @@ def _read_domain_label():
     json_conf = _read_site_domain_config()
     return json_conf['domain_label']
 
+def _read_domain_links_out():
+    json_conf = _read_site_domain_config()
+    return json_conf['links_out']
+
 def _read_domain_short_label():
     json_conf = _read_site_domain_config()
     return json_conf['domain_short_display_label']
 
+
+
 # For those functional differences we have depending on the site domain
 #  Current values are gear, nemo.  Value kept in www/site_domain_prefs.json
+# TODO: each of these, as currently implemented, causes file I/O and shouldn't.
 this.domain_url = _read_domain_url()
 this.domain_label = _read_domain_label()
 this.domain_short_label = _read_domain_short_label()
+this.links_out = _read_domain_links_out()
 
 def get_dataset_by_id(id=None, include_shape=None):
     """
@@ -1517,15 +1525,21 @@ class Gene:
         self.dbxrefs.append({'source': 'PubMed', 'identifier': self.gene_symbol,
                              'url': "http://www.ncbi.nlm.nih.gov/pubmed/?term={0}".format(self.gene_symbol)})
 
+        # Does the user want Homologene links?
+        if 'HomoloGene' in this.links_out and this.links_out['HomoloGene'] is True:
+            hg_url = 'https://www.ncbi.nlm.nih.gov/homologene/?term=' + self.gene_symbol.upper()
+            self.dbxrefs.append({'source': 'HomoloGene', 'identifier': self.gene_symbol, 'url': hg_url})
+        
         if this.domain_label == 'gear':
             # Add one for the SHIELD
             self.dbxrefs.append({'source': 'SHIELD', 'identifier': self.gene_symbol, 'url': None})
 
             # Hack to add DVD links until they have SSL enabled and we can use their API instead
-            dvd_genes = ["ACTG1","ADCY1","ADGRV1","GPR98","AIFM1","ALMS1","ATP2B2","ATP6V1B1","BDP1","BSND","C10orf2","CABP2","CACNA1D","CCDC50","CD164","CDC14A","CDH23","CEACAM16","CIB2","CISD2","CLDN14","CLIC5","CLPP","CLRN1","COCH","COL11A1","COL11A2","COL2A1","COL4A3","COL4A4","COL4A5","COL4A6","COL9A1","COL9A2","CRYM","DCDC2","DFNA5","DFNB31 (WHRN)","DFNB59 (PJVK)","DIABLO","DIAPH1","DIAPH3","DSPP","EDN3","EDNRB","ELMOD3","EPS8","EPS8L2","ESPN","ESRRB","EYA1","EYA4","FAM65B","FGF3","FGFR1","FGFR2","FOXI1","GATA3","GIPC3","GJB2","GJB3","GJB6","GPSM2","GRHL2","GRXCR1","GRXCR2","HARS2","HGF","HOMER2","HSD17B4","ILDR1","KARS","KCNE1","KCNJ10","KCNQ1","KCNQ4","KITLG","LARS2","LHFPL5","LOXHD1","LOXL3","LRTOMT","MARVELD2","MCM2","MET","MIR96","MITF","MSRB3","MT-RNR1","MT-TL1","MT-TS1","MYH14","MYH9","MYO15A","MYO3A","MYO6","MYO7A","NARS2","NLRP3","OPA1","OSBPL2","OTOA","OTOF","OTOG","OTOGL","P2RX2","PAX3","PCDH15","PDZD7","PEX1","PEX6","PNPT1","POLR1C","POLR1D","POU3F4","POU4F3","PRPS1","PTPRQ","RDX","ROR1","S1PR2","SERPINB6","SIX1","SIX5","SLC17A8","SLC22A4","SLC26A4","SLC26A5","SLITRK6","SMPX","SNAI2","SOX10","STRC","SYNE4","TBC1D24","TBX1","TCOF1","TECTA","TECTB","TIMM8A","TJP2","TMC1","TMEM132E","TMIE","TMPRSS3","TNC","TPRN","TRIOBP","TSPEAR","USH1C","USH1G","USH2A","WFS1"]
-            if self.gene_symbol.upper() in dvd_genes:
-                dvd_url = 'http://deafnessvariationdatabase.org/gene/' + self.gene_symbol.upper()
-                self.dbxrefs.append({'source': 'DVD', 'identifier': self.gene_symbol, 'url': dvd_url, 'title': 'Deafness Variation Database'})
+            if 'DVD' in this.links_out and this.links_out['DVD'] is True:
+                dvd_genes = ["ACTG1","ADCY1","ADGRV1","GPR98","AIFM1","ALMS1","ATP2B2","ATP6V1B1","BDP1","BSND","C10orf2","CABP2","CACNA1D","CCDC50","CD164","CDC14A","CDH23","CEACAM16","CIB2","CISD2","CLDN14","CLIC5","CLPP","CLRN1","COCH","COL11A1","COL11A2","COL2A1","COL4A3","COL4A4","COL4A5","COL4A6","COL9A1","COL9A2","CRYM","DCDC2","DFNA5","DFNB31 (WHRN)","DFNB59 (PJVK)","DIABLO","DIAPH1","DIAPH3","DSPP","EDN3","EDNRB","ELMOD3","EPS8","EPS8L2","ESPN","ESRRB","EYA1","EYA4","FAM65B","FGF3","FGFR1","FGFR2","FOXI1","GATA3","GIPC3","GJB2","GJB3","GJB6","GPSM2","GRHL2","GRXCR1","GRXCR2","HARS2","HGF","HOMER2","HSD17B4","ILDR1","KARS","KCNE1","KCNJ10","KCNQ1","KCNQ4","KITLG","LARS2","LHFPL5","LOXHD1","LOXL3","LRTOMT","MARVELD2","MCM2","MET","MIR96","MITF","MSRB3","MT-RNR1","MT-TL1","MT-TS1","MYH14","MYH9","MYO15A","MYO3A","MYO6","MYO7A","NARS2","NLRP3","OPA1","OSBPL2","OTOA","OTOF","OTOG","OTOGL","P2RX2","PAX3","PCDH15","PDZD7","PEX1","PEX6","PNPT1","POLR1C","POLR1D","POU3F4","POU4F3","PRPS1","PTPRQ","RDX","ROR1","S1PR2","SERPINB6","SIX1","SIX5","SLC17A8","SLC22A4","SLC26A4","SLC26A5","SLITRK6","SMPX","SNAI2","SOX10","STRC","SYNE4","TBC1D24","TBX1","TCOF1","TECTA","TECTB","TIMM8A","TJP2","TMC1","TMEM132E","TMIE","TMPRSS3","TNC","TPRN","TRIOBP","TSPEAR","USH1C","USH1G","USH2A","WFS1"]
+                if self.gene_symbol.upper() in dvd_genes:
+                    dvd_url = 'http://deafnessvariationdatabase.org/gene/' + self.gene_symbol.upper()
+                    self.dbxrefs.append({'source': 'DVD', 'identifier': self.gene_symbol, 'url': dvd_url, 'title': 'Deafness Variation Database'})
 
         elif this.domain_label == 'nemo':
             # Add one for UCSC Cell Browser, BrainSpan

@@ -29,8 +29,10 @@ class FunctionalAnnotationPanel {
 
           This currently isn't working because the DVD doesn't support SSL.  Leaving 
           this here to finish once they do.
+
+          Currently being handled instead within geardb.Gene.load_dbxref_links()
         */
-        var url = 'http://deafnessvariationdatabase.org/api?type=gene&method=exists&format=bool&terms=' + ad.gene_symbol;
+        const url = 'http://deafnessvariationdatabase.org/api?type=gene&method=exists&format=bool&terms=' + ad.gene_symbol;
 
         // Just trying two different methods.
         if (label == 'DVD2') {
