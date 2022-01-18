@@ -163,6 +163,16 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
         , row=1
         , col=1)
 
+    x_title = groupby_filters[0]
+    if len(groupby_filters) > 1:
+        x_title += " and {}".format(groupby_filters[1])
+    fig.update_xaxes(
+        title=x_title.capitalize()
+    )
+    fig.update_yaxes(
+        title="Genes"
+    )
+
     create_dot_legend(fig, legend_col)
 
     return fig
@@ -343,13 +353,16 @@ def add_gene_annotations_to_quadrant_plot(fig, gene_symbols_list) -> None:
     """Add annotations to point to each desired gene within the quadrant plot. Edits in-place."""
     genes_not_found = set()
     genes_none_none = set()
+
     for gene in gene_symbols_list:
+        gene_found = False
         # Iterate through all the quadrant traces
         for data_idx in range(len(fig.data)):
             gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
                 if fig.data[data_idx].text[idx] == gene]
 
             for idx in gene_indexes:
+                gene_found = True
 
                 # Do not add annotations at the zero-point of the plot, since they will overlap
                 if "NONE/NONE" in fig.data[data_idx].name:
@@ -372,9 +385,10 @@ def add_gene_annotations_to_quadrant_plot(fig, gene_symbols_list) -> None:
                         , xref="x"
                         , yref="y"
                     )
-            else:
-                # gene wasn't found in filtered plot data
-                genes_not_found.add(gene)
+
+        if not gene_found:
+            # gene wasn't found in filtered plot data
+            genes_not_found.add(gene)
     return genes_not_found, genes_none_none
 
 
@@ -569,6 +583,8 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
         , row_titles=primary_groups
         , column_titles=secondary_groups if len(secondary_groups) else None
         , shared_yaxes="all"    # to keep the scale the same for all row facets
+        , x_title="Genes"
+        , y_title="Log10 Expression" if is_log10 else "Log2 Expression"
         )
 
     groupby = ["gene_symbol"]
@@ -613,7 +629,7 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
 
     # Color the row annotations with the fill color
     # Also, row title annotations are on the right currently.  Reposition them to the left side
-    # Am attempting to do this based on the assumption that row facet titles will never have a y-position of 1
+    # Am attempting to do this based on the assumption that row facet titles will never have a y-position of 1 or have certain text shared with the axes titles
     fig.for_each_annotation(
         lambda a: a.update(
             font=dict(color=color_map[a.text])
@@ -623,16 +639,18 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
             , font_size=12
             , borderpad=5   # Unsure if this does anything but it should ensure the row titles don't come too close to the edge
         )
-        , selector=lambda a: not a.y == 1
+        , selector=lambda a: not (a.y == 1 or a.text == "Genes" or a.text.endswith("Expression"))
     )
 
-
+    plot_title = groupby_filters[0]
+    if len(groupby_filters) > 1:
+        plot_title += " and {}".format(groupby_filters[1])
     # Thin out the gap between violins. Default is 0.3 for both values.
     fig.update_layout(
         violingap=0.15
         , violingroupgap=0
         , title={
-            "text":"Log10 Gene Expression" if is_log10 else "Log2 Gene Expression"
+            "text":plot_title.capitalize()
             ,"x":0.5
             ,"xref":"paper"
             ,"y":0.9
@@ -706,6 +724,17 @@ def create_violin_plot(df, groupby_filters, is_log10=False):
             ,"xref":"paper"
             ,"y":0.9
         }
+    )
+    x_title = "Genes"
+    if groupby_filters[0]:
+        x_title += " grouped by {}".format(groupby_filters[0])
+    if len(groupby_filters) > 1:
+        x_title += " and {}".format(groupby_filters[1])
+    fig.update_xaxes(
+        title=x_title
+    )
+    fig.update_yaxes(
+        title="Log10 Expression" if is_log10 else "Log2 Expression"
     )
     return fig
 
@@ -1250,6 +1279,10 @@ class MultigeneDashData(Resource):
             fig = create_dot_plot(df, groupby_filters, is_log10, title)
 
         elif plot_type == "quadrant":
+            # Get list of normalized genes before dataframe filtering takes place
+            if gene_symbols:
+                dataset_genes = adata.var['gene_symbol'].unique().tolist()
+                normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
             try:
                 key, control_val, compare1_val, compare2_val = validate_quadrant_conditions(ref_condition, compare_group1, compare_group2)
                 df = prep_quadrant_dataframe(selected
@@ -1271,16 +1304,13 @@ class MultigeneDashData(Resource):
 
             fig = create_quadrant_plot(df, control_val, compare1_val, compare2_val)
             # Annotate selected genes
-            if gene_symbols:
-                dataset_genes = df['gene_symbol'].unique().tolist()
-                normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
-                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
-                if genes_not_found:
-                    success = 3
-                    message += "<li>One or more genes were did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
-                if genes_none_none:
-                    success = 3
-                    message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
+            genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
+            if genes_not_found:
+                success = 3
+                message += "<li>One or more genes did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
+            if genes_none_none:
+                success = 3
+                message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
 
 
         elif plot_type == "heatmap":
