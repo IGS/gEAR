@@ -49,6 +49,7 @@
       </div>
       <div id='main_row' class="row">
         <div id="sidebar" class="col-2">
+          <button type="button" class="btn btn-sm btn-outline-purple float-right position-relative" style="z-index: 1;" data-toggle="modal" data-target="#instructions_modal" id="instructions_btn">Click for Help</button>
           <div class="filter_block">
             <div class="form-group dropdown" id="dataset_c">
               <div id="pre_dataset_spinner" style="display:none;">
@@ -182,9 +183,9 @@
                 </p>
               </div>
               <div id='error_loading_c'>
-                <p>
-                  There was a problem loading this comparison graph.  Please
-                  <a href='./contact.html' alt='Submit for help' class="text-primary">submit for help</a> with the
+                <p class="alert alert-danger">
+                  There was a problem loading this comparison graph.  Please check the error message below and confirm plot selections are valid. If you need additional help, please
+                  <a href='./contact.html' alt='Submit for help' class="text-primary alert-link">submit for help</a> with the
                   following information:
                 </p>
                 <div class="code">
@@ -289,6 +290,62 @@
     </footer>
   </div> <!-- /body_c -->
 
+    <!-- Instructions modal -->
+    <div class="modal fade" id="instructions_modal" tabindex="-1" role="dialog" aria-labelledby="instructions_label" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="instructions_label">Instructions</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <h3 class='initial_instructions'>Instructions</h3>
+            <div class='initial_instructions'>
+              <p>
+                Choose a dataset and condition for each axis using the controls on the left.
+              </p>
+              <p>
+                For the x-axis and y-axis conditions, you are free to include and exclude any groups from the categorical observations. But if you are performing a significance test between then two conditions, then ensure that just a single differing group is chosen for each condition.
+              </p>
+              <p>
+                Some observation metadata may be listed as non-categorical, and will be excluded from consideration.  If some observations (such as sample ID or timepoint) are erroneously in this list, it may be because they were loaded in such a way that the dataframe reader interpreted them as continuous (numerical) datatypes.
+              </p>
+              <p>
+                <a href='./contact.html' class="text-primary">Feedback</a> on the dataset comparison tool is welcome.
+              </p>
+            </div>
+
+            <h3>Plot controls</h3>
+            <div class='selection_instructions'>
+              <p>
+                Hover over the plot and you'll see buttons in the upper right, which control
+                actions like zooming and selection of points.
+              </p>
+              <dl>
+                <dt>Control icons</dt>
+                <dd>
+                  <div><img class='img-fluid' src='img/instructions_comparison_controls.png' /></div>
+                  The Box and Lasso selection tools allow you to click and drag a shape around
+                  genes of interest.
+                </dd>
+                <dt>Selecting genes</dt>
+                <dd>
+                  <div><img class='img-fluid' src='img/instructions_freeform_selection.png' /></div>
+                  After you select your desired genes, a list of them all will
+                  be displayed.
+                </dd>
+              </dl>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div> <!-- end save_genes_modal-->
+
   <!-- JSRender templates -->
   <script id="dataset_condition_options" type="text/x-jsrender">
     {{props itemVar="~category"}}
@@ -323,7 +380,6 @@
     {{/for}}
     </ul>
   </script>
-
 
         <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
