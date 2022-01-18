@@ -37,7 +37,7 @@ const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 
 // color palettes
-const continuous_palettes = [
+const continuousPalettes = [
     {
         label: "Multi-color scales",
         options: [
@@ -61,7 +61,7 @@ const continuous_palettes = [
         ],
     },
 ];
-const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
+const discretePalettes = ["alphabet", "vivid", "light24", "dark24"];
 
 window.onload=() => {
     // Hide further configs until a dataset is chosen.
@@ -600,33 +600,33 @@ function loadGeneCarts () {
             dataType: 'json',
             success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
                 const carts = {};
-                let cart_types = ['domain', 'user', 'group', 'shared', 'public'];
-                let carts_found = false;
+                const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
+                let cartsFound = false;
 
-                for (const ctype of cart_types) {
+                for (const ctype of cartTypes) {
                     carts[ctype] = [];
 
-                    if (data[ctype + '_carts'].length > 0) {
-                        carts_found = true;
+                    if (data[`${ctype}_carts`].length > 0) {
+                        cartsFound = true;
 
                         //User has some profiles
-                        $.each(data[ctype + '_carts'], (_i, item) => {
-                            carts[ctype].push({value: item['id'], text: item['label'] });
+                        $.each(data[`${ctype}_carts`], (_i, item) => {
+                            carts[ctype].push({value: item.id, text: item.label });
                         });
                     }
                 }
 
-                geneCartTree.domainGeneCarts = carts['domain'];
-                geneCartTree.userGeneCarts = carts['user'];
-                geneCartTree.groupGeneCarts = carts['group'];
-                geneCartTree.sharedGeneCarts = carts['shared'];
-                geneCartTree.publicGeneCarts = carts['public'];
+                geneCartTree.domainGeneCarts = carts.domain;
+                geneCartTree.userGeneCarts = carts.user;
+                geneCartTree.groupGeneCarts = carts.group;
+                geneCartTree.sharedGeneCarts = carts.shared;
+                geneCartTree.publicGeneCarts = carts.public;
                 geneCartTree.generateTree();
 
-                if (! carts_found ) {
+                if (! cartsFound ) {
                     $('#gene_cart_container').show();
                 }
-                
+
                 d.resolve();
             },
             error(_jqXHR, _errorThrown) {
