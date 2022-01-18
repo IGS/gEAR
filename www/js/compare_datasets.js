@@ -131,7 +131,7 @@ function download_selected_genes() {
   const x_label = $('#x_label').val().length ? $('#x_label').val() : "x-condition";
   const y_label = $('#y_label').val().length ? $('#y_label').val() : "y-condition";
 
-  const file_contents =
+  let file_contents =
       $("#log_base").val() == "raw"
     ? "gene_symbol\tp-value\tfold change\t"
   + x_label + "\t"
@@ -330,23 +330,14 @@ $(document).on('change', '.js-cat-check', function (e) {
   // Expand collaspable since category was focused on
   category_collaspable.collapse('show');
 
-  // Update the selected conditons div and the "axis label" input boxes
-  const template = $.templates("#selected_conditions_list");
-
+  // Update the "axis label" input boxes
   if ($("#condition_x_tab").hasClass("active")) {
     const curr_condition_x = update_selected_conditions();
-    const sanitized_condition_x = sanitize_condition(curr_condition_x);
-    const htmlOutput = template.render(sanitized_condition_x);
-    $('#selected_x_condition').html(htmlOutput);
-    $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
-
+    $('#x_label').val(stringify_all_conditions(curr_condition_x));
   } else {
     // on #condition_y_tab
     const curr_condition_y = update_selected_conditions();
-    const sanitized_condition_y = sanitize_condition(curr_condition_y);
-    const htmlOutput = template.render(sanitized_condition_y);
-    $('#selected_y_condition').html(htmlOutput);
-    $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
+    $('#y_label').val(stringify_all_conditions(curr_condition_y));
   }
 })
 
@@ -397,24 +388,29 @@ $(document).on('change', '.js-group-check', function(e) {
     });
   }
 
-  // Update the selected conditons div and the "axis label" input boxes
-  const template = $.templates("#selected_conditions_list");
+  // Update the "axis label" input boxes
   if ($("#condition_x_tab").hasClass("active")) {
     const curr_condition_x = update_selected_conditions();
-    const sanitized_condition_x = sanitize_condition(curr_condition_x);
-    const htmlOutput = template.render(sanitized_condition_x);
-    $('#selected_x_condition').html(htmlOutput);
-    $('#x_label').val(JSON.stringify(sanitized_condition_x).replace("{", "").replace("}", ""));
-
+    $('#x_label').val(stringify_all_conditions(curr_condition_x));
   } else {
     // on #condition_y_tab
     const curr_condition_y = update_selected_conditions();
-    const sanitized_condition_y = sanitize_condition(curr_condition_y);
-    const htmlOutput = template.render(sanitized_condition_y);
-    $('#selected_y_condition').html(htmlOutput);
-    $('#y_label').val(JSON.stringify(sanitized_condition_y).replace("{", "").replace("}", ""));
+    $('#y_label').val(stringify_all_conditions(curr_condition_y));
   }
 })
+
+// Get all chosen condition groups and return as a semicolon-joined string
+function stringify_all_conditions(condition) {
+  const all_conditions = []
+  for (const property in condition) {
+    // If no groups for an observation are selected, delete filter
+    if (condition[property].length) {
+      all_conditions.push(...condition[property])
+
+    }
+  }
+  return all_conditions.join(";");
+}
 
 function sanitize_condition(condition) {
   const sanitized_condition = {}

@@ -23,6 +23,10 @@ img#submit_wait_indicator {
     margin-right: 10px;
 }
 
+.fa-plus {
+  color: var(--banner-bg-color);
+}
+
 .elevation {
   -webkit-box-shadow: 0 4px 6px hsla(281, 63%, 15%, .1), 0 5px 15px hsla(281, 63%, 15%, 0.1) !important;
   box-shadow: 0 4px 6px hsla(281, 63%, 15%, .1), 0 5px 15px hsla(281, 63%, 15%, 0.1) !important;
@@ -54,14 +58,14 @@ img#submit_wait_indicator {
 }
 
 .ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active, a.ui-button:active, .ui-button:active, .ui-button.ui-state-active:hover {
-  border: 1px solid #401362;
-  background: #401362;
+  border: 1px solid var(---banner-bg-color);
+  background: var(---banner-bg-color);
   font-weight: normal;
   color: #ffffff;
 }
 
 .purple {
-  background-color: #401362;
+  background-color: var(---banner-bg-color);
 }
 
 .btn-purple {
@@ -71,10 +75,8 @@ img#submit_wait_indicator {
 }
 
 .btn-purple:hover {
-  /* background-color: #A28CA7; */
-  /* border-color: #A28CA7; */
-  background-color: #401362;
-  border-color: #401362;
+  background-color: var(---banner-bg-color);
+  border-color: var(---banner-bg-color);
 }
 
 img.searching_indicator {
@@ -88,25 +90,15 @@ img.searching_indicator {
 }
 
 .list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover {
-  text-shadow: 0 -1px 0 #2f103e;
-  background-image: -webkit-linear-gradient(top,#2f103e 0,#2f103e 100%);
-  background-image: -o-linear-gradient(top,#2f103e 0,#2f103e 100%);
-  background-image: -webkit-gradient(linear,left top,left bottom,from(#2f103e),to(#2f103e));
-  background-image: linear-gradient(to bottom,#2f103e 0,#2f103e 100%);
+  text-shadow: 0 -1px 0 var(---banner-bg-color);
+  background-image: -webkit-linear-gradient(top, var(--banner-bg-color) 0, var(--banner-bg-color) 100%);
+  background-image: -o-linear-gradient(top, var(--banner-bg-color) 0,var(--banner-bg-color) 100%);
+  background-image: -webkit-gradient(linear,left top,left bottom,from(var(--banner-bg-color)),to(var(--banner-bg-color)));
+  background-image: linear-gradient(to bottom,var(--banner-bg-color) 0,var(--banner-bg-color) 100%);
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#2f103e', endColorstr='#2f103e', GradientType=0);
   background-repeat: repeat-x;
-  border-color: #2f103e;
+  border-color: var(--banner-bg-color);
 }
-
-/* div.card { */
-  /* background-color: #E8EBEE; */
-  /* padding: 2px 2px 2px 2px; */
-  /* border-radius: 5px; */
-  /* margin-bottom: 15px; */
-/* } */
-/* div.card-header {
-  color: #2F0F3E;
-} */
 
 .sticky-chart { position: sticky; top: 5px;}
 #searching_indicator_chart { position: sticky; top: 250px; }

@@ -63,9 +63,7 @@ const continuous_palettes = [
 ];
 const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
 
-// Async to ensure data is fetched before proceeding.
-// This self-invoking function loads the initial state of the page.
-(async () => {
+window.onload=() => {
     // Hide further configs until a dataset is chosen.
     // Changing the dataset will start triggering these to show
     $('#plot_type_container').hide();
@@ -75,24 +73,24 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
     check_for_login();
 
     // Load gene carts and datasets before the dropdown appears
-    await reloadTrees ();
+    reloadTrees ();
 
     // Initialize plot types
-    $('#plot_type_select').select2({
-        placeholder: 'Choose how to plot',
-        width: '25%'
+     $('#plot_type_select').select2({
+      placeholder: 'Choose how to plot',
+      width: '25%'
     });
 
     // If brought here by the "gene search results" page, curate on the dataset ID that referred us
     const linkedDatasetId = getUrlParameter("dataset_id");
     if (linkedDatasetId) {
-        $('#dataset').val(linkedDatasetId);
-        try {
-            $('#dataset').text(dataset_tree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
-            $("#dataset").trigger("change");
-        } catch {
-            console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
-        }
+      $('#dataset').val(linkedDatasetId);
+      try {
+          $('#dataset').text(dataset_tree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
+          $("#dataset").trigger("change");
+      } catch {
+          console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
+      }
     }
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
@@ -105,7 +103,7 @@ const discrete_palettes = ["alphabet", "vivid", "light24", "dark24"];
     // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
     // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
     observer.observe(targetNode, { attributes: true });
-})();
+};
 
 // Call API to return plot JSON data
 async function getData (datasetId, payload) {
@@ -763,16 +761,19 @@ $('#dataset').change(async function () {
     for (const category in obsLevels) {
         if (obsLevels[category].length >= 3) {
             hasThreeGroupCategory = true;
-        } else if (obsLevels[category].length >= 2) {
+        }
+        if (obsLevels[category].length >= 2) {
             hasTwoGroupCategory = true;
         }
         if (hasTwoGroupCategory && hasThreeGroupCategory) {
             break;
         }
     }
+    $('#volcano_opt').prop("disabled", false);
     if (!hasTwoGroupCategory) {
         $('#volcano_opt').prop("disabled", true);
     }
+    $('#quadrant_opt').prop("disabled", false);
     if (!hasThreeGroupCategory) {
         $('#quadrant_opt').prop("disabled", true);
     }

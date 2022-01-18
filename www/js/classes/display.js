@@ -592,6 +592,8 @@ class PlotlyDisplay extends Display {
             ref_condition,
             stacked_violin,
             violin_add_points,
+            plot_title,
+            legend_title,
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
@@ -617,6 +619,8 @@ class PlotlyDisplay extends Display {
         this.ref_condition = ref_condition;
         this.stacked_violin = stacked_violin;
         this.violin_add_points = violin_add_points;
+        this.plot_title = plot_title;
+        this.legend_title = legend_title;
         this.analysis = analysis;
     }
     clear_display() {
@@ -659,6 +663,8 @@ class PlotlyDisplay extends Display {
             ref_condition: this.ref_condition,
             stacked_violin: this.stacked_violin,
             violin_add_points: this.violin_add_points,
+            plot_title: this.plot_title,
+            legend_title: this.legend_title,
         });
     }
     /**

@@ -16,11 +16,7 @@ Vue.use(BootstrapVueIcons);
 Vue.component("ValidationObserver", VeeValidate.ValidationObserver);
 Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
 
-(async () => {
-  // check if the user is already logged in
-  await check_for_login();
-
-
+window.onload=() => {
   const datasetTitle = Vue.component("dataset-title", {
     template: `
       <b-row v-if='title' class='justify-content-md-center id="dataset-title"'>
@@ -47,7 +43,7 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
       >
        <div class='mt-4 pt-5 card-body text-center id="add-display-btn"'>
          <div class='display-4'>
-           <i class="fas fa-plus"></i>
+           <i class="fa fa-plus"></i>
          </div>
          <p class='card-text'>Add Display</p>
        </div>
@@ -3636,10 +3632,11 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
     computed: {
       ...Vuex.mapState(["user"]),
     },
+    beforeCreate() {
+      check_for_login();
+    },
     created() {
-
       // We want to check for session when the curator app is first created
-      session_id = Cookies.get("gear_session_id");
       sleep(500).then(() => {
         // If CURRENT_USER is defined at this point, add information as placeholder test
         if (CURRENT_USER) {
@@ -3648,4 +3645,4 @@ Vue.component("ValidationProvider", VeeValidate.ValidationProvider);
       });
     },
   });
-})();
+};

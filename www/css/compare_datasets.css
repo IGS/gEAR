@@ -29,9 +29,7 @@ div#create_gene_cart_dialog {
     display: none;
     margin: 15px 0 15px 0;
 }
-div#gene_list_c {
-    /*margin-top: 20px;*/
-}
+
 div.loading_indicator {
     display: none;
 }
@@ -84,4 +82,18 @@ table#tbl_selected_genes th {
 /* Overwritting bootstrap default */
 .nav-tabs .nav-link.active {
     text-decoration-line: underline;
+}
+
+.btn-outline-purple {
+    color: #562a6f;
+    background-color: transparent;
+    background-image: none;
+    border-color: #562a6f;
+}
+
+.btn-outline-purple:hover {
+    color: white;
+    background-color: #401362;
+    background-image: none;
+    border-color: #401362;
 }
