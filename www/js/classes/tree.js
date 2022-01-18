@@ -66,24 +66,30 @@ class GeneCartTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainGeneCarts, userGeneCarts) {
+    }={}, domainGeneCarts, groupGeneCarts, userGeneCarts, sharedGeneCarts, publicGeneCarts) {
         super(args);
         this.domainGeneCarts = (domainGeneCarts) ? domainGeneCarts : [];
         this.userGeneCarts = (userGeneCarts) ? userGeneCarts : [] ;
+        this.groupGeneCarts = (groupGeneCarts) ? groupGeneCarts : [];
+        this.sharedGeneCarts = (sharedGeneCarts) ? sharedGeneCarts : [] ;
+        this.publicGeneCarts = (publicGeneCarts) ? publicGeneCarts : [] ;
 
     }
 
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your Gene Carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'#', 'text':"Highlighted gene carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your gene carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':"Group gene carts", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':"Gene carts shared with you", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'public_node', 'parent':'#', 'text':"Public carts from other users", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
             treeData.push({
                 'id': item.value,
-                'parent': 'domain_node',  // All carts private for now
+                'parent': 'domain_node',  
                 'text':item.text,
                 'type': 'genecart',
                 'a_attr': {
@@ -103,6 +109,43 @@ class GeneCartTree extends Tree {
                 }
             })
         });
+
+        $.each(this.groupGeneCarts, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'group_node',
+                'text':item.text,
+                'type': 'genecart',
+                'a_attr': {
+                    'class': "py-0",
+                }
+            })
+        });
+
+        $.each(this.sharedGeneCarts, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'shared_node',
+                'text':item.text,
+                'type': 'genecart',
+                'a_attr': {
+                    'class': "py-0",
+                }
+            })
+        });
+
+        $.each(this.publicGeneCarts, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'public_node',
+                'text':item.text,
+                'type': 'genecart',
+                'a_attr': {
+                    'class': "py-0",
+                }
+            })
+        });
+        
         this.treeData = treeData;
         return this.treeData;
     }
@@ -110,7 +153,6 @@ class GeneCartTree extends Tree {
     // Load all saved gene carts for the current user
     // TODO: Change based on gene cart manager page code
     generateTree () {
-
         this.generateTreeData();
 
         // Update existing tree or generate new tree if it doesn't exist
