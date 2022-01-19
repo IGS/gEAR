@@ -454,33 +454,33 @@ function load_gene_carts(cart_share_id) {
             const carts = {};
             let permalink_cart_id = null
             let permalink_cart_label = null
-            let cart_types = ['domain', 'user', 'group', 'shared', 'public'];
+            const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
             let carts_found = false;
 
             for (const ctype of cart_types) {
                 carts[ctype] = [];
 
-                if (data[ctype + '_carts'].length > 0) {
+                if (data[`${ctype}_carts`].length > 0) {
                     carts_found = true;
 
                     //User has some profiles
-                    $.each(data[ctype + '_carts'], (_i, item) => {
+                    $.each(data[`${ctype}_carts`], (_i, item) => {
                         // If cart permalink was passed in, retrieve gene_cart_id for future use.
-                        if (cart_share_id && item['share_id'] == cart_share_id) {
-                            permalink_cart_id = item['id'];
-                            permalink_cart_label = item['label'];
+                        if (cart_share_id && item.share_id == cart_share_id) {
+                            permalink_cart_id = item.id;
+                            permalink_cart_label = item.label;
                         }
-                        
-                        carts[ctype].push({value: item['id'], text: item['label'] });
+
+                        carts[ctype].push({value: item.id, text: item.label });
                     });
                 }
             }
 
-            gene_cart_tree.domainGeneCarts = carts['domain'];
-            gene_cart_tree.userGeneCarts = carts['user'];
-            gene_cart_tree.groupGeneCarts = carts['group'];
-            gene_cart_tree.sharedGeneCarts = carts['shared'];
-            gene_cart_tree.publicGeneCarts = carts['public'];
+            gene_cart_tree.domainGeneCarts = carts.domain;
+            gene_cart_tree.userGeneCarts = carts.user;
+            gene_cart_tree.groupGeneCarts = carts.group;
+            gene_cart_tree.sharedGeneCarts = carts.shared;
+            gene_cart_tree.publicGeneCarts = carts.public;
             gene_cart_tree.generateTree();
 
             if (! carts_found ) {
@@ -510,7 +510,7 @@ function load_gene_carts(cart_share_id) {
         },
         error(jqXHR, textStatus, errorThrown) {
             gene_cart_tree.generateTree();
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
             d.fail();
         }
         });
