@@ -519,79 +519,10 @@ function load_gene_carts(cart_share_id) {
 }
 
 // If user changes, update genecart/profile trees
-function reload_trees(){
-    //Profiles are generated regardless if user is logged in or not
-    $.ajax({
-        url: './cgi/get_user_layouts.cgi',
-        type: 'post',
-        data: { 'session_id': session_id},
-        async: false,
-        dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
-
-            let domain_profiles = [];
-            let user_profiles = [];
-
-            // Pass through once to sort domains from user profiles AND see if it matches a shared layout
-            $.each(data['layouts'], function(i, item){
-                if ( item['is_domain'] == 1 ) {
-                    domain_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id'] });
-                } else {
-                    user_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id']  });
-                }
-            });
-
-            // Generate the tree structure for the layouts
-            profile_tree.domainProfiles = domain_profiles;
-            profile_tree.userProfiles = user_profiles;
-            selected_profile_tree.domainProfiles = domain_profiles;
-            selected_profile_tree.userProfiles = user_profiles;
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-        }
-    });
-
-    // Gene carts are only user-specific, so these only matter if user is logged in
-    if (session_id) {
-        $.ajax({
-            url: './cgi/get_user_gene_carts.cgi',
-            type: 'post',
-            data: { 'session_id': session_id },
-            async: false,
-            dataType: 'json',
-            success: function(data, textStatus, jqXHR){ //source https://stackoverflow.com/a/20915207/2900840
-                let user_gene_carts = [];
-
-                if (data['gene_carts'].length > 0) {
-                    //User has some profiles
-                    $.each(data['gene_carts'], function(i, item){
-                        user_gene_carts.push({value: item['id'], text: item['label'] });
-
-                    });
-
-                    // No domain gene carts yet
-                    gene_cart_tree.userGeneCarts = user_gene_carts;
-                    $("#selected_gene_cart_c").show(); //Show if logged in
-                }
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-            }
-        });
-    } else {
-        $("#selected_gene_cart_c").hide(); //Hide if logged out
-    }
-
-    // Update genecart tree with data for current user
-    gene_cart_tree.generateTreeData();
-    gene_cart_tree.updateTreeData();    // Believe just generateTree() would suffice for both of these lines
-
-    // Update profile trees with data for current user
-    profile_tree.generateTreeData();
-    profile_tree.updateTreeData();
-    selected_profile_tree.generateTreeData();
-    selected_profile_tree.updateTreeData();
+async function reload_trees(){
+    // Update dataset and genecart trees in parallel
+    // Works if they were not populated or previously populated
+    await Promise.all([load_layouts(), load_gene_carts(gene_cart_share_id)]);
 }
 
 // Hide option menu when scope is changed.
@@ -841,22 +772,22 @@ $("#gene_search_form").submit(function( event ) {
             $('#searching_indicator_c').hide();
 
             // Error occurred
-      			if ( $('#search_gene_symbol').val().length < 1 ) {
-                // No gene symbol entered
-        				$('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-        					'<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-        					'<p class="alert-message"><strong>Oops! </strong>No gene symbol was entered. Enter a gene symbol and try again.</p></div>').show();
+            if ( $('#search_gene_symbol').val().length < 1 ) {
+            // No gene symbol entered
+                    $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                        '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                        '<p class="alert-message"><strong>Oops! </strong>No gene symbol was entered. Enter a gene symbol and try again.</p></div>').show();
 
 
-      			} else if ( dataset_collection_panel.datasets.length == 0) {
-                // No datasets in current layout profile
-        				$('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-        					'<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-        					'<p class="alert-message"><strong>Oops! </strong>No datasets were found in the current layout profile.</p><p>To add datasets to a profile or choose a different profile, go to the <a href="./dataset_manager.html" class="alert-link">Dataset Manager</a>.</p></div>').show();
+            } else if ( dataset_collection_panel.datasets.length == 0) {
+            // No datasets in current layout profile
+                    $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                        '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                        '<p class="alert-message"><strong>Oops! </strong>No datasets were found in the current layout profile.</p><p>To add datasets to a profile or choose a different profile, go to the <a href="./dataset_manager.html" class="alert-link">Dataset Manager</a>.</p></div>').show();
 
             } else {
                 // Some other error occurred
-              	display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+              	display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Could not successfully search for genes in database.");
       		}
         }
     });
