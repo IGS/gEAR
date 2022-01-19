@@ -44,29 +44,29 @@
   <!--[if lt IE 7]>
       <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
   <![endif]-->
+  <div id="navigation_bar">
+  <!-- content here inserted via JQuery -->
+  </div> <!-- end navigation_bar -->
+  <div class="col-12 alert-container">
+  <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+  </div>
+
+  <div id="login_checking">
+  <div class="col-12">
+  <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
+  </div>
+  </div>
+
+  <div id="login_warning">
+  <div class="col-12">
+  <h2>Login required</h2>
+  <p>
+      You must be logged in to view a user profile.  Please use the login form in the top-right.
+  </p>
+  </div>
+  </div>
+
   <div id="app">
-    <div id="navigation_bar">
-    <!-- content here inserted via JQuery -->
-    </div> <!-- end navigation_bar -->
-    <div class="col-12 alert-container">
-    <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-    </div>
-
-    <div id="login_checking">
-    <div class="col-12">
-    <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
-    </div>
-    </div>
-
-    <div id="login_warning">
-    <div class="col-12">
-    <h2>Login required</h2>
-    <p>
-        You must be logged in to view a user profile.  Please use the login form in the top-right.
-    </p>
-    </div>
-    </div>
-
     <div v-if='user' class="container-fluid" id="main_content">
       <transition name="fade" mode="out-in">
         <router-view></router-view>

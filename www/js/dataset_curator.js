@@ -3618,7 +3618,7 @@ window.onload=() => {
           props: true,
         },
       ],
-    },
+    }
   ];
 
   const router = new VueRouter({
