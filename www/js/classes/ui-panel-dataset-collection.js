@@ -34,6 +34,7 @@ class DatasetCollectionPanel {
         $.ajax({
             url : './cgi/get_dataset_list.cgi',
             type: "POST",
+            async: false,   // Adding so datasets are updated before the set_layout() AJAX call happens
             data : { 'session_id': session_id, 'permalink_share_id': share_id,
                      'exclude_pending': 1, 'default_domain': this.layout_label,
                      'layout_id': dsc_panel.layout_id },
@@ -83,7 +84,7 @@ class DatasetCollectionPanel {
         $('#dataset_grid').empty();
     }
 
-    set_layout(layout_id, layout_label, do_load_frames, multigene=false) {
+    async set_layout(layout_id, layout_label, do_load_frames, multigene=false) {
         /*
           Updates this object, the user's stored cookie, and the database and UI labels
         */

@@ -50,14 +50,15 @@ window.onload=() => {
         // validate the share_id. runs load_dataset_frames() on success
         validate_permalink(scope);
     } else {
-        if (document.URL.includes("index.html") ||
-        window.location.pathname == '/' ) {
-            load_layouts();
-        }
         // layout_id is a share_id for the profile layout
         layout_id = getUrlParameter('layout_id');
         scope = "profile";
         get_index_info();
+
+        if (document.URL.includes("index.html") ||
+        window.location.pathname == '/' ) {
+            load_layouts();
+        }
     }
 
     // Was help_id found?
@@ -162,6 +163,50 @@ window.onload=() => {
     // add post-page load listeners
     $( "#dataset_zoomed_zoom_out_control" ).click(() => {
         zoom_out_dataset();
+    });
+
+    // If a ProfileTree element is selected from the results page,
+    // adjust state history and other results page things
+    // These are adjustments that are normally made when the "search" button is hit
+    $(document).on('change', '#selected_profile', () => {
+        //TODO: get rid of redundancy with #search_gene_form.submit()
+
+        // split on combination of space and comma (individually or both together.)
+        const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+        // Remove duplicates in gene search if they exist
+        const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+        const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
+
+        // determine if searching for exact matches (convert from bool to 1 or 0)
+        $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
+        $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
+
+        // Update multigene toggle so correct grid widths are loaded.
+        multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
+
+        // Update search history
+        add_state_history(curated_searched_gene_symbols);
+
+        $("#too_many_genes_warning").hide();
+        $('#search_result_count').text('');
+        if (multigene) {
+            // MG enabled
+            $('#search_results_scrollbox').hide();
+            $('#multigene_search_indicator').show();
+            // Show warning if too many genes are entered
+            if (uniq_gene_symbols.length > 10) {
+                $("#too_many_genes_warning").text(`There are currently ${uniq_gene_symbols.length} genes to be searched and plotted. This can be potentially slow. Also be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
+                $("#too_many_genes_warning").show();
+            }
+        } else {
+            // MG disabled
+            $('#search_results_scrollbox').show();
+            $('#multigene_search_indicator').hide();
+        }
+
+        // Adjust num_genes badge (this does not use the result from search_genes.py so that may mismatch if "exact" is not chosen)
+        // TODO: Actually run search_genes.py to get annotation information
+        $('#search_result_count').text(uniq_gene_symbols.length);
     });
 
     // If a ProfileTree element is selected, this is changed and the new layout is set
@@ -539,7 +584,7 @@ function populate_search_result_list(data) {
     // so we can display in sorted order.  javascript sucks like that.
     sorted_gene_syms = [];
 
-    for (var key in data) {
+    for (const key in data) {
         if (data.hasOwnProperty(key)) {
             sorted_gene_syms.push(key);
         }
@@ -548,13 +593,13 @@ function populate_search_result_list(data) {
     sorted_gene_syms.sort();
     sorted_gene_syms_len = sorted_gene_syms.length
 
-    var items = [];
+    const items = [];
 
     for (i = 0; i < sorted_gene_syms_len; i++) {
         gene_symbol = sorted_gene_syms[i];
 
         // Build search result html
-        var gene_result_html = '<a class="list-group-item" data-gene_symbol="' + gene_symbol + '" href="#">' + gene_symbol;
+        let gene_result_html = `<a class="list-group-item" data-gene_symbol="${gene_symbol}" href="#">${gene_symbol}`;
 
         gene_result_html += '</a>';
         items.push(gene_result_html);
@@ -568,7 +613,7 @@ function populate_search_result_list(data) {
 
         // the value here needs to match the max in gene_search.cgi
         if (items.length == 100) {
-            $('#search_result_count').text('max:' + items.length);
+            $('#search_result_count').text(`max:${items.length}`);
         } else {
             $('#search_result_count').text(items.length);
         }
@@ -655,7 +700,7 @@ $('#search_gene_symbol').popover({
   	placement: 'right'
 });
 
-$("#gene_search_form").submit(function( event ) {
+$("#gene_search_form").submit((event) => {
     $("#viewport_intro").hide();
     $("#viewport_main").show();
 
@@ -669,59 +714,35 @@ $("#gene_search_form").submit(function( event ) {
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
 
-    var formData = $("#gene_search_form").serializeArray();
+    const formData = $("#gene_search_form").serializeArray();
 
     // split on combination of space and comma (individually or both together.)
-    var gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+    const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
     // Remove duplicates in gene search if they exist
-    var uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
-    var curated_searched_gene_symbols = uniq_gene_symbols.join(',');
+    const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+    const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
 
     // Update multigene toggle so correct grid widths are loaded.
     multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
-    let state_info = {
-        'gene_symbol_exact_match': $("#exact_match").val(),
-        'multigene_plots': $("#multigene_plots").val()
-    };
 
-    let state_url = "/index.html?"
-                + `&gene_symbol_exact_match=${$("#exact_match").val()}`
-                + `&multigene_plots=${$("#multigene_plots").val()}`;
+    add_state_history(curated_searched_gene_symbols);
 
-    if (layout_id) {
-        state_info['layout_id'] = layout_id;
-        state_url += `&layout_id=${layout_id}`;
-    }
-
-    if (curated_searched_gene_symbols) {
-        state_info['gene_symbol'] = curated_searched_gene_symbols;
-        state_url += `&gene_symbol=${curated_searched_gene_symbols}`;
-    }
-
-    if (getUrlParameter('gene_cart_share_id')) {
-        state_info['gene_cart_share_id'] = getUrlParameter('gene_cart_share_id');
-        state_url += `&gene_cart_share_id=${getUrlParameter('gene_cart_share_id')}`;
-    }
-
+    $("#too_many_genes_warning").hide();
+    $('#search_result_count').text('');
     if (multigene) {
         // MG enabled
         $('#search_results_scrollbox').hide();
         $('#multigene_search_indicator').show();
+        // Show warning if too many genes are entered
+        if (uniq_gene_symbols.length > 10) {
+            $("#too_many_genes_warning").text(`There are currently ${uniq_gene_symbols.length} genes to be searched and plotted. This can be potentially slow. Also be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
+            $("#too_many_genes_warning").show();
+        }
     } else {
         // MG disabled
         $('#search_results_scrollbox').show();
         $('#multigene_search_indicator').hide();
     }
-
-    // SAdkins - Should we have a separate history state for dataset share IDs?
-    history.pushState(
-        // State Info
-        state_info,
-        // State title
-        "Gene search",
-        // URL
-        state_url
-    )
 
     $('#search_results').empty();
     // show search results
@@ -734,17 +755,17 @@ $("#gene_search_form").submit(function( event ) {
         type: "POST",
         data : formData,
         dataType:"json",
-        success: function(data, textStatus, jqXHR) {
+        success(data, textStatus, jqXHR) {
         	// reset search_results
         	search_results = data;
             populate_search_result_list(data);
             $('#searching_indicator_c').hide();
-            $('#intro_content').hide('fade', {}, 400, function() {
+            $('#intro_content').hide('fade', {}, 400, () => {
                 if ($('#multigene_plots').val() == 1){
                     dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
                 } else {
                     // auto-select the first match.  first <a class="list-group-item"
-                    let first_thing = $('#search_results a.list-group-item').first();
+                    const first_thing = $('#search_results a.list-group-item').first();
                     select_search_result(first_thing);
                 }
             });
@@ -768,7 +789,7 @@ $("#gene_search_form").submit(function( event ) {
             }
             return false;
         },
-        error: function (jqXHR, textStatus, errorThrown) {
+        error(jqXHR, textStatus, errorThrown) {
             $('#searching_indicator_c').hide();
 
             // Error occurred
@@ -788,7 +809,7 @@ $("#gene_search_form").submit(function( event ) {
             } else {
                 // Some other error occurred
               	display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Could not successfully search for genes in database.");
-      		}
+            }
         }
     });
 
@@ -908,6 +929,43 @@ $('#selected_gene_cart').change( function() {
     }
     return d.promise();
 });
+
+// Set the state history based on current conditions
+function add_state_history(gene_symbols) {
+    const state_info = {
+        'gene_symbol_exact_match': $("#exact_match").val(),
+        'multigene_plots': $("#multigene_plots").val()
+    };
+
+    let state_url = "/index.html?"
+                + `&gene_symbol_exact_match=${$("#exact_match").val()}`
+                + `&multigene_plots=${$("#multigene_plots").val()}`;
+
+    if (layout_id) {
+        state_info.layout_id = layout_id;
+        state_url += `&layout_id=${layout_id}`;
+    }
+
+    if (gene_symbols) {
+        state_info.gene_symbol = gene_symbols;
+        state_url += `&gene_symbol=${gene_symbols}`;
+    }
+
+    if (getUrlParameter('gene_cart_share_id')) {
+        state_info.gene_cart_share_id = getUrlParameter('gene_cart_share_id');
+        state_url += `&gene_cart_share_id=${getUrlParameter('gene_cart_share_id')}`;
+    }
+
+    // SAdkins - Should we have a separate history state for dataset share IDs?
+    history.pushState(
+        // State Info
+        state_info,
+        // State title
+        "Gene search",
+        // URL
+        state_url
+    )
+}
 
 // automatically reloads dataset grid and resubmits gene search
 function update_datasetframes_generesults() {
