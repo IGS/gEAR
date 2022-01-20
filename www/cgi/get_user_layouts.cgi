@@ -36,7 +36,7 @@ def main():
         no_public = int(no_public)
 
     qry = """
-          SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, count(lm.id)
+          SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, count(lm.id), l.is_domain
             FROM layout l
                  LEFT JOIN layout_members lm ON lm.layout_id=l.id
                  LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -85,7 +85,7 @@ def main():
     cursor.execute(qry, params)
     for row in cursor:
         result['layouts'].append({'id': row[0], 'label': row[1], 'is_current': row[2],
-                                  'share_id': row[4], 'is_domain': 0 if row[3] else 1,
+                                  'share_id': row[4], 'is_domain': row[6],
                                   'dataset_count': row[5] })
         if row[2] == 1:
             result['selected'] = row[0]
