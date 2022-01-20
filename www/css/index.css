@@ -529,3 +529,8 @@ li.scope_choice:hover {
   background-color: #562a6f;
   border-color: #562a6f;
 }
+
+.datasetbox-menu li {
+  white-space: nowrap;
+  padding-right: 5px !important;  /* Give some cushion to the longest submenu name */
+}
