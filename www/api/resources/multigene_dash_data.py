@@ -1216,6 +1216,8 @@ class MultigeneDashData(Resource):
                 condition_filter = selected.obs["comparison_composite_index"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
 
+        var_index = selected.var.index.name
+
         if plot_type == "volcano":
             try:
                 key, query_val, ref_val = validate_volcano_conditions(query_condition, ref_condition)
@@ -1246,7 +1248,6 @@ class MultigeneDashData(Resource):
                 add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
         elif plot_type == "dotplot":
-            var_index = selected.var.index.name
             df = selected.to_df()
 
             if not primary_col:
@@ -1318,6 +1319,16 @@ class MultigeneDashData(Resource):
             # with expression and its observation metadata
             df = selected.to_df()
 
+            # Sort alphabetically. Other plot types don't need sorting or sort via groupby
+            gene_symbols.sort()
+            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
+            # Since genes were restricted to one Ensembl ID we can invert keys and vals
+            gene_to_ensm = {y:x for x,y in ensm_to_gene.items()}
+
+            # Reorder the dataframe columns based on sorted gene symbols
+            sorted_ensm = map(lambda x: gene_to_ensm[x], gene_symbols)
+            df = df[sorted_ensm]
+
             groupby_filters = []
             if primary_col:
                 groupby_filters.append(primary_col)
@@ -1369,7 +1380,6 @@ class MultigeneDashData(Resource):
                 add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
 
         elif plot_type == "mg_violin":
-            var_index = selected.var.index.name
             df = selected.to_df()
 
             if not primary_col:
