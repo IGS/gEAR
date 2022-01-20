@@ -1065,7 +1065,7 @@ class Dataset:
 
             if user:
                 qry = """
-                      SELECT l.id, l.user_id, l.group_id, l.label, l.is_current, l.share_id
+                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_members lm ON lm.layout_id=l.id
                        WHERE lm.dataset_id = %s
@@ -1075,7 +1075,7 @@ class Dataset:
                 cursor.execute(qry, (self.id, user.id))
             else:
                 qry = """
-                      SELECT l.id, l.user_id, l.group_id, l.label, l.is_current, l.share_id
+                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_members lm ON lm.layout_id=l.id
                        WHERE lm.dataset_id = %s
@@ -1085,7 +1085,7 @@ class Dataset:
                 cursor.execute(qry, (self.id,))
 
             for row in cursor:
-                l = Layout(id=row[0], user_id=row[1], group_id=row[2], label=row[3],
+                l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
 
@@ -1886,6 +1886,7 @@ class GeneCartCollection:
 
     def get_by_group_ids(self):
         """
+        TODO
         Put here as it will be needed in the future. User groups not yet supported.
         """
         return []
