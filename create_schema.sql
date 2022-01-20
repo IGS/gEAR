@@ -266,7 +266,6 @@ CREATE TABLE dataset_shares (
 CREATE TABLE layout (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        user_id                  INT NOT NULL,
-       group_id                 INT,
        label                    VARCHAR(255),
        is_current               TINYINT(1) DEFAULT 0,
        is_domain                TINYINT(1) DEFAULT 0,
