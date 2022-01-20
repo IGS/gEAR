@@ -183,14 +183,14 @@ def get_layout_by_id(layout_id):
     layout = None
 
     qry = """
-          SELECT id, user_id, group_id, label, is_current, share_id
+          SELECT id, user_id, label, is_current, is_domain, share_id
           FROM layout
           WHERE id = %s
     """
     cursor.execute(qry, (layout_id,))
 
-    for (id, user_id, group_id, label, is_current, share_id) in cursor:
-        layout = Layout(id=id, user_id=user_id, group_id=group_id,
+    for (id, user_id, label, is_current, is_domain, share_id) in cursor:
+        layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
                         label=label, is_current=is_current, share_id=share_id)
         break
 
@@ -760,13 +760,13 @@ class OrganismCollection:
         return self.organisms
 
 class Layout:
-    def __init__(self, id=None, user_id=None, group_id=None, label=None,
+    def __init__(self, id=None, user_id=None, is_domain=None, label=None,
                  is_current=None, share_id=None, members=None):
         self.id = id
         self.user_id = user_id
-        self.group_id = group_id
         self.label = label
         self.is_current = is_current
+        self.is_domain = is_domain
         self.share_id = share_id
 
         # This should be a list of LayoutMember objects
@@ -777,6 +777,9 @@ class Layout:
         # TODO: If is_current = 1 we really need to reset all the other layouts by this user
         if not is_current:
             self.is_current = 0
+
+        if not is_domain:
+            self.is_domain = 0
 
         if not share_id:
             self.share_id = str(uuid.uuid4()).split('-')[0]
@@ -851,14 +854,14 @@ class Layout:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT user_id, group_id, label, is_current, share_id
+              SELECT user_id, label, is_current, is_domain, share_id
                 FROM layout
                WHERE id = %s
         """
         cursor.execute(qry, (self.id,))
 
         for row in cursor:
-            (self.user_id, self.group_id, self.label, self.is_current, self.share_id) = row
+            (self.user_id, self.label, self.is_current, self.is_domain, self.share_id) = row
 
         self.get_members()
 
@@ -942,15 +945,16 @@ class Layout:
 
         if self.id is None:
             layout_insert_qry = """
-            INSERT INTO layout (user_id, group_id, label, is_current, share_id)
+            INSERT INTO layout (user_id, label, is_current, is_domain, share_id)
             VALUES (%s, %s, %s, %s, %s)
             """
-            cursor.execute(layout_insert_qry, (self.user_id, self.group_id, self.label,
-                                               self.is_current, self.share_id))
+            cursor.execute(layout_insert_qry, (self.user_id, self.label, self.is_current,
+                                               self.is_domain, self.share_id))
             self.id = cursor.lastrowid
         else:
             # ID already populated
             # Update Layout properties, delete existing members, add current ones
+            # TODO
             raise Exception("Layout.save() not yet implemented for update mode")
 
         cursor.close()
