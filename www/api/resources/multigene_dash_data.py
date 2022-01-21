@@ -771,7 +771,7 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
                         , yref="y"
                     )
 
-def create_volcano_plot(df, query, ref, use_adj_pvals=False):
+def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pvals=False):
     """Generate a volcano plot.  Returns Plotly figure."""
     # Volcano plot
     # https://github.com/plotly/dash-bio/blob/master/dash_bio/component_factory/_volcano.py
@@ -788,9 +788,10 @@ def create_volcano_plot(df, query, ref, use_adj_pvals=False):
         , title="Differences in {} vs {}".format(query, ref)
         , col="lightgrey"
         , effect_size="logfoldchanges"
+        , effect_size_line=logfc_bounds
         , effect_size_line_color="black"
         , gene="gene_symbol"
-        , genomewideline_value= -np.log10(0.05)
+        , genomewideline_value= -np.log10(pval_threshold)
         , genomewideline_color="black"
         , highlight_color="black"
         , p="pvals_adj" if use_adj_pvals else "pvals"
@@ -1125,10 +1126,13 @@ class MultigeneDashData(Resource):
         # Quadrant plot options
         compare_group1 = req.get("compare1_condition", None)
         compare_group2 = req.get("compare2_condition", None)
-        fc_threshold = float(req.get("fold_change_cutoff", 2))
-        fdr_threshold = float(req.get("fdr_cutoff", 0.05))
+        fc_cutoff = float(req.get("fold_change_cutoff", 2))
+        fdr_cutoff = float(req.get("fdr_cutoff", 0.05))
         include_zero_fc = req.get("include_zero_fc", True)
         # Volcano plot options
+        pval_threshold = float(req.get("pvalue_threshold", 0.05))
+        lower_logfc_threshold = float(req.get("lower_logfc_threshold", -2))
+        upper_logfc_threshold = float(req.get("upper_logfc_threshold", 2))
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
         de_test_algo = req.get("de_test_algo", "t-test")
@@ -1246,6 +1250,8 @@ class MultigeneDashData(Resource):
             fig = create_volcano_plot(df
                 , query_val
                 , ref_val
+                , pval_threshold
+                , [lower_logfc_threshold, upper_logfc_threshold]
                 , use_adj_pvals
                 )
             modify_volcano_plot(fig, query_val, ref_val)
@@ -1300,8 +1306,8 @@ class MultigeneDashData(Resource):
                         , compare1_val
                         , compare2_val
                         , de_test_algo
-                        , fc_threshold
-                        , fdr_threshold
+                        , fc_cutoff
+                        , fdr_cutoff
                         , include_zero_fc
                         , is_log10
                         )

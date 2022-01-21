@@ -255,7 +255,7 @@
           <div class="form-group">
             <label class="form-check-label" for="quadrant_foldchange_cutoff">Adjust fold-change cutoff</label>
             <input id="quadrant_foldchange_cutoff" class="form-control w-25" type="number" value="2" min="0" aria-describedby="quadrant_foldchange_help">
-            <small id="quadrant_foldchange_help" class="form-text text-muted">Choose the fold-change threshold that a query/ref comparison must exceed to be included. Will be converted to log2 in plot.</small>
+            <small id="quadrant_foldchange_help" class="form-text text-muted">Choose the fold-change threshold that a query/ref comparison must exceed to be included. This value will be log2-transformed in plot.</small>
           </div>
           <div class="form-group">
             <label class="form-check-label" for="quadrant_fdr_cutoff">Adjust FDR cutoff</label>
@@ -274,6 +274,26 @@
         </fieldset>
 
         <fieldset id="volcano_options_container" style="display:none;">
+          <div class="form-group">
+            <label class="form-check-label" for="volcano_pvalue_threshold">Adjust p-value threshold</label>
+            <input id="volcano_pvalue_threshold" class="form-control w-25" type="number" value="0.05" min="0" aria-describedby="volcano_pvalue_threshold_help">
+            <small id="volcano_pvalue_threshold_help" class="form-text text-muted">Choose a p-value where all data points above the line are considered significant. This value will be -log10-transformed in the plot.</small>
+          </div>
+          <div class="form-group">
+            <label class="form-check-label" >Adjust log2 fold-change threshold</label>
+            <div class="input-group form-row">
+              <div class="input-group-prepend">
+                <span class="input-group-text">Lower Bounds</span>
+              </div>
+              <input id="volcano_lower_logfc_threshold" class="form-control col-1 text-center" type="number" value="-1" max="0" aria-describedby="volcano_logfc_help">
+              <input id="volcano_upper_logfc_threshold" class="form-control col-1 text-center" type="number" value="1" min="0" aria-describedby="volcano_logfc_help">
+              <div class="input-group-append">
+                <span class="input-group-text">Upper Bounds</span>
+              </div>
+            </div>
+
+            <small id="volcano_logfc_help" class="form-text text-muted">Choose bounds of log2 fold-change threshold. All data points outside of this range are considered significant.</small>
+          </div>
           <div class="form-group">
             <label class="form-check-label" for="volcano_query_condition">Select query condition</label>
             <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>

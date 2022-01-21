@@ -459,7 +459,11 @@ function createVolcanoDropdowns (obsLevels) {
     });
 
     for (const category in goodObsLevels) {
-        goodObsLevels[category].push("Union of the rest of the groups");
+        // Add the "union" option if the category has 3 or more groups.
+        // "Union" in 2-group categories would just be the same as choosing the 2nd category
+        if (goodObsLevels[category].length > 2) {
+            goodObsLevels[category].push("Union of the rest of the groups");
+        }
     }
     const html2 = tmpl.render(goodObsLevels);
     $('#volcano_ref_condition').html(html2);
@@ -578,6 +582,9 @@ function loadDisplayConfigHtml (plotConfig) {
         break;
     default:
         // volcano
+        $('#volcano_pvalue_threshold').val(plotConfig.pvalue_threshold);
+        $('#volcano_lower_logfc_threshold').val(plotConfig.lower_logfc_threshold);
+        $('#volcano_upper_logfc_threshold').val(plotConfig.upper_logfc_threshold);
         $('#adj_pvals').prop('checked', plotConfig.adj_pvals);
         $('#annot_nonsig').prop('checked', plotConfig.annotate_nonsignificant)
         $('#volcano_query_condition').val(plotConfig.query_condition);
@@ -1085,6 +1092,9 @@ $(document).on('click', '#create_plot', async () => {
         break;
     default:
         // volcano
+        plotConfig.pvalue_threshold = $('#volcano_pvalue_threshold').val();
+        plotConfig.lower_logfc_threshold = $('#volcano_lower_logfc_threshold').val();
+        plotConfig.upper_logfc_threshold = $('#volcano_upper_logfc_threshold').val();
         plotConfig.adj_pvals = $('#adj_pvals').is(':checked');
         plotConfig.annotate_nonsignificant = $('#annot_nonsig').is(':checked');
         if (! $('#de_test_select').select2('data')[0].id) {

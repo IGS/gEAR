@@ -586,6 +586,9 @@ class PlotlyDisplay extends Display {
             fold_change_cutoff,
             fdr_cutoff,
             de_test_algo,
+            pvalue_threshold,
+            lower_logfc_threshold,
+            upper_logfc_threshold,
             query_condition,
             compare1_condition,
             compare2_condition,
@@ -613,6 +616,9 @@ class PlotlyDisplay extends Display {
         this.fold_change_cutoff = fold_change_cutoff;
         this.fdr_cutoff = fdr_cutoff;
         this.de_test_algo = de_test_algo;
+        this.pvalue_threshold = pvalue_threshold;
+        this.lower_logfc_threshold = lower_logfc_threshold;
+        this.upper_logfc_threshold = upper_logfc_threshold;
         this.query_condition = query_condition;
         this.compare1_condition = compare1_condition;
         this.compare2_condition = compare2_condition;
@@ -657,6 +663,9 @@ class PlotlyDisplay extends Display {
             fold_change_cutoff: this.fold_change_cutoff,
             fdr_cutoff: this.fdr_cutoff,
             de_test_algo: this.de_test_algo,
+            pvalue_threshold: this.pvalue_threshold,
+            lower_logfc_threshold: this.lower_logfc_threshold,
+            upper_logfc_threshold: this.upper_logfc_threshold,
             query_condition: this.query_condition,
             compare1_condition: this.compare1_condition,
             compare2_condition: this.compare2_condition,
