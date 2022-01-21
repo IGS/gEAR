@@ -964,6 +964,94 @@ class Layout:
     #  information on it within a layout
 
 @dataclass
+class LayoutCollection:
+    layouts: List[Layout] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def _row_to_layout_object(self, row):
+        """
+        Utility function so we don't have to repeat the SQL->Python object conversion
+        """
+        layout = Layout(
+            id=row[0],
+            label=row[1],
+            is_current=row[2],
+            user_id=row[3],
+            share_id=row[4]            
+            is_domain=row[5]
+        )
+        
+        layout.dataset_count = row[6]
+        return layout
+
+    def get_by_user(self, user=None):
+        """
+        Gets all the layouts owned by a user
+        """
+        if not isinstance(user, User):
+            raise Exception("LayoutCollection.get_by_user() requires an instance of User to be passed.")
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM layout l
+                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
+                     LEFT JOIN dataset d on lm.dataset_id=d.id
+               WHERE l.user_id = %s
+                 AND d.marked_for_removal = 0
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+        """
+        cursor.execute(qry, (user.id,))
+
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+
+    def get_by_users_groups(self, user=None):
+        """
+        Queries the DB to get all the groups of which the passed user is a member, then
+        gets all layouts in those groups.
+        """
+        if not isinstance(user, User):
+            raise Exception("LayoutCollection.get_by_users_groups() requires an instance of User to be passed.")
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM ggroup g
+                     JOIN user_group_membership ugm ON ugm.group_id=g.id
+                     JOIN guser u ON u.id=ugm.user_id
+                     JOIN layout_group_membership lgm ON lgm.group_id=g.id
+                     JOIN layout l ON lgm.layout_id=l.id
+                     JOIN layout_members lm ON lm.layout_id=l.id
+               WHERE u.id = %s
+              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id;
+        """
+        cursor.execute(qry, (user.id,))
+        
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+    
+@dataclass
 class DatasetLink:
     id: int = None
     dataset_id: str = None
