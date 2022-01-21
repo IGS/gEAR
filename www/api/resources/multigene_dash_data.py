@@ -877,8 +877,12 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
     de_filter1 = adata.obs[key].isin([query_val])
     selected1 = adata[de_filter1, :]
-    de_filter2 = adata.obs[key].isin([ref_val])
-    selected2 = adata[de_filter2, :]
+    if ref_val == "rest":
+        # Rest is union of rest of conditions that are not the query condition
+        selected2 = adata[~de_filter1, :]
+    else:
+        de_filter2 = adata.obs[key].isin([ref_val])
+        selected2 = adata[de_filter2, :]
     # Query needs to be appended onto ref to ensure the test results are not flipped
     de_selected = selected2.concatenate(selected1)
 
@@ -920,6 +924,10 @@ def validate_volcano_conditions(query_condition, ref_condition):
 
     (query_key, query_val) = query_condition.split(';-;')
     (ref_key, ref_val) = ref_condition.split(';-;')
+
+    # Shortening the name for ease
+    if ref_val == "Union of the rest of the groups":
+        ref_val = "rest"
 
     if query_key != ref_key:
         raise PlotError("Both comparable conditions must came from same observation group.")

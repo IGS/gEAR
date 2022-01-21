@@ -457,7 +457,12 @@ function createVolcanoDropdowns (obsLevels) {
         placeholder: 'Select the query condition.',
         width: '25%'
     });
-    $('#volcano_ref_condition').html(html);
+
+    for (const category in goodObsLevels) {
+        goodObsLevels[category].push("Union of the rest of the groups");
+    }
+    const html2 = tmpl.render(goodObsLevels);
+    $('#volcano_ref_condition').html(html2);
     $('#volcano_ref_condition').select2({
         placeholder: 'Select the reference condition.',
         width: '25%'
@@ -1095,21 +1100,24 @@ $(document).on('click', '#create_plot', async () => {
             return;
         }
         const conditionKey = plotConfig.query_condition.split(';-;')[0];
-        if (plotConfig.query_condition.split(';-;')[0] !== plotConfig.ref_condition.split(';-;')[0]) {
+        const queryVal = plotConfig.query_condition.split(';-;')[1];
+        const refVal = plotConfig.ref_condition.split(';-;')[1];
+        if (conditionKey !== plotConfig.ref_condition.split(';-;')[0]) {
             window.alert('Please choose 2 conditions from the same observation group.');
             return;
         }
 
-        if (plotConfig.query_condition.split(';-;')[1] === plotConfig.ref_condition.split(';-;')[1]) {
+        if (queryVal === refVal) {
             window.alert('Please choose 2 different conditions.');
             return;
         }
 
         // If condition category was filtered, the selected groups must be present
         if (conditionKey in obsFilters
-            && !(obsFilters[conditionKey].includes(plotConfig.query_condition.split(';-;')[1])
-                 && obsFilters[conditionKey].includes(plotConfig.ref_condition.split(';-;')[1]))) {
-            window.alert('Condition observation is found in filters list, but one or both condition groups is filtered out. Please adjust.');
+            && !(obsFilters[conditionKey].includes(queryVal)
+            && obsFilters[conditionKey].includes(refVal))
+            && !(refVal === "Union of the rest of the groups")) {
+            window.alert('One of the selected conditions is also chosen to be filtered out. Please adjust.');
             return;
         }
     }
