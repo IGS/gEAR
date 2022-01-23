@@ -983,7 +983,7 @@ class LayoutCollection:
             label=row[1],
             is_current=row[2],
             user_id=row[3],
-            share_id=row[4]            
+            share_id=row[4],            
             is_domain=row[5]
         )
         

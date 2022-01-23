@@ -353,63 +353,69 @@ function load_layouts() {
                 2.  User's DB-saved value (when they go to a machine, and there's no cookie)
                 3.  Admin's active domain
              */
-
-            const domain_profiles = [];
-            const user_profiles = [];
-
+            let layouts = {};
             let active_layout_id = null;
             let active_layout_label = null;
 
-            // Pass through once to sort domains from user profiles AND see if it matches a shared layout
-            $.each(data['layouts'], (i, item) => {
-                if ( item['is_domain'] == 1 ) {
-                    domain_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id'] });
-                } else {
-                    user_profiles.push({value: item['id'], text: item['label'], share_id: item['share_id']  });
-                }
+            const layout_types = ['domain', 'user', 'group', 'shared']
 
-                if (item['share_id'] == layout_share_id) {
-                    active_layout_id = item['id'];
-                    active_layout_label = item['label'];
-                    layout_id = item['share_id'];
-                }
-            });
+            for (const ltype of layout_types) {
+                layouts[ltype] = [];
+
+                $.each(data[`${ltype}_layouts`], (_i, item) => {
+                    layouts[ltype].push({value: item['id'], text: item['label'], share_id: item['share_id']});
+
+                    if (item['share_id'] == layout_share_id) {
+                        active_layout_id = item['id'];
+                        active_layout_label = item['label'];
+                        layout_id = item['share_id'];
+                    }
+                });
+            }
 
             // Generate the tree structure for the layouts
-            profile_tree.domainProfiles = domain_profiles;
-            profile_tree.userProfiles = user_profiles;
+            profile_tree.domainProfiles = layouts.domain;
+            profile_tree.userProfiles = layouts.user;
+            profile_tree.groupProfiles = layouts.group;
+            profile_tree.sharedProfiles = layouts.shared;
             profile_tree.generateTree();
-            selected_profile_tree.domainProfiles = domain_profiles;
-            selected_profile_tree.userProfiles = user_profiles;
+            selected_profile_tree.domainProfiles = layouts.domain;
+            selected_profile_tree.userProfiles = layouts.user;
+            selected_profile_tree.groupProfiles = layouts.group;
+            selected_profile_tree.sharedProfiles = layouts.shared;
             selected_profile_tree.generateTree();
 
             // pass through again and look for one set by a cookie
             if (active_layout_id == null) {
-                $.each(data.layouts, (_i, item) => {
-                    if (item.label == CURRENT_USER.profile) {
-                        active_layout_id = item.id;
-                        active_layout_label = item.label;
-                        layout_id = item.share_id;
-                        return false;
-                    }
-                });
+                for (const ltype of layout_types) {
+                    $.each(data[`${ltype}_layouts`], (_i, item) => {
+                        if (item.label == CURRENT_USER.profile) {
+                            active_layout_id = item.id;
+                            active_layout_label = item.label;
+                            layout_id = item.share_id;
+                            return false;
+                        }
+                    });
+                }
             }
 
             // pass through again and look for one set as current by the user
             if (active_layout_id == null) {
-                $.each(data.layouts, (_i, item) => {
-                    if ( item['is_domain'] == 0 && item.is_current == 1 ) {
-                        active_layout_id = item.id;
-                        active_layout_label = item.label;
-                        layout_id = item.share_id;
-                        return false;
-                    }
-                });
+                for (const ltype of ['user', 'group']) {
+                    $.each(data[`${ltype}_layouts`], (_i, item) => {
+                        if ( item['is_domain'] == 0 && item.is_current == 1 ) {
+                            active_layout_id = item.id;
+                            active_layout_label = item.label;
+                            layout_id = item.share_id;
+                            return false;
+                        }
+                    });
+                }
             }
 
             // pass through again if no active layout was found for user and choose the admin's
             if (active_layout_id == null) {
-                $.each(data.layouts, (_i, item) => {
+                $.each(data['domain_layouts'], (_i, item) => {
                     if ( item['is_domain'] == 1 && item.is_current == 1 ) {
                         active_layout_id = item.id;
                         active_layout_label = item.label;
@@ -463,7 +469,6 @@ function load_gene_carts(cart_share_id) {
                 if (data[`${ctype}_carts`].length > 0) {
                     carts_found = true;
 
-                    //User has some profiles
                     $.each(data[`${ctype}_carts`], (_i, item) => {
                         // If cart permalink was passed in, retrieve gene_cart_id for future use.
                         if (cart_share_id && item.share_id == cart_share_id) {
