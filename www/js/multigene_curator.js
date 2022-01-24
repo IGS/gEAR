@@ -63,7 +63,7 @@ const continuousPalettes = [
 ];
 const discretePalettes = ["alphabet", "vivid", "light24", "dark24"];
 
-window.onload=() => {
+window.onload= async () => {
     // Hide further configs until a dataset is chosen.
     // Changing the dataset will start triggering these to show
     $('#plot_type_container').hide();
@@ -73,7 +73,7 @@ window.onload=() => {
     check_for_login();
 
     // Load gene carts and datasets before the dropdown appears
-    reloadTrees ();
+    await reloadTrees ();
 
     // Initialize plot types
      $('#plot_type_select').select2({
