@@ -1356,7 +1356,7 @@ class MultigeneDashData(Resource):
                 df = grouped.agg('mean') \
                     .dropna()
             else:
-                if not cluster_obs:
+                if not cluster_obs and filters:
                     sorted_df = selected.obs.sort_values(by=groupby_filters if groupby_filters else list(filters.keys()))
                     df = df.reindex(sorted_df.index.tolist())
 
