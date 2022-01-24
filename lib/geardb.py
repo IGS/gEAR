@@ -807,7 +807,7 @@ class Layout:
         Returns a list of the unique dataset IDs belonging to this layout
         """
         ids = list()
-        
+
         for ds in self.members:
             if ds.dataset_id not in ids:
                 ids.append(ds.dataset_id)
@@ -1038,8 +1038,8 @@ class Dataset:
 
     def get_tarball_path(self):
         """
-        This returns where the path of where a dataset's tarball SHOULD be, it doesn't check that 
-        it's actually there. This allows for it to be used also for any process which wants to 
+        This returns where the path of where a dataset's tarball SHOULD be, it doesn't check that
+        it's actually there. This allows for it to be used also for any process which wants to
         know where to write it.
         """
         tarball_file_path = "{0}/../www/datasets/{1}.tar.gz".format(
@@ -1091,7 +1091,7 @@ class Dataset:
 
     def get_links(self):
         """
-        Populates the dataset links attribute, a list of DatasetLink objects 
+        Populates the dataset links attribute, a list of DatasetLink objects
         associated with this dataset.
 
         First checks to see if self.links is empty.  If already populated, it is
@@ -1107,9 +1107,9 @@ class Dataset:
             for (id, resource, label, url) in cursor:
                 dsl = DatasetLink(dataset_id=self.id, resource=resource, label=label, url=url)
                 self.links.append(dsl)
-            
+
             cursor.close()
-            
+
         return self.links
 
     def get_shape(self, session_id=None):
@@ -1185,7 +1185,7 @@ class DatasetCollection:
 
     def apply_layout(self, layout=None):
         """
-        Applying a layout to a dataset collection adds the following attributes to 
+        Applying a layout to a dataset collection adds the following attributes to
         each of the datasets according to that layout:
 
           - grid_position
@@ -1197,7 +1197,7 @@ class DatasetCollection:
             raise Exception("A layout must be passed to DatasetCollection.apply_layout()")
 
         lm_idx = dict()
-        
+
         for lm in layout.members:
             lm_idx[lm.dataset_id] = lm
 
@@ -1529,7 +1529,7 @@ class Gene:
         if 'HomoloGene' in this.links_out and this.links_out['HomoloGene'] is True:
             hg_url = 'https://www.ncbi.nlm.nih.gov/homologene/?term=' + self.gene_symbol.upper()
             self.dbxrefs.append({'source': 'HomoloGene', 'identifier': self.gene_symbol, 'url': hg_url})
-        
+
         if this.domain_label == 'gear':
             # Add one for the SHIELD
             self.dbxrefs.append({'source': 'SHIELD', 'identifier': self.gene_symbol, 'url': None})
@@ -1716,18 +1716,18 @@ class GeneCart:
         """
         if not self.id:
             raise Exception("Failed to delete a gene cart without an ID")
-        
+
         # gene_cart_member entries are deleted by foreign key cascade
         conn = Connection()
         cursor = conn.get_cursor()
 
         sql = "DELETE FROM gene_cart WHERE id = %s"
         cursor.execute(sql, (self.id,))
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
     def save(self):
         """
         Will perform a save or an update depending on whether the ID attribute is
@@ -1742,7 +1742,7 @@ class GeneCart:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
             gc_insert_qry = """
-                            INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, is_domain, gctype) 
+                            INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, is_domain, gctype)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
 
@@ -1875,7 +1875,7 @@ class GeneCartCollection:
             for row in cursor:
                 cart = self._row_to_cart_object(row)
                 self.carts.append(cart)
-        
+
         cursor.close()
         conn.close()
         return self.carts
@@ -1885,7 +1885,7 @@ class GeneCartCollection:
         Put here as it will be needed in the future. User groups not yet supported.
         """
         return []
-    
+
     def get_by_share_ids(self, share_ids=None):
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
@@ -1895,14 +1895,14 @@ class GeneCartCollection:
                 FROM gene_cart
                WHERE share_id = %s
         """
-        
+
         for share_id in share_ids:
             cursor.execute(qry, (share_id,))
 
             for row in cursor:
                 cart = self._row_to_cart_object(row)
                 self.carts.append(cart)
-        
+
         cursor.close()
         conn.close()
         return self.carts
@@ -1923,7 +1923,7 @@ class GeneCartCollection:
             cart = self._row_to_cart_object(row)
             #print("Adding cart with label: {0}".format(cart.label))
             self.carts.append(cart)
-        
+
         cursor.close()
         conn.close()
         return self.carts
@@ -1948,7 +1948,7 @@ class GeneCartCollection:
         for row in cursor:
             cart = self._row_to_cart_object(row)
             self.carts.append(cart)
-        
+
         cursor.close()
         conn.close()
         return self.carts
@@ -1967,11 +1967,11 @@ class GeneCartCollection:
         for row in cursor:
             cart = self._row_to_cart_object(row)
             self.carts.append(cart)
-        
+
         cursor.close()
         conn.close()
         return self.carts
-    
+
 
 class LayoutMember:
     def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None, mg_grid_width=None):

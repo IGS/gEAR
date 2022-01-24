@@ -58,7 +58,7 @@ def main():
 
         for member in layout_members:
             # add the datasets of that layout to the user's copy
-            add_datasets_to_shared_profile(cursor, new_layout_id, member['dataset_id'], member['grid_position'], member['grid_width'], member['math_preference'])
+            add_datasets_to_shared_profile(cursor, new_layout_id, member['dataset_id'], member['grid_position'], member['grid_width'], member['mg_grid_width'], member['math_preference'])
             cnx.commit()
 
             # if dataset is private, add it to the user's "Shared with me" area
@@ -119,7 +119,7 @@ def get_layout_name(cursor, layout_id):
 
 def get_layout_members(cursor, layout_id):
     query = """
-        SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.math_preference, d.is_public
+        SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width, lm.math_preference, d.is_public
         FROM layout_members lm
         JOIN dataset d ON lm.dataset_id=d.id
         WHERE layout_id = %s
@@ -131,8 +131,9 @@ def get_layout_members(cursor, layout_id):
               'dataset_id': row[0],
               'grid_position': row[1],
               'grid_width': row[2],
-              'math_preference': row[3],
-              'access': row[4]
+              'mg_grid_width': row[3],
+              'math_preference': row[4],
+              'access': row[5]
           })
     return layout_datasets
 
@@ -145,13 +146,13 @@ def add_shared_profile(cursor, layout_name, current_user_id):
     cursor.execute(qry, (layout_name, current_user_id,))
     return cursor.lastrowid
 
-def add_datasets_to_shared_profile(cursor, new_layout_id, dataset_id, grid_position, grid_width, math_preference):
+def add_datasets_to_shared_profile(cursor, new_layout_id, dataset_id, grid_position, grid_width, mg_grid_width, math_preference):
     qry = """
         INSERT INTO layout_members
-        (layout_id, dataset_id, grid_position, grid_width, math_preference)
+        (layout_id, dataset_id, grid_position, grid_width, mg_grid_width, math_preference)
         VALUES (%s, %s, %s, %s, %s)
     """
-    cursor.execute(qry, (new_layout_id, dataset_id, grid_position, grid_width, math_preference,))
+    cursor.execute(qry, (new_layout_id, dataset_id, grid_position, grid_width, mg_grid_width, math_preference,))
 
 
 def get_user_id_from_session_id(cursor, session_id):

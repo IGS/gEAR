@@ -117,7 +117,8 @@ def main():
     config["plot_type"] = plot_type
 
     #NOTE: Only generating static images for plotly plots for now
-    if plot_type in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+    if plot_type in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic'
+                     "mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
         success = make_static_plotly_graph(dataset_id, filename, config)
         if not success:
             print("Could not create static image file for display id {}".format(display_id), file=sys.stderr)

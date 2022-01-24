@@ -38,7 +38,7 @@ def main():
         for i, width in enumerate(d_widths):
             # Need float first in case the math created a non-int
             width = int(float(width))
-            
+
             if width < 210:
                 d_widths[i] = 4
             if width > 380 and width < 400:
@@ -49,6 +49,7 @@ def main():
 
         grid_position = 1
         for d_id, d_width in zip(d_ids, d_widths):
+            # TODO: Address mg_grid_width as well
             qry = """ UPDATE layout_members
                       SET grid_position = %s, grid_width = %s
                       WHERE layout_id = %s
