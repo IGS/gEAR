@@ -48,11 +48,11 @@ def main():
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user.id)
 
-    genes_to_color = form.getvalue('genes_to_color').rstrip()
+    genes_to_color = form.getvalue('genes_to_color')
     compute_pca = form.getvalue('compute_pca')
 
     if genes_to_color:
-        genes_to_color = genes_to_color.replace(' ', '')
+        genes_to_color = genes_to_color.rstrip().replace(' ', '')
 
     if genes_to_color and ',' in genes_to_color:
         genes_to_color = genes_to_color.split(',')
