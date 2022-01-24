@@ -77,20 +77,20 @@ window.onload=() => {
 
     // Initialize plot types
      $('#plot_type_select').select2({
-      placeholder: 'Choose how to plot',
-      width: '25%'
+        placeholder: 'Choose how to plot',
+        width: '25%'
     });
 
     // If brought here by the "gene search results" page, curate on the dataset ID that referred us
     const linkedDatasetId = getUrlParameter("dataset_id");
     if (linkedDatasetId) {
-      $('#dataset').val(linkedDatasetId);
-      try {
-          $('#dataset').text(dataset_tree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
-          $("#dataset").trigger("change");
-      } catch {
-          console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
-      }
+        $('#dataset').val(linkedDatasetId);
+        try {
+            $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
+            $("#dataset").trigger("change");
+        } catch {
+            console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
+        }
     }
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
@@ -1126,7 +1126,7 @@ $(document).on('click', '#create_plot', async () => {
         if (conditionKey in obsFilters
             && !(obsFilters[conditionKey].includes(queryVal)
             && obsFilters[conditionKey].includes(refVal))
-            && !(refVal === "Union of the rest of the groups")) {
+            && refVal !== "Union of the rest of the groups") {
             window.alert('One of the selected conditions is also chosen to be filtered out. Please adjust.');
             return;
         }

@@ -82,7 +82,7 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
 
         # Return a statement that the user does not own the dataset (have permission)
         else:
-        	user_owns_dataset = False
+            user_owns_dataset = False
 
     return user_owns_dataset
 
@@ -124,7 +124,7 @@ def get_dataset(cursor, current_user_id, dataset_id):
             'dataset_id': row[0],
             'grid_position': None,
             'grid_width': 4,
-            'mg_grid_width': 4,
+            'mg_grid_width': 6,
             'title': row[1],
             'organism': row[2],
             'pubmed_id': row[3],
