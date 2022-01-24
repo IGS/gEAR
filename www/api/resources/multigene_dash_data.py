@@ -1289,6 +1289,7 @@ class MultigeneDashData(Resource):
             groupby.extend(groupby_filters)
             grouped = df.groupby(groupby)
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
+                .fillna(0) \
                 .reset_index()
 
             fig = create_dot_plot(df, groupby_filters, is_log10, title)
