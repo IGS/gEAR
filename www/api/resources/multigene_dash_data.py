@@ -601,7 +601,7 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
 
         # log-transform dataset if it came in raw
         if not is_log10:
-            group['value'] = np.log2(group['value'])
+            group['value'] = np.log2(group['value'] + LOG_COUNT_ADJUSTER)
 
         fig.add_violin(
             x=group["gene_symbol"]
@@ -629,17 +629,34 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
 
     # Color the row annotations with the fill color
     # Also, row title annotations are on the right currently.  Reposition them to the left side
-    # Am attempting to do this based on the assumption that row facet titles will never have a y-position of 1 or have certain text shared with the axes titles
+    # Am attempting to do this based on the assumption that row facet titles will never have yanchor of bottom
+    # (or y-pos of 1) or have certain text shared with the axes titles
     fig.for_each_annotation(
         lambda a: a.update(
             font=dict(color=color_map[a.text])
             , textangle=0
             , x=0
             , xanchor="right"
-            , font_size=12
+            #, font_size=12
             , borderpad=5   # Unsure if this does anything but it should ensure the row titles don't come too close to the edge
         )
-        , selector=lambda a: not (a.y == 1 or a.text == "Genes" or a.text.endswith("Expression"))
+        , selector=lambda a: not (a.yanchor == "bottom" or a.text == "Genes" or a.text.endswith("Expression"))
+    )
+
+    # Edit y-axis title
+    fig.for_each_annotation(
+        lambda a: a.update(
+            xshift=-100 if len(max(primary_groups, key=len)) > 5 else -40    # Varies based on len of row_facet group names
+        )
+        , selector=lambda a: a.text.endswith("Expression")
+    )
+
+    # Edit x-axis title
+    fig.for_each_annotation(
+        lambda a: a.update(
+            yshift=-50
+        )
+        , selector=lambda a: a.text == "Genes"
     )
 
     plot_title = groupby_filters[0]
@@ -647,13 +664,16 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
         plot_title += " and {}".format(groupby_filters[1])
     # Thin out the gap between violins. Default is 0.3 for both values.
     fig.update_layout(
-        violingap=0.15
+        violingap=0.3
         , violingroupgap=0
+        , margin={
+            "l":150
+        }
         , title={
             "text":plot_title.capitalize()
             ,"x":0.5
             ,"xref":"paper"
-            ,"y":0.9
+            ,"y":0.95
         }
     )
 
@@ -694,7 +714,7 @@ def create_violin_plot(df, groupby_filters, is_log10=False):
 
         # log-transform dataset if it came in raw
         if not is_log10:
-            group['value'] = np.log2(group['value'])
+            group['value'] = np.log2(group['value'] + LOG_COUNT_ADJUSTER)
 
         fig.add_violin(
             x=multicategory
