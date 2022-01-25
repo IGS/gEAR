@@ -1,13 +1,13 @@
 #!/opt/bin/python3
 
 """
-Saves a GeneCart object (from genecart.js) serialized as 
-formData and submitted to this script.  This assumes we're creating 
+Saves a GeneCart object (from genecart.js) serialized as
+formData and submitted to this script.  This assumes we're creating
 a NEW GeneCart object
 """
 
 import cgi, json
-import os, sys
+import os, re, sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
