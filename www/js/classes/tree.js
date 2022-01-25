@@ -246,10 +246,10 @@ class ProfileTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Highlighted profiles", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your profiles", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'group_node', 'parent':'#', 'text':"Group profiles", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'#', 'text':"Profiles shared with you", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'#', 'text':"Highlighted profiles (" + this.domainProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your profiles (" + this.userProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':"Group profiles (" + this.groupProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':"Profiles shared with you (" + this.sharedProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // user_profiles/domain_profiles properties - value, text, share_id
