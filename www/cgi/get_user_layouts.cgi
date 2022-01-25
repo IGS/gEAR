@@ -44,33 +44,48 @@ def main():
     layout_share_id = form.getvalue('layout_share_id')
     user = geardb.get_user_from_session_id(session_id)
 
+    layout_ids_found = set()
+    
     if no_domain:
         no_domain = int(no_domain)
 
     result = { 'user_layouts': [],
-               'domain_layouts': geardb.LayoutCollection().get_domains(),
+               'domain_layouts': [],
                'group_layouts':[],
                'shared_layouts':[],
                'selected': None }
-    
 
+    if not no_domain:
+        result['domain_layouts'] = filter_any_previous(layout_ids_found,
+                                                       geardb.LayoutCollection().get_domains())
+    
     if layout_share_id:
-        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        result['shared_layouts'] = filter_any_previous(layout_ids_found,
+                                                       geardb.LayoutCollection().get_by_share_id(layout_share_id))
 
     if user:
-        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
-        result['group_layouts'] = geardb.LayoutCollection().get_by_users_groups(user)
+        result['user_layouts'] = filter_any_previous(layout_ids_found,
+                                                     geardb.LayoutCollection().get_by_user(user))
+        result['group_layouts'] = filter_any_previous(layout_ids_found,
+                                                      geardb.LayoutCollection().get_by_users_groups(user))
 
     ## TODO - determine the selected one
-
-    ## TODO - filter so there aren't duplicates in different categories
-
     ## TODO - alphabetize
 
     #print(json.dumps(result))
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
-    
+
+
+def filter_any_previous(ids, new_layouts):
+    layouts = []
+
+    for layout in new_layouts:
+        if layout.id not in ids:
+            layouts.append(layout)
+            ids.add(layout.id)
+
+    return layouts
 
 if __name__ == '__main__':
     main()
