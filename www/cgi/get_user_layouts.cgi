@@ -70,9 +70,7 @@ def main():
                                                       geardb.LayoutCollection().get_by_users_groups(user))
 
     ## TODO - determine the selected one
-    ## TODO - alphabetize
 
-    #print(json.dumps(result))
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
 
@@ -85,6 +83,8 @@ def filter_any_previous(ids, new_layouts):
             layouts.append(layout)
             ids.add(layout.id)
 
+    layouts.sort(key=lambda l: l.label.upper())
+            
     return layouts
 
 if __name__ == '__main__':
