@@ -990,6 +990,9 @@ class LayoutCollection:
         layout.dataset_count = row[6]
         return layout
 
+    def get_by_share_id(self, share_id=None):
+        pass
+
     def get_by_user(self, user=None):
         """
         Gets all the layouts owned by a user
@@ -1038,10 +1041,38 @@ class LayoutCollection:
                      JOIN layout_group_membership lgm ON lgm.group_id=g.id
                      JOIN layout l ON lgm.layout_id=l.id
                      JOIN layout_members lm ON lm.layout_id=l.id
+                     JOIN dataset d on lm.dataset_id=d.id
                WHERE u.id = %s
+                 AND d.marked_for_removal = 0
               GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id;
         """
         cursor.execute(qry, (user.id,))
+        
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+
+    def get_domains(self):
+        """
+        Queries the DB to get all the site domain layouts.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM layout l
+                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
+                     LEFT JOIN dataset d on lm.dataset_id=d.id
+               WHERE l.is_domain = 1
+                 AND d.marked_for_removal = 0
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+        """
+        cursor.execute(qry)
         
         for row in cursor:
             layout = self._row_to_layout_object(row)
