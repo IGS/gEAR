@@ -1341,7 +1341,9 @@ class MultigeneDashData(Resource):
             gene_to_ensm = {y:x for x,y in ensm_to_gene.items()}
 
             # Reorder the dataframe columns based on sorted gene symbols
-            sorted_ensm = map(lambda x: gene_to_ensm[x], gene_symbols)
+            dataset_genes = adata.var['gene_symbol'].unique().tolist()
+            normalized_genes_list, _found_genes = normalize_searched_genes(dataset_genes, gene_symbols)
+            sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
             df = df[sorted_ensm]
 
             groupby_filters = []
