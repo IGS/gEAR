@@ -384,6 +384,11 @@
     </div> <!-- end container -->
     </main>
 
+    <div id="plot_spinner" style="display:none;">
+      <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+      <span>Loading plot...</span>
+    </div>
+
     <!-- Plotly plot area-->
     <div id="dataset_plot"></div>
 
@@ -616,10 +621,6 @@
 
     <script id="dataset_plot_tmpl" type="text/x-jsrender">
       <div id="dataset_{{:dataset_id}}" class="dataset_c">
-        <div id="plot_spinner" style="display:none;">
-          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span>Loading plot...</span>
-        </div>
         <div id='dataset_{{:dataset_id}}_h5ad' class="plot-container plotly-container h5ad-container"></div>
         <div class="alert alert-danger js-plot-error" role="alert" style="display:none;"></div>
         <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
