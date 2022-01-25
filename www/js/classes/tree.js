@@ -300,7 +300,7 @@ class ProfileTree extends Tree {
             })
         });
 
-        $.each(this.saharedProfiles, (_i, item) => {
+        $.each(this.sharedProfiles, (_i, item) => {
             treeData.push({
                 'id': item.value,
                 'parent': 'shared_node',

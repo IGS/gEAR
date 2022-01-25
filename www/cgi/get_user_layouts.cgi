@@ -55,7 +55,7 @@ def main():
     
 
     if layout_share_id:
-        pass
+        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
 
     if user:
         result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
