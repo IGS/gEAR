@@ -682,6 +682,7 @@ function load_preliminary_data() {
     load_initial_results();
 }
 
+
 function load_user_layouts() {
     session_id = Cookies.get('gear_session_id');
 
@@ -689,31 +690,23 @@ function load_user_layouts() {
         $.ajax({
             url : './cgi/get_user_layouts.cgi',
             type: "POST",
-            data : { 'session_id': session_id, 'no_public': 0 },
+            data : { 'session_id': session_id, 'no_domain': 0 },
             dataType:"json",
             success: function(data, textStatus, jqXHR) {
                 // clear layout selector
-                $('#site_profile_list').empty();
+                $('#domain_profile_list').empty();
                 $('#user_profile_list').empty();
 
-                var site_profiles = [];
-                var user_profiles = [];
-
-                data['layouts'].forEach(function(p) {
-                    if (p["is_domain"] == 1) {
-                        site_profiles.push(p);
-                    } else {
-                        user_profiles.push(p);
-                    }
-                });
+                var domain_profiles = data['domain_layouts'];
+                var user_profiles = data['user_layouts'];
 
                 var userListTmpl = $.templates("#layout_list_tmpl");
                 var userListHtml = userListTmpl.render(user_profiles);
                 $("#user_profile_list").html(userListHtml);
 
-                var siteListTmpl = $.templates("#layout_list_tmpl");
-                var siteListHtml = siteListTmpl.render(site_profiles);
-                $("#site_profile_list").html(siteListHtml);
+                var domainListTmpl = $.templates("#layout_list_tmpl");
+                var domainListHtml = domainListTmpl.render(domain_profiles);
+                $("#domain_profile_list").html(domainListHtml);
 
                 $('#selected_layout').val(data['selected']);
                 current_primary_layout = data['selected'];
