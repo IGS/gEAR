@@ -647,7 +647,7 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
     # Edit y-axis title
     fig.for_each_annotation(
         lambda a: a.update(
-            xshift=-100 if len(max(primary_groups, key=len)) > 5 else -40    # Varies based on len of row_facet group names
+            xshift=-170 if len(max(primary_groups, key=len)) > 5 else -40    # Varies based on len of row_facet group names
         )
         , selector=lambda a: a.text.endswith("Expression")
     )
@@ -668,7 +668,7 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
         violingap=0.3
         , violingroupgap=0
         , margin={
-            "l":150
+            "l":200 if len(max(primary_groups, key=len)) > 5 else 80
         }
         , title={
             "text":plot_title.capitalize()

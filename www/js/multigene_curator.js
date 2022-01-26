@@ -20,9 +20,9 @@ let plotConfig = {};  // Plot config that is passed to API or stored in DB
 let selectedGenes = null;  // Genes selected in a plot (e.g. volcano with lasso tool)
 
 let datasetId = null;
-let defaultDisplayId = null;
 let displayId = null;
 let obsLevels = null;
+let obsNotUsed = null;
 let geneSymbols = null;
 
 const datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
@@ -481,15 +481,19 @@ function createVolcanoDropdowns (obsLevels) {
 }
 
 function curateObservations (obsLevels) {
+    const obsNotUsed = [];  // Observations that will not be added to obsFilters due to issues (1 group, meaningless category)
+
     // Delete useless filters
     for (const property in obsLevels) {
         if (property === 'color' || property.endsWith('colors')) {
+            obsNotUsed.push(property);
             delete obsLevels[property];
         } else if (obsLevels[property].length === 1) {
+            obsNotUsed.push(property);
             delete obsLevels[property];
         }
     }
-    return obsLevels;
+    return [obsLevels, obsNotUsed];
 }
 
 // Generate a list of saved plot displays the user has access in viewing.
@@ -739,9 +743,8 @@ $('#dataset').change(async function () {
 
     $('#gene_container').show();
     $('#gene_spinner').show();
-    $('#genes_not_found').hide();
-    $('#too_many_genes_warning').hide();
     $('#gene_cart_clear').click();
+    $('#categories_not_used').hide();
 
     // Create promises to get genes and observations for this dataset
     const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
@@ -762,7 +765,7 @@ $('#dataset').change(async function () {
     $("#cluster_genes").prop("disabled", true);
 
     // Get categorical observations for this dataset
-    obsLevels = curateObservations(data.obs_levels);
+    [obsLevels, obsNotUsed] = curateObservations(data.obs_levels);
     numObs = data.num_obs;
 
     // Determine if at least one category has at least two groups (for volcanos) or at least three groups (for quadrants)
@@ -862,12 +865,11 @@ $('#gene_cart').change(function () {
                     $('#gene_dropdown').val(intersection);
                     $('#gene_dropdown').trigger('change');
 
+                    $('#genes_not_found').hide();
                     if (difference.length > 0) {
                         const differenceString = difference.join(', ');
                         $('#genes_not_found').text(`The following gene cart genes were not found in this dataset: ${differenceString}`);
                         $('#genes_not_found').show();
-                    } else {
-                        $('#genes_not_found').hide();
                     }
                 }
                 d.resolve();
@@ -1157,12 +1159,24 @@ $(document).on('click', '.js-all', function () {
     $(`#${escapedGroup}_dropdown`).trigger('change'); // This actually triggers select2 to show the dropdown vals
 });
 
+// If "all" button is clicked, populate dropdown with all groups in this observation
+$(document).on('click', '.js-clear', function () {
+    const id = this.id;
+    const group = id.replace('_clear', '');
+    const escapedGroup = $.escapeSelector(group);
+
+    $(`#${escapedGroup}_dropdown`).val('');
+    $(`#${escapedGroup}_dropdown`).trigger('change'); // This actually triggers select2 to show the dropdown vals
+});
+
 // Clear gene cart
 $(document).on('click', '#gene_cart_clear', () => {
     $('#gene_dropdown').val('');  // Clear genes
     $('#gene_dropdown').trigger('change');
     $('#gene_cart').text('Choose gene cart'); // Reset gene cart text
     $('#gene_cart').val('');
+    $('#genes_not_found').hide();
+    $('#too_many_genes_warning').hide();
 });
 
 // Reset observation filters choices to be empty
@@ -1177,6 +1191,13 @@ $(document).on('click', '#reset_opts', async function () {
 
     // Update fields dependent on dataset observations
     createObsFilterDropdowns(obsLevels);
+    $('#categories_not_used').hide();
+    if (obsNotUsed.length) {
+        const obsNotUsedString = obsNotUsed.join(", ")
+        $('#categories_not_used').show();
+        $('#categories_not_used').html(`The following observation categories were excluded either due to having one group or being considered to have no meaning: ${obsNotUsedString}`);
+    }
+
     switch ($('#plot_type_select').val()) {
     case 'dotplot':
         createDotplotDropdowns(obsLevels);

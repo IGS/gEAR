@@ -600,8 +600,10 @@
             {{/props}}
           </select>
           <button type='button' class="close js-all col-1" id="{{:key}}_all" aria-label="Choose all {{:key}} categories"> All</button>
+          <button type='button' class="close js-clear col-1" id="{{:key}}_clear" aria-label="Remove all {{:key}} categories"> Clear</button>
         </div>
       {{/props}}
+      <div class="alert alert-warning" role="alert" id='categories_not_used' style="display:none;"></div>
     </script>
 
     <script id="select_conditions_tmpl" type="text/x-jsrender">
