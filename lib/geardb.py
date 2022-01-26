@@ -183,14 +183,14 @@ def get_layout_by_id(layout_id):
     layout = None
 
     qry = """
-          SELECT id, user_id, group_id, label, is_current, share_id
+          SELECT id, user_id, label, is_current, is_domain, share_id
           FROM layout
           WHERE id = %s
     """
     cursor.execute(qry, (layout_id,))
 
-    for (id, user_id, group_id, label, is_current, share_id) in cursor:
-        layout = Layout(id=id, user_id=user_id, group_id=group_id,
+    for (id, user_id, label, is_current, is_domain, share_id) in cursor:
+        layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
                         label=label, is_current=is_current, share_id=share_id)
         break
 
@@ -760,13 +760,13 @@ class OrganismCollection:
         return self.organisms
 
 class Layout:
-    def __init__(self, id=None, user_id=None, group_id=None, label=None,
+    def __init__(self, id=None, user_id=None, is_domain=None, label=None,
                  is_current=None, share_id=None, members=None):
         self.id = id
         self.user_id = user_id
-        self.group_id = group_id
         self.label = label
         self.is_current = is_current
+        self.is_domain = is_domain
         self.share_id = share_id
 
         # This should be a list of LayoutMember objects
@@ -777,6 +777,9 @@ class Layout:
         # TODO: If is_current = 1 we really need to reset all the other layouts by this user
         if not is_current:
             self.is_current = 0
+
+        if not is_domain:
+            self.is_domain = 0
 
         if not share_id:
             self.share_id = str(uuid.uuid4()).split('-')[0]
@@ -851,14 +854,14 @@ class Layout:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT user_id, group_id, label, is_current, share_id
+              SELECT user_id, label, is_current, is_domain, share_id
                 FROM layout
                WHERE id = %s
         """
         cursor.execute(qry, (self.id,))
 
         for row in cursor:
-            (self.user_id, self.group_id, self.label, self.is_current, self.share_id) = row
+            (self.user_id, self.label, self.is_current, self.is_domain, self.share_id) = row
 
         self.get_members()
 
@@ -942,15 +945,16 @@ class Layout:
 
         if self.id is None:
             layout_insert_qry = """
-            INSERT INTO layout (user_id, group_id, label, is_current, share_id)
+            INSERT INTO layout (user_id, label, is_current, is_domain, share_id)
             VALUES (%s, %s, %s, %s, %s)
             """
-            cursor.execute(layout_insert_qry, (self.user_id, self.group_id, self.label,
-                                               self.is_current, self.share_id))
+            cursor.execute(layout_insert_qry, (self.user_id, self.label, self.is_current,
+                                               self.is_domain, self.share_id))
             self.id = cursor.lastrowid
         else:
             # ID already populated
             # Update Layout properties, delete existing members, add current ones
+            # TODO
             raise Exception("Layout.save() not yet implemented for update mode")
 
         cursor.close()
@@ -959,6 +963,151 @@ class Layout:
     # TODO: Need a function to take a DatasetCollection and populate
     #  information on it within a layout
 
+@dataclass
+class LayoutCollection:
+    layouts: List[Layout] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def _row_to_layout_object(self, row):
+        """
+        Utility function so we don't have to repeat the SQL->Python object conversion
+        """
+        layout = Layout(
+            id=row[0],
+            label=row[1],
+            is_current=row[2],
+            user_id=row[3],
+            share_id=row[4],            
+            is_domain=row[5]
+        )
+        
+        layout.dataset_count = row[6]
+        return layout
+
+    def get_by_share_id(self, share_id=None):
+        """
+        Gets the layout from the passed share_id, if any.
+        """
+        if not share_id:
+            return self.layouts
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM layout l
+                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
+                     LEFT JOIN dataset d on lm.dataset_id=d.id
+               WHERE l.share_id = %s
+                 AND d.marked_for_removal = 0
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+        """
+        cursor.execute(qry, (share_id,))
+
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+
+    def get_by_user(self, user=None):
+        """
+        Gets all the layouts owned by a user
+        """
+        if not isinstance(user, User):
+            raise Exception("LayoutCollection.get_by_user() requires an instance of User to be passed.")
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM layout l
+                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
+                     LEFT JOIN dataset d on lm.dataset_id=d.id
+               WHERE l.user_id = %s
+                 AND d.marked_for_removal = 0
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+        """
+        cursor.execute(qry, (user.id,))
+
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+
+    def get_by_users_groups(self, user=None):
+        """
+        Queries the DB to get all the groups of which the passed user is a member, then
+        gets all layouts in those groups.
+        """
+        if not isinstance(user, User):
+            raise Exception("LayoutCollection.get_by_users_groups() requires an instance of User to be passed.")
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM ggroup g
+                     JOIN user_group_membership ugm ON ugm.group_id=g.id
+                     JOIN guser u ON u.id=ugm.user_id
+                     JOIN layout_group_membership lgm ON lgm.group_id=g.id
+                     JOIN layout l ON lgm.layout_id=l.id
+                     JOIN layout_members lm ON lm.layout_id=l.id
+                     JOIN dataset d on lm.dataset_id=d.id
+               WHERE u.id = %s
+                 AND d.marked_for_removal = 0
+              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id;
+        """
+        cursor.execute(qry, (user.id,))
+        
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+
+    def get_domains(self):
+        """
+        Queries the DB to get all the site domain layouts.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+                FROM layout l
+                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
+                     LEFT JOIN dataset d on lm.dataset_id=d.id
+               WHERE l.is_domain = 1
+                 AND d.marked_for_removal = 0
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+        """
+        cursor.execute(qry)
+        
+        for row in cursor:
+            layout = self._row_to_layout_object(row)
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+    
 @dataclass
 class DatasetLink:
     id: int = None
@@ -1061,7 +1210,7 @@ class Dataset:
 
             if user:
                 qry = """
-                      SELECT l.id, l.user_id, l.group_id, l.label, l.is_current, l.share_id
+                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_members lm ON lm.layout_id=l.id
                        WHERE lm.dataset_id = %s
@@ -1071,7 +1220,7 @@ class Dataset:
                 cursor.execute(qry, (self.id, user.id))
             else:
                 qry = """
-                      SELECT l.id, l.user_id, l.group_id, l.label, l.is_current, l.share_id
+                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_members lm ON lm.layout_id=l.id
                        WHERE lm.dataset_id = %s
@@ -1081,7 +1230,7 @@ class Dataset:
                 cursor.execute(qry, (self.id,))
 
             for row in cursor:
-                l = Layout(id=row[0], user_id=row[1], group_id=row[2], label=row[3],
+                l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
 
@@ -1882,6 +2031,7 @@ class GeneCartCollection:
 
     def get_by_group_ids(self):
         """
+        TODO
         Put here as it will be needed in the future. User groups not yet supported.
         """
         return []

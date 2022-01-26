@@ -235,17 +235,21 @@ class ProfileTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainProfiles, userProfiles) {
+    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles) {
         super(args);
         this.domainProfiles = (domainProfiles) ? domainProfiles : [];
         this.userProfiles = (userProfiles) ? userProfiles : [];
+        this.groupProfiles = (groupProfiles) ? groupProfiles : [];
+        this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
     }
 
     generateTreeData() {
         // Create JSON tree structure for the data
         let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Profiles", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your Profiles", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'#', 'text':"Highlighted profiles (" + this.domainProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':"Your profiles (" + this.userProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':"Group profiles (" + this.groupProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':"Profiles shared with you (" + this.sharedProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // user_profiles/domain_profiles properties - value, text, share_id
@@ -280,6 +284,37 @@ class ProfileTree extends Tree {
                 'profile_share_id': item.share_id
             })
         });
+
+        $.each(this.groupProfiles, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'group_node',
+                'text': item.text,
+                'type': 'profile',
+                'a_attr': {
+                    'class': "py-0",
+                },
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
+            })
+        });
+
+        $.each(this.sharedProfiles, (_i, item) => {
+            treeData.push({
+                'id': item.value,
+                'parent': 'shared_node',
+                'text': item.text,
+                'type': 'profile',
+                'a_attr': {
+                    'class': "py-0",
+                },
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
+            })
+        });
+        
         this.treeData = treeData;
         return this.treeData;
     }

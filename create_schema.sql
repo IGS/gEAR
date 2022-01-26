@@ -18,6 +18,22 @@ INSERT INTO guser (id, user_name, email, institution, pass, updates_wanted, is_a
 INSERT INTO guser (email, user_name, institution, pass, updates_wanted, is_admin)
        VALUES('jorvis@gmail.com', 'Joshua Orvis', 'IGS', 'e81e78d854d86edc38ba45c443662aee', 0, 1);
 
+# Group is a reserved word, so we get gEAR Group (ggroup)
+CREATE TABLE ggroup (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       creator_id     INT NOT NULL,
+       label          VARCHAR(255) NOT NULL,
+       FOREIGN KEY (creator_id) REFERENCES guser(id) ON DELETE CASCADE
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+CREATE TABLE user_group_membership (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       user_id        INT NOT NULL,
+       group_id       INT NOT NULL,
+       FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
+       FOREIGN KEY (group_id) REFERENCES ggroup(id) ON DELETE CASCADE
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
 CREATE TABLE user_session (
        id             INT PRIMARY KEY AUTO_INCREMENT,
        user_id        INT,
@@ -250,9 +266,9 @@ CREATE TABLE dataset_shares (
 CREATE TABLE layout (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        user_id                  INT NOT NULL,
-       group_id                 INT,
        label                    VARCHAR(255),
        is_current               TINYINT(1) DEFAULT 0,
+       is_domain                TINYINT(1) DEFAULT 0,
        share_id                 VARCHAR(24),
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
@@ -277,6 +293,14 @@ CREATE TABLE layout_members (
        FOREIGN KEY (dataset_id)
           REFERENCES dataset(id)
           ON DELETE CASCADE
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+CREATE TABLE layout_group_membership (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       layout_id      INT NOT NULL,
+       group_id       INT NOT NULL,
+       FOREIGN KEY (layout_id) REFERENCES layout(id) ON DELETE CASCADE,
+       FOREIGN KEY (group_id) REFERENCES ggroup(id) ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE supplemental_images (
