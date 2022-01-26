@@ -62,6 +62,7 @@ def main():
     if layout_share_id:
         result['shared_layouts'] = filter_any_previous(layout_ids_found,
                                                        geardb.LayoutCollection().get_by_share_id(layout_share_id))
+        result['selected'] = result['shared_layouts'][0].id;
 
     if user:
         result['user_layouts'] = filter_any_previous(layout_ids_found,
@@ -69,7 +70,21 @@ def main():
         result['group_layouts'] = filter_any_previous(layout_ids_found,
                                                       geardb.LayoutCollection().get_by_users_groups(user))
 
-    ## TODO - determine the selected one
+    ## Selected priority:
+    ## - A passed share ID (already handled)
+    ## - User has set a saved profile
+    ## - Use the site default
+    if not result['selected']:
+        for l in result['user_layouts']:
+            if l.is_current:
+                result['selected'] = l.id
+                break
+
+    if not result['selected']:
+        for l in result['domain_layouts']:
+            if l.is_current:
+                result['selected'] = l.id
+                break
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
