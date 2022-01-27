@@ -207,6 +207,7 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # Assign observations to their categorical groups and assign colors to the groups
     col_group_markers = build_column_group_markers(filter_indexes, obs_order)
     groups_and_colors = set_obs_groups_and_colors(filter_indexes)
+    print(groups_and_colors)
 
     # Create a 2D-heatmap.  Convert the discrete groups into integers.
     # One heatmap per observation category
@@ -1191,6 +1192,11 @@ class MultigeneDashData(Resource):
                     reordered_col = col.cat.reorder_categories(
                         sort_order[key], ordered=True)
                     adata.obs[key] = reordered_col
+
+                    # Ensure filter order aligns with sort order
+                    # NOTE: Off-chance sort order may have more elements than filter key
+                    # if filters are changed after sort order list is generated.
+                    filters[key] = sort_order[key]
                 except:
                     pass
 
@@ -1414,6 +1420,7 @@ class MultigeneDashData(Resource):
                     }
                 )
             else:
+                print(filters)
                 filter_indexes = build_obs_group_indexes(selected.obs, filters, clusterbar_fields)
                 add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
 
