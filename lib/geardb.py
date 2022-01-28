@@ -2029,13 +2029,6 @@ class GeneCartCollection:
         conn.close()
         return self.carts
 
-    def get_by_group_ids(self):
-        """
-        TODO
-        Put here as it will be needed in the future. User groups not yet supported.
-        """
-        return []
-
     def get_by_share_ids(self, share_ids=None):
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
@@ -2082,7 +2075,28 @@ class GeneCartCollection:
         """
         Put here as it will be needed in the future. User groups not yet supported.
         """
-        return []
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = """
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, 
+                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added
+                FROM ggroup g
+                     JOIN user_group_membership ugm ON ugm.group_id=g.id
+                     JOIN guser u ON u.id=ugm.user_id
+                     JOIN gene_cart_group_membership gcgm ON gcgm.group_id=g.id
+                     JOIN gene_cart gc ON gcgm.gene_cart_id=gc.id
+               WHERE u.id = %s
+        """
+        cursor.execute(qry, (user.id,))
+
+        for row in cursor:
+            cart = self._row_to_cart_object(row)
+            self.carts.append(cart)
+
+        cursor.close()
+        conn.close()
+        return self.carts
 
     def get_domain(self):
         conn = Connection()

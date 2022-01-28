@@ -72,7 +72,7 @@ def main():
     else:
         domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
         user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
-        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups())
+        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
         shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
         public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
 
@@ -99,3 +99,4 @@ def filter_any_previous(ids, new_carts):
     
 if __name__ == '__main__':
     main()
+
