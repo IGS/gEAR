@@ -6,6 +6,9 @@ FROM ubuntu:bionic
 
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
+ARG CMAKE_VERSION=3.19.8
+ARG CMAKE_URL=https://github.com/Kitware/CMake/archive/refs/tags/v${CMAKE_VERSION}.tar.gz
+
 #ARG PYTHON_VERSION=3.7.3
 ARG PYTHON_VERSION=3.9.9
 ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz
@@ -34,7 +37,6 @@ RUN apt-get -qq update \
   libblas-dev \
   liblapack-dev \
   libxml2-dev \
-  cmake \
   curl \
   wget \
   git \
@@ -58,6 +60,19 @@ RUN apt-get -qq update \
 
 ENV LLVM_CONFIG=/usr/bin/llvm-config-9
 
+# Install CMake
+# Ubuntu Bionic package is 3.10 which is too outdated for louvain-igraph install
+# The Kitware PPA repo for apt does not go earlier than 3.20, and anything later than 3.20 also breaks
+# So need to build from source instead
+
+WORKDIR /tmp
+RUN wget $CMAKE_URL \
+  && tar -xzf v${CMAKE_VERSION}.tar.gz \
+  && cd CMake-${CMAKE_VERSION} \
+  && ./bootstrap \
+  && make install \
+  && rm -rf v${CMAKE_VERSION}* CMake-${CMAKE_VERSION}*
+
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
 WORKDIR /tmp
@@ -65,7 +80,6 @@ RUN wget $PYTHON_URL \
   && tar -xf Python-${PYTHON_VERSION}.tar.xz \
   && cd Python-${PYTHON_VERSION} \
   && ./configure --prefix=/opt/Python-${PYTHON_VERSION} --enable-optimizations --enable-shared \
-#  && make \
   && make install \
   && cd /tmp \
   && rm -rf  Python-${PYTHON_VERSION}* \
