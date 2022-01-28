@@ -110,6 +110,14 @@ CREATE TABLE gene_cart_member (
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
+CREATE TABLE gene_cart_group_membership (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       gene_cart_id      INT NOT NULL,
+       group_id       INT NOT NULL,
+       FOREIGN KEY (gene_cart_id) REFERENCES gene_cart(id) ON DELETE CASCADE,
+       FOREIGN KEY (group_id) REFERENCES ggroup(id) ON DELETE CASCADE
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
 CREATE TABLE gene_symbol (
        id               INT PRIMARY KEY AUTO_INCREMENT,
        gene_id          INT NOT NULL,
