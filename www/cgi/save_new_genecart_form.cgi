@@ -32,6 +32,7 @@ def main():
     if upload_type == 'pasted_genes':
         gc.gctype = 'unweighted-list'
         pasted_genes = form.getvalue('new_cart_pasted_genes').replace(',', ' ').replace('  ', ' ')
+        pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '')
 
         for gene_sym in pasted_genes.split(' '):
             gene = geardb.Gene(gene_symbol=gene_sym)
