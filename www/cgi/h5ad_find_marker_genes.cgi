@@ -105,13 +105,9 @@ def main():
         # The sharey parameter here controls whether all axes have the same scale
         sc.pl.rank_genes_groups(adata, n_genes=n_genes, gene_symbols='gene_symbol', sharey=False, save='.png')
 
-    # https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.to_html.html
-    # These classes inform Bootstrap CSS
-    table_classes = ['table', 'table-hover', 'table-condensed']
-
     df_json_str = pd.DataFrame(
         adata.uns['rank_genes_groups']['names']
-    ).loc[:n_genes].to_json(orient='split')
+    ).iloc[:n_genes].to_json(orient='split')
 
     """
     This section is to transform the JSON like this:
