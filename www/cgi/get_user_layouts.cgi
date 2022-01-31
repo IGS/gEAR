@@ -59,10 +59,10 @@ def main():
         result['domain_layouts'] = filter_any_previous(layout_ids_found,
                                                        geardb.LayoutCollection().get_domains())
     
-    if layout_share_id:
+    if layout_share_id and len(result['shared_layouts']):
         result['shared_layouts'] = filter_any_previous(layout_ids_found,
                                                        geardb.LayoutCollection().get_by_share_id(layout_share_id))
-        result['selected'] = result['shared_layouts'][0].id;
+        result['selected'] = result['shared_layouts'][0].id
 
     if user:
         result['user_layouts'] = filter_any_previous(layout_ids_found,
