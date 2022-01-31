@@ -84,10 +84,6 @@ def main():
     if not adata.raw:
         adata.raw = adata
 
-    # if it doesn't have .raw, add it
-    if not adata.raw:
-        adata.raw = adata
-
     # Compute marker genes
     if compute_marker_genes == 'true':
 

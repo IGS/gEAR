@@ -420,6 +420,8 @@
                         <input type="number" class="form-control form-control-sm ml-2 input-length-2" id="marker_genes_n_genes" size="2" value="5" min="1"/>
                         <button id='btn_marker_genes_run' type='button' class='ml-2 btn btn-default btn-sm click-once'>Go</button>
                       </form>
+                      <hr class="separator">
+                      <p class="js-next-step" style="display:none;"> Please either rerun louvain clustering with labels (in previous step) or click on the "Compare genes / clusters" toggle to proceed.</p>
                     </div> <!-- #marker_genes_options_c -->
                     <div class='image_result_c empty_on_change' id='marker_genes_plot_c'></div>
                     <h4 id='marker_genes_table_header' class='shown_later'>
@@ -506,6 +508,8 @@
                           </div> <!-- #louvain_options_c -->
                           <div id='louvain_run_c'>
                             <button id='btn_louvain_run' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
+                            <hr class="separator">
+                            <p class="js-next-step" style="display:none;"> Please click on the "Find marker genes" toggle to proceed.</p>
                           </div>
                           <div id="group_labels_c" class="shown_later">
                             <table id="marker_genes_group_labels">
@@ -601,6 +605,8 @@
                             <div class='button-group'>
                               <button id='btn_tsne_run' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
                             </div>
+                            <hr class="separator">
+                            <p class="js-next-step" style="display:none;"> Please click on the "Clustering (Louvain)" toggle to proceed.</p>
                           </div> <!-- end #tsne_options_c -->
                         </div>
                         <div class="col-sm-6 col-md-6 col-lg-6">
@@ -645,7 +651,9 @@
                                 <button id='btn_pca_top_genes' type='button' class='btn btn-default btn-sm click-once'>Plot top genes</button>
                               </div>
                             </form>
-                          </div> <!-- end #asvg_options_c -->
+                            <hr class="separator">
+                            <p class="js-next-step" style="display:none;"> Please click on the "tSNE / UMAP" toggle to proceed.</p>
+                          </div> <!-- end #pca_missing_gene_c -->
                         </div>
                         <div class="col-sm-8 col-md-8 col-lg-8">
                           <div class="container-fluid">
@@ -730,6 +738,8 @@
                               <button id='btn_do_analysis_select_variable_genes' type='button' class='btn btn-default btn-sm click-once'>Plot</button>
                               <button id='btn_asvg_save' type='button' class='btn btn-default btn-sm shown_later'>Save these genes</button>
                             </div>
+                            <hr class="separator">
+                            <p class="js-next-step" style="display:none;"> Please click "Save these genes", then click on the "Principal Component Analysis (PCA)" toggle to proceed.</p>
                           </div> <!-- end #asvg_options_c -->
                         </div>
                         <div class="col-md-8 col-lg-8">
@@ -811,6 +821,8 @@
                                 be handled for you automatically in a later release.)
                               </p>
                             </div>
+                            <hr class="separator">
+                            <p class="js-next-step" style="display:none;"> Please click "Save these genes", then click on the "Identify highly-variable genes" toggle to proceed.</p>
                           </div> <!-- end #qc_mito_options_c -->
                         </div>
                         <div class="col-8">
@@ -846,29 +858,29 @@
                             Apply filters as desired.  <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
                             title="The initial dataset contains many  observations (cells), some  of which may hold no significant value to the downstream analysis. Here you can perform multiple filtering steps to remove empty captures, doublets and genes not expressed in this dataset."></span>
                           </p>
-                          <div>
-                            <div id='primary_filter_options_c'>
-                              <form id='primary_filter_options_f' class='reset_on_change'>
-                                <div class="form-group-sm">
-                                  <input id='filter_cells_lt_n_genes_selected' type="checkbox">
-                                  Exclude cells with &lt; <input type="number" class="input-length-4" id="filter_cells_lt_n_genes" name="filter_cells_lt_n_genes" size="4" value="300" min="1"/> genes
-                                </div>
-                                <div class="form-group-sm">
-                                  <input id='filter_cells_gt_n_genes_selected' type="checkbox">
-                                  Exclude cells with &gt; <input type="number" class="input-length-4" id="filter_cells_gt_n_genes" name="filter_cells_gt_n_genes" size="4" min="1"/> genes
-                                </div>
-                                <div class="form-group-sm">
-                                  <input id='filter_genes_lt_n_cells_selected' type="checkbox">
-                                  Exclude genes in &lt; <input type="number" class="input-length-4" id="filter_genes_lt_n_cells" name="filter_cells_lt_n_genes" size="4" value="3" min="1"/> cells
-                                </div>
-                                <div class="form-group-sm">
-                                  <input id='filter_genes_gt_n_cells_selected' type="checkbox">
-                                  Exclude genes in &gt; <input type="number" class="input-length-4" id="filter_genes_gt_n_cells" name="filter_cells_gt_n_genes" size="4" min="1"/> cells
-                                </div>
-                              </form>
-                              <button id='btn_apply_primary_filter' type='button' class='btn btn-default btn-sm click-once'>Apply filters</button>
-                            </div> <!-- end #primary_filter_oprtions_c -->
-                          </div>
+                          <div id='primary_filter_options_c'>
+                            <form id='primary_filter_options_f' class='reset_on_change'>
+                              <div class="form-group-sm">
+                                <input id='filter_cells_lt_n_genes_selected' type="checkbox">
+                                Exclude cells with &lt; <input type="number" class="input-length-4" id="filter_cells_lt_n_genes" name="filter_cells_lt_n_genes" size="4" value="300" min="1"/> genes
+                              </div>
+                              <div class="form-group-sm">
+                                <input id='filter_cells_gt_n_genes_selected' type="checkbox">
+                                Exclude cells with &gt; <input type="number" class="input-length-4" id="filter_cells_gt_n_genes" name="filter_cells_gt_n_genes" size="4" min="1"/> genes
+                              </div>
+                              <div class="form-group-sm">
+                                <input id='filter_genes_lt_n_cells_selected' type="checkbox">
+                                Exclude genes in &lt; <input type="number" class="input-length-4" id="filter_genes_lt_n_cells" name="filter_cells_lt_n_genes" size="4" value="3" min="1"/> cells
+                              </div>
+                              <div class="form-group-sm">
+                                <input id='filter_genes_gt_n_cells_selected' type="checkbox">
+                                Exclude genes in &gt; <input type="number" class="input-length-4" id="filter_genes_gt_n_cells" name="filter_cells_gt_n_genes" size="4" min="1"/> cells
+                              </div>
+                            </form>
+                            <button id='btn_apply_primary_filter' type='button' class='btn btn-default btn-sm click-once'>Apply filters</button>
+                            <hr class="separator">
+                            <p class="js-next-step" style="display:none;"> Please click on the "QC - filter by mitochondrial content" toggle to proceed.</p>
+                          </div> <!-- end #primary_filter_oprtions_c -->
                         </div> <!-- end column -->
                         <div class="col-7">
                           <h5 class="primary_initial_plot">Initial composition</h5>

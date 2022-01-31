@@ -32,6 +32,8 @@ window.onload=() => {
     $( "#dataset_id" ).on('change', () => {
         show_working("Loading dataset");
 
+        $('.js-next-step').hide();
+
         if (current_analysis != null) {
             reset_workbench();
         }
@@ -545,6 +547,7 @@ function apply_primary_filter() {
                 current_analysis.primary_filter.calculated = true;
                 current_analysis.primary_filter.update_ui(current_analysis);
                 done_working("Data filters applied");
+                $('#primary_filter_options_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 if (data['n_genes'] == 0) {
                     report_error("Filter reduced genes to 0. Try less stringent cutoffs");
@@ -959,6 +962,7 @@ function run_analysis_louvain() {
 
                 $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain clusters computed");
+                $('#louvain_run_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain cluster compute failed.");
@@ -985,9 +989,10 @@ function run_analysis_marker_genes() {
     clicked_marker_genes = new Set();
     entered_marker_genes = new Set();
 
-    var compute_marker_genes = true;
-
-    if (current_analysis.marker_genes.calculated == true) {
+    let compute_marker_genes = true;
+    // If marker genes were already calculated, just reuse the results... unless they change the number they want.
+    if (current_analysis.marker_genes.calculated == true
+        && $("#marker_genes_n_genes").val() == current_analysis.marker_genes.n_genes) {
         compute_marker_genes = false;
     }
 
@@ -1011,6 +1016,7 @@ function run_analysis_marker_genes() {
 
                 $('#btn_marker_genes_run').attr("disabled", false);
                 done_working("Marker genes computed");
+                $('#marker_genes_options_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 $('#btn_marker_genes_run').attr("disabled", false);
                 done_working("Marker genes compute failed.");
@@ -1093,6 +1099,7 @@ function run_analysis_pca() {
                 current_analysis.pca.update_ui_with_results(current_analysis, data);
                 done_working("PCA and variance computed");
                 $("#pca_options_g").show();
+                $('#pca_options_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 $("#pca_missing_gene").text(data['missing_gene']);
                 $("#pca_missing_gene_c").show(500);
@@ -1155,6 +1162,7 @@ function run_analysis_qc_by_mito(save_dataset) {
                 current_analysis.qc_by_mito.update_ui_with_results(
                     current_analysis, data, current_analysis.qc_by_mito.calculated);
                 done_working("Mitochondrial plot displayed");
+                $('#qc_mito_options_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 done_working("QC by mito failed.");
             }
@@ -1274,6 +1282,7 @@ function run_analysis_tsne() {
 
                 $('#btn_tsne_run').attr("disabled", false);
                 done_working("tSNE/UMAP computed and displayed");
+                $('#tsne_options_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 $("#tsne_missing_gene").text(data['missing_gene']);
                 $("#tsne_missing_gene_c").show(500);
@@ -1352,6 +1361,7 @@ function run_analysis_select_variable_genes(save_dataset) {
             $('#btn_do_analysis_select_variable_genes').attr("disabled", false);
             $('#top_genes').html("Suggested highly-variable genes:<br><strong>" + data['top_genes'] + "<strong>");
             $('#top_genes').show();
+            $('#asvg_options_c .js-next-step').show();  // Show that next toggle can be clicked
         },
         error: function(xhr, status, msg) {
             report_error("Error identifying variable genes");
