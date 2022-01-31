@@ -111,7 +111,9 @@ def main():
     os.chdir(os.path.dirname(dest_datafile_path))
 
     adata.X = sparse.csc_matrix(adata.X)
-    
+
+    # NOTE: This will probably need to be updated if we update Scanpy due to some changes to adata.raw I believe
+    # Currently does not work on my Docker instance, which is using a more recent version of Scanpy since I could not build with the gEAR prod versions anymore
     ax = sc.pl.rank_genes_groups(adata, groups=[query_cluster],
                                  gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_ranked.png")
     ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw=False,

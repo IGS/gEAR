@@ -94,6 +94,8 @@ def main():
     gene_symbols = adata.raw.var.index.tolist()
     marker_genes = normalize_marker_genes(gene_symbols, marker_genes)
 
+    # NOTE: This will probably need to be updated if we update Scanpy due to some changes to adata.raw I believe
+    # Currently does not work on my Docker instance, which is using a more recent version of Scanpy since I could not build with the gEAR prod versions anymore
     sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, save='_goi.png')
     sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, save='_goi.png')
 
