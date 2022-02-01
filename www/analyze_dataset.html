@@ -72,7 +72,7 @@
                 </div>
                 <div id="dataset_id" value="" data-title="Click to change" class="form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
                 <div class="dropdown-menu" aria-labelledby="dataset_id">
-                  <form class="px-4 py-3">
+                  <div class="px-4 py-3">
                     <div class="input-group input-group-sm mb-3">
                       <div class="input-group-prepend">
                         <i class="fa fa-search input-group-text" aria-hidden="true"></i>
@@ -80,7 +80,7 @@
                       <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
                     </div>
                     <div id="dataset_tree"></div>
-                  </form>
+                  </div>
                 </div>  <!-- end dropdown-menu -->
               </div>  <!-- end dataset_c -->
               <form>
@@ -572,11 +572,13 @@
                                 <div class="col-sm-5 col-md-5"><input type="text" name="tsne_genes_to_color" id="tsne_genes_to_color"/></div>
                               </div>
                               <div class="form-group row form-group-sm">
-                                <label for="dredux_n_neighbors" class="col-sm-7 col-form-label">N neighbors</label>
+                                <label for="dredux_n_neighbors" class="col-sm-7 col-form-label">N neighbors <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
+                                  title="The number of nearest neighbors to compute the neighborhood graph of cells."></span></label>
                                 <div class="col-sm-5"><input type="number" class="input-length-6" name="dredux_n_neighbors" id="dredux_n_neighbors" size="6" min="1"/></div>
                               </div>
                               <div class="form-group row form-group-sm">
-                                <label for="tsne_n_pcs" class="col-sm-7 col-form-label">N dimensions (principal components)</label>
+                                <label for="tsne_n_pcs" class="col-sm-7 col-form-label">N dimensions (principal components) <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
+                                  title="The number of principle components to the embedded into the plot."></span></label>
                                 <div class="col-sm-5"><input type="number" class="input-length-6" name="tsne_n_pcs" id="tsne_n_pcs" size="6" min="1"/></div>
                               </div>
                               <div class="form-group row form-group-sm shown_later">
