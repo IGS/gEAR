@@ -34,13 +34,13 @@ class Tree {
     register_search() {
     // Code from "search" section of https://www.jstree.com/plugins/
     // Sets text input to search as tree search box.
-    let self = this;
+    const self = this;
     let to = false;
     // Requires searchbox to be named #{treeDiv}_q
     $(`${this.treeDiv}_q`).keyup(() => {
         if (to) { clearTimeout(to); }
         to = setTimeout(() => {
-        let v = $(`${self.treeDiv}_q`).val();
+        const v = $(`${self.treeDiv}_q`).val();
         self.tree.search(v);
         }, 250);
     });
@@ -78,18 +78,18 @@ class GeneCartTree extends Tree {
 
     generateTreeData() {
         // Create JSON tree structure for the data
-        let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Highlighted gene carts (" + this.domainGeneCarts.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your gene carts (" + this.userGeneCarts.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'group_node', 'parent':'#', 'text':"Group gene carts (" + this.groupGeneCarts.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'#', 'text':"Gene carts shared with you (" + this.sharedGeneCarts.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'public_node', 'parent':'#', 'text':"Public carts from other users (" + this.publicGeneCarts.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+        const treeData = [
+            {'id':'domain_node', 'parent':'#', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':`Group gene carts (${this.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':`Gene carts shared with you (${this.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'public_node', 'parent':'#', 'text':`Public carts from other users (${this.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
             treeData.push({
                 'id': item.value,
-                'parent': 'domain_node',  
+                'parent': 'domain_node',
                 'text':item.text,
                 'type': 'genecart',
                 'a_attr': {
@@ -145,7 +145,7 @@ class GeneCartTree extends Tree {
                 }
             })
         });
-        
+
         this.treeData = treeData;
         return this.treeData;
     }
@@ -194,7 +194,7 @@ class GeneCartTree extends Tree {
     }
 
     register_events() {
-        let self = this;
+        const self = this;
         this.register_search();
 
         // Get genes from the selected gene cart
@@ -245,11 +245,11 @@ class ProfileTree extends Tree {
 
     generateTreeData() {
         // Create JSON tree structure for the data
-        let treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Highlighted profiles (" + this.domainProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your profiles (" + this.userProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'group_node', 'parent':'#', 'text':"Group profiles (" + this.groupProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'#', 'text':"Profiles shared with you (" + this.sharedProfiles.length + ")", 'a_attr': {'class':'jstree-ocl'}},
+        const treeData = [
+            {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':`Group profiles (${this.groupProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':`Profiles shared with you (${this.sharedProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // user_profiles/domain_profiles properties - value, text, share_id
@@ -314,7 +314,7 @@ class ProfileTree extends Tree {
                 'profile_share_id': item.share_id
             })
         });
-        
+
         this.treeData = treeData;
         return this.treeData;
     }
@@ -359,7 +359,7 @@ class ProfileTree extends Tree {
 
     // Register various ProfileTree events as object properties are updated.
     register_events() {
-        let self = this;
+        const self = this;
         this.register_search();
 
         // Get layout from the selected node and close dropdown
@@ -417,7 +417,7 @@ class DatasetTree extends Tree {
 
     generateTreeData() {
         // Create JSON tree structure for the data
-        let treeData = [
+        const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':"Public Datasets", 'a_attr': {'class':'jstree-ocl'}},
             {'id':'shared_node', 'parent':'#', 'text':"Shared Datasets", 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':"Your Datasets", 'a_attr': {'class':'jstree-ocl'}},
@@ -512,7 +512,7 @@ class DatasetTree extends Tree {
 
     // Register various DatasetTree events as object properties are updated.
     register_events() {
-        let self = this;
+        const self = this;
         this.register_search();
 
         // Get layout from the selected node and close dropdown
