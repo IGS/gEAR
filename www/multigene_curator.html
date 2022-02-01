@@ -91,7 +91,7 @@
         <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
           <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
           <div class="dropdown-menu w-100" aria-labelledby="dataset">
-            <div class="px-4 py-3">
+            <form class="px-4 py-3" onkeydown="return event.key != 'Enter';">
               <div class="input-group input-group-sm mb-3">
                 <div class="input-group-prepend">
                   <i class="fa fa-search input-group-text" aria-hidden="true"></i>
@@ -99,7 +99,7 @@
                 <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
               </div>
               <div id="dataset_tree"></div>
-            </div>
+            </form>
           </div>
         </div>  <!-- end dataset_c -->
       </fieldset>
@@ -147,7 +147,7 @@
           <div id="gene_cart_c" class="w-50 form-control dropdown col-6">
             <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
             <div class="dropdown-menu" aria-labelledby="gene_cart">
-              <div class="px-4 py-3">
+              <form class="px-4 py-3" onkeydown="return event.key != 'Enter';"></form>>
                 <div class="input-group input-group-sm mb-3">
                   <div class="input-group-prepend">
                     <i class="fa fa-search input-group-text" aria-hidden="true"></i>
@@ -155,7 +155,7 @@
                   <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
                 </div>
                 <div id="gene_cart_tree"></div>
-              </div>
+              </form>
             </div>
           </div>  <!-- end gene_cart_c -->
           <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
