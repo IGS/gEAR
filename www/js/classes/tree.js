@@ -418,9 +418,9 @@ class DatasetTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         const treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':"Public Datasets", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'#', 'text':"Shared Datasets", 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':"Your Datasets", 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'#', 'text':`Public Datasets (${this.domainDatasets.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':`Shared Datasets (${this.sharedDatasets.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':`Your Datasets (${this.userDatasets.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // Load datasets into the tree data property

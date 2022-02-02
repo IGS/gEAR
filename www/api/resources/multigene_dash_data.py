@@ -1003,6 +1003,9 @@ def create_dataframe_gene_mask(df, gene_symbols):
             uniq_gene_filter = uniq_df['gene_symbol'].isin(normalized_genes_list)
             genes_df = uniq_df['gene_symbol'][uniq_gene_filter]
 
+            # NOTE: While volcanoes and quadrants can be searched without genes, this bit
+            # should only execute if the user was searching volcanoes from the main page
+            # Most likely the user is not interested in a annotation-less volcano plot from there.
             if genes_df.empty:
                 raise PlotError("None of the searched gene symbols were found in this dataset.")
 
