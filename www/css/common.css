@@ -124,7 +124,7 @@ ul.dropdown-menu li a.glyphicon {
 /*****************
   Navigation bar
 *****************/
-a#create_acct_link {
+a#create_acct_link, button#forgot_password_link {
     color: white;
 }
 a#main_logo {

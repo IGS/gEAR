@@ -190,7 +190,6 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
     $('#user_email').css({ 'color':'black', 'font-weight':'normal' });
     $('#user_pass').css({ 'color':'black', 'font-weight':'normal' });
 
-    $('#btn_sign_in').prop("disabled", true);
     e.preventDefault();
 
     var formData = $("#login_form").serializeArray();
@@ -206,7 +205,6 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
             if (data['session_id'] == 0) {
                 $('#user_email').focus();
                 $('#user_email').css({ 'color':'red', 'font-weight':'bold' });
-                $('#btn_sign_in').prop("disabled", false);
 
             // -1 - User was found, but the password was incorrect
             } else if (data['session_id'] == -1) {
@@ -214,9 +212,6 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
                 $('#user_pass').css({ 'color':'red', 'font-weight':'bold' });
                 $('#user_pass').parent().addClass('has-error');
 
-                //Toggle sign in button to forgot password
-                $('#btn_sign_in').replaceWith("<button id='forgot_password_link' data-toggle='popover' data-placement='auto' title='Reset your password' class='btn btn-warning input-sm'>Forgot password?</button>");
-                $('#btn_sign_in').prop("disabled", false);
                 load_forgot_password();
                 // Hide these until submit is clicked
                 $('#forgot_pass_warning').hide();
@@ -259,7 +254,6 @@ $('#navigation_bar').on('keyup', '#user_pass', function(e){
     //reset password input when user types
     $('#user_pass').parent().removeClass('has-error');
     $('#user_pass').css({ 'color':'black', 'font-weight':'normal' });
-    $('#forgot_password_link').replaceWith("<button id='btn_sign_in' class='btn btn-success form-control-sm'>Sign in</button>");
     $('.popover').popover('hide');
 });
 
