@@ -1004,7 +1004,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
             genes_df = uniq_df['gene_symbol'][uniq_gene_filter]
 
             if genes_df.empty:
-                raise PlotError("Genes not found")
+                raise PlotError("None of the searched gene symbols were found in this dataset.")
 
             # Now that our mapping is finished, create the gene filter
             gene_filter = df.index.isin(genes_df.index)
@@ -1242,6 +1242,9 @@ class MultigeneDashData(Resource):
         # The other plot types use all genes and rather annotate the specific ones.
         if plot_type in ['dotplot', 'heatmap', 'mg_violin'] and gene_filter is not None:
             selected = selected[:, gene_filter]
+
+            if plot_type == "heatmap" and len(selected.var) == 1:
+                raise PlotError("Only one gene from the searched gene symbols was found in dataset.  The heatmap option require at least 2 genes to plot.")
 
         # Filter dataframe on the chosen observation filters
         if filters:
