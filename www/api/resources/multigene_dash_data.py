@@ -469,7 +469,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
     fig.update_xaxes(title="{} vs {} log2FC".format(compare1_val, control_val))
     fig.update_yaxes(title="{} vs {} log2FC".format(compare2_val, control_val))
     fig.update_layout(
-        legend_title_text="log2 foldchange and number of genes in group"
+        legend_title_text="Log2FC: Num Genes in Group"
         )
     return fig
 
@@ -983,14 +983,13 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
             filter_indexes[k][elem] = obs_index.tolist()
     return filter_indexes
 
-def create_dataframe_gene_mask(df, gene_symbols, plot_type):
+def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
     gene_filter = None
     success = 1
     message_list = []
     if 'gene_symbol' in df.columns:
         if gene_symbols:
-
             # Get list of duplicated genes for the dataset
             gene_counts_df = df['gene_symbol'].value_counts().to_frame()
             dup_genes = gene_counts_df.index[gene_counts_df['gene_symbol'] > 1].tolist()
@@ -1020,11 +1019,8 @@ def create_dataframe_gene_mask(df, gene_symbols, plot_type):
             # Note to user which genes were not found in the dataset
             genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
             if genes_not_present:
-                success = 3,
+                success = 2,
                 message_list.append('<li>One or more genes were not found in the dataset: {}</li>'.format(', '.join(genes_not_present)))
-        else:
-            if plot_type in ["dotplot", "heatmap", "mg_violin"]:
-                raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
     else:
         raise PlotError('Missing gene_symbol column in adata.var')
     message = "\n".join(message_list) if message_list else ""
@@ -1222,10 +1218,17 @@ class MultigeneDashData(Resource):
 
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
+
+            if not gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
+                raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
+
+            if len(gene_symbols) == 1 and plot_type == "heatmap":
+                raise PlotError('Heatmaps require 2 or more genes as input')
+
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
             #var = adata.var.drop_duplicates(subset=['gene_symbol'])
-            gene_filter, success, message = create_dataframe_gene_mask(adata.var, gene_symbols, plot_type)
+            gene_filter, success, message = create_dataframe_gene_mask(adata.var, gene_symbols)
         except PlotError as pe:
             return {
                 'success': -1,
@@ -1348,10 +1351,10 @@ class MultigeneDashData(Resource):
             # Annotate selected genes
             genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
             if genes_not_found:
-                success = 3
+                success = 2
                 message += "<li>One or more genes did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
             if genes_none_none:
-                success = 3
+                success = 2
                 message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
 
 

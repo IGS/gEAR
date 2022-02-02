@@ -51,7 +51,7 @@ class Display {
                         // TODO: Handle here if it's a 0-white color range
                         display.draw_chart(display.data);
                         // Exit status 2 is status to show plot but append warning message
-                        if (display.data.success === 2)
+                        if (display.data.message && display.data.success === 2)
                             display.show_warning(display.data.message);
                     }
                 });
@@ -99,7 +99,7 @@ class Display {
                 }
             }
             // Exit status 2 is status to show plot but append warning message
-            if (data.success === 2)
+            if (data.message && data.success === 2)
                 this.show_warning(this.data.message);
         }
     }
@@ -141,7 +141,7 @@ class Display {
                 }
             }
             // Exit status 2 is status to show plot but append warning message
-            if (data.success === 2)
+            if (data.message && data.success === 2)
                 this.show_warning(this.data.message);
         }
     }
@@ -473,6 +473,18 @@ class PlotlyDisplay extends Display {
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
 
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const index_conf = post_plotly_config.index;
+        for (const idx in index_conf) {
+        const conf = index_conf[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == this.plot_type) {
+            const update_data = "data" in conf ? conf.data : {}
+            const update_layout = "layout" in conf ? conf.layout : {}
+            Plotly.update(target_div, update_data, update_layout)
+            }
+        }
+
         return true;
     }
 
@@ -493,6 +505,18 @@ class PlotlyDisplay extends Display {
         } = this.data;
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
+
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const index_conf = post_plotly_config.index;
+        for (const idx in index_conf) {
+        const conf = index_conf[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == this.plot_type) {
+            const update_data = "data" in conf ? conf.data : {}
+            const update_layout = "layout" in conf ? conf.layout : {}
+            Plotly.update(target_div, update_data, update_layout)
+            }
+        }
     }
 
     show() {
@@ -524,7 +548,7 @@ class PlotlyDisplay extends Display {
      */
     show_warning(msg) {
 
-        const hover_msg = " Hover to see warning."
+        const hover_msg = " Hover to see warning.";
 
         const dataset_selector = $( `#dataset_${this.primary_key}_h5ad` );
         const warning_template = `
@@ -545,13 +569,12 @@ class PlotlyDisplay extends Display {
 
         // Add hover events (via jQuery)
         warning_selector.mouseover(() => {
-            msg_selector.text(` ${msg}`);
+            msg_selector.html(msg);
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
        });
     }
-
 }
 
 /**
@@ -720,6 +743,8 @@ class PlotlyDisplay extends Display {
             Plotly.update(target_div, update_data, update_layout)
             }
         }
+
+        return true;
     }
 
     draw_zoomed() {
@@ -739,6 +764,18 @@ class PlotlyDisplay extends Display {
         } = this.data;
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
+
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const index_conf = post_plotly_config.index;
+        for (const idx in index_conf) {
+        const conf = index_conf[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == this.plot_type) {
+            const update_data = "data" in conf ? conf.data : {}
+            const update_layout = "layout" in conf ? conf.layout : {}
+            Plotly.update(target_div, update_data, update_layout)
+            }
+        }
     }
 
     show() {
@@ -770,28 +807,28 @@ class PlotlyDisplay extends Display {
      */
     show_warning(msg) {
 
-        const hover_msg = " Hover to see warning."
+        const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_h5ad` );
+        const dataset_selector = $( `#dataset_${this.primary_key}_mg` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_mg_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_mg_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning above the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_mg_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_mg_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
 
         // Add hover events (via jQuery)
         warning_selector.mouseover(() => {
-            msg_selector.text(` ${msg}`);
+            msg_selector.html(msg);
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
@@ -1282,28 +1319,28 @@ class SVGDisplay extends Display {
      */
      show_warning(msg) {
 
-        const hover_msg = " Hover to see warning."
+        const hover_msg = " Hover to see warning.";
 
         const dataset_selector = $( `#dataset_${this.primary_key}_svg_cc` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_svg_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_svg_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning below the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.append(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_svg_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_svg_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('bottom', '0').css('z-index', '2');
 
         // Add hover events (via jQuery)
         warning_selector.mouseover(() => {
-            msg_selector.text(` ${msg}`);
+            msg_selector.html(msg);
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
@@ -1428,28 +1465,27 @@ class TsneDisplay extends Display {
 
         const dataset_selector = $( `#dataset_${this.primary_key}_tsne` );
         const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
+        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_tsne_warning'>
             <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
+            <span id="dataset_${this.primary_key}_tsne_msg">${hover_msg}</span>
         </div>`;
 
         // Add warning above the chart
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
+        const warning_selector = $( `#dataset_${this.primary_key}_tsne_warning` );
+        const msg_selector = $( `#dataset_${this.primary_key}_tsne_msg` );
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
 
         // Add hover events (via jQuery)
         warning_selector.mouseover(() => {
-            msg_selector.text(` ${msg}`);
+            msg_selector.html(msg);
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
        });
     }
-
 }

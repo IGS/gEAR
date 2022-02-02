@@ -104,6 +104,8 @@ def main():
             if os.path.isfile(filename):
                 print("Overwriting file {}".format(filename))
 
+            success = False
+
             # Plotly
             if props["plot_type"] in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
                 success = make_static_plotly_graph(dataset_id, filename, config)
@@ -117,9 +119,9 @@ def main():
             elif props["plot_type"] in ["epiviz"]:
                 pass
             # Multigene plots
-            elif props["plot_type"] in ["heatmap", "mg_violin", "volcano"]:
+            elif props["plot_type"] in ["heatmap", "mg_violin", "volcano", "dotplot", "quadrant"]:
                 gene = "multi"
-                pass
+                success = make_static_plotly_graph(dataset_id, filename, config)
             else:
                 print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))
 

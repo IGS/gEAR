@@ -267,7 +267,7 @@ function drawChart (data, datasetId) {
 
 
     // Show any warnings from the API call
-    if (message && success > 1) {
+    if (message && success === 2) {
         $(`#${parentDiv} .js-plot-warning`).show();
         $(`#${parentDiv} .js-plot-warning`).html(`<ul>${message}</ul>`);
     }
