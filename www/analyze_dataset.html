@@ -20,10 +20,9 @@
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/css/bootstrap-select.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.2.0/css/bootstrap4-toggle.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/css/bootstrap4-toggle.min.css">
 
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/css/bootstrap-editable.css"/>
-    <!--<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.0/css/all.css" integrity="sha384-aOkxzJ5uQz7WBObEZcHvV5JvRW3TUc2rNPA7pe3AwnsUohiw1Vj2Rgx2KSOkF5+h" crossorigin="anonymous">-->
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 
     <!-- Interactive tree structure -->
@@ -95,11 +94,6 @@
                       <optgroup id="analyses_unsaved" label="Recent unsaved analyses"></optgroup>
                     </select>
                   </div>
-
-                  <!--
-                       Tried adding this to the options below:
-                       data-toggle="tooltip" data-placement="top" title="Analysis curated by the gEAR team"
-                      -->
 
                   <script id="analyses_list_tmpl" type="text/x-jsrender">
                     {{if vetting == 'gear'}}
@@ -574,13 +568,14 @@
                               <div class="form-group row form-group-sm">
                                 <label for="dredux_n_neighbors" class="col-sm-7 col-form-label">N neighbors <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
                                   title="The number of nearest neighbors to compute the neighborhood graph of cells."></span></label>
-                                <div class="col-sm-5"><input type="number" class="input-length-6" name="dredux_n_neighbors" id="dredux_n_neighbors" size="6" min="1"/></div>
+                                <div class="col-sm-5"><input type="number" class="input-length-6" name="dredux_n_neighbors" id="dredux_n_neighbors" size="6" min="1" value="5"/></div>
                               </div>
                               <div class="form-group row form-group-sm">
                                 <label for="tsne_n_pcs" class="col-sm-7 col-form-label">N dimensions (principal components) <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right"
-                                  title="The number of principle components to the embedded into the plot."></span></label>
-                                <div class="col-sm-5"><input type="number" class="input-length-6" name="tsne_n_pcs" id="tsne_n_pcs" size="6" min="1"/></div>
+                                  title="The number of principle components to be embedded into the plot."></span></label>
+                                <div class="col-sm-5"><input type="number" class="input-length-6" name="tsne_n_pcs" id="tsne_n_pcs" size="6" min="1" value="2"/></div>
                               </div>
+                              <!-- When are 'tsne_random_state' and 'tsne_use_scaled' supposed to be shown? -->
                               <div class="form-group row form-group-sm shown_later">
                                 <div class="col-sm-4"><input type="text" class="pull-right" name="tsne_random_state" id="tsne_random_state" size="6" value="2"/></div>
                                 <label for="tsne_random_state" class="col-sm-8 col-form-label">Random state</label>
@@ -594,7 +589,7 @@
                                 <label for="dimensionality_reduction_method" class="col-sm-7 col-form-label">Dimensionality reduction method</label>
                                 <div class="col-sm-5">
                                   <p class="footnote">
-                                    Choose one (or both). <a target="_blank" href='https://www.biorxiv.org/content/early/2018/04/10/298430'>What's the difference?</a>
+                                    Choose one (or both). <a target="_blank" href='https://www.biorxiv.org/content/early/2018/04/10/298430'><u>What's the difference?</u></a>
                                   </p>
                                   <input type="checkbox" name="dimensionality_reduction_method_tsne" id="dimensionality_reduction_method_tsne"/> tSNE<br />
                                   <input type="checkbox" name="dimensionality_reduction_method_umap" id="dimensionality_reduction_method_umap" checked/> UMAP (faster)
@@ -698,7 +693,7 @@
                                 <label for="asvg_flavor" class="col-sm-8 col-form-label">
                                   Convention
                                   <span id="asvg_flavor_tooltip" class="fa fa-info-circle" data-trigger="hover"
-                                        title="Choose <a href='https://doi.org/10.1038/nbt.3192'>Seurat</a> vs. <a href='https://doi.org/10.1038/ncomms14049'>Cell Ranger</a> normalization methods"></span>
+                                        title="Choose <a class='btn-link' target='_blank' href='https://doi.org/10.1038/nbt.3192'>Seurat</a> vs. <a class='btn-link' target='_blank' href='https://doi.org/10.1038/ncomms14049'>Cell Ranger</a> normalization methods"></span>
                                 </label>
                               </div>
                               <div class="row form-group form-group-sm">
@@ -930,9 +925,8 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-    <!-- Try this instead? http://davidstutz.de/bootstrap-multiselect/index.html#getting-started -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/js/bootstrap-select.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.2.0/js/bootstrap4-toggle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/js/bootstrap4-toggle.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script src="js/vendor/js.cookie.js"></script>

@@ -17,6 +17,9 @@ window.onload=() => {
     check_for_login();
     session_id = Cookies.get('gear_session_id');
 
+    $('[data-toggle="tooltip"]').tooltip()
+
+
     $('.tooltoggle').bootstrapToggle('disable');
 
     $('#asvg_flavor_tooltip').tooltip({
