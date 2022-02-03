@@ -243,8 +243,24 @@ class ProfileTree extends Tree {
         this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
     }
 
+    addNode(treeData, itemText, itemValue, itemShareID, parentID) {
+        treeData.push({
+                'id': itemValue,
+                'parent': parentID,
+                'text': itemText,
+                'type': 'profile',
+                'a_attr': {
+                    'class': "py-0",
+                },
+                'profile_label': itemText,
+                'profile_id': itemValue,
+                'profile_share_id': itemShareID
+        });
+    }
+
     generateTreeData() {
         // Create JSON tree structure for the data
+        let treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
         const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -256,63 +272,23 @@ class ProfileTree extends Tree {
 
         // Load profiles into the tree data property
         $.each(this.domainProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'domain_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'domain_node');
         });
 
         $.each(this.userProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'user_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'user_node');
         });
 
         $.each(this.groupProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'group_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            // if this refers to a folder which doesn't exist, we need to create it
+            console.log("Group item:");
+            console.log(item);
+
+            this.addNode(treeData, item.text, item.value, item.share_id, 'group_node');
         });
 
         $.each(this.sharedProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'shared_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'shared_node');
         });
 
         this.treeData = treeData;

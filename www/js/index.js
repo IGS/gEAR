@@ -408,7 +408,13 @@ function load_layouts() {
                 layouts[ltype] = [];
 
                 $.each(data[`${ltype}_layouts`], (_i, item) => {
-                    layouts[ltype].push({value: item['id'], text: item['label'], share_id: item['share_id']});
+                    layouts[ltype].push({value: item['id'],
+                                         text: item['label'],
+                                         share_id: item['share_id'],
+                                         folder_id: item['folder_id'],
+                                         folder_parent_id: item['folder_parent_id'],
+                                         folder_label: item['folder_label']
+                                        });
 
                     if (item['share_id'] == layout_share_id) {
                         active_layout_id = item['id'];
