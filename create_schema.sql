@@ -271,6 +271,24 @@ CREATE TABLE dataset_shares (
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
+# Recursive organizational table allowing item types (like gene carts
+#  or profiles) to be grouped into 'folders'
+CREATE TABLE folder (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       parent_id                INT,
+       label                    VARCHAR(100) NOT NULL,
+       FOREIGN KEY (parent_id) REFERENCES folder(id) ON DELETE CASCADE
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+CREATE TABLE folder_member (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       folder_id                INT NOT NULL,
+       item_id                  INT NOT NULL,
+       item_type                VARCHAR(20) NOT NULL, #options: 'layout', 'genecart'
+       FOREIGN KEY (folder_id) REFERENCES folder(id) ON DELETE CASCADE,
+       UNIQUE KEY uk_folder_item (folder_id, item_id, item_type)
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
 CREATE TABLE layout (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        user_id                  INT NOT NULL,
