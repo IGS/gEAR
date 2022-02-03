@@ -1839,7 +1839,8 @@ class GeneCollection:
 
 class GeneCart:
     def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None, organism_id=None,
-                 genes=None, share_id=None, is_public=None, is_domain=None, date_added=None):
+                 genes=None, share_id=None, is_public=None, is_domain=None, date_added=None,
+                 folder_id=None, folder_parent_id=None, folder_label=None):
         self.id = id
         self.user_id = user_id
         self.gctype = gctype
@@ -1857,6 +1858,11 @@ class GeneCart:
         # TODO: This should be a reference to a GeneCollection
         if not genes:
             self.get_genes()
+
+        # The are derived, populated by GeneCartCollection methods
+        self.folder_id = folder_id
+        self.folder_parent_id = folder_parent_id
+        self.folder_label = folder_label
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2124,9 +2130,13 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
-                FROM gene_cart
-               WHERE is_domain = 1
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
+                     gc.is_public, gc.is_domain, gc.date_added
+                FROM gene_cart gc
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.is_domain = 1
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
         cursor.execute(qry)
 
@@ -2143,7 +2153,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
+              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, 
+                     date_added
                 FROM gene_cart
                WHERE is_public = 1
         """
