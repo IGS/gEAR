@@ -243,14 +243,22 @@ class ProfileTree extends Tree {
         this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
     }
 
-    addNode(treeData, itemText, itemValue, itemShareID, parentID) {
+    addNode(treeData, itemText, itemValue, itemShareID, parentID, nodeType) {
+        let nodeClass ='';
+
+        if (nodeType == 'default') {
+            nodeClass = 'jstree-ocl';
+        } else {
+            nodeClass = 'py-0'
+        }
+        
         treeData.push({
                 'id': itemValue,
                 'parent': parentID,
                 'text': itemText,
-                'type': 'profile',
+                'type': nodeType,
                 'a_attr': {
-                    'class': "py-0",
+                    'class': nodeClass,
                 },
                 'profile_label': itemText,
                 'profile_id': itemValue,
@@ -272,23 +280,44 @@ class ProfileTree extends Tree {
 
         // Load profiles into the tree data property
         $.each(this.domainProfiles, (_i, item) => {
-            this.addNode(treeData, item.text, item.value, item.share_id, 'domain_node');
+            this.addNode(treeData, item.text, item.value, item.share_id, 'domain_node', 'profile');
         });
 
         $.each(this.userProfiles, (_i, item) => {
-            this.addNode(treeData, item.text, item.value, item.share_id, 'user_node');
+            this.addNode(treeData, item.text, item.value, item.share_id, 'user_node', 'profile');
         });
 
         $.each(this.groupProfiles, (_i, item) => {
-            // if this refers to a folder which doesn't exist, we need to create it
-            console.log("Group item:");
-            console.log(item);
+            // If there's a parent make sure it's added, doesn't currently handle grandparents
+            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
+                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
+                treeKeys[item.folder_parent_id] = true;
+            }
+            
+            // Now do the same for the containing folder itself
+            if (item.folder_id) {
+                item.folder_id = 'folder-' + item.folder_id;
 
-            this.addNode(treeData, item.text, item.value, item.share_id, 'group_node');
+                if (item.folder_parent_id) {
+                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
+                } else {
+                    item.folder_parent_id = 'group_node';
+                }
+                
+                if (! treeKeys.hasOwnProperty(item.folder_id)) {
+                    this.addNode(treeData, item.folder_label, item.folder_id, null, item.folder_parent_id, 'default');
+                    treeKeys[item.folder_id] = true;
+                }
+                
+                this.addNode(treeData, item.text, item.value, item.share_id, item.folder_id, 'profile');
+            } else {
+                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
+                this.addNode(treeData, item.text, item.value, item.share_id, 'group_node', 'profile');
+            }
         });
 
         $.each(this.sharedProfiles, (_i, item) => {
-            this.addNode(treeData, item.text, item.value, item.share_id, 'shared_node');
+            this.addNode(treeData, item.text, item.value, item.share_id, 'shared_node', 'profile');
         });
 
         this.treeData = treeData;
@@ -317,7 +346,7 @@ class ProfileTree extends Tree {
                         'icon': 'fa fa-folder-o'
                     },
                     'profile': {
-                        'icon': 'fa fa-address-card-o',
+                        'icon': 'fa fa-th-large',
                         'valid_children':[]
                     }
                 }
