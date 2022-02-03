@@ -761,13 +761,19 @@ class OrganismCollection:
 
 class Layout:
     def __init__(self, id=None, user_id=None, is_domain=None, label=None,
-                 is_current=None, share_id=None, members=None):
+                 is_current=None, share_id=None, members=None, folder_id=None,
+                 folder_parent_id=None, folder_label=None):
         self.id = id
         self.user_id = user_id
         self.label = label
         self.is_current = is_current
         self.is_domain = is_domain
         self.share_id = share_id
+
+        # The are derived, populated by LayoutCollection methods
+        self.folder_id = folder_id
+        self.folder_parent_id = folder_parent_id
+        self.folder_label = folder_label
 
         # This should be a list of LayoutMember objects
         if not members:
@@ -984,10 +990,13 @@ class LayoutCollection:
             is_current=row[2],
             user_id=row[3],
             share_id=row[4],            
-            is_domain=row[5]
+            is_domain=row[5],
+            folder_id=row[6],
+            folder_parent_id=row[7],
+            folder_label=row[8]
         )
         
-        layout.dataset_count = row[6]
+        layout.dataset_count = row[9]
         return layout
 
     def get_by_share_id(self, share_id=None):
@@ -1001,13 +1010,16 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.share_id = %s
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
 
@@ -1030,13 +1042,16 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.user_id = %s
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
@@ -1070,8 +1085,8 @@ class LayoutCollection:
                      JOIN dataset d ON lm.dataset_id=d.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
-               WHERE u.id = 1
-                 AND fm.item_type = 'layout' or fm.item_type is NULL
+               WHERE u.id = %s
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
               GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """ 
@@ -1093,13 +1108,16 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.is_domain = 1
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
         
