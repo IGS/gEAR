@@ -641,10 +641,12 @@
                             </div>
                             <form id='pca_options_g' class='shown_later'>
                               <div class="form-group form-group-sm">
-                                <label for="top_pca_genes" class="col-form-label">Principal Components</label>
-                                <label for="top_pca_genes" class="col-form-label">(comma-separated, between 2 and 5 PCs, number only)</label>
+                                <label for="top_pca_genes" class="col-form-label">Principal Components
+                                  <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right" data-html="true"
+                                  title="Comma-separated, between 2 and 5 PCs, number only.<br \>Example - instead of inputting PC1, PC2 just input 1, 2"></span>
+                                </label>
                                 <input type="text" name="top_pca_genes" id="top_pca_genes"/>
-                                <br>
+                                <br \>
                                 <button id='btn_pca_top_genes' type='button' class='btn btn-default btn-sm click-once'>Plot top genes</button>
                               </div>
                             </form>
