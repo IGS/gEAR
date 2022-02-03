@@ -630,6 +630,7 @@ function plot_data_to_graph(data) {
     margin: { t: 40 },
     hovermode: "closest",
     dragmode: "select",
+    modebar: {orientation: "v"}
   };
 
   // Take genes to search for and highlight their datapoint in the plot
