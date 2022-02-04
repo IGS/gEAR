@@ -58,15 +58,11 @@ def main():
     # If there are multiple columns, create a composite
     # Only keep columns that had a group selected in the UI
     # NOTE: There may be an edge case where the user selected a group for cond. 1 and nothing for cond. 2 which would leave the column being omitted from the composite
-    cols_to_keep = set()
+    cols_to_keep = []
     cond1 = json.loads(condition1)
-    for col in cond1:
-        cols_to_keep.add(col)
+    cols_to_keep.extend([col for col in cond1 if not col in cols_to_keep])
     cond2 = json.loads(condition2)
-    for col in cond2:
-        cols_to_keep.add(col)
-
-    cols_to_keep = list(cols_to_keep)
+    cols_to_keep.extend([col for col in cond2 if not col in cols_to_keep])
 
     # Add new column to combine various groups into a single index
     adata.obs['comparison_composite_index'] = adata.obs[cols_to_keep].apply(lambda x: ';'.join(map(str,x)), axis=1)
