@@ -39,9 +39,9 @@ def main():
 
         with open(h5ad_path, 'rb') as binfile:
             copyfileobj(binfile, sys.stdout.buffer)
-            
+
     else:
-        result["error"] = "Dataset tarball could not be found. Unable to download data file."
+        result_error = "Dataset tarball could not be found. Unable to download data file."
 
         print("Content-type: text/html")
         print()
@@ -56,7 +56,7 @@ def main():
             <p>Redirecting... <a href='{1}'>Click here if you are not redirected</a>
           </body>
         </html>
-        """.format(result['error'], 'http://gear.igs.umaryland.edu'))
+        """.format(result_error, 'http://gear.igs.umaryland.edu'))
 
 if __name__ == '__main__':
     main()
