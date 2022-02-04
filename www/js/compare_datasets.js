@@ -478,7 +478,11 @@ async function populate_dataset_selection_controls() {
       if (dataset_id !== undefined) {
         $("#dataset_id").val(dataset_id);
         try {
-            $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
+            // Had difficulties triggering a "select_node.jstree" event, so just add the data info here
+            const tree_leaf = dataset_tree.treeData.find(e => e.dataset_id === dataset_id);
+            $('#dataset_id').text(tree_leaf.text);
+            $('#dataset_id').data("organism-id", tree_leaf.organism_id);
+            $('#dataset_id').data("dataset-id", tree_leaf.dataset_id);
             $("#dataset_id").trigger("change");
         } catch {
             console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
