@@ -67,6 +67,9 @@ window.onload=() => {
         validate_help_id(help_id);
     }
 
+    // Ensure "exact match" and "multigene" tooltips work upon page load
+    $('#intro_search_form [data-toggle="tooltip"]').tooltip();
+
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');

@@ -125,78 +125,59 @@
           <div class="card">
             <div class="card-body pt-0 mt-0 pb-1">
               <h1>Explore gene expression</h1>
-              <p class='subnote'>Specify one or more genes with spaces or commas</p>
-              <form id="intro_search_form">
+              <form id="intro_search_form" class="form-group">
+                <small class="form-text text-muted mt-3">Specify one or more genes with spaces or commas</small>
                 <div class="form-row">
-                  <div class="col-12">
-                    <div class="input-group">
-                      <input type="text" class="form-control" id="search_gene_symbol_intro" placeholder="Gene symbol" />
-                      <div class="input-group-append">
-                        <div id="exact_match_icon" class="input-group-text" >
-                          <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)" />
-                        </div>
+                  <div class="col-12 input-group">
+                    <input type="text" class="form-control" id="search_gene_symbol_intro" placeholder="Choose gene symbol(s)" />
+                    <div class="input-group-append">
+                      <div id="exact_match_icon" class="input-group-text" >
+                        <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)" />
                       </div>
+                    </div>
 
-                      <div class="input-group-append">
-                        <div id="multigene_search_icon" class="input-group-text" >
-                          <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays"></i>
-                        </div>
+                    <div class="input-group-append">
+                      <div id="multigene_search_icon" class="input-group-text" >
+                        <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays"></i>
                       </div>
+                    </div>
 
-                      <div class="input-group-append">
-                        <div id="intro_search_icon" class="input-group-text" >
-                          <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
-                        </div>
+                    <div class="input-group-append">
+                      <div id="intro_search_icon" class="input-group-text" >
+                        <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
                       </div>
                     </div>
                   </div>
                 </div> <!-- .form-row -->
               </form>
-              <div class="form-row">
-                <div class="col-12">
-                  <nav id="profile_selector_c" class="navbar navbar-expand-lg navbar-dark py-0">
-                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-                      <span class="navbar-toggler-icon"></span>
-                    </button>
-
-                    <div class="collapse navbar-collapse" id="navbarNavDropdown">
-                      <ul class="navbar-nav">
-                        <li class="nav-item active">
-                          <a class="nav-link" href="#">Profile</a>
-                        </li>
-
-                        <li class="nav-item dropdown">
-                          <a class="nav-link dropdown-toggle" href="#" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            Choose one
-                          </a>
-                          <div class="dropdown-menu" aria-labelledby="search_param_profile">
-                            <form class="px-4 py-3" onsubmit="return false;">
-                              <div class="input-group input-group-sm mb-3">
-                                <div class="input-group-prepend">
-                                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                                </div>
-                                <input type="text" class="form-control" id="profile_tree_q" placeholder="Type to search profiles">
-                              </div>
-                              <div id="profile_tree"></div>
-                            </form>
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
-                  </nav>
-                  <p class='subnote'>A "profile" is a named group of datasets</p>
-                  <p id='intro_selected_profile_warning' class='shown_later'>
-                    You have selected a profile under active development.  Some gene symbols may not
-                    show results currently.
-                  </p>
+              <div class="form-group">
+                <label id="selected_profile_label" class="mb-0">Select Profile</label>
+                <small class="form-text text-muted">A "profile" is a named group of datasets</small>
+                <div id="selected_profile_c" class="form-control dropdown">
+                  <div class="dropdown-toggle" value="" data-title="Click to change" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose One</div>
+                  <div class="dropdown-menu" aria-labelledby="search_param_profile">
+                    <form class="px-4 py-3" onsubmit="return false;">
+                      <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                        </div>
+                        <input type="text" class="form-control" id="profile_tree_q" placeholder="Type to search profiles">
+                      </div>
+                      <div id="profile_tree"></div>
+                    </form>
+                  </div>
                 </div>
-                </div> <!-- .form-row -->
+                <p id='intro_selected_profile_warning' class='shown_later'>
+                  You have selected a profile under active development.  Some gene symbols may not
+                  show results currently.
+                </p>
+              </div> <!-- .form-row -->
             </div> <!-- end card-body -->
           </div> <!-- end card-body -->
           <div class="card">
             <div class="card-body pt-0 mt-0 pb-1">
               <h1>Explore datasets and profiles</h1>
-              <p class='subnote'>Search for datasets by title, GEO ID or pubmed ID</p>
+              <small class="form-text text-muted mt-3">Search for datasets by title, GEO ID or pubmed ID</small>
               <form id='dataset_search_form'>
                 <input type="text" class="form-control" id="search_dataset_intro" placeholder="Search terms" />
               </form>
