@@ -749,7 +749,7 @@ function save_gene_cart() {
       session_id: CURRENT_USER.session_id,
       label: $("#gene_cart_name").val(),
       gctype: 'unweighted-list',
-      organism_id: $("#dataset_").data('organism-id'),
+      organism_id: $("#dataset_id").data('organism-id'),
       is_public: 0
   });
 
