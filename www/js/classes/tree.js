@@ -98,6 +98,7 @@ class GeneCartTree extends Tree {
     
     generateTreeData() {
         // Create JSON tree structure for the data
+        let treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
         const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -107,7 +108,33 @@ class GeneCartTree extends Tree {
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart')
+            // TODO: All this parent/grandparent logic should just go into addNode
+            // If there's a parent make sure it's added, doesn't currently handle grandparents
+            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
+                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
+                treeKeys[item.folder_parent_id] = true;
+            }
+
+            // Now do the same for the containing folder itself
+            if (item.folder_id) {
+                item.folder_id = 'folder-' + item.folder_id;
+
+                if (item.folder_parent_id) {
+                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
+                } else {
+                    item.folder_parent_id = 'domain_node';
+                }
+                
+                if (! treeKeys.hasOwnProperty(item.folder_id)) {
+                    this.addNode(treeData, item.folder_id, item.folder_parent_id, item.folder_label, 'default');
+                    treeKeys[item.folder_id] = true;
+                }
+                
+                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart');
+            } else {
+                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
+                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart')
+            }
         });
 
         $.each(this.userGeneCarts, (_i, item) => {
