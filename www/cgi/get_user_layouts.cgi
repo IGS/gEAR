@@ -58,11 +58,6 @@ def main():
     if not no_domain:
         result['domain_layouts'] = filter_any_previous(layout_ids_found,
                                                        geardb.LayoutCollection().get_domains())
-    
-    if layout_share_id:
-        result['shared_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_by_share_id(layout_share_id))
-        result['selected'] = result['shared_layouts'][0].id
 
     if user:
         result['user_layouts'] = filter_any_previous(layout_ids_found,
@@ -70,10 +65,20 @@ def main():
         result['group_layouts'] = filter_any_previous(layout_ids_found,
                                                       geardb.LayoutCollection().get_by_users_groups(user))
 
+    if layout_share_id:
+        result['shared_layouts'] = filter_any_previous(layout_ids_found,
+                                                       geardb.LayoutCollection().get_by_share_id(layout_share_id))
+
     ## Selected priority:
-    ## - A passed share ID (already handled)
+    ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
+    for ltype in ['user', 'domain', 'group', 'shared']:
+        for l in result[ltype + '_layouts']:
+            if l.share_id == layout_share_id:
+                result['selected'] = l.id
+                break
+    
     if not result['selected']:
         for l in result['user_layouts']:
             if l.is_current:
