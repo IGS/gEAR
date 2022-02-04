@@ -130,7 +130,7 @@ class GeneCartTree extends Tree {
                     treeKeys[item.folder_id] = true;
                 }
                 
-                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart');
+                this.addNode(treeData, item.value, item.folder_id, item.text, 'genecart');
             } else {
                 // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
                 this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart')
