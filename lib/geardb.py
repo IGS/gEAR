@@ -761,13 +761,19 @@ class OrganismCollection:
 
 class Layout:
     def __init__(self, id=None, user_id=None, is_domain=None, label=None,
-                 is_current=None, share_id=None, members=None):
+                 is_current=None, share_id=None, members=None, folder_id=None,
+                 folder_parent_id=None, folder_label=None):
         self.id = id
         self.user_id = user_id
         self.label = label
         self.is_current = is_current
         self.is_domain = is_domain
         self.share_id = share_id
+
+        # The are derived, populated by LayoutCollection methods
+        self.folder_id = folder_id
+        self.folder_parent_id = folder_parent_id
+        self.folder_label = folder_label
 
         # This should be a list of LayoutMember objects
         if not members:
@@ -984,10 +990,13 @@ class LayoutCollection:
             is_current=row[2],
             user_id=row[3],
             share_id=row[4],            
-            is_domain=row[5]
+            is_domain=row[5],
+            folder_id=row[6],
+            folder_parent_id=row[7],
+            folder_label=row[8]
         )
         
-        layout.dataset_count = row[6]
+        layout.dataset_count = row[9]
         return layout
 
     def get_by_share_id(self, share_id=None):
@@ -1001,13 +1010,16 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.share_id = %s
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
 
@@ -1030,13 +1042,16 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.user_id = %s
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
@@ -1060,18 +1075,21 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
                      JOIN guser u ON u.id=ugm.user_id
                      JOIN layout_group_membership lgm ON lgm.group_id=g.id
                      JOIN layout l ON lgm.layout_id=l.id
                      JOIN layout_members lm ON lm.layout_id=l.id
-                     JOIN dataset d on lm.dataset_id=d.id
+                     JOIN dataset d ON lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE u.id = %s
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id;
-        """
+              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+        """ 
         cursor.execute(qry, (user.id,))
         
         for row in cursor:
@@ -1090,13 +1108,16 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.is_domain = 1
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
         
@@ -1818,7 +1839,8 @@ class GeneCollection:
 
 class GeneCart:
     def __init__(self, id=None, user_id=None, gctype=None, label=None, ldesc=None, organism_id=None,
-                 genes=None, share_id=None, is_public=None, is_domain=None, date_added=None):
+                 genes=None, share_id=None, is_public=None, is_domain=None, date_added=None,
+                 folder_id=None, folder_parent_id=None, folder_label=None):
         self.id = id
         self.user_id = user_id
         self.gctype = gctype
@@ -1836,6 +1858,11 @@ class GeneCart:
         # TODO: This should be a reference to a GeneCollection
         if not genes:
             self.get_genes()
+
+        # The are derived, populated by GeneCartCollection methods
+        self.folder_id = folder_id
+        self.folder_parent_id = folder_parent_id
+        self.folder_label = folder_label
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2004,7 +2031,10 @@ class GeneCartCollection:
                     share_id=row['share_id'],
                     is_public=row['is_public'],
                     is_domain=row['is_domain'],
-                    date_added=row['date_added'].isoformat()
+                    date_added=row['date_added'].isoformat(),
+                    folder_id=row['folder_id'],
+                    folder_parent_id=row['parent_id'],
+                    folder_label=row['folder_label']
                 )
         return cart
 
@@ -2013,9 +2043,14 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
-                FROM gene_cart
-               WHERE id = %s
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+                     f.label as folder_label
+                FROM gene_cart gc
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.id = %s
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
 
         for id in ids:
@@ -2034,9 +2069,14 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
-                FROM gene_cart
-               WHERE share_id = %s
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+                     f.label as folder_label
+                FROM gene_cart gc
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.share_id = %s
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
 
         for share_id in share_ids:
@@ -2055,9 +2095,14 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
-                FROM gene_cart
-               WHERE user_id = %s
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+                     f.label as folder_label
+                FROM gene_cart gc 
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.user_id = %s
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
 
         cursor.execute(qry, (user.id,))
@@ -2080,13 +2125,17 @@ class GeneCartCollection:
 
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, 
-                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added
+                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, 
+                     f.parent_id, f.label as folder_label
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
                      JOIN guser u ON u.id=ugm.user_id
                      JOIN gene_cart_group_membership gcgm ON gcgm.group_id=g.id
                      JOIN gene_cart gc ON gcgm.gene_cart_id=gc.id
-               WHERE u.id = %s
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE u.id = %s 
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
         cursor.execute(qry, (user.id,))
 
@@ -2103,9 +2152,14 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
-                FROM gene_cart
-               WHERE is_domain = 1
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+                     f.label as folder_label
+                FROM gene_cart gc
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.is_domain = 1
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
         cursor.execute(qry)
 
@@ -2122,9 +2176,14 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added
-                FROM gene_cart
-               WHERE is_public = 1
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+                     f.label as folder_label
+                FROM gene_cart gc 
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.is_public = 1
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
         """
         cursor.execute(qry)
 

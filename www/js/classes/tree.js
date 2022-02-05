@@ -76,8 +76,29 @@ class GeneCartTree extends Tree {
 
     }
 
+    addNode(treeData, id, parentID, text, nodeType) {
+        let nodeClass ='';
+
+        if (nodeType == 'default') {
+            nodeClass = 'jstree-ocl';
+        } else if (nodeType == 'genecart') {
+            nodeClass = 'py-0'
+        }
+        
+        treeData.push({
+            'id': id,
+            'parent': parentID,
+            'text': text,
+            'type': nodeType,
+            'a_attr': {
+                'class': nodeClass,
+            }
+        })
+    }
+    
     generateTreeData() {
         // Create JSON tree structure for the data
+        let treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
         const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -87,63 +108,49 @@ class GeneCartTree extends Tree {
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'domain_node',
-                'text':item.text,
-                'type': 'genecart',
-                'a_attr': {
-                    'class': "py-0",
+            // TODO: All this parent/grandparent logic should just go into addNode
+            // If there's a parent make sure it's added, doesn't currently handle grandparents
+            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
+                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
+                treeKeys[item.folder_parent_id] = true;
+            }
+
+            // Now do the same for the containing folder itself
+            if (item.folder_id) {
+                item.folder_id = 'folder-' + item.folder_id;
+
+                if (item.folder_parent_id) {
+                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
+                } else {
+                    item.folder_parent_id = 'domain_node';
                 }
-            })
+                
+                if (! treeKeys.hasOwnProperty(item.folder_id)) {
+                    this.addNode(treeData, item.folder_id, item.folder_parent_id, item.folder_label, 'default');
+                    treeKeys[item.folder_id] = true;
+                }
+                
+                this.addNode(treeData, item.value, item.folder_id, item.text, 'genecart');
+            } else {
+                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
+                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart')
+            }
         });
 
         $.each(this.userGeneCarts, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'user_node',
-                'text':item.text,
-                'type': 'genecart',
-                'a_attr': {
-                    'class': "py-0",
-                }
-            })
+            this.addNode(treeData, item.value, 'user_node', item.text, 'genecart')
         });
 
         $.each(this.groupGeneCarts, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'group_node',
-                'text':item.text,
-                'type': 'genecart',
-                'a_attr': {
-                    'class': "py-0",
-                }
-            })
+            this.addNode(treeData, item.value, 'group_node', item.text, 'genecart')
         });
 
         $.each(this.sharedGeneCarts, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'shared_node',
-                'text':item.text,
-                'type': 'genecart',
-                'a_attr': {
-                    'class': "py-0",
-                }
-            })
+            this.addNode(treeData, item.value, 'shared_node', item.text, 'genecart')
         });
 
         $.each(this.publicGeneCarts, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'public_node',
-                'text':item.text,
-                'type': 'genecart',
-                'a_attr': {
-                    'class': "py-0",
-                }
-            })
+            this.addNode(treeData, item.value, 'public_node', item.text, 'genecart')
         });
 
         this.treeData = treeData;
@@ -243,8 +250,32 @@ class ProfileTree extends Tree {
         this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
     }
 
+    addNode(treeData, itemText, itemValue, itemShareID, parentID, nodeType) {
+        let nodeClass ='';
+
+        if (nodeType == 'default') {
+            nodeClass = 'jstree-ocl';
+        } else if (nodeType == 'profile') {
+            nodeClass = 'py-0'
+        }
+        
+        treeData.push({
+                'id': itemValue,
+                'parent': parentID,
+                'text': itemText,
+                'type': nodeType,
+                'a_attr': {
+                    'class': nodeClass,
+                },
+                'profile_label': itemText,
+                'profile_id': itemValue,
+                'profile_share_id': itemShareID
+        });
+    }
+
     generateTreeData() {
         // Create JSON tree structure for the data
+        let treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
         const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -256,63 +287,45 @@ class ProfileTree extends Tree {
 
         // Load profiles into the tree data property
         $.each(this.domainProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'domain_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'domain_node', 'profile');
         });
 
         $.each(this.userProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'user_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'user_node', 'profile');
         });
 
         $.each(this.groupProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'group_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            // TODO: All this parent/grandparent logic should just go into addNode
+            // If there's a parent make sure it's added, doesn't currently handle grandparents
+            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
+                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
+                treeKeys[item.folder_parent_id] = true;
+            }
+            
+            // Now do the same for the containing folder itself
+            if (item.folder_id) {
+                item.folder_id = 'folder-' + item.folder_id;
+
+                if (item.folder_parent_id) {
+                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
+                } else {
+                    item.folder_parent_id = 'group_node';
+                }
+                
+                if (! treeKeys.hasOwnProperty(item.folder_id)) {
+                    this.addNode(treeData, item.folder_label, item.folder_id, null, item.folder_parent_id, 'default');
+                    treeKeys[item.folder_id] = true;
+                }
+                
+                this.addNode(treeData, item.text, item.value, item.share_id, item.folder_id, 'profile');
+            } else {
+                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
+                this.addNode(treeData, item.text, item.value, item.share_id, 'group_node', 'profile');
+            }
         });
 
         $.each(this.sharedProfiles, (_i, item) => {
-            treeData.push({
-                'id': item.value,
-                'parent': 'shared_node',
-                'text': item.text,
-                'type': 'profile',
-                'a_attr': {
-                    'class': "py-0",
-                },
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'shared_node', 'profile');
         });
 
         this.treeData = treeData;
@@ -341,7 +354,7 @@ class ProfileTree extends Tree {
                         'icon': 'fa fa-folder-o'
                     },
                     'profile': {
-                        'icon': 'fa fa-address-card-o',
+                        'icon': 'fa fa-th-large',
                         'valid_children':[]
                     }
                 }
