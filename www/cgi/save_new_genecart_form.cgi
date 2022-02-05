@@ -35,8 +35,9 @@ def main():
         pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
 
         for gene_sym in pasted_genes.split(' '):
-            gene = geardb.Gene(gene_symbol=gene_sym)
-            gc.add_gene(gene)
+            if len(gene_sym) > 0:
+                gene = geardb.Gene(gene_symbol=gene_sym)
+                gc.add_gene(gene)
 
     elif upload_type == 'uploaded-unweighted':
         gc.gctype = 'unweighted-list'
