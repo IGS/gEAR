@@ -23,7 +23,8 @@ const dataset_collection_panel = new DatasetCollectionPanel();
 const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
 const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
 
-const gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
+const gene_cart_tree = new GeneCartTree({treeDiv: '#gene_cart_tree', storedValElt: '#search_param_gene_cart'});
+const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
 
 const search_result_postselection_functions = [];
 
@@ -68,7 +69,7 @@ window.onload=() => {
     }
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
-    $('#intro_search_form [data-toggle="tooltip"]').tooltip();
+    $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
@@ -502,6 +503,7 @@ function load_gene_carts(cart_share_id) {
         //User is not logged in. Hide gene carts container
         $("#selected_gene_cart_c").hide();
         gene_cart_tree.generateTree();
+        selected_gene_cart_tree.genereateTree();
         d.resolve();
     } else {
         $("#selected_gene_cart_c").show(); //Show if hidden
@@ -546,6 +548,12 @@ function load_gene_carts(cart_share_id) {
             gene_cart_tree.sharedGeneCarts = carts.shared;
             gene_cart_tree.publicGeneCarts = carts.public;
             gene_cart_tree.generateTree();
+            selected_gene_cart_tree.domainGeneCarts = carts.domain;
+            selected_gene_cart_tree.userGeneCarts = carts.user;
+            selected_gene_cart_tree.groupGeneCarts = carts.group;
+            selected_gene_cart_tree.sharedGeneCarts = carts.shared;
+            selected_gene_cart_tree.publicGeneCarts = carts.public;
+            selected_gene_cart_tree.generateTree();
 
             if (! carts_found ) {
                 $("#selected_gene_cart_c").hide();
@@ -574,6 +582,7 @@ function load_gene_carts(cart_share_id) {
         },
         error(jqXHR, textStatus, errorThrown) {
             gene_cart_tree.generateTree();
+            selected_gene_cart_tree.generateTree();
             display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
             d.fail();
         }
@@ -902,9 +911,16 @@ $(document).on('click', '#gene_details_header, #gene_collapse_btn', function() {
     }
 });
 
+// If #search_param_gene_cart (front page) was the setter, set #selected_gene_cart
+$('#search_param_gene_cart').change(function() {
+    $('#selected_gene_cart').text($('#search_param_gene_cart').text());
+    $('#selected_gene_cart').val($('#search_param_gene_cart').val());
+    $('#search_param_gene_cart_div').css("visibility", "visible");
+});
+
 // When a gene cart is selected, populate the gene search bar with its members
-$('#selected_gene_cart').change( function() {
-    let geneCartId = $(this).val();
+$('#selected_gene_cart, #search_param_gene_cart').change( function() {
+    const geneCartId = $(this).val();
     const params = { session_id: session_id, gene_cart_id: geneCartId };
     const d = new $.Deferred(); // Causes editable to wait until results are returned
 
@@ -927,9 +943,11 @@ $('#selected_gene_cart').change( function() {
                 gene_symbols = dedup_gene_symbols_array.join(' ')
                 $('#search_gene_symbol_intro').val(gene_symbols);
                 $('#search_gene_symbol').val(gene_symbols);
+
                 // determine if searching for exact matches
                 if ( $('#exact_match_input').prop("checked") == false ) {
-                    $('#exact_match_input').bootstrapToggle('on');
+                    set_exact_match('on');
+                    $("#exact_match_icon img").tooltip('hide'); // Do not want it to autoshow since it most likely is not hovered over right now
                 }
             } else {
                 $('#selected_gene_cart').text(oldValue);
@@ -1013,23 +1031,23 @@ function set_exact_match(mode) {
     if (mode == 'on') {
         $('#exact_match_input').bootstrapToggle('on');
         $("#exact_match_icon img").attr("src", "img/arrow_target_selected.png");
-        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently on)").tooltip('show');
+        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently on).").tooltip('show'); // Show is added so the old version of the tooltip does not persist
     } else if (mode == 'off') {
         $('#exact_match_input').bootstrapToggle('off');
         $("#exact_match_icon img").attr("src", "img/arrow_target_unselected.png");
-        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off)").tooltip('show');
+        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off).").tooltip('show');
     }
 }
 
 function set_multigene_plots(mode) {
     if (mode == 'on') {
         $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
-        $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays ").tooltip('show');
+        $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip('show');
         $("#multigene_search_icon i").addClass("fa-gears");
         $("#multigene_search_icon i").removeClass("fa-gear");
     } else if (mode == 'off') {
         $('#multigene_plots_input').bootstrapToggle('off');
-        $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays").tooltip('show');
+        $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip('show');
         $("#multigene_search_icon i").addClass("fa-gear");
         $("#multigene_search_icon i").removeClass("fa-gears");
     }
