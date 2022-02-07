@@ -309,8 +309,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         values = df.loc[rows].values
 
     hidden_labels = None
-    if not matrixplot:
-        hidden_labels = "row" if flip_axes else "col"
+    #if not matrixplot:
+    #    hidden_labels = "row" if flip_axes else "col"
 
     # Configuring which axes are clustered or not.
     cluster = None
