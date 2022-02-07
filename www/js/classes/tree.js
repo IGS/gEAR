@@ -15,8 +15,10 @@ class Tree {
      */
     constructor({
         treeDiv
+        , storedValElt
     } = {}) {
-        this.treeDiv = treeDiv;
+        this.treeDiv = treeDiv; // Element to generate the tree structure on
+        this.storedValElt = storedValElt;   // Element to store text, vals, and data properties on
 
         this.setTree();
     }
@@ -84,7 +86,7 @@ class GeneCartTree extends Tree {
         } else if (nodeType == 'genecart') {
             nodeClass = 'py-0'
         }
-        
+
         treeData.push({
             'id': id,
             'parent': parentID,
@@ -95,10 +97,10 @@ class GeneCartTree extends Tree {
             }
         })
     }
-    
+
     generateTreeData() {
         // Create JSON tree structure for the data
-        let treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
+        const treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
         const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -124,12 +126,12 @@ class GeneCartTree extends Tree {
                 } else {
                     item.folder_parent_id = 'domain_node';
                 }
-                
+
                 if (! treeKeys.hasOwnProperty(item.folder_id)) {
                     this.addNode(treeData, item.folder_id, item.folder_parent_id, item.folder_label, 'default');
                     treeKeys[item.folder_id] = true;
                 }
-                
+
                 this.addNode(treeData, item.value, item.folder_id, item.text, 'genecart');
             } else {
                 // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
@@ -192,12 +194,39 @@ class GeneCartTree extends Tree {
             this.setTree();
         }
 
+        // TODO: Add some configuration to the Tree objects to not rely as heavily on a particular HTML design
+        /*
+        Example of a tree container structure, which relies on the positioning of the dropdown class
+        inspired by https://getbootstrap.com/docs/4.0/components/dropdowns/#examples
+
+        For this example:
+         '#datset_tree' is this.treeDiv
+         '#dataset_c' is this.dropdownElt
+         '#dataset' is this.dropdownToggleElt (and this.storedValElt)
+
+        <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
+          <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
+          <div class="dropdown-menu w-100" aria-labelledby="dataset">
+            <form class="px-4 py-3" onsubmit="return false;">
+              <div class="input-group input-group-sm mb-3">
+                <div class="input-group-prepend">
+                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                </div>
+                <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
+              </div>
+              <div id="dataset_tree"></div>
+            </form>
+          </div>
+        </div>  <!-- end dataset_c -->
+        */
+
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
-        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first()
+        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first();
+        // This element will store the text, value, and data properties of the selected node
+        this.storedValElt = (this.storedValElt) ? this.storedValElt : this.dropdownToggleElt;
         this.register_events();
-
     }
 
     register_events() {
@@ -209,15 +238,16 @@ class GeneCartTree extends Tree {
             // Though you can select multiple nodes in the tree, let's only select the first
             const geneCartId = data.selected[0];  // Returns node 'id' property
             if (data.node.type === "default") {
+                // TODO: If a branch is selected, a max call stack is exceeded
                 // Do not toggle if user is navigating a branch node
                 // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
                 return;
             }
             const selectedNode = data.instance.get_node(geneCartId);
-            $(self.dropdownToggleElt).text(selectedNode.text);
-            $(self.dropdownToggleElt).val(geneCartId);
+            $(self.storedValElt).text(selectedNode.text);
+            $(self.storedValElt).val(geneCartId);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
-            $(self.dropdownToggleElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
+            $(self.storedValElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
         }).jstree(true);
     }
 
@@ -258,7 +288,7 @@ class ProfileTree extends Tree {
         } else if (nodeType == 'profile') {
             nodeClass = 'py-0'
         }
-        
+
         treeData.push({
                 'id': itemValue,
                 'parent': parentID,
@@ -275,7 +305,7 @@ class ProfileTree extends Tree {
 
     generateTreeData() {
         // Create JSON tree structure for the data
-        let treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
+        const treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
         const treeData = [
             {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -301,7 +331,7 @@ class ProfileTree extends Tree {
                 this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
                 treeKeys[item.folder_parent_id] = true;
             }
-            
+
             // Now do the same for the containing folder itself
             if (item.folder_id) {
                 item.folder_id = 'folder-' + item.folder_id;
@@ -311,12 +341,12 @@ class ProfileTree extends Tree {
                 } else {
                     item.folder_parent_id = 'group_node';
                 }
-                
+
                 if (! treeKeys.hasOwnProperty(item.folder_id)) {
                     this.addNode(treeData, item.folder_label, item.folder_id, null, item.folder_parent_id, 'default');
                     treeKeys[item.folder_id] = true;
                 }
-                
+
                 this.addNode(treeData, item.text, item.value, item.share_id, item.folder_id, 'profile');
             } else {
                 // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
@@ -365,8 +395,9 @@ class ProfileTree extends Tree {
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
-        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first()
-
+        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first();
+        // This element will store the text, value, and data properties of the selected node
+        this.storedValElt = (this.storedValElt) ? this.storedValElt : this.dropdownToggleElt;
         this.register_events();
     }
 
@@ -388,13 +419,13 @@ class ProfileTree extends Tree {
             // The dropdown toggle text/val change already happens in DatasetCollectionPanel->set_layouts() for the index page,
             // but this should be set to assist with other pages.
             const selectedNode = data.instance.get_node(layoutId);
-            $(self.dropdownToggleElt).text(selectedNode.text);
-            $(self.dropdownToggleElt).val(layoutId);
-            $(self.dropdownToggleElt).data("profile-id", selectedNode.original.profile_id);
-            $(self.dropdownToggleElt).data("profile-label", selectedNode.original.profile_label);
-            $(self.dropdownToggleElt).data("profile-share-id", selectedNode.original.profile_share_id);
+            $(self.storedValElt).text(selectedNode.text);
+            $(self.storedValElt).val(layoutId);
+            $(self.storedValElt).data("profile-id", selectedNode.original.profile_id);
+            $(self.storedValElt).data("profile-label", selectedNode.original.profile_label);
+            $(self.storedValElt).data("profile-share-id", selectedNode.original.profile_share_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
-            $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
+            $(self.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
     }
@@ -518,8 +549,9 @@ class DatasetTree extends Tree {
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
-        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first()
-
+        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first();
+        // This element will store the text, value, and data properties of the selected node
+        this.storedValElt = (this.storedValElt) ? this.storedValElt : this.dropdownToggleElt;
         this.register_events();
     }
 
@@ -539,12 +571,12 @@ class DatasetTree extends Tree {
                 return;
             }
             const selectedNode = data.instance.get_node(datasetId);
-            $(self.dropdownToggleElt).text(selectedNode.text);
-            $(self.dropdownToggleElt).val(selectedNode.original.dataset_id);
-            $(self.dropdownToggleElt).data("dataset-id", selectedNode.original.dataset_id);
-            $(self.dropdownToggleElt).data("organism-id", selectedNode.original.organism_id);
+            $(self.storedValElt).text(selectedNode.text);
+            $(self.storedValElt).val(selectedNode.original.dataset_id);
+            $(self.storedValElt).data("dataset-id", selectedNode.original.dataset_id);
+            $(self.storedValElt).data("organism-id", selectedNode.original.organism_id);
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
-            $(self.dropdownToggleElt).trigger('change');   // Force the change event to fire, triggering downstream things
+            $(self.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
     }
