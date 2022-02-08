@@ -48,7 +48,7 @@ def main():
         ext = os.path.splitext(screenshot)[1]
         new_basename = str(uuid4()) + ext
         src = f"../{SCREENSHOT_DIR}/files/{screenshot}"
-        dst = f"../{SCREENSHOT_DIR}/files/{new_basename}"
+        dst = f"../{SCREENSHOT_DIR}/{new_basename}" # Synlink is up a directory
         os.symlink(src, dst)
         screenshot_url = "{}/{}".format(SCREENSHOT_URL, new_basename)
 
