@@ -20,7 +20,7 @@ class DatasetCollectionPanel {
         }
     }
 
-    load_frames({share_id=null, multigene=false} = {}) {        /*
+    load_frames({dataset_id=null, multigene=false} = {}) {        /*
           Queries the database to get the list of datasets in the user's current
           view.  Initializes the dataset frame panels with placeholders for each
           dataset.
@@ -35,7 +35,7 @@ class DatasetCollectionPanel {
             url : './cgi/get_dataset_list.cgi',
             type: "POST",
             async: false,   // Adding so datasets are updated before the set_layout() AJAX call happens
-            data : { 'session_id': session_id, 'permalink_share_id': share_id,
+            data : { 'session_id': session_id, 'permalink_share_id': dataset_id,
                      'exclude_pending': 1, 'default_domain': this.layout_label,
                      'layout_id': dsc_panel.layout_id },
             dataType: "json",
@@ -62,7 +62,7 @@ class DatasetCollectionPanel {
 
                 $('span#domain_choice_info_count').text(dsc_panel.datasets.length);
 
-                if (share_id) {
+                if (dataset_id) {
                     const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
                     const permalinkViewHtml = permalinkViewTmpl.render(data['datasets']);
                     $("#permalink_info").html(permalinkViewHtml);

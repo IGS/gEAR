@@ -11,10 +11,9 @@ const PREVIOUS_SELECTED_RECORD_NUM = null;
 let SCORING_METHOD = 'gene';
 let SELECTED_GENE = null;
 
-let share_id = null; //from permalink - dataset share ID
+let dataset_id = null; //from permalink - dataset share ID
 let layout_id = null; //from permalink - profile grid layout ID
-const gene_cart_id = null; //from permalink - gene cart share ID
-const permalinked_dataset_id = null; //holds dataset_id obtained from load_dataset_frames()
+let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
 
 const annotation_panel = new FunctionalAnnotationPanel();
@@ -32,14 +31,14 @@ window.onload=() => {
     // check if the user is already logged in
     check_for_login();
 
-    gene_cart_share_id = getUrlParameter('gene_cart_share_id');
-    load_gene_carts(gene_cart_share_id);
+    gene_cart_id = getUrlParameter('gene_cart_share_id');
+    load_gene_carts(gene_cart_id);
 
     // Was a permalink found?
-    share_id = getUrlParameter('share_id');
+    dataset_id = getUrlParameter('share_id');
     scope = "permalink";
 
-    if (share_id) {
+    if (dataset_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
         $('#viewport_intro').children().hide();
@@ -48,7 +47,7 @@ window.onload=() => {
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
 
-        // validate the share_id. runs load_dataset_frames() on success
+        // validate the dataset_id. runs load_frames() on success
         validate_permalink(scope);
     } else {
         // layout_id is a share_id for the profile layout
@@ -91,7 +90,7 @@ window.onload=() => {
         sleep(1000).then(() => {
             $('#intro_search_icon').trigger('click');
         })
-    } else if (share_id) {
+    } else if (dataset_id) {
         $('#permalink_intro_c').show();
     }
 
@@ -358,7 +357,7 @@ function validate_permalink(scope) {
     $.ajax({
         url : './cgi/validate_share_id.cgi',
         type: "POST",
-        data : { 'share_id': share_id, 'scope': scope },
+        data : { 'share_id': dataset_id, 'scope': scope },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
             if ( data['success'] != 1 ) {
@@ -368,7 +367,7 @@ function validate_permalink(scope) {
             }
 
             if (scope == 'permalink') {
-                dataset_collection_panel.load_frames({share_id});
+                dataset_collection_panel.load_frames({dataset_id});
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
@@ -402,7 +401,7 @@ function load_layouts() {
                 2.  User's DB-saved value (when they go to a machine, and there's no cookie)
                 3.  Admin's active domain
              */
-            let layouts = {};
+            const layouts = {};
             let active_layout_id = null;
             let active_layout_label = null;
 
@@ -595,7 +594,7 @@ function load_gene_carts(cart_share_id) {
 async function reload_trees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    await Promise.all([load_layouts(), load_gene_carts(gene_cart_share_id)]);
+    await Promise.all([load_layouts(), load_gene_carts(gene_cart_id)]);
 }
 
 // Hide option menu when scope is changed.
@@ -651,7 +650,7 @@ function populate_search_result_list(data) {
 var lastCall = 0;
 function select_search_result(elm) {
     //TODO Prevents this function from being double-called by #gene_search_form.submit()
-    var callTime = new Date().getTime();
+    const callTime = new Date().getTime();
     if (callTime - lastCall <= 500) {
       return false;
     }
@@ -684,7 +683,7 @@ function isNumeric(n) {
 }
 
 function show_search_result_info_box() {
-    if( permalinked_dataset_id ) {
+    if( dataset_id ) {
         // show links_out and gene_annot with zoom_on
         $('#links_out_c, #gene_details_c').addClass('search_result_c').removeClass('search_result_c_DISABLED').show('fade', {}, 400);
         $('#dataset_zoomed_c').show('fade', {}, 400);
@@ -776,7 +775,7 @@ $("#gene_search_form").submit((event) => {
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
-    dataset_collection_panel.load_frames({share_id, multigene});
+    dataset_collection_panel.load_frames({dataset_id, multigene});
 
     $.ajax({
         url : './cgi/search_genes.py',
@@ -920,8 +919,8 @@ $('#search_param_gene_cart').change(function() {
 
 // When a gene cart is selected, populate the gene search bar with its members
 $('#selected_gene_cart, #search_param_gene_cart').change( function() {
-    const geneCartId = $(this).val();
-    const params = { session_id: session_id, gene_cart_id: geneCartId };
+    const gene_cart_id = $(this).val();
+    const params = { session_id, gene_cart_id };
     const d = new $.Deferred(); // Causes editable to wait until results are returned
 
     if (typeof session_id !== 'undefined') {
