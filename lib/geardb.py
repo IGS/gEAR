@@ -1123,6 +1123,52 @@ class DatasetLink:
         return self.__dict__
 
 @dataclass
+class DatasetDisplay:
+    id: int = None
+    dataset_id: str = None
+    user_id: int = None
+    label: str = None
+    plot_type: str = None
+    plotly_config: str = None
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        return self.__dict__
+
+    def save(self):
+        """
+        Currently assumes the display already exists and what you're saving here is a change
+        to it.
+        """
+        if self.id is None:
+            # TODO: implement new saves
+            raise Exception("Can only save changes to existing dataset displays currently")
+        else:
+            # gene_cart_member entries are deleted by foreign key cascade
+            conn = Connection()
+            cursor = conn.get_cursor()
+
+            sql = """
+                  UPDATE dataset_display 
+                     SET dataset_id = %s,
+                         user_id = %s,
+                         label = %s,
+                         plot_type = %s,
+                         plotly_config = %s
+                   WHERE id = %s
+            """
+            cursor.execute(sql, (
+                self.dataset_id, self.user_id, self.label,
+                self.plot_type, self.plotly_config, self.id
+            ))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+    
+@dataclass
 class Dataset:
     id: str
     owner_id: int = None
@@ -1155,6 +1201,7 @@ class Dataset:
     gene_count: int = None
     obs_count: int = None
     has_tarball: int = 0
+    displays: List[DatasetDisplay] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     layouts: List[Layout] = field(default_factory=list)
     links: List[DatasetLink] = field(default_factory=list)
@@ -1164,6 +1211,37 @@ class Dataset:
 
     def _serialize_json(self):
         return self.__dict__
+
+    def get_displays(self):
+        """
+        Populates the dataset displays attribute, a list of DatasetDisplay objects 
+        related to this dataset.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT id, user_id, label, plot_type, plotly_config 
+                FROM dataset_display
+               WHERE dataset_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+        self.displays.clear()
+
+        for (display_id, user_id, label, plot_type, plotly_config) in cursor:
+            display = DatasetDisplay(
+                id=display_id,
+                dataset_id=self.id,
+                user_id=user_id,
+                label=label,
+                plot_type=plot_type,
+                plotly_config=plotly_config
+            )
+
+            self.displays.append(display)
+
+        cursor.close()
+        conn.close()
 
     def get_file_path(self, session_id=None):
         """
