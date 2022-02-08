@@ -32,6 +32,8 @@ class GeneCart {
                 }
             },
             error: function(msg) {
+
+                // TODO: Currently msg is an Object so nothing useful shows in console.log
                 console.log("error: " + msg);
                 if (errCallback) {
                     errCallback(this);
@@ -62,6 +64,7 @@ class GeneCart {
                 }
             },
             error: function(msg) {
+                // TODO: Currently msg is an Object so nothing useful shows in console.log
                 console.log("error: " + msg);
             }
         });

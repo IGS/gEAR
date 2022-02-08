@@ -84,9 +84,13 @@ window.onload= async () => {
     // If brought here by the "gene search results" page, curate on the dataset ID that referred us
     const linkedDatasetId = getUrlParameter("dataset_id");
     if (linkedDatasetId) {
-        $('#dataset').val(linkedDatasetId);
+        $("#dataset").val(linkedDatasetId);
         try {
-            $('#dataset').text(datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId).text);
+            // Had difficulties triggering a "select_node.jstree" event, so just add the data info here
+            const tree_leaf = datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId);
+            $("#dataset").text(tree_leaf.text);
+            $("#dataset").data("organism-id", tree_leaf.organism_id);
+            $("#dataset").data("dataset-id", tree_leaf.dataset_id);
             $("#dataset").trigger("change");
         } catch {
             console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
@@ -550,6 +554,8 @@ function loadDisplayConfigHtml (plotConfig) {
 
     $(`#${escapedPrimary}_primary`).prop('checked', true).click();
     $(`#${escapedSecondary}_secondary`).prop('checked', true).click();
+
+    $('#plot_title').val(plotConfig.plot_title);
 
     // Populate plot type-specific dropdowns and checkbox options
     switch ($('#plot_type_select').val()) {
@@ -1035,6 +1041,8 @@ $(document).on('click', '#create_plot', async () => {
     if ($('input[name="obs_secondary"]:checked').val() !== "none"){
         plotConfig.secondary_col = $('input[name="obs_secondary"]:checked').val();
     }
+
+    plotConfig.plot_title = $('#plot_title').val();
 
     // Add specific plotConfig options depending on plot type
     switch (plotType) {
