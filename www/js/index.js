@@ -32,7 +32,9 @@ window.onload=() => {
     check_for_login();
 
     gene_cart_id = getUrlParameter('gene_cart_share_id');
-    load_gene_carts(gene_cart_id);
+    load_gene_carts(gene_cart_id).then(() => {
+        $('#intro_search_icon').trigger('click');
+    })
 
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
@@ -92,9 +94,9 @@ window.onload=() => {
             $('#intro_search_icon').trigger('click');
         })
     } else if (gene_cart_id) {
-        sleep(1000).then(() => {
+        /*sleep(1000).then(() => {
             $('#intro_search_icon').trigger('click');
-        })
+        })*/
     }  else if (dataset_id) {
         $('#permalink_intro_c').show();
     }
@@ -921,6 +923,7 @@ $('#selected_gene_cart, #search_param_gene_cart').change( function() {
         // Get the gene cart members and populate the gene symbol search bar
         $.ajax({
         url: './cgi/get_gene_cart_members.cgi',
+        async: false,
         type: 'post',
         data: params,
         success: function (data, newValue, oldValue) {
@@ -967,7 +970,7 @@ function add_state_history(gene_symbols) {
     };
 
     let state_url = "/index.html?"
-        + `&multigene_plots=${state_info.multigene_plots}`;
+        + `multigene_plots=${state_info.multigene_plots}`;
 
 
     if (layout_id) {
