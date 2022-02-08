@@ -1261,6 +1261,8 @@ class Dataset:
 
             self.displays.append(display)
 
+        return self.displays
+
         cursor.close()
         conn.close()
 
