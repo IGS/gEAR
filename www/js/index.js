@@ -75,6 +75,7 @@ window.onload=() => {
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');
     multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
 
+    // If gene symbols were provided (via either URL param method), click search button.
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
@@ -90,7 +91,11 @@ window.onload=() => {
         sleep(1000).then(() => {
             $('#intro_search_icon').trigger('click');
         })
-    } else if (dataset_id) {
+    } else if (gene_cart_id) {
+        sleep(1000).then(() => {
+            $('#intro_search_icon').trigger('click');
+        })
+    }  else if (dataset_id) {
         $('#permalink_intro_c').show();
     }
 
@@ -306,7 +311,7 @@ $(document).on('keydown', 'input#user_new_pass_1', function(){
 
 // Disable Save password button until 1st and 2nd inputs match
 $(document).on('keyup', 'input#user_new_pass_2', function(){
-    var pass_1 = $('input#user_new_pass_1').val();
+    const pass_1 = $('input#user_new_pass_1').val();
 
     if ( $('input#user_new_pass_2').val() == pass_1 ) {
         $('button#save_user_new_pass').prop('disabled', false);
@@ -322,15 +327,15 @@ $(document).on('click', 'button#save_user_new_pass', function(){
     $('#forgot_pass_modal_footer').hide();
     $('#saving_forgot_pass_modal_body_c').show();
 
-    var help_id = $('input#user_help_id').val();
-    var new_password = $('input#user_new_pass_2').val();
+    const help_id = $('input#user_help_id').val();
+    const new_password = $('input#user_new_pass_2').val();
     $.ajax({
         url: './cgi/save_user_account_changes.cgi',
         type: 'POST',
         data: { 'help_id': help_id, 'new_password': new_password, 'scope': 'password'},
         dataType: 'json',
         success: function(data, textStatus, jqXHR) {
-            if (data['success'] == 1) {
+            if (data.success == 1) {
                 // Hide waiting and show success
                 $('#saving_forgot_pass_modal_body_c').hide();
                 $('#success_forgot_pass_modal_body_c').show();
@@ -342,11 +347,11 @@ $(document).on('click', 'button#save_user_new_pass', function(){
             } else {
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                    '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
+                    '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error saving new user password');
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error saving new user password');
         }
     });//end ajax
 });
@@ -360,10 +365,10 @@ function validate_permalink(scope) {
         data : { 'share_id': dataset_id, 'scope': scope },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
-            if ( data['success'] != 1 ) {
+            if ( data.success != 1 ) {
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                    '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
+                    '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
             }
 
             if (scope == 'permalink') {
@@ -371,7 +376,7 @@ function validate_permalink(scope) {
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Error validating share ID');
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating share ID');
         }
     });
 }
@@ -561,20 +566,13 @@ function load_gene_carts(cart_share_id) {
             // If gene_cart_permalink was provided:
             // 1) Set the value in the gene cart tree and gene search bar
             // 2) Trigger change event to populate the gene search bar with the genes
-            // 3) Click the "search" button on the front page (happens via another process that actually calls load_frames)
-            // 4) show sidebar stuff in the display panel
+            // 3) (Outside of function) Search button is clicked
+            // 4) (Outside of function) Show sidebar stuff in the display panel
             if (permalink_cart_id) {
-                $("#selected_gene_cart").text(permalink_cart_label);
-                $("#selected_gene_cart").val(permalink_cart_id);
-                $("#selected_gene_cart").trigger('change');
-
-                //hide site_into and display the permalink message
-                $('#intro_content').hide();
-                $('#viewport_intro').children().hide();
-                $('#searching_indicator_c').hide();
-
-                $('#leftbar_main').show();
-                $('#permalink_intro_c').show();
+                // This will also change selected_gene_cart via the "change" event trigger
+                $("#search_param_gene_cart").text(permalink_cart_label);
+                $("#search_param_gene_cart").val(permalink_cart_id);
+                $("#search_param_gene_cart").trigger('change');
             }
 
             d.resolve();
@@ -587,7 +585,7 @@ function load_gene_carts(cart_share_id) {
         }
         });
     }
-    d.promise();
+    return d.promise();
 }
 
 // If user changes, update genecart/profile trees
@@ -604,7 +602,7 @@ $(document).on('click', '.scope_choice', function(){
 
 // Handle direct documentation links
 $(document).on('click', '#doc-link-choices li', function(){
-    window.location.replace("./manual.html?doc=" + $(this).data('doc-link'));
+    window.location.replace(`./manual.html?doc=${$(this).data('doc-link')}`);
 });
 
 function populate_search_result_list(data) {
@@ -848,11 +846,7 @@ $("#gene_search_form").submit((event) => {
 scrolling_results = false
 
 $('body').click(function(event) {
-    if (!$(event.target).closest('#search_results_c').length) {
-        scrolling_results = false
-    } else {
-        scrolling_results = true
-    };
+    scrolling_results = !$(event.target).closest('#search_results_c').length ? false : true;;
 });
 
 $(document).keydown(function(event) {
@@ -952,7 +946,7 @@ $('#selected_gene_cart, #search_param_gene_cart').change( function() {
                 $('#selected_gene_cart').text(oldValue);
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                    '<p class="alert-message"><strong>Oops! </strong> ' + data["error"] + '</p></div>').show();
+                    '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
             }
             $("#search_gene_symbol").prop("disabled", false);
             $("#selected_gene_cart_loading_c").hide();
@@ -969,27 +963,30 @@ $('#selected_gene_cart, #search_param_gene_cart').change( function() {
 // Set the state history based on current conditions
 function add_state_history(gene_symbols) {
     const state_info = {
-        'gene_symbol_exact_match': $("#exact_match").val(),
         'multigene_plots': $("#multigene_plots").val()
     };
 
     let state_url = "/index.html?"
-                + `&gene_symbol_exact_match=${$("#exact_match").val()}`
-                + `&multigene_plots=${$("#multigene_plots").val()}`;
+        + `&multigene_plots=${state_info.multigene_plots}`;
+
 
     if (layout_id) {
         state_info.layout_id = layout_id;
         state_url += `&layout_id=${layout_id}`;
     }
 
-    if (gene_symbols) {
-        state_info.gene_symbol = gene_symbols;
-        state_url += `&gene_symbol=${gene_symbols}`;
-    }
-
-    if (getUrlParameter('gene_cart_share_id')) {
-        state_info.gene_cart_share_id = getUrlParameter('gene_cart_share_id');
-        state_url += `&gene_cart_share_id=${getUrlParameter('gene_cart_share_id')}`;
+    // gene_cart_id automatically enables the exact_match and populates gene symbols,
+    // so let's not crowd up the history with that.
+    if (gene_cart_id) {
+        state_info.gene_cart_share_id = gene_cart_id;
+        state_url += `&gene_cart_share_id=${gene_cart_id}`;
+    } else {
+        state_info.gene_symbol_exact_match = $("#exact_match").val(),
+        state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`
+        if (gene_symbols) {
+            state_info.gene_symbol = gene_symbols;
+            state_url += `&gene_symbol=${gene_symbols}`;
+        }
     }
 
     // SAdkins - Should we have a separate history state for dataset share IDs?
