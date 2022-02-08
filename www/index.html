@@ -125,20 +125,39 @@
           <div class="card">
             <div class="card-body pt-0 mt-0 pb-1">
               <h1>Explore gene expression</h1>
-              <form id="intro_search_form" class="form-group">
+              <form id="intro_search_form"></form>
+              <div id="intro_search_div" class="form-group mb-2">
                 <small class="form-text text-muted mt-3">Specify one or more genes with spaces or commas</small>
                 <div class="form-row">
                   <div class="col-12 input-group">
-                    <input type="text" class="form-control" id="search_gene_symbol_intro" placeholder="Choose gene symbol(s)" />
+                    <input type="text" form="intro_search_form" class="form-control" id="search_gene_symbol_intro" placeholder="Choose gene symbol(s)" />
+
+                    <div class="input-group-append dropdown">
+                      <div id="gene_cart_search_icon" class="input-group-text dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-shopping-cart" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Click to select a gene cart for loading a pre-defined set of genes."></i>
+                      </div>
+                      <div class="dropdown-menu" aria-labelledby="search_param_gene_cart">
+                        <form class="px-4 py-3" onsubmit="return false;">
+                          <div class="input-group input-group-sm mb-3">
+                            <div class="input-group-prepend">
+                              <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                            </div>
+                            <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                          </div>
+                          <div id="gene_cart_tree"></div>
+                        </form>
+                      </div>
+                    </div>
+
                     <div class="input-group-append">
                       <div id="exact_match_icon" class="input-group-text" >
-                        <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)" />
+                        <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
                       </div>
                     </div>
 
                     <div class="input-group-append">
                       <div id="multigene_search_icon" class="input-group-text" >
-                        <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays"></i>
+                        <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></i>
                       </div>
                     </div>
 
@@ -149,7 +168,8 @@
                     </div>
                   </div>
                 </div> <!-- .form-row -->
-              </form>
+                <small id="search_param_gene_cart_div" style="visibility:hidden;"><strong>Selected Gene Cart: </strong><span id="search_param_gene_cart"></span></small>
+              </div> <!-- #intro_search_div -->
               <div class="form-group">
                 <label id="selected_profile_label" class="mb-0">Select Profile</label>
                 <small class="form-text text-muted">A "profile" is a named group of datasets</small>
@@ -171,7 +191,7 @@
                   You have selected a profile under active development.  Some gene symbols may not
                   show results currently.
                 </p>
-              </div> <!-- .form-row -->
+              </div> <!-- .form-group -->
             </div> <!-- end card-body -->
           </div> <!-- end card-body -->
           <div class="card">
