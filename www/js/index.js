@@ -31,11 +31,6 @@ window.onload=() => {
     // check if the user is already logged in
     check_for_login();
 
-    gene_cart_id = getUrlParameter('gene_cart_share_id');
-    load_gene_carts(gene_cart_id).then(() => {
-        $('#intro_search_icon').trigger('click');
-    })
-
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
     scope = "permalink";
@@ -69,6 +64,13 @@ window.onload=() => {
         validate_help_id(help_id);
     }
 
+    gene_cart_id = getUrlParameter('gene_cart_share_id');
+    load_gene_carts(gene_cart_id).then(() => {
+        if (gene_cart_id) {
+            $('#intro_search_icon').trigger('click');
+        }
+    })
+
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
@@ -93,11 +95,7 @@ window.onload=() => {
         sleep(1000).then(() => {
             $('#intro_search_icon').trigger('click');
         })
-    } else if (gene_cart_id) {
-        /*sleep(1000).then(() => {
-            $('#intro_search_icon').trigger('click');
-        })*/
-    }  else if (dataset_id) {
+    } else if (dataset_id) {
         $('#permalink_intro_c').show();
     }
 
