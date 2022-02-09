@@ -125,6 +125,7 @@ def get_dataset_by_title(title=None, include_shape=None):
                 has_h5ad
            FROM dataset
           WHERE title = %s
+            AND marked_for_removal = 0
     """
     cursor.execute(qry, (title, ))
     dataset = None
@@ -153,7 +154,7 @@ def get_dataset_by_title(title=None, include_shape=None):
     elif found == 0:
         return None
     else:
-        raise Exception("Error: More than one dataset found with the same title")
+        raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
 
     return dataset
 
