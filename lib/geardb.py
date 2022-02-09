@@ -105,6 +105,58 @@ def get_dataset_by_id(id=None, include_shape=None):
     conn.close()
     return dataset
 
+def get_dataset_by_title(title=None, include_shape=None):
+    """
+    Given a dataset title string this returns a Dataset object with all attributes
+    populated which come directly from the table.  Secondary things, such as tags,
+    must be loaded separately.
+
+    Returns None if no dataset of that title is found.
+
+    Throws an exception if more than one dataset with that same title is found
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+                dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
+                has_h5ad
+           FROM dataset
+          WHERE title = %s
+    """
+    cursor.execute(qry, (title, ))
+    dataset = None
+
+    found = 0
+
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+         dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
+         has_h5ad) in cursor:
+        dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, ldesc=ldesc,
+                          date_added=date_added, dtype=dtype, schematic_image=schematic_image,
+                          share_id=share_id, math_default=math_default,
+                          marked_for_removal=marked_for_removal, load_status=load_status,
+                          has_h5ad=has_h5ad)
+        found += 1
+
+    cursor.close()
+    conn.close()
+
+    if found == 1:
+        if include_shape == '1':
+            dataset.get_shape()
+
+        return dataset
+    elif found == 0:
+        return None
+    else:
+        raise Exception("Error: More than one dataset found with the same title")
+
+    return dataset
+
 
 def get_dataset_collection(ids=None):
     return 1
