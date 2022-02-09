@@ -45,5 +45,5 @@ class GeneSymbols(Resource):
 
         return {
             "success": 1,
-            "gene_symbols": adata.var.gene_symbol.tolist()
+            "gene_symbols": adata.var.gene_symbol.fillna("None").tolist()
         }
