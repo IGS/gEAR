@@ -15,6 +15,7 @@ let dataset_id = null; //from permalink - dataset share ID
 let layout_id = null; //from permalink - profile grid layout ID
 let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
+let exact_match = false;
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
@@ -23,7 +24,7 @@ const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
 const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
 
 const gene_cart_tree = new GeneCartTree({treeDiv: '#gene_cart_tree', storedValElt: '#search_param_gene_cart'});
-const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree'});
+const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree', storedValElt: '#selected_gene_cart'});
 
 const search_result_postselection_functions = [];
 
@@ -76,20 +77,22 @@ window.onload=() => {
 
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
+    exact_match = (permalinked_gsem && permalinked_gsem === "1");
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');
-    multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1")
+    multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1");
 
     // If gene symbols were provided (via either URL param method), click search button.
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
-        if (permalinked_gsem && permalinked_gsem === "1") {
-            set_exact_match('on');
+        if (exact_match) {
+            set_exact_match(exact_match);
         }
 
         if (multigene) {
-            set_multigene_plots('on');
-            set_exact_match('on');  // Multigene searches are exact.  This should speed up search_genes.py
+            set_multigene_plots(multigene);
+            exact_match = multigene;
+            set_exact_match(exact_match);  // Multigene searches are exact.  This should speed up search_genes.py
         }
 
         sleep(1000).then(() => {
@@ -102,25 +105,16 @@ window.onload=() => {
     // The search button starts out disabled, make sure it gets re-enabled.
     $("button#submit_search").prop( "disabled", false );
 
-    $('#exact_match_icon').click(() => {
-        // handle if it was already in the on position
-        if ( $('#exact_match_input').prop("checked") ) {
-            set_exact_match('off');
-        } else {
-            // else it was off, so turn it on
-            set_exact_match('on');
-        }
+    // If exact match icon is clicked, toggle parameters
+    $('.js-exact-match').click(() => {
+        exact_match = !exact_match;
+        set_exact_match(exact_match);
     });
 
-    // If MG search icon on front page is clicked
-    $('#multigene_search_icon').click(() => {
-        // handle if it was already in the on position
-        if ( $('#multigene_plots_input').prop("checked") ) {
-            set_multigene_plots('off');
-        } else {
-            // else it was off, so turn it on
-            set_multigene_plots('on');
-        }
+    // If MG search icon is clicked, toggle parameters
+    $('.js-multigene').click(() => {
+        multigene = !multigene;
+        set_multigene_plots(multigene);
     });
 
     $('#intro_search_form').on('submit', (e) => {
@@ -132,13 +126,19 @@ window.onload=() => {
         $("#leftbar_main").show();
         $("#viewport_main").show();
 
-        // fire the true search button
+        // fire the true search button, to submit the true form
         $("#submit_search").trigger( "click" );
     });
 
+    // Search from front page is clicked
     $('#intro_search_icon').click(() => {
         $('#intro_search_form').submit();
     });
+
+    // Search from results page is clicked
+    $('#submit_search').click(() => {
+        $('#gene_search_form').submit();
+    })
 
     $('#dataset_search_form').on('submit', (e) => {
         e.preventDefault();
@@ -184,10 +184,6 @@ window.onload=() => {
         // Remove duplicates in gene search if they exist
         const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
         const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
-
-        // determine if searching for exact matches (convert from bool to 1 or 0)
-        $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
-        $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
 
         // Update multigene toggle so correct grid widths are loaded.
         multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
@@ -505,12 +501,12 @@ function load_gene_carts(cart_share_id) {
 
     if (!session_id) {
         //User is not logged in. Hide gene carts container
-        $("#selected_gene_cart_c").hide();
+        $("#selected_gene_cart_c").prop("disabled", true);
         gene_cart_tree.generateTree();
-        selected_gene_cart_tree.genereateTree();
+        selected_gene_cart_tree.generateTree();
         d.resolve();
     } else {
-        $("#selected_gene_cart_c").show(); //Show if hidden
+        $("#selected_gene_cart_c").prop("disabled", false);
         $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
@@ -560,7 +556,7 @@ function load_gene_carts(cart_share_id) {
             selected_gene_cart_tree.generateTree();
 
             if (! carts_found ) {
-                $("#selected_gene_cart_c").hide();
+                $("#selected_gene_cart_c").prop("disabled", true);
             }
 
             // If gene_cart_permalink was provided:
@@ -732,10 +728,6 @@ $("#gene_search_form").submit((event) => {
     // clear any open tooltips
     $('[data-toggle="tooltip"], .tooltip').tooltip("hide");
 
-    // determine if searching for exact matches (convert from bool to 1 or 0)
-    $("#exact_match").val( Number($('#exact_match_input').prop("checked")) );
-    $("#multigene_plots").val( Number($('#multigene_plots_input').prop("checked")) );
-
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
 
@@ -906,13 +898,13 @@ $(document).on('click', '#gene_details_header, #gene_collapse_btn', function() {
 
 // If #search_param_gene_cart (front page) was the setter, set #selected_gene_cart
 $('#search_param_gene_cart').change(function() {
-    $('#selected_gene_cart').text($('#search_param_gene_cart').text());
-    $('#selected_gene_cart').val($('#search_param_gene_cart').val());
-    $('#search_param_gene_cart_div').css("visibility", "visible");
+    $('.js-gene-cart').text($('#search_param_gene_cart').text());
+    $('.js-gene-cart').val($('#search_param_gene_cart').val());
+    $('.js-gene-cart-div').css("visibility", "visible");
 });
 
 // When a gene cart is selected, populate the gene search bar with its members
-$('#selected_gene_cart, #search_param_gene_cart').change( function() {
+$('.js-gene-cart').change( function() {
     const gene_cart_id = $(this).val();
     const params = { session_id, gene_cart_id };
     const d = new $.Deferred(); // Causes editable to wait until results are returned
@@ -935,23 +927,18 @@ $('#selected_gene_cart, #search_param_gene_cart').change( function() {
                 const dedup_gene_symbols_array = [...new Set(gene_symbols_array)]
 
                 gene_symbols = dedup_gene_symbols_array.join(' ')
-                $('#search_gene_symbol_intro').val(gene_symbols);
-                $('#search_gene_symbol').val(gene_symbols);
+                $('.js-gene-symbols').val(gene_symbols);
 
                 // determine if searching for exact matches
-                if ( $('#exact_match_input').prop("checked") == false ) {
-                    set_exact_match('on');
-                    $("#exact_match_icon img").tooltip('hide'); // Do not want it to autoshow since it most likely is not hovered over right now
-                }
+                exact_match = true;
+                set_exact_match(exact_match);
+                $(".js-exact-match img").tooltip('hide'); // Do not want it to autoshow since it most likely is not hovered over right now
             } else {
-                $('#selected_gene_cart').text(oldValue);
+                $('.js-gene-cart').text(oldValue);
                 $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
             }
-            $("#search_gene_symbol").prop("disabled", false);
-            $("#selected_gene_cart_loading_c").hide();
-
             d.resolve();
         }
         });
@@ -964,7 +951,7 @@ $('#selected_gene_cart, #search_param_gene_cart').change( function() {
 // Set the state history based on current conditions
 function add_state_history(gene_symbols) {
     const state_info = {
-        'multigene_plots': $("#multigene_plots").val()
+        'multigene_plots': multigene
     };
 
     let state_url = "/index.html?"
@@ -982,7 +969,7 @@ function add_state_history(gene_symbols) {
         state_info.gene_cart_share_id = gene_cart_id;
         state_url += `&gene_cart_share_id=${gene_cart_id}`;
     } else {
-        state_info.gene_symbol_exact_match = $("#exact_match").val(),
+        state_info.gene_symbol_exact_match = exact_match,
         state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`
         if (gene_symbols) {
             state_info.gene_symbol = gene_symbols;
@@ -1024,29 +1011,25 @@ function update_datasetframes_generesults() {
     });
 }
 
-function set_exact_match(mode) {
-    if (mode == 'on') {
-        $('#exact_match_input').bootstrapToggle('on');
-        $("#exact_match_icon img").attr("src", "img/arrow_target_selected.png");
-        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently on).").tooltip('show'); // Show is added so the old version of the tooltip does not persist
-    } else if (mode == 'off') {
-        $('#exact_match_input').bootstrapToggle('off');
-        $("#exact_match_icon img").attr("src", "img/arrow_target_unselected.png");
-        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off).").tooltip('show');
+function set_exact_match(is_enabled) {
+    if (is_enabled) {
+        $(".js-exact-match img").attr("src", "img/arrow_target_selected.png");
+        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently on).").tooltip('show'); // Show is added so the old version of the tooltip does not persist
+    } else {
+        $(".js-exact-match img").attr("src", "img/arrow_target_unselected.png");
+        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently off).").tooltip('show');
     }
 }
 
-function set_multigene_plots(mode) {
-    if (mode == 'on') {
-        $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
-        $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip('show');
-        $("#multigene_search_icon i").addClass("fa-gears");
-        $("#multigene_search_icon i").removeClass("fa-gear");
-    } else if (mode == 'off') {
-        $('#multigene_plots_input').bootstrapToggle('off');
-        $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip('show');
-        $("#multigene_search_icon i").addClass("fa-gear");
-        $("#multigene_search_icon i").removeClass("fa-gears");
+function set_multigene_plots(is_enabled) {
+    if (is_enabled) {
+        $(".js-multigene:visible i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip('show');
+        $(".js-multigene i").addClass("fa-gears");
+        $(".js-multigene i").removeClass("fa-gear");
+    } else {
+        $(".js-multigene:visible i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip('show');
+        $(".js-multigene i").addClass("fa-gear");
+        $(".js-multigene i").removeClass("fa-gears");
     }
 }
 

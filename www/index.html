@@ -26,10 +26,6 @@
       integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
       crossorigin="anonymous"
     />
-    <link
-      href="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/css/bootstrap4-toggle.min.css"
-      rel="stylesheet"
-    />
 
     <!-- Ensures we always get a new version (during our current active development cycles) -->
     <link
@@ -130,10 +126,10 @@
                 <small class="form-text text-muted mt-3">Specify one or more genes with spaces or commas</small>
                 <div class="form-row">
                   <div class="col-12 input-group">
-                    <input type="text" form="intro_search_form" class="form-control" id="search_gene_symbol_intro" placeholder="Choose gene symbol(s)" />
+                    <input type="text" form="intro_search_form" class="js-gene-symbols form-control" id="search_gene_symbol_intro" placeholder="Choose gene symbol(s)" />
 
                     <div class="input-group-append dropdown">
-                      <div id="gene_cart_search_icon" class="input-group-text dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      <div id="gene_cart_search_icon" class="js-gene-cart-icon input-group-text dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fa fa-shopping-cart" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Click to select a gene cart for loading a pre-defined set of genes."></i>
                       </div>
                       <div class="dropdown-menu" aria-labelledby="search_param_gene_cart">
@@ -150,31 +146,31 @@
                     </div>
 
                     <div class="input-group-append">
-                      <div id="exact_match_icon" class="input-group-text" >
+                      <div id="exact_match_icon" class="js-exact-match input-group-text" >
                         <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
                       </div>
                     </div>
 
                     <div class="input-group-append">
-                      <div id="multigene_search_icon" class="input-group-text" >
+                      <div id="multigene_search_icon" class="js-multigene input-group-text" >
                         <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></i>
                       </div>
                     </div>
 
                     <div class="input-group-append">
-                      <div id="intro_search_icon" class="input-group-text" >
+                      <div id="intro_search_icon" class="js-search input-group-text" >
                         <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
                       </div>
                     </div>
                   </div>
                 </div> <!-- .form-row -->
-                <small id="search_param_gene_cart_div" style="visibility:hidden;"><strong>Selected Gene Cart: </strong><span id="search_param_gene_cart"></span></small>
+                <small id="search_param_gene_cart_div" style="visibility:hidden;" class="js-gene-cart-div"><strong>Selected Gene Cart: </strong><span id="search_param_gene_cart" class="js-gene-cart"></span></small>
               </div> <!-- #intro_search_div -->
               <div class="form-group">
-                <label id="selected_profile_label" class="mb-0">Select Profile</label>
+                <label id="search_param_profile_label" class="mb-0">Select Profile</label>
                 <small class="form-text text-muted">A "profile" is a named group of datasets</small>
-                <div id="selected_profile_c" class="form-control dropdown">
-                  <div class="dropdown-toggle" value="" data-title="Click to change" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose One</div>
+                <div id="search_param_profile_c" class="form-control dropdown">
+                  <div class="js-profile dropdown-toggle" value="" data-title="Click to change" id="search_param_profile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose One</div>
                   <div class="dropdown-menu" aria-labelledby="search_param_profile">
                     <form class="px-4 py-3" onsubmit="return false;">
                       <div class="input-group input-group-sm mb-3">
@@ -362,107 +358,103 @@
           <div id="leftbar_main" class="col-2">
             <div id="search_container">
               <div id="search_info">
-                <div id="selected_profile_c" class="row dropdown">
-                  Profile:
-                  <span id="selected_profile" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
-                  <div class="dropdown-menu" aria-labelledby="selected_profile">
-                    <form class="px-4 py-3" onsubmit="return false;">
-                      <div class="input-group input-group-sm mb-3">
-                        <div class="input-group-prepend">
-                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                        </div>
-                        <input type="text" class="form-control" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                <form id="gene_search_form"></form>
+                <div id="gene_search_div" class="form-group">
+                  <h3>Search Genes</h3>
+                  <div class="row">
+                    <div class="col-12 input-group input-group-sm">
+                      <div class="form-row w-100 mb-1">
+                        <input type="text" form="gene_search_form" id="search_gene_symbol" class="js-gene-symbols form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
                       </div>
-                      <div id="selected_profile_tree"></div>
-                    </form>
-                  </div>
-                </div> <!-- end selected_profile_c -->
-                <div id="selected_gene_cart_c" class="row dropdown">
-                  Gene Cart:
-                  <span id="selected_gene_cart" value="" data-title="Click to change" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</span>
-                  <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
-                    <form class="px-4 py-3" onsubmit="return false;">
-                      <div class="input-group input-group-sm mb-3">
-                        <div class="input-group-prepend">
-                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+
+                      <div id="gene_input_appends" class="form-row">
+                        <div class=" input-group-append dropdown" id="selected_gene_cart_c">
+                          <div id="gene_cart_search_input" class="js-gene-cart-icon input-group-text dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-shopping-cart" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Click to select a gene cart for loading a pre-defined set of genes."></i>
+                          </div>
+                          <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
+                            <form class="px-4 py-3" onsubmit="return false;">
+                              <div class="input-group input-group-sm mb-3">
+                                <div class="input-group-prepend">
+                                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                                </div>
+                                <input type="text" class="form-control" id="selected_gene_cart_tree_q" placeholder="Type to search gene carts">
+                              </div>
+                              <div id="selected_gene_cart_tree"></div>
+                            </form>
+                          </div>
+                        </div> <!-- selected_gene_cart_c -->
+
+                        <div class="input-group-append">
+                          <div id="exact_match_input" class="js-exact-match input-group-text" >
+                            <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
+                          </div>
                         </div>
-                        <input type="text" class="form-control" id="selected_gene_cart_tree_q" placeholder="Type to search gene carts">
-                      </div>
-                      <div id="selected_gene_cart_tree"></div>
-                    </form>
-                  </div>
-                </div>  <!-- end selected_gene_cart_c -->
-                <div id="selected_gene_cart_loading_c" class="row">
-                  <img id="selected_gene_cart_loading" src="img/loading_search.gif" alt="loading" /> loading
-                </div>
-              </div>
-              <form id="gene_search_form">
-                <div class="form-row">
-                  <div class="col">
-                    <input type="hidden" name="dataset_ids" id="dataset_ids" value="" />
-                    <!-- Default for interesting single-cell data demo -->
-                    <!-- BDNF FGFR2 RPA2 S100A1 SOX10 SOX17 ATOH1 ACTB GAPDH HPRT ACVR2A ACVR2B AKT1 AP1M2 AQP4 AXIN2 BMI1 BMP2 BMP4 BMPR2 BRIP1 CACNA1D CALB1 Calb2 Calm1 CaMK4 CCNA2 CCNB1 CCNB2 CCND1 CCNE1 CCNE2 CDH1 CDH13 CDH2 CDK1 CDK6 CDK7 CDKN1A CDKN1B CDKN2A CDKN2d CHRD CLRN1 CNTNAP1 CSNK1E CTNNB1 DACH1 DKK1 DKK3 DLL1 DLX5 DNER DNMT1 DNMT3A DNMT3B DUSP9 EFNA1 EGFR EN1 EPCAM EPHA7 EPHB3 ESPN ETV4 ETV5 EYA1 EYA2 FBXO2 FGF10 FGF3 FGF8 FGF9 FGFR1 FGFR3 FGFR4 FOS FOXG1 FST FZD3 FZD4 FZD6 GATA2 GATA3 GDF10 GFAP GJB1 GJB2 GJB3 GJB6 GLI1 GLI2 GLI3 GPR98 GRB10 HES1 HES5 HES6 HEY1 HEY2 HMGA2 INHBA ISL1 ITPR2 JAG1 JAG2 JAK1 KCNJ10 KCNQ4 KRT14 LAMB1 LATS1 LATS2 LFNG LGR5 LIN28A MAP2K1 MCAM MKI67 MST1 MYC MYCN MYO15 MYO6 MYO7A NES NFKB2 NGFR NOG NOTCH2 NTF3 OC90 OCM OTOF OTOL1 OTOP1 OTOR OTX1 OTX2 PAX2 PAX8 PCDH15 PCGF2 PCNA PDGFRA PLP1 POU3F3 POU4F3 PROX1 PTPRQ PVALB RDX SHH SIX1 SIX3 SIX4 SLC1A3 SLC26A5 SLC2A4 SMO SMUG1 SOX2 SOX3 SOX9 SP5 SPNA2 SPRY1 SPRY2 TAZ TBX1 TCF7L1 TDG TGFB3 TGFBR2 TLE1 VEGFA VEGFC WNT1 WNT2B WNT3 WNT3A WNT4 WNT7A WNT7B WNT8A YAP1 -->
-                    <!-- Default for Ronna's list of interesting test genes -->
-                    <!-- Myo7a Pou4f3 Sox2 Fgfr3 Atoh1 lgr5 Glast RFX3 Pou3f4 -->
-                    <input type="hidden" name="exact_match" id="exact_match" value="" />
-                    <input type="hidden" name="multigene_plots" id="multigene_plots" value="" />
 
-                    <input id="search_gene_symbol" type="text" class="form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
-                  </div>
-                </div>
-                <div class="row search_option">
-                  <div class="col-8 pl-0 pr-0">
-                    Exact match
-                  </div>
-                  <div class="col-4">
-                    <input id="exact_match_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Limit results to exact matches" />
-                  </div>
-                </div>
+                        <div class="input-group-append">
+                          <div id="multigene_plots_input" class="js-multigene input-group-text" >
+                            <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></i>
+                          </div>
+                        </div>
 
-                <div class="row search_option">
-                  <div class="col-8 pl-0 pr-0">
-                    Multigene plots
-                  </div>
-                  <div class="col-4">
-                    <input id="multigene_plots_input" type="checkbox" data-toggle="toggle" data-size="xs" title="Show plots that display all searched genes" />
-                  </div>
-                </div>
-
+                        <div class="input-group-append">
+                          <div id="submit_search" class="js-search input-group-text">
+                            <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
+                          </div>
+                        </div>
+                      </div> <!-- .form-row -->
+                    </div>
+                  </div> <!-- .row -->
+                  <small id="selected_gene_cart_div" style="visibility:hidden;" class="js-gene-cart-div"><strong>Gene Cart: </strong><span id="selected_gene_cart"  class="js-gene-cart"></span></small>
+                </div> <!-- gene search div -->
 
                 <div class="form-group">
-                  <!-- this gets re-enabled when the page is loaded via javascript -->
-                  <button id="submit_search" type="submit" class="btn btn-default btn-sm" data-toggle="tooltip" data-placement="bottom" title="Search gene(s)" disabled>
-                    <span class="fa fa-search"></span> Search
-                  </button>
-                  <div class="btn-group">
-                    <button id="toggle_options" type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false" data-toggle="tooltip" data-placement="bottom" title="Change scoring method">
-                      <span class="fa fa-wrench"></span>
-                    </button>
-                    <ul id="scoring_and_gradient_menu" class="dropdown-menu" role="menu">
-                      <li class="instructions">Scoring method:</li>
-                      <li class="divider"></li>
-                      <li class="scope_choice" data-choice="gene">
-                        <span class="fa fa-arrows-h"> Gene scope</span>
-                      </li>
-                      <li class="scope_choice" data-choice="tissue">
-                        <span class="fa fa-arrows-v"> Tissue scope</span>
-                      </li>
-                      <li class="scope_choice" data-choice="dataset">
-                        <span class="fa fa-th"> Dataset scope</span>
-                      </li>
-                      <!-- color gradients added here by main.js:populate_example_color_gradients() -->
-                    </ul>
-                  </div>
+                  <label id="selected_profile_label" class="mb-0">Select Profile</label>
+                  <div id="selected_profile_c" class="form-control dropdown">
+                    <div id="selected_profile" value="" data-title="Click to change" class="js-profile dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
+                    <div class="dropdown-menu" aria-labelledby="selected_profile">
+                      <form class="px-4 py-3" onsubmit="return false;">
+                        <div class="input-group input-group-sm mb-3">
+                          <div class="input-group-prepend">
+                            <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                          </div>
+                          <input type="text" class="form-control" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                        </div>
+                        <div id="selected_profile_tree"></div>
+                      </form>
+                    </div>
+                  </div> <!-- end selected_profile_c -->
                 </div>
-              </form>
-            </div>
-            <!-- end #search_container -->
+              </div><!-- #gene_search_div -->
+            </div><!-- end #search_container -->
 
             <div id="search_results_c" class="item search_result_c search_result_c_DISABLED" style="height:calc(90vh - 240px);">
-              <h4>
+              <!-- SAdkins - I don't like putting non-header stuff in a header element -->
+              <h3 class="clearfix">
                 Search results
+
                 <span id="search_result_count" class="badge"></span>
-              </h4>
+                <div class="btn-group float-right">
+                  <button id="toggle_options" type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false" data-toggle="tooltip" data-placement="bottom" title="Change scoring method">
+                    <span class="fa fa-wrench"></span>
+                  </button>
+                  <ul id="scoring_and_gradient_menu" class="dropdown-menu dropdown-menu-right" role="menu">
+                    <li class="instructions">Scoring method:</li>
+                    <li class="divider"></li>
+                    <li class="scope_choice" data-choice="gene">
+                      <span class="fa fa-arrows-h"> Gene scope</span>
+                    </li>
+                    <li class="scope_choice" data-choice="tissue">
+                      <span class="fa fa-arrows-v"> Tissue scope</span>
+                    </li>
+                    <li class="scope_choice" data-choice="dataset">
+                      <span class="fa fa-th"> Dataset scope</span>
+                    </li>
+                    <!-- color gradients added here by main.js:populate_example_color_gradients() -->
+                  </ul>
+                </div>
+              </h3>
+
               <div id="multigene_search_indicator" class="small alert alert-info" style="display:none;">
                 Selectable genes hidden because 'Multigene Plots' is enabled.
               </div>
@@ -862,8 +854,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/bootstrap4-toggle@3.4.0/js/bootstrap4-toggle.min.js"></script>
 
     <script src="js/vendor/jquery.mCustomScrollbar.concat.min.js"></script>
     <script src="js/vendor/js.cookie.js"></script>
