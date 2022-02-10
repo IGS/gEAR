@@ -15,7 +15,7 @@ let dataset_id = null; //from permalink - dataset share ID
 let layout_id = null; //from permalink - profile grid layout ID
 let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
-let exact_match = false;
+let exact_match = true; // Set on by default
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
@@ -77,7 +77,9 @@ window.onload=() => {
 
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
-    exact_match = (permalinked_gsem && permalinked_gsem === "1");
+    if (permalinked_gsem && permalinked_gsem === "0") {
+        exact_match = false;
+    }
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');
     multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1");
 
