@@ -39,6 +39,9 @@ window.onload=() => {
     share_id = getUrlParameter('share_id');
     scope = "permalink";
 
+    // Exact match should be on by default
+    set_exact_match('on', false);
+
     if (share_id) {
         //hide site_into and display the permalink message
         $('#intro_content').hide();
@@ -80,12 +83,14 @@ window.onload=() => {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
         if (permalinked_gsem && permalinked_gsem === "1") {
-            set_exact_match('on');
+            set_exact_match('on', true);
+        } else if (permalinked_gsem === "0") {
+            set_exact_match('off', true);
         }
 
         if (multigene) {
             set_multigene_plots('on');
-            set_exact_match('on');  // Multigene searches are exact.  This should speed up search_genes.py
+            set_exact_match('on', true);  // Multigene searches are exact.  This should speed up search_genes.py
         }
 
         sleep(1000).then(() => {
@@ -101,10 +106,10 @@ window.onload=() => {
     $('#exact_match_icon').click(() => {
         // handle if it was already in the on position
         if ( $('#exact_match_input').prop("checked") ) {
-            set_exact_match('off');
+            set_exact_match('off', true);
         } else {
             // else it was off, so turn it on
-            set_exact_match('on');
+            set_exact_match('on', true);
         }
     });
 
@@ -946,7 +951,7 @@ $('#selected_gene_cart, #search_param_gene_cart').change( function() {
 
                 // determine if searching for exact matches
                 if ( $('#exact_match_input').prop("checked") == false ) {
-                    set_exact_match('on');
+                    set_exact_match('on', true);
                     $("#exact_match_icon img").tooltip('hide'); // Do not want it to autoshow since it most likely is not hovered over right now
                 }
             } else {
@@ -1027,15 +1032,19 @@ function update_datasetframes_generesults() {
     });
 }
 
-function set_exact_match(mode) {
+function set_exact_match(mode, show_tooltip) {
     if (mode == 'on') {
         $('#exact_match_input').bootstrapToggle('on');
         $("#exact_match_icon img").attr("src", "img/arrow_target_selected.png");
-        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently on).").tooltip('show'); // Show is added so the old version of the tooltip does not persist
+        if (show_tooltip) {
+            $("#exact_match_icon img").attr('data-original-title', "Exact match (currently on).").tooltip('show'); // Show is added so the old version of the tooltip does not persist
+        }
     } else if (mode == 'off') {
         $('#exact_match_input').bootstrapToggle('off');
         $("#exact_match_icon img").attr("src", "img/arrow_target_unselected.png");
-        $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off).").tooltip('show');
+        if (show_tooltip) {
+            $("#exact_match_icon img").attr('data-original-title', "Exact match (currently off).").tooltip('show');
+        }
     }
 }
 
