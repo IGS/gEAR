@@ -25,9 +25,9 @@
         <link rel="stylesheet" href="css/vendor/bs-stepper.20190106.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-        <script>document.write('<link rel="stylesheet" href="css/upload_epigenetic_dataset.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/upload_epigenetic_dataset.' + (new Date()).getTime() + '.css" />');</script>
 
         <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
     </head>
@@ -80,7 +80,7 @@
                     </button>
                   </h2>
                 </div>
-            
+
                 <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionExample">
                   <div class="card-body">
 
@@ -91,7 +91,7 @@
                       <hr>
                       <p class="mb-0"></p>
                     </div>
-                    
+
                     <div class="form-group">
                       <label for="trackhub_genome">Genome build (mm10, hg19 etc.)</label>
                       <select class="form-control" id="trackhub_genome">
@@ -104,14 +104,14 @@
                     <div class="form-group">
                       <label for="trackhub_url">TrackHub URL (must be Publicly available)</label>
                       <input id="trackhub_url" type="text" class="form-control">
-                    </div>    
+                    </div>
                     <div class="form-group">
                       <div class="col-md-4">
                         <button id="submit_trackhub" name="submit_trackhub" class="btn btn-primary">Load Trackhub</button>
                       </div>
-                    </div> 
+                    </div>
                     <div id="trackhub_status" class="form-group">
-                    </div>             
+                    </div>
                   </div>
                 </div>
               </div>
@@ -126,7 +126,7 @@
                 <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionExample">
                   <div class="card-body">
 
-                    
+
                     <div class="alert alert-success" role="alert">
                       <h2 class="alert-heading">Instructions for uploading files</h2>
                       <ul>
@@ -191,7 +191,7 @@
                           </div>
                         </div>
                       </div>
-                    </div> 
+                    </div>
                     <!-- Button -->
                     <div id="upload_controls">
                       <div class="row justify-content-md-center">
@@ -206,12 +206,12 @@
                           </div>
                         </div>
                       </div>
-                    </div>                 
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-        
+
           </form>
 
           <div id="continue_container">
@@ -227,7 +227,7 @@
     <div id='account_creation_c' class='row'>
       <!-- content inserted via common.js-->
     </div>
-    
+
     <div style="clear: both;">&nbsp;</div>
 
     <footer>
@@ -251,17 +251,17 @@
 
         <!-- https://github.com/Johann-S/bs-stepper -->
         <script src="js/vendor/bs-stepper.20190106.min.js"></script>
-        
+
         <script src="js/vendor/jsrender.20181003.min.js"></script>
-        
+
         <!-- Plotly JS-->
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
         <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/upload_dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/upload_epigenetic_dataset.js"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/upload_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/upload_epigenetic_dataset' + (new Date()).getTime() + '.js"><\/script>');</script>
 
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

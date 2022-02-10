@@ -23,13 +23,13 @@ $(document).ready(function() {
         async: false,
         success: function(data) {
             SITE_PREFS = data;
-            loadCSS("./css/by_domain/" + SITE_PREFS['domain_label'] + "/theme_colors." + Math.floor(Math.random() * 10000000) + ".css");
-            $('#funding').load('./include/by_domain/' + SITE_PREFS['domain_label'] + '/funding.html');
-            $('#footer').load('./include/by_domain/' + SITE_PREFS['domain_label'] + '/footer.html');
-            $('#site_label_c').load('./include/by_domain/' + SITE_PREFS['domain_label'] + '/site_label_bar.html');
-            $('a#main_logo').css('background-image', 'url("../img/by_domain/' + SITE_PREFS['domain_label'] + '/logo_standard.png")');
+            loadCSS(`./css/by_domain/${SITE_PREFS['domain_label']}/theme_colors.${(new Date()).getTime()}.css`);
+            $('#funding').load(`./include/by_domain/${SITE_PREFS['domain_label']}/funding.html`);
+            $('#footer').load(`./include/by_domain/${SITE_PREFS['domain_label']}/footer.html`);
+            $('#site_label_c').load(`./include/by_domain/${SITE_PREFS['domain_label']}/site_label_bar.html`);
+            $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
 
-            var title_page_root = './include/by_domain/' + SITE_PREFS['domain_label'] + '/page_title_root.html';
+            var title_page_root = `./include/by_domain/${SITE_PREFS['domain_label']}/page_title_root.html`;
             $.get(title_page_root, function(data){
                 $('title').html(data + ' - ' + $('title').html());
             });
@@ -40,9 +40,9 @@ $(document).ready(function() {
                 // did the background image load?
                 bg = $('a#main_logo').css('background-image');
                 if (bg == 'none') {
-                    $('#footer').load('./include/by_domain/' + SITE_PREFS['domain_label'] + '/footer.html');
-                    $('#site_label_c').load('./include/by_domain/' + SITE_PREFS['domain_label'] + '/site_label_bar.html');
-                    $('a#main_logo').css('background-image', 'url("../img/by_domain/' + SITE_PREFS['domain_label'] + '/logo_standard.png")');
+                    $('#footer').load(`./include/by_domain/${SITE_PREFS['domain_label']}/footer.html`);
+                    $('#site_label_c').load(`./include/by_domain/${SITE_PREFS['domain_label']}/site_label_bar.html`);
+                    $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
                 }
             });
 

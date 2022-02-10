@@ -23,10 +23,10 @@
 
         <link rel="stylesheet" href="css/jquery.fileupload.css" />
         <link rel="stylesheet" href="css/vendor/bs-stepper.20190106.min.css" />
-        
+
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
 
         <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
     </head>
@@ -318,9 +318,9 @@
         <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
 
         <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/upload_dataset.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/upload_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
