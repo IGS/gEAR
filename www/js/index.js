@@ -77,25 +77,23 @@ window.onload=() => {
 
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
-    if (permalinked_gsem && permalinked_gsem === "0") {
+    if (permalinked_gsem ?. permalinked_gsem === "0") {
         exact_match = false;
     }
+    set_exact_match(exact_match, false);
+
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');
-    multigene = (permalinked_multigene_plots && permalinked_multigene_plots === "1");
+    multigene = (permalinked_multigene_plots ?. permalinked_multigene_plots === "1");
+    set_multigene_plots(multigene, false);
+
+    if (multigene) {
+        exact_match = multigene;
+        set_exact_match(exact_match, false);  // Multigene searches are exact.  This should speed up search_genes.py
+    }
 
     // If gene symbols were provided (via either URL param method), click search button.
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
-
-        if (exact_match) {
-            set_exact_match(exact_match);
-        }
-
-        if (multigene) {
-            set_multigene_plots(multigene);
-            exact_match = multigene;
-            set_exact_match(exact_match);  // Multigene searches are exact.  This should speed up search_genes.py
-        }
 
         sleep(1000).then(() => {
             $('#intro_search_icon').trigger('click');
@@ -186,9 +184,6 @@ window.onload=() => {
         // Remove duplicates in gene search if they exist
         const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
         const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
-
-        // Update multigene toggle so correct grid widths are loaded.
-        multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
 
         // Update search history
         add_state_history(curated_searched_gene_symbols);
@@ -727,8 +722,11 @@ $("#gene_search_form").submit((event) => {
     $("#viewport_intro").hide();
     $("#viewport_main").show();
 
-    // clear any open tooltips
-    $('[data-toggle="tooltip"], .tooltip').tooltip("hide");
+    // re-initialize any open tooltips
+    $('[data-toggle="tooltip"], .tooltip').tooltip();
+    // Ensure correct tooltip text is displayed
+    set_exact_match(exact_match, false);
+    set_multigene_plots(multigene, false);
 
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
@@ -740,9 +738,6 @@ $("#gene_search_form").submit((event) => {
     // Remove duplicates in gene search if they exist
     const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
     const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
-
-    // Update multigene toggle so correct grid widths are loaded.
-    multigene = ($("#multigene_plots").val() && $("#multigene_plots").val() === "1")
 
     add_state_history(curated_searched_gene_symbols);
 
@@ -953,7 +948,7 @@ $('.js-gene-cart').change( function() {
 // Set the state history based on current conditions
 function add_state_history(gene_symbols) {
     const state_info = {
-        'multigene_plots': multigene
+        'multigene_plots': Number(multigene)
     };
 
     let state_url = "/index.html?"
@@ -971,8 +966,8 @@ function add_state_history(gene_symbols) {
         state_info.gene_cart_share_id = gene_cart_id;
         state_url += `&gene_cart_share_id=${gene_cart_id}`;
     } else {
-        state_info.gene_symbol_exact_match = exact_match,
-        state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`
+        state_info.gene_symbol_exact_match = Number(exact_match);
+        state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`;
         if (gene_symbols) {
             state_info.gene_symbol = gene_symbols;
             state_url += `&gene_symbol=${gene_symbols}`;
@@ -1013,23 +1008,33 @@ function update_datasetframes_generesults() {
     });
 }
 
-function set_exact_match(is_enabled) {
+function set_exact_match(is_enabled, show_tooltip=true) {
+    let action = "hide";
+    if (show_tooltip) {
+        action = "show";
+    }
+
     if (is_enabled) {
         $(".js-exact-match img").attr("src", "img/arrow_target_selected.png");
-        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently on).").tooltip('show'); // Show is added so the old version of the tooltip does not persist
+        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently on).").tooltip(action); // Show is added so the old version of the tooltip does not persist
     } else {
         $(".js-exact-match img").attr("src", "img/arrow_target_unselected.png");
-        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently off).").tooltip('show');
+        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently off).").tooltip(action);
     }
 }
 
-function set_multigene_plots(is_enabled) {
+function set_multigene_plots(is_enabled, show_tooltip=true) {
+    let action = "hide";
+    if (show_tooltip) {
+        action = "show";
+    }
+
     if (is_enabled) {
-        $(".js-multigene:visible i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip('show');
+        $(".js-multigene:visible i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
         $(".js-multigene i").addClass("fa-gears");
         $(".js-multigene i").removeClass("fa-gear");
     } else {
-        $(".js-multigene:visible i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip('show');
+        $(".js-multigene:visible i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
         $(".js-multigene i").addClass("fa-gear");
         $(".js-multigene i").removeClass("fa-gears");
     }
