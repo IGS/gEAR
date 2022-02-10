@@ -263,7 +263,6 @@ async function populate_condition_selection_control() {
 
   // If dataset has no observations, indicate it does not and hide condition controls
   if (! Object.keys(cat_obs).length) {
-    console.log("here");
     $('#condition_tabs').hide();
     $("#conditions_accordion").removeClass("alert-info").addClass("alert-danger");
     $("#conditions_accordion").text("There are no categorical observations found for this dataset.");

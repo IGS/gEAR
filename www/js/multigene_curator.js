@@ -751,6 +751,7 @@ $('#dataset').change(async function () {
     $('#gene_spinner').show();
     $('#gene_cart_clear').click();
     $('#categories_not_used').hide();
+    $('#no_observations_error').hide();
 
     // Create promises to get genes and observations for this dataset
     const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
@@ -769,6 +770,11 @@ $('#dataset').change(async function () {
     // Adding a gene will trigger a change to enable the property
     $("#cluster_obs").prop("disabled", true);
     $("#cluster_genes").prop("disabled", true);
+
+    // Catch datasets with no observations (before filtering), and indicate this dataset cannot be used.
+    if (! Object.keys(data.obs_levels).length) {
+        $('#no_observations_error').show();
+    }
 
     // Get categorical observations for this dataset
     [obsLevels, obsNotUsed] = curateObservations(data.obs_levels);
