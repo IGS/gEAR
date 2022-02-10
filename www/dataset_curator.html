@@ -28,8 +28,8 @@
   <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@2.21.2/dist/bootstrap-vue.min.css" />
 
   <!-- Ensures we always get a new version (during our current active development cycles) -->
-  <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-  <script>document.write('<link rel="stylesheet" href="css/dataset_curator.' + Math.floor(Math.random() * 10000) + '.css"\><\/link>');</script>
+  <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
+  <script>document.write('<link rel="stylesheet" href="css/dataset_curator.' + (new Date()).getTime() + '.css" />');</script>
 
 
   <link rel="stylesheet" href="css/vendor/jquery.toggles.css" type="text/css" />
@@ -112,9 +112,9 @@
   <script src="https://d3js.org/d3.v5.min.js"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-    <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-    <script>document.write('<script src="js/dataset_curator.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+    <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/dataset_curator.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

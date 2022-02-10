@@ -26,8 +26,8 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
-        <script>document.write('<link rel="stylesheet" href="css/compare_datasets.' + Math.floor(Math.random() * 10000000) + '.css"\><\/link>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/compare_datasets.' + (new Date()).getTime() + '.css" />');</script>
 
         <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
         <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
@@ -70,7 +70,7 @@
               </div>  <!-- end dropdown-menu -->
             </div>  <!-- end dataset_c -->
             <div class="form-group-sm">
-              <ul class="nav nav-tabs" id="condition_tabs" role="tablist">
+              <ul class="nav nav-tabs" id="condition_tabs" role="tablist" style="display:none;">
                 <li class="nav-item">
                   <a id="condition_x_tab" class="nav-link active" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="true">X Condition</a>
                 </li>
@@ -80,7 +80,7 @@
               </ul>
             </div>
 
-            <div class="form-group-sm" id="conditions_accordion">Select a dataset to view groups.</div>
+            <div class="form-group-sm alert alert-info" id="conditions_accordion">Select a dataset above to view groups.</div>
             <br />
             <div id="noncats"></div>
             <h3>Axis titles</h3>
@@ -396,12 +396,12 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
         <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/classes/gene.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/classes/genecart.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/classes/tree.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/common.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
-        <script>document.write('<script src="js/compare_datasets.' + Math.floor(Math.random() * 10000000) + '.js"\><\/script>');</script>
+        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/classes/genecart.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        <script>document.write('<script src="js/compare_datasets.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

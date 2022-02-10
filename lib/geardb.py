@@ -105,6 +105,59 @@ def get_dataset_by_id(id=None, include_shape=None):
     conn.close()
     return dataset
 
+def get_dataset_by_title(title=None, include_shape=None):
+    """
+    Given a dataset title string this returns a Dataset object with all attributes
+    populated which come directly from the table.  Secondary things, such as tags,
+    must be loaded separately.
+
+    Returns None if no dataset of that title is found.
+
+    Throws an exception if more than one dataset with that same title is found
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+                dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
+                has_h5ad
+           FROM dataset
+          WHERE title = %s
+            AND marked_for_removal = 0
+    """
+    cursor.execute(qry, (title, ))
+    dataset = None
+
+    found = 0
+
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+         dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
+         has_h5ad) in cursor:
+        dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, ldesc=ldesc,
+                          date_added=date_added, dtype=dtype, schematic_image=schematic_image,
+                          share_id=share_id, math_default=math_default,
+                          marked_for_removal=marked_for_removal, load_status=load_status,
+                          has_h5ad=has_h5ad)
+        found += 1
+
+    cursor.close()
+    conn.close()
+
+    if found == 1:
+        if include_shape == '1':
+            dataset.get_shape()
+
+        return dataset
+    elif found == 0:
+        return None
+    else:
+        raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
+
+    return dataset
+
 
 def get_dataset_collection(ids=None):
     return 1
@@ -1144,6 +1197,52 @@ class DatasetLink:
         return self.__dict__
 
 @dataclass
+class DatasetDisplay:
+    id: int = None
+    dataset_id: str = None
+    user_id: int = None
+    label: str = None
+    plot_type: str = None
+    plotly_config: str = None
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        return self.__dict__
+
+    def save(self):
+        """
+        Currently assumes the display already exists and what you're saving here is a change
+        to it.
+        """
+        if self.id is None:
+            # TODO: implement new saves
+            raise Exception("Can only save changes to existing dataset displays currently")
+        else:
+            # gene_cart_member entries are deleted by foreign key cascade
+            conn = Connection()
+            cursor = conn.get_cursor()
+
+            sql = """
+                  UPDATE dataset_display 
+                     SET dataset_id = %s,
+                         user_id = %s,
+                         label = %s,
+                         plot_type = %s,
+                         plotly_config = %s
+                   WHERE id = %s
+            """
+            cursor.execute(sql, (
+                self.dataset_id, self.user_id, self.label,
+                self.plot_type, self.plotly_config, self.id
+            ))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+    
+@dataclass
 class Dataset:
     id: str
     owner_id: int = None
@@ -1176,6 +1275,7 @@ class Dataset:
     gene_count: int = None
     obs_count: int = None
     has_tarball: int = 0
+    displays: List[DatasetDisplay] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     layouts: List[Layout] = field(default_factory=list)
     links: List[DatasetLink] = field(default_factory=list)
@@ -1185,6 +1285,39 @@ class Dataset:
 
     def _serialize_json(self):
         return self.__dict__
+
+    def get_displays(self):
+        """
+        Populates the dataset displays attribute, a list of DatasetDisplay objects 
+        related to this dataset.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT id, user_id, label, plot_type, plotly_config 
+                FROM dataset_display
+               WHERE dataset_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+        self.displays.clear()
+
+        for (display_id, user_id, label, plot_type, plotly_config) in cursor:
+            display = DatasetDisplay(
+                id=display_id,
+                dataset_id=self.id,
+                user_id=user_id,
+                label=label,
+                plot_type=plot_type,
+                plotly_config=plotly_config
+            )
+
+            self.displays.append(display)
+
+        return self.displays
+
+        cursor.close()
+        conn.close()
 
     def get_file_path(self, session_id=None):
         """

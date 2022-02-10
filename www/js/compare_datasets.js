@@ -254,11 +254,23 @@ async function fetch_h5ad_observations (dataset_id) {
 
 async function populate_condition_selection_control() {
   const dataset_id = $("#dataset_id").val();
+  $("#conditions_accordion").removeClass("alert-info alert-danger");
   $("#conditions_accordion").html("<p>Loading ... </p>");
   const obs_data = await fetch_h5ad_observations(dataset_id);
   const cat_obs = obs_data.obs_levels;  // cat->groups
   const all_obs = obs_data.obs_columns; // Array
   const noncat_obs = Object.values(all_obs).filter(x => Object.keys(cat_obs).indexOf(x) === -1);  // Array
+
+  // If dataset has no observations, indicate it does not and hide condition controls
+  if (! Object.keys(cat_obs).length) {
+    console.log("here");
+    $('#condition_tabs').hide();
+    $("#conditions_accordion").removeClass("alert-info").addClass("alert-danger");
+    $("#conditions_accordion").text("There are no categorical observations found for this dataset.");
+    return;
+  }
+
+  $('#condition_tabs').show();
 
   // Render templates
   const selector_tmpl = $.templates("#dataset_condition_options");
