@@ -503,7 +503,7 @@ function load_gene_carts(cart_share_id) {
         //User is not logged in. Hide gene carts container
         $("#selected_gene_cart_c").hide();
         gene_cart_tree.generateTree();
-        selected_gene_cart_tree.genereateTree();
+        selected_gene_cart_tree.generateTree();
         d.resolve();
     } else {
         $("#selected_gene_cart_c").show(); //Show if hidden
