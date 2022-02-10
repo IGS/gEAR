@@ -1070,8 +1070,8 @@ def intersection(lst1, lst2):
 
 def normalize_searched_genes(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
-    case_insensitive_genes = [g for cg in chosen_genes for g in gene_list if cg.lower() == g.lower()]
-    found_genes = [cg for cg in chosen_genes for g in gene_list if cg.lower() == g.lower()]
+    case_insensitive_genes = [str(g) for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
+    found_genes = [cg for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
     return case_insensitive_genes, found_genes
 
 def order_by_time_point(obs_df):
