@@ -15,7 +15,10 @@ var elementsWithTipsList = '[title]:not("path")';
 
 // Do any includes first
 $(document).ready(function() {
-    $('#navigation_bar').load('./include/navigation_bar.html');
+    $('#navigation_bar').load('./include/navigation_bar.html', function() {
+        // Load popover info
+        load_forgot_password();
+    });
 
     $.ajax({
         url: "/site_domain_prefs.json",
@@ -89,6 +92,7 @@ $(document).ready(function() {
     });
 
     check_browser();
+
 });
 
 function check_browser() {
@@ -211,11 +215,6 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
                 $('#user_pass').focus();
                 $('#user_pass').css({ 'color':'red', 'font-weight':'bold' });
                 $('#user_pass').parent().addClass('has-error');
-
-                load_forgot_password();
-                // Hide these until submit is clicked
-                $('#forgot_pass_warning').hide();
-                $('#forgot_pass_requested_c').hide();
 
             //  ? - Any other value is the session ID
             } else {
@@ -406,7 +405,9 @@ $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
 //Prevent clicking on forgot pass button from going somewhere
 $('#navigation_bar').on('click', '#forgot_password_link', function(e) {
     e.preventDefault();
+    load_forgot_password();
 });
+
 function load_forgot_password() {
     $('#forgot_password_link[data-toggle="popover"]').popover({
         animation: true,
@@ -414,39 +415,37 @@ function load_forgot_password() {
         title: "Forgot your password? <button type='button' id='dismiss_fp' class='close' style='margin:-2px;'>&times;</button>",
         html: true,
         placement: 'auto'
-    }).removeClass('actions')
-      .on('show.bs.popover', function(e) {
-            // Helped to insert the share_url more reliably: http://stackoverflow.com/a/25885326/2900840
-            var el = $(e.target);
+    }).on('show.bs.popover', function(e) {
+        // Helped to insert the share_url more reliably: http://stackoverflow.com/a/25885326/2900840
+        const el = $(e.target);
 
-            // Trick bootstrap. Remove the title. bootstrap looks to next option for a title - that's above.
-            $('#forgot_password_link').attr('data-original-title', '');
+        // Trick bootstrap. Remove the title. bootstrap looks to next option for a title - that's above.
+        $('#forgot_password_link').attr('data-original-title', "Forgot your password? <button type='button' id='dismiss_fp' class='close' style='margin:-2px;'>&times;</button>");
 
-            // Help to close other popovers: http://stackoverflow.com/a/34320956/2900840
-            el.data("bs.popover")._activeTrigger.click = false;
-            $('.popover').not(el).popover('hide');
+        // Help to close other popovers: http://stackoverflow.com/a/34320956/2900840
+        el.data("bs.popover")._activeTrigger.click = false;
 
-            var html = "<div id='forgot_pass_c' class='text-center'>" +
-                    "<p id='forgot_pass_instruct'>Enter your email and we will send you a link to reset your password.</p>" +
-                    "<p id='forgot_pass_warning' class='text-warning shown_later'>We could not find that email. Please check what you entered and try again.</p>" +
-                    "<input type='text' id='forgot_pass_email' class='form-control' value=''>" +
-                    "<button id='submit_forgot_pass_email' class='btn btn-success' data-dismiss='popover' value='submit'>Submit</button>" +
-                    "<div id='submit_wait_c' style='display:none;text-align:center;'>" +
-                    "<img style='height:60px;' src='img/loading_search.gif' alt='submitting'>" +
-                    "<h2>Please wait</h2>" +
-                    "<p>We're looking up your email address.</p>" +
-                    "</div>" +
-                    "</div>" +
-                    "<div id='forgot_pass_requested_c' class='text-center shown_later'>" +
-                    "<h1><span style='cursor:none;' class='glyphicon glyphicon-send'></span></h1>" +
-                    "<h2>Request sent.</h2>" +
-                    "<p>Please check your email.</p>" +
-                    "</div>";
+        const html = "<div id='forgot_pass_c' class='text-center'>" +
+                "<p id='forgot_pass_instruct'>Enter your email and we will send you a link to reset your password.</p>" +
+                "<p id='forgot_pass_warning' class='text-warning shown_later'>We could not find that email. Please check what you entered and try again.</p>" +
+                "<input type='text' id='forgot_pass_email' class='form-control mb-1' value=''>" +
+                "<button id='submit_forgot_pass_email' class='btn btn-success' data-dismiss='popover' value='submit'>Submit</button>" +
+                "<div id='submit_wait_c' style='display:none;text-align:center;'>" +
+                "<img style='height:60px;' src='img/loading_search.gif' alt='submitting'>" +
+                "<h2>Please wait</h2>" +
+                "<p>We're looking up your email address.</p>" +
+                "</div>" +
+                "</div>" +
+                "<div id='forgot_pass_requested_c' class='text-center shown_later'>" +
+                "<h1><span style='cursor:none;' class='glyphicon glyphicon-send'></span></h1>" +
+                "<h2>Request sent.</h2>" +
+                "<p>Please check your email.</p>" +
+                "</div>";
 
-            //insert content into share popover
-            el.attr('data-content', html);
+        //insert content into share popover
+        el.attr('data-content', html);
     });
-}; //end load_forgot_password()
+}
 
 // Close the Forgot Password popover
 $(document).on('click', 'button#dismiss_fp', function() {
