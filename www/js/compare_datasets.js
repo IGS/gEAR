@@ -651,7 +651,7 @@ function plot_data_to_graph(data) {
   // Take genes to search for and highlight their datapoint in the plot
   const genes_not_found = [];
   if ($('#highlighted_genes').val()) {
-    const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
+    const searched_genes = $('#highlighted_genes').val().replace(/,?\s/g, ",").split(",");
     searched_genes.forEach((gene) => {
       let found = false;
       plots:
