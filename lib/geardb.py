@@ -2184,6 +2184,7 @@ class GeneCartCollection:
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.id = %s
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.label
         """
 
         for id in ids:
@@ -2210,6 +2211,7 @@ class GeneCartCollection:
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.share_id = %s
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.label
         """
 
         for share_id in share_ids:
@@ -2236,6 +2238,7 @@ class GeneCartCollection:
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.user_id = %s
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.label
         """
 
         cursor.execute(qry, (user.id,))
@@ -2269,6 +2272,7 @@ class GeneCartCollection:
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE u.id = %s 
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.label
         """
         cursor.execute(qry, (user.id,))
 
@@ -2293,6 +2297,7 @@ class GeneCartCollection:
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.is_domain = 1
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.label
         """
         cursor.execute(qry)
 
@@ -2317,6 +2322,7 @@ class GeneCartCollection:
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.is_public = 1
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.label
         """
         cursor.execute(qry)
 
