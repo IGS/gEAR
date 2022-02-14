@@ -237,13 +237,22 @@ window.onload=() => {
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
 
+    // But we need to wait for navigation_bar to load first (in common.js) so do some polling
+    // See: https://stackoverflow.com/q/38881301
+
     // Select the node that will be observed for mutations
     const target_node = document.getElementById('loggedin_controls');
+    const safer_node = document.getElementById("navigation_bar");   // Empty div until loaded
     // Create an observer instance linked to the callback function
-    const observer = new MutationObserver(reload_trees);
+    const observer = new MutationObserver(function(mutationList, observer) {
+        if (target_node) {
+            reload_trees();
+            this.disconnect();  // Don't need to reload once the trees are updated
+        }
+    });
     // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
     // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
-    observer.observe(target_node, { attributes: true });
+    observer.observe(target_node || safer_node , { attributes: true });
 };
 
 function get_index_info() {
