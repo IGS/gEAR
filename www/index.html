@@ -784,10 +784,10 @@
                       {{if geo_id}}
                       <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
                       {{/if}}
+                      {{if has_h5ad}}
                       <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare Gene Expression</a></li>
                       <li><a class="fa fa-plus-square" target="_blank" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate Display</a></li>
                       <li><a class="fa fa-eye" target="_blank" href="./multigene_curator.html?dataset_id={{:id}}"> Multigene Viewer</a></li>
-                      {{if has_h5ad}}
                       <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> scRNA-Seq Analysis</a></li>
                       {{/if}}
                       <!-- Any new resources need CSS added for this class -->
