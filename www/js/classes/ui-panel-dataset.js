@@ -197,6 +197,15 @@ class DatasetPanel extends Dataset {
     // cache gene_symbol so we can use it to redraw with different display
     this.gene_symbols = gene_symbols;
 
+    // For datasets with no h5ad (like Epiviz), we cannot call the multigene API to create a display
+    // So return an explanation for this.
+    if (! this.has_h5ad) {
+      this.show_error(
+        "This dataset type does not currently support curated multigene displays."
+      );
+      return;
+    }
+
     if (this.display ?. gene_symbols) {
       // Ensure this display is a multigene display
       this.draw_mg_chart(gene_symbols, this.display.id);

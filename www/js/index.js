@@ -786,7 +786,7 @@ $("#gene_search_form").submit((event) => {
             populate_search_result_list(data);
             $('#searching_indicator_c').hide();
             $('#intro_content').hide('fade', {}, 400, () => {
-                if ($('#multigene_plots').val() == 1){
+                if (multigene){
                     dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
                 } else {
                     // auto-select the first match.  first <a class="list-group-item"
@@ -1005,7 +1005,7 @@ function update_datasetframes_generesults() {
     }
 
     $.when( resubmit_gene_search() ).done(() => {
-        if ($('#multigene_plots').val() == 1){
+        if (multigene){
             // split on combination of space and comma (individually or both together.)
             const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
             // Remove duplicates in gene search if they exist
