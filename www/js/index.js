@@ -77,13 +77,13 @@ window.onload=() => {
 
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
-    if (permalinked_gsem ?. permalinked_gsem === "0") {
+    if (permalinked_gsem === (null || undefined) && permalinked_gsem === "0") {
         exact_match = false;
     }
     set_exact_match(exact_match, false);
 
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');
-    multigene = (permalinked_multigene_plots ?. permalinked_multigene_plots === "1");
+    multigene = (permalinked_multigene_plots == (null || undefined) && permalinked_multigene_plots === "1");
     set_multigene_plots(multigene, false);
 
     if (multigene) {
