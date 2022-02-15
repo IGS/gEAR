@@ -134,7 +134,13 @@ class DatasetPanel extends Dataset {
     // We first draw with the display then zoom in, so whenever
     // gene search is updated, the other displays behind the zoomed
     // is updated too.
-    display.draw_mg(gene_symbols);
+    if (this.has_h5ad) {
+      display.draw_mg(gene_symbols);
+    } else {
+      this.show_error(
+        "This dataset type does not currently support curated multigene displays."
+      );
+    }
     if (zoom) display.zoom_in();
   }
 
