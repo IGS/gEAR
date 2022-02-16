@@ -775,6 +775,9 @@ $("#gene_search_form").submit((event) => {
 
     dataset_collection_panel.load_frames({dataset_id, multigene});
 
+    // Add Exact Match param
+    formData.push({"name": "exact_match", "value" :Number(exact_match)});
+
     $.ajax({
         url : './cgi/search_genes.py',
         type: "POST",
