@@ -8,7 +8,7 @@ import re
 import copy
 import geardb
 import numbers
-from gear.plotting import generate_plot, get_config, plotly_color_map
+from gear.plotting import generate_plot, get_config, plotly_color_map, PlotError
 from plotly.utils import PlotlyJSONEncoder
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
@@ -49,12 +49,6 @@ def order_by_time_point(obs_df):
             sorted_df.time_point.drop_duplicates(), ordered=True)
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
-
-class PlotError(Exception):
-    """Error based on plotting issues."""
-    def __init__(self, message="") -> None:
-        self.message = message
-        super().__init__(self.message)
 
 class PlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -273,34 +267,40 @@ class PlotlyData(Resource):
             z_axis = None   # Safeguard against unintended effects
 
         # Create plot
-        fig = generate_plot(
-            df,
-            x=x_axis,
-            y=y_axis,
-            z=z_axis,
-            color_name=color_name,
-            facet_row=facet_row,
-            facet_col=facet_col,
-            # function has side effects and mutates colormap,
-            # so we make a deepcopy so we can return the original
-            # in response
-            colormap=copy.deepcopy(color_map),
-            palette=palette,    # NOTE: Maybe pass in colormap option and determine based on type?
-            reverse_palette=True if reverse_palette else False,
-            category_orders=order_res,
-            plot_type=plot_type,
-            text_name=label,
-            jitter=jitter,
-            hide_x_labels=hide_x_labels,
-            hide_y_labels=hide_y_labels,
-            hide_legend=hide_legend,
-            x_range=[x_min, x_max],
-            y_range=[y_min, y_max],
-            x_title=x_title,
-            y_title=y_title,
-            vlines=vlines,
-            **kwargs
-        )
+        try:
+            fig = generate_plot(
+                df,
+                x=x_axis,
+                y=y_axis,
+                z=z_axis,
+                color_name=color_name,
+                facet_row=facet_row,
+                facet_col=facet_col,
+                # function has side effects and mutates colormap,
+                # so we make a deepcopy so we can return the original
+                # in response
+                colormap=copy.deepcopy(color_map),
+                palette=palette,    # NOTE: Maybe pass in colormap option and determine based on type?
+                reverse_palette=True if reverse_palette else False,
+                category_orders=order_res,
+                plot_type=plot_type,
+                text_name=label,
+                jitter=jitter,
+                hide_x_labels=hide_x_labels,
+                hide_y_labels=hide_y_labels,
+                hide_legend=hide_legend,
+                x_range=[x_min, x_max],
+                y_range=[y_min, y_max],
+                x_title=x_title,
+                y_title=y_title,
+                vlines=vlines,
+                **kwargs
+            )
+        except PlotError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
 
         # If figure is actualy a JSON error message, send that instead
         if "success" in fig and fig["success"] == -1:

@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 
 from itertools import cycle
 
+# Purely kept so we can debug with sys.stderr
 import sys
 
 px.defaults.template = "none"
@@ -22,6 +23,13 @@ PLOT_TYPE_TO_FUNCTION = {
     #"violin":px.violin,
     "contour":px.density_contour    # NOTE: Potentially add as secondary option to lay over scatter plot
 }
+
+class PlotError(Exception):
+    """Error based on plotting issues."""
+    def __init__(self, message="") -> None:
+        self.message = message
+        super().__init__(self.message)
+
 
 def _add_kwargs_info_to_annotations(fig, annotation_info):
     """Add various annotation info.  Updates 'fig' inplace."""
@@ -183,7 +191,7 @@ def _determine_annotation_shift(ds):
 
 def _invalid_plot_type(plot_type):
     """Check for invalid plot types."""
-    raise exceptions.PlotlyError("Plot type {} is invalid!".format(plot_type))
+    raise PlotError("Plot type {} is invalid!".format(plot_type))
 
 def _is_categorical(series):
     """Return True if Dataframe series is categorical."""
@@ -319,6 +327,16 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         , "hover_name": text_name if text_name else y
         }
 
+    # Ensure requested categories are still in dataframe.  Missing categories will cause plotly to throw errors
+    invalid_cols = set()
+    for arg, col in plotting_args.items():
+        if arg in ["category_orders", "labels"]:
+            continue
+        if col and not col in df.columns:
+            invalid_cols.add(col)
+    if invalid_cols:
+        raise PlotError("The following requested categories are removed by the 'groupby' transformation on the dataset, and so cannot be used as plot properties: {}".format(', '.join(list(invalid_cols))))
+
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
     plotting_args["hover_data"] = { col: False for col in df.columns.tolist() }
 
@@ -373,7 +391,10 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     # Call the right Plotly express function based on the plot type
     func = PLOT_TYPE_TO_FUNCTION.get(plot_type)
     if func:
-        fig = func(df, **plotting_args)
+        try:
+            fig = func(df, **plotting_args)
+        except exceptions.PlotlyError as e:
+            raise PlotError("Encountered error in plotting {}: {}".format(plot_type, str(e)))
     else:
         # SAdkins - An aside... this following code is why I wanted to use Plotly Express to generate the plots
         # TODO: put in function
@@ -399,7 +420,10 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
             "violin":fig.add_violin,
         }
 
-        special_func = PLOT_TYPE_TO_SPECIAL_FUNCTION.get(plot_type)
+        try:
+            special_func = PLOT_TYPE_TO_SPECIAL_FUNCTION.get(plot_type)
+        except exceptions.PlotlyError as e:
+            raise PlotError("Encountered error in plotting {}: {}".format(plot_type, str(e)))
         if not special_func:
             _invalid_plot_type(plot_type)
 
