@@ -754,12 +754,6 @@ function plot_data_to_graph(data) {
 		$("#controls_label").hide();
 		$("#selected_label").show();
 
-		if ($("#log_base").val() == "raw") {
-		$("#tbl_selected_genes_transformation_row").hide();
-		} else {
-		$("#table_transformation_label").text(`Log${$("#log_base").val()}`);
-		$("#tbl_selected_genes_transformation_row").show();
-		}
 	});
 
 	window.onresize = () => {
