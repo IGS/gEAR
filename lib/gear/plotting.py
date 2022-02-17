@@ -327,15 +327,9 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         , "hover_name": text_name if text_name else y
         }
 
-    # Ensure requested categories are still in dataframe.  Missing categories will cause plotly to throw errors
-    invalid_cols = set()
-    for arg, col in plotting_args.items():
-        if arg in ["category_orders", "labels"]:
-            continue
-        if col and not col in df.columns:
-            invalid_cols.add(col)
-    if invalid_cols:
-        raise PlotError("The following requested categories are removed by the 'groupby' transformation on the dataset, and so cannot be used as plot properties: {}".format(', '.join(list(invalid_cols))))
+    # Ensure label is one of the labels that is not lost from "gropuby"
+    if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
+        raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
 
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
     plotting_args["hover_data"] = { col: False for col in df.columns.tolist() }
@@ -449,9 +443,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                 # Quick plot-specific check
                 if plot_type in ["violin"]:
                     if color_name and (palette or not _is_categorical(df[color_name])):
-                        return {"success": -1,
-                                "message":"ERROR: Tried to call continuous colorscale on violin plot."
-                                }
+                        raise PlotError("ERROR: Tried to call continuous colorscale on violin plot.")
 
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
                 new_plotting_args['scalegroup'] = name

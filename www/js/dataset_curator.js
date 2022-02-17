@@ -476,9 +476,12 @@ window.onload=() => {
     },
     methods: {
       draw_chart(data) {
+        // Reset some params in case of failures
+        this.imgData = '';
+        this.loading = true;
+
         const { plot_json, plot_config } = data ? data : this.data;
         if (data) {
-          this.loading = false;
           this.success = data.success;
           this.message = data.message;
         } else {
@@ -494,6 +497,7 @@ window.onload=() => {
             Plotly.newPlot(this.$refs.chart, { ...plot_json, plot_config });
           }
         }
+        this.loading = false;
       },
     },
   });
@@ -1825,7 +1829,7 @@ window.onload=() => {
         </transition>
         <transition name="fade" mode="out-in">
           <display-palettes
-            v-if="is_there_data_to_save && is_gene_available && this.config.color_name !== null && Object.entries(this.config.colors).length === 0"
+            v-if="is_there_data_to_save && is_gene_available && this.config.color_name !== (null || undefined) && Object.entries(this.config.colors).length === 0"
           ></display-palettes>
         </transition>
         <transition name="fade" mode="out-in">
