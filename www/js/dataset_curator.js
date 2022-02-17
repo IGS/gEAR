@@ -480,6 +480,11 @@ window.onload=() => {
         this.imgData = '';
         this.loading = true;
 
+        // Reset the div to plot a new image
+        if (!this.img) {
+          (this.$refs.chart).innerHTML = "";
+        }
+
         const { plot_json, plot_config } = data ? data : this.data;
         if (data) {
           this.success = data.success;
