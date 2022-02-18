@@ -78,18 +78,18 @@ window.onload = () => {
 
 	$("#gene_cart_name").on("input", function () {
 		if ($(this).val() == "") {
-		$("#save_gene_cart").prop("disabled", true);
+			$("#save_gene_cart").prop("disabled", true);
 		} else {
-		$("#save_gene_cart").prop("disabled", false);
+			$("#save_gene_cart").prop("disabled", false);
 		}
 	});
 	$("#save_gene_cart").on("click", () => {
 		$("#save_gene_cart").prop("disabled", true);
 
 		if (CURRENT_USER) {
-		save_gene_cart();
+			save_gene_cart();
 		} else {
-		alert("You must be signed in to do that.");
+			alert("You must be signed in to do that.");
 		}
 	});
 	/***** end gene cart stuff *****/
@@ -726,7 +726,7 @@ function plot_data_to_graph(data) {
 		// Sort by adjusted p-value in descending order either by fold change or p-values
 		selected_gene_data.sort((a, b) => b.foldchange - a.foldchange);
 		if ($("#statistical_test").val())
-		selected_gene_data.sort((a, b) => a.pvals - b.pvals);
+			selected_gene_data.sort((a, b) => a.pvals - b.pvals);
 
 		const template = $.templates("#selected_genes_tmpl");
 		const htmlOutput = template.render(selected_gene_data);
@@ -734,16 +734,16 @@ function plot_data_to_graph(data) {
 
 		// Highlight table rows that match searched genes
 		if ($('#highlighted_genes').val()) {
-		const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
-		// Select the first column (gene_symbols) in each row
-		$("#selected_genes_c tr td:first-child").each(function() {
-			const table_gene = $(this).text();
-			searched_genes.forEach((gene) => {
-			if (gene.toLowerCase() === table_gene.toLowerCase() ) {
-				$(this).parent().addClass("table-success");
-			}
-			});
-		})
+			const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
+			// Select the first column (gene_symbols) in each row
+			$("#selected_genes_c tr td:first-child").each(function() {
+				const table_gene = $(this).text();
+				searched_genes.forEach((gene) => {
+					if (gene.toLowerCase() === table_gene.toLowerCase() ) {
+						$(this).parent().addClass("table-success");
+					}
+				});
+			})
 		}
 
 		// toggle visibilities
@@ -773,8 +773,8 @@ function save_gene_cart() {
 
 	selected_data.points.forEach((pt) => {
 		const gene = new Gene({
-		id: plot_data.gene_ids[pt.pointNumber],
-		gene_symbol: plot_data.symbols[pt.pointNumber],
+			id: plot_data.gene_ids[pt.pointNumber],
+			gene_symbol: plot_data.symbols[pt.pointNumber],
 		});
 		gc.add_gene(gene);
 	});

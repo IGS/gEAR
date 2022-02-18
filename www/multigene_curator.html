@@ -378,7 +378,6 @@
         <button type="button" class="btn btn-purple" id="create_plot" style="display:none;">Create Plot</button>
         <aside id="post_plot_options" class="float-right" style="display:none;">
           <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_display_modal">Save New Display</button>
-          <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_genes_modal" id="selected_genes_btn" disabled>Save New Genecart</button>
           <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#download_plot_modal">Download Image</button>
         </aside>
       </div>
@@ -392,7 +391,57 @@
     </div>
 
     <!-- Plotly plot area-->
-    <div id="dataset_plot"></div>
+    <div id="dataset_container" class="row">
+      <div id="dataset_plot" class="col"></div>
+      <div id="genes_list_bar" class="col-3" style="display:none;">
+        <div id='selected_label'>
+          <h3>Selected genes</h3>
+          <div>
+            <button type="button" class="btn btn-default" onclick="downloadSelectedGenes();" aria-label="Download"
+                    data-toggle="tooltip" data-placement="bottom" title="Download genes as a text file">
+              <span class="fa fa-download" aria-hidden="true"></span>
+            </button>
+            <button id="create_gene_cart" type="button" class="btn btn-default" aria-label="Create gene cart"
+                    data-toggle="tooltip" data-placement="bottom" title="Create a gene cart with these genes">
+              <span class="fa fa-shopping-cart" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div id='create_gene_cart_dialog' style="display:none;">
+            <div class="form-group-sm">
+              <label for="gene_cart_name" class="control-label">Cart name to create:</label>
+              <input class="form-control mb-1" type="text" value="" id="gene_cart_name" />
+            </div>
+            <div class="form-group-sm">
+              <button type="button" id="cancel_save_gene_cart" class="btn btn-secondary">Cancel</button>
+              <button type="button" id="save_gene_cart" class="btn btn-primary" disabled>Save</button>
+            </div>
+          </div>
+          <div id='saved_gene_cart_info_c' style="display:none;">
+            <h3></h3>
+            <p id='saved_gene_cart_info'>
+              <span id='gene_cart_member_count'></span> genes saved into cart
+            </p>
+          </div>
+        </div>  <!-- #selected_label -->
+        <table id="tbl_selected_genes" class="table">
+          <thead>
+            <tr>
+              <th onclick="sortTable(0);">Gene <i class="fa fa-sort" aria-hidden="true"></i></th>
+              <th id="gene_x" onclick="sortTable(1);">FoldChg <i class="fa fa-sort" aria-hidden="true"></i></th>
+              <th id="gene_y" onclick="sortTable(2);">Pval <i class="fa fa-sort" aria-hidden="true"></i></th>
+            </tr>
+          <thead>
+            <tbody id='selected_genes_c'></tbody>
+            <script id="selected_genes_tmpl" type="text/x-jsrender">
+              <tr>
+                <td class="text-truncate">{{:gene_symbol}}</td>
+                <td>{{:x}}</td>
+                <td>{{:y}}</td>
+              </tr>
+            </script>
+        </table>
+      </div> <!-- #genes_list_bar -->
+    </div>
 
     <footer>
       <div id='funding'>
@@ -478,35 +527,6 @@
         </div>
       </div>
     </div>  <!-- end download_plot_modal -->
-
-    <!-- Save gene cart modal -->
-    <div class="modal fade" id="save_genes_modal" tabindex="-1" role="dialog" aria-labelledby="save_genes_label" aria-hidden="true">
-      <div class="modal-dialog modal-sm" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="save_genes_label">Save Gene Cart</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="gene_cart_name">New gene cart name</label>
-              <input id="gene_cart_name" class="form-control" placeholder="Enter name for saved gene cart">
-            </div>
-            <h3>Selected Genes:</h3>
-            <ul id="selected_genes_list">
-            </ul>
-            <br />
-            <p id="saved_gene_cart_confirmation" style="display:none;"></p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-purple" id="save_gene_cart">Save as gene cart</button>
-          </div>
-        </div>
-      </div>
-    </div> <!-- end save_genes_modal-->
     <!-- end modals-->
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">
@@ -630,10 +650,6 @@
         <div class="alert alert-danger js-plot-error" role="alert" style="display:none;"></div>
         <div class="alert alert-warning js-plot-warning" role="alert" style="display:none;"></div>
       </div>
-    </script>
-
-    <script id="selected_genes_tmpl" type="text/x-jsrender">
-      <li class="text-truncate">{{:gene_symbol}}</li>
     </script>
 
     <script id="saved_display_modal_tmpl" type="text/x-jsrender">

@@ -1355,13 +1355,14 @@ class MultigeneDashData(Resource):
 
             fig = create_quadrant_plot(df, control_val, compare1_val, compare2_val)
             # Annotate selected genes
-            genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
-            if genes_not_found:
-                success = 2
-                message += "<li>One or more genes did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
-            if genes_none_none:
-                success = 2
-                message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
+            if gene_symbols:
+                genes_not_found, genes_none_none = add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
+                if genes_not_found:
+                    success = 2
+                    message += "<li>One or more genes did not pass cutoff filters to be in the plot: {}</li>".format(', '.join(genes_not_found))
+                if genes_none_none:
+                    success = 2
+                    message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
 
 
         elif plot_type == "heatmap":
