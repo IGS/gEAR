@@ -51,3 +51,15 @@ label.control-label {
     background-image: none;
     border-color: #401362;
 }
+
+#genes_list_bar {
+    overflow-y: auto;
+    height: 700px;  /* slightly less than dataset plot volcanoes/quadrants */
+}
+
+#selected_label {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: white;    /* To avoid text overlap with scrolling table */
+}

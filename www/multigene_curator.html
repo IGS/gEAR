@@ -394,7 +394,7 @@
     <div id="dataset_container" class="row">
       <div id="dataset_plot" class="col"></div>
       <div id="genes_list_bar" class="col-3" style="display:none;">
-        <div id='selected_label'>
+        <div id='selected_label' class="pb-2">
           <h3>Selected genes</h3>
           <div>
             <button type="button" class="btn btn-default" onclick="downloadSelectedGenes();" aria-label="Download"
@@ -431,14 +431,14 @@
               <th id="gene_y" onclick="sortTable(2);">Pval <i class="fa fa-sort" aria-hidden="true"></i></th>
             </tr>
           <thead>
-            <tbody id='selected_genes_c'></tbody>
-            <script id="selected_genes_tmpl" type="text/x-jsrender">
-              <tr>
-                <td class="text-truncate">{{:gene_symbol}}</td>
-                <td>{{:x}}</td>
-                <td>{{:y}}</td>
-              </tr>
-            </script>
+          <tbody id='selected_genes_c'></tbody>
+          <script id="selected_genes_tmpl" type="text/x-jsrender">
+            <tr>
+              <td class="text-truncate">{{:gene_symbol}}</td>
+              <td>{{:x}}</td>
+              <td>{{:y}}</td>
+            </tr>
+          </script>
         </table>
       </div> <!-- #genes_list_bar -->
     </div>
