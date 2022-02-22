@@ -328,11 +328,9 @@ function drawChart (data, datasetId) {
 
 		// Highlight table rows that match searched genes
 		if (genesFilter.length) {
-            console.log(genesFilter);
 			// Select the first column (gene_symbols) in each row
 			$("#selected_genes_c tr td:first-child").each(function() {
 				const tableGene = $(this).text();
-                console.log(tableGene);
 				genesFilter.forEach((gene) => {
                     if (gene.toLowerCase() === tableGene.toLowerCase() ) {
                         $(this).parent().addClass("table-success");
@@ -785,10 +783,10 @@ function saveGeneCart () {
         , is_public: 0
     });
 
-    selectedGenes.forEach((pt) => {
+    selectedGenes.forEach((sg) => {
         const gene = new Gene({
-            id: pt.gene_id,
-            gene_symbol: pt.gene_symbol,
+            id: sg.gene_id, // TODO: prop never defined... could make = gene_symbol
+            gene_symbol: sg.gene_symbol,
         });
         gc.add_gene(gene);
     });
@@ -855,40 +853,40 @@ function downloadSelectedGenes() {
 
     const plotType = plotConfig.plot_type;
 
-    if (plotType === "volcano") {
-        console.log("volcano download");
-    } else if (plotType === "quadrant") {
-        console.log("quadrant download");
+    // Adjust headers to the plot type
+    let xLabel;
+    let yLabel;
+
+    if (plotType === "quadrant") {
+        const query1 = plotConfig.compare1_condition.split(';-;')[1];
+        const query2 = plotConfig.compare2_condition.split(';-;')[1];
+        const ref = plotConfig.ref_condition.split(';-;')[1];
+        xLabel = `${query1} vs ${ref} Log2FC`;
+        yLabel = `${query2} vs ${ref} Log2FC`;
+    } else {
+        const query = plotConfig.query_condition.split(';-;')[1];
+        let ref = plotConfig.ref_condition.split(';-;')[1];
+
+        ref = ref === "Union of the rest of the groups" ? "rest" : ref;
+
+        // volcano
+        xLabel = `${query} vs ${ref} Log2FC`;
+        yLabel = `${query} vs ${ref} p-value`;
     }
-    alert("not working yet")
-    return;
-	const x_label = $('#x_label').val().length ? $('#x_label').val() : "x-condition";
-	const y_label = $('#y_label').val().length ? $('#y_label').val() : "y-condition";
+	let fileContents = `gene_symbol\t${xLabel}\t${yLabel}\n`;
 
-	let file_contents =
-		$("#log_base").val() == "raw"
-		? "gene_symbol\tp-value\tfold change\t"
-		+ x_label + "\t"
-		+ y_label + "\n"
-		: "gene_symbol\tp-value\tfold change\t"
-		+ x_label + " (log" + $("#log_base").val() +")\t"
-		+ y_label + " (log" + $("#log_base").val() +")\n";
-
-	selected_data.points.forEach((pt) => {
-	// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-	file_contents +=
-		`${pt.data.id[pt.pointNumber]}\t`
-		+ ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
-		+ pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
-		+ pt.x.toFixed(1) + "\t"
-		+ pt.y.toFixed(1) + "\n";
+    // Entering genes and info now.
+    selectedGenes.forEach((gene) => {
+        fileContents +=
+            `${gene.gene_symbol}\t`
+            + `${gene.x}\t`
+            + `${gene.y}\n`
 	});
-
 
 	const element = document.createElement("a");
 	element.setAttribute(
 		"href",
-		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(file_contents)}`
+		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
 	);
 	element.setAttribute("download", "selected_genes.tsv");
 	element.style.display = "none";
@@ -1286,6 +1284,36 @@ $(document).on('click', '#create_plot', async () => {
         plotConfig.compare1_condition = $('#quadrant_compare1_condition').select2('data')[0].id;
         plotConfig.compare2_condition = $('#quadrant_compare2_condition').select2('data')[0].id;
         plotConfig.ref_condition = $('#quadrant_ref_condition').select2('data')[0].id;
+        if (!(plotConfig.compare1_condition && plotConfig.compare2_condition && plotConfig.ref_condition)) {
+            window.alert('All comparision conditions must be selected to generate a quadrant plot.');
+            return;
+        }
+        const condition1Key = plotConfig.compare1_condition.split(';-;')[0];
+        const condition2Key = plotConfig.compare2_condition.split(';-;')[0];
+        const refQuadrantKey = plotConfig.ref_condition.split(';-;')[0];
+
+        const condition1Val = plotConfig.compare1_condition.split(';-;')[1];
+        const condition2Val = plotConfig.compare2_condition.split(';-;')[1];
+        const refQuadrantVal = plotConfig.ref_condition.split(';-;')[1];
+        if ((condition1Key !== condition2Key) && (condition1Key !== refQuadrantKey)) {
+            window.alert('Please choose 3 conditions from the same observation group.');
+            return;
+        }
+
+        if ((condition1Val === refQuadrantVal) || (condition2Val === refQuadrantVal) || (condition1Val === condition2Val)) {
+            window.alert('Please choose 3 different conditions.');
+            return;
+        }
+
+        // If condition category was filtered, the selected groups must be present
+        if (condition1Key in obsFilters
+            && !(obsFilters[condition1Key].includes(condition1Val)
+            && obsFilters[condition2Key].includes(condition2Val)
+            && obsFilters[condition1Key].includes(refQuadrantVal))) {
+            window.alert('One of the selected conditions is also chosen to be filtered out. Please adjust.');
+            return;
+        }
+
         break;
     default:
         // volcano
@@ -1306,10 +1334,11 @@ $(document).on('click', '#create_plot', async () => {
             window.alert('Both comparision conditions must be selected to generate a volcano plot.');
             return;
         }
-        const conditionKey = plotConfig.query_condition.split(';-;')[0];
+        const queryKey = plotConfig.query_condition.split(';-;')[0];
+        const refKey = plotConfig.ref_condition.split(';-;')[0];
         const queryVal = plotConfig.query_condition.split(';-;')[1];
         const refVal = plotConfig.ref_condition.split(';-;')[1];
-        if (conditionKey !== plotConfig.ref_condition.split(';-;')[0]) {
+        if (queryKey !== refKey) {
             window.alert('Please choose 2 conditions from the same observation group.');
             return;
         }
@@ -1320,9 +1349,9 @@ $(document).on('click', '#create_plot', async () => {
         }
 
         // If condition category was filtered, the selected groups must be present
-        if (conditionKey in obsFilters
-            && !(obsFilters[conditionKey].includes(queryVal)
-            && obsFilters[conditionKey].includes(refVal))
+        if (queryKey in obsFilters
+            && !(obsFilters[queryKey].includes(queryVal)
+            && obsFilters[queryKey].includes(refVal))
             && refVal !== "Union of the rest of the groups") {
             window.alert('One of the selected conditions is also chosen to be filtered out. Please adjust.');
             return;

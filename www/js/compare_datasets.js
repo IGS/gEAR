@@ -152,13 +152,13 @@ function download_selected_genes() {
 		+ y_label + " (log" + $("#log_base").val() +")\n";
 
 	selected_data.points.forEach((pt) => {
-	// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-	file_contents +=
-		`${pt.data.id[pt.pointNumber]}\t`
-		+ ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
-		+ pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
-		+ pt.x.toFixed(1) + "\t"
-		+ pt.y.toFixed(1) + "\n";
+		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+		file_contents +=
+			`${pt.data.id[pt.pointNumber]}\t`
+			+ ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
+			+ pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
+			+ pt.x.toFixed(1) + "\t"
+			+ pt.y.toFixed(1) + "\n";
 	});
 
 	const element = document.createElement("a");
@@ -714,13 +714,13 @@ function plot_data_to_graph(data) {
 		selected_gene_data = [];
 
 		eventData.points.forEach((pt) => {
-		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-		// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
-		selected_gene_data.push({
-			gene_symbol: pt.data.id[pt.pointNumber],
-			pvals: $("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
-			foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
-		});
+			// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+			// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
+			selected_gene_data.push({
+				gene_symbol: pt.data.id[pt.pointNumber],
+				pvals: $("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
+				foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
+			});
 		});
 
 		// Sort by adjusted p-value in descending order either by fold change or p-values

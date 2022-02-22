@@ -77,371 +77,371 @@
         </button>
       </div>
 
-    <div class="container">
-      <h1>Multigene Display Viewer</h1>
+      <div class="container">
+        <h1>Multigene Display Viewer</h1>
 
-      <!-- Dataset selection -->
-      <fieldset class="form-group">
-        <legend for="dataset">Step 1: Dataset selection</legend>
-        <div id="pre_dataset_spinner" style="display:none;">
-          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span>Loading datasets...</span>
-        </div>
-        <small id="dataset_help" class="form-text text-muted">Select a dataset to use.</small>
-        <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
-          <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
-          <div class="dropdown-menu w-100" aria-labelledby="dataset">
-            <form class="px-4 py-3" onsubmit="return false;">
-              <div class="input-group input-group-sm mb-3">
-                <div class="input-group-prepend">
-                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                </div>
-                <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
-              </div>
-              <div id="dataset_tree"></div>
-            </form>
+        <!-- Dataset selection -->
+        <fieldset class="form-group">
+          <legend for="dataset">Step 1: Dataset selection</legend>
+          <div id="pre_dataset_spinner" style="display:none;">
+            <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+            <span>Loading datasets...</span>
           </div>
-        </div>  <!-- end dataset_c -->
-      </fieldset>
-
-      <div class="alert alert-danger" role="alert" id="no_observations_error" style="display:none;">There are no categorical observations found for this dataset.</div
-
-      <!-- Plot type selection-->
-      <fieldset class="form-group" id="plot_type_container">
-        <legend for="plot_type_select">Step 2: Plot type selection</legend>
-        <div id="post_dataset_spinner" style="display:none;">
-          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span>Loading dataset information...</span>
-        </div>
-        <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
-        <div class="form-row">
-          <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
-            <option></option>
-            <optgroup label="Genes as Axis">
-              <option value="dotplot" id="dotplot_opt">Dotplot</option>
-              <option value="heatmap" id="heatmap_opt">Heatmap</option>
-              <option value="mg_violin" id="mg_violin_opt">Violin</option>
-            </optgroup>
-            <optgroup label="Genes as Data Points">
-              <option value="quadrant" id="quadrant_opt">Quadrant</option>
-              <option value="volcano" id="volcano_opt">Volcano</option>
-            </optgroup>
-          </select>
-          <div class="col-6">
-            <span>or&ensp;</span>
-            <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
-          </div>
-        </div>
-      </fieldset>
-
-      <!-- Gene selection-->
-      <fieldset class="form-group" id="gene_container">
-        <legend for="gene_dropdown_container">Step 3: Gene selection</legend>
-        <div id="gene_spinner" style="display:none;">
-          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span>Loading genes for dataset...</span>
-        </div>
-        <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
-        <div class="form-group" id="gene_dropdown_container" aria-describedby="gene_selection_help"></div>
-        <div class="alert alert-warning" role="alert" id="too_many_genes_warning" style="display:none;"></div>
-        <div class="form-group row" id="gene_cart_container">
-          <label class="col-2" for="gene_cart"><strong>or </strong>Load from gene cart</label>
-          <div id="gene_cart_c" class="w-50 form-control dropdown col-6">
-            <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
-            <div class="dropdown-menu" aria-labelledby="gene_cart">
+          <small id="dataset_help" class="form-text text-muted">Select a dataset to use.</small>
+          <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
+            <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
+            <div class="dropdown-menu w-100" aria-labelledby="dataset">
               <form class="px-4 py-3" onsubmit="return false;">
                 <div class="input-group input-group-sm mb-3">
                   <div class="input-group-prepend">
                     <i class="fa fa-search input-group-text" aria-hidden="true"></i>
                   </div>
-                  <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                  <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
                 </div>
-                <div id="gene_cart_tree"></div>
+                <div id="dataset_tree"></div>
               </form>
             </div>
-          </div>  <!-- end gene_cart_c -->
-          <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
-        </div>  <!-- end gene_cart_container -->
-        <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
-      </fieldset>
-
-      <fieldset id="options_container" style="display:none;">
-        <legend for="options_container">Step 4: Plot-specific options</legend>
-        <div id="options_spinner" style="display:none;">
-          <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-          <span>Loading plot options...</span>
-        </div>
-
-        <!-- Observation group options -->
-        <fieldset class="form-group" id="obs_filters_container"></fieldset>
-        <fieldset class="form-group" id="obs_primary_container" style="display:none;"></fieldset>
-        <fieldset class="form-group" id="obs_secondary_container" style="display:none;"></fieldset>
-        <fieldset id="heatmap_options_container" style="display:none;">
-          <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
-
-          <div class="form-group">
-            <label class="form-check-label" for="distance_select">Select pairwise distance metric</label>
-            <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
-            <div class="form-row">
-              <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
-                <!--<option value="braycurtis">Bray-Curtis</option>-->
-                <option value="euclidean" selected="selected">Euclidean</option>
-                <option value="cityblock">Manhattan (Cityblock)</option>
-                <option value="minkowski">Minkowski</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group" id="matrixplot_container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="" id="matrixplot">
-              <label class="form-check-label" for="matrixplot">
-                Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories.
-              </label>
-            </div>
-            <small class="form-text text-muted">
-              NOTE: This will remove cluster colorbars from the heatmap.
-            </small>
-          </div>
-          <div class="form-group" id="cluster_obs_checkbox_container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
-              <label class="form-check-label" for="cluster_obs">
-                Perform hierarchical clustering of observation samples.
-              </label>
-            </div>
-            <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
-            <small class="form-text text-muted">
-              NOTE: Disables splitting by primary and/or secondary categories.
-            </small>
-          </div>
-          <div class="form-group" id="cluster_genes_checkbox_container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
-              <label class="form-check-label" for="cluster_genes">
-                Perform hierarchical clustering of genes.
-              </label>
-            </div>
-          </div>
-          <div class="form-group" id="flip_axes_checkbox_container">
-            <div class="form-check" aria-describedby="flip_axes_help">
-              <input class="form-check-input" type="checkbox" value="" id="flip_axes">
-              <label class="form-check-label" for="flip_axes">
-                Flip genes and observations axes.
-              </label>
-            </div>
-            <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
-          </div>
+          </div>  <!-- end dataset_c -->
         </fieldset>
-        <fieldset id="quadrant_options_container" style="display:none;">
-          <div class="form-group">
-            <label class="form-check-label" for="quadrant_compare1_condition">Select comparison condition 1</label>
-            <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
-            <div class="form-row">
-              <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
+
+        <div class="alert alert-danger" role="alert" id="no_observations_error" style="display:none;">There are no categorical observations found for this dataset.</div
+
+        <!-- Plot type selection-->
+        <fieldset class="form-group" id="plot_type_container">
+          <legend for="plot_type_select">Step 2: Plot type selection</legend>
+          <div id="post_dataset_spinner" style="display:none;">
+            <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+            <span>Loading dataset information...</span>
+          </div>
+          <small id="plot_type_help" class="form-text text-muted">Select the type of plot to draw, or load an existing display.</small>
+          <div class="form-row">
+            <select class="col-6 form-control" id="plot_type_select" aria-describedby="plot_type_help">
+              <option></option>
+              <optgroup label="Genes as Axis">
+                <option value="dotplot" id="dotplot_opt">Dotplot</option>
+                <option value="heatmap" id="heatmap_opt">Heatmap</option>
+                <option value="mg_violin" id="mg_violin_opt">Violin</option>
+              </optgroup>
+              <optgroup label="Genes as Data Points">
+                <option value="quadrant" id="quadrant_opt">Quadrant</option>
+                <option value="volcano" id="volcano_opt">Volcano</option>
+              </optgroup>
+            </select>
+            <div class="col-6">
+              <span>or&ensp;</span>
+              <button type="button" class="btn btn-outline-purple btn-sm mb-3" id="load_saved_plots" style="display:none;" data-toggle="modal" data-target="#load_plots_modal">Load a Saved Plot</button>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-check-label" for="quadrant_compare2_condition">Select comparison condition 2</label>
-            <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
-            <div class="form-row">
-              <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-check-label" for="quadrant_ref_condition">Select reference condition</label>
-            <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions. All conditions must come from the same category.</small>
-            <div class="form-row">
-              <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-check-label" for="quadrant_foldchange_cutoff">Adjust fold-change cutoff</label>
-            <input id="quadrant_foldchange_cutoff" class="form-control w-25" type="number" value="2" min="0" aria-describedby="quadrant_foldchange_help">
-            <small id="quadrant_foldchange_help" class="form-text text-muted">Choose the fold-change threshold that a query/ref comparison must exceed to be included. This value will be log2-transformed in plot.</small>
-          </div>
-          <div class="form-group">
-            <label class="form-check-label" for="quadrant_fdr_cutoff">Adjust FDR cutoff</label>
-            <input id="quadrant_fdr_cutoff" class="form-control w-25" type="number" value="0.05" min="0" max="1" aria-describedby="quadrant_fdr_help">
-            <small id="quadrant_fdr_help" class="form-text text-muted">Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.</small>
-          </div>
-          <div class="form-group" id="include_zero_foldchange_container">
-            <div class="form-check" aria-describedby="include_zero_help">
-              <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
-              <label class="form-check-label" for="include_zero_foldchange">
-                Include genes where the query and ref expression is equal.
-              </label>
-            </div>
-            <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
           </div>
         </fieldset>
 
-        <fieldset id="volcano_options_container" style="display:none;">
-          <div class="form-group">
-            <label class="form-check-label" for="volcano_pvalue_threshold">Adjust p-value threshold</label>
-            <input id="volcano_pvalue_threshold" class="form-control w-25" type="number" value="0.05" min="0" aria-describedby="volcano_pvalue_threshold_help">
-            <small id="volcano_pvalue_threshold_help" class="form-text text-muted">Choose a p-value where all data points above the line are considered significant. This value will be -log10-transformed in the plot.</small>
+        <!-- Gene selection-->
+        <fieldset class="form-group" id="gene_container">
+          <legend for="gene_dropdown_container">Step 3: Gene selection</legend>
+          <div id="gene_spinner" style="display:none;">
+            <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+            <span>Loading genes for dataset...</span>
           </div>
-          <div class="form-group">
-            <label class="form-check-label" >Adjust log2 fold-change threshold</label>
-            <div class="input-group form-row">
-              <div class="input-group-prepend">
-                <span class="input-group-text">Lower Bounds</span>
+          <small id="gene_selection_help" class="form-text text-muted">Choose the genes to include in plot.</small>
+          <div class="form-group" id="gene_dropdown_container" aria-describedby="gene_selection_help"></div>
+          <div class="alert alert-warning" role="alert" id="too_many_genes_warning" style="display:none;"></div>
+          <div class="form-group row" id="gene_cart_container">
+            <label class="col-2" for="gene_cart"><strong>or </strong>Load from gene cart</label>
+            <div id="gene_cart_c" class="w-50 form-control dropdown col-6">
+              <div id="gene_cart" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
+              <div class="dropdown-menu" aria-labelledby="gene_cart">
+                <form class="px-4 py-3" onsubmit="return false;">
+                  <div class="input-group input-group-sm mb-3">
+                    <div class="input-group-prepend">
+                      <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                    </div>
+                    <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                  </div>
+                  <div id="gene_cart_tree"></div>
+                </form>
               </div>
-              <input id="volcano_lower_logfc_threshold" class="form-control col-1 text-center" type="number" value="-1" max="0" aria-describedby="volcano_logfc_help">
-              <input id="volcano_upper_logfc_threshold" class="form-control col-1 text-center" type="number" value="1" min="0" aria-describedby="volcano_logfc_help">
-              <div class="input-group-append">
-                <span class="input-group-text">Upper Bounds</span>
+            </div>  <!-- end gene_cart_c -->
+            <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
+          </div>  <!-- end gene_cart_container -->
+          <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
+        </fieldset>
+
+        <fieldset id="options_container" style="display:none;">
+          <legend for="options_container">Step 4: Plot-specific options</legend>
+          <div id="options_spinner" style="display:none;">
+            <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+            <span>Loading plot options...</span>
+          </div>
+
+          <!-- Observation group options -->
+          <fieldset class="form-group" id="obs_filters_container"></fieldset>
+          <fieldset class="form-group" id="obs_primary_container" style="display:none;"></fieldset>
+          <fieldset class="form-group" id="obs_secondary_container" style="display:none;"></fieldset>
+          <fieldset id="heatmap_options_container" style="display:none;">
+            <fieldset class="form-group" id="obs_clusterbar_container"></fieldset>
+
+            <div class="form-group">
+              <label class="form-check-label" for="distance_select">Select pairwise distance metric</label>
+              <small id="distance_select_help" class="form-text text-muted">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</small>
+              <div class="form-row">
+                <select class="form-control" id="distance_select" aria-describedby="distance_select_help">
+                  <!--<option value="braycurtis">Bray-Curtis</option>-->
+                  <option value="euclidean" selected="selected">Euclidean</option>
+                  <option value="cityblock">Manhattan (Cityblock)</option>
+                  <option value="minkowski">Minkowski</option>
+                </select>
               </div>
             </div>
-
-            <small id="volcano_logfc_help" class="form-text text-muted">Choose bounds of log2 fold-change threshold. All data points outside of this range are considered significant.</small>
-          </div>
-          <div class="form-group">
-            <label class="form-check-label" for="volcano_query_condition">Select query condition</label>
-            <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
-            <div class="form-row">
-              <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
+            <div class="form-group" id="matrixplot_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="matrixplot">
+                <label class="form-check-label" for="matrixplot">
+                  Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories.
+                </label>
+              </div>
+              <small class="form-text text-muted">
+                NOTE: This will remove cluster colorbars from the heatmap.
+              </small>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-check-label" for="volcano_ref_condition">Select reference condition</label>
-            <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same category as query condition.</small>
-            <div class="form-row">
-              <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
+            <div class="form-group" id="cluster_obs_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="cluster_obs">
+                <label class="form-check-label" for="cluster_obs">
+                  Perform hierarchical clustering of observation samples.
+                </label>
+              </div>
+              <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
+              <small class="form-text text-muted">
+                NOTE: Disables splitting by primary and/or secondary categories.
+              </small>
             </div>
-          </div>
-          <div class="form-group" id="annot_nonsig_checkbox_container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
-              <label class="form-check-label" for="annot_nonsig">
-                Annotate nonsignificant genes.
-              </label>
+            <div class="form-group" id="cluster_genes_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="cluster_genes">
+                <label class="form-check-label" for="cluster_genes">
+                  Perform hierarchical clustering of genes.
+                </label>
+              </div>
             </div>
-          </div>
-          <div class="form-group" id="adjusted_pvals_checkbox_container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
-              <label class="form-check-label" for="adj_pvals">
-                Use adjusted p-values (q-values) instead of raw p-values.
-              </label>
+            <div class="form-group" id="flip_axes_checkbox_container">
+              <div class="form-check" aria-describedby="flip_axes_help">
+                <input class="form-check-input" type="checkbox" value="" id="flip_axes">
+                <label class="form-check-label" for="flip_axes">
+                  Flip genes and observations axes.
+                </label>
+              </div>
+              <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
             </div>
-          </div>
-        </fieldset><!-- end volcano_options_container -->
-
-        <fieldset id="violin_options_container">
-          <div class="form-group" id="stacked_violin_container">
-            <div class="form-check" aria-describedby="stacked_violin_help">
-              <input class="form-check-input" type="checkbox" value="" id="stacked_violin">
-              <label class="form-check-label" for="stacked_violin">
-                Create stacked violin plot.
-              </label>
+          </fieldset>
+          <fieldset id="quadrant_options_container" style="display:none;">
+            <div class="form-group">
+              <label class="form-check-label" for="quadrant_compare1_condition">Select comparison condition 1</label>
+              <small id="quadrant_compare1_help" class="form-text text-muted">Select the first query condition to compare to the reference condition.</small>
+              <div class="form-row">
+                <select id="quadrant_compare1_condition" class="form-control" aria-describedby="quadrant_compare1_help"></select>
+              </div>
             </div>
-            <small id="stacked_violin_help" class="form-text text-muted">Each category group is in its own violin plot.</small>
-          </div>
-          <div class="form-group" id="violin_add_points_container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="" id="violin_add_points">
-              <label class="form-check-label" for="violin_add_points">
-                Add data points to violin plot.
-              </label>
+            <div class="form-group">
+              <label class="form-check-label" for="quadrant_compare2_condition">Select comparison condition 2</label>
+              <small id="quadrant_compare2_help" class="form-text text-muted">Select the second query condition to compare to the reference condition.</small>
+              <div class="form-row">
+                <select id="quadrant_compare2_condition" class="form-control" aria-describedby="quadrant_compare2_help"></select>
+              </div>
             </div>
+            <div class="form-group">
+              <label class="form-check-label" for="quadrant_ref_condition">Select reference condition</label>
+              <small id="quadrant_ref_help" class="form-text text-muted">Select the reference condition to compare to each of the query conditions. All conditions must come from the same category.</small>
+              <div class="form-row">
+                <select id="quadrant_ref_condition" class="form-control" aria-describedby="quadrant_ref_help"></select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-check-label" for="quadrant_foldchange_cutoff">Adjust fold-change cutoff</label>
+              <input id="quadrant_foldchange_cutoff" class="form-control w-25" type="number" value="2" min="0" aria-describedby="quadrant_foldchange_help">
+              <small id="quadrant_foldchange_help" class="form-text text-muted">Choose the fold-change threshold that a query/ref comparison must exceed to be included. This value will be log2-transformed in plot.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-check-label" for="quadrant_fdr_cutoff">Adjust FDR cutoff</label>
+              <input id="quadrant_fdr_cutoff" class="form-control w-25" type="number" value="0.05" min="0" max="1" aria-describedby="quadrant_fdr_help">
+              <small id="quadrant_fdr_help" class="form-text text-muted">Choose the FDR (or qval) threshold a query/ref comparison must be under to be considered. Used in tandem with FDR cutoff.</small>
+            </div>
+            <div class="form-group" id="include_zero_foldchange_container">
+              <div class="form-check" aria-describedby="include_zero_help">
+                <input class="form-check-input" type="checkbox" checked value="" id="include_zero_foldchange">
+                <label class="form-check-label" for="include_zero_foldchange">
+                  Include genes where the query and ref expression is equal.
+                </label>
+              </div>
+              <small id="include_zero_help" class="form-text text-muted">Include genes where the query and ref fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</small>
+            </div>
+          </fieldset>
+
+          <fieldset id="volcano_options_container" style="display:none;">
+            <div class="form-group">
+              <label class="form-check-label" for="volcano_pvalue_threshold">Adjust p-value threshold</label>
+              <input id="volcano_pvalue_threshold" class="form-control w-25" type="number" value="0.05" min="0" aria-describedby="volcano_pvalue_threshold_help">
+              <small id="volcano_pvalue_threshold_help" class="form-text text-muted">Choose a p-value where all data points above the line are considered significant. This value will be -log10-transformed in the plot.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-check-label" >Adjust log2 fold-change threshold</label>
+              <div class="input-group form-row">
+                <div class="input-group-prepend">
+                  <span class="input-group-text">Lower Bounds</span>
+                </div>
+                <input id="volcano_lower_logfc_threshold" class="form-control col-1 text-center" type="number" value="-1" max="0" aria-describedby="volcano_logfc_help">
+                <input id="volcano_upper_logfc_threshold" class="form-control col-1 text-center" type="number" value="1" min="0" aria-describedby="volcano_logfc_help">
+                <div class="input-group-append">
+                  <span class="input-group-text">Upper Bounds</span>
+                </div>
+              </div>
+
+              <small id="volcano_logfc_help" class="form-text text-muted">Choose bounds of log2 fold-change threshold. All data points outside of this range are considered significant.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-check-label" for="volcano_query_condition">Select query condition</label>
+              <small id="volcano_query_help" class="form-text text-muted">Select the query condition.</small>
+              <div class="form-row">
+                <select id="volcano_query_condition" class="form-control" aria-describedby="volcano_query_help"></select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-check-label" for="volcano_ref_condition">Select reference condition</label>
+              <small id="volcano_ref_help" class="form-text text-muted">Select the reference condition. Condition must come from the same category as query condition.</small>
+              <div class="form-row">
+                <select id="volcano_ref_condition" class="form-control" aria-describedby="volcano_ref_help"></select>
+              </div>
+            </div>
+            <div class="form-group" id="annot_nonsig_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" checked value="" id="annot_nonsig">
+                <label class="form-check-label" for="annot_nonsig">
+                  Annotate nonsignificant genes.
+                </label>
+              </div>
+            </div>
+            <div class="form-group" id="adjusted_pvals_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" checked value="" id="adj_pvals">
+                <label class="form-check-label" for="adj_pvals">
+                  Use adjusted p-values (q-values) instead of raw p-values.
+                </label>
+              </div>
+            </div>
+          </fieldset><!-- end volcano_options_container -->
+
+          <fieldset id="violin_options_container">
+            <div class="form-group" id="stacked_violin_container">
+              <div class="form-check" aria-describedby="stacked_violin_help">
+                <input class="form-check-input" type="checkbox" value="" id="stacked_violin">
+                <label class="form-check-label" for="stacked_violin">
+                  Create stacked violin plot.
+                </label>
+              </div>
+              <small id="stacked_violin_help" class="form-text text-muted">Each category group is in its own violin plot.</small>
+            </div>
+            <div class="form-group" id="violin_add_points_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="violin_add_points">
+                <label class="form-check-label" for="violin_add_points">
+                  Add data points to violin plot.
+                </label>
+              </div>
+            </div>
+          </fieldset><!-- end violin_options_container -->
+
+          <div class="form-group" id="de_test_container">
+            <label class="form-check-label" for="de_test_select">Select differential expression test</label>
+            <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
+            <select class="form-control" id="de_test_select" aria-describedby="de_test_help">
+              <option value="t-test" selected="selected">Welch's t-test</option>
+              <option value="rank">Wilcoxon rank-sum test</option>
+            </select>
           </div>
-        </fieldset><!-- end violin_options_container -->
 
-        <div class="form-group" id="de_test_container">
-          <label class="form-check-label" for="de_test_select">Select differential expression test</label>
-          <small id="de_test_help" class="form-text text-muted">Select the differential expression testing algorithm to determine significance.</small>
-          <select class="form-control" id="de_test_select" aria-describedby="de_test_help">
-            <option value="t-test" selected="selected">Welch's t-test</option>
-            <option value="rank">Wilcoxon rank-sum test</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="form-check-label" for="plot_title">Adjust plot title</label>
-          <small id="plot_title_help" class="form-text text-muted">If left blank, plot will have a default title or no title.</small>
-          <input class="form-control col-6" id="plot_title" placeholder="Enter name of title.">
-        </div>
-      </fieldset> <!-- end options -->
-
-      <!--<div id="plot_preview">
-        <legend for="plot_preview">Plot Preview</legend>
-        <div id="x_preview">X: <span id="x_column"></span></div>
-        <div id="y_preview">Y: <span id="y_column"></span></div>
-        <div id="colors_preview">Legend colors: <span id="colors_column"></span></div>
-        <div id="facet_col_preview">Facet columns: <span id="facet_col_column"></span></div>
-      </div>-->
-
-      <!-- Action buttons-->
-      <div id="action_buttons" class="my-3">
-        <button type="button" class="btn btn-outline-purple" id="reset_opts" style="display:none;">Reset Options</button>
-        <button type="button" class="btn btn-purple" id="create_plot" style="display:none;">Create Plot</button>
-        <aside id="post_plot_options" class="float-right" style="display:none;">
-          <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_display_modal">Save New Display</button>
-          <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#download_plot_modal">Download Image</button>
-        </aside>
-      </div>
-      <hr>
-    </div> <!-- end container -->
-    </main>
-
-    <div id="plot_spinner" style="display:none;">
-      <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-      <span>Loading plot...</span>
-    </div>
-
-    <!-- Plotly plot area-->
-    <div id="dataset_container" class="row">
-      <div id="dataset_plot" class="col"></div>
-      <div id="genes_list_bar" class="col-3" style="display:none;">
-        <div id='selected_label' class="pb-2">
-          <h3>Selected genes</h3>
           <div>
-            <button type="button" class="btn btn-default" onclick="downloadSelectedGenes();" aria-label="Download"
-                    data-toggle="tooltip" data-placement="bottom" title="Download genes as a text file">
-              <span class="fa fa-download" aria-hidden="true"></span>
-            </button>
-            <button id="create_gene_cart" type="button" class="btn btn-default" aria-label="Create gene cart"
-                    data-toggle="tooltip" data-placement="bottom" title="Create a gene cart with these genes">
-              <span class="fa fa-shopping-cart" aria-hidden="true"></span>
-            </button>
+            <label class="form-check-label" for="plot_title">Adjust plot title</label>
+            <small id="plot_title_help" class="form-text text-muted">If left blank, plot will have a default title or no title.</small>
+            <input class="form-control col-6" id="plot_title" placeholder="Enter name of title.">
           </div>
-          <div id='create_gene_cart_dialog' style="display:none;">
-            <div class="form-group-sm">
-              <label for="gene_cart_name" class="control-label">Cart name to create:</label>
-              <input class="form-control mb-1" type="text" value="" id="gene_cart_name" />
+        </fieldset> <!-- end options -->
+
+        <!--<div id="plot_preview">
+          <legend for="plot_preview">Plot Preview</legend>
+          <div id="x_preview">X: <span id="x_column"></span></div>
+          <div id="y_preview">Y: <span id="y_column"></span></div>
+          <div id="colors_preview">Legend colors: <span id="colors_column"></span></div>
+          <div id="facet_col_preview">Facet columns: <span id="facet_col_column"></span></div>
+        </div>-->
+
+        <!-- Action buttons-->
+        <div id="action_buttons" class="my-3">
+          <button type="button" class="btn btn-outline-purple" id="reset_opts" style="display:none;">Reset Options</button>
+          <button type="button" class="btn btn-purple" id="create_plot" style="display:none;">Create Plot</button>
+          <aside id="post_plot_options" class="float-right" style="display:none;">
+            <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_display_modal">Save New Display</button>
+            <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#download_plot_modal">Download Image</button>
+          </aside>
+        </div>
+        <hr>
+      </div> <!-- end container -->
+
+      <div id="plot_spinner" style="display:none;">
+        <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+        <span>Loading plot...</span>
+      </div>
+
+      <!-- Plotly plot area-->
+      <div id="dataset_container" class="row">
+        <div id="dataset_plot" class="col"></div>
+        <div id="genes_list_bar" class="col-3" style="display:none;">
+          <div id='selected_label' class="pb-2">
+            <h3>Selected genes</h3>
+            <div>
+              <button type="button" class="btn btn-default" onclick="downloadSelectedGenes();" aria-label="Download"
+                      data-toggle="tooltip" data-placement="bottom" title="Download genes as a text file">
+                <span class="fa fa-download" aria-hidden="true"></span>
+              </button>
+              <button id="create_gene_cart" type="button" class="btn btn-default" aria-label="Create gene cart"
+                      data-toggle="tooltip" data-placement="bottom" title="Create a gene cart with these genes">
+                <span class="fa fa-shopping-cart" aria-hidden="true"></span>
+              </button>
             </div>
-            <div class="form-group-sm">
-              <button type="button" id="cancel_save_gene_cart" class="btn btn-secondary">Cancel</button>
-              <button type="button" id="save_gene_cart" class="btn btn-primary" disabled>Save</button>
+            <div id='create_gene_cart_dialog' style="display:none;">
+              <div class="form-group-sm">
+                <label for="gene_cart_name" class="control-label">Cart name to create:</label>
+                <input class="form-control mb-1" type="text" value="" id="gene_cart_name" />
+              </div>
+              <div class="form-group-sm">
+                <button type="button" id="cancel_save_gene_cart" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="save_gene_cart" class="btn btn-primary" disabled>Save</button>
+              </div>
             </div>
-          </div>
-          <div id='saved_gene_cart_info_c' style="display:none;">
-            <h3></h3>
-            <p id='saved_gene_cart_info'>
-              <span id='gene_cart_member_count'></span> genes saved into cart
-            </p>
-          </div>
-        </div>  <!-- #selected_label -->
-        <table id="tbl_selected_genes" class="table">
-          <thead>
-            <tr>
-              <th onclick="sortTable(0);">Gene <i class="fa fa-sort" aria-hidden="true"></i></th>
-              <th id="gene_x" onclick="sortTable(1);">FoldChg <i class="fa fa-sort" aria-hidden="true"></i></th>
-              <th id="gene_y" onclick="sortTable(2);">Pval <i class="fa fa-sort" aria-hidden="true"></i></th>
-            </tr>
-          <thead>
-          <tbody id='selected_genes_c'></tbody>
-          <script id="selected_genes_tmpl" type="text/x-jsrender">
-            <tr>
-              <td class="text-truncate">{{:gene_symbol}}</td>
-              <td>{{:x}}</td>
-              <td>{{:y}}</td>
-            </tr>
-          </script>
-        </table>
-      </div> <!-- #genes_list_bar -->
-    </div>
+            <div id='saved_gene_cart_info_c' style="display:none;">
+              <h3></h3>
+              <p id='saved_gene_cart_info'>
+                <span id='gene_cart_member_count'></span> genes saved into cart
+              </p>
+            </div>
+          </div>  <!-- #selected_label -->
+          <table id="tbl_selected_genes" class="table">
+            <thead>
+              <tr>
+                <th onclick="sortTable(0);">Gene <i class="fa fa-sort" aria-hidden="true"></i></th>
+                <th id="gene_x" onclick="sortTable(1);">FoldChg <i class="fa fa-sort" aria-hidden="true"></i></th>
+                <th id="gene_y" onclick="sortTable(2);">Pval <i class="fa fa-sort" aria-hidden="true"></i></th>
+              </tr>
+            <thead>
+            <tbody id='selected_genes_c'></tbody>
+            <script id="selected_genes_tmpl" type="text/x-jsrender">
+              <tr>
+                <td class="text-truncate">{{:gene_symbol}}</td>
+                <td>{{:x}}</td>
+                <td>{{:y}}</td>
+              </tr>
+            </script>
+          </table>
+        </div> <!-- #genes_list_bar -->
+      </div>
+    </main>
 
     <footer>
       <div id='funding'>
