@@ -96,6 +96,9 @@ def main():
 
 
 def filter_any_previous(ids, new_layouts):
+    new_layouts.sort(key=lambda l: l.label.upper())
+    return new_layouts
+    
     layouts = []
 
     for layout in new_layouts:
