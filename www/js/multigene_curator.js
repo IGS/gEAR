@@ -1081,10 +1081,6 @@ $(document).on('click', '#create_plot', async () => {
             plotConfig.clusterbar_fields.push($(elem).val());
         });
         plotConfig.matrixplot = $('#matrixplot').is(':checked');
-        if (plotConfig.matrixplot && !plotConfig.primary_col) {
-            window.alert("Must choose at least a primary category to aggregate means for the matrixplot.");
-            return
-        }
         plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
         plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
         plotConfig.flip_axes = $('#flip_axes').is(':checked');
