@@ -1081,6 +1081,10 @@ def intersection(lst1, lst2):
     """Intersection of two lists."""
     return list(set(lst1) & set(lst2))
 
+def union(lst1, lst2):
+    """Union of two lists."""
+    return list(set(lst1) | set(lst2))
+
 def normalize_searched_genes(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
     case_insensitive_genes = [str(g) for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
@@ -1281,12 +1285,6 @@ class MultigeneDashData(Resource):
                 condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
 
-        if clusterbar_fields:
-            # Create a special composite index for clusterbars
-            selected.obs['clusterbar_composite'] = selected.obs[clusterbar_fields].apply(lambda x: ';'.join(map(str,x)), axis=1)
-            selected.obs['clusterbar_composite'] = selected.obs['clusterbar_composite'].astype('category')
-            columns.append("clusterbar_composite")
-
         var_index = selected.var.index.name
 
         if plot_type == "volcano":
@@ -1406,36 +1404,47 @@ class MultigeneDashData(Resource):
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
             df = df[sorted_ensm]
 
+            groupby_index = "composite_index"
+            groupby_fields = columns
+            # Create a composite to groupby
+            if filters and matrixplot:
+                union_fields = union(list(filters.keys()), clusterbar_fields)
+                selected.obs['groupby_composite'] = selected.obs[union_fields].apply(lambda x: ';'.join(map(str,x)), axis=1)
+                selected.obs['groupby_composite'] = selected.obs['groupby_composite'].astype('category')
+                columns.append("groupby_composite")
+                groupby_index = "groupby_composite"
+                union_fields.extend([groupby_index, "filters_composite"])   # Preserve filters index for downstream labeling
+                groupby_fields = union_fields
+
             # Remove composite index so that the label is not duplicated.
             for cat in columns:
                 df[cat] = selected.obs[cat]
 
             # Groupby to remove the replicates
             # Ensure the composite index is used as the index for plot labeling
-
             if matrixplot:
-                grouped = df.groupby(columns)
+                grouped = df.groupby(groupby_fields)
                 df = grouped.agg('mean') \
                     .dropna() \
                     .reset_index() \
-                    .set_index("composite_index")
+                    .set_index(groupby_index)
 
             # Since this is the new index in the matrixplot, it does not exist as a droppable series
             # These two statements ensure that the current columns are the same if that option is set or not
-            columns.remove("composite_index")
+            groupby_fields.remove(groupby_index)
             if not matrixplot:
-                df = df.drop(columns="composite_index")
+                df = df.drop(columns=groupby_index)
 
-            groupby_filters = []
+            sort_fields = []
             if primary_col:
-                groupby_filters.append(primary_col)
+                sort_fields.append(primary_col)
             if secondary_col and not primary_col == secondary_col:
-                groupby_filters.append(secondary_col)
+                sort_fields.append(secondary_col)
 
             # Sort the dataframe before plotting
-            sortby = columns
-            if groupby_filters:
-                sortby = groupby_filters
+            sortby = groupby_fields
+            if sort_fields:
+                sortby = sort_fields
 
             sorted_df = df.sort_values(by=sortby)
             df = df.reindex(sorted_df.index.tolist())
@@ -1443,7 +1452,7 @@ class MultigeneDashData(Resource):
             # Drop the obs metadata now that the dataframe is sorted
             # They cannot be in there when the clustergram is made
             # But save it to add back in later
-            df_cols = pd.concat([df.pop(cat) for cat in columns], axis=1)
+            df_cols = pd.concat([df.pop(cat) for cat in groupby_fields], axis=1)
 
             # "df" must be obs label for rows and genes for cols only
             fig = create_clustergram(df
@@ -1473,6 +1482,7 @@ class MultigeneDashData(Resource):
             # Create labels based only on the included filters
             obs_labels = None
             if "filters_composite" in df and matrixplot:
+                print("HERE")
                 obs_labels = create_clustergram_observation_labels(df, fig, "filters_composite", flip_axes)
 
             add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels, is_log10, flip_axes)
