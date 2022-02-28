@@ -232,6 +232,11 @@ async function drawPreviewImage (display) {
     );
 }
 
+// Invert a log function
+function invertLogFunction(value, base=10) {
+    return base ** value;
+}
+
 // Draw plotly chart in HTML
 function drawChart (data, datasetId) {
     const targetDiv = `dataset_${datasetId}_h5ad`;
@@ -292,8 +297,6 @@ function drawChart (data, datasetId) {
             return;
         }
 
-        $("#selected_genes_btn").prop("disabled", false);
-
         // Note: the jQuery implementation has slightly different arguments than what is in the plotlyJS implementation
         // We want 'data', which returns the eventData PlotlyJS events normally return
         selectedGenes = [];
@@ -301,16 +304,43 @@ function drawChart (data, datasetId) {
         data.points.forEach((pt) => {
             selectedGenes.push({
                 gene_symbol: pt.data.text[pt.pointNumber],
+                x: pt.data.x[pt.pointNumber].toFixed(1),
+                y: plotConfig.plot_type === "volcano" ? invertLogFunction(-pt.data.y[pt.pointNumber]).toExponential(2) : pt.data.y[pt.pointNumber].toFixed(2),
             });
         });
 
         // Sort in alphabetical order
         selectedGenes.sort();
 
+        // Adjust headers to the plot type
+        if (plotConfig.plot_type === "quadrant") {
+            $("#gene_x").html('X LFC <i class="fa fa-sort" aria-hidden="true"></i>');
+            $("#gene_y").html('Y LFC <i class="fa fa-sort" aria-hidden="true"></i>');
+        } else {
+            // volcano
+            $("#gene_x").html('LFC <i class="fa fa-sort" aria-hidden="true"></i>');
+            $("#gene_y").html('Pval <i class="fa fa-sort" aria-hidden="true"></i>');
+        }
+
         const template = $.templates("#selected_genes_tmpl");
         const htmlOutput = template.render(selectedGenes);
-        $("#selected_genes_list").html(htmlOutput);
+        $("#selected_genes_c").html(htmlOutput);
 
+		// Highlight table rows that match searched genes
+		if (genesFilter.length) {
+			// Select the first column (gene_symbols) in each row
+			$("#selected_genes_c tr td:first-child").each(function() {
+				const tableGene = $(this).text();
+				genesFilter.forEach((gene) => {
+                    if (gene.toLowerCase() === tableGene.toLowerCase() ) {
+                        $(this).parent().addClass("table-success");
+                    }
+				});
+			})
+		}
+
+		$("#saved_gene_cart_info_c").hide();
+        $("#tbl_selected_genes").show();
     });
 }
 
@@ -325,6 +355,80 @@ async function reloadTrees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
     await Promise.all([loadDatasets(), loadGeneCarts()]);
+}
+
+// Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
+function sortTable(n) {
+	let table;
+	let rows;
+	let switching;
+	let i;
+	let x;
+	let y;
+	let shouldSwitch;
+	let dir;
+	let switchcount = 0;
+	table = document.getElementById("tbl_selected_genes");
+
+	switching = true;
+	// Set the sorting direction to ascending:
+	dir = "asc";
+	/* Make a loop that will continue until
+		no switching has been done: */
+	while (switching) {
+		// Start by saying: no switching is done:
+		switching = false;
+		rows = table.rows;
+		/* Loop through all table rows (except the
+		first, which contains table headers): */
+		for (i = 1; i < rows.length - 1; i++) {
+		// Start by saying there should be no switching:
+		shouldSwitch = false;
+		/* Get the two elements you want to compare,
+			one from current row and one from the next: */
+		x = rows[i].getElementsByTagName("td")[n];
+		y = rows[i + 1].getElementsByTagName("td")[n];
+		/* Check if the two rows should switch place,
+			based on the direction, asc or desc: */
+		if (dir == "asc") {
+			// First column is gene_symbol... rest are numbers
+			if (n === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+			// If so, mark as a switch and break the loop:
+			shouldSwitch = true;
+			break;
+			}
+			if (Number(x.innerHTML) > Number(y.innerHTML)) {
+			shouldSwitch = true;
+			break;
+			}
+		} else if (dir == "desc") {
+			if (n === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+			// If so, mark as a switch and break the loop:
+			shouldSwitch = true;
+			break;
+			}
+			if (Number(x.innerHTML) < Number(y.innerHTML)) {
+			shouldSwitch = true;
+			break;
+			}
+		}
+		}
+		if (shouldSwitch) {
+		/* If a switch has been marked, make the switch
+			and mark that a switch has been done: */
+		rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+		switching = true;
+		// Each time a switch is done, increase this count by 1:
+		switchcount++;
+		} else {
+		/* If no switching has been done AND the direction is "asc",
+			set the direction to "desc" and run the while loop again. */
+		if (switchcount == 0 && dir == "asc") {
+			dir = "desc";
+			switching = true;
+		}
+		}
+	}
 }
 
 // Render the gene-selection dropdown menu
@@ -679,10 +783,10 @@ function saveGeneCart () {
         , is_public: 0
     });
 
-    selectedGenes.forEach((pt) => {
+    selectedGenes.forEach((sg) => {
         const gene = new Gene({
-            id: pt.gene_id,
-            gene_symbol: pt.gene_symbol,
+            id: sg.gene_id, // TODO: prop never defined... could make = gene_symbol
+            gene_symbol: sg.gene_symbol,
         });
         gc.add_gene(gene);
     });
@@ -691,15 +795,16 @@ function saveGeneCart () {
 }
 
 function updateUIAfterGeneCartSaveSuccess(gc) {
-    $('#saved_gene_cart_confirmation').text('Gene cart successfully saved!');
-    $('#saved_gene_cart_confirmation').addClass('text-success');
-    $('#saved_gene_cart_confirmation').show();
+	$("#saved_gene_cart_info_c > h3").html(`Cart: ${gc.label}`);
+    $('#saved_gene_cart_info_c > h3').addClass('text-success');
+	$("#gene_cart_member_count").html(gc.genes.length);
+	$("#saved_gene_cart_info_c").show();
 }
 
 function updateUIAfterGeneCartSaveFailure(gc) {
-    $('#saved_gene_cart_confirmation').text('Issue with saving gene cart.');
-    $('#saved_gene_cart_confirmation').addClass('text-danger');
-    $('#saved_gene_cart_confirmation').show();
+    $('#saved_gene_cart_info_c > h3').text('Issue with saving gene cart.');
+    $('#saved_gene_cart_info_c > h3').addClass('text-danger');
+    $('#saved_gene_cart_info_c').show();
 }
 
 function fetchDatasetInfo (datasetId) {
@@ -739,6 +844,55 @@ function getDefaultDisplay (datasetId) {
         },
         dataType: 'json'
     });
+}
+
+function downloadSelectedGenes() {
+	// Builds a file in memory for the user to download.  Completely client-side.
+	// plot_data contains three keys: x, y and symbols
+	// build the file string from this
+
+    const plotType = plotConfig.plot_type;
+
+    // Adjust headers to the plot type
+    let xLabel;
+    let yLabel;
+
+    if (plotType === "quadrant") {
+        const query1 = plotConfig.compare1_condition.split(';-;')[1];
+        const query2 = plotConfig.compare2_condition.split(';-;')[1];
+        const ref = plotConfig.ref_condition.split(';-;')[1];
+        xLabel = `${query1} vs ${ref} Log2FC`;
+        yLabel = `${query2} vs ${ref} Log2FC`;
+    } else {
+        const query = plotConfig.query_condition.split(';-;')[1];
+        let ref = plotConfig.ref_condition.split(';-;')[1];
+
+        ref = ref === "Union of the rest of the groups" ? "rest" : ref;
+
+        // volcano
+        xLabel = `${query} vs ${ref} Log2FC`;
+        yLabel = `${query} vs ${ref} p-value`;
+    }
+	let fileContents = `gene_symbol\t${xLabel}\t${yLabel}\n`;
+
+    // Entering genes and info now.
+    selectedGenes.forEach((gene) => {
+        fileContents +=
+            `${gene.gene_symbol}\t`
+            + `${gene.x}\t`
+            + `${gene.y}\n`
+	});
+
+	const element = document.createElement("a");
+	element.setAttribute(
+		"href",
+		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
+	);
+	element.setAttribute("download", "selected_genes.tsv");
+	element.style.display = "none";
+	document.body.appendChild(element);
+	element.click();
+	document.body.removeChild(element);
 }
 
 $('#dataset').change(async function () {
@@ -826,6 +980,23 @@ $('#dataset').change(async function () {
     }
 });
 
+$("#create_gene_cart").on("click", () => {
+    $("#create_gene_cart_dialog").show("fade");
+});
+
+$("#cancel_save_gene_cart").on("click", () => {
+    $("#create_gene_cart_dialog").hide("fade");
+    $("#gene_cart_name").val("");
+});
+
+$("#gene_cart_name").on("input", function () {
+    if ($(this).val() == "") {
+        $("#save_gene_cart").prop("disabled", true);
+    } else {
+        $("#save_gene_cart").prop("disabled", false);
+    }
+});
+
 $("#save_gene_cart").on("click", () => {
     $("#save_gene_cart").prop("disabled", true);
 
@@ -904,7 +1075,6 @@ $('#gene_cart').change(function () {
 // Some options are specific to certain plot types
 $('#plot_type_select').change(() => {
     $('#reset_opts').click();  // Reset all options
-    $('#selected_genes_field').hide();
     $("#create_plot").prop("disabled", false);
 
     dotplotOptsIds.forEach(id => {
@@ -1125,6 +1295,36 @@ $(document).on('click', '#create_plot', async () => {
         plotConfig.compare1_condition = $('#quadrant_compare1_condition').select2('data')[0].id;
         plotConfig.compare2_condition = $('#quadrant_compare2_condition').select2('data')[0].id;
         plotConfig.ref_condition = $('#quadrant_ref_condition').select2('data')[0].id;
+        if (!(plotConfig.compare1_condition && plotConfig.compare2_condition && plotConfig.ref_condition)) {
+            window.alert('All comparision conditions must be selected to generate a quadrant plot.');
+            return;
+        }
+        const condition1Key = plotConfig.compare1_condition.split(';-;')[0];
+        const condition2Key = plotConfig.compare2_condition.split(';-;')[0];
+        const refQuadrantKey = plotConfig.ref_condition.split(';-;')[0];
+
+        const condition1Val = plotConfig.compare1_condition.split(';-;')[1];
+        const condition2Val = plotConfig.compare2_condition.split(';-;')[1];
+        const refQuadrantVal = plotConfig.ref_condition.split(';-;')[1];
+        if ((condition1Key !== condition2Key) && (condition1Key !== refQuadrantKey)) {
+            window.alert('Please choose 3 conditions from the same observation group.');
+            return;
+        }
+
+        if ((condition1Val === refQuadrantVal) || (condition2Val === refQuadrantVal) || (condition1Val === condition2Val)) {
+            window.alert('Please choose 3 different conditions.');
+            return;
+        }
+
+        // If condition category was filtered, the selected groups must be present
+        if (condition1Key in obsFilters
+            && !(obsFilters[condition1Key].includes(condition1Val)
+            && obsFilters[condition2Key].includes(condition2Val)
+            && obsFilters[condition1Key].includes(refQuadrantVal))) {
+            window.alert('One of the selected conditions is also chosen to be filtered out. Please adjust.');
+            return;
+        }
+
         break;
     default:
         // volcano
@@ -1145,10 +1345,11 @@ $(document).on('click', '#create_plot', async () => {
             window.alert('Both comparision conditions must be selected to generate a volcano plot.');
             return;
         }
-        const conditionKey = plotConfig.query_condition.split(';-;')[0];
+        const queryKey = plotConfig.query_condition.split(';-;')[0];
+        const refKey = plotConfig.ref_condition.split(';-;')[0];
         const queryVal = plotConfig.query_condition.split(';-;')[1];
         const refVal = plotConfig.ref_condition.split(';-;')[1];
-        if (conditionKey !== plotConfig.ref_condition.split(';-;')[0]) {
+        if (queryKey !== refKey) {
             window.alert('Please choose 2 conditions from the same observation group.');
             return;
         }
@@ -1159,9 +1360,9 @@ $(document).on('click', '#create_plot', async () => {
         }
 
         // If condition category was filtered, the selected groups must be present
-        if (conditionKey in obsFilters
-            && !(obsFilters[conditionKey].includes(queryVal)
-            && obsFilters[conditionKey].includes(refVal))
+        if (queryKey in obsFilters
+            && !(obsFilters[queryKey].includes(queryVal)
+            && obsFilters[queryKey].includes(refVal))
             && refVal !== "Union of the rest of the groups") {
             window.alert('One of the selected conditions is also chosen to be filtered out. Please adjust.');
             return;
@@ -1173,6 +1374,16 @@ $(document).on('click', '#create_plot', async () => {
     const plotHtml = plotTemplate.render({ dataset_id: datasetId });
     $('#dataset_plot').html(plotHtml);
 
+
+	$("#tbl_selected_genes").hide();
+    if (["quadrant", "volcano"].includes(plotType)) {
+        $('#dataset_plot').removeClass("col").addClass("col-9");
+        $('#genes_list_bar').show();
+    } else {
+        $('#dataset_plot').addClass("col").removeClass("col-9");
+        $('#genes_list_bar').hide();
+    }
+
     // Draw the updated chart
     $('#dataset_spinner').show();
     await draw(datasetId, plotConfig);
@@ -1180,7 +1391,6 @@ $(document).on('click', '#create_plot', async () => {
 
     // Show plot options and disable selected genes button (since genes are not selected anymore)
     $('#post_plot_options').show();
-    $("#selected_genes_btn").prop("disabled", true);
 });
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
@@ -1226,7 +1436,7 @@ $(document).on('click', '#reset_opts', async function () {
     // Update fields dependent on dataset observations
     createObsFilterDropdowns(obsLevels);
     $('#categories_not_used').hide();
-    if (obsNotUsed.length) {
+    if (obsNotUsed && obsNotUsed.length) {
         const obsNotUsedString = obsNotUsed.join(", ")
         $('#categories_not_used').show();
         $('#categories_not_used').html(`The following observation categories were excluded either due to having one group or being considered to have no meaning: ${obsNotUsedString}`);
@@ -1370,12 +1580,19 @@ $(document).on('click', '.js-load-display', async function () {
     const plotTemplate = $.templates('#dataset_plot_tmpl');
     const plotHtml = plotTemplate.render({ dataset_id: datasetId });
     $('#dataset_plot').html(plotHtml);
+
+    if (["quadrant", "volcano"].includes(display.plot_type)) {
+        $('#dataset_plot').removeClass("col").addClass("col-10");
+        $('#genes_list_bar').show();
+    } else {
+        $('#dataset_plot').addClass("col").removeClass("col-10");
+        $('#genes_list_bar').hide();
+    }
     await draw(datasetId, plotConfig);
     $('#plot_spinner').hide();
 
     // Show plot options
     $('#post_plot_options').show();
-    $("#selected_genes_btn").prop("disabled", true);
 
 });
 
