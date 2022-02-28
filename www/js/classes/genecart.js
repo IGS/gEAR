@@ -20,7 +20,8 @@ class GeneCart {
           This method is to save a cart after it has been built in the
           standard way, setting attributes on an instantiated object.
         */
-       const gc = this;
+
+        const gc = this;
         $.ajax({
             type: "POST",
             url: "./cgi/save_new_genecart_json.cgi",
@@ -49,7 +50,8 @@ class GeneCart {
           completed the object properties are filled in and the callback
           is executed.
         */
-       const gc = this;
+
+        const gc = this;
         $.ajax({
             type: "POST",
             method: "POST",

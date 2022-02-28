@@ -91,7 +91,7 @@ window.onload= async () => {
             $("#dataset").text(tree_leaf.text);
             $("#dataset").data("organism-id", tree_leaf.organism_id);
             $("#dataset").data("dataset-id", tree_leaf.dataset_id);
-            $("#dataset").trigger("change");
+            $("#dataset").trigger('change');
         } catch {
             console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
         }
@@ -1166,12 +1166,27 @@ $(document).on('change', 'input[name="obs_primary"]', () => {
     }
 });
 
-$(document).on('change', 'input[name="obs_secondary"]', (e) => {
+$(document).on('change', 'input[name="obs_secondary"]', () => {
     const obsLevel = $('input[name="obs_secondary"]:checked').val();
     if ( obsLevel !== "none") {
         createObsSortable(obsLevel, "secondary");
     } else {
         $('#secondary_sortable').empty();
+    }
+});
+
+$(document).on('change', '.js-obs-levels', function () {
+    const id = this.id;
+    const group = id.replace('_dropdown', '');
+    const escapedGroup = $.escapeSelector(group);
+    const propData = $(`#${id}`).select2('data');
+    const props = propData.map((elem) => elem.id);
+    $(`#${escapedGroup}_primary`).prop("disabled", false);
+    $(`#${escapedGroup}_secondary`).prop("disabled", false);
+    // Disable sorting until it is known that filters have length
+    if (!props.length) {
+        $(`#${escapedGroup}_primary`).prop("disabled", true);
+        $(`#${escapedGroup}_secondary`).prop("disabled", true);
     }
 });
 
@@ -1251,10 +1266,6 @@ $(document).on('click', '#create_plot', async () => {
             plotConfig.clusterbar_fields.push($(elem).val());
         });
         plotConfig.matrixplot = $('#matrixplot').is(':checked');
-        if (plotConfig.matrixplot && !plotConfig.primary_col) {
-            window.alert("Must choose at least a primary category to aggregate means for the matrixplot.");
-            return
-        }
         plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
         plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
         plotConfig.flip_axes = $('#flip_axes').is(':checked');
@@ -1399,7 +1410,7 @@ $(document).on('click', '.js-clear', function () {
     const escapedGroup = $.escapeSelector(group);
 
     $(`#${escapedGroup}_dropdown`).val('');
-    $(`#${escapedGroup}_dropdown`).trigger('change'); // This actually triggers select2 to show the dropdown vals
+    $(`#${escapedGroup}_dropdown`).trigger('change'); // This actually triggers select2 to clear the dropdown vals
 });
 
 // Clear gene cart

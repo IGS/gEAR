@@ -1060,14 +1060,12 @@ function set_exact_match(mode, show_tooltip) {
 function set_multigene_plots(mode) {
     if (mode == 'on') {
         $('#multigene_plots_input').bootstrapToggle('on');  // Toggles gene results display things upon change
-        $("#multigene_search_icon i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip('show');
-        $("#multigene_search_icon i").addClass("fa-gears");
-        $("#multigene_search_icon i").removeClass("fa-gear");
+        $("#multigene_search_icon img").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip('show');
+        $("#multigene_search_icon img").attr('src', 'img/icons/multi-dna.svg');
     } else if (mode == 'off') {
         $('#multigene_plots_input').bootstrapToggle('off');
-        $("#multigene_search_icon i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip('show');
-        $("#multigene_search_icon i").addClass("fa-gear");
-        $("#multigene_search_icon i").removeClass("fa-gears");
+        $("#multigene_search_icon img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip('show');
+        $("#multigene_search_icon img").attr('src', 'img/icons/single-dna.svg');
     }
 }
 

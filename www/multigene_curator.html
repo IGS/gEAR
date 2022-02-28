@@ -193,14 +193,11 @@
             </div>
             <div class="form-group" id="matrixplot_container">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="" id="matrixplot">
+                <input class="form-check-input" type="checkbox" value="" id="matrixplot" checked>
                 <label class="form-check-label" for="matrixplot">
-                  Create matrixplot, which plots mean expression of genes by the chosen primary and secondary 'split by' categories.
+                  Create matrixplot, which aggregates mean expression of replicates based on the specified included groups.
                 </label>
               </div>
-              <small class="form-text text-muted">
-                NOTE: This will remove cluster colorbars from the heatmap.
-              </small>
             </div>
             <div class="form-group" id="cluster_obs_checkbox_container">
               <div class="form-check">
@@ -211,7 +208,7 @@
               </div>
               <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
               <small class="form-text text-muted">
-                NOTE: Disables splitting by primary and/or secondary categories.
+                NOTE: Disables sorting by primary and secondary categories.
               </small>
             </div>
             <div class="form-group" id="cluster_genes_checkbox_container">
@@ -543,10 +540,10 @@
     <script id="obs_primary_tmpl" type="text/x-jsrender">
       <!-- QUESTION - Should we rename this to cluster_by for heatmaps? -->
       <div class="row">
-        <label class="col-3 form-check-label">Group by primary category</label>
+        <label class="col-3 form-check-label">Sort by primary category</label>
         <label class="col-3" id="primary_order_label" style="display:none;">Adjust sort order</label>
       </div>
-      <small id="primary_help" class="form-text text-muted w-25">Determine primary category to split groups into. Optionally drag the groups to determine a specific order.</small>
+      <small id="primary_help" class="form-text text-muted w-25">Determine primary category to sort groups into. Optionally drag the groups to determine a specific order.</small>
       <div class="row">
         <div class="col-3">
         {{props}}
@@ -568,10 +565,10 @@
 
     <script id="obs_secondary_tmpl" type="text/x-jsrender">
       <div class="row">
-        <label class="col-3 form-check-label">Group by secondary category</label>
+        <label class="col-3 form-check-label">Sort by secondary category</label>
         <label class="col-3" id="secondary_order_label" style="display:none;">Adjust sort order</label>
       </div>
-      <small id="secondary_help" class="form-text text-muted w-25">Determine secondary category to split groups into. Optionally drag the groups to determine a specific order.</small>
+      <small id="secondary_help" class="form-text text-muted w-25">Determine secondary category to sort groups into. Optionally drag the groups to determine a specific order.</small>
       <div class="row">
         <div class="col-3">
         {{props}}
@@ -602,7 +599,7 @@
       <small id="clusterbar_help" class="form-text text-muted">Check the categories you wish to show a cluster colorbar for in the heatmap.</small>
       {{props}}
       <div class="form-check" aria-describedby="clusterbar_help">
-        <input class="form-check-input" type="checkbox" name="obs_clusterbar" id="{{:key}}_clusterbar" value="{{:key}}">
+        <input class="form-check-input js-clusterbar" type="checkbox" name="obs_clusterbar" id="{{:key}}_clusterbar" value="{{:key}}">
         <label class="form-check-label" for="{{:key}}_clusterbar">{{:key}}</label>
       </div>
       {{/props}}

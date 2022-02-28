@@ -66,6 +66,7 @@ DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic
 ALPHABET_COLORS = px.colors.qualitative.Alphabet
 LIGHT24_COLORS = px.colors.qualitative.Light24
 VIVID_COLORS = px.colors.qualitative.Vivid
+PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 # Fractional count to add to all values so log can be computed on non-expressed (0) values
 LOG_COUNT_ADJUSTER = 1
@@ -180,7 +181,7 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
 
 ### Heatmap fxns
 
-def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=False) -> None:
+def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
     # Heatmap is located on xaxis5 and yaxis5
@@ -204,13 +205,17 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # Get list of observations in the order they appear on the heatmap
     obs_order = fig.layout[obs_axis]["ticktext"]
 
+    # Update the text with labels based on included/excluded filters
+    if obs_labels:
+        fig.layout[obs_axis]["ticktext"] = obs_labels
+
     # Assign observations to their categorical groups and assign colors to the groups
-    col_group_markers = build_column_group_markers(filter_indexes, obs_order)
-    groups_and_colors = set_obs_groups_and_colors(filter_indexes)
+    col_group_markers = build_column_group_markers(clusterbar_indexes, obs_order)
+    groups_and_colors = set_obs_groups_and_colors(clusterbar_indexes)
 
     # Create a 2D-heatmap.  Convert the discrete groups into integers.
     # One heatmap per observation category
-    col_group_labels = []
+    col_group_traces = []
 
     # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
     obs_positions=fig.layout[obs_axis]["tickvals"]
@@ -267,12 +272,12 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
                 , xpad=100  # spaced far enough from the expression bar.  Needs to be adjusted for gene display panels.
                 , y=curr_colorbar_y   # Align with bottom of heatmap
                 , yanchor="bottom"
-                , len=1/num_colorbars
+                , len=0.9/num_colorbars
                 )
             , colorscale=colorscale
             , name="clusterbar"
         )
-        col_group_labels.append(trace)
+        col_group_traces.append(trace)
 
         # Add group label to axis tuples
         fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
@@ -287,10 +292,10 @@ def add_clustergram_cluster_bars(fig, filter_indexes, is_log10=False, flip_axes=
     # Discovered "xaxis" range won't autoupdate based on tickvals, so pop it off if it is there
     fig.layout[gene_axis].pop("range", None)
 
-    for cgl in col_group_labels:
+    for cgl in col_group_traces:
         fig.append_trace(cgl, 2, 2)
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, matrixplot=False, distance_metric="euclidean"):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -301,16 +306,16 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     # Gene symbols fail with all genes (dataset too large)
 
     df = df if flip_axes else df.transpose()
-    rows = list(df.index)
     columns = list(df.columns.values)
+    rows = list(df.index)
+    col_labels = gene_symbols if flip_axes else columns
+    row_labels = rows if flip_axes else gene_symbols
 
     values = df.loc[rows].values + LOG_COUNT_ADJUSTER
     if is_log10:
         values = df.loc[rows].values
 
     hidden_labels = None
-    #if not matrixplot:
-    #    hidden_labels = "row" if flip_axes else "col"
 
     # Configuring which axes are clustered or not.
     cluster = None
@@ -335,8 +340,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
 
     return dashbio.Clustergram(
         data=values
-        , column_labels=gene_symbols if flip_axes else columns
-        , row_labels=rows if flip_axes else gene_symbols
+        , column_labels=col_labels
+        , row_labels=row_labels
         , hidden_labels=hidden_labels
         , cluster=cluster
         , col_dist=col_dist
@@ -347,6 +352,12 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
     )
+
+def create_clustergram_observation_labels(df, fig, colname="composite_index", flip_axes=False):
+    """Create a set of labels to replace the current ticktext in the clustergram."""
+    obs_axis = "yaxis5" if flip_axes else "xaxis5"
+    obs_order = fig.layout[obs_axis]["ticktext"]    # Gets order of composite index observations
+    return df.reindex(obs_order)[colname].tolist()  # reindex based on the observation order, and return the labels
 
 ### Quadrant fxns
 
@@ -965,20 +976,22 @@ def build_column_group_markers(filter_indexes, obs_order):
     for k, v in filter_indexes.items():
         col_group_markers.setdefault(k, [0 for obs in obs_order])
         for elem in v:
-            # Filter indexes in order of clustering. Assumes every observation should be a unique name (since it was the index)
-            for obs in v[elem]:
-                column_id = obs_order.index(obs)
-                col_group_markers[k][column_id] = {'group': elem}
+            # Filter indexes in order of clustering
+            for obs in set(v[elem]):
+                for column_id, value in enumerate(obs_order):
+                    if obs == value:
+                        col_group_markers[k][column_id] = {'group': elem}
     return col_group_markers
 
 def build_obs_group_indexes(df, filters, clusterbar_fields):
     """Build dict of group indexes for filtered groups."""
     filter_indexes = {}
-    for k, v in filters.items():
-        if k not in clusterbar_fields:
-            continue
+    for k in clusterbar_fields:
         filter_indexes.setdefault(k, {})
-        for elem in v:
+        groups = df[k].unique().tolist()
+        if k in filters.keys():
+            groups = filters[k]
+        for elem in groups:
             obs_index = df.index[df[k] == elem]
             filter_indexes[k][elem] = obs_index.tolist()
     return filter_indexes
@@ -1030,7 +1043,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
     return gene_filter, success, message
 
 def create_filtered_composite_indexes(filters, composite_indexes):
-    """Create an index based on the 'comparison_composite_index' column."""
+    """Create an index based on the 'composite_index' column."""
     all_vals = [v for k, v in filters.items()]  # List of lists
 
     # itertools.product returns a combation of every value from every list
@@ -1068,6 +1081,10 @@ def intersection(lst1, lst2):
     """Intersection of two lists."""
     return list(set(lst1) & set(lst2))
 
+def union(lst1, lst2):
+    """Union of two lists."""
+    return list(set(lst1) | set(lst2))
+
 def normalize_searched_genes(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
     case_insensitive_genes = [str(g) for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
@@ -1093,7 +1110,6 @@ def set_obs_groups_and_colors(filter_indexes):
     """Create mapping of groups and colors per observation category."""
     # TODO: Use observation colors if available instead of Dark24."""
 
-    PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
     groups_and_colors = {}
     palette_cycler = cycle(PALETTE_CYCLER)
     for k, v in filter_indexes.items():
@@ -1199,7 +1215,7 @@ class MultigeneDashData(Resource):
                     pass
 
         # get a map of all levels for each column
-        columns = adata.obs.columns.tolist()
+        columns = adata.obs.select_dtypes(include="category").columns.tolist()
 
         if 'replicate' in columns:
             columns.remove('replicate')
@@ -1249,18 +1265,24 @@ class MultigeneDashData(Resource):
             if plot_type == "heatmap" and len(selected.var) == 1:
                 raise PlotError("Only one gene from the searched gene symbols was found in dataset.  The heatmap option require at least 2 genes to plot.")
 
+        # Make a composite index of all categorical types
+        selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+        selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
+        columns.append("composite_index")
+
         # Filter dataframe on the chosen observation filters
         if filters:
-            # Add new column to combine various groups into a single index
-            selected.obs['comparison_composite_index'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
-            selected.obs['comparison_composite_index'] = selected.obs['comparison_composite_index'].astype('category')
-            unique_composite_indexes = selected.obs["comparison_composite_index"].unique()
+            # Create a special composite index for the specified filters
+            selected.obs['filters_composite'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
+            selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
+            columns.append("filters_composite")
+            unique_composite_indexes = selected.obs["filters_composite"].unique()
 
             # Only want to keep indexes that match chosen filters
             # However if no filters were chosen, just use everything
             filtered_composite_indexes = create_filtered_composite_indexes(filters, unique_composite_indexes.tolist())
             if filtered_composite_indexes:
-                condition_filter = selected.obs["comparison_composite_index"].isin(filtered_composite_indexes)
+                condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
 
         var_index = selected.var.index.name
@@ -1382,30 +1404,63 @@ class MultigeneDashData(Resource):
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
             df = df[sorted_ensm]
 
-            groupby_filters = []
-            if primary_col:
-                groupby_filters.append(primary_col)
-            if secondary_col and not primary_col == secondary_col:
-                groupby_filters.append(secondary_col)
+            groupby_index = "composite_index"
+            groupby_fields = columns
+            # Create a composite to groupby
+            if filters and matrixplot:
+                union_fields = union(list(filters.keys()), clusterbar_fields)
+                selected.obs['groupby_composite'] = selected.obs[union_fields].apply(lambda x: ';'.join(map(str,x)), axis=1)
+                selected.obs['groupby_composite'] = selected.obs['groupby_composite'].astype('category')
+                columns.append("groupby_composite")
+                groupby_index = "groupby_composite"
+                union_fields.extend([groupby_index, "filters_composite"])   # Preserve filters index for downstream labeling
+                groupby_fields = union_fields
 
-            if matrixplot and groupby_filters:
-                for gb in groupby_filters:
-                    df[gb] = selected.obs[gb]
-                grouped = df.groupby(groupby_filters)
+            # Remove composite index so that the label is not duplicated.
+            for cat in columns:
+                df[cat] = selected.obs[cat]
+
+            # Groupby to remove the replicates
+            # Ensure the composite index is used as the index for plot labeling
+            if matrixplot:
+                grouped = df.groupby(groupby_fields)
                 df = grouped.agg('mean') \
-                    .dropna()
-            else:
-                if not cluster_obs and filters:
-                    sorted_df = selected.obs.sort_values(by=groupby_filters if groupby_filters else list(filters.keys()))
-                    df = df.reindex(sorted_df.index.tolist())
+                    .dropna() \
+                    .reset_index() \
+                    .set_index(groupby_index)
 
+            # Since this is the new index in the matrixplot, it does not exist as a droppable series
+            # These two statements ensure that the current columns are the same if that option is set or not
+            groupby_fields.remove(groupby_index)
+            if not matrixplot:
+                df = df.drop(columns=groupby_index)
+
+            sort_fields = []
+            if primary_col:
+                sort_fields.append(primary_col)
+            if secondary_col and not primary_col == secondary_col:
+                sort_fields.append(secondary_col)
+
+            # Sort the dataframe before plotting
+            sortby = groupby_fields
+            if sort_fields:
+                sortby = sort_fields
+
+            sorted_df = df.sort_values(by=sortby)
+            df = df.reindex(sorted_df.index.tolist())
+
+            # Drop the obs metadata now that the dataframe is sorted
+            # They cannot be in there when the clustergram is made
+            # But save it to add back in later
+            df_cols = pd.concat([df.pop(cat) for cat in groupby_fields], axis=1)
+
+            # "df" must be obs label for rows and genes for cols only
             fig = create_clustergram(df
                 , gene_symbols
                 , is_log10
                 , cluster_obs
                 , cluster_genes
                 , flip_axes
-                , matrixplot
                 , distance_metric
                 )
 
@@ -1419,18 +1474,18 @@ class MultigeneDashData(Resource):
                 fig.layout["yaxis2"]["domain"] = [1,1]
                 fig.layout["yaxis5"]["domain"] = [0,1]
 
-            if matrixplot:
-                fig.update_layout(
-                    title={
-                        "text":"Log10 Mean Gene Expression" if is_log10 else "Log2 Mean Gene Expression"
-                        ,"x":0.5
-                        ,"xref":"paper"
-                        ,"y":0.9
-                    }
-                )
-            else:
-                filter_indexes = build_obs_group_indexes(selected.obs, filters, clusterbar_fields)
-                add_clustergram_cluster_bars(fig, filter_indexes, is_log10, flip_axes)
+            # Need the obs metadata again for mapping clusterbars to indexes
+            df = pd.concat([df, df_cols], axis=1)
+
+            clusterbar_indexes = build_obs_group_indexes(df, filters, clusterbar_fields)
+
+            # Create labels based only on the included filters
+            obs_labels = None
+            if "filters_composite" in df and matrixplot:
+                print("HERE")
+                obs_labels = create_clustergram_observation_labels(df, fig, "filters_composite", flip_axes)
+
+            add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels, is_log10, flip_axes)
 
         elif plot_type == "mg_violin":
             df = selected.to_df()

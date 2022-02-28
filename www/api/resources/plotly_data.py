@@ -140,7 +140,7 @@ class PlotlyData(Resource):
                     pass
 
         # get a map of all levels for each column
-        columns = adata.obs.columns.tolist()
+        columns = adata.obs.select_dtypes(include="category").columns.tolist()
 
         if 'replicate' in columns:
             columns.remove('replicate')
