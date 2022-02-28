@@ -614,6 +614,7 @@ def get_config():
         showLink=False,
         displaylogo=False,
         responsive=False,
+        modebar = dict(orientation="v"), # Make Plotly controls flush with right of plot
         modeBarButtonsToRemove=[
             "zoom2d",
             "pan2d",

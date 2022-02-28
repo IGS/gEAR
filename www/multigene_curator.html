@@ -275,7 +275,7 @@
           <fieldset id="volcano_options_container" style="display:none;">
             <div class="form-group">
               <label class="form-check-label" for="volcano_pvalue_threshold">Adjust p-value threshold</label>
-              <input id="volcano_pvalue_threshold" class="form-control w-25" type="number" value="0.05" min="0" aria-describedby="volcano_pvalue_threshold_help">
+              <input id="volcano_pvalue_threshold" class="form-control w-25" type="number" value="0.05" min="0" step="0.01" aria-describedby="volcano_pvalue_threshold_help">
               <small id="volcano_pvalue_threshold_help" class="form-text text-muted">Choose a p-value where all data points above the line are considered significant. This value will be -log10-transformed in the plot.</small>
             </div>
             <div class="form-group">
@@ -291,7 +291,7 @@
                 </div>
               </div>
 
-              <small id="volcano_logfc_help" class="form-text text-muted">Choose bounds of log2 fold-change threshold. All data points outside of this range are considered significant.</small>
+              <small id="volcano_logfc_help" class="form-text text-muted">Choose bounds of log2 fold-change threshold. All data points outside of this range will be colored as up- or down-regulated.</small>
             </div>
             <div class="form-group">
               <label class="form-check-label" for="volcano_query_condition">Select query condition</label>

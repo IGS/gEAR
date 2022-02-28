@@ -1573,6 +1573,10 @@ class MultigeneDashData(Resource):
         fig["layout"].pop("height", None)
         fig["layout"].pop("width", None)
 
+        fig["layout"]["dragmode"] = "select"
+        # Make Plotly controls flush with right of plot
+        fig["layout"]["modebar"] = {"orientation": "v"}
+
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
         # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response occasionally
