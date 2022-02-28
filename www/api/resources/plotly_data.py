@@ -140,7 +140,6 @@ class PlotlyData(Resource):
             "plot_colors": color_map if isinstance(color_map, dict) else None,
             "plot_palette": palette,
             "reverse_palette":reverse_palette,
-            "plot_config": get_config(),
             "plot_order": None,
         }
 
