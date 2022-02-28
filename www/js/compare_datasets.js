@@ -643,12 +643,12 @@ function plot_data_to_graph(data) {
 	const layout = {
 		title: $("#dataset_id").text(),
 		xaxis: {
-		title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
-		type: "",
+			title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
+			type: "",
 		},
 		yaxis: {
-		title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
-		type: "",
+			title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
+			type: "",
 		},
 		annotations: [],
 		margin: { t: 40 },
