@@ -541,9 +541,12 @@
       <!-- QUESTION - Should we rename this to cluster_by for heatmaps? -->
       <div class="row">
         <label class="col-3 form-check-label">Sort by primary category</label>
-        <label class="col-3" id="primary_order_label" style="display:none;">Adjust sort order</label>
+        <label class="col-3 form-check-label" id="primary_order_label" style="display:none;">Adjust sort order</label>
       </div>
-      <small id="primary_help" class="form-text text-muted w-25">Determine primary category to sort groups into. Optionally drag the groups to determine a specific order.</small>
+      <div class="row">
+        <small id="primary_help" class="col-3 form-text text-muted">Determine primary category to sort groups into.</small>
+        <small id="primary_order_help" class="col-3 form-text text-muted" style="display:none;"> Optionally drag the groups to determine a specific order.</small>
+      </div>
       <div class="row">
         <div class="col-3">
         {{props}}
@@ -566,9 +569,12 @@
     <script id="obs_secondary_tmpl" type="text/x-jsrender">
       <div class="row">
         <label class="col-3 form-check-label">Sort by secondary category</label>
-        <label class="col-3" id="secondary_order_label" style="display:none;">Adjust sort order</label>
+        <label class="col-3 form-check-label" id="secondary_order_label" style="display:none;">Adjust sort order</label>
       </div>
-      <small id="secondary_help" class="form-text text-muted w-25">Determine secondary category to sort groups into. Optionally drag the groups to determine a specific order.</small>
+      <div class="row">
+        <small id="secondary_help" class="col-3 form-text text-muted">Determine secondary category to sort groups into.</small>
+        <small id="secondary_order_help" class="col-3 form-text text-muted" style="display:none;"> Optionally drag the groups to determine a specific order.</small>
+      </div>
       <div class="row">
         <div class="col-3">
         {{props}}

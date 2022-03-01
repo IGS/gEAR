@@ -1148,12 +1148,12 @@ $(document).on('change', '#gene_dropdown', () => {
     if (genesFilter.length > 1) {
         $("#cluster_obs").prop("disabled", false);
         $("#cluster_genes").prop("disabled", false);
-    } else {
-        $("#cluster_obs").prop("disabled", true);
-        $("#cluster_obs").prop("checked", false);
-        $("#cluster_genes").prop("disabled", true);
-        $("#cluster_genes").prop("checked", false);
+        return;
     }
+    $("#cluster_obs").prop("disabled", true);
+    $("#cluster_obs").prop("checked", false);
+    $("#cluster_genes").prop("disabled", true);
+    $("#cluster_genes").prop("checked", false);
 });
 
 // When a column is chosen, populate the sortable list
@@ -1161,18 +1161,26 @@ $(document).on('change', 'input[name="obs_primary"]', () => {
     const obsLevel = $('input[name="obs_primary"]:checked').val();
     if (obsLevel !== "none") {
         createObsSortable(obsLevel, "primary");
-    } else {
-        $('#primary_sortable').empty();
+        $('#primary_order_label').show();
+        $('#primary_order_help').show();
+        return;
     }
+    $('#primary_sortable').empty();
+    $('#primary_order_label').hide();
+    $('#primary_order_help').hide();
 });
 
 $(document).on('change', 'input[name="obs_secondary"]', () => {
     const obsLevel = $('input[name="obs_secondary"]:checked').val();
     if ( obsLevel !== "none") {
         createObsSortable(obsLevel, "secondary");
-    } else {
-        $('#secondary_sortable').empty();
+        $('#secondary_order_label').show();
+        $('#secondary_order_help').show();
+        return;
     }
+    $('#secondary_sortable').empty();
+    $('#secondary_order_label').hide();
+    $('#secondary_order_help').hide();
 });
 
 $(document).on('change', '.js-obs-levels', function () {
@@ -1430,8 +1438,10 @@ $(document).on('click', '#reset_opts', async function () {
 
     // Reset sorting order
     sortCategories = {"primary": null, "secondary": null};
-    $(`#primary_order_label`).hide();
-    $(`#secondary_order_label`).hide();
+    $('#primary_order_label').hide();
+    $('#primary_order_help').hide();
+    $('#secondary_order_label').hide();
+    $('#secondary_order_help').hide();
 
     // Update fields dependent on dataset observations
     createObsFilterDropdowns(obsLevels);
