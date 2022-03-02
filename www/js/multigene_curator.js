@@ -1377,6 +1377,7 @@ $(document).on('click', '#create_plot', async () => {
         }
     }
 
+
     // Render dataset plot HTML
     const plotTemplate = $.templates('#dataset_plot_tmpl');
     const plotHtml = plotTemplate.render({ dataset_id: datasetId });
@@ -1393,9 +1394,9 @@ $(document).on('click', '#create_plot', async () => {
     }
 
     // Draw the updated chart
-    $('#dataset_spinner').show();
+    $('#plot_spinner').show();
     await draw(datasetId, plotConfig);
-    $('#dataset_spinner').hide();
+    $('#plot_spinner').hide();
 
     // Show plot options and disable selected genes button (since genes are not selected anymore)
     $('#post_plot_options').show();
