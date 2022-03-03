@@ -503,32 +503,22 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
         de_selected2.X = de_selected2.X + LOG_COUNT_ADJUSTER
 
     # Use diffxpy to compute DE statistics for each comparison
+    de_test_func = de.test.t_test
     if de_test_algo == "rank":
-        de_results1 = de.test.rank_test(
-            de_selected1
-            , grouping=key
-            , gene_names=de_selected1.var["gene_symbol"]
-            , is_logged=is_log10
-        )
-        de_results2 = de.test.rank_test(
-            de_selected2
-            , grouping=key
-            , gene_names=de_selected2.var["gene_symbol"]
-            , is_logged=is_log10
-        )
-    else:
-        de_results1 = de.test.t_test(
-            de_selected1
-            , grouping=key
-            , gene_names=de_selected1.var["gene_symbol"]
-            , is_logged=is_log10
-        )
-        de_results2 = de.test.t_test(
-            de_selected2
-            , grouping=key
-            , gene_names=de_selected2.var["gene_symbol"]
-            , is_logged=is_log10
-        )
+        de_test_func = de.test.rank_test
+
+    de_results1 = de_test_func(
+        de_selected1
+        , grouping=key
+        , gene_names=de_selected1.var["gene_symbol"]
+        , is_logged=is_log10
+    )
+    de_results2 = de_test_func(
+        de_selected2
+        , grouping=key
+        , gene_names=de_selected2.var["gene_symbol"]
+        , is_logged=is_log10
+    )
 
     # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
     df1 = de_results1.summary()
@@ -925,20 +915,16 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
     # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
     # which makes the ensuing plot inaccurate
     # TODO: Figure out how to get wald test to work (and work faster)
+    de_test_func = de.test.t_test
     if de_test_algo == "rank":
-        de_results = de.test.rank_test(
-            de_selected
-            , grouping=key
-            , gene_names=de_selected.var["gene_symbol"]
-            , is_logged=is_log10
-        )
-    else:
-        de_results = de.test.t_test(
-            de_selected
-            , grouping=key
-            , gene_names=de_selected.var["gene_symbol"]
-            , is_logged=is_log10
-        )
+        de_test_func = de.test.rank_test
+
+    de_results = de_test_func(
+        de_selected
+        , grouping=key
+        , gene_names=de_selected.var["gene_symbol"]
+        , is_logged=is_log10
+    )
 
     # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
     df = de_results.summary()
@@ -998,10 +984,11 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
 
 def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
-    gene_filter = None
-    success = 1
-    message_list = []
-    if 'gene_symbol' in df.columns:
+
+    try:
+        gene_filter = None
+        success = 1
+        message_list = []
         if gene_symbols:
             # Get list of duplicated genes for the dataset
             gene_counts_df = df['gene_symbol'].value_counts().to_frame()
@@ -1037,10 +1024,10 @@ def create_dataframe_gene_mask(df, gene_symbols):
             if genes_not_present:
                 success = 2,
                 message_list.append('<li>One or more genes were not found in the dataset: {}</li>'.format(', '.join(genes_not_present)))
-    else:
+        message = "\n".join(message_list) if message_list else ""
+        return gene_filter, success, message
+    except:
         raise PlotError('Missing gene_symbol column in adata.var')
-    message = "\n".join(message_list) if message_list else ""
-    return gene_filter, success, message
 
 def create_filtered_composite_indexes(filters, composite_indexes):
     """Create an index based on the 'composite_index' column."""
@@ -1062,9 +1049,9 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
                                 session_id=session_id, user_id=analysis_owner_id)
 
-        if 'type' in analysis:
+        try:
             ana.type = analysis['type']
-        else:
+        except:
             user = geardb.get_user_from_session_id(session_id)
             ana.discover_type(current_user_id=user.id)
     else:
@@ -1509,16 +1496,14 @@ class MultigeneDashData(Resource):
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
             df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
+            violin_func = create_violin_plot
             if stacked_violin:
-                fig = create_stacked_violin_plot(df
-                    , groupby_filters
-                    , is_log10
-                    )
-            else:
-                fig = create_violin_plot(df
-                    , groupby_filters
-                    , is_log10
-                    )
+                violin_func = create_stacked_violin_plot
+
+            fig = violin_func(df
+                , groupby_filters
+                , is_log10
+                )
 
             # Add jitter-based args (to make beeswarm plot)
             if violin_add_points:
