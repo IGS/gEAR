@@ -10,7 +10,10 @@ class MGTest:
     browser: webdriver = webdriver.Chrome()
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
     genecart_to_load: str = "sadkins_savetest"
+    genecart_to_save: str = "sadkins_selenium"
+    display_to_save: str = "sadkins_selenium"
     genes: list = field(default_factory=lambda: ["Pou4f3", "Rfx7", "Sox2"])
+    condition_cat: str = "cluster"
     filter_by: list = field(default_factory=lambda: ["HC (i)", "SC (i)", "TEC"])
     timeout: int = 5
 
@@ -35,15 +38,15 @@ class MGTest:
         print("-- FILTER_BY SELECTION")
         try:
             # In this case, all groups in all observations are included.  Need to click 'close' on some groups
-            select2_cluster_filter_by_box = WebDriverWait(self.browser, timeout=self.timeout).until(lambda d: d.find_element(By.ID,'select2-cluster_dropdown-container'))
-            select2_cluster_filter_by_textarea = select2_cluster_filter_by_box.find_element(By.XPATH,"//span/textarea")
-            select2_cluster_filter_by_textarea.click()
+            select2_filter_by_box = WebDriverWait(self.browser, timeout=self.timeout).until(lambda d: d.find_element(By.ID,'select2-{}_dropdown-container'.format(self.condition_cat)))
+            select2_filter_by_textarea = select2_filter_by_box.find_element(By.XPATH,"//span/textarea")
+            select2_filter_by_textarea.click()
             for cat in self.filter_by:
-                select2_cluster_filter_by_textarea.send_keys(cat + Keys.ENTER)
-                select2_cluster_filter_by_textarea.send_keys(cat + Keys.ENTER)
-                select2_cluster_filter_by_textarea.send_keys(cat + Keys.ENTER)
-            select2_cluster_filter_by_box_elts = select2_cluster_filter_by_box.find_elements(By.TAG_NAME, "li")
-            return True if len(select2_cluster_filter_by_box_elts) else False
+                select2_filter_by_textarea.send_keys(cat + Keys.ENTER)
+                select2_filter_by_textarea.send_keys(cat + Keys.ENTER)
+                select2_filter_by_textarea.send_keys(cat + Keys.ENTER)
+            select2_filter_by_box_elts = select2_filter_by_box.find_elements(By.TAG_NAME, "li")
+            return True if len(select2_filter_by_box_elts) else False
         except:
             return False
 
