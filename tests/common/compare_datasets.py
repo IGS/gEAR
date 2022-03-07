@@ -1,7 +1,8 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.color import Color
 
 from dataclasses import dataclass, field
 @dataclass(frozen=True)
@@ -34,21 +35,124 @@ class CompareTest:
             return False
 
     def test_condition_selection(self) -> bool:
-        return False
+        print("-- TEST CONDITION SELECTION - VALID SELECTIONS")
+        try:
+            condition_x_tab = self.browser.find_element(By.ID, "condition_x_tab")
+            condition_y_tab = self.browser.find_element(By.ID, "condition_y_tab")
+            condition_collapse = self.browser.find_element(By.ID, "{}_collaps".format(self.condition_cat))
+            # Select condition x's group
+            condition_x_tab.click()
+            condition_collapse.click()
+            x_cond_checkbox = self.browser.find_element(By.CSS_SELECTOR, 'data-group="{};-;{}"'.format(self.condition_cat, self.x_group))
+            x_cond_checkbox.click()
+
+            # Select condition y's group
+            condition_y_tab.click()
+            condition_collapse.click()
+            y_cond_checkbox = self.browser.find_element(By.CSS_SELECTOR, 'data-group="{};-;{}"'.format(self.condition_cat, self.y_group))
+            y_cond_checkbox.click()
+
+            # Click back to x-tab to see if condition is still enabled
+            condition_x_tab.click()
+            if not x_cond_checkbox.is_selected():
+                print("ERROR: X condition was not selected after clicking back")
+                return False
+
+            # Repeat for y-tab
+            condition_y_tab.click()
+            if not y_cond_checkbox.is_selected():
+                print("ERROR: Y condition was not selected after clicking back")
+                return False
+
+            return True
+        except:
+            return False
 
     def test_condition_selection_same_conditions(self) -> bool:
         # Should throw error if both X and Y conditions are the same
-        return False
+        print("-- TEST CONDITION SELECTION - EQUAL SELECTIONS")
+        try:
+            condition_x_tab = self.browser.find_element(By.ID, "condition_x_tab")
+            condition_y_tab = self.browser.find_element(By.ID, "condition_y_tab")
+            condition_collapse = self.browser.find_element(By.ID, "{}_collaps".format(self.condition_cat))
+            # Select condition x's group
+            condition_x_tab.click()
+            condition_collapse.click()
+            x_cond_checkbox = self.browser.find_element(By.CSS_SELECTOR, 'data-group="{};-;{}"'.format(self.condition_cat, self.x_group))
+            x_cond_checkbox.click()
+
+            # Select condition y's group
+            condition_y_tab.click()
+            condition_collapse.click()
+            y_cond_checkbox = self.browser.find_element(By.CSS_SELECTOR, 'data-group="{};-;{}"'.format(self.condition_cat, self.x_group))
+            y_cond_checkbox.click()
+
+            # plot should fail
+            if not self.test_plot_creation():
+                error_container = self.browser.find_element(By.ID, "error_loading_c")
+                return True if error_container else False
+            return False
+        except:
+            return False
 
     def test_condition_label_adjustment(self) -> bool:
         # Should reflect in the plot's axes
+        print("-- VERIFY CONDITION LABELS SHOW ON AXES")
+        x_label = self.browser.find_element(By.ID, "x_label").getText()
+        y_label = self.browser.find_element(By.ID, "y_label").getText()
+
+        if not self.test_plot_creation():
+            return False
+
+        # Assumes the plot axes titles are the first/only elements with this class
+        xtitle = self.browser.find_element(By.CLASS_NAME, "xtitle").getText()
+        ytitle = self.browser.find_element(By.CLASS_NAME, "ytitle").getText()
+
+        if xtitle == x_label and ytitle == y_label:
+            return True
         return False
 
     def test_significance_test_colorize(self) -> bool:
-        return False
+        # Perform a colorize significance test
+        print("-- SIGNIFICANCE TEST - COLORIZE MODE")
+        try:
+            sig_select = Select(self.browser.find_element(By.ID, "statistical_test"))
+            sig_select.select_by_value('t-test')
+            if not self.test_plot_creation():
+                return False
+            points = self.browser.find_elements(By.CLASS_NAME, "points")
+            # Looking for at least one red-colored point
+            RED = Color.from_string('red')
+            for p in points:
+                if p.value_of_css_property("fill") == RED:
+                    return True
+            return False
+        except:
+            return False
 
     def test_significance_test_filter(self) -> bool:
-        return False
+        # Perform a colorize significance test
+        print("-- SIGNIFICANCE TEST - FILTER MODE")
+        try:
+            sig_select = Select(self.browser.find_element(By.ID, "statistical_test"))
+            sig_select.select_by_value('t-test')
+            if not self.test_plot_creation():
+                return False
+            points = self.browser.find_elements(By.CLASS_NAME, "points")
+            num_colorized_points = len(points)
+
+            # click filter button
+            filter_radio = self.browser.find_element(By.ID, "stat_action_filter")
+            filter_radio.click()
+            if not self.test_plot_creation():
+                return False
+            points = self.browser.find_elements(By.CLASS_NAME, "points")
+            num_filtered_points = len(points)
+
+            # Colored points should be filtered out so the counts should differ
+            return True if not num_colorized_points == num_filtered_points else False
+        except:
+            return False
 
     def test_found_gene_highlighting(self) -> bool:
         print("-- GENE HIGHLIGHTING - FOUND GENES")
