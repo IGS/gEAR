@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class CompareNeedleTest(NeedleTestCase):
     baseline_directory: str = "visual_regression_screenshots"
+    cleanup_on_success = True
 
     @classmethod
     def get_web_driver(cls):
