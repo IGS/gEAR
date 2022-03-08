@@ -1218,7 +1218,6 @@ class FolderCollection:
                WHERE id in ({0})
         """.format(",".join(cleaned))
         
-        print("DEBUG: QRY is:\n{0}".format(qry), file=sys.stderr)
         cursor.execute(qry)
 
         for row in cursor:
