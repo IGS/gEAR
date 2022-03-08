@@ -25,6 +25,10 @@ Returns {'user_layouts': [
          'shared_layouts': [
                         {'id': 1212, 'label': 'Layout 7', ... }
                        ],
+         # key: id, value = folder name
+         'folder_names': {},
+         # key: id, value = parent_folder_id
+         'folder_parents': {}
 }
 """
 
@@ -51,23 +55,24 @@ def main():
 
     result = { 'user_layouts': [],
                'domain_layouts': [],
-               'group_layouts':[],
-               'shared_layouts':[],
+               'group_layouts': [],
+               'shared_layouts': [],
+               'folder_names': [],
+               'folder_parents': [],
                'selected': None }
 
     if not no_domain:
-        result['domain_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_domains())
+        result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
     if user:
-        result['user_layouts'] = filter_any_previous(layout_ids_found,
-                                                     geardb.LayoutCollection().get_by_user(user))
-        result['group_layouts'] = filter_any_previous(layout_ids_found,
-                                                      geardb.LayoutCollection().get_by_users_groups(user))
+        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
+        result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
 
     if layout_share_id:
-        result['shared_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_by_share_id(layout_share_id))
+        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+
+    result['folder_names'] = index_folder_names(result)
+    result['folder_parents'] = index_folder_parents(result)
 
     ## Selected priority:
     ## - A passed share ID
@@ -94,11 +99,54 @@ def main():
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
 
-
-def filter_any_previous(ids, new_layouts):
-    new_layouts.sort(key=lambda l: l.label.upper())
-    return new_layouts
+def index_folder_parents(result):
+    idx = dict()
     
+    for ltype in ['user', 'domain', 'group', 'shared']:
+        for l in result[ltype + '_layouts']:
+
+            if l.folder_id in result['folder_parents']:
+                # handle it
+                pass
+            else:
+                result['folder_parents']
+                
+                
+            
+            if l.folder_id:
+                folder_ids.add(l.folder_id)
+
+            if l.folder_parent_id:
+                folder_ids.append(l.folder_parent_id)
+
+    folder_idx = geardb.FolderCollection()
+    folder_idx.get_by_folder_ids(ids=folder_ids)
+    return folder_idx
+
+def index_folder_names(result):
+    folder_ids = set()
+    
+    for ltype in ['user', 'domain', 'group', 'shared']:
+        for l in result[ltype + '_layouts']:
+            
+            # Don't return any of the None values
+            if l.folder_id:
+                folder_ids.add(l.folder_id)
+
+            if l.folder_parent_id:
+                folder_ids.append(l.folder_parent_id)
+
+    folder_idx = geardb.FolderCollection()
+    folder_idx.get_by_folder_ids(ids=folder_ids)
+    return folder_idx
+    
+def filter_any_previous(ids, new_layouts):
+    """
+    No longer used, but saving in case we want to re-incorporate.
+
+    This filters the layouts passed to it so that only those not already found
+    are kept.
+    """
     layouts = []
 
     for layout in new_layouts:

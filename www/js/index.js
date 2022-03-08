@@ -409,6 +409,9 @@ function load_layouts() {
         data: { 'session_id': session_id, 'layout_share_id': layout_share_id },
         dataType: 'json',
         success(data, textStatus, jqXHR) {
+            console.log("data returned");
+            console.log(data);
+            
             /*
               Priority of displayed profile:
                 0.  Passed layout ID via layout_id URL parameter
@@ -447,11 +450,13 @@ function load_layouts() {
             profile_tree.userProfiles = layouts.user;
             profile_tree.groupProfiles = layouts.group;
             profile_tree.sharedProfiles = layouts.shared;
+            profile_tree.folderNames = data['folder_names'];
             profile_tree.generateTree();
             selected_profile_tree.domainProfiles = layouts.domain;
             selected_profile_tree.userProfiles = layouts.user;
             selected_profile_tree.groupProfiles = layouts.group;
             selected_profile_tree.sharedProfiles = layouts.shared;
+            selected_profile_tree.folderNames = data['folder_names'];
             selected_profile_tree.generateTree();
 
             // pass through again and look for one set by a cookie
@@ -499,6 +504,7 @@ function load_layouts() {
             d.resolve();
         },
         error(jqXHR, _textStatus, errorThrown) {
+            console.log("Error stack called");
             profile_tree.generateTree();
             selected_profile_tree.generateTree();
             display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');

@@ -1181,6 +1181,53 @@ class LayoutCollection:
         cursor.close()
         conn.close()
         return self.layouts
+
+@dataclass
+class Folder:
+    id: int = None
+    parent_id: int = None
+    label: str = None
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        return self.__dict__
+
+@dataclass
+class FolderCollection:
+    folders: List[Folder] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def get_by_folder_ids(self, ids=None):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        ## Sanitize the IDs
+        cleaned = [ str(x) for x in ids if isinstance(x, int) ]
+
+        qry = """
+              SELECT id, parent_id, label
+                FROM folder
+               WHERE id in ({0})
+        """.format(",".join(cleaned))
+        
+        print("DEBUG: QRY is:\n{0}".format(qry), file=sys.stderr)
+        cursor.execute(qry)
+
+        for row in cursor:
+            folder = Folder(row)
+            self.folders.append(folder)
+        
+        cursor.close()
+        conn.close()
+        return self.folders
     
 @dataclass
 class DatasetLink:
