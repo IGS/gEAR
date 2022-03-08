@@ -25,6 +25,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.select import Select
 
 import common.compare_datasets as compare
+import common.visual_regression as vr
 
 
 def main():
@@ -68,6 +69,11 @@ def main():
         else:
             results.append({"success": 0, "label": "Plot successfully made"})
 
+        needle_test = vr.CompareNeedleTest()
+        if needle_test.test.test_plot_visual_regression("compare_datasets_normal_plot"):
+            results.append({"success": 1, "label": "Plot visual regression test successful"})
+        else:
+            results.append({"success": 1, "label": "Plot visual regression test successful"})
     finally:
         compare_test.browser.quit()
         return results

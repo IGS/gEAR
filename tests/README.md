@@ -20,6 +20,17 @@ None yet listed
 
 We use Selenium for this and these steps can take a while. Automated UI testing isn't necessarily quick, and there are a lot of pages/features to check.
 
+## Visual regression testing
+
+These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.). Currently a python package called Needle is being used to handle these tests, but it is not the most up-to-date.  However it is compatible with Selenium, which is the main reason it is used.
+
+To save a screenshot from Chrome:
+
+1. Right-click page -> Inspect
+2. Find div/element/HTML subset that contains the image you want to save
+3. Right-click element -> Capture Node Screenshot.
+4. The PNG image should download to a specified default location.  You can then rename it and move it to the "visual_regression_screenshots" directory for future use.
+
 ### Completed UI tests
 
 #### Account creation
