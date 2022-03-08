@@ -92,14 +92,6 @@ class MGTest:
         except:
             return False
 
-    def test_plot_load_after_dataset_selection(self) -> bool:
-        print("-- PLOT LOADING AFTER SELECTION OF DATASET")
-        try:
-            plot_container = WebDriverWait(self.browser, timeout=self.timeout).until(lambda d: d.find_element(By.CLASS_NAME,'plotly-container'))
-            return True if plot_container else False
-        except:
-            return False
-
     def test_plot_type_selection(self) -> bool:
         print("-- PLOT TYPE SELECTION")
         select_id = "plot_type_select"

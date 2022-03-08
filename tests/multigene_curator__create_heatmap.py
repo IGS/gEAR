@@ -53,12 +53,6 @@ def main():
 
         time.sleep(mg_test.timeout)
 
-        if mg_test.test_plot_load_after_dataset_selection():
-            results.append({"success": 1, "label": "Default plot loaded after dataset selection"})
-        else:
-            results.append({"success": 0, "label": "Default plot loaded after dataset selection"})
-
-
         # Choose some genes
         if mg_test.test_gene_entry():
             results.append({"success": 1, "label": "Genes typed in manually"})

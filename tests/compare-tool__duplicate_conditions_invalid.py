@@ -4,12 +4,11 @@
 
 This testing script performs the following actions:
 
-1. Open multigene curator page
+1. Open compare datasets page
 2. Logs user in (if necessary)
 3. Select a dataset
-4. Choose plot type
-5. Choose some genes
-6. Select some options
+4. Choose X and Y conditions
+6. Select no options
 7. Verify plot was generated
 - NOTE: Does not currently verify accuracy of generated plot
 
@@ -25,7 +24,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.select import Select
 
-import common.multigene_curator as mg
+import common.compare_datasets as compare
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -37,48 +37,34 @@ def main():
     if args.localhost:
         url = "http://localhost:8080/"
 
-    url += "multigene_curator.html"
+    url += "compare_datasets.html"
 
     results = []
 
     browser = webdriver.Chrome()
-    mg_test = mg.MGTest("Quadrant", browser)
+    compare_test = compare.CompareTest(browser)
 
     try:
-        mg_test.browser.get(url)
+        compare_test.browser.get(url)
 
         # Check if logged in, and do so
         # Dataset selection
-        if mg_test.test_dataset_selection():
+        if compare_test.test_dataset_selection():
             results.append({"success": 1, "label": "Dataset selected from tree"})
         else:
             results.append({"success": 0, "label": "Dataset selected from tree"})
 
-        time.sleep(mg_test.timeout)
+        time.sleep(compare_test.timeout)
 
-        # Choose some genes
-        if mg_test.test_gene_entry():
-            results.append({"success": 1, "label": "Genes typed in manually"})
+        # This also attempts to create a plot
+        if compare_test.test_condition_selection_same_conditions():
+            results.append({"success": 1, "label": "Error from same X and Y conditions thrown"})
         else:
-            results.append({"success": 0, "label": "Genes typed in manually"})
+            results.append({"success": 0, "label": "Error from same X and Y conditions thrown"})
 
-
-        # Select plot type
-        if mg_test.test_plot_type_selection():
-            results.append({"success": 1, "label": "Plot type selected from select2 dropdown"})
-        else:
-            results.append({"success": 0, "label": "Plot type selected from select2 dropdown"})
-
-        # Choose some options
-
-        # Create Plot
-        if mg_test.test_plot_creation():
-            results.append({"success": 1, "label": "Quadrant successfully made"})
-        else:
-            results.append({"success": 0, "label": "Quadrant successfully made"})
 
     finally:
-        mg_test.browser.quit()
+        compare_test.browser.quit()
         return results
 
 if __name__ == "__main__":
