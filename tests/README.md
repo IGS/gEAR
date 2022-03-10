@@ -22,7 +22,7 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 
 ## Visual regression testing
 
-These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.). Currently a python package called Needle is being used to handle these tests, but it is not the most up-to-date.  However it is compatible with Selenium, which is the main reason it is used.
+These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.).
 
 To save a screenshot from Chrome:
 

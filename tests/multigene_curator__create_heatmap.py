@@ -17,12 +17,7 @@ This testing script performs the following actions:
 
 import argparse, sys, time
 
-from selenium import webdriver
-
-from selenium.webdriver.common.by import By
-
 import common.multigene_curator as mg
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -38,8 +33,7 @@ def main():
 
     results = []
 
-    browser = webdriver.Chrome()
-    mg_test = mg.MGTest("Heatmap", browser)
+    mg_test = mg.MGTest("Heatmap")
 
     try:
         mg_test.browser.get(url)

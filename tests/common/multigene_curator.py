@@ -3,11 +3,17 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
+#from needle.cases import NeedleTestCase
+#from needle.driver import NeedleChrome
+
 from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class MGTest:
     plot_type: str
     browser: webdriver = webdriver.Chrome()
+    baseline_directory: str = "visual_regression_screenshots"
+    cleanup_on_success = True
+
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
     genecart_to_load: str = "sadkins_savetest"
     genecart_to_save: str = "sadkins_selenium"
@@ -16,6 +22,10 @@ class MGTest:
     condition_cat: str = "cluster"
     filter_by: list = field(default_factory=lambda: ["HC (i)", "SC (i)", "TEC"])
     timeout: int = 5
+
+    #@classmethod
+    #def get_web_driver(cls):
+    #    return NeedleChrome()
 
     def test_dataset_selection(self) -> bool:
         print("-- DATASET SELECTION")

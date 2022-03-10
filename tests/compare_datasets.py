@@ -1,10 +1,14 @@
+"""
+To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name.
+
+To run as localhost (to test on Docker images), pass in --data=localhost as a option after the script name.
+"""
+
 from seleniumbase import BaseCase
 
 from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class ComparePage:
-    baseline_directory: str = "visual_regression_screenshots"
-
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
     genecart_to_save: str = "sadkins_selenium"
     genes: list = field(default_factory=lambda: ["Pou4f3", "Rfx7", "Sox2"])
@@ -150,26 +154,20 @@ class ComparePage:
         except:
             return False
 
-    def test_plot_visual_regression(self, plot_img) -> bool:"""
     """
-    Test that a screenshot of a plot element is the same as the screenshot on disk
 
-    :param plot_img:
-        Basename of plot image saved on disk, minus the ".png" part which will be added
-    """
-    """ print("-- PLOT VISUAL REGRESSION")
-        try:
-            self.compareScreenshot("plotly", plot_img)
-            return True
-        except AssertionError as ae:
-            print(str(ae))
-            return False
-        except IOError as ie:
-            print(str(ie))
-            return False
-        except Exception:
-            return False
-    """
+    def plot_visual_regression(self, sb, img_name, level=3):
+        """
+        Test that a screenshot of a plot element is the same as the screenshot on disk
+
+        :param img_name:
+            Unique name parameter to establish or compare a baseline to
+
+        Read https://seleniumbase.io/examples/visual_testing/ReadMe/ for more infomation about
+        other processes that happen when this is called.
+        """
+        sb.check_window(name=img_name, level=level)
+
 
 class CompareTests(BaseCase):
 
@@ -180,6 +178,7 @@ class CompareTests(BaseCase):
         cp.select_dataset(self)
         cp.select_conditions(self)
         cp.plot_creation(self)
+        cp.plot_visual_regression(self, "normal_plot", 2)   # id values in plot get randomized, so stick with level 2
 
     def test_invalid_plot_duplicate_conditions(self):
         """Tests that a basic plot fails if X- and Y- conditions are the same."""
