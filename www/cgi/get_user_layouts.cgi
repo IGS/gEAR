@@ -48,7 +48,7 @@ def main():
     layout_share_id = form.getvalue('layout_share_id')
     user = geardb.get_user_from_session_id(session_id)
 
-    layout_ids_found = set()
+    folder_ids_found = set()
     
     if no_domain:
         no_domain = int(no_domain)
@@ -57,8 +57,7 @@ def main():
                'domain_layouts': [],
                'group_layouts': [],
                'shared_layouts': [],
-               'folder_names': [],
-               'folder_parents': [],
+               'folders': [],
                'selected': None }
 
     if not no_domain:
@@ -71,15 +70,15 @@ def main():
     if layout_share_id:
         result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
 
-    result['folder_names'] = index_folder_names(result)
-    result['folder_parents'] = index_folder_parents(result)
-
-    ## Selected priority:
+    ## Selected priority (and indexes folder IDs):
     ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
     for ltype in ['user', 'domain', 'group', 'shared']:
         for l in result[ltype + '_layouts']:
+            if l.folder_id:
+                folder_ids_found.add(l.folder_id)
+            
             if l.share_id == layout_share_id:
                 result['selected'] = l.id
                 break
@@ -96,67 +95,11 @@ def main():
                 result['selected'] = l.id
                 break
 
+    result['folders'] = geardb.FolderCollection()
+    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=founder_ids_found)
+
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
-
-def index_folder_parents(result):
-    idx = dict()
-    
-    for ltype in ['user', 'domain', 'group', 'shared']:
-        for l in result[ltype + '_layouts']:
-
-            if l.folder_id in result['folder_parents']:
-                # handle it
-                pass
-            else:
-                result['folder_parents']
-                
-                
-            
-            if l.folder_id:
-                folder_ids.add(l.folder_id)
-
-            if l.folder_parent_id:
-                folder_ids.append(l.folder_parent_id)
-
-    folder_idx = geardb.FolderCollection()
-    folder_idx.get_by_folder_ids(ids=folder_ids)
-    return folder_idx
-
-def index_folder_names(result):
-    folder_ids = set()
-    
-    for ltype in ['user', 'domain', 'group', 'shared']:
-        for l in result[ltype + '_layouts']:
-            
-            # Don't return any of the None values
-            if l.folder_id:
-                folder_ids.add(l.folder_id)
-
-            if l.folder_parent_id:
-                folder_ids.append(l.folder_parent_id)
-
-    folder_idx = geardb.FolderCollection()
-    folder_idx.get_by_folder_ids(ids=folder_ids)
-    return folder_idx
-    
-def filter_any_previous(ids, new_layouts):
-    """
-    No longer used, but saving in case we want to re-incorporate.
-
-    This filters the layouts passed to it so that only those not already found
-    are kept.
-    """
-    layouts = []
-
-    for layout in new_layouts:
-        if layout.id not in ids:
-            layouts.append(layout)
-            ids.add(layout.id)
-
-    layouts.sort(key=lambda l: l.label.upper())
-            
-    return layouts
 
 if __name__ == '__main__':
     main()

@@ -1055,6 +1055,7 @@ class LayoutCollection:
     def get_by_share_id(self, share_id=None):
         """
         Gets the layout from the passed share_id, if any.
+        TODO: f.parent_id, f.label can be removed from all these get_by* methods
         """
         if not share_id:
             return self.layouts
@@ -1206,8 +1207,13 @@ class FolderCollection:
         return self.__dict__
 
     def get_by_folder_ids(self, ids=None):
+        """
+        Populates the self.folders attribute with the passed list of 
+        folder IDs. Resets self.folders on each execution.
+        """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
+        self.folders = list()
 
         ## Sanitize the IDs
         cleaned = [ str(x) for x in ids if isinstance(x, int) ]
@@ -1227,6 +1233,49 @@ class FolderCollection:
         cursor.close()
         conn.close()
         return self.folders
+
+    def get_tree_by_folder_ids(self, ids=None):
+        """
+        Similar to get_by_folder_ids() but this gets the entire tree for any folder IDs
+        past. Higher query cost than just running get_by_folder_ids().  
+
+        This looked like a good solution to handle within the database directly but couldn't
+        get it to work across MySQL/MariaDB and versions.  Too delicate:
+
+        https://stackoverflow.com/a/60019201/1368079
+        """
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+        self.folders = list()
+
+        all_ids = list()
+        new_ids_found = ids
+
+        while len(new_ids_found) > 0:
+            cleaned = [ str(x) for x in new_ids_found if isinstance(x, int) ]
+            
+            qry = """
+                  SELECT id, parent_id, label
+                    FROM folder
+                   WHERE id in ({0})
+            """.format(",".join(cleaned))
+
+            cursor.execute(qry)
+            new_ids_found = list()
+
+            for row in cursor:
+                folder = Folder(row)
+
+                all_ids.append(folder.id)
+                self.folders.append(folder)
+
+                if folder.parent_id not in all_ids:
+                    new_ids_found.append(folder.parent_id)
+
+        cursor.close()
+        conn.close()
+        return self.folders
+    
     
 @dataclass
 class DatasetLink:
