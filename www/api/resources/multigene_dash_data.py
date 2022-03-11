@@ -984,6 +984,8 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
 
 def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
+    if not "gene_symbol" in df:
+        raise PlotError('Missing gene_symbol column in adata.var')
 
     try:
         gene_filter = None
@@ -1026,8 +1028,9 @@ def create_dataframe_gene_mask(df, gene_symbols):
                 message_list.append('<li>One or more genes were not found in the dataset: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list) if message_list else ""
         return gene_filter, success, message
-    except:
-        raise PlotError('Missing gene_symbol column in adata.var')
+    except Exception as e:
+        # Catch non-PlotError stuff
+        raise PlotError("There was an issue searching genes in this dataset.")
 
 def create_filtered_composite_indexes(filters, composite_indexes):
     """Create an index based on the 'composite_index' column."""
