@@ -1028,6 +1028,8 @@ def create_dataframe_gene_mask(df, gene_symbols):
                 message_list.append('<li>One or more genes were not found in the dataset: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list) if message_list else ""
         return gene_filter, success, message
+    except PlotError as pe:
+        raise PlotError(str(pe))
     except Exception as e:
         # Catch non-PlotError stuff
         raise PlotError("There was an issue searching genes in this dataset.")
