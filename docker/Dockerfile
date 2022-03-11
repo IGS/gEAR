@@ -25,7 +25,8 @@ RUN apt-get -qq update \
   libhdf5-dev \
   libreadline-gplv2-dev \
   libncursesw5-dev \
-  libssl-dev python3-tk \
+  libssl-dev \
+  python3-tk \
   tk-dev \
   libgdbm-dev \
   libc6-dev \
@@ -53,6 +54,13 @@ RUN apt-get -qq update \
   apache2 \
   php \
   libapache2-mod-php \
+  # For R install
+	#gfortran \
+	#libcurl4-openssl-dev \
+	#liblzma-dev \
+	#libpcre3 \
+	#libpcre3-dev \
+  r-base \
   # Cleanup
   && apt-get -qq clean autoclean \
   && apt-get -qq autoremove -y \
@@ -96,16 +104,21 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 
 # Upgrade pip and install requirements from file
 # This set of modules will be used by the main Python install and scripts that call it (like CGI ones)
+# numpy is installed before requirements.txt because of dependency requirement issues
 # NOTE: Installing custom version of diffxpy that I forked and fixed a function to work
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.9.so.1.0 /usr/lib/ \
-  && ./pip3 install --upgrade pip \
+  && ./pip3 install --upgrade pip numpy==1.19.3 \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021 \
+  && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@0464d2ab1faa0947d90e29f93018ec678e050585 \
   && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
+
+# ProjectR install
+COPY ./install_bioc.sh /tmp/.
+RUN /tmp/install_bioc.sh
 
 # Apache things
 WORKDIR /opt/gEAR
