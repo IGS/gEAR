@@ -333,7 +333,7 @@ class PlotlyData(Resource):
             return return_dict
         except Exception as e:
             return_dict["success"] = -1
-            return_dict["message"] = "ERROR: {}. Please contact the gEAR team if you need help resolving this".format(str(pe))
+            return_dict["message"] = "ERROR: {}. Please contact the gEAR team if you need help resolving this".format(str(e))
             return return_dict
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
