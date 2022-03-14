@@ -510,7 +510,7 @@ async function populate_dataset_selection_controls() {
 		}
 		},
 		error(xhr, status, msg) {
-		report_error(`Failed to load dataset list because msg: ${msg}`);
+			report_error(`Failed to load dataset list because msg: ${msg}`);
 		},
 	});
 	$('#pre_dataset_spinner').hide();
