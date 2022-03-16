@@ -23,10 +23,10 @@ RUN apt-get -qq update \
   libsqlite-dev \
   libsqlite3-dev \
   libhdf5-dev \
-  libreadline-gplv2-dev \
+  libreadline-dev \
+  #libreadline-gplv2-dev \
   libncursesw5-dev \
   libssl-dev \
-  python3-tk \
   tk-dev \
   libgdbm-dev \
   libc6-dev \
@@ -47,6 +47,8 @@ RUN apt-get -qq update \
   build-essential \
   gcc \
   python3-dev \
+  # rpy2 for projectR
+  python3-tk \
   openssh-server \
   llvm-9* \
   # Apache2 and PHP
@@ -55,12 +57,8 @@ RUN apt-get -qq update \
   php \
   libapache2-mod-php \
   # For R install
-	#gfortran \
-	#libcurl4-openssl-dev \
-	#liblzma-dev \
-	#libpcre3 \
-	#libpcre3-dev \
   r-base \
+  r-base-dev \
   # Cleanup
   && apt-get -qq clean autoclean \
   && apt-get -qq autoremove -y \
@@ -117,7 +115,7 @@ RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.9.so.1.0 /usr/lib/ \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Scikit-learn lib -> https://stackoverflow.com/a/70016416
-ENV LD_PRELOAD=" /opt/Python-3.9.9/lib/python3.9/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
+ENV LD_PRELOAD="/usr/lib/R/lib/libR.so:/opt/Python-3.9.9/lib/python3.9/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
 
 # ProjectR install
 COPY ./install_bioc.sh /tmp/.
