@@ -109,12 +109,15 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.9.so.1.0 /usr/lib/ \
-  && ./pip3 install --upgrade pip numpy==1.19.3 \
+  && ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
   && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@0464d2ab1faa0947d90e29f93018ec678e050585 \
   && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
+
+# Scikit-learn lib -> https://stackoverflow.com/a/70016416
+ENV LD_PRELOAD=" /opt/Python-3.9.9/lib/python3.9/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
 
 # ProjectR install
 COPY ./install_bioc.sh /tmp/.
