@@ -189,7 +189,7 @@ class PlotlyData(Resource):
             gene_filter = adata.var.gene_symbol.isin(gene_symbols)
             if not gene_filter.any():
                 return_dict["success"] = -1
-                return_dict["message"] = 'Gene not found'
+                return_dict["message"] = 'Gene not found in dataset'
                 return return_dict
         else:
             return_dict["success"] = -1
