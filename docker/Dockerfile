@@ -24,7 +24,6 @@ RUN apt-get -qq update \
   libsqlite3-dev \
   libhdf5-dev \
   libreadline-dev \
-  #libreadline-gplv2-dev \
   libncursesw5-dev \
   libssl-dev \
   tk-dev \
@@ -47,18 +46,23 @@ RUN apt-get -qq update \
   build-essential \
   gcc \
   python3-dev \
-  # rpy2 for projectR
   python3-tk \
   openssh-server \
   llvm-9* \
+  # Required for R
+	gfortran \
+  libbz2-dev \
+	libcurl4-openssl-dev \
+	liblzma-dev \
+	libpcre3 \
+	libpcre3-dev \
+  # Required for rpy2
+  libgomp1 \
   # Apache2 and PHP
   apache2-dev \
   apache2 \
   php \
   libapache2-mod-php \
-  # For R install
-  r-base \
-  r-base-dev \
   # Cleanup
   && apt-get -qq clean autoclean \
   && apt-get -qq autoremove -y \
@@ -78,6 +82,10 @@ RUN wget $CMAKE_URL \
   && ./bootstrap \
   && make install \
   && rm -rf v${CMAKE_VERSION}* CMake-${CMAKE_VERSION}*
+
+# ProjectR install.  Must be done before rpy2 is installed
+COPY ./install_bioc.sh /tmp/.
+RUN /tmp/install_bioc.sh
 
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
@@ -115,11 +123,8 @@ RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.9.so.1.0 /usr/lib/ \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Scikit-learn lib -> https://stackoverflow.com/a/70016416
-ENV LD_PRELOAD="/usr/lib/R/lib/libR.so:/opt/Python-3.9.9/lib/python3.9/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
-
-# ProjectR install
-COPY ./install_bioc.sh /tmp/.
-RUN /tmp/install_bioc.sh
+ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libgomp.so.1:/opt/Python-3.9.9/lib/python3.9/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
 
 # Apache things
 WORKDIR /opt/gEAR
