@@ -1185,14 +1185,16 @@ $(document).on('change', 'input[name="obs_secondary"]', () => {
 
 // Determine if condition has no groups so the sort container will be disabled or not.
 $(document).on('change', '.js-obs-levels', function () {
-    const id = this.id;
-    const escapedId = $.escapeSelector(id);
+    const id = this.id; // This is not escaped
     const group = id.replace('_dropdown', '');
     const escapedGroup = $.escapeSelector(group);
-    const propData = $(`#${escapedId}`).select2('data');
+    const propData = $(`#${escapedGroup}_dropdown`).select2('data');
     const props = propData.map((elem) => elem.id);
     $(`#${escapedGroup}_primary`).prop("disabled", false);
     $(`#${escapedGroup}_secondary`).prop("disabled", false);
+    // Update sortables with current filters list
+    createObsSortable(group, "primary");
+    createObsSortable(group, "secondary");
     // Disable sorting until it is known that filters have length
     if (!props.length) {
         $(`#${escapedGroup}_primary`).prop("disabled", true);
