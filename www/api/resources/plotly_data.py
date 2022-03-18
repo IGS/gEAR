@@ -1,11 +1,7 @@
 from flask import request
 from flask_restful import Resource
 import pandas as pd
-import scanpy as sc
-import json
-import os
-import re
-import copy
+import copy, json, os, re
 import geardb
 import numbers
 from gear.plotting import generate_plot, get_config, plotly_color_map, PlotError
