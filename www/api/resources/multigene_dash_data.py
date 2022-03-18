@@ -184,6 +184,12 @@ class MultigeneDashData(Resource):
         if 'replicate' in columns:
             columns.remove('replicate')
 
+        if not columns:
+            return {
+                "success": -1,
+                "message": "There are no categorical-datatype conditions found in this dataset."
+            }
+
         # Ensure datasets are not doubly log-transformed
         is_log10 = False
         if dataset_id in LOG10_TRANSFORMED_DATASETS:
@@ -446,7 +452,6 @@ class MultigeneDashData(Resource):
             # Create labels based only on the included filters
             obs_labels = None
             if "filters_composite" in df and matrixplot:
-                print("HERE")
                 obs_labels = mg.create_clustergram_observation_labels(df, fig, "filters_composite", flip_axes)
 
             mg.add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels, is_log10, flip_axes)
