@@ -1193,8 +1193,13 @@ $(document).on('change', '.js-obs-levels', function () {
     $(`#${escapedGroup}_primary`).prop("disabled", false);
     $(`#${escapedGroup}_secondary`).prop("disabled", false);
     // Update sortables with current filters list
-    createObsSortable(group, "primary");
-    createObsSortable(group, "secondary");
+    if ($(`#${escapedGroup}_primary`).is(":checked")) {
+        createObsSortable(group, "primary");
+
+    }
+    if ($(`#${escapedGroup}_secondary`).is(":checked")) {
+        createObsSortable(group, "secondary");
+    }
     // Disable sorting until it is known that filters have length
     if (!props.length) {
         $(`#${escapedGroup}_primary`).prop("disabled", true);
