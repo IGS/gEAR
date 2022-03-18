@@ -1,4 +1,4 @@
-var SELECTED_PATTERN_LABEL = null;
+let SELECTED_PATTERN_LABEL = null;
 
 window.onload=function() {
     // check if the user is already logged in
@@ -32,14 +32,14 @@ window.onload=function() {
                 'file_name': $('#set_of_patterns').val(),
             },
             dataType: "json",
-            success: function(data) {
-                var pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
-                var pattern_elements_html = pattern_elements_tmpl.render(data);
+            success: (data) => {
+                const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
+                const pattern_elements_html = pattern_elements_tmpl.render(data);
                 $("#projection_pattern_elements").html(pattern_elements_html);
                 $("#projection_pattern_elements_c").show();
             },
             error: function(xhr, status, msg) {
-                report_error("Failed to load dataset list because msg: " + msg);
+                report_error(`Failed to load dataset list because msg: ${msg}`);
             }
         });
     });
@@ -54,19 +54,63 @@ window.onload=function() {
         $(this).addClass("active");
 
         SELECTED_PATTERN_LABEL = $(this).data('label');
-        console.log("Selected pattern is: " + SELECTED_PATTERN_LABEL);
+        console.log(`Selected pattern is: ${SELECTED_PATTERN_LABEL}`);
 
         $("#target_dataset_id_c").show();
         $("#projection_c").prop("disabled", false);
         $("#projection_c").show();
     });
 
-    $(document).on('click', '#btn_project', function(e) {
+    $(document).on('click', '#btn_project', async function(e) {
         e.preventDefault();
-        $(this).attr("disabled", true);;
+        $(this).attr("disabled", true);
+        const datasetId = $("#target_dataset_id").val();
+        const config = {
+            "scope":source
+            , "input_value": $('#set_of_patterns').val()
+            , "pattern_value": SELECTED_PATTERN_LABEL
+        }
+        const { data } = await runProjectR(datasetId, config);
+        $(this).attr("disabled", false);
+        drawChart(data, datasetId);
+
     });
-    
+
 };
+
+// Call API to return plot JSON data
+async function runProjectR (datasetId, payload) {
+    try {
+        return await axios.post(`/api/projectr/${datasetId}`, {
+            ...payload
+        })
+    } catch (e) {
+
+        const message = "There was an error in making this projection. Please contact the gEAR team using the 'Contact' button at the top of the page and provide as much information as possible.";
+        const success = -1;
+        const data = {message, success};
+        return {data};
+    }
+}
+
+// Draw plotly chart in HTML
+function drawChart (data, datasetId) {
+    const targetDiv = "projection_view";
+    const { plot_json: plotlyJson, plot_config: plotlyConfig, message, success } = data;
+
+    // Since default plots are now added after dataset selection, wipe the plot when a new one needs to be drawn
+    $(`#${targetDiv}`).empty()
+
+    const configMods = {
+        responsive: true
+    };
+
+    const config = {
+        ...plotlyConfig,
+        ...configMods
+    };
+    Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, config);
+}
 
 function populate_dataset_selection() {
     $.ajax({
@@ -78,31 +122,30 @@ function populate_dataset_selection() {
             'include_dataset_id': getUrlParameter('dataset_id')
         },
         dataType: "json",
-        success: function(data) {
+        success: (data) => {
             if (data['user']['datasets'].length > 0) {
-                var user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-                var user_dataset_list_html = user_dataset_list_tmpl.render(data['user']['datasets']);
+                const user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
+                const user_dataset_list_html = user_dataset_list_tmpl.render(data['user']['datasets']);
                 $("#dataset_ids_user").html(user_dataset_list_html);
                 $("#target_dataset_ids_user").html(user_dataset_list_html);
             }
 
             if (data['shared_with_user']['datasets'].length > 0) {
-                var shared_with_user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-                var shared_with_user_dataset_list_html = shared_with_user_dataset_list_tmpl.render(data['shared_with_user']['datasets']);
+                const shared_with_user_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
+                const shared_with_user_dataset_list_html = shared_with_user_dataset_list_tmpl.render(data['shared_with_user']['datasets']);
                 $("#dataset_ids_shared_with_user").html(shared_with_user_dataset_list_html);
                 $("#target_dataset_ids_shared_with_user").html(shared_with_user_dataset_list_html);
             }
 
             if (data['public']['datasets'].length > 0) {
-                var public_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
-                var public_dataset_list_html = public_dataset_list_tmpl.render(data['public']['datasets']);
+                const public_dataset_list_tmpl = $.templates("#dataset_list_tmpl");
+                const public_dataset_list_html = public_dataset_list_tmpl.render(data['public']['datasets']);
                 $("#dataset_ids_public").html(public_dataset_list_html);
                 $("#target_dataset_ids_public").html(public_dataset_list_html);
             }
 
             // was there a requested dataset ID already?
-            var dataset_id = getUrlParameter('dataset_id');
-            var share_id = getUrlParameter('share_id');
+            const dataset_id = getUrlParameter('dataset_id');
 
             if (dataset_id !== undefined) {
                 $('#dataset_id').val(dataset_id);
@@ -110,7 +153,13 @@ function populate_dataset_selection() {
             }
         },
         error: function(xhr, status, msg) {
-            report_error("Failed to load dataset list because msg: " + msg);
+            report_error(`Failed to load dataset list because msg: ${msg}`);
         }
     });
+}
+
+function report_error(msg) {
+    if (msg) {
+        $(`<li class='failure'>${msg}</li>`).prependTo("#action_log");
+    }
 }

@@ -144,6 +144,7 @@
           <div id="projection_c" class="shown_later">
             <h3>Projection</h3>
             <p id="choose_target_prompt">First, choose a target dataset on the left in which to project this pattern</p>
+            <div id="projection_view"></div>
           </div>
         </div> <!-- end #viewport -->
       </div><!-- end #main_row -->
@@ -156,6 +157,7 @@
     </footer>
 </div> <!-- /body_c -->
 
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
@@ -165,6 +167,8 @@
 
         <script src="js/vendor/js.cookie.js"></script>
         <script src="js/vendor/jsrender.20181003.min.js"></script>
+        <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
+
 
         <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
         <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
