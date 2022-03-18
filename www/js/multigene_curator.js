@@ -1183,11 +1183,13 @@ $(document).on('change', 'input[name="obs_secondary"]', () => {
     $('#secondary_order_help').hide();
 });
 
+// Determine if condition has no groups so the sort container will be disabled or not.
 $(document).on('change', '.js-obs-levels', function () {
     const id = this.id;
+    const escapedId = $.escapeSelector(id);
     const group = id.replace('_dropdown', '');
     const escapedGroup = $.escapeSelector(group);
-    const propData = $(`#${id}`).select2('data');
+    const propData = $(`#${escapedId}`).select2('data');
     const props = propData.map((elem) => elem.id);
     $(`#${escapedGroup}_primary`).prop("disabled", false);
     $(`#${escapedGroup}_secondary`).prop("disabled", false);
