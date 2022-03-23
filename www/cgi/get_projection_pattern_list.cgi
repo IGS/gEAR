@@ -31,6 +31,8 @@ def main():
 
     for p_file in base_dir.iterdir():
         name = p_file.name    # get basname
+        if not name.endswith(".tab"):   # skip non-tab files, like .gitignore
+            continue
         title = name.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
         result.append({"id":name, "title":title})
 
