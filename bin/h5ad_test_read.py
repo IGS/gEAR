@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/bin/python3
 
 """
 Prints out general structural information about a passed H5AD file.
@@ -32,7 +32,7 @@ print("---------------------------------------------")
 
 print("Observation columns:")
 for col in adata.obs.columns:
-    print("\t{0}".format(col))
+    print("\t'{0}'".format(col))
 
 print(adata.obs.head(50))
 
@@ -41,7 +41,7 @@ print("---------------------------------------------")
 
 print("Var columns:")
 for col in adata.var.columns:
-    print("\t{0}".format(col))
+    print("\t'{0}'".format(col))
 
 # if you want to print all genes
 #with pd.option_context('display.max_rows', None, 'display.max_columns', None):
