@@ -38,7 +38,7 @@ class EpivizData(Resource):
         # also needs a fallback is the gene name cannot be found
         genes =  pd.read_csv("/var/www/epiviz-api/genomes/" + genome + "/" + genome + ".txt", sep="\t",
             names=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"])
-        
+
         if len(gene_symbol) > 1:
             matches = genes[genes['gene'].str.match(gene_symbol, na=False, case=False)]
             matches["gene"] = matches["gene"].str.lower()
@@ -54,10 +54,10 @@ class EpivizData(Resource):
             else :
                 return {
                     "success": -1,
-                    "message": "cannot find any gene symbol match in " + genomes
+                    "message": "cannot find any gene symbol match in " + genome
                 }
         else :
             return {
                     "success": -1,
-                    "message": "cannot find any gene symbol match in " + genomes
+                    "message": "cannot find any gene symbol match in " + genome
                 }

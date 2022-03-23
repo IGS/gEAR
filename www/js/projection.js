@@ -69,7 +69,8 @@ window.onload=() => {
             , "input_value": $('#set_of_patterns').val()
             , "pattern_value": SELECTED_PATTERN_LABEL
         }
-        const {default_display_id: defaultDisplayId} = await getDefaultDisplay(datasetId);
+
+       /* const {default_display_id: defaultDisplayId} = await getDefaultDisplay(datasetId);
         const display = await $.ajax({
             url: './cgi/get_dataset_display.cgi',
             type: 'POST',
@@ -80,6 +81,7 @@ window.onload=() => {
         plotConfig = display.plotly_config;
 
         config.plot_config = plotConfig;
+        */
 
         const { data } = await runProjectR(datasetId, config);
         $(this).attr("disabled", false);

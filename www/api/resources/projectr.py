@@ -39,21 +39,6 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-def order_by_time_point(obs_df):
-    """Order observations by time point column if it exists."""
-    # check if time point order is intially provided in h5ad
-    time_point_order = obs_df.get('time_point_order')
-    if (time_point_order is not None and 'time_point' in obs_df.columns):
-        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
-        # Safety check. Make sure time point is categorical before
-        # calling .cat
-        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
-        col = obs_df['time_point'].cat
-        obs_df['time_point'] = col.reorder_categories(
-            sorted_df.time_point.drop_duplicates(), ordered=True)
-        obs_df = obs_df.drop(['time_point_order'], axis=1)
-    return obs_df
-
 def run_projectR_cmd(target_df, loading_df):
     """
     Convert input Pandas dataframes to R matrix.
@@ -128,14 +113,6 @@ class ProjectR(Resource):
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=False)
 
-        adata.obs = order_by_time_point(adata.obs)
-
-        # get a map of all levels for each column
-        columns = adata.obs.select_dtypes(include="category").columns.tolist()
-
-        if 'replicate' in columns:
-            columns.remove('replicate')
-
         success = 1
         message = ""
 
@@ -168,12 +145,16 @@ class ProjectR(Resource):
         target_df = adata.to_df().transpose()
 
         loading_df = None
+        projection_csv = None
+
 
         if scope == "repository":
             # Pattern repository
             # Row: Genes
             # Col: Patterns
             loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
+
+            projection_csv = "/tmp/{}_{}.csv".format(dataset_id, pattern_title)
 
             # Assumes first column is gene info. Standardize on a common index name
             loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
@@ -182,7 +163,7 @@ class ProjectR(Resource):
             # Previous analysis stored in a dataset
             # Row: Genes
             # Col: PCA/tSNE/UMAP 1/2
-
+            """
             # 'dataset_id' is the target dataset to be projected into the pattern space
             try:
                 source_ana = get_analysis(analysis, input_value, session_id, analysis_owner_id)
@@ -222,7 +203,7 @@ class ProjectR(Resource):
             # ? This seems similar to the output of COLmeta_DIMRED files
 
             loading_df = loading_df.transpose()
-
+            """
         elif scope == "gene_cart":
             # Weighted genes present
             # Row; Genes
@@ -233,11 +214,28 @@ class ProjectR(Resource):
 
         # NOTE: This will not work if there are no common genes (i.e. mouse patterns with human dataset)
 
-        projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+        # If projectR has already been run, we can just load the csv file
+        if not os.path.isfile(projection_csv):
+            projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+
+        # Save the projection patterns to a CSV file
+        # TODO: forego projectR analysis if CSV already exists
+        if projection_csv:
+            pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
+            projection_patterns_df.to_csv(projection_csv)
+
+        return {
+            "success": success
+            , "message": message
+            , "csv_file": os.path.basename(projection_csv)
+        }
+
+        """
 
         # Append observation categories to list of patterns
         for col in adata.obs.columns:
             projection_patterns_df[col] = adata.obs[col]
+
 
         # TODO: Hard-coded - generalize
         # NOTE: Testing with "8353c7d4-ab13-e5db-3675-f03c23a68f7d"
@@ -254,6 +252,5 @@ class ProjectR(Resource):
             , 'plot_json': json.loads(plot_json)
             , "plot_config": get_config()
         }
+        """
 
-
-        return {}

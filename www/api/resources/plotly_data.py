@@ -9,6 +9,18 @@ from plotly.utils import PlotlyJSONEncoder
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
+def create_projection_adata(dataset_adata, projection_pattern):
+    # Create AnnData object out of readable CSV file
+    # ? Does it make sense to put this in the geardb/Analysis class?
+    try:
+        projection_adata = sc.read_csv("/tmp/{}".format(projection_pattern))
+    except:
+        raise PlotError("Could not create projection AnnData object from CSV.")
+
+    projection_adata.obs = dataset_adata.obs
+    projection_adata.var["gene_symbol"] = projection_adata.var_names
+    return projection_adata
+
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
@@ -103,6 +115,7 @@ class PlotlyData(Resource):
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
+        projection_pattern = req.get('projection_pattern')  # As CSV path
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.
@@ -178,6 +191,15 @@ class PlotlyData(Resource):
                     order_res[col] = adata.obs[col].cat.categories.tolist()
             except:
                 pass
+
+        if projection_pattern:
+            try:
+                adata = create_projection_adata(adata, projection_pattern)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
 
         gene_symbols = (gene_symbol,)
 
