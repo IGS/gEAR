@@ -18,6 +18,8 @@ Keep in mind this needs to ideally work on any gEAR portal
     * Past analyses within datasets
       * Col - PCA, tSNE, UMAP
       * Stored in adata.obs if user uploaded or adata.obsm with "X_" prefix if performed in sc-RNAseq analysis workbench
+      * ? Are there other keywords to look for?  Should these be selectable before calling the API (to display a specific combo)?
+      * ? Does projectR even need to be run?  All stored PCA/tSNE/UMAP values are with respect to the observations, like in COLmeta_DIMRED files
     * Pattern repository
       * Col - PCs, Patterns, etc.
       * Currently I have patterns saved at /var/www/patterns

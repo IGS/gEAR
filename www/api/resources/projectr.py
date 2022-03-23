@@ -194,17 +194,34 @@ class ProjectR(Resource):
 
             # Using adata with "backed" mode does not work with volcano plot
             source_adata = source_ana.get_adata(backed=False)
-
             source_adata.obs = order_by_time_point(source_adata.obs)
 
+            # Get all continuous columns which includes PCA/tSNE/UMAP
+            continuous_cols = source_adata.obs.select_dtypes(include="number").columns.tolist()
+
+            loading_df = source_adata.to_df()
+            for col in continuous_cols:
+                loading_df[col] = source_adata.obs[col]
+
             # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
-            if analysis is None or analysis in ["null", "undefined", dataset_id]:
-                if "tSNE_1" in source_adata.obs.columns and "tSNE_2" in source_adata.obs.columns:
-                    pass
-                if "UMAP_1" in source_adata.obs.columns and "UMAP_1" in source_adata.obs.columns:
-                    pass
-                if "PCA_1" in source_adata.obs.columns and "PCA_2" in source_adata.obs.columns:
-                    pass
+            if hasattr(adata, 'obsm'):
+                X, Y = (0, 1)
+                if 'X_tsne' in adata.obsm:
+                    # A filtered AnnData object is an 'ArrayView' object and must
+                    # be accessed as selected.obsm["X_tsne"] rather than selected.obsm.X_tsne
+                    loading_df['X_tsne_1'] = source_adata.obsm["X_tsne"].transpose()[X]
+                    loading_df['X_tsne_1'] = source_adata.obsm["X_tsne"].transpose()[Y]
+                elif 'X_umap' in adata.obsm:
+                    loading_df['X_umap_1'] = source_adata.obsm["X_umap"].transpose()[X]
+                    loading_df['X_umap_2'] = source_adata.obsm["X_umap"].transpose()[Y]
+                elif 'X_pca' in adata.obsm:
+                    loading_df['X_pca_1'] = source_adata.obsm["X_pca"].transpose()[X]
+                    loading_df['X_pca_2'] = source_adata.obsm["X_pca"].transpose()[Y]
+
+            # ? IF PCs have already been applied to the observations, is it necessary to run projectR at all?
+            # ? This seems similar to the output of COLmeta_DIMRED files
+
+            loading_df = loading_df.transpose()
 
         elif scope == "gene_cart":
             # Weighted genes present
