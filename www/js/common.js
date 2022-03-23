@@ -349,6 +349,7 @@ function handle_login_ui_updates() {
 
         } else if (document.URL.includes("projection.html")) {
             populate_dataset_selection();
+            populate_pattern_selection();
         }
 
         if (document.URL.includes("upload_dataset.html") ||

@@ -13,7 +13,7 @@ sys.path.append(lib_path)
 import geardb
 
 # this obviously needs to change
-PATTERN_BASE_DIR = '/var/www/patterns/HuttCtxDevoLMDhs'
+PATTERN_BASE_DIR = '/var/www/patterns'
 
 def main():
     form = cgi.FieldStorage()

@@ -1,11 +1,11 @@
 let SELECTED_PATTERN_LABEL = null;
 
-window.onload=function() {
+window.onload=() => {
     // check if the user is already logged in
     check_for_login();
     session_id = Cookies.get('gear_session_id');
 
-    $("#projection_source").on('change', function() {
+    $("#projection_source").on('change', () => {
         $('#projectr_intro').hide();
         source = $('#projection_source').val();
 
@@ -24,7 +24,7 @@ window.onload=function() {
         }
     });
 
-    $("#set_of_patterns").on('change', function() {
+    $("#set_of_patterns").on('change', () => {
         $.ajax({
             type: "POST",
             url: "./cgi/get_pattern_element_list.cgi",
@@ -38,13 +38,13 @@ window.onload=function() {
                 $("#projection_pattern_elements").html(pattern_elements_html);
                 $("#projection_pattern_elements_c").show();
             },
-            error: function(xhr, status, msg) {
+            error(xhr, status, msg) {
                 report_error(`Failed to load dataset list because msg: ${msg}`);
             }
         });
     });
 
-    $("#target_dataset_id").on('change', function() {
+    $("#target_dataset_id").on('change', () => {
         $('#submitter_c').show();
     });
 
@@ -54,7 +54,6 @@ window.onload=function() {
         $(this).addClass("active");
 
         SELECTED_PATTERN_LABEL = $(this).data('label');
-        console.log(`Selected pattern is: ${SELECTED_PATTERN_LABEL}`);
 
         $("#target_dataset_id_c").show();
         $("#projection_c").prop("disabled", false);
@@ -70,6 +69,18 @@ window.onload=function() {
             , "input_value": $('#set_of_patterns').val()
             , "pattern_value": SELECTED_PATTERN_LABEL
         }
+        const {default_display_id: defaultDisplayId} = await getDefaultDisplay(datasetId);
+        const display = await $.ajax({
+            url: './cgi/get_dataset_display.cgi',
+            type: 'POST',
+            data: { display_id: defaultDisplayId },
+            dataType: 'json'
+        });
+
+        plotConfig = display.plotly_config;
+
+        config.plot_config = plotConfig;
+
         const { data } = await runProjectR(datasetId, config);
         $(this).attr("disabled", false);
         drawChart(data, datasetId);
@@ -113,6 +124,7 @@ function drawChart (data, datasetId) {
 }
 
 function populate_dataset_selection() {
+    // NOTE: Called in common.js
     $.ajax({
         type: "POST",
         url: "./cgi/get_h5ad_dataset_list.cgi",
@@ -152,9 +164,42 @@ function populate_dataset_selection() {
                 $( "#dataset_id" ).trigger( "change" );
             }
         },
-        error: function(xhr, status, msg) {
+        error(xhr, status, msg) {
             report_error(`Failed to load dataset list because msg: ${msg}`);
         }
+    });
+}
+
+function populate_pattern_selection() {
+    // NOTE: Called in common.js
+    $.ajax({
+        type: "POST",
+        url: "./cgi/get_projection_pattern_list.cgi",
+        data: {
+            'session_id': CURRENT_USER.session_id,
+        },
+        dataType: "json",
+        success: (data) => {
+            const pattern_list_tmpl = $.templates("#dataset_list_tmpl");    // recycling the template... same output
+            const pattern_list_html = pattern_list_tmpl.render(data);
+            $("#set_of_patterns").html(pattern_list_html);
+        },
+        error(xhr, status, msg) {
+            report_error(`Failed to load dataset list because msg: ${msg}`);
+        }
+    });
+}
+
+function getDefaultDisplay (datasetId) {
+    return $.ajax({
+        url: './cgi/get_default_display.cgi',
+        type: 'POST',
+        data: {
+            user_id: CURRENT_USER.id,
+            dataset_id: datasetId,
+            is_multigene: 0 //TODO: Change
+        },
+        dataType: 'json'
     });
 }
 

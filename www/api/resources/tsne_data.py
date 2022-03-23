@@ -87,8 +87,6 @@ class TSNEData(Resource):
                 "message": "Request needs both dataset id and gene symbol."
             }
 
-        dataset = geardb.get_dataset_by_id(dataset_id)
-
         if analysis_id and analysis_id not in ["null", "undefined"]:
             # need analysis_type here, but can discover it
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id,

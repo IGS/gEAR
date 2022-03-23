@@ -13,9 +13,9 @@ from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.vectors import StrVector
 
-
+# TODO: Remove and figure out a good pattern directory structure
 import plotly.express as px
-PATTERN_BASE_DIR = "/var/www/patterns/HuttCtxDevoLMDhs"
+PATTERN_BASE_DIR = "/var/www/patterns"
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
@@ -107,7 +107,7 @@ class ProjectR(Resource):
 
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
-        analysis = req.get('analysis', None)
+        analysis = req.get('analysis', None)    # For source "dataset"
         analysis_owner_id = req.get('analysis_owner_id', None)
         #plot_type = req.get('plot_type')
         #gene_symbols = req.get('gene_symbols', [])
@@ -118,7 +118,7 @@ class ProjectR(Resource):
 
         # 'dataset_id' is the target dataset to be projected into the pattern space
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(None, dataset_id, session_id, None)
         except PlotError as pe:
             return {
                 'success': -1,
@@ -165,21 +165,51 @@ class ProjectR(Resource):
         """
 
         # Ensure target dataset has genes as rows
-        target_df = adata.to_df().transpose().sort_index()
+        target_df = adata.to_df().transpose()
 
         loading_df = None
 
         if scope == "repository":
             # Pattern repository
-            loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t") \
-                    .set_index('dataRowNames') \
-                    .sort_index()
+            # Row: Genes
+            # Col: Patterns
+            loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
 
+            # Assumes first column is gene info. Standardize on a common index name
+            loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
+            loading_df.set_index('dataRowNames', inplace=True)
         elif scope == "dataset":
             # Previous analysis stored in a dataset
-            pass
+            # Row: Genes
+            # Col: PCA/tSNE/UMAP 1/2
+
+            # 'dataset_id' is the target dataset to be projected into the pattern space
+            try:
+                source_ana = get_analysis(analysis, input_value, session_id, analysis_owner_id)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
+
+            # Using adata with "backed" mode does not work with volcano plot
+            source_adata = source_ana.get_adata(backed=False)
+
+            source_adata.obs = order_by_time_point(source_adata.obs)
+
+            # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
+            if analysis is None or analysis in ["null", "undefined", dataset_id]:
+                if "tSNE_1" in source_adata.obs.columns and "tSNE_2" in source_adata.obs.columns:
+                    pass
+                if "UMAP_1" in source_adata.obs.columns and "UMAP_1" in source_adata.obs.columns:
+                    pass
+                if "PCA_1" in source_adata.obs.columns and "PCA_2" in source_adata.obs.columns:
+                    pass
+
         elif scope == "gene_cart":
             # Weighted genes present
+            # Row; Genes
+            # Col: Weights (single col)
             pass
         else:
             raise Exception("Invalid scope was called.")
@@ -197,6 +227,7 @@ class ProjectR(Resource):
         fig = px.scatter(projection_patterns_df, x="condition", y=pattern_value, color="group")
 
         # ? What plot types to use?  Single or multi-pattern?
+        # ? Pull default display from dataset and sub genes for PCs?
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
