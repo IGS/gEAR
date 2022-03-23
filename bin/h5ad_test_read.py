@@ -69,6 +69,13 @@ try:
 except:
     pass
 
+try:
+    if type(adata.obs['louvain']):
+        print("Clustering")
+        analysis_count += 1
+except:
+    pass
+
 if not analysis_count:
     print("\tNone found")
 
