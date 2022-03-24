@@ -25,6 +25,10 @@ Returns {'user_layouts': [
          'shared_layouts': [
                         {'id': 1212, 'label': 'Layout 7', ... }
                        ],
+         # key: id, value = folder name
+         'folder_names': {},
+         # key: id, value = parent_folder_id
+         'folder_parents': {}
 }
 """
 
@@ -44,37 +48,38 @@ def main():
     layout_share_id = form.getvalue('layout_share_id')
     user = geardb.get_user_from_session_id(session_id)
 
-    layout_ids_found = set()
+    folder_ids_found = set()
     
     if no_domain:
         no_domain = int(no_domain)
 
     result = { 'user_layouts': [],
                'domain_layouts': [],
-               'group_layouts':[],
-               'shared_layouts':[],
+               'group_layouts': [],
+               'shared_layouts': [],
+               'folders': [],
                'selected': None }
 
     if not no_domain:
-        result['domain_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_domains())
+        result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
     if user:
-        result['user_layouts'] = filter_any_previous(layout_ids_found,
-                                                     geardb.LayoutCollection().get_by_user(user))
-        result['group_layouts'] = filter_any_previous(layout_ids_found,
-                                                      geardb.LayoutCollection().get_by_users_groups(user))
+        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
+        result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
 
     if layout_share_id:
-        result['shared_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_by_share_id(layout_share_id))
+        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
 
-    ## Selected priority:
+    ## Selected priority (and indexes folder IDs):
     ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
     for ltype in ['user', 'domain', 'group', 'shared']:
         for l in result[ltype + '_layouts']:
+            if l.folder_id:
+                print("DEBUG: Adding a folder ID", file=sys.stderr)
+                folder_ids_found.add(l.folder_id)
+            
             if l.share_id == layout_share_id:
                 result['selected'] = l.id
                 break
@@ -91,21 +96,11 @@ def main():
                 result['selected'] = l.id
                 break
 
+    result['folders'] = geardb.FolderCollection()
+    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found)
+
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
-
-
-def filter_any_previous(ids, new_layouts):
-    layouts = []
-
-    for layout in new_layouts:
-        if layout.id not in ids:
-            layouts.append(layout)
-            ids.add(layout.id)
-
-    layouts.sort(key=lambda l: l.label.upper())
-            
-    return layouts
 
 if __name__ == '__main__':
     main()
