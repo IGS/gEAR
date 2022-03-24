@@ -16,9 +16,20 @@ None yet listed
 
 * Deleting an account
 
-## UI testing ##
+## UI testing
 
 We use Selenium for this and these steps can take a while. Automated UI testing isn't necessarily quick, and there are a lot of pages/features to check.
+
+## Visual regression testing
+
+These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.).
+
+To save a screenshot from Chrome:
+
+1. Right-click page -> Inspect
+2. Find div/element/HTML subset that contains the image you want to save
+3. Right-click element -> Capture Node Screenshot.
+4. The PNG image should download to a specified default location.  You can then rename it and move it to the "visual_regression_screenshots" directory for future use.
 
 ### Completed UI tests
 
@@ -45,6 +56,25 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 #### Analysis (single-cell) workbench
 
 #### Comparision tool
+
+* Select dataset
+* Select conditions
+* Ensure condition labels are reflected in the plot
+* Ensure plot can be generated
+  * Default options
+  * Significance test
+    * Filter
+    * Color
+* Gene highlighting
+  * Found genes show in plot
+  * Not found genes show in that div
+* Select genes from plot
+  * Ensure they show in table
+  * Ensure highlighted genes are colored
+* Name and save gene cart
+* Download table
+* Use visual tool like needle (python package) for visual regression testing (plot doesn't differ)
+  * TODO: https://github.com/python-needle/needle
 
 #### Dataset (single-gene) curator
 
@@ -96,6 +126,8 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 * Save a plot
 * Save a new gene cart
   * From volcano or quadrant
+* Use visual tool like needle (python package) for visual regression testing (plot doesn't differ)
+
 
 #### Manual Documentation
 
@@ -109,11 +141,11 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 
 #### Epiviz Panel Designer
 
-## Selenium cheat sheet ##
+## Selenium cheat sheet
 
 Common imports
 
-```
+```python3
 from selenium import webdriver
 browser = webdriver.Chrome()
 from selenium import webdriver
@@ -123,26 +155,26 @@ from selenium.webdriver.common.by import By
 
 Getting an element by ID
 
-```
+```python3
 name_box = browser.find_element(By.ID, 'inputName')
 ```
 
 Typing things
 
-```
+```python3
 name_box.send_keys('Foo')
 ```
 
 Clicking something (link, button, etc.)
 
-```
+```python3
 submit_box = browser.find_element(By.ID, 'btn_submit')
 submit_box.click()
 ```
 
 Checking if an element is visible
 
-```
+```python3
 email_warning =  browser.find_element(By.ID, 'email_invalid')
 
 if email_warning.is_displayed():
@@ -151,7 +183,7 @@ if email_warning.is_displayed():
 
 Clear a form element
 
-```
+```python3
 name_box = browser.find_element(By.ID, 'inputName')
 name_box.clear()
 ```

@@ -1044,13 +1044,12 @@ function set_multigene_plots(is_enabled, show_tooltip=true) {
     }
 
     if (is_enabled) {
-        $(".js-multigene:visible i").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
-        $(".js-multigene i").addClass("fa-gears");
-        $(".js-multigene i").removeClass("fa-gear");
+        $("#multigene_search_icon img").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
+        $("#multigene_search_icon img").attr('src', 'img/icons/multi-dna.svg');
+
     } else {
-        $(".js-multigene:visible i").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
-        $(".js-multigene i").addClass("fa-gear");
-        $(".js-multigene i").removeClass("fa-gears");
+        $("#multigene_search_icon img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
+        $("#multigene_search_icon img").attr('src', 'img/icons/single-dna.svg');
     }
 }
 

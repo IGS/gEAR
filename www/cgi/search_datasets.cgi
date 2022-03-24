@@ -30,7 +30,7 @@ DEBUG_MODE = False
 def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
-    
+
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     custom_list = form.getvalue('custom_list')
@@ -57,7 +57,7 @@ def main():
                 qry = """
                       SELECT d.id
                         FROM dataset d
-                       WHERE d.marked_for_removal = 0 
+                       WHERE d.marked_for_removal = 0
                          AND d.load_status = 'completed'
                          AND (d.owner_id = %s or d.is_public = 1)
                     ORDER BY d.date_added DESC LIMIT 10
@@ -67,7 +67,7 @@ def main():
                 qry = """
                       SELECT d.id
                         FROM dataset d
-                       WHERE d.marked_for_removal = 0 
+                       WHERE d.marked_for_removal = 0
                          AND d.load_status = 'completed'
                          AND d.is_public = 1
                     ORDER BY d.date_added DESC LIMIT 10
@@ -82,7 +82,7 @@ def main():
                   FROM dataset d
                        JOIN layout_members lm ON d.id=lm.dataset_id
                        JOIN layout l ON lm.layout_id=l.id
-                 WHERE d.marked_for_removal = 0 
+                 WHERE d.marked_for_removal = 0
                    AND d.load_status = 'completed'
                    AND l.share_id = %s
                 ORDER BY lm.grid_position
@@ -119,16 +119,16 @@ def main():
                     ownership_bits.append("d.id IN ({0})".format(shared_dataset_id_str))
 
                 wheres.append("AND ({0})".format(' OR '.join(ownership_bits)))
-                
+
             # otherwise, give the usual self, public and shared.
             else:
                 if shared_dataset_id_str:
                     wheres.append("AND (d.is_public = 1 OR d.owner_id = %s OR d.id IN ({0}))".format(shared_dataset_id_str))
                 else:
                     wheres.append("AND (d.is_public = 1 OR d.owner_id = %s)")
-                    
+
                 qry_params.extend([user.id])
-        
+
         if search_terms:
             selects.append(' MATCH(d.title, d.ldesc, d.geo_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
             wheres.append(' AND MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE)')
@@ -169,7 +169,7 @@ def main():
             orders_by.append(" g.user_name")
         else:
             orders_by.append(" d.date_added DESC")
-            
+
         # build query
         qry = """
         SELECT {0}
@@ -188,7 +188,7 @@ def main():
         ofh.write("QRY:\n{0}\n".format(qry))
         ofh.write("QRY_params:\n{0}\n".format(qry_params))
         ofh.close()
-        
+
     cursor.execute(qry, qry_params)
 
     matching_dataset_ids = list()
@@ -206,13 +206,17 @@ def main():
         if layout_share_id:
             dataset.grid_position = layout_idx[dataset.id]['position']
             dataset.grid_width = layout_idx[dataset.id]['width']
-        
+
         dataset.get_layouts(user=user)
         if os.path.exists("{0}/{1}.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+        elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
+            dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+        elif os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
+            dataset.preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
             dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
-            
+
     if False:
        try:
            #### The relevent block above needs to be put into here once tested.
@@ -220,7 +224,7 @@ def main():
        except:
             result['success'] = 0
             result['problem'] = "There seems to be a database issue."
-    
+
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
 
@@ -234,6 +238,6 @@ def get_shared_dataset_id_string(user, cursor):
 
     return (', '.join('"' + id + '"' for id in dataset_ids))
 
-    
+
 if __name__ == '__main__':
     main()

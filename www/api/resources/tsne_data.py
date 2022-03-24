@@ -26,6 +26,13 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 NUM_LEGENDS_PER_COL = 12
 
+class PlotError(Exception):
+    """Error based on plotting issues."""
+    def __init__(self, message="") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
     return (num_plots * 4) + (num_plots -1)
@@ -47,6 +54,18 @@ def create_colorscale_with_zero_gray(colorscale):
     gray = np.array([192/256, 192/256, 192/256, 1])
     newcolors[0, :] = gray
     return ListedColormap(newcolors)
+
+def create_projection_adata(dataset_adata, projection_pattern):
+    # Create AnnData object out of readable CSV file
+    # ? Does it make sense to put this in the geardb/Analysis class?
+    try:
+        projection_adata = sc.read_csv("/tmp/{}".format(projection_pattern))
+    except:
+        raise PlotError("Could not create projection AnnData object from CSV.")
+
+    projection_adata.obs = dataset_adata.obs
+    projection_adata.var["gene_symbol"] = projection_adata.var_names
+    return projection_adata
 
 def sort_legend(figure, sort_order):
     """Sort legend of plot."""
@@ -79,6 +98,7 @@ class TSNEData(Resource):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
         analysis_owner_id = request.args.get('analysis_owner_id')
+        projection_pattern = request.args.get('projection_pattern', None)   # As CSV path
         sc.settings.figdir = '/tmp/'
 
         if not gene_symbol or not dataset_id:
@@ -86,8 +106,6 @@ class TSNEData(Resource):
                 "success": -1,
                 "message": "Request needs both dataset id and gene symbol."
             }
-
-        dataset = geardb.get_dataset_by_id(dataset_id)
 
         if analysis_id and analysis_id not in ["null", "undefined"]:
             # need analysis_type here, but can discover it
@@ -99,6 +117,15 @@ class TSNEData(Resource):
             ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
 
         adata = ana.get_adata(backed=True)
+
+        if projection_pattern:
+            try:
+                adata = create_projection_adata(adata, projection_pattern)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
 
         gene_symbols = (gene_symbol,)
         if 'gene_symbol' in adata.var.columns:

@@ -29,7 +29,7 @@ const log10_transformed_datasets = [
 , "f1ce4e63-3577-8020-8307-e88f1fb98953"
 , "2f79f784-f7f7-7dc3-9b3e-4c87a4346d91"
 , "c32835d3-cac4-bb0e-a90a-0b41dec6617a"
-, "fbe1296e-572c-d388-b9d1-6e2a6bf10b0a"
+//, "fbe1296e-572c-d388-b9d1-6e2a6bf10b0a"
 , "1b12dde9-1762-7564-8fbd-1b07b750505f"
 , "a2dd9f06-5223-0779-8dfc-8dce7a3897e1"
 , "f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f"
@@ -78,18 +78,18 @@ window.onload = () => {
 
 	$("#gene_cart_name").on("input", function () {
 		if ($(this).val() == "") {
-		$("#save_gene_cart").prop("disabled", true);
+			$("#save_gene_cart").prop("disabled", true);
 		} else {
-		$("#save_gene_cart").prop("disabled", false);
+			$("#save_gene_cart").prop("disabled", false);
 		}
 	});
 	$("#save_gene_cart").on("click", () => {
 		$("#save_gene_cart").prop("disabled", true);
 
 		if (CURRENT_USER) {
-		save_gene_cart();
+			save_gene_cart();
 		} else {
-		alert("You must be signed in to do that.");
+			alert("You must be signed in to do that.");
 		}
 	});
 	/***** end gene cart stuff *****/
@@ -152,13 +152,13 @@ function download_selected_genes() {
 		+ y_label + " (log" + $("#log_base").val() +")\n";
 
 	selected_data.points.forEach((pt) => {
-	// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-	file_contents +=
-		`${pt.data.id[pt.pointNumber]}\t`
-		+ ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
-		+ pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
-		+ pt.x.toFixed(1) + "\t"
-		+ pt.y.toFixed(1) + "\n";
+		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+		file_contents +=
+			`${pt.data.id[pt.pointNumber]}\t`
+			+ ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
+			+ pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
+			+ pt.x.toFixed(1) + "\t"
+			+ pt.y.toFixed(1) + "\n";
 	});
 
 	const element = document.createElement("a");
@@ -510,7 +510,7 @@ async function populate_dataset_selection_controls() {
 		}
 		},
 		error(xhr, status, msg) {
-		report_error(`Failed to load dataset list because msg: ${msg}`);
+			report_error(`Failed to load dataset list because msg: ${msg}`);
 		},
 	});
 	$('#pre_dataset_spinner').hide();
@@ -643,12 +643,12 @@ function plot_data_to_graph(data) {
 	const layout = {
 		title: $("#dataset_id").text(),
 		xaxis: {
-		title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
-		type: "",
+			title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
+			type: "",
 		},
 		yaxis: {
-		title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
-		type: "",
+			title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
+			type: "",
 		},
 		annotations: [],
 		margin: { t: 40 },
@@ -714,19 +714,19 @@ function plot_data_to_graph(data) {
 		selected_gene_data = [];
 
 		eventData.points.forEach((pt) => {
-		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-		// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
-		selected_gene_data.push({
-			gene_symbol: pt.data.id[pt.pointNumber],
-			pvals: $("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
-			foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
-		});
+			// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+			// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
+			selected_gene_data.push({
+				gene_symbol: pt.data.id[pt.pointNumber],
+				pvals: $("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
+				foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
+			});
 		});
 
 		// Sort by adjusted p-value in descending order either by fold change or p-values
 		selected_gene_data.sort((a, b) => b.foldchange - a.foldchange);
 		if ($("#statistical_test").val())
-		selected_gene_data.sort((a, b) => a.pvals - b.pvals);
+			selected_gene_data.sort((a, b) => a.pvals - b.pvals);
 
 		const template = $.templates("#selected_genes_tmpl");
 		const htmlOutput = template.render(selected_gene_data);
@@ -734,16 +734,16 @@ function plot_data_to_graph(data) {
 
 		// Highlight table rows that match searched genes
 		if ($('#highlighted_genes').val()) {
-		const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
-		// Select the first column (gene_symbols) in each row
-		$("#selected_genes_c tr td:first-child").each(function() {
-			const table_gene = $(this).text();
-			searched_genes.forEach((gene) => {
-			if (gene.toLowerCase() === table_gene.toLowerCase() ) {
-				$(this).parent().addClass("table-success");
-			}
-			});
-		})
+			const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
+			// Select the first column (gene_symbols) in each row
+			$("#selected_genes_c tr td:first-child").each(function() {
+				const table_gene = $(this).text();
+				searched_genes.forEach((gene) => {
+					if (gene.toLowerCase() === table_gene.toLowerCase() ) {
+						$(this).parent().addClass("table-success");
+					}
+				});
+			})
 		}
 
 		// toggle visibilities
@@ -754,12 +754,6 @@ function plot_data_to_graph(data) {
 		$("#controls_label").hide();
 		$("#selected_label").show();
 
-		if ($("#log_base").val() == "raw") {
-		$("#tbl_selected_genes_transformation_row").hide();
-		} else {
-		$("#table_transformation_label").text(`Log${$("#log_base").val()}`);
-		$("#tbl_selected_genes_transformation_row").show();
-		}
 	});
 
 	window.onresize = () => {
@@ -779,8 +773,8 @@ function save_gene_cart() {
 
 	selected_data.points.forEach((pt) => {
 		const gene = new Gene({
-		id: plot_data.gene_ids[pt.pointNumber],
-		gene_symbol: plot_data.symbols[pt.pointNumber],
+			id: plot_data.gene_ids[pt.pointNumber],
+			gene_symbol: plot_data.symbols[pt.pointNumber],
 		});
 		gc.add_gene(gene);
 	});

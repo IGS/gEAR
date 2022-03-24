@@ -86,6 +86,11 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
+          <template v-if='success < 1'>
+            <b-card bg-variant="danger" text-variant="white" title="Error">
+            <p class='card-text'>{{ message }}</p>
+            </b-card>
+          </template>
         </template>
       </div>
     `,
@@ -144,21 +149,21 @@ window.onload=() => {
       display_image_data() {
         if (this.display_image_data) {
           // applies to tSNE plots within user/owner display previews
-          $("#" + this.preview_id).addClass("img-fluid");
+          $(`#${this.preview_id}`).addClass("img-fluid");
         }
-        $("#" + this.preview_id).css({ "max-height": "205px" });
-        $("#" + this.preview_id).attr(
+        $(`#${this.preview_id}`).css({ "max-height": "205px" });
+        $(`#${this.preview_id}`).attr(
           "src",
-          "data:image/png;base64," + this.display_image_data
+          `data:image/png;base64,${this.display_image_data}`
         );
       },
       // This is the Vuex store and is for tsne plots within the DatasetDisplay component
       image_data() {
         if (!this.preconfigured && this.image_data) {
-          $("#" + this.preview_id).addClass("img-fluid");
-          $("#" + this.preview_id).attr(
+          $(`#${this.preview_id}`).addClass("img-fluid");
+          $(`#${this.preview_id}`).attr(
             "src",
-            "data:image/png;base64," + this.image_data
+            `data:image/png;base64,${this.image_data}`
           );
         }
       },
@@ -224,6 +229,11 @@ window.onload=() => {
           </b-card-body>
           <template v-if='success > 1'>
             <b-card bg-variant="warning" title="Warning">
+            <p class='card-text'>{{ message }}</p>
+            </b-card>
+          </template>
+          <template v-if='success < 1'>
+            <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
@@ -395,6 +405,11 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
+          <template v-if='success < 1'>
+            <b-card bg-variant="danger" text-variant="white" title="Error">
+            <p class='card-text'>{{ message }}</p>
+            </b-card>
+          </template>
         </div>
         <div v-else ref='chart'>
           <div v-if='!imgData' class='col align-middle text-center mt-5 pt-4'>
@@ -461,22 +476,24 @@ window.onload=() => {
     },
     methods: {
       draw_chart(data) {
+        // Reset some params in case of failures
+        this.imgData = '';
+        this.loading = true;
+
+        // Reset the div to plot a new image
+        if (!this.img) {
+          (this.$refs.chart).innerHTML = "";
+        }
+
+        const { plot_json, plot_config } = data ? data : this.data;
         if (data) {
-          this.loading = false;
-          const { plot_json, plot_config } = data;
           this.success = data.success;
           this.message = data.message;
-          if (this.img) {
-            Plotly.toImage({ ...plot_json, plot_config }).then((url) => {
-              this.imgData = url;
-            });
-          } else {
-            Plotly.newPlot(this.$refs.chart, { ...plot_json, plot_config });
-          }
         } else {
-          const { plot_json, plot_config } = this.data;
           this.success = this.data.success;
           this.message = this.data.message;
+        }
+        if (this.success >= 1 ) {
           if (this.img) {
             Plotly.toImage({ ...plot_json, plot_config }).then((url) => {
               this.imgData = url;
@@ -485,6 +502,7 @@ window.onload=() => {
             Plotly.newPlot(this.$refs.chart, { ...plot_json, plot_config });
           }
         }
+        this.loading = false;
       },
     },
   });
@@ -1149,7 +1167,7 @@ window.onload=() => {
                   class='btn-purple float-right'
                   size='sm'>
                     Preview Chart
-                  </b-button>
+                </b-button>
               </b-col>
             </b-form-group>
           </b-col>
@@ -1224,7 +1242,7 @@ window.onload=() => {
         // see 'marker_size' comment
         this.jitter = this.config.jitter;
       } else if (this.plot_type === 'violin') {
-	this.jitter = true;
+	      this.jitter = true;
       }
       if ("point_label" in this.config)
         this.point_label = this.config.point_label;
@@ -1816,7 +1834,7 @@ window.onload=() => {
         </transition>
         <transition name="fade" mode="out-in">
           <display-palettes
-            v-if="is_there_data_to_save && is_gene_available && this.config.color_name !== null && Object.entries(this.config.colors).length === 0"
+            v-if="is_there_data_to_save && is_gene_available && this.config.color_name !== (null || undefined) && Object.entries(this.config.colors).length === 0"
           ></display-palettes>
         </transition>
         <transition name="fade" mode="out-in">
