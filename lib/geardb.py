@@ -1239,8 +1239,8 @@ class FolderCollection:
         Similar to get_by_folder_ids() but this gets the entire tree for any folder IDs
         past. Higher query cost than just running get_by_folder_ids().  
 
-        This looked like a good solution to handle within the database directly but couldn't
-        get it to work across MySQL/MariaDB and versions.  Too delicate:
+        This link looked like a good solution to handle within the database directly but 
+        couldn't get it to work across MySQL/MariaDB and versions.  Too delicate:
 
         https://stackoverflow.com/a/60019201/1368079
         """
@@ -1264,12 +1264,12 @@ class FolderCollection:
             new_ids_found = list()
 
             for row in cursor:
-                folder = Folder(row)
+                folder = Folder(id=row['id'], parent_id=row['parent_id'], label=row['label'])
 
                 all_ids.append(folder.id)
                 self.folders.append(folder)
 
-                if folder.parent_id not in all_ids:
+                if folder.parent_id and folder.parent_id not in all_ids:
                     new_ids_found.append(folder.parent_id)
 
         cursor.close()
