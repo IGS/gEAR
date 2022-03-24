@@ -450,13 +450,13 @@ function load_layouts() {
             profile_tree.userProfiles = layouts.user;
             profile_tree.groupProfiles = layouts.group;
             profile_tree.sharedProfiles = layouts.shared;
-            profile_tree.folderNames = data['folder_names'];
+            profile_tree.folders = data['folders'];
             profile_tree.generateTree();
             selected_profile_tree.domainProfiles = layouts.domain;
             selected_profile_tree.userProfiles = layouts.user;
             selected_profile_tree.groupProfiles = layouts.group;
             selected_profile_tree.sharedProfiles = layouts.shared;
-            selected_profile_tree.folderNames = data['folder_names'];
+            selected_profile_tree.folders = data['folders'];
             selected_profile_tree.generateTree();
 
             // pass through again and look for one set by a cookie

@@ -77,6 +77,7 @@ def main():
     for ltype in ['user', 'domain', 'group', 'shared']:
         for l in result[ltype + '_layouts']:
             if l.folder_id:
+                print("DEBUG: Adding a folder ID", file=sys.stderr)
                 folder_ids_found.add(l.folder_id)
             
             if l.share_id == layout_share_id:
@@ -96,7 +97,7 @@ def main():
                 break
 
     result['folders'] = geardb.FolderCollection()
-    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=founder_ids_found)
+    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found)
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))

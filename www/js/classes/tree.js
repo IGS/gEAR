@@ -284,9 +284,10 @@ class ProfileTree extends Tree {
         
         // This is needed so we can add folders with labels to the tree
         this.folders = {};
+        
         // It's try to add the folders in their proper places since profiles
         //  can be under multiple 
-        this.folders_added
+        //this.folders_added
     }
 
     addNode(item) {
@@ -298,6 +299,9 @@ class ProfileTree extends Tree {
           - A node with a parent defined
             - Adds parent, then self
         */
+
+        // Modifies the ID to prevent duplicates. We don't use the ID attribute
+        //  directly in the link anyway.
         if (this.profileIDs.hasOwnProperty(item.value)) {
             // Add a dash to the exiting ID
             item.value = item.value + '-';
@@ -320,11 +324,11 @@ class ProfileTree extends Tree {
         this.treeData.push(nodeData);
     }
 
-    addFolder(folderID) {
+    addFolder(folder) {
         let nodeData = {
-                'id': folderID,
-                'parent': parentID,
-                'text': folderLabel,
+                'id': folder.id,
+                'parent': folder.parent_id,
+                'text': folder.label,
                 'type': 'default',
                 'a_attr': {
                     'class': 'jstree-ocl',
@@ -347,32 +351,35 @@ class ProfileTree extends Tree {
             {'id':'shared_node', 'parent':'#', 'text':`Profiles shared with you (${this.sharedProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
+        // Add all the folders first
+        $.each(this.folders, (_i, item) => {
+            console.log("Adding folder: ");
+            console.log(item);
+            this.addFolder(item);
+        });
+
         // Load profiles into the tree data property
         $.each(this.domainProfiles, (_i, item) => {
             console.log("Adding domain node: ");
             console.log(item);
-            //this.addNode(item.text, item.value, item.share_id, 'domain_node', 'profile');
             this.addNode(item);
         });
 
         $.each(this.userProfiles, (_i, item) => {
             console.log("Adding user node: ");
             console.log(item);
-            //this.addNode(item.text, item.value, item.share_id, 'user_node', 'profile');
             this.addNode(item);
         });
 
         $.each(this.groupProfiles, (_i, item) => {
             console.log("Adding group node: ");
             console.log(item);
-            //this.addNode(item.text, item.value, item.share_id, 'group_node', 'profile');
             this.addNode(item);
         });
 
         $.each(this.sharedProfiles, (_i, item) => {
             console.log("Adding shared node: ");
             console.log(item);
-            //this.addNode(item.text, item.value, item.share_id, 'shared_node', 'profile');
             this.addNode(item);
         });
 
