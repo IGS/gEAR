@@ -281,12 +281,12 @@ class ProfileTree extends Tree {
         this.profileIDs = {};
         this.treeKeys = {};
         this.treeData = [];
-        
+
         // This is needed so we can add folders with labels to the tree
         this.folders = {};
-        
+
         // It's try to add the folders in their proper places since profiles
-        //  can be under multiple 
+        //  can be under multiple
         //this.folders_added
     }
 
@@ -313,13 +313,13 @@ class ProfileTree extends Tree {
                 'text': item.text,
                 'type': 'profile',
                 'a_attr': {
-                    'class': 'py-o',
+                    'class': 'py-0',
                 },
                 'profile_label': item.text,
                 'profile_id': item.value,
                 'profile_share_id': item.share_id
         };
-        
+
         this.profileIDs[item.value] = true;
         this.treeData.push(nodeData);
     }
@@ -362,24 +362,28 @@ class ProfileTree extends Tree {
         $.each(this.domainProfiles, (_i, item) => {
             console.log("Adding domain node: ");
             console.log(item);
+            item.folder_id = "domain_node";
             this.addNode(item);
         });
 
         $.each(this.userProfiles, (_i, item) => {
             console.log("Adding user node: ");
             console.log(item);
+            item.folder_id = "user_node";
             this.addNode(item);
         });
 
         $.each(this.groupProfiles, (_i, item) => {
             console.log("Adding group node: ");
             console.log(item);
+            item.folder_id = "group_node";
             this.addNode(item);
         });
 
         $.each(this.sharedProfiles, (_i, item) => {
             console.log("Adding shared node: ");
             console.log(item);
+            item.folder_id = "shared_node";
             this.addNode(item);
         });
 
