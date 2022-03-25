@@ -452,6 +452,9 @@ function load_layouts() {
             profile_tree.sharedProfiles = layouts.shared;
             profile_tree.folders = data['folders'];
             profile_tree.generateTree();
+            console.log("Profile tree:");
+            console.log(profile_tree.treeData);
+            
             selected_profile_tree.domainProfiles = layouts.domain;
             selected_profile_tree.userProfiles = layouts.user;
             selected_profile_tree.groupProfiles = layouts.group;

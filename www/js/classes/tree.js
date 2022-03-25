@@ -283,28 +283,19 @@ class ProfileTree extends Tree {
         this.treeData = [];
 
         // This is needed so we can add folders with labels to the tree
-        this.folders = {};
-
-        // It's try to add the folders in their proper places since profiles
-        //  can be under multiple
-        //this.folders_added
+        this.folders = [];
     }
 
-    addNode(item) {
-        /*
-          Recursive function to add nodes to the tree. Passed nodes have these possibilities:
-
-          - A node that is a profile with no parent
-            - Gets assigned to one of 4 default parent nodes
-          - A node with a parent defined
-            - Adds parent, then self
-        */
-
+    addNode(item, default_folder) {
         // Modifies the ID to prevent duplicates. We don't use the ID attribute
         //  directly in the link anyway.
         if (this.profileIDs.hasOwnProperty(item.value)) {
             // Add a dash to the exiting ID
             item.value = item.value + '-';
+        }
+
+        if (item.folder_id == null) {
+            item.folder_id = default_folder;
         }
 
         let nodeData = {
@@ -325,6 +316,10 @@ class ProfileTree extends Tree {
     }
 
     addFolder(folder) {
+        if (folder.parent_id == null) {
+            folder.parent_id = '#';
+        }
+        
         let nodeData = {
                 'id': folder.id,
                 'parent': folder.parent_id,
@@ -353,39 +348,29 @@ class ProfileTree extends Tree {
 
         // Add all the folders first
         $.each(this.folders, (_i, item) => {
-            console.log("Adding folder: ");
-            console.log(item);
             this.addFolder(item);
         });
 
-        // Load profiles into the tree data property
-        $.each(this.domainProfiles, (_i, item) => {
-            console.log("Adding domain node: ");
-            console.log(item);
-            item.folder_id = "domain_node";
-            this.addNode(item);
-        });
+        // Sort and add profiles into the tree data property
+        this.domainProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.domainProfiles) {
+            this.addNode(item, 'domain_node');
+        };
 
-        $.each(this.userProfiles, (_i, item) => {
-            console.log("Adding user node: ");
-            console.log(item);
-            item.folder_id = "user_node";
-            this.addNode(item);
-        });
+        this.userProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.userProfiles) {
+            this.addNode(item, 'user_node');
+        };
 
-        $.each(this.groupProfiles, (_i, item) => {
-            console.log("Adding group node: ");
-            console.log(item);
-            item.folder_id = "group_node";
-            this.addNode(item);
-        });
+        this.groupProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.groupProfiles) {
+            this.addNode(item, 'group_node');
+        };
 
-        $.each(this.sharedProfiles, (_i, item) => {
-            console.log("Adding shared node: ");
-            console.log(item);
-            item.folder_id = "shared_node";
-            this.addNode(item);
-        });
+        this.sharedProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.sharedProfiles) {
+            this.addNode(item, 'shared_node');
+        };
 
         return this.treeData;
     }
