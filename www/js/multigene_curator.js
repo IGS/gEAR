@@ -208,8 +208,7 @@ async function loadDatasets () {
 // Draw plotly chart to image
 async function drawPreviewImage (display) {
     // check if config has been stringified
-    let config;
-    config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
+    const config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
 
     const { data } = await getData(datasetId, config);
 

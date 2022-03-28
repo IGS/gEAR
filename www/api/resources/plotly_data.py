@@ -9,11 +9,12 @@ from plotly.utils import PlotlyJSONEncoder
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
-def create_projection_adata(dataset_adata, projection_pattern):
+def create_projection_adata(dataset_adata, projection_csv):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
     try:
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_pattern))
+        import scanpy as sc
+        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
 
@@ -82,7 +83,7 @@ class PlotlyData(Resource):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
         req = request.get_json()
-        gene_symbol = req.get('gene_symbol')
+        gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type')
 
         # tsne/umap_dynamic is just a symlink to scatter (support legacy tsne_dynamic)
@@ -115,7 +116,7 @@ class PlotlyData(Resource):
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
-        projection_pattern = req.get('projection_pattern')  # As CSV path
+        projection_csv = req.get('projection_csv', None)  # As CSV path
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.
@@ -151,6 +152,11 @@ class PlotlyData(Resource):
             "reverse_palette":reverse_palette,
             "plot_order": None,
         }
+
+        if not gene_symbol or not dataset_id:
+            return_dict["success"] = -1
+            return_dict["message"] = "Request needs both dataset id and gene symbol."
+            return return_dict
 
         try:
             ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
@@ -192,9 +198,9 @@ class PlotlyData(Resource):
             except:
                 pass
 
-        if projection_pattern:
+        if projection_csv:
             try:
-                adata = create_projection_adata(adata, projection_pattern)
+                adata = create_projection_adata(adata, projection_csv)
             except PlotError as pe:
                 return {
                     'success': -1,

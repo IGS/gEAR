@@ -20,7 +20,7 @@ class DatasetCollectionPanel {
         }
     }
 
-    load_frames({dataset_id=null, multigene=false} = {}) {        /*
+    load_frames({dataset_id=null, multigene=false, projection=false} = {}) {        /*
           Queries the database to get the list of datasets in the user's current
           view.  Initializes the dataset frame panels with placeholders for each
           dataset.
@@ -43,7 +43,7 @@ class DatasetCollectionPanel {
                 $.each( data['datasets'], (_i, ds) => {
                     // Choose single-gene or multigene grid-width
                     const grid_width = (multigene) ? ds.mg_grid_width : ds.grid_width;
-                    const dsp = new DatasetPanel( ds, grid_width, multigene );
+                    const dsp = new DatasetPanel( ds, grid_width, multigene, projection );
 
                     if (dsp.load_status == 'completed') {
                         // reformat the date
@@ -84,7 +84,7 @@ class DatasetCollectionPanel {
         $('#dataset_grid').empty();
     }
 
-    async set_layout(layout_id, layout_label, do_load_frames, multigene=false) {
+    async set_layout(layout_id, layout_label, do_load_frames, multigene=false, projection=false) {
         /*
           Updates this object, the user's stored cookie, and the database and UI labels
         */
@@ -103,7 +103,7 @@ class DatasetCollectionPanel {
         $('#search_param_profile').text(layout_label);
 
         if (do_load_frames) {
-            this.load_frames({multigene});
+            this.load_frames({multigene, projection});
         }
 
         // If a user is logged in, we need to save to the db also
@@ -140,10 +140,15 @@ class DatasetCollectionPanel {
     // Single-gene displays
     update_by_search_result(entry) {
         for (const dataset of this.datasets) {
-            if (typeof entry !== 'undefined' &&
-                dataset.organism_id in entry.by_organism) {
+            if (dataset.projection_csv) {
+                // Working with projection patterns... need the projectR csv output in order to plot.
+                // TODO: Technically, if I can keep "entry" consistent b/t gene and projection mode, I can deal with this logic in the "draw" method
+                dataset.draw({'gene_symbol':entry});
+            } else if (typeof entry !== 'undefined'
+                && dataset.organism_id in entry.by_organism) {
+                // If working with actual genes, ensure dataset and entry's organisms match for annotation purposes.
                 const gene = JSON.parse(entry.by_organism[dataset.organism_id][0]);
-                    const gene_symbol = gene.gene_symbol;
+                const gene_symbol = gene.gene_symbol;
                 dataset.draw({'gene_symbol':gene_symbol});
             } else {
                 if (dataset.display) dataset.display.clear_display();
@@ -155,7 +160,7 @@ class DatasetCollectionPanel {
     // Multigene displays
     update_by_all_results(entries) {
         for (const dataset of this.datasets) {
-            if (typeof entries !== 'undefined' ) {
+            if (typeof entries !== 'undefined' || dataset.projection_csv) {
                 // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
                 // 'entries' is array of gene_symbols
                 dataset.draw_mg({'gene_symbols':entries});
@@ -164,5 +169,15 @@ class DatasetCollectionPanel {
                 dataset.show_no_match();
             }
         }
+    }
+
+    // Run projectR on all datasets in this profile
+    run_projectR_on_all_datasets(projection_source) {
+        return new Promise((resolve, reject) => {
+            for (const dataset of this.datasets) {
+                dataset.run_projectR(projection_source);
+            }
+            resolve();
+        });
     }
 }

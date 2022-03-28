@@ -91,11 +91,12 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-def create_projection_adata(dataset_adata, projection_pattern):
+def create_projection_adata(dataset_adata, projection_csv):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
     try:
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_pattern))
+        import scanpy as sc
+        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
 
@@ -156,7 +157,7 @@ class MultigeneDashData(Resource):
         # Misc options
         title = req.get('plot_title', None)
         legend_title = req.get('legend_title', None)
-        projection_pattern = req.get('projection_pattern', None)    # as CSV file
+        projection_csv = req.get('projection_csv', None)    # as CSV file
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
@@ -211,9 +212,9 @@ class MultigeneDashData(Resource):
         success = 1
         message = ""
 
-        if projection_pattern:
+        if projection_csv:
             try:
-                adata = create_projection_adata(adata, projection_pattern)
+                adata = create_projection_adata(adata, projection_csv)
             except PlotError as pe:
                 return {
                     'success': -1,

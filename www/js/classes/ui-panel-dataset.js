@@ -18,18 +18,21 @@ $(document).on('shown.bs.modal', '.modal', () => {
 });
 
 class DatasetPanel extends Dataset {
-  constructor({ grid_position,...args }, grid_width, multigene=false) {
+  constructor({ grid_position,...args }, grid_width, multigene=false, projection=false) {
     super(args);
     this.grid_position = grid_position;
     this.grid_width = grid_width ? grid_width : args.grid_width;
     this.multigene = Number(multigene); // "true/false" works but keeping consistent with the other bool properties
+    this.projection = Number(projection);
     this.config = null;
     this.displays = null;
     this.default_display_id = null;
     this.active_display_id = null;
     this.zoomed = false;
     const single_or_multi = (this.multigene) ? "multi" : "single";
-    this.primary_key = `${this.id}_${this.grid_position}_${single_or_multi}`;
+    const genes_or_projection = (this.projection) ? "projection" : "genes";
+    this.primary_key = `${this.id}_${this.grid_position}_${genes_or_projection}_${single_or_multi}`;
+    this.projection_csv = null;
     //this.links = args.links;
     //this.linksfoo = "foo";
   }
@@ -70,7 +73,7 @@ class DatasetPanel extends Dataset {
     });
   }
 
-  async draw_chart(gene_symbol, display_id) {
+  async draw_chart(gene_symbol, display_id,) {
     const data = await this.get_dataset_display(display_id)
 
     let zoom = false;
@@ -90,16 +93,16 @@ class DatasetPanel extends Dataset {
       data.plot_type === 'tsne_dynamic' ||  // legacy
       data.plot_type === 'tsne/umap_dynamic'
     ) {
-      display = new PlotlyDisplay(data);
+      display = new PlotlyDisplay(data, this.projection_csv);
     } else if (data.plot_type === 'svg') {
-      display = new SVGDisplay(data, this.grid_width);
+      display = new SVGDisplay(data, this.grid_width, this.projection_csv);
     } else if (data.plot_type === 'tsne' ||
       data.plot_type === 'tsne_static' ||
       data.plot_type === 'umap_static' ||
       data.plot_type === 'pca_static') {
-      display = new TsneDisplay(data, gene_symbol);
+      display = new TsneDisplay(data, gene_symbol, this.projection_csv);
     } else if (data.plot_type === 'epiviz') {
-      display = new EpiVizDisplay(data, gene_symbol);
+      display = new EpiVizDisplay(data, gene_symbol, this.projection_csv);
     }
     this.display = display;
 
@@ -127,7 +130,7 @@ class DatasetPanel extends Dataset {
       data.plot_type === 'mg_violin' ||
       data.plot_type === 'volcano'
     ) {
-      display = new MultigeneDisplay(data, gene_symbols)
+      display = new MultigeneDisplay(data, gene_symbols, this.projection_csv)
     }
     this.display = display;
 
@@ -206,9 +209,9 @@ class DatasetPanel extends Dataset {
       return;
     }
 
-    if (this.display ?. gene_symbols) {
+    if (this.display?.gene_symbols) {
       // Ensure this display is a multigene display
-      this.draw_mg_chart(gene_symbols, this.display.id);
+      this.draw_mg_chart(gene_symbols, this.display.id );
     } else {
       // first time searching gene and displays have not been loaded
       const { default_display_id } = await this.get_default_display(CURRENT_USER.id, this.id, 1);
@@ -254,10 +257,8 @@ class DatasetPanel extends Dataset {
   // Generate single-gene preview images (Plotly) or plots
   draw_preview_images(display) {
     // check if config has been stringified
-    let gene_symbol;
-    let config
-    config = typeof display.plotly_config == 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
-    gene_symbol = config.gene_symbol;
+    const config = typeof display.plotly_config == 'string' ? JSON.parse(display.plotly_config) : display.plotly_config
+    const gene_symbol = config.gene_symbol;
 
     if (gene_symbol) {
       if (
@@ -281,14 +282,14 @@ class DatasetPanel extends Dataset {
         });
       } else if (display.plot_type === 'svg') {
         const target = `modal-display-${display.id}`;
-        const d = new SVGDisplay(display, null, target);
+        const d = new SVGDisplay(display, null, null, target);
         d.get_data(gene_symbol).then(({ data }) => {
           d.draw_chart(data);
         });
       } else {
         // tsne
         const target = `modal-display-${display.id}`;
-        const d = new TsneDisplay(display, gene_symbol, target);
+        const d = new TsneDisplay(display, gene_symbol, null, target);
         d.draw(gene_symbol);
       }
       $(`#modal-display-${display.id}-loading`).hide();
@@ -301,8 +302,7 @@ class DatasetPanel extends Dataset {
   // Generate multigene preview plots
   draw_preview_images_mg(display) {
     // check if config has been stringified
-    let config;
-    config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
+    const config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
     const gene_symbols = config.gene_symbols;
     // Draw preview image
     if (gene_symbols) {
@@ -459,4 +459,28 @@ class DatasetPanel extends Dataset {
     $(`#dataset_${this.primary_key} .dataset-status-container`).show();
     $(`#dataset_${this.primary_key} .plot-container`).hide();
   }
+
+  // Call API to return plot JSON data
+  async run_projectR(projection_source) {
+    const datasetId = this.id;
+    const payload = {
+        "scope":"repository"
+        , "input_value": projection_source
+    }
+    try {
+        const {data} =  await axios.post(`/api/projectr/${datasetId}`, {
+            ...payload
+        })
+        if (data.success < 1 && this.display) {
+          this.show_error(data.message);
+          return;
+        }
+        this.projection_csv = data.csv_file;
+    } catch (e) {
+        const message = "There was an error in making this projection.";
+        const success = -1;
+        this.show_error(message);
+    }
+  }
+
 }

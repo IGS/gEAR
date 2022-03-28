@@ -16,6 +16,8 @@ let layout_id = null; //from permalink - profile grid layout ID
 let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
+let projection = false;
+let projection_source = null;   // Source of patterns to project
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
@@ -59,6 +61,9 @@ window.onload=() => {
         }
     }
 
+    // Get list of patterns to search for
+    populate_pattern_selection();
+
     // Was help_id found?
     const help_id = getUrlParameter('help_id');
     if (help_id) {
@@ -77,14 +82,14 @@ window.onload=() => {
 
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
-    if (!(permalinked_gsem === (null || undefined))
+    if (permalinked_gsem !== (null || undefined)
         && permalinked_gsem === "0") {
         exact_match = false;
     }
     set_exact_match(exact_match, false);
 
     const permalinked_multigene_plots = getUrlParameter('multigene_plots');
-    multigene = (!(permalinked_multigene_plots === (null || undefined))
+    multigene = (permalinked_multigene_plots !== (null || undefined)
         && permalinked_multigene_plots === "1");
     set_multigene_plots(multigene, false);
 
@@ -104,6 +109,19 @@ window.onload=() => {
         $('#permalink_intro_c').show();
     }
 
+    // TODO: Flesh this out... repopulate pattern element checkbox statuses
+    // Repopulate projection information
+    projection_source = getUrlParameter('projection_source');
+    if (projection_source) {
+        $('#set_of_patterns').val(projection_source);
+        projection = true;
+    }
+
+    if (projection) {
+        // Correct tab is active
+        $("#projection_tab").click();
+    }
+
     // The search button starts out disabled, make sure it gets re-enabled.
     $("button#submit_search").prop( "disabled", false );
 
@@ -117,6 +135,13 @@ window.onload=() => {
     $('.js-multigene').click(() => {
         multigene = !multigene;
         set_multigene_plots(multigene);
+    });
+
+    // If multi-pattern set, toggle multigene
+    // single_pattern doesn't need to be checked
+    $('#multi_pattern').change(() => {
+        multigene = $('#multi_pattern').is(':checked');
+        set_multigene_plots(multigene, false);
     });
 
     $('#intro_search_form').on('submit', (e) => {
@@ -140,6 +165,11 @@ window.onload=() => {
     // Search from results page is clicked
     $('#submit_search').click(() => {
         $('#gene_search_form').submit();
+    })
+
+    // Display curations using projections instead of genes
+    $('#submit_search_projection').click(() => {
+        $('#projection_search_form').submit();
     })
 
     $('#dataset_search_form').on('submit', (e) => {
@@ -609,6 +639,27 @@ $(document).on('click', '#doc-link-choices li', function(){
     window.location.replace(`./manual.html?doc=${$(this).data('doc-link')}`);
 });
 
+function populate_pattern_selection() {
+    // NOTE: Called in common.js
+    $.ajax({
+        type: "POST",
+        url: "./cgi/get_projection_pattern_list.cgi",
+        data: {
+            'session_id': CURRENT_USER.session_id,
+        },
+        dataType: "json",
+        success: (data) => {
+            const pattern_list_tmpl = $.templates("#pattern_list_tmpl");    // recycling the template... same output
+            const pattern_list_html = pattern_list_tmpl.render(data);
+            $("#set_of_patterns").html(pattern_list_html);
+        },
+        error(xhr, status, msg) {
+            report_error(`Failed to load dataset list because msg: ${msg}`);
+        }
+    });
+}
+
+
 function populate_search_result_list(data) {
     // so we can display in sorted order.  javascript sucks like that.
     sorted_gene_syms = [];
@@ -665,8 +716,10 @@ function select_search_result(elm) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    annotation_panel.annotation = search_results[gene_sym];
-    annotation_panel.display_first_organism();
+    if (!projection_source) {
+        annotation_panel.annotation = search_results[gene_sym];
+        annotation_panel.display_first_organism();
+    }
 
     // hide the intro, show the search result box
     if( $('#site_intro_c').is(':visible') ) {
@@ -677,7 +730,7 @@ function select_search_result(elm) {
     dataset_collection_panel.update_by_search_result(search_results[gene_sym]);
 
     // call any plugin functions
-    search_result_postselection_functions.forEach(function(f) {f()})
+    search_result_postselection_functions.forEach((f) => {f()})
 }
 
 function isNumeric(n) {
@@ -732,6 +785,7 @@ $('#search_gene_symbol').popover({
 $("#gene_search_form").submit((event) => {
     $("#viewport_intro").hide();
     $("#viewport_main").show();
+    show_gene();
 
     // re-initialize any open tooltips
     $('[data-toggle="tooltip"], .tooltip').tooltip();
@@ -798,23 +852,7 @@ $("#gene_search_form").submit((event) => {
                 }
             });
 
-            // http://manos.malihu.gr/jquery-custom-content-scroller/
-            // The author of this utility was wonderfully responsive and helpful
-            if (SCROLLBAR_DRAWN == false) {
-                $("#search_results_scrollbox").mCustomScrollbar({
-                	theme: '3d-thick-dark',
-                    scrollButtons:{ enable:true },
-                    // we need to disable the keyboard scrolling so our custom indicators can work
-                    keyboard:{ enable:false }
-                });
-
-                // Change height after initializing scroller.
-                $("#search_results_scrollbox").css({'height': 'calc(90vh - 260px)'});
-
-                SCROLLBAR_DRAWN = true;
-            } else {
-                $("#search_results_scrollbox").mCustomScrollbar("update");
-            }
+            set_scrollbar_props();
             return false;
         },
         error(jqXHR, textStatus, errorThrown) {
@@ -845,14 +883,106 @@ $("#gene_search_form").submit((event) => {
 
 });
 
+$("#projection_search_form").submit((event) => {
+    $("#viewport_intro").hide();
+    $("#viewport_main").show();
+    show_projection();
+
+    // re-initialize any open tooltips
+    $('[data-toggle="tooltip"], .tooltip').tooltip();
+
+    // If front page MG was enabled, ensure correct radio button is selected
+    if (multigene) {
+        $('#multi_pattern').click();
+    }
+
+    $('#recent_updates_c').hide();
+    $('#searching_indicator_c').show();
+
+    // Get selected projections and add as state
+    const selected_projections = [];
+    $('.js-projection-pattern-elts-check:checked').each(function() {
+        selected_projections.push($(this).data('label'));
+    });
+    const selected_projections_string = selected_projections.join(',');
+
+    if (multigene) {
+        // MG enabled
+        $('#search_results_scrollbox').hide();
+        $('#multigene_search_indicator').show();
+    } else {
+        // MG disabled
+        $('#search_results_scrollbox').show();
+        $('#multigene_search_indicator').hide();
+    }
+
+    $('#search_results').empty();
+    // show search results
+    $('#search_results_c').removeClass('search_result_c_DISABLED');
+
+    projection_source = $("#set_of_patterns").val() ? $("#set_of_patterns").val() : null;
+    projection = true;
+
+    // Add the patterns source to the history.
+    add_state_history(selected_projections_string, projection_source);
+
+    dataset_collection_panel.load_frames({dataset_id, multigene, projection});
+
+    // Run ProjectR for the chosen pattern
+    if (projection_source) {
+        search_results = selected_projections;
+        dataset_collection_panel.run_projectR_on_all_datasets(projection_source).then(() => {
+
+            // Implementing search_genes.py results without the CGI execution
+            // ? Can we use the DIMRED_meta file to get annotation info?
+            populate_search_result_list(selected_projections);
+            $('#searching_indicator_c').hide();
+            $('#intro_content').hide('fade', {}, 400, () => {
+                if (multigene){
+                    dataset_collection_panel.update_by_all_results(selected_projections);
+                } else {
+                    // auto-select the first match.  first <a class="list-group-item"
+                    const first_thing = $('#search_results a.list-group-item').first();
+                    select_search_result(first_thing);
+                }
+            });
+
+            set_scrollbar_props();
+
+        });
+
+    }
+    return false;   // keeps the page from not refreshing
+})
+
+$("#set_of_patterns").on('change', () => {
+    $.ajax({
+        type: "POST",
+        url: "./cgi/get_pattern_element_list.cgi",
+        data: {
+            'file_name': $('#set_of_patterns').val(),
+        },
+        dataType: "json",
+        success: (data) => {
+            const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
+            const pattern_elements_html = pattern_elements_tmpl.render(data);
+            $("#projection_pattern_elements").html(pattern_elements_html);
+            $("#projection_pattern_elements_c").show();
+        },
+        error(xhr, status, msg) {
+            report_error(`Failed to load dataset list because msg: ${msg}`);
+        }
+    });
+});
+
 // controls to enable user scrolling of results with mouse arrow
 scrolling_results = false
 
-$('body').click(function(event) {
+$('body').click((event) => {
     scrolling_results = !$(event.target).closest('#search_results_c').length ? false : true;;
 });
 
-$(document).keydown(function(event) {
+$(document).keydown((event) => {
     // don't do anything unless we're scrolling results
     if (scrolling_results == true) {
         // this makes sure the browser doesn't scroll the window
@@ -877,7 +1007,7 @@ $(document).keydown(function(event) {
 });
 
 // Gene Details collapse css changes
-$(document).on('click', '#gene_details_header, #gene_collapse_btn', function() {
+$(document).on('click', '#gene_details_header, #gene_collapse_btn', () => {
     if ($('#gene_collapse_btn').attr('aria-expanded') == 'false') {
         //Details is collapsed
         $('#gene_details_header').css({
@@ -908,7 +1038,7 @@ $(document).on('click', '#gene_details_header, #gene_collapse_btn', function() {
 });
 
 // If #search_param_gene_cart (front page) was the setter, set #selected_gene_cart
-$('#search_param_gene_cart').change(function() {
+$('#search_param_gene_cart').change(() => {
     $('.js-gene-cart').text($('#search_param_gene_cart').text());
     $('.js-gene-cart').val($('#search_param_gene_cart').val());
     $('.js-gene-cart-div').css("visibility", "visible");
@@ -960,7 +1090,7 @@ $('.js-gene-cart').change( function() {
 });
 
 // Set the state history based on current conditions
-function add_state_history(gene_symbols) {
+function add_state_history(gene_symbols, projection_source=null) {
     const state_info = {
         'multigene_plots': Number(multigene)
     };
@@ -974,17 +1104,25 @@ function add_state_history(gene_symbols) {
         state_url += `&layout_id=${layout_id}`;
     }
 
-    // gene_cart_id automatically enables the exact_match and populates gene symbols,
-    // so let's not crowd up the history with that.
-    if (gene_cart_id) {
-        state_info.gene_cart_share_id = gene_cart_id;
-        state_url += `&gene_cart_share_id=${gene_cart_id}`;
+    if (projection_source) {
+        state_info.projection_patterns = gene_symbols;
+        state_url += `&projection_patterns=${gene_symbols}`;
+        state_info.projection_source = projection_source;
+        state_url += `&projection_source=${projection_source}`;
+
     } else {
-        state_info.gene_symbol_exact_match = Number(exact_match);
-        state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`;
-        if (gene_symbols) {
-            state_info.gene_symbol = gene_symbols;
-            state_url += `&gene_symbol=${gene_symbols}`;
+        // gene_cart_id automatically enables the exact_match and populates gene symbols,
+        // so let's not crowd up the history with that.
+        if (gene_cart_id) {
+            state_info.gene_cart_share_id = gene_cart_id;
+            state_url += `&gene_cart_share_id=${gene_cart_id}`;
+        } else {
+            state_info.gene_symbol_exact_match = Number(exact_match);
+            state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`;
+            if (gene_symbols) {
+                state_info.gene_symbol = gene_symbols;
+                state_url += `&gene_symbol=${gene_symbols}`;
+            }
         }
     }
 
@@ -993,10 +1131,30 @@ function add_state_history(gene_symbols) {
         // State Info
         state_info,
         // State title
-        "Gene search",
+        projection_source ? "Projection Pattern Search" : "Gene search",
         // URL
         state_url
     )
+}
+
+function set_scrollbar_props() {
+    // http://manos.malihu.gr/jquery-custom-content-scroller/
+    // The author of this utility was wonderfully responsive and helpful
+    if (SCROLLBAR_DRAWN == false) {
+        $("#search_results_scrollbox").mCustomScrollbar({
+            theme: '3d-thick-dark',
+            scrollButtons:{ enable:true },
+            // we need to disable the keyboard scrolling so our custom indicators can work
+            keyboard:{ enable:false }
+        });
+
+        // Change height after initializing scroller.
+        $("#search_results_scrollbox").css({'height': 'calc(90vh - 260px)'});
+
+        SCROLLBAR_DRAWN = true;
+    } else {
+        $("#search_results_scrollbox").mCustomScrollbar("update");
+    }
 }
 
 // automatically reloads dataset grid and resubmits gene search
@@ -1044,12 +1202,29 @@ function set_multigene_plots(is_enabled, show_tooltip=true) {
     }
 
     if (is_enabled) {
-        $("#multigene_search_icon img").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
-        $("#multigene_search_icon img").attr('src', 'img/icons/multi-dna.svg');
-
+        $(".js-multigene:visible img").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
+        $(".js-multigene img").attr('src', 'img/icons/multi-dna.svg');
     } else {
-        $("#multigene_search_icon img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
-        $("#multigene_search_icon img").attr('src', 'img/icons/single-dna.svg');
+        $(".js-multigene:visible img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
+        $(".js-multigene img").attr('src', 'img/icons/single-dna.svg');
     }
 }
 
+// Show gene-related container and options
+function show_gene() {
+    $('#gene_search_div').show();
+    $('#projection_search_div').hide();
+    $('#submit_search_projection').hide();
+    $("#gene_tab").addClass("active");
+    $("#projection_tab").removeClass("active");
+
+}
+
+// Show projection-related container and options
+function show_projection() {
+    $('#projection_search_div').show();
+    $('#submit_search_projection').show();
+    $('#gene_search_div').hide();
+    $("#projection_tab").addClass("active");
+    $("#gene_tab").removeClass("active");
+}

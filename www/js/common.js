@@ -347,9 +347,6 @@ function handle_login_ui_updates() {
         } else if (document.URL.includes("manual.html")) {
             $('a#manual_link').parent().addClass('active');
 
-        } else if (document.URL.includes("projection.html")) {
-            populate_dataset_selection();
-            populate_pattern_selection();
         }
 
         if (document.URL.includes("upload_dataset.html") ||
@@ -375,30 +372,30 @@ $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
     $('p#forgot_pass_instruct, p#forgot_pass_warning, input#forgot_pass_email, button#submit_forgot_pass_email').hide();
     $('#submit_wait_c').show();
 
-    var email = $('input#forgot_pass_email').val();
+    const email = $('input#forgot_pass_email').val();
 
     //send a trimmed current url. Helps to be more dynamic for easier testing
-    var current_url = window.location.href;
-    var current_page = current_url.lastIndexOf("/");
-    var destination_page = current_url.substring(0, current_page) + '/index.html';
+    const current_url = window.location.href;
+    const current_page = current_url.lastIndexOf("/");
+    const destination_page = `${current_url.substring(0, current_page)}/index.html`;
     $.ajax({
         url: './cgi/send_email.cgi',
         type: 'POST',
         data: { 'email': email, 'scope': 'forgot_password', 'destination_page': destination_page },
         dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
+        success(data) {
             $('#submit_wait_c').hide();
-            if (data['success'] == 1) {
+            if (data.success == 1) {
                 $('#forgot_pass_c').hide();
                 $('#forgot_pass_requested_c').show();
-            } else {
-                $('p#forgot_pass_instruct').hide();
-                $('input#forgot_pass_email').val('');
-                $('p#forgot_pass_warning, input#forgot_pass_email, button#submit_forgot_pass_email').show();
+                return;
             }
+            $('p#forgot_pass_instruct').hide();
+            $('input#forgot_pass_email').val('');
+            $('p#forgot_pass_warning, input#forgot_pass_email, button#submit_forgot_pass_email').show();
         },
-        error: function(jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name, 'Failure to submit forgotten password form');
+        error(jqXHR, textStatus, errorThrown) {
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Failure to submit forgotten password form');
         }
     });
 });
@@ -500,7 +497,7 @@ function download_table_as_excel(table_id, filename) {
 // Generates an RFC4122 version 4 compliant UUID
 function uuid() {
   return 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
 }
@@ -511,11 +508,11 @@ function uuid() {
 //   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
 //   then:      var tech = getUrlParameter('technology');
 //              var blog = getUrlParameter('blog');
-var getUrlParameter = function getUrlParameter(sParam) {
-    var sPageURL = decodeURIComponent(window.location.search.substring(1)),
-        sURLVariables = sPageURL.split('&'),
-        sParameterName,
-        i;
+const getUrlParameter = function getUrlParameter(sParam) {
+    const sPageURL = decodeURIComponent(window.location.search.substring(1));
+    const sURLVariables = sPageURL.split('&');
+    let sParameterName;
+    let i;
 
     for (i = 0; i < sURLVariables.length; i++) {
         sParameterName = sURLVariables[i].split('=');
@@ -538,8 +535,8 @@ function display_error_bar(msg, detail) {
 }
 
 /* https://naveensnayak.com/2013/06/26/dynamically-loading-css-and-js-files-using-jquery/ */
-loadCSS = function(href) {
-    var cssLink = $("<link rel='stylesheet' type='text/css' href='"+href+"'>");
+loadCSS = (href) => {
+    const cssLink = $(`<link rel='stylesheet' type='text/css' href='${href}'>`);
     $("head").append(cssLink);
 };
 

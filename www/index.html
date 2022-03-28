@@ -356,76 +356,125 @@
       </div>
         <div class="row">
           <div id="leftbar_main" class="col-2">
+            <div class="tab" role="tablist">
+              <button class="active" id="gene_tab" onclick="show_gene()">Gene</button>
+              <button id="projection_tab" onclick="show_projection()">Projection</button>
+            </div>
+
             <div id="search_container">
-              <div id="search_info">
-                <form id="gene_search_form"></form>
-                <div id="gene_search_div" class="form-group">
-                  <h3>Search Genes</h3>
-                  <div class="row">
-                    <div class="col-12 input-group input-group-sm">
-                      <div class="form-row w-100 mb-1">
-                        <input type="text" form="gene_search_form" id="search_gene_symbol" class="js-gene-symbols form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
+              <form id="gene_search_form"></form>
+              <div id="gene_search_div" class="form-group">
+                <h3>Search Genes</h3>
+                <div class="row">
+                  <div class="col-12 input-group input-group-sm">
+                    <div class="form-row w-100 mb-1">
+                      <input type="text" form="gene_search_form" id="search_gene_symbol" class="js-gene-symbols form-control form-control-sm" name="search_gene_symbol" placeholder="Search for a gene symbol" data-toggle="popover" data-placement="right" value="" />
+                    </div>
+
+                    <div id="gene_input_appends" class="form-row">
+                      <div class=" input-group-append dropdown" id="selected_gene_cart_c">
+                        <div id="gene_cart_search_input" class="js-gene-cart-icon input-group-text dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                          <i class="fa fa-shopping-cart" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Click to select a gene cart for loading a pre-defined set of genes."></i>
+                        </div>
+                        <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
+                          <form class="px-4 py-3" onsubmit="return false;">
+                            <div class="input-group input-group-sm mb-3">
+                              <div class="input-group-prepend">
+                                <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                              </div>
+                              <input type="text" class="form-control" id="selected_gene_cart_tree_q" placeholder="Type to search gene carts">
+                            </div>
+                            <div id="selected_gene_cart_tree"></div>
+                          </form>
+                        </div>
+                      </div> <!-- selected_gene_cart_c -->
+
+                      <div class="input-group-append">
+                        <div id="exact_match_input" class="js-exact-match input-group-text" >
+                          <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
+                        </div>
                       </div>
 
-                      <div id="gene_input_appends" class="form-row">
-                        <div class=" input-group-append dropdown" id="selected_gene_cart_c">
-                          <div id="gene_cart_search_input" class="js-gene-cart-icon input-group-text dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fa fa-shopping-cart" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Click to select a gene cart for loading a pre-defined set of genes."></i>
-                          </div>
-                          <div class="dropdown-menu" aria-labelledby="selected_gene_cart">
-                            <form class="px-4 py-3" onsubmit="return false;">
-                              <div class="input-group input-group-sm mb-3">
-                                <div class="input-group-prepend">
-                                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                                </div>
-                                <input type="text" class="form-control" id="selected_gene_cart_tree_q" placeholder="Type to search gene carts">
-                              </div>
-                              <div id="selected_gene_cart_tree"></div>
-                            </form>
-                          </div>
-                        </div> <!-- selected_gene_cart_c -->
-
-                        <div class="input-group-append">
-                          <div id="exact_match_input" class="js-exact-match input-group-text" >
-                            <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
-                          </div>
+                      <div class="input-group-append">
+                        <div id="multigene_plots_input" class="js-multigene input-group-text" >
+                          <img src="img/icons/single-dna.svg" alt="Single/multi-gene toggle" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></img>
                         </div>
+                      </div>
 
-                        <div class="input-group-append">
-                          <div id="multigene_plots_input" class="js-multigene input-group-text" >
-                            <i class="fa fa-gear" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></i>
-                          </div>
+                      <div class="input-group-append">
+                        <div id="submit_search" class="js-search input-group-text">
+                          <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
                         </div>
+                      </div>
+                    </div> <!-- .form-row -->
+                  </div>
+                </div> <!-- .row -->
+                <small id="selected_gene_cart_div" style="visibility:hidden;" class="js-gene-cart-div"><strong>Gene Cart: </strong><span id="selected_gene_cart"  class="js-gene-cart"></span></small>
+              </div> <!-- gene search div -->
 
-                        <div class="input-group-append">
-                          <div id="submit_search" class="js-search input-group-text">
-                            <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
-                          </div>
-                        </div>
-                      </div> <!-- .form-row -->
-                    </div>
-                  </div> <!-- .row -->
-                  <small id="selected_gene_cart_div" style="visibility:hidden;" class="js-gene-cart-div"><strong>Gene Cart: </strong><span id="selected_gene_cart"  class="js-gene-cart"></span></small>
-                </div> <!-- gene search div -->
-
-                <div class="form-group">
-                  <label id="selected_profile_label" class="mb-0">Select Profile</label>
-                  <div id="selected_profile_c" class="dropdown">
-                    <div id="selected_profile" value="" data-title="Click to change" class="js-profile form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
-                    <div class="dropdown-menu" aria-labelledby="selected_profile">
-                      <form class="px-4 py-3" onsubmit="return false;">
-                        <div class="input-group input-group-sm mb-3">
-                          <div class="input-group-prepend">
-                            <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                          </div>
-                          <input type="text" class="form-control" id="selected_profile_tree_q" placeholder="Type to search profiles">
-                        </div>
-                        <div id="selected_profile_tree"></div>
-                      </form>
-                    </div>
-                  </div> <!-- end selected_profile_c -->
+              <form id="projection_search_form"></form>
+              <div id="projection_search_div">
+                <h3>Search Projections</h3>
+                <div class="row form-group form-group-sm">
+                  <div id="set_of_patterns_c" class="col-12">
+                    <!-- Where will this be?  -->
+                    <label for="set_of_patterns" class="control-label">Set of patterns</label>
+                    <select id="set_of_patterns" class="form-control form-control-sm"></select>
+                  </div>
                 </div>
-              </div><!-- #gene_search_div -->
+
+                <fieldset id="projection_pattern_elements_c" style="display:none;">
+                  <h3>Choose a pattern</h3>
+                  <div class="row form-group form-group-sm">
+                    <div id="projection_pattern_elements" class="col-12"></div>
+                  </div>
+                </fieldset>
+
+                <fieldset id="projection_display_mode_c" class="form-group form-group-sm">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="projection_display_mode" id="single_pattern" value="single" checked>
+                    <label class="form-check-label" for="single_pattern">
+                      Single-pattern display
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="projection_display_mode" id="multi_pattern" value="multi">
+                    <label class="form-check-label" for="multi_pattern">
+                      Multi-pattern display
+                    </label>
+                  </div>
+                </fieldset>
+
+                <script id="pattern_list_tmpl" type="text/x-jsrender">
+                  <option value="{{:id}}">{{:title}}</option>
+                </script>
+                <script id="pattern_elements_tmpl" type="text/x-jsrender">
+                  <div class="form-check">
+                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}">{{:label}}
+                  </div>
+                </script>
+              </div>
+
+              <div class="form-group">
+                <label id="selected_profile_label" class="mb-0">Select Profile</label>
+                <div id="selected_profile_c" class="dropdown">
+                  <div id="selected_profile" value="" data-title="Click to change" class="js-profile form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
+                  <div class="dropdown-menu" aria-labelledby="selected_profile">
+                    <form class="px-4 py-3" onsubmit="return false;">
+                      <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                        </div>
+                        <input type="text" class="form-control" id="selected_profile_tree_q" placeholder="Type to search profiles">
+                      </div>
+                      <div id="selected_profile_tree"></div>
+                    </form>
+                  </div>
+                </div> <!-- end selected_profile_c -->
+              </div>
+              <div id="submit_search_projection" class="js-search form-group form-group-sm">
+                <button type="submit" class="btn btn-secondary btn-sm">Search projections</button>
+              </div>
             </div><!-- end #search_container -->
 
             <div id="search_results_c" class="item search_result_c search_result_c_DISABLED" style="height:calc(90vh - 240px);">
