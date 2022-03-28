@@ -287,11 +287,13 @@ class ProfileTree extends Tree {
     }
 
     addNode(item, default_folder) {
+        item.tree_id = item.value;
+        
         // Modifies the ID to prevent duplicates. We don't use the ID attribute
         //  directly in the link anyway.
-        if (this.profileIDs.hasOwnProperty(item.value)) {
+        while (this.profileIDs.hasOwnProperty(item.tree_id)) {
             // Add a dash to the exiting ID
-            item.value = item.value + '-';
+            item.tree_id = item.tree_id + '-';
         }
 
         if (item.folder_id == null) {
@@ -299,7 +301,7 @@ class ProfileTree extends Tree {
         }
 
         let nodeData = {
-                'id': item.value,
+                'id': item.tree_id,
                 'parent': item.folder_id,
                 'text': item.text,
                 'type': 'profile',
@@ -311,7 +313,7 @@ class ProfileTree extends Tree {
                 'profile_share_id': item.share_id
         };
 
-        this.profileIDs[item.value] = true;
+        this.profileIDs[item.tree_id] = true;
         this.treeData.push(nodeData);
     }
 
