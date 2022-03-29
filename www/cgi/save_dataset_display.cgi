@@ -9,7 +9,8 @@ import geardb
 
 import plotly.graph_objects as go
 
-DATASET_PREVIEWS_DIR = "/var/www/img/dataset_previews"
+DATASET_PREVIEWS_DIR = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
+
 
 def make_static_plotly_graph(dataset_id, filename, config):
     """Create (or overwrite) a static plotly PNG image using the existing config."""

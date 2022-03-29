@@ -12,8 +12,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-# this obviously needs to change
-PATTERN_BASE_DIR = '/var/www/patterns'
+PATTERN_BASE_DIR = os.path.abspath(os.path.join('..', 'patterns'))
 
 def main():
     form = cgi.FieldStorage()
