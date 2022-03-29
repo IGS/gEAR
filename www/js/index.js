@@ -654,7 +654,7 @@ function populate_pattern_selection() {
             $("#set_of_patterns").html(pattern_list_html);
         },
         error(xhr, status, msg) {
-            report_error(`Failed to load dataset list because msg: ${msg}`);
+            console.error(`Failed to load dataset list because msg: ${msg}`);
         }
     });
 }
@@ -970,7 +970,7 @@ $("#set_of_patterns").on('change', () => {
             $("#projection_pattern_elements_c").show();
         },
         error(xhr, status, msg) {
-            report_error(`Failed to load dataset list because msg: ${msg}`);
+            console.error(`Failed to load dataset list because msg: ${msg}`);
         }
     });
 });
