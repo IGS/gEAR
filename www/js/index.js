@@ -956,23 +956,25 @@ $("#projection_search_form").submit((event) => {
 })
 
 $("#set_of_patterns").on('change', () => {
-    $.ajax({
-        type: "POST",
-        url: "./cgi/get_pattern_element_list.cgi",
-        data: {
-            'file_name': $('#set_of_patterns').val(),
-        },
-        dataType: "json",
-        success: (data) => {
-            const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
-            const pattern_elements_html = pattern_elements_tmpl.render(data);
-            $("#projection_pattern_elements").html(pattern_elements_html);
-            $("#projection_pattern_elements_c").show();
-        },
-        error(xhr, status, msg) {
-            console.error(`Failed to load dataset list because msg: ${msg}`);
-        }
-    });
+    if ($('#set_of_patterns').val()) {
+        $.ajax({
+            type: "POST",
+            url: "./cgi/get_pattern_element_list.cgi",
+            data: {
+                'file_name': $('#set_of_patterns').val(),
+            },
+            dataType: "json",
+            success: (data) => {
+                const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
+                const pattern_elements_html = pattern_elements_tmpl.render(data);
+                $("#projection_pattern_elements").html(pattern_elements_html);
+                $("#projection_pattern_elements_c").show();
+            },
+            error(xhr, status, msg) {
+                console.error(`Failed to load dataset list because msg: ${msg}`);
+            }
+        });
+    }
 });
 
 // controls to enable user scrolling of results with mouse arrow
