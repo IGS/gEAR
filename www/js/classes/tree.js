@@ -318,6 +318,11 @@ class ProfileTree extends Tree {
     }
 
     addFolder(folder) {
+        // We skip folder ID 0, since it handled as id:domain_node already
+        if (folder.id == 0) {
+            return false;
+        }
+        
         if (folder.parent_id == null) {
             folder.parent_id = '#';
         }
