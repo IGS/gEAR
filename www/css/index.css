@@ -113,7 +113,9 @@ div#go_terms_table_c {
 div.h5ad-container {
   height: 350px;
 }
-
+div.input-group-text {
+    padding: 6px 8px;
+}
 div.input-group-text img {
   width: 20px;
 }
