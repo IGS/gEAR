@@ -1,7 +1,7 @@
 ## Overview
 
 These are instructions for setting up the Python environment for Python
-environment, tested on Ubuntu 18.04 and 20.04.  Why not virtualenv or any
+environment, tested on Ubuntu 21.10.  Why not virtualenv or any
 other isolated python environment?  You could, but for a committed
 webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
@@ -9,33 +9,68 @@ fixed paths have worked fine for decades.
     $ sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
     $ sudo apt install libreadline-gplv2-dev libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
 
-    $ sudo mkdir /opt/Python-3.7.3
-    $ sudo chown $USER /opt/Python-3.7.3
+    $ export PYTHONV=3.10.4
+    $ export PYTHON_MINORV=3.10
+    $ sudo mkdir /opt/Python-${PYTHONV}
+    $ sudo chown $USER /opt/Python-${PYTHONV}
     $ cd /tmp
-    $ wget https://www.python.org/ftp/python/3.7.3/Python-3.7.3.tar.xz
-    $ tar -xf Python-3.7.3.tar.xz
-    $ cd Python-3.7.3/
-    $ ./configure --prefix=/opt/Python-3.7.3 --enable-optimizations --enable-shared
+    $ wget https://www.python.org/ftp/python/${PYTHONV}/Python-${PYTHONV}.tar.xz
+    $ tar -xf Python-${PYTHONV}.tar.xz
+    $ cd Python-${PYTHONV}/
+    $ ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared
     $ make
     $ make install
 
-    $ cd /opt/Python-3.7.3/bin
-    $ sudo ln -s /opt/Python-3.7.3/lib/libpython3.7m.so.1.0 /usr/lib/
+    $ cd /opt/Python-${PYTHONV}/bin
+    $ sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
     $ sudo apt install hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
 
     $ ./pip3 install --upgrade pip
-    $ ./pip3 install h5py==2.10.0 scanpy==1.5.1 anndata==0.7.3 pandas==1.0.4 numba==0.50.0 xlrd==1.2.0 numpy==1.18.5 scipy==1.4.1 scikit-learn==0.23.1 jupyter mysql-connector-python==8.0.20 requests plotly==4.14.3 kaleido==0.2.1 louvain MulticoreTSNE Pillow biopython==1.76 biocode==0.9.0 python-dotenv==0.14.0 Flask==1.1.2 SQLAlchemy==1.2.12 Flask-RESTful==0.3.8 mod-wsgi==4.6.5 opencv-python==4.1.1.26 pathlib==1.0.1 dash-bio==0.6.1
+
+    $ ./pip3 install \
+      anndata==0.8.0 \
+      biocode==0.10.0 \
+      biopython==1.79 \
+      dash-bio==1.0.2 \
+      Flask==2.1.0 \
+      Flask-RESTful==0.3.9 \
+      h5py==3.6.0 \
+      itsdangerous==2.1.2 \
+      jupyter==1.0.0 \
+      kaleido==0.2.1 \
+      llvmlite==0.38.0 \
+      mod-wsgi==4.9.0 \
+      MulticoreTSNE==0.1 \
+      mysql-connector-python==8.0.28 \
+      numba==0.55.1 \
+      numexpr==2.8.1 \
+      numpy==1.21.5 \
+      opencv-python==4.5.5.64 \
+      pandas==1.4.1 \
+      Pillow==9.0.1 \
+      plotly==5.6.0 \
+      python-dotenv==0.20.0 \
+      requests==2.27.1 \
+      scanpy==1.8.2 \
+      scanpy[louvain]==1.8.2 \
+      scikit-learn==1.0.2 \
+      scipy==1.8.0 \
+      SQLAlchemy==1.4.32 \
+      xlrd==2.0.1
 
 SAdkins note - Installing dash-bio (0.6.1) on the devel server by itself upgraded plotly to 5.3.1.  So we need to install dash==1.2.1 and plotly==4.14.3 if they are not this.
 
     $ sudo mkdir /opt/bin
-    $ sudo ln -s /opt/Python-3.7.3/bin/python3 /opt/bin/
+    $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 
 Scanpy (or dependencies) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
 
-    $ cd /opt/Python-3.7.3/lib/python3.7/site-packages/scanpy
+    $ cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/scanpy
     $ find ./ -name __pycache__ -exec chmod 777 {} \;
 
 Diffxpy (v0.7.4) is used in the multigene curator, but their version does not allow for free-ordering of conditions (for volcano plots).  I forked their code (adkinsrs/diffxpy), made the fix, and installed
-    $ sudo /opt/Python-3.7.3/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021
+    $ sudo /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021
+
+
+

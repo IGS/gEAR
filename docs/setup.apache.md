@@ -132,11 +132,13 @@ There's a lot in here, but the CGI-related addition is:
 
 ### /etc/apache2/mods-available/wsgi.load
 
-LoadModule wsgi_module "/opt/Python-3.7.3/lib/python3.7/site-packages/mod_wsgi/server/mod_wsgi-py37.cpython-37m-x86_64-linux-gnu.so"
+## The version numbers here need to coincide with the python version installed
+
+LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
 
 ### /etc/apache2/mods-enabled/wsgi.conf
 
-Add the line `WSGIPythonHome "/opt/Python-3.7.3"` into the IfModule block.
+Add the line `WSGIPythonHome "/opt/Python-3.10.4"` into the IfModule block.
 
 Then, finally restart apache again.
 
