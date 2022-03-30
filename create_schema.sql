@@ -280,6 +280,9 @@ CREATE TABLE folder (
        FOREIGN KEY (parent_id) REFERENCES folder(id) ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
+# The label for this one is not actually displayed.  It is set in tree.js
+INSERT INTO folder (id, parent_id, label) VALUES (0, NULL, 'Highlighted profiles');
+
 CREATE TABLE folder_member (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        folder_id                INT NOT NULL,
