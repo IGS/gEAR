@@ -350,7 +350,7 @@
                        </div>
                      </div> <!-- end .expandable-view -->
                      <div class="row">
-                       <div class="col-sm-12">
+                       <div class="col-sm-8">
                          <div class="att_buttons btn-group pt-2" role="group">
                            <button class="btn btn-default btn-sm btn-outline-secondary view_dataset" value="{{:share_id}}" data-toggle="tooltip" data-placement="bottom" title="View"><i class="fa fa-eye"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary profile_control add2profile" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Add dataset to profile"><i class="fa fa-plus"></i></button>
@@ -358,11 +358,22 @@
                            <button class="btn btn-default btn-sm btn-outline-secondary curate" value="{{:dataset_id}}" data-toggle="tooltip" data-placement="bottom" title="Change the dataset's display"><i class="fa fa-desktop"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-danger delete_dataset" value="{{:dataset_id}}" data-owner-id="{{:owner_id}}" data-toggle="popover" data-placement="bottom" title="Remove dataset"><i class="fa fa-trash"></i></button>
                            <button class="btn btn-default btn-sm btn-outline-secondary share_dataset" value="{{:share_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Share dataset"><i class="fa fa-share-alt"></i></button>
-                           <!--<button class="btn btn-default btn-sm btn-outline-secondary note_launcher" data-dataset-id="{{:dataset_id}}" data-title="{{:title}}" data-toggle="tooltip" data-placement="bottom" title="View notes"><span class="fa fa-pencil"></span></button>-->
                            <button class="btn btn-default btn-sm btn-outline-secondary edit_dataset is-editable" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-pencil"></i></button>
                            <span class="dataset_action_note"></span>
                            <button class="btn btn-default btn-sm btn-outline-primary edit_dataset_save editable-version" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Edit dataset"><i class="fa fa-floppy-o"></i> Save edits</button>
                            <button class="btn btn-default btn-sm btn-outline-primary edit_dataset_cancel editable-version" value="{{:dataset_id}}" data-dataset-id="{{:dataset_id}}" data-toggle="popover" data-placement="bottom" title="Cancel edits"><i class="fa fa-undo"></i> Cancel edits</button>
+                         </div>
+                         <!-- Nested group for tools -->
+                         <div class="att_buttons btn-group pt-2" role="group">
+                           <div class="btn-group" role="group">
+                             <button id="btnGroupDrop1" type="button" class="btn btn-sm btn-default btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                               Analysis tools
+                             </button>
+                             <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+                               <a class="dropdown-item fa fa-compress launch_comparison" href="./compare_datasets.html?dataset_id={{:id}}" data-dataset-id="{{:dataset_id}}"> Compare gene expression</a>
+                               <a class="dropdown-item fa fa-bar-chart" href="./analyze_dataset.html?dataset_id={{:dataset_id}}"> scRNA-Seq analysis</a>
+                             </div>
+                           </div>
                          </div>
                        </div>
                      </div>
