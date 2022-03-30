@@ -185,7 +185,7 @@ function formatDate(date) {
 } // end formatDate()
 
 // Launches the side panel
-$(document).on('click', 'button.note_launcher', function(e) {
+$(document).on('click', 'li.note_launcher', function(e) {
     var dataset_id = $(this).attr('data-dataset-id');
 
     // Prepopulate the form dataset_id

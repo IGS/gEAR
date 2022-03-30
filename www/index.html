@@ -815,8 +815,8 @@
                 <div class="dataset_header_title col-sm-9">{{:title}}</div>
                 <div class="dataset_header_menu col-sm-3">
                   <div class="btn-group pull-right">
-                    <button id="note_launcher_{{:primary_key}}" data-dataset-id="{{:id}}" data-title="{{:title}}" type="button" class="btn btn-sm note_launcher" data-toggle="tooltip" data-placement="bottom" title="Take notes">
-                      <span class="fa fa-pencil"></span>
+                    <button id="dataset_{{:primary_key}}_zoom_in_control" type="button" class="btn btn-sm" data-toggle="tooltip" data-placement="bottom" title="Larger view">
+                      <span class="fa fa-search-plus"></span>
                     </button>
                     <button type="button" class="btn btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-placement="bottom" title="Show options">
                       <span class="caret"></span>
@@ -825,7 +825,7 @@
                       <li id="dataset_{{:primary_key}}_displays" class='dropdown-submenu'>
                         <a href="javascript:;" class="fa fa-clone"> Displays</a>
                       </li>
-                      <li id="dataset_{{:primary_key}}_zoom_in_control"><a href="javascript:;" class="fa fa-search-plus"> View</a></li>
+                      <li id="note_launcher_{{:primary_key}}" class="note_launcher" data-dataset-id="{{:id}}" data-title="{{:title}}"><a href="javascript:;" class="fa fa-pencil"> Take notes</a></li>
                       <li id="dataset_{{:primary_key}}_info_launcher" class="more_info" data-dataset_id="{{:id}}"><a href="javascript:;" class="fa fa-info-circle"> Info</a></li>
                       {{if pubmed_id}}
                       <li><a href="http://www.ncbi.nlm.nih.gov/pubmed/?term={{:pubmed_id}}" target="_blank" class="fa fa-graduation-cap"> Publication</a></li>
