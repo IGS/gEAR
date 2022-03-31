@@ -115,14 +115,14 @@ window.onload=() => {
     projection_patterns = getUrlParameter('projection_patterns');
     // Only apply if both are present
     if (projection_source && projection_patterns) {
-        $('#set_of_patterns').val(projection_source);
-        projection = true;
         // Patterns applied after HTML renders
-    }
-
-    if (projection) {
+        $("#search_gene_symbol_intro").val(projection_patterns);
         // Correct tab is active
         $("#projection_tab").click();
+        projection = true;
+        sleep(1000).then(() => {
+            $('#intro_search_icon').trigger('click');
+        })
     }
 
     // The search button starts out disabled, make sure it gets re-enabled.
@@ -150,14 +150,19 @@ window.onload=() => {
     $('#intro_search_form').on('submit', (e) => {
         // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
         e.preventDefault();
-        $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
         $('#intro_content').hide();
 
         $("#leftbar_main").show();
         $("#viewport_main").show();
 
         // fire the true search button, to submit the true form
-        $("#submit_search").trigger( "click" );
+        if (projection) {
+            $('#set_of_patterns').val(projection_source).trigger("change");
+            $("#submit_search_projection").trigger( "click" );
+        } else {
+            $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
+            $("#submit_search").trigger( "click" );
+        }
     });
 
     // Search from front page is clicked
@@ -965,6 +970,7 @@ $("#set_of_patterns").on('change', () => {
         $.ajax({
             type: "POST",
             url: "./cgi/get_pattern_element_list.cgi",
+            async: false,
             data: {
                 'file_name': $('#set_of_patterns').val(),
             },
@@ -978,9 +984,10 @@ $("#set_of_patterns").on('change', () => {
                 // Check boxes for the elements that were found in the URL
                 if (projection_patterns) {
                     projection_patterns.split(',').forEach((pattern) => {
-                        $("#projection_pattern_elements input[value='" + pattern + "']").prop('checked', true);
+                        $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
                     });
                 }
+
             },
             error(xhr, status, msg) {
                 console.error(`Failed to load dataset list because msg: ${msg}`);
