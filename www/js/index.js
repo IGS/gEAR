@@ -18,6 +18,7 @@ let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
 let projection = false;
 let projection_source = null;   // Source of patterns to project
+let projection_patterns = null; // Selected projection patterns
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
@@ -109,12 +110,14 @@ window.onload=() => {
         $('#permalink_intro_c').show();
     }
 
-    // TODO: Flesh this out... repopulate pattern element checkbox statuses
     // Repopulate projection information
     projection_source = getUrlParameter('projection_source');
-    if (projection_source) {
+    projection_patterns = getUrlParameter('projection_patterns');
+    // Only apply if both are present
+    if (projection_source && projection_patterns) {
         $('#set_of_patterns').val(projection_source);
         projection = true;
+        // Patterns applied after HTML renders
     }
 
     if (projection) {
@@ -654,7 +657,7 @@ function populate_pattern_selection() {
             $("#set_of_patterns").html(pattern_list_html);
         },
         error(xhr, status, msg) {
-            console.error(`Failed to load dataset list because msg: ${msg}`);
+            console.error(`Failed to populate patterns list: ${msg}`);
         }
     });
 }
@@ -902,9 +905,11 @@ $("#projection_search_form").submit((event) => {
     // Get selected projections and add as state
     const selected_projections = [];
     $('.js-projection-pattern-elts-check:checked').each(function() {
-        selected_projections.push($(this).data('label'));
+        // Needs to be Object so it can be the same structure as "search_genes.py" so it fits nicesly in populate_search_result_list()
+        const label = $(this).data('label');
+        selected_projections[label] = label;
     });
-    const selected_projections_string = selected_projections.join(',');
+    const selected_projections_string = Object.keys(selected_projections).join(',');
 
     if (multigene) {
         // MG enabled
@@ -969,6 +974,13 @@ $("#set_of_patterns").on('change', () => {
                 const pattern_elements_html = pattern_elements_tmpl.render(data);
                 $("#projection_pattern_elements").html(pattern_elements_html);
                 $("#projection_pattern_elements_c").show();
+
+                // Check boxes for the elements that were found in the URL
+                if (projection_patterns) {
+                    projection_patterns.split(',').forEach((pattern) => {
+                        $("#projection_pattern_elements input[value='" + pattern + "']").prop('checked', true);
+                    });
+                }
             },
             error(xhr, status, msg) {
                 console.error(`Failed to load dataset list because msg: ${msg}`);
@@ -1092,7 +1104,7 @@ $('.js-gene-cart').change( function() {
 });
 
 // Set the state history based on current conditions
-function add_state_history(gene_symbols, projection_source=null) {
+function add_state_history(searched_entities, projection_source=null) {
     const state_info = {
         'multigene_plots': Number(multigene)
     };
@@ -1107,8 +1119,8 @@ function add_state_history(gene_symbols, projection_source=null) {
     }
 
     if (projection_source) {
-        state_info.projection_patterns = gene_symbols;
-        state_url += `&projection_patterns=${gene_symbols}`;
+        state_info.projection_patterns = searched_entities;
+        state_url += `&projection_patterns=${searched_entities}`;
         state_info.projection_source = projection_source;
         state_url += `&projection_source=${projection_source}`;
 
@@ -1121,9 +1133,9 @@ function add_state_history(gene_symbols, projection_source=null) {
         } else {
             state_info.gene_symbol_exact_match = Number(exact_match);
             state_url += `&gene_symbol_exact_match=${state_info.gene_symbol_exact_match}`;
-            if (gene_symbols) {
-                state_info.gene_symbol = gene_symbols;
-                state_url += `&gene_symbol=${gene_symbols}`;
+            if (searched_entities) {
+                state_info.gene_symbol = searched_entities;
+                state_url += `&gene_symbol=${searched_entities}`;
             }
         }
     }
