@@ -81,7 +81,7 @@ RUN wget $CMAKE_URL \
   && cd CMake-${CMAKE_VERSION} \
   && ./bootstrap \
   && make install \
-  && rm -rf v${CMAKE_VERSION}* CMake-${CMAKE_VERSION}*
+  && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
 
 # ProjectR install.  Must be done before rpy2 is installed
 COPY ./install_bioc.sh /tmp/.
