@@ -3,7 +3,7 @@ from flask_restful import Resource
 import pandas as pd
 import geardb
 
-import json
+import json, os
 from gear.mg_plotting import get_config, PlotError
 import gear.mg_plotting as mg
 
@@ -132,6 +132,7 @@ class MultigeneDashData(Resource):
         # Heatmap opts
         clusterbar_fields = req.get('clusterbar_fields', [])
         matrixplot = req.get('matrixplot', False)
+        center_around_zero = req.get('center_around_zero', False)
         cluster_obs = req.get('cluster_obs', False)
         cluster_genes = req.get('cluster_genes', False)
         flip_axes = req.get('flip_axes', False)
@@ -455,10 +456,18 @@ class MultigeneDashData(Resource):
                 , cluster_obs
                 , cluster_genes
                 , flip_axes
+                , center_around_zero
                 , distance_metric
                 )
 
-            fig.data[-1]["reversescale"] = True # The current clustergram palette should be reversed
+            # The current clustergram palette used when centering values around zero should be reversed
+            fig.data[-1]["reversescale"] = center_around_zero
+            if center_around_zero:
+                fig.data[-1]["zmid"] = 0
+            else:
+                # both zmin and zmax are required
+                fig.data[-1]["zmin"] = 0
+                fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D array
 
             # Clustergram has a bug where the space where dendrograms should appear is still whitespace
             # Need to adjust the domains of those subplots if no clustering is required
