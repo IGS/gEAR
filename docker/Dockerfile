@@ -60,6 +60,8 @@ RUN apt-get -qq update \
 	libpcre3 \
 	libpcre3-dev \
   # Required for rpy2
+  r-base-dev \
+  r-base \
   libgomp1 \
   # Apache2 and PHP
   libapache2-mod-wsgi-py3 \
@@ -82,8 +84,11 @@ ENV LLVM_CONFIG=/usr/bin/llvm-config-9
 WORKDIR /tmp
 
 # ProjectR install.  Must be done before rpy2 is installed
-COPY ./install_bioc.sh /tmp/.
-RUN /tmp/install_bioc.sh
+#COPY ./install_bioc.sh /tmp/.
+#RUN /tmp/install_bioc.sh
+
+RUN echo "install.packages(c(\"BiocManager\"), repos=\"http://lib.stat.cmu.edu/R/CRAN/\")" | R --save --restore || exit 1
+RUN echo "BiocManager::install(c(\"projectR\"), ask=FALSE)" | R --save --restore || exit 1
 
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
