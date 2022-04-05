@@ -120,21 +120,11 @@ window.onload=() => {
         "tsne_is_loading",
       ]),
       is_loading() {
-        if (
-          (this.preconfigured && this.display_tsne_is_loading == true) ||
-          this.tsne_is_loading
-        ) {
-          return true;
-        } else {
-          return false;
-        }
+        return (this.preconfigured && this.display_tsne_is_loading == true) ||
+        this.tsne_is_loading ? true : false;
       },
       plot_params_ready() {
-        if (this.config.x_axis && this.config.y_axis) {
-          return true;
-        } else {
-          return false;
-        }
+        return this.config.x_axis && this.config.y_axis ? true : false;
       },
     },
     created() {
@@ -198,7 +188,8 @@ window.onload=() => {
               max_columns: config.max_columns,
               x_axis: config.x_axis,
               y_axis: config.y_axis,
-              plot_type: plot_type,
+              horizontal_legend: config.horizontal_legend,
+              plot_type,
               analysis_owner_id: this.display_data.user_id,
               colors: config.colors,
               order: config.order,
@@ -2351,6 +2342,13 @@ window.onload=() => {
                 </b-form-checkbox>
               </b-form-group>
 
+              <b-form-group v-if='show_colorized_legend' label-align-sm="right">
+              <b-icon class="float-right" v-b-tooltip.hover="'Check to make horizontal legend along the bottom of the plotspace'" icon="question-circle-fill"></b-icon>
+              <b-form-checkbox v-model='horizontal_legend'>
+                Create horizontal legend
+              </b-form-checkbox>
+            </b-form-group>
+
             </b-form-group>
           </b-col>
         </b-row>
@@ -2405,6 +2403,14 @@ window.onload=() => {
           this.$store.commit("set_skip_gene_plot", value);
         },
       },
+      horizontal_legend: {
+        get() {
+          return this.$store.state.config.horizontal_legend;
+        },
+        set(value) {
+          this.$store.commit("set_horizontal_legend", value);
+        },
+      },
       x_axis: {
         get() {
           return this.$store.state.config.x_axis;
@@ -2433,6 +2439,8 @@ window.onload=() => {
         this.max_columns = this.config.max_columns;
       if ("skip_gene_plot" in this.config)
         this.skip_gene_plot = this.config.skip_gene_plot;
+      if ("horizontal_legend" in this.config)
+        this.horizontal_legend = this.config.horizontal_legend;
 
       this.fetch_h5ad_info({
         dataset_id: this.dataset_id,
@@ -2440,21 +2448,22 @@ window.onload=() => {
       });
     },
     watch: {
-      show_colorized_legend: function (val, oldval) {
+      show_colorized_legend(val, oldval) {
         // if deselected, clear colorize legend select box
         if (this.show_colorized_legend === false) {
           this.colorize_legend_by = null;
           this.skip_gene_plot = null;
+          this.horizontal_legend = null;
           this.plot_by_group = null;
           this.max_columns = null;
         }
       },
-      colorize_legend_by: function (newval, oldval) {
+      colorize_legend_by(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
             // Set order in config so "display-order" will render
             if (newval !== null && this.levels) {
               const colorize_key = this.colorize_legend_by;
-              var order = {};
+              const order = {};
               order[colorize_key] = this.levels[colorize_key];
 
               if (this.plot_by_group !== null) {
@@ -2467,22 +2476,27 @@ window.onload=() => {
           this.draw_image();
         }
       },
-      x_axis: function (newval, oldval) {
+      x_axis(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
       },
-      y_axis: function (newval, oldval) {
+      y_axis(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
       },
-      skip_gene_plot: function (newval, oldval) {
+      skip_gene_plot(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
       },
-      plot_by_group: function (newval, oldval) {
+      horizontal_legend(newval, oldval) {
+        if (newval != oldval && this.plot_params_ready()) {
+          this.draw_image();
+        }
+      },
+      plot_by_group(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           // Plotting by group colors by gene symbol, so cannot skip gene plot
           if (newval !== null) this.skip_gene_plot = null;
@@ -2491,11 +2505,11 @@ window.onload=() => {
           if (this.colorize_legend_by !== null) {
             // Set order in config so "display-order" will render
             if (newval !== null && this.levels) {
-	      const group_key = this.plot_by_group;
+       const group_key = this.plot_by_group;
               // Add separately in case both are same dataseries group
               const colorize_key = this.colorize_legend_by;
               var order = {};
-	      order[group_key] = this.levels[group_key];
+       order[group_key] = this.levels[group_key];
               order[colorize_key] = this.levels[colorize_key];
               this.$store.commit("set_order", order);
             }
@@ -2503,7 +2517,7 @@ window.onload=() => {
           }
         }
       },
-      max_columns: function (newval, oldval) {
+      max_columns(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
@@ -2519,11 +2533,7 @@ window.onload=() => {
         "set_order",
       ]),
       plot_params_ready() {
-        if (this.x_axis && this.y_axis) {
-          return true;
-        } else {
-          return false;
-        }
+        return this.x_axis && this.y_axis ? true : false;
       },
       get_image_data(gene_symbol) {
         // then craziness: https://stackoverflow.com/a/48980526
@@ -2536,6 +2546,7 @@ window.onload=() => {
               gene: this.config.gene_symbol,
               analysis: analysis_id,
               colorize_by: this.colorize_legend_by,
+              horizontal_legend: this.horizontal_legend,
               skip_gene_plot: this.skip_gene_plot,
               plot_by_group: this.plot_by_group,
               max_columns: this.max_columns,
@@ -3103,6 +3114,7 @@ window.onload=() => {
           Vue.set(state.config, "plot_by_group", null);
           Vue.set(state.config, "max_columns", null);
           Vue.set(state.config, "skip_gene_plot", null);
+          Vue.set(state.config, "horizontal_legend", null);
         }
         state.plot_type = plot_type;
       },
@@ -3268,6 +3280,9 @@ window.onload=() => {
       },
       set_skip_gene_plot(state, skip_plot) {
         state.config.skip_gene_plot = skip_plot;
+      },
+      horizontal_legend(state, skip_plot) {
+        state.config.horizontal_legend = skip_plot;
       },
       set_plot_by_group(state, group) {
         state.config.plot_by_group = group;
@@ -3501,10 +3516,11 @@ window.onload=() => {
             gene: config.gene_symbol,
             analysis: analysis_id,
             colorize_by: config.colorize_legend_by,
+            horizontal_legend: config.horizontal_legend,
             skip_gene_plot: config.skip_gene_plot,
             x_axis: config.x_axis,
             y_axis: config.y_axis,
-            plot_type: plot_type,
+            plot_type,
             plot_by_group: config.plot_by_group,
             max_columns: config.max_columns,
             analysis_owner_id: this.user_id,

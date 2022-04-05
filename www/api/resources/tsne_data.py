@@ -45,6 +45,10 @@ def calculate_num_legend_cols(group_len):
     """Determine number of columns legend should have in tSNE plot."""
     return ceil(group_len / NUM_LEGENDS_PER_COL)
 
+def calculate_num_horizontal_legend_cols(num_cols):
+    """Determine number of columns a horizontal legend should have in tSNE plot."""
+    return ((num_cols-1) * 3) + 2
+
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
     # Create custom colorscale with gray at the 0.0 level
@@ -95,6 +99,7 @@ class TSNEData(Resource):
         order = request.args.get('order', {})
         x_axis = request.args.get('x_axis', 'tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
         y_axis = request.args.get('y_axis', 'tSNE_2')
+        horizontal_legend = request.args.get('horizontal_legend', False)
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
         analysis_owner_id = request.args.get('analysis_owner_id')
@@ -289,7 +294,11 @@ class TSNEData(Resource):
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
                 (handles, labels) = sort_legend(f_color, colorize_by_order)
-                f_color.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
+                if horizontal_legend:
+                    num_cols = calculate_num_horizontal_legend_cols(max_cols)
+                    io.fig.legend(loc="lower left", ncol=num_cols)
+                else:
+                    f_color.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
                 if skip_gene_plot == 'true':
@@ -301,7 +310,11 @@ class TSNEData(Resource):
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
                     (handles, labels) = sort_legend(f1, colorize_by_order)
-                    f1.legend(bbox_to_anchor=[1,1], ncol=num_cols, handles=handles, labels=labels)
+                    if horizontal_legend:
+                        num_cols = calculate_num_horizontal_legend_cols(1)
+                        io_fig.legend(loc="lower left", ncol=num_cols)
+                    else:
+                        f1.legend(bbox_to_anchor=[1,1], ncol=num_cols, handles=handles, labels=labels)
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(13, 4))
@@ -311,7 +324,11 @@ class TSNEData(Resource):
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     (handles, labels) = sort_legend(f2, colorize_by_order)
-                    f2.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
+                    if horizontal_legend:
+                        num_cols = calculate_num_horizontal_legend_cols(2)
+                        io_fig.legend(loc="lower left", ncol=num_cols)
+                    else:
+                        f2.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
 
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, return_fig=True, use_raw=False)
