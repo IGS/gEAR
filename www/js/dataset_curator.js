@@ -86,7 +86,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='success < 1'>
+          <template v-if='plot_params_ready && success < 1'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -3281,8 +3281,8 @@ window.onload=() => {
       set_skip_gene_plot(state, skip_plot) {
         state.config.skip_gene_plot = skip_plot;
       },
-      horizontal_legend(state, skip_plot) {
-        state.config.horizontal_legend = skip_plot;
+      set_horizontal_legend(state, horizontal_legend) {
+        state.config.horizontal_legend = horizontal_legend;
       },
       set_plot_by_group(state, group) {
         state.config.plot_by_group = group;
