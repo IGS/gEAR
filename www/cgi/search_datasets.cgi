@@ -115,9 +115,16 @@ def main():
                 if 'public' in owners:
                     ownership_bits.append("d.is_public = 1")
 
-                if 'shared' in owners and shared_dataset_id_str:
-                    ownership_bits.append("d.id IN ({0})".format(shared_dataset_id_str))
+                if 'shared' in owners:
+                    if shared_dataset_id_str:
+                        ownership_bits.append("d.id IN ({0})".format(shared_dataset_id_str))
+                    else:
+                        # Query gets thrown off if there are no shares for this user so just put
+                        #  something in which won't match any.  This allows other params to still
+                        #  match.
+                        ownership_bits.append("d.id IN ('XYZ')".format(shared_dataset_id_str))
 
+                # Don't add this if there aren't any
                 wheres.append("AND ({0})".format(' OR '.join(ownership_bits)))
 
             # otherwise, give the usual self, public and shared.
