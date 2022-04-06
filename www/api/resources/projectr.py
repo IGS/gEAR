@@ -9,12 +9,6 @@ import pandas as pd
 # TODO: Remove and figure out a good pattern directory structure
 PATTERN_BASE_DIR = "/var/www/patterns"
 
-class PlotError(Exception):
-    """Error based on plotting issues."""
-    def __init__(self, message="") -> None:
-        self.message = message
-        super().__init__(self.message)
-
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
@@ -36,7 +30,6 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
             raise PlotError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
-
 
 class PlotError(Exception):
     """Error based on plotting issues."""
