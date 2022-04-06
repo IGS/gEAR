@@ -727,7 +727,7 @@ function select_search_result(elm) {
 
     if (!projection_source) {
         annotation_panel.annotation = search_results[gene_sym];
-        annotation_panel.display_first_organism();
+        annotation_panel.autoselect_organism();
     }
 
     // hide the intro, show the search result box
