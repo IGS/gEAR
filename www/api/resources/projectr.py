@@ -2,14 +2,9 @@ from flask import request
 from flask_restful import Resource
 import os, json, sys
 import geardb
+import gear.rfuncs as rfx
 
 import pandas as pd
-
-import rpy2.robjects as robjects
-from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
-from rpy2.robjects.conversion import localconverter
-from rpy2.robjects.vectors import StrVector
 
 # TODO: Remove and figure out a good pattern directory structure
 PATTERN_BASE_DIR = "/var/www/patterns"
@@ -19,27 +14,6 @@ class PlotError(Exception):
     def __init__(self, message="") -> None:
         self.message = message
         super().__init__(self.message)
-
-def convert_df_to_r_matrix(df):
-    """
-    Convert pandas dataframe to R-style matrix
-    """
-    r_matrix = robjects.r["as.matrix"]
-    return r_matrix(df)
-
-def convert_df_to_r_prcomp(df):
-    """
-    Convert pandas dataframe to R-style prcomp object
-    """
-    r_prcomp = robjects.r["prcomp"]
-    return r_prcomp(df)
-
-def convert_df_to_r_cogaps(df):
-    """
-    Converts pandas dataframe to R-style CogapsResult object
-    """
-    r_cogaps = robjects.r["LinearEmbeddingMatrix"]
-    return r_cogaps(df)
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
@@ -63,56 +37,12 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-def run_projectR_cmd(target_df, loading_df, object_type="matrix"):
-    """
-    Convert input Pandas dataframes to R matrix.
-    Pass the inputs into the projectR function written in R.
-    Return Pandas dataframe of the projectR output
-    """
-
-    projectR = importr('projectR')
-
-    # Convert from pandas dataframe to R data.frame
-    with localconverter(robjects.default_converter + pandas2ri.converter):
-       target_r_df = robjects.conversion.py2rpy(target_df)
-       loading_r_df = robjects.conversion.py2rpy(loading_df)
-
-    # data.frame to matrix (projectR has no data.frame signature)
-    target_r_matrix = convert_df_to_r_matrix(target_r_df)
-    loading_r_matrix = convert_df_to_r_matrix(loading_r_df)
-
-    # Assign Rownames to each matrix
-    target_r_matrix.rownames = StrVector(target_df.index)
-    loading_r_matrix.rownames = StrVector(loading_df.index)
-
-    # NOTE: It seems hard to restore prcomp and CogapsResult-class objects.
-    # So what I think is best is to build the projectR objects based on the signatures of these two methods
-    # However I also think the fundamental difference of each signature is to normalize the "loadings" matrix and determine if we have colnames to append
-
-    if object_type == "PCA":
-        pass
-    elif object_type == "Cogaps":
-        pass
-
-    # Run project R command.  Get projectionPatterns matrix
-    projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
-
-    # matrix back to data.frame
-    r_df = robjects.r["as.data.frame"]
-    projection_patterns_r_df = r_df(projection_patterns_r_matrix)
-
-    # Convert from R data.frame to pandas dataframe
-    with localconverter(robjects.default_converter + pandas2ri.converter):
-       projection_patterns_df = robjects.conversion.rpy2py(projection_patterns_r_df)
-
-    return projection_patterns_df
 
 class PlotError(Exception):
     """Error based on plotting issues."""
     def __init__(self, message="") -> None:
         self.message = message
         super().__init__(self.message)
-
 
 
 class ProjectR(Resource):
@@ -209,7 +139,7 @@ class ProjectR(Resource):
 
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
         if not os.path.isfile(projection_csv):
-            projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df).transpose()
             projection_patterns_df.to_csv(projection_csv)
 
         return {

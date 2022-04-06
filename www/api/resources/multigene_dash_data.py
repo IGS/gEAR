@@ -3,7 +3,7 @@ from flask_restful import Resource
 import pandas as pd
 import geardb
 
-import json
+import json, os
 from gear.mg_plotting import get_config, PlotError
 import gear.mg_plotting as mg
 

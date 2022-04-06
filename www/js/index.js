@@ -48,6 +48,8 @@ window.onload=() => {
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
 
+        show_gene();
+
         // validate the dataset_id. runs load_frames() on success
         validate_permalink(scope);
     } else {
