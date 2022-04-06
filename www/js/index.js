@@ -44,6 +44,7 @@ window.onload=() => {
         $('#intro_content').hide();
         $('#viewport_intro').children().hide();
         $('#searching_indicator_c').hide();
+        $('#selected_profile_container').hide();
 
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
