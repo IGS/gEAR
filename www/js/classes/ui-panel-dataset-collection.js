@@ -194,7 +194,7 @@ class DatasetCollectionPanel {
     }
 
     // Run projectR on all datasets in this profile
-    async run_projectR_on_all_datasets(projection_source) {
-        return await Promise.all(this.datasets.map(ds => ds.run_projectR(projection_source)));
+    async run_projectR_on_all_datasets(projection_source, is_pca=false) {
+        return await Promise.all(this.datasets.map(ds => ds.run_projectR(projection_source, is_pca)));
     }
 }

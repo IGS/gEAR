@@ -493,11 +493,12 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source) {
+    async run_projectR(projection_source, is_pca=false) {
         const datasetId = this.id;
         const payload = {
             scope: "repository",
             input_value: projection_source,
+            is_pca,
         };
         try {
             const { data } = await axios.post(`/api/projectr/${datasetId}`, {

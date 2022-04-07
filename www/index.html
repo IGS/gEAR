@@ -415,15 +415,25 @@
               <form id="projection_search_form"></form>
               <div id="projection_search_div">
                 <h3>Search Projections</h3>
-                <div class="row form-group form-group-sm">
-                  <div id="set_of_patterns_c" class="col-12">
+                <div class="form-group form-group-sm">
+                  <div id="set_of_patterns_c">
                     <!-- Where will this be?  -->
                     <label for="set_of_patterns" class="control-label">Select pattern source</label>
                     <select id="set_of_patterns" class="form-control form-control-sm"></select>
                   </div>
                 </div>
 
-                <fieldset id="projection_display_mode_c" class="form-group form-group-sm">
+                <div class="form-group form-group-sm">
+                  <div class="form-check" data-toggle="tooltip" data-placement="right" title="If checked, projectR will run under a modified formula meant for PCA patterns.">
+                    <input class="form-check-input" type="checkbox" id="is_pca">
+                    <label class="form-check-label" for="is_pca">
+                      Check to assume patterns are from PCA
+                    </label>
+                  </div>
+                </div>
+
+
+                <div id="projection_display_mode_c" class="form-group form-group-sm">
                   <div class="form-check">
                     <input class="form-check-input" type="radio" name="projection_display_mode" id="single_pattern" value="single" checked>
                     <label class="form-check-label" for="single_pattern">
@@ -436,21 +446,20 @@
                       Multi-pattern display
                     </label>
                   </div>
-                </fieldset>
+                </div>
 
-                <fieldset id="projection_pattern_elements_c" style="display:none;">
+                <div id="projection_pattern_elements_c" style="display:none;" class="form-group form-group-sm">
                   <h3>Select patterns</h3>
-                  <div class="row form-group form-group-sm">
-                    <div id="projection_pattern_elements" class="col-12"></div>
-                  </div>
-                </fieldset>
+                  <div id="projection_pattern_elements"></div>
+                </div>
 
                 <script id="pattern_list_tmpl" type="text/x-jsrender">
                   <option value="{{:id}}">{{:title}}</option>
                 </script>
                 <script id="pattern_elements_tmpl" type="text/x-jsrender">
                   <div class="form-check">
-                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}">{{:label}}
+                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}">
+                    <label class="form-check-label">{{:label}}</label>
                   </div>
                 </script>
               </div>
@@ -472,8 +481,8 @@
                   </div>
                 </div> <!-- end selected_profile_c -->
               </div>
-              <div id="submit_search_projection" class="js-search form-group form-group-sm">
-                <button type="submit" class="btn btn-secondary btn-sm">Search projections</button>
+              <div class="form-group form-group-sm">
+                <button id="submit_search_projection" type="submit" class="js-search btn btn-secondary btn-sm">Search projections</button>
               </div>
             </div><!-- end #search_container -->
 

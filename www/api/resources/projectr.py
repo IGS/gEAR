@@ -54,7 +54,7 @@ class ProjectR(Resource):
         #gene_symbols = req.get('gene_symbols', [])
         scope = req.get('scope', "pattern")
         input_value = req.get('input_value', None)  # This changes depending on scope
-        pattern_value = req.get('pattern_value', None) # If pattern chosen, use this particular one
+        is_pca = req.get('is_pca', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # 'dataset_id' is the target dataset to be projected into the pattern space
@@ -110,7 +110,9 @@ class ProjectR(Resource):
             loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
             pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
 
-            projection_csv = "/tmp/{}_{}.csv".format(dataset_id, pattern_title)
+            pca_ext = "_pca" if is_pca else ""
+
+            projection_csv = "/tmp/{}_{}{}.csv".format(dataset_id, pattern_title, pca_ext)
 
             # Assumes first column is gene info. Standardize on a common index name
             loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
@@ -131,8 +133,10 @@ class ProjectR(Resource):
         # NOTE: This will not work if there are no common genes (i.e. mouse patterns with human dataset)
 
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
-        if not os.path.isfile(projection_csv):
-            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df).transpose()
+        if os.path.isfile(projection_csv):
+            print("INFO: Found exisitng projection_csv file, loading it.")
+        else:
+            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
             projection_patterns_df.to_csv(projection_csv)
 
         return {

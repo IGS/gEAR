@@ -17,8 +17,6 @@ let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
 let projection = false;
-let projection_source = null;   // Source of patterns to project
-let projection_patterns = null; // Selected projection patterns
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
@@ -113,12 +111,16 @@ window.onload=() => {
     }
 
     // Repopulate projection information
-    projection_source = getUrlParameter('projection_source');
-    projection_patterns = getUrlParameter('projection_patterns');
+    const permalinked_projection_source = getUrlParameter('projection_source');
+    const permalinked_is_pca = getUrlParameter('is_pca')
+    const permalinked_projection_patterns = getUrlParameter('projection_patterns');
     // Only apply if both are present
-    if (projection_source && projection_patterns) {
+    if (permalinked_projection_source && permalinked_projection_patterns) {
         // Patterns applied after HTML renders
-        $("#search_gene_symbol_intro").val(projection_patterns);
+        $("#search_gene_symbol_intro").val(permalinked_projection_patterns);
+
+        $("#is_pca").prop('checked', permalinked_is_pca === "1");
+
         // Correct tab is active
         $("#projection_tab").click();
         projection = true;
@@ -159,7 +161,8 @@ window.onload=() => {
 
         // fire the true search button, to submit the true form
         if (projection) {
-            $('#set_of_patterns').val(projection_source).trigger("change");
+            $('#set_of_patterns').val(permalinked_projection_source)
+            $('#set_of_patterns').trigger("change", [$("#search_gene_symbol_intro").val()]);
             $("#submit_search_projection").trigger( "click" );
         } else {
             $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
@@ -726,7 +729,7 @@ function select_search_result(elm) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    if (!projection_source) {
+    if (!projection) {
         annotation_panel.annotation = search_results[gene_sym];
         annotation_panel.display_first_organism();
     }
@@ -906,6 +909,8 @@ $("#projection_search_form").submit((event) => {
         $('#multi_pattern').click();
     }
 
+    const is_pca = $('#is_pca').is(':checked');
+
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
 
@@ -932,18 +937,18 @@ $("#projection_search_form").submit((event) => {
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
-    projection_source = $("#set_of_patterns").val() ? $("#set_of_patterns").val() : null;
+    const projection_source = $("#set_of_patterns").val() ? $("#set_of_patterns").val() : null;
     projection = true;
 
     // Add the patterns source to the history.
-    add_state_history(selected_projections_string, projection_source);
+    add_state_history(selected_projections_string, projection_source, is_pca);
 
     dataset_collection_panel.load_frames({dataset_id, multigene, projection});
 
     // Run ProjectR for the chosen pattern
     if (projection_source) {
         search_results = selected_projections;
-        dataset_collection_panel.run_projectR_on_all_datasets(projection_source).then(() => {
+        dataset_collection_panel.run_projectR_on_all_datasets(projection_source, is_pca).then(() => {
 
             // Implementing search_genes.py results without the CGI execution
             // ? Can we use the DIMRED_meta file to get annotation info?
@@ -951,7 +956,7 @@ $("#projection_search_form").submit((event) => {
             $('#searching_indicator_c').hide();
             $('#intro_content').hide('fade', {}, 400, () => {
                 if (multigene){
-                    dataset_collection_panel.update_by_all_results(selected_projections);
+                    dataset_collection_panel.update_by_all_results(Object.keys(selected_projections));
                 } else {
                     // auto-select the first match.  first <a class="list-group-item"
                     const first_thing = $('#search_results a.list-group-item').first();
@@ -967,7 +972,7 @@ $("#projection_search_form").submit((event) => {
     return false;   // keeps the page from not refreshing
 })
 
-$("#set_of_patterns").on('change', () => {
+$("#set_of_patterns").on('change', (event, projection_patterns) => {
     if ($('#set_of_patterns').val()) {
         $.ajax({
             type: "POST",
@@ -1113,7 +1118,7 @@ $('.js-gene-cart').change( function() {
 });
 
 // Set the state history based on current conditions
-function add_state_history(searched_entities, projection_source=null) {
+function add_state_history(searched_entities, projection_source=null, is_pca=null) {
     const state_info = {
         'multigene_plots': Number(multigene)
     };
@@ -1132,6 +1137,11 @@ function add_state_history(searched_entities, projection_source=null) {
         state_url += `&projection_patterns=${searched_entities}`;
         state_info.projection_source = projection_source;
         state_url += `&projection_source=${projection_source}`;
+
+        if (is_pca) {
+            state_info.is_pca = Number(is_pca);
+            state_url += `&is_pca=${state_info.is_pca}`;
+        }
 
     } else {
         // gene_cart_id automatically enables the exact_match and populates gene symbols,
@@ -1154,7 +1164,7 @@ function add_state_history(searched_entities, projection_source=null) {
         // State Info
         state_info,
         // State title
-        projection_source ? "Projection Pattern Search" : "Gene search",
+        projection ? "Projection Pattern Search" : "Gene search",
         // URL
         state_url
     )
