@@ -3,6 +3,8 @@
 rfuncs.py - Miscellaneous R-style functions called through rpy2
 """
 
+import sys  # for print debugging
+
 import rpy2.robjects as robjects
 from rpy2.robjects.packages import importr
 from rpy2.robjects import pandas2ri
@@ -21,10 +23,8 @@ def convert_r_matrix_to_r_prcomp(mtx):
     Convert R-style matrix to R-style prcomp object
     """
     # mtx is a matrix of numbers with PCs in columns
-    r_list = ListVector()
-    prcomp_obj = r_list()
-    prcomp_obj.rclass = StrVector("prcomp")    # Convert to prcomp-class object
-    prcomp_obj[prcomp_obj.names.index("rotation")] = mtx
+    prcomp_obj = ListVector({"rotation": mtx})
+    prcomp_obj.rclass = "prcomp"    # Convert to prcomp-class object
     return prcomp_obj
 
 def run_projectR_cmd(target_df, loading_df, is_pca=False):
