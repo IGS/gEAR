@@ -30,6 +30,23 @@ Returns {'user_layouts': [
          # key: id, value = parent_folder_id
          'folder_parents': {}
 }
+
+Folder support
+
+- Highlighted profiles
+  - Those where gEAR admins have set layout.is_domain = 1
+  - Can have nested folders
+- Your profiles
+  - Those uploaded by the user
+  - Can have nested folders
+- Group profiles
+  - Any user can create a group and assign users/layouts to it
+  - Can have nested folders
+- Profiles shared with you
+  - Those with entries in dataset_shares or passed via the URL
+  - Can't think of a reason to not allow folders
+
+All profiles and folders should be nested within these 4 top-level options. 
 """
 
 import cgi, json

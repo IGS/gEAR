@@ -281,7 +281,16 @@ CREATE TABLE folder (
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 # The label for this one is not actually displayed.  It is set in tree.js
-INSERT INTO folder (id, parent_id, label) VALUES (0, NULL, 'Highlighted profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (1, NULL, 'Highlighted profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (2, NULL, 'Your profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (3, NULL, 'Group profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (4, NULL, 'Profiles shared with you');
+INSERT INTO folder (id, parent_id, label) VALUES (5, NULL, 'Other public profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (6, NULL, 'Highlighted gene carts');
+INSERT INTO folder (id, parent_id, label) VALUES (7, NULL, 'Your gene carts');
+INSERT INTO folder (id, parent_id, label) VALUES (8, NULL, 'Group gene carts');
+INSERT INTO folder (id, parent_id, label) VALUES (9, NULL, 'Gene carts shared with you');
+INSERT INTO folder (id, parent_id, label) VALUES (10, NULL, 'Other public carts');
 
 CREATE TABLE folder_member (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
