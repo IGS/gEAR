@@ -86,7 +86,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='plot_params_ready && success < 1'>
+          <template v-if='success < 0'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -106,7 +106,7 @@ window.onload=() => {
         display_tsne_is_loading: true,
         display_image_data: null,
         // stolen from https://gist.github.com/gordonbrander/2230317
-        preview_id: "tsne_preview_" + Math.random().toString(36).substr(2, 9),
+        preview_id: `tsne_preview_${Math.random().toString(36).substr(2, 9)}`,
       };
     },
     computed: {
@@ -178,8 +178,7 @@ window.onload=() => {
         // then craziness: https://stackoverflow.com/a/48980526
         // shift this out when the fetch_tsne_image method is done in Vuex
         return axios
-          .get(`/api/plot/${dataset_id}/tsne`, {
-            params: {
+          .post(`/api/plot/${dataset_id}/tsne`, {
               gene: config.gene_symbol,
               analysis: analysis_id,
               colorize_by: config.colorize_legend_by,
@@ -195,7 +194,6 @@ window.onload=() => {
               order: config.order,
               // helps stop caching issues
               timestamp: new Date().getTime(),
-            },
           })
           .then((response) => {
             return response.data;
@@ -223,7 +221,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='success < 1'>
+          <template v-if='success < 0'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -396,7 +394,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='success < 1'>
+          <template v-if='success < 0'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -2319,7 +2317,7 @@ window.onload=() => {
                 </b-form-select>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend' label-align-sm="right">
+              <b-form-group v-if='show_colorized_legend && colorize_legend_by' label-align-sm="right">
                 <b-icon class="float-right" v-b-tooltip.hover="'Data series for creating separate plots by individual entities in a group'" icon="question-circle-fill"></b-icon>
                 <label class="mb-0">Plot by group:</label>
                 <b-form-select :options="columns" v-model='plot_by_group' size='sm'>
@@ -2343,13 +2341,13 @@ window.onload=() => {
               </b-form-group>
 
               <b-form-group v-if='show_colorized_legend' label-align-sm="right">
-              <b-icon class="float-right" v-b-tooltip.hover="'Check to make horizontal legend along the bottom of the plotspace'" icon="question-circle-fill"></b-icon>
-              <b-form-checkbox v-model='horizontal_legend'>
-                Create horizontal legend
-              </b-form-checkbox>
-            </b-form-group>
+                <b-icon class="float-right" v-b-tooltip.hover="'Check to make horizontal legend along the bottom of the plotspace'" icon="question-circle-fill"></b-icon>
+                <b-form-checkbox v-model='horizontal_legend'>
+                  Place legend under plots
+                </b-form-checkbox>
+              </b-form-group>
 
-            </b-form-group>
+          </b-form-group>
           </b-col>
         </b-row>
         <hr>
@@ -2539,10 +2537,9 @@ window.onload=() => {
         // then craziness: https://stackoverflow.com/a/48980526
         // shift this out when the fetch_tsne_image method is done in Vuex
 
-        var analysis_id = this.config.analysis ? this.config.analysis.id : null;
+        const analysis_id = this.config.analysis ? this.config.analysis.id : null;
         return axios
-          .get(`/api/plot/${this.dataset_id}/tsne`, {
-            params: {
+          .post(`/api/plot/${this.dataset_id}/tsne`, {
               gene: this.config.gene_symbol,
               analysis: analysis_id,
               colorize_by: this.colorize_legend_by,
@@ -2558,7 +2555,6 @@ window.onload=() => {
               order: this.config.order,
               // helps stop caching issues
               timestamp: new Date().getTime(),
-            },
           })
           .then((response) => {
             return response.data;
@@ -3113,8 +3109,8 @@ window.onload=() => {
           Vue.set(state.config, "colorize_legend_by", null);
           Vue.set(state.config, "plot_by_group", null);
           Vue.set(state.config, "max_columns", null);
-          Vue.set(state.config, "skip_gene_plot", null);
-          Vue.set(state.config, "horizontal_legend", null);
+          Vue.set(state.config, "skip_gene_plot", false);
+          Vue.set(state.config, "horizontal_legend", false);
         }
         state.plot_type = plot_type;
       },
@@ -3414,9 +3410,9 @@ window.onload=() => {
             analysis_id,
           },
           { cancelToken: cancel_source.token
-          }).then(function (response) {
+          }).then((response) => {
             commit('set_available_plot_types', response.data);
-	  }).catch(function (thrown) {
+	  }).catch((thrown) => {
           if (axios.isCancel(thrown)) {
               console.log('Request canceled:', thrown.message);
           } else {
@@ -3511,8 +3507,7 @@ window.onload=() => {
       ) {
         commit("set_tsne_is_loading", true);
 
-        const { data } = await axios.get(`/api/plot/${dataset_id}/tsne`, {
-          params: {
+        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, {
             gene: config.gene_symbol,
             analysis: analysis_id,
             colorize_by: config.colorize_legend_by,
@@ -3528,7 +3523,6 @@ window.onload=() => {
             order: config.order,
             // helps stop caching issues
             timestamp: new Date().getTime(),
-          },
         });
 
         commit("set_order", config.order);
