@@ -319,7 +319,7 @@ class TSNEData(Resource):
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
                 (handles, labels) = sort_legend(f_color, colorize_by_order)
-                f_color.legend(bbox_to_anchor=[1, 1], frameon=False, ncol=num_cols, handles=handles, labels=labels)
+                f_color.legend(ncol=num_cols, handles=handles, labels=labels)
                 if horizontal_legend:
                     io_fig.legend(loc="lower center", bbox_to_anchor=[0, -1/figheight, 1, 0], frameon=False, ncol=8, handles=handles, labels=labels)
                     f_color.get_legend().remove()  # Remove legend added by scanpy
@@ -334,7 +334,7 @@ class TSNEData(Resource):
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
                     (handles, labels) = sort_legend(f1, colorize_by_order)
-                    f1.legend(bbox_to_anchor=[1,1], frameon=False, ncol=num_cols, handles=handles, labels=labels)
+                    f1.legend(ncol=num_cols, handles=handles, labels=labels)
                     if horizontal_legend:
                         io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.15, 1, 0], frameon=False, ncol=8, handles=handles, labels=labels)
                         f1.get_legend().remove()  # Remove legend added by scanpy
@@ -347,7 +347,7 @@ class TSNEData(Resource):
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     (handles, labels) = sort_legend(f2, colorize_by_order)
-                    f2.legend(bbox_to_anchor=[1, 1], frameon=False, ncol=num_cols, handles=handles, labels=labels)
+                    f2.legend(ncol=num_cols, handles=handles, labels=labels)
                     if horizontal_legend:
                         io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.15, 1, 0], frameon=False, ncol=8, handles=handles, labels=labels)
                         f2.get_legend().remove()  # Remove legend added by scanpy
