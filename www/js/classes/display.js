@@ -19,6 +19,7 @@ class Display {
         this.plot_type = plot_type;
         this.primary_key = primary_key; // Combination of dataset_id, grid_position, and single/multigene indicator
         this.data = null;
+        this.first_draw = true; // Keep track of if this is the original draw so that effects are not doubly applied.
         this.zoomed = false;
     }
     zoom_in() {
@@ -72,37 +73,38 @@ class Display {
         } = await this.get_data(gene_symbol);
         if (data.success === -1) {
             this.show_error(data.message);
+            return;
+        }
+        this.data = data;
+        if (this.zoomed) {
+            this.draw_zoomed();
         } else {
-            this.data = data;
-            if (this.zoomed) {
-                this.draw_zoomed();
-            } else {
-                let attempts_left = 3;
+            let attempts_left = 3;
 
-                while (attempts_left) {
-                    var draw_success = this.draw_chart(data);
-                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
-                    attempts_left -= 1;
+            while (attempts_left) {
+                var draw_success = this.draw_chart(data);
+                //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                attempts_left -= 1;
 
-                    // if it didn't work, wait one second and try again
-                    if (draw_success) {
-                        attempts_left = 0;
-                    } else if (attempts_left) {
-                        // else the scope is lost in the anon function below
-                        var that = this;
-                        setTimeout(
-                            () => {
-                                draw_success = that.draw_chart(data);
-                                attempts_left -= 1;
-                            }, 1000);
-                    }
+                // if it didn't work, wait one second and try again
+                if (draw_success) {
+                    attempts_left = 0;
+                } else if (attempts_left) {
+                    // else the scope is lost in the anon function below
+                    var that = this;
+                    setTimeout(
+                        () => {
+                            draw_success = that.draw_chart(data);
+                            attempts_left -= 1;
+                        }, 1000);
                 }
             }
-            // Exit status 2 is status to show plot but append warning message
-            if (data.message && data.success === 2)
-                this.show_warning(this.data.message);
         }
+        // Exit status 2 is status to show plot but append warning message
+        if (data.message && data.success === 2)
+        this.show_warning(this.data.message);
     }
+
     /**
      *  Draw the multigene visualization.
      * @param {string} gene_symbols - Gene Symbols to visualize.
@@ -114,36 +116,36 @@ class Display {
         } = await this.get_data(gene_symbols);
         if (data.success === -1) {
             this.show_error(data.message);
+            return;
+        }
+        this.data = data;
+        if (this.zoomed) {
+            this.draw_zoomed();
         } else {
-            this.data = data;
-            if (this.zoomed) {
-                this.draw_zoomed();
-            } else {
-                let attempts_left = 3;
+            let attempts_left = 3;
 
-                while (attempts_left) {
-                    var draw_success = this.draw_chart(data);
-                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
-                    attempts_left -= 1;
+            while (attempts_left) {
+                var draw_success = this.draw_chart(data);
+                //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                attempts_left -= 1;
 
-                    // if it didn't work, wait one second and try again
-                    if (draw_success) {
-                        attempts_left = 0;
-                    } else if (attempts_left) {
-                        // else the scope is lost in the anon function below
-                        var that = this;
-                        setTimeout(
-                            () => {
-                                draw_success = that.draw_chart(data);
-                                attempts_left -= 1;
-                            }, 1000);
-                    }
+                // if it didn't work, wait one second and try again
+                if (draw_success) {
+                    attempts_left = 0;
+                } else if (attempts_left) {
+                    // else the scope is lost in the anon function below
+                    var that = this;
+                    setTimeout(
+                        () => {
+                            draw_success = that.draw_chart(data);
+                            attempts_left -= 1;
+                        }, 1000);
                 }
             }
-            // Exit status 2 is status to show plot but append warning message
-            if (data.message && data.success === 2)
-                this.show_warning(this.data.message);
         }
+        // Exit status 2 is status to show plot but append warning message
+        if (data.message && data.success === 2)
+        this.show_warning(this.data.message);
     }
     /**
      * Hides the display container
@@ -481,12 +483,12 @@ class PlotlyDisplay extends Display {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const index_conf = post_plotly_config.index;
         for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
+            const conf = index_conf[idx];
+            // Get config (data and/or layout info) for the plot type chosen, if it exists
+            if (conf.plot_type == "all" || conf.plot_type == this.plot_type) {
+                const update_data = "data" in conf ? conf.data : {}
+                const update_layout = "layout" in conf ? conf.layout : {}
+                Plotly.update(target_div, update_data, update_layout)
             }
         }
 
@@ -511,17 +513,7 @@ class PlotlyDisplay extends Display {
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        // Do not need to add plot_display_config stuff since this.data has the updates already
     }
 
     show() {
@@ -724,7 +716,10 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-        if (this.plot_type == "heatmap") {
+        if (this.plot_type == "heatmap" && this.first_draw) {
+            // These functions modify `this.data` by reference, so we need to ensure we only call them once.
+            // Subsequent draw_chart calls will have the correct data, post-modification
+            this.first_draw = false;
             adjustExpressionColorbar(plot_json.data);
             adjustClusterColorbars(plot_json.data);
         }
@@ -743,12 +738,12 @@ class PlotlyDisplay extends Display {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const index_conf = post_plotly_config.index;
         for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
+            const conf = index_conf[idx];
+            // Get config (data and/or layout info) for the plot type chosen, if it exists
+            if (conf.plot_type == "all" || conf.plot_type == this.plot_type) {
+                const update_data = "data" in conf ? conf.data : {}
+                const update_layout = "layout" in conf ? conf.layout : {}
+                Plotly.update(target_div, update_data, update_layout)
             }
         }
 
@@ -773,17 +768,8 @@ class PlotlyDisplay extends Display {
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        // Do not need to add plot_display_config stuff since this.data has the updates already
+
     }
 
     show() {
@@ -953,8 +939,7 @@ class SVGDisplay extends Display {
         const NA_FIELD_PLACEHOLDER = -0.012345679104328156;
         const NA_FIELD_COLOR = '#808080';
 
-        let paths;
-        paths = zoomed ? this.zoomed_paths : svgs[this.dataset_id];
+        const paths = zoomed ? this.zoomed_paths : svgs[this.dataset_id];
 
         const {
             data: expression

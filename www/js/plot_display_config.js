@@ -30,11 +30,13 @@ const post_plotly_config = {
                 "margin": {
                     "b":10
                 }
-                /*, "title": {
-                    "pad": {
-                        "b":10
-                    }
-                }*/
+            }
+        } , {
+            "plot_type":"all"
+            , "layout": {
+                "modebar": {
+                    orientation: "h"
+                }
             }
         }
     ]
@@ -55,6 +57,7 @@ const post_plotly_config = {
 }
 
 // Functions that cannot be encapsulated by a general config change
+// ! These will modify an object reference in place if the param argument is an object property
 
 function adjustExpressionColorbar(plotData) {
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
@@ -74,13 +77,15 @@ function adjustClusterColorbars(plotData) {
     const new_min_domain = -0.5;
     const new_max_domain = 1.5;
 
+    const num_clusterbars = plotData.filter(element => "colorbar" in element && element.name === "clusterbar").length;
+
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
     for (const element of plotData) {
         if ("colorbar" in element && element.name === "clusterbar") {
             element.colorbar.xpad = 10;
             element.colorbar.x = -0.3;
             element.colorbar.xanchor = "left";
-            element.colorbar.len *= 2.5;
+            element.colorbar.len = 2 / num_clusterbars;
             // Scale the colorbar y positions to match the plot container instead of the plot
             element.colorbar.y = scaleBetween(element.colorbar.y, new_min_domain, new_max_domain, plot_min_domain, plot_max_domain);
         }

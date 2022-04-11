@@ -275,7 +275,7 @@ function drawChart (data, datasetId) {
     for (const idx in curator_conf) {
         const conf = curator_conf[idx];
         // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == plotType) {
+        if (conf.plot_type == "all" || conf.plot_type == plotType) {
             const update_data = "data" in conf ? conf.data : {};
             const update_layout = "layout" in conf ? conf.layout : {};
             Plotly.update(targetDiv, update_data, update_layout)
