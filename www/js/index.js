@@ -145,8 +145,7 @@ window.onload=() => {
     });
 
     // If multi-pattern set, toggle multigene
-    // single_pattern doesn't need to be checked
-    $('#multi_pattern').change(() => {
+    $('input[name="projection_display_mode"]').change(() => {
         multigene = $('#multi_pattern').is(':checked');
         set_multigene_plots(multigene, false);
     });

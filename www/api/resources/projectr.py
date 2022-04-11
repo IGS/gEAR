@@ -27,12 +27,12 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
 
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
-            raise PlotError("No h5 file found for this dataset")
+            raise ProjectRError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-class PlotError(Exception):
-    """Error based on plotting issues."""
+class ProjectRError(Exception):
+    """Error based on issues that would manifest in the projectR call."""
     def __init__(self, message="") -> None:
         self.message = message
         super().__init__(self.message)
@@ -60,7 +60,7 @@ class ProjectR(Resource):
         # 'dataset_id' is the target dataset to be projected into the pattern space
         try:
             ana = get_analysis(None, dataset_id, session_id, None)
-        except PlotError as pe:
+        except ProjectRError as pe:
             return {
                 'success': -1,
                 'message': str(pe),

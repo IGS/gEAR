@@ -205,8 +205,9 @@ class MultigeneDashData(Resource):
             }
 
         # Ensure datasets are not doubly log-transformed
+        # In the case of projection inputs, we don't want to log-transform either
         is_log10 = False
-        if dataset_id in LOG10_TRANSFORMED_DATASETS:
+        if dataset_id in LOG10_TRANSFORMED_DATASETS or projection_csv:
             is_log10 = True
 
         success = 1

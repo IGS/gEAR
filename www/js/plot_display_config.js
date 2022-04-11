@@ -58,23 +58,31 @@ const post_plotly_config = {
 
 function adjustExpressionColorbar(plotData) {
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
-    for (let i = 0; i < plotData.length; i++) {
-        if ("colorbar" in plotData[i] && plotData[i].name === "expression") {
-            plotData[i].colorbar.len = 0.7;
-            plotData[i].colorbar.xpad = 10;
-            plotData[i].colorbar.x = 1.15;
-            plotData[i].colorbar.title = {text: "Expression"};
+    for (const element of plotData) {
+        if ("colorbar" in element && element.name === "expression") {
+            element.colorbar.len = 1.5;
+            element.colorbar.xpad = 10;
+            element.colorbar.x = 1.15;
+            element.colorbar.title = {text: "Expression"};
         }
     }
 }
 
 function adjustClusterColorbars(plotData) {
+    const plot_min_domain = 0;
+    const plot_max_domain = 1;
+    const new_min_domain = -0.5;
+    const new_max_domain = 1.5;
+
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
-    for (let i = 0; i < plotData.length; i++) {
-        if ("colorbar" in plotData[i] && plotData[i].name === "clusterbar") {
-            plotData[i].colorbar.xpad = 10;
-            plotData[i].colorbar.x = -0.3;
-            plotData[i].colorbar.xanchor = "left";
+    for (const element of plotData) {
+        if ("colorbar" in element && element.name === "clusterbar") {
+            element.colorbar.xpad = 10;
+            element.colorbar.x = -0.3;
+            element.colorbar.xanchor = "left";
+            element.colorbar.len *= 2.5;
+            // Scale the colorbar y positions to match the plot container instead of the plot
+            element.colorbar.y = scaleBetween(element.colorbar.y, new_min_domain, new_max_domain, plot_min_domain, plot_max_domain);
         }
     }
 }
@@ -92,3 +100,8 @@ function adjustStackedViolinHeight(plotLayout) {
 function adjustStackedViolinSharedAxes(plotLayout) {
     return;
 }
+
+// Scaling a number from one range to another range (Source: https://stackoverflow.com/a/31687097)
+function scaleBetween(unscaledNum, minAllowed, maxAllowed, min, max) {
+    return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
+  }
