@@ -4,7 +4,7 @@ import pandas as pd
 import copy, json, os, re
 import geardb
 import numbers
-from gear.plotting import generate_plot, get_config, plotly_color_map, PlotError
+from gear.plotting import generate_plot, plotly_color_map, PlotError
 from plotly.utils import PlotlyJSONEncoder
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
@@ -395,6 +395,5 @@ class PlotlyData(Resource):
             "plot_colors": color_map if isinstance(color_map, dict) else None,
             "plot_palette": palette,
             "reverse_palette":reverse_palette,
-            "plot_config": get_config(),
             "plot_order": order_res,
         }

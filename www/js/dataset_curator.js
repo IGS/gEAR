@@ -106,7 +106,7 @@ window.onload=() => {
         display_tsne_is_loading: true,
         display_image_data: null,
         // stolen from https://gist.github.com/gordonbrander/2230317
-        preview_id: "tsne_preview_" + Math.random().toString(36).substr(2, 9),
+        preview_id: `tsne_preview_${Math.random().toString(36).substr(2, 9)}`,
       };
     },
     computed: {
@@ -120,21 +120,11 @@ window.onload=() => {
         "tsne_is_loading",
       ]),
       is_loading() {
-        if (
-          (this.preconfigured && this.display_tsne_is_loading == true) ||
-          this.tsne_is_loading
-        ) {
-          return true;
-        } else {
-          return false;
-        }
+        return (this.preconfigured && this.display_tsne_is_loading == true) ||
+        this.tsne_is_loading;
       },
       plot_params_ready() {
-        if (this.config.x_axis && this.config.y_axis) {
-          return true;
-        } else {
-          return false;
-        }
+        return this.config.x_axis && this.config.y_axis;
       },
     },
     created() {
@@ -198,7 +188,7 @@ window.onload=() => {
               max_columns: config.max_columns,
               x_axis: config.x_axis,
               y_axis: config.y_axis,
-              plot_type: plot_type,
+              plot_type,
               analysis_owner_id: this.display_data.user_id,
               colors: config.colors,
               order: config.order,
@@ -325,7 +315,10 @@ window.onload=() => {
     },
     methods: {
       color_svg(data) {
-        let chart_data, low_color, mid_color, high_color;
+        let chart_data;
+        let low_color;
+        let mid_color;
+        let high_color;
         if (data) {
           const { plotly_config } = this.display_data;
           const { colors } = { ...plotly_config };
@@ -457,7 +450,10 @@ window.onload=() => {
       }
     },
     computed: {
-      ...Vuex.mapState(["dataset_id"]),
+      ...Vuex.mapState([
+        "dataset_id"
+      , "plot_type"
+    ]),
       is_there_data() {
         if (this.data === null) return false;
         return (
@@ -485,7 +481,7 @@ window.onload=() => {
           (this.$refs.chart).innerHTML = "";
         }
 
-        const { plot_json, plot_config } = data ? data : this.data;
+        const { plot_json } = data ? data : this.data;
         if (data) {
           this.success = data.success;
           this.message = data.message;
@@ -495,15 +491,30 @@ window.onload=() => {
         }
         if (this.success >= 1 ) {
           if (this.img) {
-            Plotly.toImage({ ...plot_json, plot_config }).then((url) => {
+            Plotly.toImage({ ...plot_json, ...{static_plot:true} }).then((url) => {
               this.imgData = url;
             });
           } else {
-            Plotly.newPlot(this.$refs.chart, { ...plot_json, plot_config });
+            const curator_conf = post_plotly_config.curator;
+            const plot_config = this.get_plotly_updates(curator_conf, this.plot_type, "config");
+            Plotly.newPlot(this.$refs.chart, plot_json.data, plot_json.layout, plot_config);
           }
         }
         this.loading = false;
       },
+      get_plotly_updates(conf_area, plot_type, category) {
+        // Get updates and additions to plot from the plot_display_config JS object
+        let updates = {};
+        for (const idx in conf_area) {
+            const conf = conf_area[idx];
+            // Get config (data and/or layout info) for the plot type chosen, if it exists
+            if (conf.plot_type == "all" || conf.plot_type == plot_type) {
+                const update = category in conf ? conf[category] : {};
+                updates = {...updates, ...update};    // Merge updates
+            }
+        }
+        return updates;
+      }
     },
   });
 

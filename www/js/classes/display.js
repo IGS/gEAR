@@ -462,35 +462,21 @@ class PlotlyDisplay extends Display {
         const target_div = `dataset_${this.primary_key}_h5ad`;
         const {
             plot_json,
-            plot_config
         } = data;
 
         this.hide_loading();
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-        const config_mods = {
-            responsive: false,
-        };
-
-        const config = {
-            ...plot_config,
-            ...config_mods,
-        };
-
-        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
+        // Get config
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-            const conf = index_conf[idx];
-            // Get config (data and/or layout info) for the plot type chosen, if it exists
-            if (conf.plot_type == "all" || conf.plot_type == this.plot_type) {
-                const update_data = "data" in conf ? conf.data : {}
-                const update_layout = "layout" in conf ? conf.layout : {}
-                Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        const update_layout = get_plotly_updates(index_conf, this.plot_type, "layout");
+
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
+        Plotly.relayout(target_div, update_layout)
 
         return true;
     }
@@ -508,8 +494,10 @@ class PlotlyDisplay extends Display {
         this.hide_loading();
         const {
             plot_json,
-            plot_config
         } = this.data;
+
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
 
@@ -709,12 +697,15 @@ class PlotlyDisplay extends Display {
         const target_div = `dataset_${this.primary_key}_mg`;
         const {
             plot_json,
-            plot_config
         } = data;
 
         this.hide_loading();
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
+
+        // Get config
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         if (this.plot_type == "heatmap" && this.first_draw) {
             // These functions modify `this.data` by reference, so we need to ensure we only call them once.
@@ -724,28 +715,11 @@ class PlotlyDisplay extends Display {
             adjustClusterColorbars(plot_json.data);
         }
 
-        const config_mods = {
-            responsive: false,
-        };
-
-        const config = {
-            ...plot_config,
-            ...config_mods,
-        };
-
-        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
-
         // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-            const conf = index_conf[idx];
-            // Get config (data and/or layout info) for the plot type chosen, if it exists
-            if (conf.plot_type == "all" || conf.plot_type == this.plot_type) {
-                const update_data = "data" in conf ? conf.data : {}
-                const update_layout = "layout" in conf ? conf.layout : {}
-                Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        const update_layout = get_plotly_updates(index_conf, this.plot_type, "layout");
+
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
+        Plotly.relayout(target_div, update_layout)
 
         return true;
     }
@@ -763,8 +737,11 @@ class PlotlyDisplay extends Display {
         this.hide_loading();
         const {
             plot_json,
-            plot_config
         } = this.data;
+
+        // Get config
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
 
@@ -1491,4 +1468,20 @@ class TsneDisplay extends Display {
             msg_selector.text(hover_msg);
        });
     }
+}
+
+// *** General functions ***
+
+// Get updates and additions to plot from the plot_display_config JS object
+function get_plotly_updates(conf_area, plot_type, category) {
+    let updates = {};
+    for (const idx in conf_area) {
+        const conf = conf_area[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == "all" || conf.plot_type == plot_type) {
+            const update = category in conf ? conf[category] : {};
+            updates = {...updates, ...update};    // Merge updates
+        }
+    }
+    return updates;
 }

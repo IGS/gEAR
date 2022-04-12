@@ -240,7 +240,7 @@ function invertLogFunction(value, base=10) {
 function drawChart (data, datasetId) {
     const targetDiv = `dataset_${datasetId}_h5ad`;
     const parentDiv = `dataset_${datasetId}`;
-    const { plot_json: plotlyJson, plot_config: plotlyConfig, message, success } = data;
+    const { plot_json: plotlyJson, message, success } = data;
 
     // Since default plots are now added after dataset selection, wipe the plot when a new one needs to be drawn
     $(`#${targetDiv}`).empty()
@@ -260,28 +260,15 @@ function drawChart (data, datasetId) {
         adjustStackedViolinHeight(plotlyJson.layout);
     }
 
-    const configMods = {
-        responsive: true
-    };
-
-    const config = {
-        ...plotlyConfig,
-        ...configMods
-    };
-    Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, config);
+    // Get config
+    const curatorConf = post_plotly_config.curator;
+    const plotlyConfig = getPlotlyUpdates(curatorConf, plotType, "config");
 
     // Update plot with custom plot config stuff stored in plot_display_config.js
-    const curator_conf = post_plotly_config.curator;
-    for (const idx in curator_conf) {
-        const conf = curator_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == "all" || conf.plot_type == plotType) {
-            const update_data = "data" in conf ? conf.data : {};
-            const update_layout = "layout" in conf ? conf.layout : {};
-            Plotly.update(targetDiv, update_data, update_layout)
-        }
-    }
+    const updateLayout = getPlotlyUpdates(curatorConf, plotType, "layout");
 
+    Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, plotlyConfig);
+    Plotly.relayout(targetDiv, updateLayout)
 
     // Show any warnings from the API call
     if (message && success === 2) {
@@ -716,6 +703,20 @@ function loadDisplayConfigHtml (plotConfig) {
         $('#de_test_select').val(plotConfig.de_test_algo);
         $('#de_test_select').trigger('change');
     }
+}
+
+// Get plotly updates and additions from the plot_display_config JS object
+function getPlotlyUpdates(confArea, plotType, category) {
+    let updates = {};
+    for (const idx in confArea) {
+        const conf = confArea[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == "all" || conf.plot_type == plotType) {
+            const update = category in conf ? conf[category] : {};
+            updates = {...updates, ...update};    // Merge the updates
+        }
+    }
+    return updates;
 }
 
 // Load all saved gene carts for the current user

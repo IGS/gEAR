@@ -9,6 +9,41 @@ plot_display_config.js - This script can be passed to various scripts that gener
 const post_plotly_config = {
     "index":[
         {
+            "plot_type":"all"
+            , "config": {
+                showLink: false
+                , displaylogo: false
+                , responsive: false
+                , modeBarButtonsToRemove: [
+                    "zoom2d",
+                    "autoScale2d",
+                    "hoverClosestCartesian",
+                    "hoverCompareCartesian",
+                    "zoom3d",
+                    "pan3d",
+                    "resetCameraDefault3d",
+                    "resetCameraLastSave3d",
+                    "hoverClosest3d",
+                    "orbitRotation",
+                    "tableRotation",
+                    "zoomInGeo",
+                    "zoomOutGeo",
+                    "resetGeo",
+                    "hoverClosestGeo",
+                    "sendDataToCloud",
+                    "hoverClosestGl2d",
+                    "hoverClosestPie",
+                    "toggleHover",
+                    "resetViews",
+                    "toggleSpikelines",
+                    "resetViewMapbox"
+                ]
+            }, "layout": {
+                "modebar": {
+                    orientation: "h"
+                }
+            }
+        }, {
             "plot_type":"volcano"
             , "layout":{
                 "legend": {
@@ -31,23 +66,51 @@ const post_plotly_config = {
                     "b":10
                 }
             }
-        } , {
-            "plot_type":"all"
-            , "layout": {
-                "modebar": {
-                    orientation: "h"
-                }
-            }
         }
     ]
     , "curator":[
         {
+            "plot_type":"all"
+            , "config": {
+                showLink: false
+                , displaylogo: false
+                , responsive: false
+                , modeBarButtonsToRemove: [
+                    "zoom2d",
+                    "autoScale2d",
+                    "hoverClosestCartesian",
+                    "hoverCompareCartesian",
+                    "zoom3d",
+                    "pan3d",
+                    "resetCameraDefault3d",
+                    "resetCameraLastSave3d",
+                    "hoverClosest3d",
+                    "orbitRotation",
+                    "tableRotation",
+                    "zoomInGeo",
+                    "zoomOutGeo",
+                    "resetGeo",
+                    "hoverClosestGeo",
+                    "sendDataToCloud",
+                    "hoverClosestGl2d",
+                    "hoverClosestPie",
+                    "toggleHover",
+                    "resetViews",
+                    "toggleSpikelines",
+                    "resetViewMapbox"
+                ]
+            }, "layout":{
+                "modebar": {
+                    orientation: "v"
+                }
+                , dragMode: "select"
+            }
+        }, {
             "plot_type": "volcano"
             , "layout":{
                 "height": 800
             }
-        }
-        , {
+        }, {
             "plot_type": "quadrant"
             , "layout":{
                 "height": 800

@@ -608,47 +608,6 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     return fig
 
-
-def get_config():
-    """Get config for Plotly chart."""
-    return dict(
-        showLink=False,
-        displaylogo=False,
-        responsive=False,
-        modebar = dict(orientation="v"), # Make Plotly controls flush with right of plot
-        modeBarButtonsToRemove=[
-            "zoom2d",
-            "pan2d",
-            #"select2d",
-            #"lasso2d",
-            "zoomIn2d",
-            "zoomOut2d",
-            "autoScale2d",
-            # "resetScale2d",
-            "hoverClosestCartesian",
-            "hoverCompareCartesian",
-            "zoom3d",
-            "pan3d",
-            "resetCameraDefault3d",
-            "resetCameraLastSave3d",
-            "hoverClosest3d",
-            "orbitRotation",
-            "tableRotation",
-            "zoomInGeo",
-            "zoomOutGeo",
-            "resetGeo",
-            "hoverClosestGeo",
-            # "toImage",
-            "sendDataToCloud",
-            "hoverClosestGl2d",
-            "hoverClosestPie",
-            "toggleHover",
-            "resetViews",
-            "toggleSpikelines",
-            "resetViewMapbox"
-        ]
- )
-
 def plotly_color_map(names):
     """
     Private plot helper method for generating colors

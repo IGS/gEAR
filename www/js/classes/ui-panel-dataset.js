@@ -303,7 +303,7 @@ class DatasetPanel extends Dataset {
                 d.get_data(gene_symbol).then(({ data }) => {
                     const { plot_json, plot_config } = data;
                     Plotly.toImage(
-                        { ...plot_json, plot_config },
+                        { ...plot_json, ...{static_plot:true} },
                         { height: 500, width: 500 }
                     ).then((url) => {
                         $(`#modal-display-img-${display.id}`).attr("src", url);
@@ -340,9 +340,9 @@ class DatasetPanel extends Dataset {
         if (gene_symbols) {
             const d = new MultigeneDisplay(display, gene_symbols);
             d.get_data(gene_symbols).then(({ data }) => {
-                const { plot_json, plot_config } = data;
+                const { plot_json } = data;
                 Plotly.toImage(
-                    { ...plot_json, plot_config },
+                    { ...plot_json, ...{static_plot:true} },
                     { height: 500, width: 500 }
                 ).then((url) => {
                     $(`#modal-display-img-${display.id}`).attr("src", url);
