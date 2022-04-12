@@ -498,6 +498,9 @@ window.onload=() => {
             const curator_conf = post_plotly_config.curator;
             const plot_config = this.get_plotly_updates(curator_conf, this.plot_type, "config");
             Plotly.newPlot(this.$refs.chart, plot_json.data, plot_json.layout, plot_config);
+            // Update plot with custom plot config stuff stored in plot_display_config.js
+            const update_layout = this.get_plotly_updates(curator_conf, this.plot_type, "layout")
+            Plotly.relayout(this.$refs.chart, update_layout)
           }
         }
         this.loading = false;
