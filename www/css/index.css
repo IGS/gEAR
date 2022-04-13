@@ -513,7 +513,7 @@ li.scope_choice:hover {
   display: inline-block;
   overflow: hidden;
   border: 1px solid #ccc;
-  background-color: #f1f1f1;
+  background-color: var(--main-section-launcher-bg-color-inactive);
 }
 
 /* Style the buttons that are used to open the tab content */
@@ -524,14 +524,15 @@ li.scope_choice:hover {
   cursor: pointer;
   padding: 14px 16px;
   transition: 0.3s;
+  color: white;
 }
 
 /* Change background color of buttons on hover */
 .tab button:hover {
-  background-color: #ddd;
+  background-color: var(--main-section-launcher-bg-color-active);
 }
 
 /* Create an active/current tablink class */
 .tab button.active {
-  background-color: #ccc;
+  background-color: var(--main-section-launcher-bg-color-active);
 }
