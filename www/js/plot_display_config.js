@@ -7,10 +7,10 @@ plot_display_config.js - This script can be passed to various scripts that gener
 // These assume a grid_width of 4 and an mg_grid_width of 6
 
 const post_plotly_config = {
-    "index":[
+    index: [
         {
-            "plot_type":"all"
-            , "config": {
+            plot_type: "all"
+            , config: {
                 showLink: false
                 , displaylogo: false
                 , responsive: false
@@ -38,48 +38,62 @@ const post_plotly_config = {
                     "toggleSpikelines",
                     "resetViewMapbox"
                 ]
-            }, "layout": {
-                "modebar": {
+            }, layout: {
+                modebar: {
                     orientation: "h"
                 }
             }
         }, {
-            "plot_type":"volcano"
-            , "layout":{
-                "legend": {
+            plot_type: "volcano"
+            , layout:{
+                legend: {
                     x: 1.05,
                     y: -0.05,
                     xanchor: "center",
-                    yanchor:"top",
-                    font: {size:8}
+                    yanchor: "top",
+                    font: {
+                        size: 8
+                    }
                 }
-                , "title" : {
+                , title : {
                     x: 0.5,
                     xref: "paper",
                     y: 0.8,
                 }
             }
         }, {
-            "plot_type":"heatmap"
-            , "layout":{
-                "margin": {
-                    "b":10
+            plot_type: "heatmap"
+            , layout:{
+                margin: {
+                    b: 10
                 }
             }
         }, {
-            "plot_type":"violin"
-            , "layout":{
-                "margin": {
-                    "t":30
-                    , "r":10
+            plot_type: "violin"
+            , layout:{
+                margin: {
+                    t: 30
+                    , r: 10
                 }
+            }
+        }, {
+            plot_type: "bar"
+            , layout:{
+                margin: {
+                    t: 30
+                    , r: 10
+                }
+                /* , legend: {
+                    orientation: "h"
+                }
+                */
             }
         }
     ]
-    , "curator":[
+    , curator: [
         {
-            "plot_type":"all"
-            , "config": {
+            plot_type:"all"
+            , config: {
                 showLink: false
                 , displaylogo: false
                 , responsive: false
@@ -107,20 +121,20 @@ const post_plotly_config = {
                     "toggleSpikelines",
                     "resetViewMapbox"
                 ]
-            }, "layout":{
-                "modebar": {
+            }, layout:{
+                modebar: {
                     orientation: "v"
                 }
                 , dragMode: "select"
             }
         }, {
-            "plot_type": "volcano"
-            , "layout":{
+            plot_type: "volcano"
+            , layout:{
                 "height": 800
             }
         }, {
-            "plot_type": "quadrant"
-            , "layout":{
+            plot_type: "quadrant"
+            , layout:{
                 "height": 800
             }
         }
