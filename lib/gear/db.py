@@ -8,6 +8,8 @@ import os
 import sys
 import configparser
 
+from gear.serverconfig import ServerConfig
+
 class MySQLDB:
     """
     Provides a connection to the MySQL instance.
@@ -15,18 +17,20 @@ class MySQLDB:
     Returns: a mysql.connector connection object
     """
     def __init__(self):
-        connection = None
+        self.connection = None
 
     def connect(self):
-        ini_path = "{0}/../../gear.ini".format(os.path.dirname(__file__))
-        config = configparser.ConfigParser()
-        config.read(ini_path)
+    """
+    TODO: Investigate effect of reusing this connection when populated
+    vs. creating new ones each time.
+    """
+        config = ServerConfig().parse()
         
         try:
             cnx = mysql.connector.connect(user=config['database']['user'], password=config['database']['password'],
                                           host=config['database']['host'], database=config['database']['name'],
                                           buffered=True, use_pure=True)
-            
+            self.connection = cnx
             return cnx
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
