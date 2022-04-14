@@ -20,10 +20,10 @@ class MySQLDB:
         self.connection = None
 
     def connect(self):
-    """
-    TODO: Investigate effect of reusing this connection when populated
-    vs. creating new ones each time.
-    """
+        """
+        TODO: Investigate effect of reusing this connection when populated
+        vs. creating new ones each time.
+        """
         config = ServerConfig().parse()
         
         try:
