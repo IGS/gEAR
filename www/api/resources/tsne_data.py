@@ -1,3 +1,4 @@
+from turtle import left
 from flask import request
 from flask_restful import Resource
 
@@ -7,11 +8,9 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 
-import json, os, re
-import sys
+import io, json, os, re, sys
 import geardb
 import base64
-import io
 from math import ceil
 
 sc.settings.set_figure_params(dpi=100)
@@ -24,7 +23,8 @@ PLOT_TYPE_TO_BASIS = {
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
-NUM_LEGENDS_PER_COL = 12
+NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
+NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -88,11 +88,39 @@ def create_projection_adata(dataset_adata, projection_csv):
     projection_adata.var["gene_symbol"] = projection_adata.var_names
     return projection_adata
 
-def sort_legend(figure, sort_order):
+def sort_legend(figure, sort_order, horizontal_legend=False):
     """Sort legend of plot."""
     handles, labels = figure.get_legend_handles_labels()
     new_handles = [handles[idx] for idx, name in enumerate(sort_order)]
     new_labels = [labels[idx] for idx, name in enumerate(sort_order)]
+    print(new_labels)
+
+    # If horizontal legend, we need to sort in a way to have labels read from left to right
+    if horizontal_legend:
+        leftover_cards = len(new_handles) % NUM_HORIZONTAL_COLS
+        num_chunks = int(len(new_handles) / NUM_HORIZONTAL_COLS)
+
+        # Split into relatively equal chumks.
+        handles_sublists = np.array_split(np.array(new_handles), num_chunks)
+        labels_sublists = np.array_split(np.array(new_labels), num_chunks)
+
+        # Zipping gets weird if there's a remainder so remove those leftover items and add back later
+        if leftover_cards:
+            handles_leftover = new_handles[-leftover_cards:]
+            labels_leftover = new_labels[-leftover_cards:]
+
+            handles_sublists = np.array_split(np.array(new_handles[:-leftover_cards]), num_chunks)
+            labels_sublists = np.array_split(np.array(new_labels[:-leftover_cards]), num_chunks)
+
+        # Zip numpy arrays, then flatten into a 1D list.  Add leftover cards as well to end
+        new_handles = np.column_stack(handles_sublists).flatten().tolist()
+        new_labels = np.column_stack(labels_sublists).flatten().tolist()
+
+        # Insert leftover cards back into the list. Start from back to front so indexes are not manipulated.
+        for i in reversed(range(leftover_cards)):
+            new_handles.insert(num_chunks * (i+1), handles_leftover[i])
+            new_labels.insert(num_chunks * (i+1), labels_leftover[i])
+
     return (new_handles, new_labels)
 
 class TSNEData(Resource):
@@ -111,7 +139,7 @@ class TSNEData(Resource):
         colorize_by = req.get('colorize_by')
         skip_gene_plot = req.get('skip_gene_plot', False)
         plot_by_group = req.get('plot_by_group', None) # One expression plot per group
-        max_columns = int(req.get('max_columns'))   # Max number of columns before plotting to a new row
+        max_columns = req.get('max_columns')   # Max number of columns before plotting to a new row
         colors = req.get('colors')
         order = req.get('order', {})
         x_axis = req.get('x_axis', 'tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
@@ -277,7 +305,7 @@ class TSNEData(Resource):
 
                 max_cols = num_plots
                 if max_columns:
-                    max_cols = min(max_columns, num_plots)
+                    max_cols = min(int(max_columns), num_plots)
                 max_rows = ceil((num_plots) / max_cols)
 
                 # Set up the figure specs
@@ -318,10 +346,10 @@ class TSNEData(Resource):
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
-                (handles, labels) = sort_legend(f_color, colorize_by_order)
-                f_color.legend(ncol=num_cols, handles=handles, labels=labels)
+                (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
+                f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                 if horizontal_legend:
-                    io_fig.legend(loc="lower center", bbox_to_anchor=[0, -1/figheight, 1, 0], frameon=False, ncol=8, handles=handles, labels=labels)
+                    io_fig.legend(loc="lower center", bbox_to_anchor=[0, -1/figheight, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                     f_color.get_legend().remove()  # Remove legend added by scanpy
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
@@ -333,10 +361,10 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f1, colorize_by_order)
-                    f1.legend(ncol=num_cols, handles=handles, labels=labels)
+                    (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
+                    f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                     if horizontal_legend:
-                        io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.15, 1, 0], frameon=False, ncol=8, handles=handles, labels=labels)
+                        io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.2, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                         f1.get_legend().remove()  # Remove legend added by scanpy
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
@@ -346,10 +374,10 @@ class TSNEData(Resource):
                     f2 = io_fig.add_subplot(spec[0,1])
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f2, colorize_by_order)
-                    f2.legend(ncol=num_cols, handles=handles, labels=labels)
+                    (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
+                    f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                     if horizontal_legend:
-                        io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.15, 1, 0], frameon=False, ncol=8, handles=handles, labels=labels)
+                        io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.2, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                         f2.get_legend().remove()  # Remove legend added by scanpy
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, return_fig=True, use_raw=False)
