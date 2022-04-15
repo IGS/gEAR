@@ -14,6 +14,8 @@ gear_lib_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(gear_lib_path)
 import gear.db
 
+from gear.serverconfig import ServerConfig
+
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 
@@ -1234,10 +1236,50 @@ class FolderCollection:
         conn.close()
         return self.folders
 
-    def get_tree_by_folder_ids(self, ids=None):
+    def get_root_folders(self, folder_type=None):
+        """
+        Returns a list of Folder elements for the root folders.
+
+        These should all map to entries within gear.ini -> [folders]
+
+        folder_type should be either 'cart' or 'profile'
+        """
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = "SELECT id, label FROM folder WHERE parent_id IS NULL";
+        cursor.execute(qry)
+
+        # Now we need to map these root folders to those in the config file
+        servercfg = ServerConfig().parse()
+
+        # Create an index of all the root folders.  Still need to filter/map
+        # them based on their type
+        rfs = dict()
+        for row in cursor:
+            rfs[row['id']] = row['label']
+
+        for scope in ['domain', 'user', 'group', 'shared', 'public']:
+            config_key = "{0}_{1}_master_id".format(folder_type, scope)
+            folder_id = int(servercfg['folders'][config_key])
+            print(rfs, file=sys.stderr)
+            
+            if folder_id in rfs:
+                folder = Folder(id=folder_id,
+                                parent_id=None,
+                                label=rfs[folder_id])
+                self.folders.append(folder)
+
+        cursor.close()
+        conn.close()
+        return self.folders
+
+    def get_tree_by_folder_ids(self, ids=None, folder_type=None):
         """
         Similar to get_by_folder_ids() but this gets the entire tree for any folder IDs
-        past. Higher query cost than just running get_by_folder_ids().  
+        passed. Higher query cost than just running get_by_folder_ids(). 
+
+        Also always returns the root folders, even if they're empty.
 
         This link looked like a good solution to handle within the database directly but 
         couldn't get it to work across MySQL/MariaDB and versions.  Too delicate:
@@ -1246,9 +1288,15 @@ class FolderCollection:
         """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
-        self.folders = list()
-
+        self.get_root_folders(folder_type=folder_type)
         all_ids = list()
+
+        # Remember the root folders so we don't duplicate them
+        for folder in self.folders:
+            all_ids.append(folder.id)
+
+        print("DEBUG: Got {0} root folders".format(len(self.folders)), file=sys.stderr)
+        
         new_ids_found = ids
 
         while len(new_ids_found) > 0:
