@@ -14,10 +14,11 @@ gear_lib_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(gear_lib_path)
 import gear.db
 
-from gear.serverconfig import ServerConfig
-
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
+
+from gear.serverconfig import ServerConfig
+this.servercfg = ServerConfig().parse()
 
 # This is where things specific to dynamic analyses will be stored, such as intermediate
 #  H5AD files, images, etc.
@@ -1178,7 +1179,19 @@ class LayoutCollection:
         cursor.execute(qry)
         
         for row in cursor:
-            layout = self._row_to_layout_object(row)
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                folder_id = row[6] if row[6] else int(this.servercfg['folders']['profile_domain_master_id']),
+                folder_parent_id=row[7],
+                folder_label=row[8]
+            )
+
+            layout.dataset_count = row[9]
             self.layouts.append(layout)
 
         cursor.close()
@@ -1250,9 +1263,6 @@ class FolderCollection:
         qry = "SELECT id, label FROM folder WHERE parent_id IS NULL";
         cursor.execute(qry)
 
-        # Now we need to map these root folders to those in the config file
-        servercfg = ServerConfig().parse()
-
         # Create an index of all the root folders.  Still need to filter/map
         # them based on their type
         rfs = dict()
@@ -1261,8 +1271,7 @@ class FolderCollection:
 
         for scope in ['domain', 'user', 'group', 'shared', 'public']:
             config_key = "{0}_{1}_master_id".format(folder_type, scope)
-            folder_id = int(servercfg['folders'][config_key])
-            print(rfs, file=sys.stderr)
+            folder_id = int(this.servercfg['folders'][config_key])
             
             if folder_id in rfs:
                 folder = Folder(id=folder_id,
@@ -1295,8 +1304,6 @@ class FolderCollection:
         for folder in self.folders:
             all_ids.append(folder.id)
 
-        print("DEBUG: Got {0} root folders".format(len(self.folders)), file=sys.stderr)
-        
         new_ids_found = ids
 
         while len(new_ids_found) > 0:
@@ -1314,8 +1321,9 @@ class FolderCollection:
             for row in cursor:
                 folder = Folder(id=row['id'], parent_id=row['parent_id'], label=row['label'])
 
-                all_ids.append(folder.id)
-                self.folders.append(folder)
+                if folder.id not in all_ids:
+                    all_ids.append(folder.id)
+                    self.folders.append(folder)
 
                 if folder.parent_id and folder.parent_id not in all_ids:
                     new_ids_found.append(folder.parent_id)
