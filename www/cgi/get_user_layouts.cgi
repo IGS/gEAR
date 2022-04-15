@@ -35,18 +35,23 @@ Folder support
 
 - Highlighted profiles
   - Those where gEAR admins have set layout.is_domain = 1
-  - Can have nested folders
+  - Can have nested folders, admin access only
 - Your profiles
   - Those uploaded by the user
-  - Can have nested folders
+  - Can have nested folders, owner access only
 - Group profiles
   - Any user can create a group and assign users/layouts to it
-  - Can have nested folders
+  - Can have nested folders, group owner can create
 - Profiles shared with you
   - Those with entries in dataset_shares or passed via the URL
-  - Can't think of a reason to not allow folders
+  - Folders allowed, but current user only
+- Other public profiles
+  - All other profiles where the user has set layout.is_public=1
+  - Can have folders but only admins can create them
 
-All profiles and folders should be nested within these 4 top-level options. 
+All profiles and folders should be nested within these 5 top-level options. 
+
+# show all profiles and their labels within a folder
 """
 
 import cgi, json
@@ -55,6 +60,8 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
+from gear.serverconfig import ServerConfig
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -74,6 +81,7 @@ def main():
                'domain_layouts': [],
                'group_layouts': [],
                'shared_layouts': [],
+               'public_layouts': [],
                'folders': [],
                'selected': None }
 
@@ -81,20 +89,21 @@ def main():
         result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
     if user:
-        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
-        result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
+        pass
+        #result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
+        #result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
 
     if layout_share_id:
-        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        pass
+        #result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
 
     ## Selected priority (and indexes folder IDs):
     ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
-    for ltype in ['user', 'domain', 'group', 'shared']:
+    for ltype in ['user', 'domain', 'group', 'shared', 'public']:
         for l in result[ltype + '_layouts']:
             if l.folder_id:
-                print("DEBUG: Adding a folder ID", file=sys.stderr)
                 folder_ids_found.add(l.folder_id)
             
             if l.share_id == layout_share_id:
@@ -114,7 +123,8 @@ def main():
                 break
 
     result['folders'] = geardb.FolderCollection()
-    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found)
+    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found,
+                                                                 folder_type='profile')
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))

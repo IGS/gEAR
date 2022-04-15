@@ -423,7 +423,7 @@ function load_layouts() {
             let active_layout_id = null;
             let active_layout_label = null;
 
-            const layout_types = ['domain', 'user', 'group', 'shared']
+            const layout_types = ['domain', 'user', 'group', 'shared', 'public']
 
             for (const ltype of layout_types) {
                 layouts[ltype] = [];
@@ -450,6 +450,7 @@ function load_layouts() {
             profile_tree.userProfiles = layouts.user;
             profile_tree.groupProfiles = layouts.group;
             profile_tree.sharedProfiles = layouts.shared;
+            profile_tree.publicProfiles = layouts.public;
             profile_tree.folders = data['folders'];
             profile_tree.generateTree();
             console.log("Profile tree:");
@@ -459,6 +460,7 @@ function load_layouts() {
             selected_profile_tree.userProfiles = layouts.user;
             selected_profile_tree.groupProfiles = layouts.group;
             selected_profile_tree.sharedProfiles = layouts.shared;
+            selected_profile_tree.publicProfiles = layouts.public;
             selected_profile_tree.folders = data['folders'];
             selected_profile_tree.generateTree();
 

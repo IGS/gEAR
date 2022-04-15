@@ -272,12 +272,13 @@ class ProfileTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles) {
+    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles, publicProfiles) {
         super(args);
         this.domainProfiles = (domainProfiles) ? domainProfiles : [];
         this.userProfiles = (userProfiles) ? userProfiles : [];
         this.groupProfiles = (groupProfiles) ? groupProfiles : [];
         this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
+        this.publicProfiles = (publicProfiles) ? publicProfiles : [];
         this.profileIDs = {};
         this.treeKeys = {};
         this.treeData = [];
@@ -347,10 +348,16 @@ class ProfileTree extends Tree {
         // Create JSON tree structure for the data
         this.treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
         this.treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'group_node', 'parent':'#', 'text':`Group profiles (${this.groupProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'#', 'text':`Profiles shared with you (${this.sharedProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`,
+             'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`,
+             'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'#', 'text':`Group profiles (${this.groupProfiles.length})`,
+             'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'#', 'text':`Profiles shared with you (${this.sharedProfiles.length})`,
+             'a_attr': {'class':'jstree-ocl'}},
+            {'id':'public_node', 'parent':'#', 'text':`Other public profiles (${this.publicProfiles.length})`,
+             'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // Add all the folders first
