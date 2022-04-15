@@ -917,8 +917,8 @@ $('#dataset').change(async function () {
     $('#no_observations_error').hide();
 
     // Create promises to get genes and observations for this dataset
-    const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
-    const h5adPromise =  fetchH5adInfo({ datasetId, undefined });
+    const geneSymbolsPromise = fetchGeneSymbols({ datasetId, analysis: undefined })
+    const h5adPromise =  fetchH5adInfo({ datasetId, analysis: undefined });
 
     // Execute both in parallel
     geneSymbols = await geneSymbolsPromise;

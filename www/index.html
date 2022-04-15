@@ -356,10 +356,12 @@
       </div>
         <div class="row">
           <div id="leftbar_main" class="col-2">
+            <!--
             <div class="tab" role="tablist">
               <button class="active" id="gene_tab" onclick="show_gene()">Gene</button>
               <button id="projection_tab" onclick="show_projection()">Projection</button>
             </div>
+            -->
 
             <div id="search_container">
               <form id="gene_search_form"></form>
@@ -417,7 +419,6 @@
                 <h3>Search Projections</h3>
                 <div class="form-group form-group-sm">
                   <div id="set_of_patterns_c">
-                    <!-- Where will this be?  -->
                     <label for="set_of_patterns" class="control-label">Select pattern source</label>
                     <select id="set_of_patterns" class="form-control form-control-sm"></select>
                   </div>
@@ -431,7 +432,6 @@
                     </label>
                   </div>
                 </div>
-
 
                 <div id="projection_display_mode_c" class="form-group form-group-sm">
                   <div class="form-check">
@@ -463,8 +463,9 @@
                   </div>
                 </script>
               </div>
+              -->
 
-              <div class="form-group">
+              <div id="selected_profile_container" class="form-group">
                 <label id="selected_profile_label" class="mb-0">Select Profile</label>
                 <div id="selected_profile_c" class="dropdown">
                   <div id="selected_profile" value="" data-title="Click to change" class="js-profile form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>

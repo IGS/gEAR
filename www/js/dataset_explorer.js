@@ -228,7 +228,8 @@ $(document).on('click', '.confirm_layout_add', function() {
         success: function(data, textStatus, jqXHR) {
             if ( data['layout_id'] ) {
                 // Add it to the select box
-                $('#selected_layout').append('<option value="' + data['layout_id'] + '">' + data['layout_label'] + '</option>');
+                $('#user_profile_list').append('<option value="' + data['layout_id'] + '" data-share-id="' +
+                                               data['layout_share_id'] + '">' + data['layout_label'] + '</option>');
                 $('#selected_layout').val(data['layout_id']);
                 show_layout_action_note("Profile created");
                 update_add_remove_buttons();

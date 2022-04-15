@@ -42,6 +42,7 @@ window.onload=() => {
         $('#intro_content').hide();
         $('#viewport_intro').children().hide();
         $('#searching_indicator_c').hide();
+        $('#selected_profile_container').hide();
 
         $('#leftbar_main').show();
         $('#permalink_intro_c').show();
@@ -730,7 +731,7 @@ function select_search_result(elm) {
 
     if (!projection) {
         annotation_panel.annotation = search_results[gene_sym];
-        annotation_panel.display_first_organism();
+        annotation_panel.autoselect_organism();
     }
 
     // hide the intro, show the search result box
