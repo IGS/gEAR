@@ -89,8 +89,7 @@ def main():
         result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
     if user:
-        pass
-        #result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
+        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
         #result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
 
     if layout_share_id:
