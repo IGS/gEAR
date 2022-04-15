@@ -93,7 +93,6 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
     handles, labels = figure.get_legend_handles_labels()
     new_handles = [handles[idx] for idx, name in enumerate(sort_order)]
     new_labels = [labels[idx] for idx, name in enumerate(sort_order)]
-    print(new_labels)
 
     # If horizontal legend, we need to sort in a way to have labels read from left to right
     if horizontal_legend:
@@ -349,7 +348,7 @@ class TSNEData(Resource):
                 (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
                 f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                 if horizontal_legend:
-                    io_fig.legend(loc="lower center", bbox_to_anchor=[0, -1/figheight, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                    io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                     f_color.get_legend().remove()  # Remove legend added by scanpy
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
@@ -364,7 +363,7 @@ class TSNEData(Resource):
                     (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
                     f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                     if horizontal_legend:
-                        io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.2, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                         f1.get_legend().remove()  # Remove legend added by scanpy
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
@@ -377,12 +376,13 @@ class TSNEData(Resource):
                     (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
                     f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                     if horizontal_legend:
-                        io_fig.legend(loc="lower center", bbox_to_anchor=[0, -0.2, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                         f2.get_legend().remove()  # Remove legend added by scanpy
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, return_fig=True, use_raw=False)
 
         io_pic = io.BytesIO()
+        io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
         io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
         plt.close() # Prevent zombie plots, which can cause issues
