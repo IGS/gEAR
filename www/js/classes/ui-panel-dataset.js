@@ -40,6 +40,24 @@ class DatasetPanel extends Dataset {
         this.projection_csv = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
+
+        this.fetch_h5ad_info({ dataset_id: this.id, analysis: undefined }).then(
+            (data) => {
+                this.h5ad_info = data;
+            }
+        );
+    }
+
+    // Call API to return observation information on this dataset
+    async fetch_h5ad_info (payload) {
+        const { dataset_id, analysis } = payload;
+        const base = `./api/h5ad/${dataset_id}`;
+        const query = analysis ? `?analysis=${analysis.id}` : '';
+        return await $.ajax({
+            url: `${base}${query}`,
+            dataType: 'json',
+            type: "GET",
+        });
     }
 
     get_dataset_displays(user_id, dataset_id) {
@@ -221,6 +239,14 @@ class DatasetPanel extends Dataset {
         if (!this.has_h5ad) {
             this.show_error(
                 "This dataset type does not currently support curated multigene displays."
+            );
+            return;
+        }
+
+        // All multigene plot types require a categorical observation to plot from. So there would be no curations for these datasets anyways.
+        if (!Object.keys(this.h5ad_info.obs_levels).length) {
+            this.show_error(
+                "This dataset does not have any categorical observations to plot from."
             );
             return;
         }
@@ -494,13 +520,13 @@ class DatasetPanel extends Dataset {
 
     // Call API to return plot JSON data
     async run_projectR(projection_source) {
-        const datasetId = this.id;
+        const dataset_id = this.id;
         const payload = {
             scope: "repository",
             input_value: projection_source,
         };
         try {
-            const { data } = await axios.post(`/api/projectr/${datasetId}`, {
+            const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
                 ...payload,
             });
             if (data.success < 1 && this.display) {
