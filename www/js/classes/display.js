@@ -1355,6 +1355,7 @@ class TsneDisplay extends Display {
     this.order = JSON.stringify(config.order);
     this.colorize_legend_by = config.colorize_legend_by;
     this.skip_gene_plot = config.skip_gene_plot;
+    this.horizontal_legend = config.horizontal_legend;
     this.plot_by_group = config.plot_by_group;
     this.max_columns = config.max_columns;
     this.x_axis = config.x_axis;
@@ -1378,6 +1379,7 @@ class TsneDisplay extends Display {
               plot_type: this.plot_type,
               colorize_by: this.colorize_legend_by,
               skip_gene_plot: this.skip_gene_plot,
+              horizontal_legend: this.horizontal_legend,
               plot_by_group: this.plot_by_group,
               max_columns: this.max_columns,
               x_axis: this.x_axis,

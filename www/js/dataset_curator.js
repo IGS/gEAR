@@ -86,7 +86,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='success < 1'>
+          <template v-if='success < 0'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -178,8 +178,7 @@ window.onload=() => {
         // then craziness: https://stackoverflow.com/a/48980526
         // shift this out when the fetch_tsne_image method is done in Vuex
         return axios
-          .get(`/api/plot/${dataset_id}/tsne`, {
-            params: {
+          .post(`/api/plot/${dataset_id}/tsne`, {
               gene: config.gene_symbol,
               analysis: analysis_id,
               colorize_by: config.colorize_legend_by,
@@ -188,13 +187,13 @@ window.onload=() => {
               max_columns: config.max_columns,
               x_axis: config.x_axis,
               y_axis: config.y_axis,
+              horizontal_legend: config.horizontal_legend,
               plot_type,
               analysis_owner_id: this.display_data.user_id,
               colors: config.colors,
               order: config.order,
               // helps stop caching issues
               timestamp: new Date().getTime(),
-            },
           })
           .then((response) => {
             return response.data;
@@ -222,7 +221,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='success < 1'>
+          <template v-if='success < 0'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -398,7 +397,7 @@ window.onload=() => {
             <p class='card-text'>{{ message }}</p>
             </b-card>
           </template>
-          <template v-if='success < 1'>
+          <template v-if='success < 0'>
             <b-card bg-variant="danger" text-variant="white" title="Error">
             <p class='card-text'>{{ message }}</p>
             </b-card>
@@ -2342,7 +2341,7 @@ window.onload=() => {
                 </b-form-select>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend' label-align-sm="right">
+              <b-form-group v-if='show_colorized_legend && colorize_legend_by' label-align-sm="right">
                 <b-icon class="float-right" v-b-tooltip.hover="'Data series for creating separate plots by individual entities in a group'" icon="question-circle-fill"></b-icon>
                 <label class="mb-0">Plot by group:</label>
                 <b-form-select :options="columns" v-model='plot_by_group' size='sm'>
@@ -2365,7 +2364,14 @@ window.onload=() => {
                 </b-form-checkbox>
               </b-form-group>
 
-            </b-form-group>
+              <b-form-group v-if='show_colorized_legend' label-align-sm="right">
+                <b-icon class="float-right" v-b-tooltip.hover="'Check to make horizontal legend along the bottom of the plotspace'" icon="question-circle-fill"></b-icon>
+                <b-form-checkbox v-model='horizontal_legend'>
+                  Place legend under plots
+                </b-form-checkbox>
+              </b-form-group>
+
+          </b-form-group>
           </b-col>
         </b-row>
         <hr>
@@ -2419,6 +2425,14 @@ window.onload=() => {
           this.$store.commit("set_skip_gene_plot", value);
         },
       },
+      horizontal_legend: {
+        get() {
+          return this.$store.state.config.horizontal_legend;
+        },
+        set(value) {
+          this.$store.commit("set_horizontal_legend", value);
+        },
+      },
       x_axis: {
         get() {
           return this.$store.state.config.x_axis;
@@ -2447,6 +2461,8 @@ window.onload=() => {
         this.max_columns = this.config.max_columns;
       if ("skip_gene_plot" in this.config)
         this.skip_gene_plot = this.config.skip_gene_plot;
+      if ("horizontal_legend" in this.config)
+        this.horizontal_legend = this.config.horizontal_legend;
 
       this.fetch_h5ad_info({
         dataset_id: this.dataset_id,
@@ -2454,21 +2470,22 @@ window.onload=() => {
       });
     },
     watch: {
-      show_colorized_legend: function (val, oldval) {
+      show_colorized_legend(val, oldval) {
         // if deselected, clear colorize legend select box
         if (this.show_colorized_legend === false) {
           this.colorize_legend_by = null;
           this.skip_gene_plot = null;
+          this.horizontal_legend = null;
           this.plot_by_group = null;
           this.max_columns = null;
         }
       },
-      colorize_legend_by: function (newval, oldval) {
+      colorize_legend_by(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
             // Set order in config so "display-order" will render
             if (newval !== null && this.levels) {
               const colorize_key = this.colorize_legend_by;
-              var order = {};
+              const order = {};
               order[colorize_key] = this.levels[colorize_key];
 
               if (this.plot_by_group !== null) {
@@ -2481,22 +2498,27 @@ window.onload=() => {
           this.draw_image();
         }
       },
-      x_axis: function (newval, oldval) {
+      x_axis(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
       },
-      y_axis: function (newval, oldval) {
+      y_axis(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
       },
-      skip_gene_plot: function (newval, oldval) {
+      skip_gene_plot(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
       },
-      plot_by_group: function (newval, oldval) {
+      horizontal_legend(newval, oldval) {
+        if (newval != oldval && this.plot_params_ready()) {
+          this.draw_image();
+        }
+      },
+      plot_by_group(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           // Plotting by group colors by gene symbol, so cannot skip gene plot
           if (newval !== null) this.skip_gene_plot = null;
@@ -2505,11 +2527,11 @@ window.onload=() => {
           if (this.colorize_legend_by !== null) {
             // Set order in config so "display-order" will render
             if (newval !== null && this.levels) {
-	      const group_key = this.plot_by_group;
+       const group_key = this.plot_by_group;
               // Add separately in case both are same dataseries group
               const colorize_key = this.colorize_legend_by;
               var order = {};
-	      order[group_key] = this.levels[group_key];
+       order[group_key] = this.levels[group_key];
               order[colorize_key] = this.levels[colorize_key];
               this.$store.commit("set_order", order);
             }
@@ -2517,7 +2539,7 @@ window.onload=() => {
           }
         }
       },
-      max_columns: function (newval, oldval) {
+      max_columns(newval, oldval) {
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
@@ -2533,23 +2555,19 @@ window.onload=() => {
         "set_order",
       ]),
       plot_params_ready() {
-        if (this.x_axis && this.y_axis) {
-          return true;
-        } else {
-          return false;
-        }
+        return this.x_axis && this.y_axis ? true : false;
       },
       get_image_data(gene_symbol) {
         // then craziness: https://stackoverflow.com/a/48980526
         // shift this out when the fetch_tsne_image method is done in Vuex
 
-        var analysis_id = this.config.analysis ? this.config.analysis.id : null;
+        const analysis_id = this.config.analysis ? this.config.analysis.id : null;
         return axios
-          .get(`/api/plot/${this.dataset_id}/tsne`, {
-            params: {
+          .post(`/api/plot/${this.dataset_id}/tsne`, {
               gene: this.config.gene_symbol,
               analysis: analysis_id,
               colorize_by: this.colorize_legend_by,
+              horizontal_legend: this.horizontal_legend,
               skip_gene_plot: this.skip_gene_plot,
               plot_by_group: this.plot_by_group,
               max_columns: this.max_columns,
@@ -2561,7 +2579,6 @@ window.onload=() => {
               order: this.config.order,
               // helps stop caching issues
               timestamp: new Date().getTime(),
-            },
           })
           .then((response) => {
             return response.data;
@@ -3116,7 +3133,8 @@ window.onload=() => {
           Vue.set(state.config, "colorize_legend_by", null);
           Vue.set(state.config, "plot_by_group", null);
           Vue.set(state.config, "max_columns", null);
-          Vue.set(state.config, "skip_gene_plot", null);
+          Vue.set(state.config, "skip_gene_plot", false);
+          Vue.set(state.config, "horizontal_legend", false);
         }
         state.plot_type = plot_type;
       },
@@ -3283,6 +3301,9 @@ window.onload=() => {
       set_skip_gene_plot(state, skip_plot) {
         state.config.skip_gene_plot = skip_plot;
       },
+      set_horizontal_legend(state, horizontal_legend) {
+        state.config.horizontal_legend = horizontal_legend;
+      },
       set_plot_by_group(state, group) {
         state.config.plot_by_group = group;
       },
@@ -3413,9 +3434,9 @@ window.onload=() => {
             analysis_id,
           },
           { cancelToken: cancel_source.token
-          }).then(function (response) {
+          }).then((response) => {
             commit('set_available_plot_types', response.data);
-	  }).catch(function (thrown) {
+	  }).catch((thrown) => {
           if (axios.isCancel(thrown)) {
               console.log('Request canceled:', thrown.message);
           } else {
@@ -3510,15 +3531,15 @@ window.onload=() => {
       ) {
         commit("set_tsne_is_loading", true);
 
-        const { data } = await axios.get(`/api/plot/${dataset_id}/tsne`, {
-          params: {
+        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, {
             gene: config.gene_symbol,
             analysis: analysis_id,
             colorize_by: config.colorize_legend_by,
+            horizontal_legend: config.horizontal_legend,
             skip_gene_plot: config.skip_gene_plot,
             x_axis: config.x_axis,
             y_axis: config.y_axis,
-            plot_type: plot_type,
+            plot_type,
             plot_by_group: config.plot_by_group,
             max_columns: config.max_columns,
             analysis_owner_id: this.user_id,
@@ -3526,7 +3547,6 @@ window.onload=() => {
             order: config.order,
             // helps stop caching issues
             timestamp: new Date().getTime(),
-          },
         });
 
         commit("set_order", config.order);
