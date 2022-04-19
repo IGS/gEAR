@@ -136,6 +136,12 @@ class ProjectR(Resource):
         if os.path.isfile(projection_csv):
             print("INFO: Found exisitng projection_csv file, loading it.")
         else:
+
+            # Perform overlap to see if there are overlaps between genes from both dataframes
+            if target_df.index.intersection(loading_df.index).empty:
+                message = "No common genes between the target dataset and the pattern file."
+                return {"success": -1, "message": message}
+
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
             projection_patterns_df.to_csv(projection_csv)
 
