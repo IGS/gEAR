@@ -1162,7 +1162,20 @@ class LayoutCollection:
         cursor.execute(qry, (user.id,))
         
         for row in cursor:
-            layout = self._row_to_layout_object(row)
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                folder_id = row[6] if row[6] else int(this.servercfg['folders']['profile_group_master_id']),
+                folder_parent_id=row[7],
+                folder_label=row[8]
+            )
+
+            layout.dataset_count = row[9]
+            
             self.layouts.append(layout)
 
         cursor.close()
