@@ -49,14 +49,15 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return observation information on this dataset
-    async fetch_h5ad_info (payload) {
+    fetch_h5ad_info (payload) {
         const { dataset_id, analysis } = payload;
         const base = `./api/h5ad/${dataset_id}`;
         const query = analysis ? `?analysis=${analysis.id}` : '';
-        return await $.ajax({
+        return $.ajax({
             url: `${base}${query}`,
             dataType: 'json',
             type: "GET",
+            async: false
         });
     }
 

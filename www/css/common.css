@@ -205,3 +205,13 @@ div.jstree {
     overflow-y: auto;
     overflow-x: hidden;
 }
+
+/* Hover area created for plotly plots */
+.hoverarea {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    text-align: right;
+    padding: 10px;
+    /*background-color: var(--main-section-launcher-bg-color-inactive);*/
+  }

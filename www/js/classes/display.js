@@ -189,6 +189,13 @@ class Display {
     show() {
         $(`#dataset_${this.primary_key}_h5ad.plot-container`).show();
     }
+
+    /**
+     * Add label that shows full text of axis labels upon hover of axis
+     */
+    create_hover_info_area(target_div) {
+        $(`#${target_div}`).append(`<div class="hoverarea" ></div>`);
+    }
 }
 
 /**
@@ -306,32 +313,32 @@ class EpiVizDisplay extends Display {
         // the chr, start and end should come from query - map gene to genomic position.
 
         return `
-      <div id='${this.target}_epiviz' class='epiviz-container'>
-        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
-        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
+        <div id='${this.target}_epiviz' class='epiviz-container'>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
 
-        <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
+            <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
 
-        <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
-          id='${this.target}_epivizds'
-          provider-id="fileapi"
-          provider-url="${this.econfig.dataserver}">
-        </epiviz-data-source>
-        <epiviz-navigation
-          hide-chr-input
-          hide-search
-          hide-add-chart
-          show-viewer
-          id='${this.target}_epiviznav'
-          chr='${this.data.chr}'
-          start=${this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
-          end=${this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
-          viewer=${`/epiviz.html?dataset_id=${this.id}&chr=${this.data.chr}&start=${this.data.start}&end=${this.data.end}`}
-        >
-          ${this.epiviztemplate}
-        </epiviz-navigation>
-      </div>
-    `;
+            <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
+            id='${this.target}_epivizds'
+            provider-id="fileapi"
+            provider-url="${this.econfig.dataserver}">
+            </epiviz-data-source>
+            <epiviz-navigation
+            hide-chr-input
+            hide-search
+            hide-add-chart
+            show-viewer
+            id='${this.target}_epiviznav'
+            chr='${this.data.chr}'
+            start=${this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
+            end=${this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
+            viewer=${`/epiviz.html?dataset_id=${this.id}&chr=${this.data.chr}&start=${this.data.start}&end=${this.data.end}`}
+            >
+            ${this.epiviztemplate}
+            </epiviz-navigation>
+        </div>
+        `;
     }
 
     clear_display() {
@@ -467,6 +474,9 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
+        // Edit axis labels if they are too long
+        //truncateAxisLabels(plot_json.layout);
+
         const config_mods = {
             responsive: false,
         };
@@ -489,6 +499,9 @@ class PlotlyDisplay extends Display {
             Plotly.update(target_div, update_data, update_layout)
             }
         }
+
+        truncateAxisLabels();
+        this.create_hover_info_area(target_div);
 
         return true;
     }
@@ -528,24 +541,22 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key} .plot-container`).show();
     }
     template() {
-        const template = `
+        return `
         <div
           id='dataset_${this.primary_key}_h5ad'
           class="h5ad-container"
           style="position: relative;">
         </div>
-      `;
-        return template;
+        `;
     }
     zoomed_template() {
-        const template = `
+        return `
         <div
           style='height:70vh;'
           id='dataset_${this.primary_key}_h5ad_zoomed'
           class="h5ad-container">
         </div>
-      `;
-        return template;
+        `;
     }
 
     /**
@@ -729,6 +740,9 @@ class PlotlyDisplay extends Display {
             adjustClusterColorbars(plot_json.data);
         }
 
+        // Edit axis labels if they are too long
+        //truncateAxisLabels(plot_json.layout);
+
         const config_mods = {
             responsive: false,
         };
@@ -743,14 +757,17 @@ class PlotlyDisplay extends Display {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const index_conf = post_plotly_config.index;
         for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
+            const conf = index_conf[idx];
+            // Get config (data and/or layout info) for the plot type chosen, if it exists
+            if (conf.plot_type == this.plot_type) {
+                const update_data = "data" in conf ? conf.data : {}
+                const update_layout = "layout" in conf ? conf.layout : {}
+                Plotly.update(target_div, update_data, update_layout)
             }
         }
+
+        truncateAxisLabels();
+        this.create_hover_info_area(target_div);
 
         return true;
     }
@@ -790,24 +807,22 @@ class PlotlyDisplay extends Display {
         $(`#dataset_${this.primary_key} .plot-container`).show();
     }
     template() {
-        const template = `
+        return `
         <div
           id='dataset_${this.primary_key}_mg'
           class="h5ad-container"
           style="position: relative;">
         </div>
-      `;
-        return template;
+        `;
     }
     zoomed_template() {
-        const template = `
+        return `
         <div
           style='max-width:96%; height:70vh;'
           id='dataset_${this.primary_key}_mg_zoomed'
           class="h5ad-container">
         </div>
-      `;
-        return template;
+        `;
     }
 
     /**
@@ -1313,19 +1328,18 @@ class SVGDisplay extends Display {
     }
 
     zoomed_template() {
-        const template = `
-    <div
-      id="dataset_${this.primary_key}_svg_cc_zoomed"
-      style='display:none'
-      class="h5ad-svg-container-zoomed">
-      <div
-        id="dataset_${this.primary_key}_svg_c_zoomed"
-        class="svg-content" data-dataset-id="${this.dataset_id}"
-        data-path="datasets_uploaded/${this.dataset_id}.svg">
-      </div>
-    </div>
-  `;
-        return template;
+        return `
+        <div
+        id="dataset_${this.primary_key}_svg_cc_zoomed"
+        style='display:none'
+        class="h5ad-svg-container-zoomed">
+            <div
+                id="dataset_${this.primary_key}_svg_c_zoomed"
+                class="svg-content" data-dataset-id="${this.dataset_id}"
+                data-path="datasets_uploaded/${this.dataset_id}.svg">
+            </div>
+        </div>
+        `;
     }
 
     /**
@@ -1453,20 +1467,20 @@ class TsneDisplay extends Display {
   /**
    * HTML template representing the tSNE image
    */
-  template() {
-    return `
-      <div id='${this.target}_tsne' class='img-static-container' style="position: relative;">
-        <img style='max-width:96%; max-height:40em;'></img>
-      </div>
-    `;
+    template() {
+        return `
+        <div id='${this.target}_tsne' class='img-static-container' style="position: relative;">
+            <img style='max-width:96%; max-height:40em;'></img>
+        </div>
+        `;
     }
 
     zoomed_template() {
         return `
-    <div id='${this.target}_tsne_zoomed' class='img-static-container'>
-      <img style='max-width:96%; max-height:70em;'></img>
-    </div>
-  `;
+        <div id='${this.target}_tsne_zoomed' class='img-static-container'>
+            <img style='max-width:96%; max-height:70em;'></img>
+        </div>
+        `;
     }
 
     clear_display() {
