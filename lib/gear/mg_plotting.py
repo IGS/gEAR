@@ -245,7 +245,7 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_
     for cgl in col_group_traces:
         fig.append_trace(cgl, 2, 2)
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, distance_metric="euclidean"):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -300,8 +300,8 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , cluster=cluster
         , col_dist=col_dist
         , row_dist=row_dist
-        , center_values=False
-        , color_map="RdYlBu"               # Heatmap colors
+        , center_values=center_around_zero
+        , color_map="RdYlBu" if center_around_zero else "Reds" # Heatmap colors
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True

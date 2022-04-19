@@ -666,6 +666,7 @@ function loadDisplayConfigHtml (plotConfig) {
             $(`#${escapedField}_clusterbar`).prop('checked', true).click();
         }
         $('#matrixplot').prop('checked', plotConfig.matrixplot);
+        $('#center_around_zero').prop('checked', plotConfig.center_around_zero);
         $('#cluster_obs').prop('checked', plotConfig.cluster_obs);
         $('#cluster_genes').prop('checked', plotConfig.cluster_obs);
         $('#flip_axes').prop('checked', plotConfig.flip_axes);
@@ -1283,6 +1284,7 @@ $(document).on('click', '#create_plot', async () => {
             plotConfig.clusterbar_fields.push($(elem).val());
         });
         plotConfig.matrixplot = $('#matrixplot').is(':checked');
+        plotConfig.center_around_zero = $('#center_around_zero').is(':checked');
         plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
         plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
         plotConfig.flip_axes = $('#flip_axes').is(':checked');
