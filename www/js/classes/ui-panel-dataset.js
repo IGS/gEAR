@@ -531,15 +531,15 @@ class DatasetPanel extends Dataset {
             const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
                 ...payload,
             });
-            if (data.success < 1 && this.display) {
-                this.show_error(data.message);
-                return;
+            if (data.success < 1) {
+                throw data.message; // will be caught below
             }
             this.projection_csv = data.csv_file;
         } catch (e) {
-            const message = "There was an error in making this projection.";
+            const message = "There was an error projecting patterns onto this dataset.";
             const success = -1;
-            this.show_error(message);
+            this.show_error(data?.message ? data.message : message);
+            throw data.message
         }
     }
 }

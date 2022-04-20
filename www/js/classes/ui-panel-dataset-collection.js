@@ -160,18 +160,14 @@ class DatasetCollectionPanel {
     // Single-gene displays
     update_by_search_result(entry) {
         for (const dataset of this.datasets) {
-            if (dataset.projection_csv) {
-                // Working with projection patterns... need the projectR csv output in order to plot.
-                // TODO: Technically, if I can keep "entry" consistent b/t gene and projection mode, I can deal with this logic in the "draw" method
-                dataset.draw({ gene_symbol: entry });
-            } else if (
+            if (
                 typeof entry !== "undefined" &&
                 dataset.organism_id in entry.by_organism
             ) {
                 // If working with actual genes, ensure dataset and entry's organisms match for annotation purposes.
                 const gene = JSON.parse(entry.by_organism[dataset.organism_id][0]);
                 const gene_symbol = gene.gene_symbol;
-                dataset.draw({ gene_symbol: gene_symbol });
+                dataset.draw({ gene_symbol });
             } else {
                 if (dataset.display) dataset.display.clear_display();
                 dataset.show_no_match();
@@ -180,9 +176,10 @@ class DatasetCollectionPanel {
     }
 
     // Multigene displays
+    // Only executes in "gene" mode
     update_by_all_results(entries) {
         for (const dataset of this.datasets) {
-            if (typeof entries !== "undefined" || dataset.projection_csv) {
+            if (typeof entries !== "undefined") {
                 // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
                 // 'entries' is array of gene_symbols
                 dataset.draw_mg({ gene_symbols: entries });
@@ -193,8 +190,4 @@ class DatasetCollectionPanel {
         }
     }
 
-    // Run projectR on all datasets in this profile
-    async run_projectR_on_all_datasets(projection_source, is_pca=false) {
-        return await Promise.all(this.datasets.map(ds => ds.run_projectR(projection_source, is_pca)));
-    }
 }

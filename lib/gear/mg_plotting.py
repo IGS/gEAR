@@ -288,10 +288,6 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         else:
             row_dist = distance_metric
 
-    if col_dist or row_dist:
-        # TODO: Adjust df values if projection CSV and pca was enabled
-        pass
-
     return dashbio.Clustergram(
         data=values
         , column_labels=col_labels

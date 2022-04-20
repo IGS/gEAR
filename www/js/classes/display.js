@@ -102,14 +102,14 @@ class Display {
         }
         // Exit status 2 is status to show plot but append warning message
         if (data.message && data.success === 2)
-        this.show_warning(this.data.message);
+            this.show_warning(this.data.message);
     }
 
     /**
      *  Draw the multigene visualization.
      * @param {string} gene_symbols - Gene Symbols to visualize.
      */
-     async draw_mg(gene_symbols) {
+    async draw_mg(gene_symbols) {
         this.gene_symbols = gene_symbols;
         const {
             data
@@ -145,7 +145,7 @@ class Display {
         }
         // Exit status 2 is status to show plot but append warning message
         if (data.message && data.success === 2)
-        this.show_warning(this.data.message);
+            this.show_warning(this.data.message);
     }
     /**
      * Hides the display container
@@ -183,7 +183,7 @@ class Display {
     /**
      * Show warning overlay above plot
      */
-    show_warning(msg) {}
+    show_warning(msg) { }
 
     /**
      * Show the plot container.
@@ -269,7 +269,7 @@ class EpiVizDisplay extends Display {
             const epiviznav = document.querySelector(`#${this.target}_epiviznav`);
             epiviznav.setAttribute("chr", this.data.chr);
             const nstart = this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio);
-            const nend = this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)
+            const nend = this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio);
             epiviznav.setAttribute("start", nstart);
             epiviznav.setAttribute("end", nend);
             epiviznav.range = epiviznav.getGenomicRange(this.data.chr, nstart, nend);
@@ -301,10 +301,10 @@ class EpiVizDisplay extends Display {
                 temp_track += ` style='min-height:200px;'></${track}> `;
 
                 epiviztemplate += temp_track;
-            })
+            });
         }
 
-        return epiviztemplate
+        return epiviztemplate;
     }
 
     /**
@@ -483,7 +483,7 @@ class PlotlyDisplay extends Display {
         const update_layout = get_plotly_updates(index_conf, this.plot_type, "layout");
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
-        Plotly.relayout(target_div, update_layout)
+        Plotly.relayout(target_div, update_layout);
 
         //truncateAxisLabels();
         //this.create_hover_info_area(target_div);
@@ -543,7 +543,7 @@ class PlotlyDisplay extends Display {
 
         const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_h5ad` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_h5ad`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -554,8 +554,8 @@ class PlotlyDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_h5ad_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_h5ad_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -566,7 +566,7 @@ class PlotlyDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 }
 
@@ -574,7 +574,7 @@ class PlotlyDisplay extends Display {
  * Class representing a multigene display drawn with Dash
  * @extends Display
  */
- class MultigeneDisplay extends Display {
+class MultigeneDisplay extends Display {
     /**
      * Initialize dash display.
      * @param {Object} Data - Data used to draw any multigene plot
@@ -629,7 +629,7 @@ class PlotlyDisplay extends Display {
         this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
         this.distance_metric = distance_metric,
-        this.adj_pvals = adj_pvals;
+            this.adj_pvals = adj_pvals;
         this.annot_nonsig = annotate_nonsignificant;
         this.include_zero_fc = include_zero_fc;
         this.fold_change_cutoff = fold_change_cutoff;
@@ -730,7 +730,7 @@ class PlotlyDisplay extends Display {
         const update_layout = get_plotly_updates(index_conf, this.plot_type, "layout");
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
-        Plotly.relayout(target_div, update_layout)
+        Plotly.relayout(target_div, update_layout);
 
         //truncateAxisLabels();
         //this.create_hover_info_area(target_div);
@@ -792,7 +792,7 @@ class PlotlyDisplay extends Display {
 
         const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_mg` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_mg`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_mg_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -803,8 +803,8 @@ class PlotlyDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_mg_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_mg_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_mg_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_mg_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -815,7 +815,7 @@ class PlotlyDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 
 }
@@ -973,7 +973,7 @@ class SVGDisplay extends Display {
             const tissues = Object.keys(data.data);
 
             // Sometimes path isn't defined yet - latency/async issue??
-            if (! paths) {
+            if (!paths) {
                 return false;
             }
 
@@ -1152,12 +1152,12 @@ class SVGDisplay extends Display {
         const defs = legend.append('defs');
         // Define our gradient shape
         const linear_gradient = defs
-              .append('linearGradient')
-              .attr('id', `${this.target}-linear-gradient${zoomed ? '_zoomed' : ''}`)
-              .attr('x1', '0%')
-              .attr('y1', '0%')
-              .attr('x2', '100%')
-              .attr('y2', '0%');
+            .append('linearGradient')
+            .attr('id', `${this.target}-linear-gradient${zoomed ? '_zoomed' : ''}`)
+            .attr('x1', '0%')
+            .attr('y1', '0%')
+            .attr('x2', '100%')
+            .attr('y2', '0%');
 
         // TODO: Issues to resolve here.  The 'atf4' gene in this datasets:
         //  The Adult Cochlea Response to PTS-Inducing Noise - Summary View
@@ -1196,7 +1196,7 @@ class SVGDisplay extends Display {
                 //  it, so we can do a proper three-color range
                 // midpoint offset calculation, so the mid color is at 0
                 //var mid_offset = (1 - (min / max - min))*100;
-                const mid_offset = (Math.abs(min)/(max + Math.abs(min)))*100;
+                const mid_offset = (Math.abs(min) / (max + Math.abs(min))) * 100;
 
                 linear_gradient
                     .append('stop')
@@ -1238,9 +1238,9 @@ class SVGDisplay extends Display {
             );
 
         const xScale = d3
-              .scaleLinear()
-              .domain([min, max])
-              .range([0, width / 2]);
+            .scaleLinear()
+            .domain([min, max])
+            .range([0, width / 2]);
 
         const xAxis = d3
             .axisBottom()
@@ -1259,16 +1259,15 @@ class SVGDisplay extends Display {
     template() {
         const svg_class =
             this.grid_width == 8 ?
-            'grid-width-8' :
-            this.grid_width == 12 ?
-            'grid-width-12' :
-            '';
+                'grid-width-8' :
+                this.grid_width == 12 ?
+                    'grid-width-12' :
+                    '';
         const template = `
       <div
         id="${this.target}_svg_cc"
-        style="position: relative; display:none; ${
-          this.target.includes('modal') ? 'height:100%;' : ''
-        }"
+        style="position: relative; display:none; ${this.target.includes('modal') ? 'height:100%;' : ''
+            }"
         class="h5ad-svg-container ${svg_class}">
         <div
           id="${this.target}_svg_c"
@@ -1304,11 +1303,11 @@ class SVGDisplay extends Display {
     /**
      * Display warning above the plot
      */
-     show_warning(msg) {
+    show_warning(msg) {
 
         const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_svg_cc` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_svg_cc`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_svg_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -1319,8 +1318,8 @@ class SVGDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.append(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_svg_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_svg_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_svg_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_svg_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('bottom', '0').css('z-index', '2');
@@ -1331,7 +1330,7 @@ class SVGDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 }
 
@@ -1340,94 +1339,93 @@ class SVGDisplay extends Display {
  * @extends Display
  */
 class TsneDisplay extends Display {
-  /**
-   * Initialize tSNE
-   * This subclass of display takes an extra argument, gene symbol.
-   * This is because we draw this one differently and don't query
-   * the server for data, but query the server for the image.
-   * @param {Object} Data - Display data
-   * @param {string} gene_symbol - Gene symbol to visualize
-   * @param {String} projection_csv - Basename of CSV file containing projection data
-   */
-  constructor({ plotly_config, ...args }, gene_symbol, projection_csv, target) {
-    super(args);
-    const config = plotly_config;
-    this.gene_symbol = gene_symbol;
-    this.analysis_id = config.analysis ? config.analysis.id : null;
-    this.colors = JSON.stringify(config.colors);
-    this.order = JSON.stringify(config.order);
-    this.colorize_legend_by = config.colorize_legend_by;
-    this.skip_gene_plot = config.skip_gene_plot;
-    this.horizontal_legend = config.horizontal_legend;
-    this.plot_by_group = config.plot_by_group;
-    this.max_columns = config.max_columns;
-    this.x_axis = config.x_axis;
-    this.y_axis = config.y_axis;
+    /**
+     * Initialize tSNE
+     * This subclass of display takes an extra argument, gene symbol.
+     * This is because we draw this one differently and don't query
+     * the server for data, but query the server for the image.
+     * @param {Object} Data - Display data
+     * @param {string} gene_symbol - Gene symbol to visualize
+     * @param {String} projection_csv - Basename of CSV file containing projection data
+     */
+    constructor({ plotly_config, ...args }, gene_symbol, projection_csv, target) {
+        super(args);
+        const config = plotly_config;
+        this.gene_symbol = gene_symbol;
+        this.analysis_id = config.analysis ? config.analysis.id : null;
+        this.colors = config.colors;
+        this.order = config.order;
+        this.colorize_legend_by = config.colorize_legend_by;
+        this.skip_gene_plot = config.skip_gene_plot;
+        this.horizontal_legend = config.horizontal_legend;
+        this.plot_by_group = config.plot_by_group;
+        this.max_columns = config.max_columns;
+        this.x_axis = config.x_axis;
+        this.y_axis = config.y_axis;
 
-    this.projection_csv = projection_csv;
+        this.projection_csv = projection_csv;
 
-    this.target = target ? target : `dataset_${this.primary_key}`;
-  }
-  /**
-   * Get data for the tsne. This return the tsne image, and
-   * is used mainly to check if the request is successful
-   * before appending img to the DOM.
-   * @param {string} gene_symbol - Gene symbol to visualize.
-   */
-   get_data(gene_symbol) {
-      return axios.get(`/api/plot/${this.dataset_id}/tsne`, {
-          params: {
-              gene: gene_symbol,
-              analysis: this.analysis_id,
-              plot_type: this.plot_type,
-              colorize_by: this.colorize_legend_by,
-              skip_gene_plot: this.skip_gene_plot,
-              horizontal_legend: this.horizontal_legend,
-              plot_by_group: this.plot_by_group,
-              max_columns: this.max_columns,
-              x_axis: this.x_axis,
-              y_axis: this.y_axis,
-              analysis_owner_id: this.user_id,
-              colors: this.colors,
-              order: this.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime(),
-              projection_csv: this.projection_csv
-          }
-      });
-  }
+        this.target = target ? target : `dataset_${this.primary_key}`;
+    }
+    /**
+     * Get data for the tsne. This return the tsne image, and
+     * is used mainly to check if the request is successful
+     * before appending img to the DOM.
+     * @param {string} gene_symbol - Gene symbol to visualize.
+     */
+    get_data(gene_symbol) {
+        return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
+            gene: gene_symbol,
+            analysis: this.analysis_id,
+            plot_type: this.plot_type,
+            colorize_by: this.colorize_legend_by,
+            skip_gene_plot: this.skip_gene_plot,
+            horizontal_legend: this.horizontal_legend,
+            plot_by_group: this.plot_by_group,
+            max_columns: this.max_columns,
+            x_axis: this.x_axis,
+            y_axis: this.y_axis,
+            analysis_owner_id: this.user_id,
+            colors: this.colors,
+            order: this.order,
+            horizontal_legend: this.horizontal_legend,
+            // helps stop caching issues
+            timestamp: new Date().getTime(),
+            projection_csv: this.projection_csv
+        });
+    }
 
-  draw_zoomed() {
-    this.draw_zoomed_chart();
-  }
-  /**
-   * Draw tSNE chart.
-   */
-  draw_chart() {
-    this.clear_display();
-    const target_div = `#${this.target}`;
-    const target_div_img = `#${this.target}_tsne img`;
-    $(target_div).append(this.template());
-    $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
-    this.hide_loading();
-    this.show();
-    return true;
-  }
+    draw_zoomed() {
+        this.draw_zoomed_chart();
+    }
+    /**
+     * Draw tSNE chart.
+     */
+    draw_chart() {
+        this.clear_display();
+        const target_div = `#${this.target}`;
+        const target_div_img = `#${this.target}_tsne img`;
+        $(target_div).append(this.template());
+        $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
+        this.hide_loading();
+        this.show();
+        return true;
+    }
 
-  // Essentially recycled the "draw_chart" function
-  draw_zoomed_chart() {
-    this.clear_display();
-    const target_div = `#dataset_zoomed div#${this.target}`;
-    const target_div_img = `${target_div}_tsne_zoomed img`;
-    $(target_div).append(this.zoomed_template());
-    $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
-    this.hide_loading();
-    this.show();
-  }
+    // Essentially recycled the "draw_chart" function
+    draw_zoomed_chart() {
+        this.clear_display();
+        const target_div = `#dataset_zoomed div#${this.target}`;
+        const target_div_img = `${target_div}_tsne_zoomed img`;
+        $(target_div).append(this.zoomed_template());
+        $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
+        this.hide_loading();
+        this.show();
+    }
 
-  /**
-   * HTML template representing the tSNE image
-   */
+    /**
+     * HTML template representing the tSNE image
+     */
     template() {
         return `
         <div id='${this.target}_tsne' class='img-static-container' style="position: relative;">
@@ -1452,11 +1450,11 @@ class TsneDisplay extends Display {
     /**
      * Display warning above the plot
      */
-     show_warning(msg) {
+    show_warning(msg) {
 
-        const hover_msg = " Hover to see warning."
+        const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_tsne` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_tsne`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_tsne_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -1467,8 +1465,8 @@ class TsneDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_tsne_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_tsne_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_tsne_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_tsne_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -1479,7 +1477,7 @@ class TsneDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 }
 
@@ -1493,7 +1491,7 @@ function get_plotly_updates(conf_area, plot_type, category) {
         // Get config (data and/or layout info) for the plot type chosen, if it exists
         if (conf.plot_type == "all" || conf.plot_type == plot_type) {
             const update = category in conf ? conf[category] : {};
-            updates = {...updates, ...update};    // Merge updates
+            updates = { ...updates, ...update };    // Merge updates
         }
     }
     return updates;

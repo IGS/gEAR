@@ -212,6 +212,7 @@ class TSNEData(Resource):
         # Reorder the categorical values in the observation dataframe
         # Currently in UI only "plot_by_group" has reordering capabilities
         if order:
+            order = order
             obs_keys = order.keys()
             for key in obs_keys:
                 col = adata.obs[key]
@@ -264,7 +265,7 @@ class TSNEData(Resource):
 
             ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
             if colors is not None and len(colors) > 2:
-                colors = json.loads(colors)
+                colors = colors
                 adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
 
             elif color_idx_name in adata.obs:

@@ -714,7 +714,7 @@ function populate_search_result_list(data) {
 }
 
 var lastCall = 0;
-function select_search_result(elm) {
+function select_search_result(elm, draw_display=true) {
     //TODO Prevents this function from being double-called by #gene_search_form.submit()
     const callTime = new Date().getTime();
     if (callTime - lastCall <= 500) {
@@ -740,7 +740,9 @@ function select_search_result(elm) {
         $('#recent_updates_c').hide({easing: 'fade', duration: 400, complete: show_search_result_info_box});
     }
 
-    dataset_collection_panel.update_by_search_result(search_results[gene_sym]);
+    if (draw_display) {
+        dataset_collection_panel.update_by_search_result(search_results[gene_sym]);
+    }
 
     // call any plugin functions
     search_result_postselection_functions.forEach((f) => {f()})
@@ -765,7 +767,16 @@ function show_search_result_info_box() {
 $('#search_results').on("click", "a", function(e) {
     e.preventDefault(); //prevent page scrolling to top
     $(this).blur(); //removes focus so active's purple coloring can show
-    select_search_result(this);
+
+    let draw=true;
+    if (projection) {
+        draw=false;
+
+        dataset_collection_panel.datasets.forEach((dataset) => {
+            dataset.draw({gene_symbol: $(this).data("gene_symbol")});
+        });
+    }
+    select_search_result(this, draw_display=draw);
 });
 
 // Warn user if no datasets in profile
@@ -948,25 +959,36 @@ $("#projection_search_form").submit((event) => {
     // Run ProjectR for the chosen pattern
     if (projection_source) {
         search_results = selected_projections;
-        dataset_collection_panel.run_projectR_on_all_datasets(projection_source, is_pca).then(() => {
 
-            // Implementing search_genes.py results without the CGI execution
-            // ? Can we use the DIMRED_meta file to get annotation info?
-            populate_search_result_list(selected_projections);
-            $('#searching_indicator_c').hide();
-            $('#intro_content').hide('fade', {}, 400, () => {
-                if (multigene){
-                    dataset_collection_panel.update_by_all_results(Object.keys(selected_projections));
-                } else {
-                    // auto-select the first match.  first <a class="list-group-item"
-                    const first_thing = $('#search_results a.list-group-item').first();
-                    select_search_result(first_thing);
-                }
-            });
+        // Implementing search_genes.py results without the CGI execution
+        // ? Can we use the DIMRED_meta file to get annotation info?
+        populate_search_result_list(selected_projections);
+        $('#searching_indicator_c').hide();
+        $('#intro_content').hide('fade', {}, 400);
+        // auto-select the first match.  first <a class="list-group-item"
+        const first_thing = $('#search_results a.list-group-item').first();
+        select_search_result(first_thing, draw_display=false);
+        set_scrollbar_props();
 
-            set_scrollbar_props();
+        dataset_collection_panel.datasets.forEach(dataset => {
+            dataset.run_projectR(projection_source, is_pca)
+                .then(() => {
 
-        });
+                    if (dataset.projection_csv) {
+                        if (multigene) {
+                            // 'entries' is array of gene_symbols
+                            dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
+                        } else {
+                            dataset.draw({ gene_symbol: first_thing.data('gene_symbol')});
+                        }
+                    } else {
+                        if (dataset.display) dataset.display.clear_display();
+                        dataset.show_no_match();
+                    }
+
+                })
+                .catch(error => console.error(error));
+        })
 
     }
     return false;   // keeps the page from not refreshing
