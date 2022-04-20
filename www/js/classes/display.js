@@ -1381,8 +1381,8 @@ class TsneDisplay extends Display {
     const config = plotly_config;
     this.gene_symbol = gene_symbol;
     this.analysis_id = config.analysis ? config.analysis.id : null;
-    this.colors = JSON.stringify(config.colors);
-    this.order = JSON.stringify(config.order);
+    this.colors = config.colors;
+    this.order = config.order;
     this.colorize_legend_by = config.colorize_legend_by;
     this.skip_gene_plot = config.skip_gene_plot;
     this.horizontal_legend = config.horizontal_legend;
