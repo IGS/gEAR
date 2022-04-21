@@ -57,12 +57,25 @@ $(document).ready(function() {
                 page_name = 'index.html';
             }
 
+            let head = document.getElementsByTagName('head')[0];
+            let body = document.getElementsByTagName('body')[0];
+
+            // load analytics
+            let ga_script = document.createElement('script');
+            ga_script.src = "https://www.google-analytics.com/analytics.js";
+            ga_script.async = ""
+            head.append(ga_script)
+
+            window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
+            ga('create', SITE_PREFS['google_analytics_4_measurement_id'], 'auto');
+            ga('set', 'anonymizeIp', true);
+            ga('set', 'transport', 'beacon');
+            ga('send', 'pageview')
+
             // Load plugins, if any
             for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
                 if (plugin_page_names.includes(page_name)) {
                     var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
-                    var head = document.getElementsByTagName('head')[0];
-                    var body = document.getElementsByTagName('body')[0];
 
                     // create a hidden element at the end of the document and put it there
                     var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
