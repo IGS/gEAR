@@ -1283,3 +1283,12 @@ function show_projection() {
     $("#projection_tab").addClass("active");
     $("#gene_tab").removeClass("active");
 }
+
+// Events to select and deselect all projection pattern checkboxes
+$(document).on("click", "#projection_pattern_select_all", () => {
+    $('.js-projection-pattern-elts-check').prop('checked', true);
+});
+
+$(document).on("click", "#projection_pattern_deselect_all", () => {
+    $('.js-projection-pattern-elts-check').prop('checked', false);
+});

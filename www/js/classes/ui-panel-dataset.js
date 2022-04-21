@@ -527,19 +527,19 @@ class DatasetPanel extends Dataset {
             input_value: projection_source,
             is_pca,
         };
+        let message = "There was an error projecting patterns onto this dataset.";
         try {
             const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
                 ...payload,
             });
             if (data.success < 1) {
+                message = data.message;
                 throw data.message; // will be caught below
             }
             this.projection_csv = data.csv_file;
         } catch (e) {
-            const message = "There was an error projecting patterns onto this dataset.";
-            const success = -1;
-            this.show_error(data?.message ? data.message : message);
-            throw data.message
+            this.show_error(message);
+            throw message
         }
     }
 }
