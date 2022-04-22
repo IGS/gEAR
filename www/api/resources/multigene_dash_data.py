@@ -450,7 +450,7 @@ class MultigeneDashData(Resource):
 
             # "df" must be obs label for rows and genes for cols only
             fig = mg.create_clustergram(df
-                , gene_symbols
+                , normalized_genes_list
                 , is_log10
                 , cluster_obs
                 , cluster_genes
