@@ -1,5 +1,5 @@
-var CURRENT_USER = null;
-var SITE_PREFS = null;
+let CURRENT_USER = null;
+let SITE_PREFS = null;
 
 // extends JQuery to provide an .exists() function for any selector
 $.fn.exists = function () {
@@ -11,10 +11,10 @@ const sleep = (milliseconds) => {
 }
 
 // Exclude SVG path elements. We generate their tooltips in main.js:select_search_result()
-var elementsWithTipsList = '[title]:not("path")';
+const elementsWithTipsList = '[title]:not("path")';
 
 // Do any includes first
-$(document).ready(function() {
+$(document).ready(() => {
     $('#navigation_bar').load('./include/navigation_bar.html', function() {
         // Load popover info
         load_forgot_password();
@@ -23,72 +23,73 @@ $(document).ready(function() {
     $.ajax({
         url: "/site_domain_prefs.json",
         dataType: 'json',
-        async: false,
-        success: function(data) {
-            SITE_PREFS = data;
-            loadCSS(`./css/by_domain/${SITE_PREFS['domain_label']}/theme_colors.${(new Date()).getTime()}.css`);
-            $('#funding').load(`./include/by_domain/${SITE_PREFS['domain_label']}/funding.html`);
-            $('#footer').load(`./include/by_domain/${SITE_PREFS['domain_label']}/footer.html`);
-            $('#site_label_c').load(`./include/by_domain/${SITE_PREFS['domain_label']}/site_label_bar.html`);
-            $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
+        //async: false,
+    }).done((data) => {
+        SITE_PREFS = data;
+        loadCSS(`./css/by_domain/${SITE_PREFS['domain_label']}/theme_colors.${(new Date()).getTime()}.css`);
+        $('#funding').load(`./include/by_domain/${SITE_PREFS['domain_label']}/funding.html`);
+        $('#footer').load(`./include/by_domain/${SITE_PREFS['domain_label']}/footer.html`);
+        $('#site_label_c').load(`./include/by_domain/${SITE_PREFS['domain_label']}/site_label_bar.html`);
+        $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
 
-            var title_page_root = `./include/by_domain/${SITE_PREFS['domain_label']}/page_title_root.html`;
-            $.get(title_page_root, function(data){
-                $('title').html(data + ' - ' + $('title').html());
-            });
+        const title_page_root = `./include/by_domain/${SITE_PREFS['domain_label']}/page_title_root.html`;
+        $.get(title_page_root, function(data){
+            $('title').html(`${data} - ${$('title').html()}`);
+        });
 
-            // now check and make sure these steps happened, and try again if not.  WHY???
-            // Every time this happens the steps after funding loader fail.  Retry.
-            sleep(500).then(() => {
-                // did the background image load?
-                bg = $('a#main_logo').css('background-image');
-                if (bg == 'none') {
-                    $('#footer').load(`./include/by_domain/${SITE_PREFS['domain_label']}/footer.html`);
-                    $('#site_label_c').load(`./include/by_domain/${SITE_PREFS['domain_label']}/site_label_bar.html`);
-                    $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
-                }
-            });
-
-            // populate any site-specific labels, usually spans
-            $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
-
-            var page_name = location.pathname;
-            if (page_name == "/") {
-                page_name = 'index.html';
+        // now check and make sure these steps happened, and try again if not.  WHY???
+        // Every time this happens the steps after funding loader fail.  Retry.
+        sleep(500).then(() => {
+            // did the background image load?
+            bg = $('a#main_logo').css('background-image');
+            if (bg == 'none') {
+                $('#footer').load(`./include/by_domain/${SITE_PREFS['domain_label']}/footer.html`);
+                $('#site_label_c').load(`./include/by_domain/${SITE_PREFS['domain_label']}/site_label_bar.html`);
+                $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
             }
+        });
 
-            // Load plugins, if any
-            for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
-                if (plugin_page_names.includes(page_name)) {
-                    var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
-                    var head = document.getElementsByTagName('head')[0];
-                    var body = document.getElementsByTagName('body')[0];
+        // populate any site-specific labels, usually spans
+        $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
 
-                    // create a hidden element at the end of the document and put it there
-                    var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
-                    var plugin_html_element = document.createElement('div');
-                    plugin_html_element.id = plugin_name + "_html_c";
-                    plugin_html_element.style = "display: none;"
-                    body.append(plugin_html_element)
-                    $.get(plugin_import_html_url, function(data) {
-                        $('#' + plugin_name + "_html_c").html(data);
-                    });
+        let page_name = location.pathname;
+        if (page_name == "/") {
+            page_name = 'index.html';
+        }
 
-                    var plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
-                    var style = document.createElement('link');
-                    style.href = plugin_import_css_url;
-                    style.type = 'text/css';
-                    style.rel = 'stylesheet';
-                    head.append(style);
+        // Load plugins, if any
+        for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
+            if (plugin_page_names.includes(page_name)) {
+                var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
+                var head = document.getElementsByTagName('head')[0];
+                var body = document.getElementsByTagName('body')[0];
 
-                    var plugin_import_js_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".js";
-                    var script = document.createElement('script');
-                    script.src = plugin_import_js_url;
-                    script.type = 'text/javascript';
-                    head.append(script);
-                }
+                // create a hidden element at the end of the document and put it there
+                var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
+                var plugin_html_element = document.createElement('div');
+                plugin_html_element.id = plugin_name + "_html_c";
+                plugin_html_element.style = "display: none;"
+                body.append(plugin_html_element)
+                $.get(plugin_import_html_url, function(data) {
+                    $('#' + plugin_name + "_html_c").html(data);
+                });
+
+                var plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
+                var style = document.createElement('link');
+                style.href = plugin_import_css_url;
+                style.type = 'text/css';
+                style.rel = 'stylesheet';
+                head.append(style);
+
+                var plugin_import_js_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".js";
+                var script = document.createElement('script');
+                script.src = plugin_import_js_url;
+                script.type = 'text/javascript';
+                head.append(script);
             }
         }
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        console.error(`Error loading site_domain_prefs.json: ${textStatus}`);
     });
 
     check_browser();
@@ -127,8 +128,6 @@ function check_browser() {
 }; //end check_browser()
 
 function check_for_login() {
-    var d = new $.Deferred();
-
     // success:  returns session_id
     // failure:  returns null
     session_id = Cookies.get('gear_session_id');
@@ -141,29 +140,27 @@ function check_for_login() {
             type: "POST",
             async: false,
             data : { 'session_id': session_id },
-            dataType:"json",
-            success: function(data, textStatus, jqXHR) {
-                CURRENT_USER = new User({session_id, ...data});
-                CURRENT_USER.set_default_profile();
-                $('span.user_logged_in').text(CURRENT_USER.user_name);
-                handle_login_ui_updates();
-                d.resolve();
-            }
+            dataType:"json"
+        }).done((data) => {
+            CURRENT_USER = new User({session_id, ...data});
+            CURRENT_USER.set_default_profile();
+            $('span.user_logged_in').text(CURRENT_USER.user_name);
+            handle_login_ui_updates();
+        }).fail((jqXHR, textStatus, errorThrown) => {
+            console.error(`Error getting session info: ${textStatus}`);
         });
     } else {
         handle_login_ui_updates();
-        d.resolve();
     }
 
-    d.promise();
     return session_id;
 }
 
 function common_datetime() {
-    var today = new Date();
-    var date = today.getFullYear() + '-' + (today.getMonth()+1) + '-' + today.getDate();
-    var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-    return date + ' ' + time;
+    const today = new Date();
+    const date = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+    const time = `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()}`;
+    return `${date} ${time}`;
 }
 
 function copyToClipboard(text) {
@@ -196,56 +193,50 @@ $('#navigation_bar').on('click', '#btn_sign_in', function(e){
 
     e.preventDefault();
 
-    var formData = $("#login_form").serializeArray();
+    const formData = $("#login_form").serializeArray();
 
     $.ajax({
         url : './cgi/login.cgi',
         type: "POST",
         data : formData,
-        dataType:"json",
-        success: function(data, textStatus, jqXHR) {
-            // login actions here
-            //  0 - The user name wasn't found at all.
-            if (data['session_id'] == 0) {
-                $('#user_email').focus();
-                $('#user_email').css({ 'color':'red', 'font-weight':'bold' });
+        dataType:"json"
+    }).done((data) => {
+        // login actions here
+        //  0 - The user name wasn't found at all.
+        if (data.session_id == 0) {
+            $('#user_email').focus();
+            $('#user_email').css({ 'color':'red', 'font-weight':'bold' });
 
-            // -1 - User was found, but the password was incorrect
-            } else if (data['session_id'] == -1) {
-                $('#user_pass').focus();
-                $('#user_pass').css({ 'color':'red', 'font-weight':'bold' });
-                $('#user_pass').parent().addClass('has-error');
+        // -1 - User was found, but the password was incorrect
+        } else if (data.session_id == -1) {
+            $('#user_pass').focus();
+            $('#user_pass').css({ 'color':'red', 'font-weight':'bold' });
+            $('#user_pass').parent().addClass('has-error');
 
-            //  ? - Any other value is the session ID
+        //  ? - Any other value is the session ID
+        } else {
+            CURRENT_USER.email = $('#user_email').val();
+            CURRENT_USER.user_name = data.name;
+            CURRENT_USER.session_id = data.session_id;
+            CURRENT_USER.profile = data['gear_default_domain'];
+            CURRENT_USER.id = data.user_id;
+
+            CURRENT_USER.is_admin = data['is_admin'] == 1;
+
+            $('span.user_logged_in').text(CURRENT_USER.user_name);
+            Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
+            session_id = Cookies.get('gear_session_id');
+            Cookies.set('gear_default_domain', CURRENT_USER.profile);
+
+            // do we process the current page or reload?
+            if (document.URL.includes("dataset_explorer.html")) {
+                location.reload();
             } else {
-                CURRENT_USER.email = $('#user_email').val();
-                CURRENT_USER.user_name = data['name'];
-                CURRENT_USER.session_id = data['session_id'];
-                CURRENT_USER.profile = data['gear_default_domain'];
-                CURRENT_USER.id = data['user_id'];
-
-                if (data['is_admin'] == 1 ) {
-                    CURRENT_USER.is_admin = true;
-                } else {
-                    CURRENT_USER.is_admin = false;
-                }
-
-                $('span.user_logged_in').text(CURRENT_USER.user_name);
-                Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
-                session_id = Cookies.get('gear_session_id');
-                Cookies.set('gear_default_domain', CURRENT_USER.profile);
-
-                // do we process the current page or reload?
-                if (document.URL.includes("dataset_explorer.html")) {
-                    location.reload();
-                } else {
-                    handle_login_ui_updates();
-                }
+                handle_login_ui_updates();
             }
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            alert("Failure!  Status: (" + textStatus + ") Error: (" + errorThrown + ")");
         }
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        alert(`Failure!  Status: (${textStatus}) Error: (${errorThrown})`);
     });
 });
 
@@ -382,8 +373,8 @@ $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
         url: './cgi/send_email.cgi',
         type: 'POST',
         data: { 'email': email, 'scope': 'forgot_password', 'destination_page': destination_page },
-        dataType: 'json',
-        success(data) {
+        dataType: 'json'
+    }).done((data) => {
             $('#submit_wait_c').hide();
             if (data.success == 1) {
                 $('#forgot_pass_c').hide();
@@ -393,10 +384,8 @@ $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
             $('p#forgot_pass_instruct').hide();
             $('input#forgot_pass_email').val('');
             $('p#forgot_pass_warning, input#forgot_pass_email, button#submit_forgot_pass_email').show();
-        },
-        error(jqXHR, textStatus, errorThrown) {
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Failure to submit forgotten password form');
-        }
+    }).fail((data) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Failure to submit forgotten password form');
     });
 });
 

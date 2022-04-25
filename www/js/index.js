@@ -73,11 +73,10 @@ window.onload=() => {
     }
 
     gene_cart_id = getUrlParameter('gene_cart_share_id');
-    load_gene_carts(gene_cart_id).then(() => {
-        if (gene_cart_id) {
-            $('#intro_search_icon').trigger('click');
-        }
-    })
+    load_gene_carts(gene_cart_id);
+    if (gene_cart_id) {
+        $('#intro_search_icon').trigger('click');
+    }
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
@@ -304,15 +303,12 @@ function get_index_info() {
     $.ajax({
         url: './cgi/get_index_info.cgi',
         type: 'GET',
-        dataType: 'json',
-        success(data) {
-
-            $('#stats_dataset_count').text(data.dataset_count);
-            $('#stats_user_count').text(data.user_count);
-        },
-        error(jqXHR, _textStatus, errorThrown) {
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
-        }
+        dataType: 'json'
+    }).done((data) => {
+        $('#stats_dataset_count').text(data.dataset_count);
+        $('#stats_user_count').text(data.user_count);
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
     });
 };
 
@@ -322,28 +318,26 @@ function validate_help_id(help_id) {
         url: './cgi/validate_help_id.cgi',
         type: 'POST',
         data: {'help_id': help_id},
-        dataType: 'json',
-        success(data) {
-            if ( data.success == 1 ) {
-                // Add help_id to form
-                $('#user_help_id').val(help_id);
+        dataType: 'json'
+    }).done((data) => {
+        if ( data.success == 1 ) {
+            // Add help_id to form
+            $('#user_help_id').val(help_id);
 
-                // Greet user by name (a subtle confirmation they know it's their account)
-                if (data.user_name.length > 0) {
-                    const user_first_name = ` ${data.user_name.split(' ')[0]}!`;
-                    $('#forgot_password_user_name').text(user_first_name);
-                }
-            } else {
-                // Invalid help_id, display invalid message
-                $("#valid_forgot_pass_modal_body_c").hide();
-                $("#save_user_new_pass").hide();
-                $("#invalid_forgot_pass_modal_body_c").show();
+            // Greet user by name (a subtle confirmation they know it's their account)
+            if (data.user_name.length > 0) {
+                const user_first_name = ` ${data.user_name.split(' ')[0]}!`;
+                $('#forgot_password_user_name').text(user_first_name);
             }
-            $('#forgot_password_modal').modal('show');
-        },
-        error(jqXHR, _textStatus, errorThrown) {
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating help ID');
+        } else {
+            // Invalid help_id, display invalid message
+            $("#valid_forgot_pass_modal_body_c").hide();
+            $("#save_user_new_pass").hide();
+            $("#invalid_forgot_pass_modal_body_c").show();
         }
+        $('#forgot_password_modal').modal('show');
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating help ID');
     });
 };
 
@@ -380,26 +374,24 @@ $(document).on('click', 'button#save_user_new_pass', function(){
         url: './cgi/save_user_account_changes.cgi',
         type: 'POST',
         data: { 'help_id': help_id, 'new_password': new_password, 'scope': 'password'},
-        dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
-            if (data.success == 1) {
-                // Hide waiting and show success
-                $('#saving_forgot_pass_modal_body_c').hide();
-                $('#success_forgot_pass_modal_body_c').show();
+        dataType: 'json'
+    }).done((data) => {
+        if (data.success == 1) {
+            // Hide waiting and show success
+            $('#saving_forgot_pass_modal_body_c').hide();
+            $('#success_forgot_pass_modal_body_c').show();
 
-                // Redirect to home page
-                setInterval(function(){
-                    window.location.replace('./index.html');
-                }, 2000);
-            } else {
-                $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-                    '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                    '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
-            }
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error saving new user password');
+            // Redirect to home page
+            setInterval(function(){
+                window.location.replace('./index.html');
+            }, 2000);
+        } else {
+            $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
         }
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error saving new user password');
     });//end ajax
 });
 
@@ -410,26 +402,23 @@ function validate_permalink(scope) {
         url : './cgi/validate_share_id.cgi',
         type: "POST",
         data : { 'share_id': dataset_id, 'scope': scope },
-        dataType:"json",
-        success: function(data, textStatus, jqXHR) {
-            if ( data.success != 1 ) {
-                $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-                    '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                    '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
-            }
-
-            if (scope == 'permalink') {
-                dataset_collection_panel.load_frames({dataset_id});
-            }
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating share ID');
+        dataType:"json"
+    }).done((data) => {
+        if ( data.success != 1 ) {
+            $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
         }
+
+        if (scope == 'permalink') {
+            dataset_collection_panel.load_frames({dataset_id});
+        }
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating share ID');
     });
 }
 
 function load_layouts() {
-    const d = new $.Deferred();
     const session_id = Cookies.get('gear_session_id');
     const layout_share_id = getUrlParameter('layout_id');
 
@@ -442,87 +431,60 @@ function load_layouts() {
     $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
-        async: false,
+        //async: false,
         data: { 'session_id': session_id, 'layout_share_id': layout_share_id },
-        dataType: 'json',
-        success(data, textStatus, jqXHR) {
-            /*
-              Priority of displayed profile:
-                0.  Passed layout ID via layout_id URL parameter
-                1.  Cookie value
-                2.  User's DB-saved value (when they go to a machine, and there's no cookie)
-                3.  Admin's active domain
-             */
-            const layouts = {};
-            let active_layout_id = null;
-            let active_layout_label = null;
+        dataType: 'json'
+    }).done((data) => {
+        /*
+            Priority of displayed profile:
+            0.  Passed layout ID via layout_id URL parameter
+            1.  Cookie value
+            2.  User's DB-saved value (when they go to a machine, and there's no cookie)
+            3.  Admin's active domain
+            */
+        const layouts = {};
+        let active_layout_id = null;
+        let active_layout_label = null;
 
-            const layout_types = ['domain', 'user', 'group', 'shared']
+        const layout_types = ['domain', 'user', 'group', 'shared']
 
+        for (const ltype of layout_types) {
+            layouts[ltype] = [];
+
+            $.each(data[`${ltype}_layouts`], (_i, item) => {
+                layouts[ltype].push({value: item['id'],
+                                        text: item['label'],
+                                        share_id: item['share_id'],
+                                        folder_id: item['folder_id'],
+                                        folder_parent_id: item['folder_parent_id'],
+                                        folder_label: item['folder_label']
+                                    });
+
+                if (item['share_id'] == layout_share_id) {
+                    active_layout_id = item['id'];
+                    active_layout_label = item['label'];
+                    layout_id = item['share_id'];
+                }
+            });
+        }
+
+        // Generate the tree structure for the layouts
+        profile_tree.domainProfiles = layouts.domain;
+        profile_tree.userProfiles = layouts.user;
+        profile_tree.groupProfiles = layouts.group;
+        profile_tree.sharedProfiles = layouts.shared;
+        profile_tree.generateTree();
+        selected_profile_tree.domainProfiles = layouts.domain;
+        selected_profile_tree.userProfiles = layouts.user;
+        selected_profile_tree.groupProfiles = layouts.group;
+        selected_profile_tree.sharedProfiles = layouts.shared;
+        selected_profile_tree.generateTree();
+
+        // pass through again and look for one set by a cookie
+        if (active_layout_id == null) {
             for (const ltype of layout_types) {
-                layouts[ltype] = [];
-
                 $.each(data[`${ltype}_layouts`], (_i, item) => {
-                    layouts[ltype].push({value: item['id'],
-                                         text: item['label'],
-                                         share_id: item['share_id'],
-                                         folder_id: item['folder_id'],
-                                         folder_parent_id: item['folder_parent_id'],
-                                         folder_label: item['folder_label']
-                                        });
-
-                    if (item['share_id'] == layout_share_id) {
-                        active_layout_id = item['id'];
-                        active_layout_label = item['label'];
-                        layout_id = item['share_id'];
-                    }
-                });
-            }
-
-            // Generate the tree structure for the layouts
-            profile_tree.domainProfiles = layouts.domain;
-            profile_tree.userProfiles = layouts.user;
-            profile_tree.groupProfiles = layouts.group;
-            profile_tree.sharedProfiles = layouts.shared;
-            profile_tree.generateTree();
-            selected_profile_tree.domainProfiles = layouts.domain;
-            selected_profile_tree.userProfiles = layouts.user;
-            selected_profile_tree.groupProfiles = layouts.group;
-            selected_profile_tree.sharedProfiles = layouts.shared;
-            selected_profile_tree.generateTree();
-
-            // pass through again and look for one set by a cookie
-            if (active_layout_id == null) {
-                for (const ltype of layout_types) {
-                    $.each(data[`${ltype}_layouts`], (_i, item) => {
-                        if (item.label == CURRENT_USER.profile) {
-                            active_layout_id = item.id;
-                            active_layout_label = item.label;
-                            layout_id = item.share_id;
-                            return false;
-                        }
-                    });
-                }
-            }
-
-            // pass through again and look for one set as current by the user
-            if (active_layout_id == null) {
-                for (const ltype of ['user', 'group']) {
-                    $.each(data[`${ltype}_layouts`], (_i, item) => {
-                        if ( item['is_domain'] == 0 && item.is_current == 1 ) {
-                            active_layout_id = item.id;
-                            active_layout_label = item.label;
-                            layout_id = item.share_id;
-                            return false;
-                        }
-                    });
-                }
-            }
-
-            // pass through again if no active layout was found for user and choose the admin's
-            if (active_layout_id == null) {
-                $.each(data['domain_layouts'], (_i, item) => {
-                    if ( item['is_domain'] == 1 && item.is_current == 1 ) {
+                    if (item.label == CURRENT_USER.profile) {
                         active_layout_id = item.id;
                         active_layout_label = item.label;
                         layout_id = item.share_id;
@@ -530,24 +492,44 @@ function load_layouts() {
                     }
                 });
             }
-
-            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
-
-            d.resolve();
-        },
-        error(jqXHR, _textStatus, errorThrown) {
-            profile_tree.generateTree();
-            selected_profile_tree.generateTree();
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
-            d.fail();
         }
-    });
 
-    d.promise();
+        // pass through again and look for one set as current by the user
+        if (active_layout_id == null) {
+            for (const ltype of ['user', 'group']) {
+                $.each(data[`${ltype}_layouts`], (_i, item) => {
+                    if ( item['is_domain'] == 0 && item.is_current == 1 ) {
+                        active_layout_id = item.id;
+                        active_layout_label = item.label;
+                        layout_id = item.share_id;
+                        return false;
+                    }
+                });
+            }
+        }
+
+        // pass through again if no active layout was found for user and choose the admin's
+        if (active_layout_id == null) {
+            $.each(data['domain_layouts'], (_i, item) => {
+                if ( item['is_domain'] == 1 && item.is_current == 1 ) {
+                    active_layout_id = item.id;
+                    active_layout_label = item.label;
+                    layout_id = item.share_id;
+                    return false;
+                }
+            });
+        }
+
+        dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        profile_tree.generateTree();
+        selected_profile_tree.generateTree();
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
+    });
 }
 
 function load_gene_carts(cart_share_id) {
-    const d = new $.Deferred();
     const session_id = Cookies.get('gear_session_id');
 
     if (!session_id) {
@@ -555,84 +537,80 @@ function load_gene_carts(cart_share_id) {
         $("#selected_gene_cart_c").prop("disabled", true);
         gene_cart_tree.generateTree();
         selected_gene_cart_tree.generateTree();
-        d.resolve();
-    } else {
-        $("#selected_gene_cart_c").prop("disabled", false);
-        $.ajax({
+        //return d.done();
+    }
+    $("#selected_gene_cart_c").prop("disabled", false);
+    $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
             data: { 'session_id': session_id, 'share_id': cart_share_id },
-        dataType: 'json',
-        success(data, textStatus, jqXHR) { //source https://stackoverflow.com/a/20915207/2900840
-            const carts = {};
-            let permalink_cart_id = null
-            let permalink_cart_label = null
-            const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
-            let carts_found = false;
+        dataType: 'json'
+    }).done((data, textStatus, jqXHR) => {
+        const carts = {};
+        let permalink_cart_id = null
+        let permalink_cart_label = null
+        const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
+        let carts_found = false;
 
-            for (const ctype of cart_types) {
-                carts[ctype] = [];
+        for (const ctype of cart_types) {
+            carts[ctype] = [];
 
-                if (data[`${ctype}_carts`].length > 0) {
-                    carts_found = true;
+            if (data[`${ctype}_carts`].length > 0) {
+                carts_found = true;
 
-                    $.each(data[`${ctype}_carts`], (_i, item) => {
-                        // If cart permalink was passed in, retrieve gene_cart_id for future use.
-                        if (cart_share_id && item.share_id == cart_share_id) {
-                            permalink_cart_id = item.id;
-                            permalink_cart_label = item.label;
-                        }
+                $.each(data[`${ctype}_carts`], (_i, item) => {
+                    // If cart permalink was passed in, retrieve gene_cart_id for future use.
+                    if (cart_share_id && item.share_id == cart_share_id) {
+                        permalink_cart_id = item.id;
+                        permalink_cart_label = item.label;
+                    }
 
-                        carts[ctype].push({value: item.id,
-                                           text: item.label,
-                                           folder_id: item.folder_id,
-                                           folder_label: item.folder_label,
-                                           folder_parent_id: item.folder_parent_id
-                                          });
-                    });
-                }
+                    carts[ctype].push({value: item.id,
+                                        text: item.label,
+                                        folder_id: item.folder_id,
+                                        folder_label: item.folder_label,
+                                        folder_parent_id: item.folder_parent_id
+                                        });
+                });
             }
-
-            gene_cart_tree.domainGeneCarts = carts.domain;
-            gene_cart_tree.userGeneCarts = carts.user;
-            gene_cart_tree.groupGeneCarts = carts.group;
-            gene_cart_tree.sharedGeneCarts = carts.shared;
-            gene_cart_tree.publicGeneCarts = carts.public;
-            gene_cart_tree.generateTree();
-            selected_gene_cart_tree.domainGeneCarts = carts.domain;
-            selected_gene_cart_tree.userGeneCarts = carts.user;
-            selected_gene_cart_tree.groupGeneCarts = carts.group;
-            selected_gene_cart_tree.sharedGeneCarts = carts.shared;
-            selected_gene_cart_tree.publicGeneCarts = carts.public;
-            selected_gene_cart_tree.generateTree();
-
-            if (! carts_found ) {
-                $("#selected_gene_cart_c").prop("disabled", true);
-            }
-
-            // If gene_cart_permalink was provided:
-            // 1) Set the value in the gene cart tree and gene search bar
-            // 2) Trigger change event to populate the gene search bar with the genes
-            // 3) (Outside of function) Search button is clicked
-            // 4) (Outside of function) Show sidebar stuff in the display panel
-            if (permalink_cart_id) {
-                // This will also change selected_gene_cart via the "change" event trigger
-                $("#search_param_gene_cart").text(permalink_cart_label);
-                $("#search_param_gene_cart").val(permalink_cart_id);
-                $("#search_param_gene_cart").trigger('change');
-            }
-
-            d.resolve();
-        },
-        error(jqXHR, textStatus, errorThrown) {
-            gene_cart_tree.generateTree();
-            selected_gene_cart_tree.generateTree();
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
-            d.fail();
         }
-        });
-    }
-    return d.promise();
+
+        gene_cart_tree.domainGeneCarts = carts.domain;
+        gene_cart_tree.userGeneCarts = carts.user;
+        gene_cart_tree.groupGeneCarts = carts.group;
+        gene_cart_tree.sharedGeneCarts = carts.shared;
+        gene_cart_tree.publicGeneCarts = carts.public;
+        gene_cart_tree.generateTree();
+        selected_gene_cart_tree.domainGeneCarts = carts.domain;
+        selected_gene_cart_tree.userGeneCarts = carts.user;
+        selected_gene_cart_tree.groupGeneCarts = carts.group;
+        selected_gene_cart_tree.sharedGeneCarts = carts.shared;
+        selected_gene_cart_tree.publicGeneCarts = carts.public;
+        selected_gene_cart_tree.generateTree();
+
+        if (! carts_found ) {
+            $("#selected_gene_cart_c").prop("disabled", true);
+        }
+
+        // If gene_cart_permalink was provided:
+        // 1) Set the value in the gene cart tree and gene search bar
+        // 2) Trigger change event to populate the gene search bar with the genes
+        // 3) (Outside of function) Search button is clicked
+        // 4) (Outside of function) Show sidebar stuff in the display panel
+        if (permalink_cart_id) {
+            // This will also change selected_gene_cart via the "change" event trigger
+            $("#search_param_gene_cart").text(permalink_cart_label);
+            $("#search_param_gene_cart").val(permalink_cart_id);
+            $("#search_param_gene_cart").trigger('change');
+        }
+    })
+    .fail((jqXHR, textStatus, errorThrown) => {
+        gene_cart_tree.generateTree();
+        selected_gene_cart_tree.generateTree();
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
+        //return d.fail();
+    });
+    //return d.done();
 }
 
 // If user changes, update genecart/profile trees
@@ -661,14 +639,12 @@ function populate_pattern_selection() {
             'session_id': CURRENT_USER.session_id,
         },
         dataType: "json",
-        success: (data) => {
+    }).done((data, textStatus, jqXHR) => {
             const pattern_list_tmpl = $.templates("#pattern_list_tmpl");    // recycling the template... same output
             const pattern_list_html = pattern_list_tmpl.render(data);
             $("#set_of_patterns").html(pattern_list_html);
-        },
-        error(xhr, status, msg) {
-            console.error(`Failed to populate patterns list: ${msg}`);
-        }
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        console.error(`Failed to populate patterns list: ${msg}`);
     });
 }
 
@@ -729,7 +705,14 @@ function select_search_result(elm, draw_display=true) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    if (!projection) {
+    if ((projection)) {
+        $('#functional_not_supported_alert').show();
+        $('#links_out_c').hide();
+        $('#gene_details_c').hide();
+    } else {
+        $('#functional_not_supported_alert').hide();
+        $('#links_out_c').show();
+        $('#gene_details_c').show();
         annotation_panel.annotation = search_results[gene_sym];
         annotation_panel.autoselect_organism();
     }
@@ -832,6 +815,10 @@ $("#gene_search_form").submit((event) => {
 
     $("#too_many_genes_warning").hide();
     $('#search_result_count').text('');
+
+    // MG disabled
+    $('#search_results_scrollbox').show();
+    $('#multigene_search_indicator').hide();
     if (multigene) {
         // MG enabled
         $('#search_results_scrollbox').hide();
@@ -841,10 +828,6 @@ $("#gene_search_form").submit((event) => {
             $("#too_many_genes_warning").text(`There are currently ${uniq_gene_symbols.length} genes to be searched and plotted. This can be potentially slow. Also be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
             $("#too_many_genes_warning").show();
         }
-    } else {
-        // MG disabled
-        $('#search_results_scrollbox').show();
-        $('#multigene_search_indicator').hide();
     }
 
     $('#search_results').empty();
@@ -856,50 +839,60 @@ $("#gene_search_form").submit((event) => {
     // Add Exact Match param
     formData.push({"name": "exact_match", "value" :Number(exact_match)});
 
+    $('#functional_not_supported_alert').hide();
+    $('#links_out_c').show();
+    $('#gene_details_c').show();
+
+    // NOTE: There is a good chance this will move back into the "search_genes.py" block after gene aliasing is implemented.
+    if (multigene) {
+        dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+        $('#searching_indicator_c').hide();
+        $('#intro_content').hide('fade', {}, 400);
+            $('#functional_not_supported_alert').show();
+            $('#links_out_c').hide();
+            $('#gene_details_c').hide();
+
+        return false;
+    }
+
     $.ajax({
         url : './cgi/search_genes.py',
         type: "POST",
         data : formData,
-        dataType:"json",
-        success(data, textStatus, jqXHR) {
-        	// reset search_results
-        	search_results = data;
-            populate_search_result_list(data);
-            $('#searching_indicator_c').hide();
-            $('#intro_content').hide('fade', {}, 400, () => {
-                if (multigene){
-                    dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
-                } else {
-                    // auto-select the first match.  first <a class="list-group-item"
-                    const first_thing = $('#search_results a.list-group-item').first();
-                    select_search_result(first_thing);
-                }
-            });
+        dataType:"json"
+    }).done((data) => {
+        // reset search_results
+        search_results = data;
+        populate_search_result_list(data);
+        $('#searching_indicator_c').hide();
+        $('#intro_content').hide('fade', {}, 400, () => {
+            // auto-select the first match.  first <a class="list-group-item"
+            const first_thing = $('#search_results a.list-group-item').first();
+            select_search_result(first_thing);
+        });
 
-            set_scrollbar_props();
-            return false;
-        },
-        error(jqXHR, textStatus, errorThrown) {
-            $('#searching_indicator_c').hide();
+        set_scrollbar_props();
+        return false;
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        $('#searching_indicator_c').hide();
 
-            // Error occurred
-            if ( $('#search_gene_symbol').val().length < 1 ) {
-            // No gene symbol entered
-                    $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-                        '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                        '<p class="alert-message"><strong>Oops! </strong>No gene symbol was entered. Enter a gene symbol and try again.</p></div>').show();
+        // Error occurred
+        if ( $('#search_gene_symbol').val().length < 1 ) {
+        // No gene symbol entered
+                $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                    '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                    '<p class="alert-message"><strong>Oops! </strong>No gene symbol was entered. Enter a gene symbol and try again.</p></div>').show();
 
 
-            } else if ( dataset_collection_panel.datasets.length == 0) {
-            // No datasets in current layout profile
-                    $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-                        '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                        '<p class="alert-message"><strong>Oops! </strong>No datasets were found in the current layout profile.</p><p>To add datasets to a profile or choose a different profile, go to the <a href="./dataset_manager.html" class="alert-link">Dataset Manager</a>.</p></div>').show();
+        } else if ( dataset_collection_panel.datasets.length == 0) {
+        // No datasets in current layout profile
+                $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                    '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                    '<p class="alert-message"><strong>Oops! </strong>No datasets were found in the current layout profile.</p><p>To add datasets to a profile or choose a different profile, go to the <a href="./dataset_manager.html" class="alert-link">Dataset Manager</a>.</p></div>').show();
 
-            } else {
-                // Some other error occurred
-              	display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Could not successfully search for genes in database.");
-            }
+        } else {
+            // Some other error occurred
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Could not successfully search for genes in database.");
         }
     });
 
@@ -934,14 +927,13 @@ $("#projection_search_form").submit((event) => {
     });
     const selected_projections_string = Object.keys(selected_projections).join(',');
 
+    // MG disabled
+    $('#search_results_scrollbox').show();
+    $('#multigene_search_indicator').hide();
     if (multigene) {
         // MG enabled
         $('#search_results_scrollbox').hide();
         $('#multigene_search_indicator').show();
-    } else {
-        // MG disabled
-        $('#search_results_scrollbox').show();
-        $('#multigene_search_indicator').hide();
     }
 
     $('#search_results').empty();
@@ -999,28 +991,26 @@ $("#set_of_patterns").on('change', (event, projection_patterns) => {
         $.ajax({
             type: "POST",
             url: "./cgi/get_pattern_element_list.cgi",
-            async: false,
+            //async: false,
             data: {
                 'file_name': $('#set_of_patterns').val(),
             },
-            dataType: "json",
-            success: (data) => {
-                const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
-                const pattern_elements_html = pattern_elements_tmpl.render(data);
-                $("#projection_pattern_elements").html(pattern_elements_html);
-                $("#projection_pattern_elements_c").show();
+            dataType: "json"
+        }).done((data) => {
+            const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
+            const pattern_elements_html = pattern_elements_tmpl.render(data);
+            $("#projection_pattern_elements").html(pattern_elements_html);
+            $("#projection_pattern_elements_c").show();
 
-                // Check boxes for the elements that were found in the URL
-                if (projection_patterns) {
-                    projection_patterns.split(',').forEach((pattern) => {
-                        $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
-                    });
-                }
-
-            },
-            error(xhr, status, msg) {
-                console.error(`Failed to load dataset list because msg: ${msg}`);
+            // Check boxes for the elements that were found in the URL
+            if (projection_patterns) {
+                projection_patterns.split(',').forEach((pattern) => {
+                    $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
+                });
             }
+
+        }).fail((jqXHR, textStatus, errorThrown) => {
+            console.error(`Failed to load dataset list because msg: ${msg}`);
         });
     }
 });
@@ -1098,16 +1088,15 @@ $('#search_param_gene_cart').change(() => {
 $('.js-gene-cart').change( function() {
     const gene_cart_id = $(this).val();
     const params = { session_id, gene_cart_id };
-    const d = new $.Deferred(); // Causes editable to wait until results are returned
 
     if (typeof session_id !== 'undefined') {
         // Get the gene cart members and populate the gene symbol search bar
         $.ajax({
-        url: './cgi/get_gene_cart_members.cgi',
-        async: false,
-        type: 'post',
-        data: params,
-        success: function (data, newValue, oldValue) {
+            url: './cgi/get_gene_cart_members.cgi',
+            //async: false,
+            type: 'post',
+            data: params
+        }).done((data) => {
             if (data.success === 1) {
                 const gene_symbols_array = []
                 // format gene symbols into search string
@@ -1130,13 +1119,10 @@ $('.js-gene-cart').change( function() {
                     '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
                     '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
             }
-            d.resolve();
-        }
+        }).fail((jqXHR, textStatus, errorThrown) => {
+            console.error(`Failed to load gene cart members because msg: ${msg}`);
         });
-    } else {
-        d.resolve();
     }
-    return d.promise();
 });
 
 // Set the state history based on current conditions

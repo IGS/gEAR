@@ -543,9 +543,10 @@ li.scope_choice:hover {
 
 #projection_pattern_select_all,#projection_pattern_deselect_all {
   color: var(--main-section-launcher-bg-color-active);
+  text-decoration: underline;
 }
 
 #projection_pattern_select_all:hover,#projection_pattern_deselect_all:hover {
   background-color: var(--main-section-launcher-bg-color-active);
-  color: white;
+  color: white
 }

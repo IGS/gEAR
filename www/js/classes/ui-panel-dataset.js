@@ -38,27 +38,16 @@ class DatasetPanel extends Dataset {
         const genes_or_projection = this.projection ? "projection" : "genes";
         this.primary_key = `${this.id}_${this.grid_position}_${genes_or_projection}_${single_or_multi}`;
         this.projection_csv = null;
+        this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
-
-        this.fetch_h5ad_info({ dataset_id: this.id, analysis: undefined }).then(
-            (data) => {
-                this.h5ad_info = data;
-            }
-        );
     }
 
     // Call API to return observation information on this dataset
-    fetch_h5ad_info (payload) {
-        const { dataset_id, analysis } = payload;
+    fetch_h5ad_info (dataset_id, analysis) {
         const base = `./api/h5ad/${dataset_id}`;
         const query = analysis ? `?analysis=${analysis.id}` : '';
-        return $.ajax({
-            url: `${base}${query}`,
-            dataType: 'json',
-            type: "GET",
-            async: false
-        });
+        return axios.get(`${base}${query}`);
     }
 
     get_dataset_displays(user_id, dataset_id) {
@@ -199,16 +188,15 @@ class DatasetPanel extends Dataset {
 
                 // cache all owner/user displays for this panel;
                 // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                const owner_displays =
-                    CURRENT_USER.id === this.user_id
-                        ? []
-                        : await this.get_dataset_displays(this.user_id, this.id);
-                this.owner_displays = owner_displays;
+                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+                ).then((res) => res.map((r) => r.value));
 
-                const user_displays = await this.get_dataset_displays(
-                    CURRENT_USER.id,
-                    this.id
-                );
+                if (CURRENT_USER.id === this.user_id) {
+                    owner_displays = [];
+                }
+
+                this.owner_displays = owner_displays;
                 this.user_displays = user_displays;
 
                 this.register_events();
@@ -245,6 +233,17 @@ class DatasetPanel extends Dataset {
         }
 
         // All multigene plot types require a categorical observation to plot from. So there would be no curations for these datasets anyways.
+        if (! this.h5ad_info) {
+            try {
+                const res = await this.fetch_h5ad_info(this.id, undefined )
+                this.h5ad_info = res.data;
+            } catch (err) {
+                this.show_error(
+                    "Could not retrieve observation info for this dataset."
+                );
+                return;
+            }
+        }
         if (!Object.keys(this.h5ad_info.obs_levels).length) {
             this.show_error(
                 "This dataset does not have any categorical observations to plot from."
@@ -269,16 +268,15 @@ class DatasetPanel extends Dataset {
 
                 // cache all owner/user displays for this panel;
                 // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                const owner_displays =
-                    CURRENT_USER.id === this.user_id
-                        ? []
-                        : await this.get_dataset_displays(this.user_id, this.id);
-                this.owner_displays = owner_displays;
+                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+                ).then((res) => res.map((r) => r.value));
 
-                const user_displays = await this.get_dataset_displays(
-                    CURRENT_USER.id,
-                    this.id
-                );
+                if (CURRENT_USER.id === this.user_id) {
+                    owner_displays = [];
+                }
+
+                this.owner_displays = owner_displays;
                 this.user_displays = user_displays;
 
                 this.register_events();
@@ -520,7 +518,7 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source) {
+    async run_projectR(projection_source, is_pca) {
         const dataset_id = this.id;
         const payload = {
             scope: "repository",

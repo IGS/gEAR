@@ -47,43 +47,41 @@ class DatasetCollectionPanel {
                 default_domain: this.layout_label,
                 layout_id: dsc_panel.layout_id,
             },
-            dataType: "json",
-            success(data) {
-                $.each(data["datasets"], (_i, ds) => {
-                    // Choose single-gene or multigene grid-width
-                    const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
-                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection);
+            dataType: "json"
+        }).done((data) => {
+            $.each(data["datasets"], (_i, ds) => {
+                // Choose single-gene or multigene grid-width
+                const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
+                const dsp = new DatasetPanel(ds, grid_width, multigene, projection);
 
-                    if (dsp.load_status == "completed") {
-                        // reformat the date
-                        dsp.date_added = new Date(dsp.date_added);
 
-                        // Insert line-breaks into dataset descriptions if it doesn't look
-                        // like HTML already
-                        if (dsp.ldesc && !/<\/?[a-z][\s\S]*>/i.test(dsp.ldesc)) {
-                            dsp.ldesc = dsp.ldesc.replace(/(\r\n|\n\r|\r|\n)/g, "<br />");
-                        }
+                if (dsp.load_status == "completed") {
+                    // reformat the date
+                    dsp.date_added = new Date(dsp.date_added);
+
+                    // Insert line-breaks into dataset descriptions if it doesn't look
+                    // like HTML already
+                    if (dsp.ldesc && !/<\/?[a-z][\s\S]*>/i.test(dsp.ldesc)) {
+                        dsp.ldesc = dsp.ldesc.replace(/(\r\n|\n\r|\r|\n)/g, "<br />");
                     }
-
-                    dsc_panel.datasets.push(dsp);
-                });
-
-                $("span#domain_choice_info_count").text(dsc_panel.datasets.length);
-
-                if (dataset_id) {
-                    const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
-                    const permalinkViewHtml = permalinkViewTmpl.render(data["datasets"]);
-                    $("#permalink_info").html(permalinkViewHtml);
-                    const listViewTmpl = $.templates("#tmpl_datasetbox");
-                    dsc_panel.datasets.forEach((ds) => (ds.zoomed = true));
                 }
+                dsc_panel.datasets.push(dsp);
+            });
+
+            $("span#domain_choice_info_count").text(dsc_panel.datasets.length);
+
+            if (dataset_id) {
+                const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
+                const permalinkViewHtml = permalinkViewTmpl.render(data["datasets"]);
+                $("#permalink_info").html(permalinkViewHtml);
                 const listViewTmpl = $.templates("#tmpl_datasetbox");
-                const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
-                $("#dataset_grid").html(listViewHtml);
-            },
-            error(jqXHR, _textStatus, errorThrown) {
-                display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
-            },
+                dsc_panel.datasets.forEach((ds) => (ds.zoomed = true));
+            }
+            const listViewTmpl = $.templates("#tmpl_datasetbox");
+            const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
+            $("#dataset_grid").html(listViewHtml);
+        }).fail((jqXHR, textStatus, errorThrown) => {
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
         });
     }
 
@@ -92,7 +90,7 @@ class DatasetCollectionPanel {
         $("#dataset_grid").empty();
     }
 
-    async set_layout(
+    set_layout(
         layout_id,
         layout_label,
         do_load_frames,
@@ -102,8 +100,6 @@ class DatasetCollectionPanel {
         /*
               Updates this object, the user's stored cookie, and the database and UI labels
             */
-        const d = new $.Deferred();
-
         Cookies.set("gear_default_domain", layout_label);
 
         this.layout_id = layout_id;
@@ -128,33 +124,30 @@ class DatasetCollectionPanel {
             $.ajax({
                 url: "./cgi/set_primary_layout.cgi",
                 type: "post",
-                data: { session_id: CURRENT_USER.session_id, layout_id: layout_id },
-                success(data) {
-                    if (data.success == 1) {
-                        //Was a search already performed?
-                        if ($("#search_gene_symbol").val()) {
-                            // User has already searched, automatically update datasets and gene searches
-                            update_datasetframes_generesults();
-                        }
-                    } else {
-                        $(".alert-container")
-                            .html(
-                                '<div class="alert alert-danger alert-dismissible" role="alert">' +
-                                '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                                '<p class="alert-message"><strong>Oops! </strong> ' +
-                                data.error +
-                                "</p></div>"
-                            )
-                            .show();
+                data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
+            }).done((data) => {
+                if (data.success == 1) {
+                    //Was a search already performed?
+                    if ($("#search_gene_symbol").val()) {
+                        // User has already searched, automatically update datasets and gene searches
+                        update_datasetframes_generesults();
                     }
-                    d.resolve();
-                },
+                } else {
+                    $(".alert-container")
+                        .html(
+                            '<div class="alert alert-danger alert-dismissible" role="alert">' +
+                            '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                            '<p class="alert-message"><strong>Oops! </strong> ' +
+                            data.error +
+                            "</p></div>"
+                        )
+                        .show();
+                }
+            }).fail((jqXHR, _textStatus, errorThrown) => {
+                display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
-        } else {
-            d.resolve();
         }
 
-        return d.promise();
     }
 
     // Single-gene displays

@@ -121,9 +121,10 @@ window.onload= async () => {
 // Call API to return plot JSON data
 async function getData (datasetId, payload) {
     try {
-        return await axios.post(`/api/plot/${datasetId}/mg_dash`, {
+        const {data} =  await axios.post(`/api/plot/${datasetId}/mg_dash`, {
             ...payload
         })
+        return {data}
     } catch (e) {
 
         const message = "There was an error in making this plot. Please contact the gEAR team using the 'Contact' button at the top of the page and provide as much information as possible.";

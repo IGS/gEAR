@@ -396,7 +396,7 @@ class MultigeneDashData(Resource):
 
             # Reorder the dataframe columns based on sorted gene symbols
             dataset_genes = adata.var['gene_symbol'].unique().tolist()
-            normalized_genes_list, found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
+            normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
             df = df[sorted_ensm]
 
@@ -452,7 +452,7 @@ class MultigeneDashData(Resource):
 
             # "df" must be obs label for rows and genes for cols only
             fig = mg.create_clustergram(df
-                , found_genes
+                , normalized_genes_list
                 , is_log10
                 , cluster_obs
                 , cluster_genes
