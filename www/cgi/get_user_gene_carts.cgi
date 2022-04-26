@@ -60,27 +60,25 @@ def main():
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('share_id')
     current_user = geardb.get_user_from_session_id(session_id)
-    current_user_id = current_user.id
+    if not current_user:
+        raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'shared_carts':[], 'user_carts':[] }
- 
+
     # Track the cart IDs already stored so we don't duplicate
     cart_ids_found = set()
 
-    if current_user_id is None:
-        raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
-    else:
-        domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
-        user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
-        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
-        shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
-        public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
+    domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
+    user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
+    group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
+    shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
+    public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
 
-        result = { 'domain_carts':domain_carts,
-                   'group_carts':group_carts,
-                   'public_carts':public_carts,
-                   'shared_carts':shared_carts,
-                   'user_carts':user_carts }
+    result = { 'domain_carts':domain_carts,
+                'group_carts':group_carts,
+                'public_carts':public_carts,
+                'shared_carts':shared_carts,
+                'user_carts':user_carts }
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
@@ -96,7 +94,7 @@ def filter_any_previous(ids, new_carts):
     return carts
     # fails to return rows when I try to sort.
     #return carts.sort(key=lambda a: a.__dict__['label'].lower())
-    
+
 if __name__ == '__main__':
     main()
 
