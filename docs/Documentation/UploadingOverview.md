@@ -13,6 +13,10 @@ best suited for your upload needs, please see the links below. If you have any q
 
 ## Bulk RNAseq data
 
+Bulk RNAseq data can be uploaded to gEAR through three paths (from Recount3 data, through Excel or via tab-deliminated files). In addition to the data files, every submission requires a standard metatdata template to be filled out with basic information about your dataset. A blank template form can be found on the upload page or linked [here](https://umgear.org/user_templates/metadata_template.xlsx). 
+
+**Note: Count files must be normalized prior to upload, any common normalization method is accepted**
+
 ```mermaid
 graph TB 
 
@@ -38,13 +42,17 @@ style B color:blue
 ```
 
 
- * [Preparing bulk RNAseq data using code (slides)](https://docs.google.com/presentation/d/1lYbgACVi-931EHTGNIw1bSZWIIUBcg3o/edit?usp=sharing&ouid=102015920709954238045&rtpof=true&sd=true)
+ * [Preparing bulk RNAseq data using code (overview slides)](https://docs.google.com/presentation/d/1lYbgACVi-931EHTGNIw1bSZWIIUBcg3o/edit?usp=sharing&ouid=102015920709954238045&rtpof=true&sd=true)
      * [Preparing bulk RNAseq data (R code)](https://github.com/IGS/gEAR/wiki/Prepare-3-tab-format-for-RNAseq-dataset-uploading)
      * [Preparing RNAseq data from Recount 3 (R code)](https://github.com/songeric1107/Host_data_on_gEAR/blob/225e61631db4f0a60acb3abdb90ba55ace814e87/script/prepare_from_recount3.md)
  * [Preparing bulk RNAseq data via Excel (slides)](https://docs.google.com/presentation/d/1lU7wqWmeW907GBGfK0oBi06hcrvra-PY/edit?usp=sharing&ouid=102015920709954238045&rtpof=true&sd=true) 
  * [Example upload files](https://drive.google.com/drive/folders/1OYZ7-FjgTBwNrZDqBI3dAA7bv8QmwFE-?usp=sharing)
 
 ## Single Cell RNAseq
+
+Single cell sequencing  data can be uploaded to gEAR through multiple paths. The most common path for data upload is creating three tab-deliminated text files which are compressed together for upload, but other upload methods are avialable.  In addition to the data files, every submission requires a standard metatdata template to be filled out with basic information about your dataset. A blank template form can be found on the upload page or linked [here](https://umgear.org/user_templates/metadata_template.xlsx). 
+
+**Note: Count files must be normalized prior to upload, any common normalization method is accepted**
 
 ```mermaid
 graph TB 
@@ -87,7 +95,9 @@ style I color:blue
 ## Microarray data
  * [Prepare GEO microarray data for upload](https://github.com/songeric1107/Host_data_on_gEAR/blob/225e61631db4f0a60acb3abdb90ba55ace814e87/script/GEO_microarray_data_to_gEAR.R)
 
-## Epigenetic data (Epiviz)
+## Epigenetic data (EpiViz)
+
+Epigenetic data are uploaded and displayed using integration with the EpiViz platform. If your data are already in BigWig/BigBed format they can be uploaded via URL or through standard file uploads. Epigenetic uploads do not currently require a seperate metadata file (in contrast to Bulk RNAseq or Single cell data). 
 
 ```mermaid
 graph TD
