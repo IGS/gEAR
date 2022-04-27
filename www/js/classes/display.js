@@ -1384,10 +1384,11 @@ class TsneDisplay extends Display {
     const config = plotly_config;
     this.gene_symbol = gene_symbol;
     this.analysis_id = config.analysis ? config.analysis.id : null;
-    this.colors = JSON.stringify(config.colors);
-    this.order = JSON.stringify(config.order);
+    this.colors = config.colors;
+    this.order = config.order;
     this.colorize_legend_by = config.colorize_legend_by;
     this.skip_gene_plot = config.skip_gene_plot;
+    this.horizontal_legend = config.horizontal_legend;
     this.plot_by_group = config.plot_by_group;
     this.max_columns = config.max_columns;
     this.x_axis = config.x_axis;
@@ -1404,25 +1405,25 @@ class TsneDisplay extends Display {
    * @param {string} gene_symbol - Gene symbol to visualize.
    */
    get_data(gene_symbol) {
-      return axios.get(`/api/plot/${this.dataset_id}/tsne`, {
-          params: {
-              gene: gene_symbol,
-              analysis: this.analysis_id,
-              plot_type: this.plot_type,
-              colorize_by: this.colorize_legend_by,
-              skip_gene_plot: this.skip_gene_plot,
-              plot_by_group: this.plot_by_group,
-              max_columns: this.max_columns,
-              x_axis: this.x_axis,
-              y_axis: this.y_axis,
-              analysis_owner_id: this.user_id,
-              colors: this.colors,
-              order: this.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime(),
-              projection_csv: this.projection_csv
-          }
-      });
+        return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
+            gene_symbol,
+            analysis: this.analysis_id,
+            plot_type: this.plot_type,
+            colorize_legend_by: this.colorize_legend_by,
+            skip_gene_plot: this.skip_gene_plot,
+            horizontal_legend: this.horizontal_legend,
+            plot_by_group: this.plot_by_group,
+            max_columns: this.max_columns,
+            x_axis: this.x_axis,
+            y_axis: this.y_axis,
+            analysis_owner_id: this.user_id,
+            colors: this.colors,
+            order: this.order,
+            horizontal_legend: this.horizontal_legend,
+            // helps stop caching issues
+            timestamp: new Date().getTime(),
+            projection_csv: this.projection_csv
+        });
   }
 
   draw_zoomed() {

@@ -471,12 +471,13 @@ function get_tsne_image_data(gene_symbol, config) {
     // then craziness: https://stackoverflow.com/a/48980526
     return axios.get(`/api/plot/${current_analysis.dataset_id}/tsne`, {
         params: {
-            gene: gene_symbol,
+            gene_symbol,
             analysis: current_analysis.id,
-            colorize_by: config.colorize_legend_by,
+            colorize_legend_by: config.colorize_legend_by,
             plot_type: 'tsne',
             plot_by_group: config.plot_by_group,
             max_columns: config.max_columns,
+            horizontal_legend: config.horizontal_legend,
             x_axis: config.x_axis,
             y_axis: config.y_axis,
             analysis_owner_id: current_analysis.user_id,

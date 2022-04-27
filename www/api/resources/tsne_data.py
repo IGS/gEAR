@@ -1,3 +1,4 @@
+from turtle import left
 from flask import request
 from flask_restful import Resource
 
@@ -7,11 +8,9 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 
-import json, os, re
-import sys
+import io, json, os, re, sys
 import geardb
 import base64
-import io
 from math import ceil
 
 sc.settings.set_figure_params(dpi=100)
@@ -24,7 +23,8 @@ PLOT_TYPE_TO_BASIS = {
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
-NUM_LEGENDS_PER_COL = 12
+NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
+NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -32,6 +32,27 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
+def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+    """Return analysis object based on various factors."""
+    # If an analysis is posted we want to read from its h5ad
+    if analysis:
+        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=analysis_owner_id)
+
+        if 'type' in analysis:
+            ana.type = analysis['type']
+        else:
+            user = geardb.get_user_from_session_id(session_id)
+            ana.discover_type(current_user_id=user.id)
+    else:
+        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
+        h5_path = ds.get_file_path()
+
+        # Let's not fail if the file isn't there
+        if not os.path.exists(h5_path):
+            raise PlotError("No h5 file found for this dataset")
+        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+    return ana
 
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
@@ -67,11 +88,42 @@ def create_projection_adata(dataset_adata, projection_csv):
     projection_adata.var["gene_symbol"] = projection_adata.var_names
     return projection_adata
 
-def sort_legend(figure, sort_order):
+def sort_legend(figure, sort_order, horizontal_legend=False):
     """Sort legend of plot."""
     handles, labels = figure.get_legend_handles_labels()
     new_handles = [handles[idx] for idx, name in enumerate(sort_order)]
     new_labels = [labels[idx] for idx, name in enumerate(sort_order)]
+
+    # If horizontal legend, we need to sort in a way to have labels read from left to right
+    if horizontal_legend:
+        leftover_cards = len(new_handles) % NUM_HORIZONTAL_COLS
+        num_chunks = int(len(new_handles) / NUM_HORIZONTAL_COLS)
+
+        # If number of groups is less than num_cols, they can just be put on a single line
+        if num_chunks == 0:
+           return (new_handles, new_labels)
+
+        # Split into relatively equal chumks.
+        handles_sublists = np.array_split(np.array(new_handles), num_chunks)
+        labels_sublists = np.array_split(np.array(new_labels), num_chunks)
+
+        # Zipping gets weird if there's a remainder so remove those leftover items and add back later
+        if leftover_cards:
+            handles_leftover = new_handles[-leftover_cards:]
+            labels_leftover = new_labels[-leftover_cards:]
+
+            handles_sublists = np.array_split(np.array(new_handles[:-leftover_cards]), num_chunks)
+            labels_sublists = np.array_split(np.array(new_labels[:-leftover_cards]), num_chunks)
+
+        # Zip numpy arrays, then flatten into a 1D list.  Add leftover cards as well to end
+        new_handles = np.column_stack(handles_sublists).flatten().tolist()
+        new_labels = np.column_stack(labels_sublists).flatten().tolist()
+
+        # Insert leftover cards back into the list. Start from back to front so indexes are not manipulated.
+        for i in reversed(range(leftover_cards)):
+            new_handles.insert(num_chunks * (i+1), handles_leftover[i])
+            new_labels.insert(num_chunks * (i+1), labels_leftover[i])
+
     return (new_handles, new_labels)
 
 class TSNEData(Resource):
@@ -81,24 +133,25 @@ class TSNEData(Resource):
     -------
       Byte stream image data
     """
-    # This endpoint would be a get request to
-    # '/api/plot/<SOME_DATASET_ID>/tsne?gene=<SOME_GENE>&analysis=<SOME_ANALYSIS_ID>
-    def get(self, dataset_id):
-        gene_symbol = request.args.get('gene', None)
-        plot_type = request.args.get('plot_type', "tsne_static")
-        analysis_id = request.args.get('analysis')
-        colorize_by = request.args.get('colorize_by')
-        skip_gene_plot = request.args.get('skip_gene_plot')
-        plot_by_group = request.args.get('plot_by_group') # One expression plot per group
-        max_columns = request.args.get('max_columns')   # Max number of columns before plotting to a new row
-        colors = request.args.get('colors')
-        order = request.args.get('order', {})
-        x_axis = request.args.get('x_axis', 'tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
-        y_axis = request.args.get('y_axis', 'tSNE_2')
+    def post(self, dataset_id):
+        req = request.get_json()
+
+        gene_symbol = req.get('gene_symbol', None)
+        plot_type = req.get('plot_type', "tsne_static")
+        analysis_id = req.get('analysis')
+        colorize_by = req.get('colorize_legend_by')
+        skip_gene_plot = req.get('skip_gene_plot', False)
+        plot_by_group = req.get('plot_by_group', None) # One expression plot per group
+        max_columns = req.get('max_columns')   # Max number of columns before plotting to a new row
+        colors = req.get('colors')
+        order = req.get('order', {})
+        x_axis = req.get('x_axis', 'tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
+        y_axis = req.get('y_axis', 'tSNE_2')
+        horizontal_legend = req.get('horizontal_legend', False)
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
-        analysis_owner_id = request.args.get('analysis_owner_id')
-        projection_csv = request.args.get('projection_csv', None)   # As CSV path
+        analysis_owner_id = req.get('analysis_owner_id')
+        projection_csv = req.get('projection_csv', None)   # As CSV path
         sc.settings.figdir = '/tmp/'
 
         if not gene_symbol or not dataset_id:
@@ -107,14 +160,13 @@ class TSNEData(Resource):
                 "message": "Request needs both dataset id and gene symbol."
             }
 
-        if analysis_id and analysis_id not in ["null", "undefined"]:
-            # need analysis_type here, but can discover it
-            ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id,
-                                  session_id=session_id,
-                                  user_id=analysis_owner_id)
-            ana.discover_type()
-        else:
-            ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+        try:
+            ana = get_analysis(analysis_id, dataset_id, session_id, analysis_owner_id)
+        except PlotError as pe:
+            return {
+                "success": -1,
+                "message": str(pe)
+            }
 
         adata = ana.get_adata(backed=True)
 
@@ -164,8 +216,6 @@ class TSNEData(Resource):
         # Reorder the categorical values in the observation dataframe
         # Currently in UI only "plot_by_group" has reordering capabilities
         if order:
-            # order is passed as JSON str.  In plotly_data.py it is passed as Dict though
-            order = json.loads(order)
             obs_keys = order.keys()
             for key in obs_keys:
                 col = adata.obs[key]
@@ -205,20 +255,19 @@ class TSNEData(Resource):
             raise("{} was not a valid plot type".format(plot_type))
 
         # NOTE: This may change in the future if users want plots by group w/o the colorize_by plot added
-        if plot_by_group and plot_by_group not in ["null", "undefined"]:
+        if plot_by_group:
             skip_gene_plot = None
 
         new_YlOrRd = create_colorscale_with_zero_gray("YlOrRd")
 
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
-        if colorize_by is not None and colorize_by != 'null':
+        if colorize_by:
             # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
             color_idx_name = "{0}_colors".format(colorize_by)
 
             ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
             if colors is not None and len(colors) > 2:
-                colors = json.loads(colors)
                 adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
 
             elif color_idx_name in adata.obs:
@@ -239,8 +288,19 @@ class TSNEData(Resource):
             # Get for legend order.
             colorize_by_order = adata.obs[colorize_by].unique()
 
+            """
+            NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
+
+            bbox_to_anchor is the location of the legend relative to the plot frame.
+            If x and y are 0, that is the lower-left corner of the plot.
+            If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
+
+            loc is the portion of the legend that will be at the bbox_to_anchor point.
+            So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
+            """
+
             # If plotting by group the plot dimensions need to be determined
-            if plot_by_group and plot_by_group not in ["null", "undefined"]:
+            if plot_by_group:
                 column_order = adata.obs[plot_by_group].unique()
                 group_len = len(column_order)
                 num_plots = group_len + 2
@@ -278,7 +338,7 @@ class TSNEData(Resource):
                         row_counter += 1
                         col_counter = 0
                 # Add total gene plot and color plots
-                if not skip_gene_plot or skip_gene_plot == "false":
+                if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
                     col_counter += 1
@@ -288,11 +348,14 @@ class TSNEData(Resource):
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
-                (handles, labels) = sort_legend(f_color, colorize_by_order)
-                f_color.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
+                (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
+                f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                if horizontal_legend:
+                    io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                    f_color.get_legend().remove()  # Remove legend added by scanpy
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
-                if skip_gene_plot == 'true':
+                if skip_gene_plot:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(6, 4))
                     if len(adata.obs[colorize_by].cat.categories) > 10:
@@ -300,8 +363,11 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f1, colorize_by_order)
-                    f1.legend(bbox_to_anchor=[1,1], ncol=num_cols, handles=handles, labels=labels)
+                    (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
+                    f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                    if horizontal_legend:
+                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                        f1.get_legend().remove()  # Remove legend added by scanpy
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(13, 4))
@@ -310,13 +376,16 @@ class TSNEData(Resource):
                     f2 = io_fig.add_subplot(spec[0,1])
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f2, colorize_by_order)
-                    f2.legend(bbox_to_anchor=[1, 1], ncol=num_cols, handles=handles, labels=labels)
-
+                    (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
+                    f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                    if horizontal_legend:
+                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                        f2.get_legend().remove()  # Remove legend added by scanpy
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, return_fig=True, use_raw=False)
 
         io_pic = io.BytesIO()
+        io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
         io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
         plt.close() # Prevent zombie plots, which can cause issues
