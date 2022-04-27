@@ -605,6 +605,7 @@ class PlotlyDisplay extends Display {
             obs_filters,
             clusterbar_fields,
             matrixplot,
+            center_around_zero,
             cluster_obs,
             cluster_genes,
             flip_axes,
@@ -635,6 +636,7 @@ class PlotlyDisplay extends Display {
         this.obs_filters = obs_filters;
         this.clusterbar_fields = clusterbar_fields;
         this.matrixplot = matrixplot;
+        this.center_around_zero = center_around_zero;
         this.cluster_obs = cluster_obs;
         this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
@@ -683,6 +685,7 @@ class PlotlyDisplay extends Display {
             obs_filters: this.obs_filters,
             clusterbar_fields: this.clusterbar_fields,
             matrixplot: this.matrixplot,
+            center_around_zero: this.center_around_zero,
             cluster_obs: this.cluster_obs,
             cluster_genes: this.cluster_genes,
             flip_axes: this.flip_axes,
