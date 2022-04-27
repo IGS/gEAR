@@ -159,51 +159,19 @@ window.onload=() => {
       },
     },
     methods: {
-      ...Vuex.mapActions(["fetch_tsne_image"]),
-
-      // This will only be called when this.preconfigured is true.
-      // Otherwise fetch_tsne_image from Vuex store is used.
-      get_image_data() {
-        const config = this.display_data.plotly_config;
-        if (this.gene_symbol) {
-          config.gene_symbol = this.gene_symbol;
-        }
+      async draw_image() {
         const dataset_id = this.dataset_id;
         const plot_type = this.display_data.plot_type;
-        // safeguard to load legacy tsne plots (there is config.analysis.id in other code areas in case this needs to be expanded)
-        const analysis_id = this.display_data.plotly_config.analysis_id
-          ? this.display_data.plotly_config.analysis_id
-          : this.analysis;
+        const config = this.display_data.plotly_config;
+        const analysis = config.analysis ? config.analysis.id : null;
+        const analysis_owner_id = this.display_data.user_id;
 
-        // then craziness: https://stackoverflow.com/a/48980526
-        // shift this out when the fetch_tsne_image method is done in Vuex
-        return axios
-          .post(`/api/plot/${dataset_id}/tsne`, {
-              gene: config.gene_symbol,
-              analysis: analysis_id,
-              colorize_by: config.colorize_legend_by,
-              skip_gene_plot: config.skip_gene_plot,
-              plot_by_group: config.plot_by_group,
-              max_columns: config.max_columns,
-              x_axis: config.x_axis,
-              y_axis: config.y_axis,
-              horizontal_legend: config.horizontal_legend,
-              plot_type,
-              analysis_owner_id: this.display_data.user_id,
-              colors: config.colors,
-              order: config.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime(),
-          })
-          .then((response) => {
-            return response.data;
-          });
-      },
-      draw_image() {
-        this.get_image_data().then((data) => {
-          this.display_tsne_is_loading = false;
-          this.display_image_data = data.image;
-        });
+        // This has to be separate from "fetch_tsne_image" because in user/owner displays, different image data may be returned
+        const payload = { ...config, plot_type, analysis, analysis_owner_id };
+        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, payload);
+
+        this.display_tsne_is_loading = false;
+        this.display_image_data = data.image;
       },
     },
   });
@@ -314,7 +282,10 @@ window.onload=() => {
     },
     methods: {
       color_svg(data) {
-        let chart_data, low_color, mid_color, high_color;
+        let chart_data;
+        let low_color;
+        let mid_color;
+        let high_color;
         if (data) {
           const { plotly_config } = this.display_data;
           const { colors } = { ...plotly_config };
@@ -1423,7 +1394,7 @@ window.onload=() => {
           dataType: "json",
         });
 
-        if (res && res.success) {
+        if (res?.success) {
           if (this.display_id) {
             this.update_display(payload);
           }
@@ -1580,7 +1551,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["config", "plot_type", "dataset_id"]),
+      ...Vuex.mapState(["config", "plot_type", "dataset_id", "user"]),
     },
     created() {
       // Needed for initial display after first plotting preview
@@ -1632,8 +1603,9 @@ window.onload=() => {
         const config = this.config;
         const plot_type = this.plot_type;
         const dataset_id = this.dataset_id;
-        const analysis_id = this.config.analysis ? this.config.analysis.id : null;
-        this.fetch_tsne_image({ config, plot_type, dataset_id, analysis_id });
+        const analysis = config.analysis ? config.analysis.id : null;
+        const analysis_owner_id = this.user.id;
+        this.fetch_tsne_image({ config, plot_type, dataset_id, analysis, analysis_owner_id });
       },
     },
   });
@@ -1771,11 +1743,11 @@ window.onload=() => {
         this.reverse_palette = this.config.reverse_palette;
     },
     watch: {
-      palette: function (newval) {
+      palette(newval) {
         this.set_color_palette(newval);
         this.update_display();
       },
-      reverse_palette: function (newval) {
+      reverse_palette(newval) {
         this.set_reverse_palette(newval);
         this.update_display();
       },
@@ -2274,7 +2246,7 @@ window.onload=() => {
                 <label class="mb-0">X</label>
                 <b-form-select :options='columns' v-model='x_axis' size='sm'>
                   <template slot="first">
-                    <option :value="null"></option>
+                    <option :value=null></option>
                   </template>
                 </b-form-select>
               </b-form-group>
@@ -2284,7 +2256,7 @@ window.onload=() => {
                 <label class="mb-0">Y</label>
                 <b-form-select :options='columns' v-model='y_axis' size='sm'>
                   <template slot="first">
-                  <option value="null"></option>
+                  <option value=null></option>
                   </template>
                 </b-form-select>
               </b-form-group>
@@ -2365,6 +2337,7 @@ window.onload=() => {
     },
     computed: {
       ...Vuex.mapState([
+        "user",
         "dataset_id",
         "config",
         "columns",
@@ -2373,46 +2346,6 @@ window.onload=() => {
         "tsne_is_loading",
         "levels",
       ]),
-      colorize_legend_by: {
-        get() {
-          return this.$store.state.config.colorize_legend_by;
-        },
-        set(value) {
-          this.$store.commit("set_colorize_legend_by", value);
-        },
-      },
-      plot_by_group: {
-        get() {
-          return this.$store.state.config.plot_by_group;
-        },
-        set(value) {
-          this.$store.commit("set_plot_by_group", value);
-        },
-      },
-      max_columns: {
-        get() {
-          return this.$store.state.config.max_columns;
-        },
-        set(value) {
-          this.$store.commit("set_max_columns", value);
-        },
-      },
-      skip_gene_plot: {
-        get() {
-          return this.$store.state.config.skip_gene_plot;
-        },
-        set(value) {
-          this.$store.commit("set_skip_gene_plot", value);
-        },
-      },
-      horizontal_legend: {
-        get() {
-          return this.$store.state.config.horizontal_legend;
-        },
-        set(value) {
-          this.$store.commit("set_horizontal_legend", value);
-        },
-      },
       x_axis: {
         get() {
           return this.$store.state.config.x_axis;
@@ -2440,6 +2373,7 @@ window.onload=() => {
       if ("x_axis" in this.config) this.x_axis = this.config.x_axis;
       if ("y_axis" in this.config) this.y_axis = this.config.y_axis;
       if ("colorize_legend_by" in this.config)
+        this.show_colorized_legend = true;
         this.colorize_legend_by = this.config.colorize_legend_by;
       if ("plot_by_group" in this.config)
         this.plot_by_group = this.config.plot_by_group;
@@ -2454,6 +2388,12 @@ window.onload=() => {
         dataset_id: this.dataset_id,
         analysis: this.config.analysis,
       });
+
+      console.log(this.plot_params_ready());
+      if (this.plot_params_ready()) {
+        console.log("Plot params ready");
+        this.draw_image();
+      }
 
     },
     watch: {
@@ -2480,7 +2420,11 @@ window.onload=() => {
                   const group_key = this.plot_by_group;
                   order[group_key] = this.levels[group_key];
               }
-              this.$store.commit("set_order", order);
+
+              // This is to prevent a bug where the levels have not been set yet when loading a display.
+              if (oldval !== null) {
+                this.$store.commit("set_order", order);
+              }
             }
           this.draw_image();
         }
@@ -2501,9 +2445,6 @@ window.onload=() => {
         }
       },
       horizontal_legend(newval, oldval) {
-        console.log(newval);
-        console.log(oldval);
-        console.log(this.plot_params_ready());
         if (newval != oldval && this.plot_params_ready()) {
           this.draw_image();
         }
@@ -2538,6 +2479,7 @@ window.onload=() => {
     methods: {
       ...Vuex.mapActions([
         "fetch_h5ad_info",
+        "fetch_tsne_image",
         "set_image_data",
         "set_success",
         "set_message",
@@ -2545,43 +2487,30 @@ window.onload=() => {
         "set_order",
       ]),
       plot_params_ready() {
-        return this.x_axis && this.y_axis;
-      },
-      get_image_data(gene_symbol) {
-        // then craziness: https://stackoverflow.com/a/48980526
-        // shift this out when the fetch_tsne_image method is done in Vuex
-
-        const analysis_id = this.config.analysis ? this.config.analysis.id : null;
-        return axios
-          .post(`/api/plot/${this.dataset_id}/tsne`, {
-              gene: this.config.gene_symbol,
-              analysis: analysis_id,
-              colorize_by: this.colorize_legend_by,
-              horizontal_legend: this.horizontal_legend,
-              skip_gene_plot: this.skip_gene_plot,
-              plot_by_group: this.plot_by_group,
-              max_columns: this.max_columns,
-              x_axis: this.x_axis,
-              y_axis: this.y_axis,
-              plot_type: this.plot_type,
-              analysis_owner_id: this.user_id,
-              colors: this.colors,
-              order: this.config.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime(),
-          })
-          .then((response) => {
-            return response.data;
-          });
+        return this.x_axis && this.x_axis !== "null" && this.y_axis && this.y_axis !== "null";
       },
       draw_image() {
-          this.set_tsne_is_loading(true);
-          this.get_image_data(this.config.gene_symbol).then((data) => {
-          this.set_tsne_is_loading(false);
-          this.set_image_data(data.image);
-          this.set_success(data.success);
-          this.set_message(data.message);
-        });
+        const dataset_id = this.dataset_id;
+        const analysis = this.config.analysis ? this.config.analysis.id : null;
+        const plot_type = this.plot_type;
+        const analysis_owner_id = this.user.id;
+
+        const config = {
+          gene_symbol: this.config.gene_symbol,
+          colorize_legend_by: this.colorize_legend_by,
+          horizontal_legend: this.horizontal_legend,
+          skip_gene_plot: this.skip_gene_plot,
+          plot_by_group: this.plot_by_group,
+          max_columns: this.max_columns,
+          x_axis: this.x_axis,
+          y_axis: this.y_axis,
+          colors: this.colors,
+          order: this.config.order,
+          // helps stop caching issues
+          timestamp: new Date().getTime(),
+        };
+
+        this.fetch_tsne_image({config, plot_type, dataset_id, analysis, analysis_owner_id})
       },
     },
   });
@@ -3437,7 +3366,7 @@ window.onload=() => {
             commit('set_available_plot_types', response.data);
 	        }).catch((thrown) => {
             if (axios.isCancel(thrown)) {
-                console.log('Request canceled:', thrown.message);
+                console.info('Request canceled:', thrown.message);
             } else {
                 // handle error
                 console.error(thrown);
@@ -3527,29 +3456,23 @@ window.onload=() => {
       },
       async fetch_tsne_image(
         { commit },
-        { config, plot_type, dataset_id, analysis_id }
+        { config, plot_type, dataset_id, analysis, analysis_owner_id }
       ) {
         commit("set_tsne_is_loading", true);
+        const payload = { ...config, plot_type, analysis, analysis_owner_id };
 
-        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, {
-            gene: config.gene_symbol,
-            analysis: analysis_id,
-            colorize_by: config.colorize_legend_by,
-            horizontal_legend: config.horizontal_legend,
-            skip_gene_plot: config.skip_gene_plot,
-            x_axis: config.x_axis,
-            y_axis: config.y_axis,
-            plot_type,
-            plot_by_group: config.plot_by_group,
-            max_columns: config.max_columns,
-            analysis_owner_id: this.user_id,
-            colors: config.colors,
-            order: config.order,
-            // helps stop caching issues
-            timestamp: new Date().getTime(),
-        });
+        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, payload);
 
+        commit("set_x_axis", config.x_axis);
+        commit("set_y_axis", config.y_axis);
+        commit("set_colorize_legend_by", config.colorize_legend_by);
+        commit("set_horizontal_legend", config.horizontal_legend);
+        commit("set_skip_gene_plot", config.skip_gene_plot);
+        commit("set_plot_by_group", config.plot_by_group);
+        commit("set_max_columns", config.max_columns);
+        commit("set_colors", config.colors);
         commit("set_order", config.order);
+
         commit("set_image_data", data.image);
         commit("set_success", data.success);
         commit("set_message", data.message);
