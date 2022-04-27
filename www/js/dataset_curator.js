@@ -159,51 +159,19 @@ window.onload=() => {
       },
     },
     methods: {
-      ...Vuex.mapActions(["fetch_tsne_image"]),
-
-      // This will only be called when this.preconfigured is true.
-      // Otherwise fetch_tsne_image from Vuex store is used.
-      get_image_data() {
-        const config = this.display_data.plotly_config;
-        if (this.gene_symbol) {
-          config.gene_symbol = this.gene_symbol;
-        }
+      async draw_image() {
         const dataset_id = this.dataset_id;
         const plot_type = this.display_data.plot_type;
-        // safeguard to load legacy tsne plots (there is config.analysis.id in other code areas in case this needs to be expanded)
-        const analysis_id = this.display_data.plotly_config.analysis_id
-          ? this.display_data.plotly_config.analysis_id
-          : this.analysis;
+        const config = this.display_data.plotly_config;
+        const analysis = config.analysis ? config.analysis.id : null;
+        const analysis_owner_id = this.display_data.user_id;
 
-        // then craziness: https://stackoverflow.com/a/48980526
-        // shift this out when the fetch_tsne_image method is done in Vuex
-        return axios
-          .post(`/api/plot/${dataset_id}/tsne`, {
-              gene: config.gene_symbol,
-              analysis: analysis_id,
-              colorize_by: config.colorize_legend_by,
-              skip_gene_plot: config.skip_gene_plot,
-              plot_by_group: config.plot_by_group,
-              max_columns: config.max_columns,
-              x_axis: config.x_axis,
-              y_axis: config.y_axis,
-              horizontal_legend: config.horizontal_legend,
-              plot_type,
-              analysis_owner_id: this.display_data.user_id,
-              colors: config.colors,
-              order: config.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime(),
-          })
-          .then((response) => {
-            return response.data;
-          });
-      },
-      draw_image() {
-        this.get_image_data().then((data) => {
-          this.display_tsne_is_loading = false;
-          this.display_image_data = data.image;
-        });
+        // This has to be separate from "fetch_tsne_image" because in user/owner displays, different image data may be returned
+        const payload = { ...config, plot_type, analysis, analysis_owner_id };
+        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, payload);
+
+        this.display_tsne_is_loading = false;
+        this.display_image_data = data.image;
       },
     },
   });
@@ -615,14 +583,8 @@ window.onload=() => {
       ...Vuex.mapState(["user", "dataset_id", "default_display_id", "config"]),
       ...Vuex.mapGetters(["user_displays"]),
       get_config_analysis_id() {
-        if (
-          typeof this.config.analysis == "undefined" ||
-          this.config.analysis == null
-        ) {
-          return null;
-        } else {
-          return this.config.analysis.id;
-        }
+        return typeof this.config.analysis == "undefined" ||
+        this.config.analysis == null ? null : this.config.analysis.id;
       },
       user_id() {
         return this.user.id;
@@ -795,7 +757,6 @@ window.onload=() => {
     methods: {
       ...Vuex.mapActions([
         "fetch_owner_displays",
-        "fetch_user_displays",
         "fetch_default_display",
         "update_default_display_id",
       ]),
@@ -1145,18 +1106,22 @@ window.onload=() => {
                 </b-form-group>
 
                 <b-form-group label-align-sm="right" v-if="['scatter', 'violin'].includes(plot_type)">
-                  <b-icon class="float-right" v-if="plot_type === 'scatter'" v-b-tooltip.hover="'Check to convert scatter plot into strip plot'" icon="question-circle-fill"></b-icon>
-                  <b-icon class="float-right" v-if="plot_type === 'violin'" v-b-tooltip.hover="'Check to convert violin plot to a beeswarm plot'" icon="question-circle-fill"></b-icon>
                   <b-form-checkbox v-model='jitter'>
-                    Jitter points
+                    <label class="mb-0" id="jitter">Jitter points</label>
                   </b-form-checkbox>
+                  <b-tooltip target="jitter" triggers="hover">
+                    <span v-if="plot_type === 'scatter'">Check to convert scatter plot into strip plot</span>
+                    <span v-if="plot_type === 'violin'">Check to convert violin plot into beeswarm plot</span>
+                  </b-tooltip>
                 </b-form-group>
 
                 <b-form-group label-align-sm="right">
-                <b-icon class="float-right" v-b-tooltip.hover="'Check to not display legend in plot'" icon="question-circle-fill"></b-icon>
                   <b-form-checkbox v-model='hide_legend'>
-                    Hide Legend
+                    <label class="mb-0" id="hide_legend">Hide Legend</label>
                   </b-form-checkbox>
+                  <b-tooltip target="hide_legend" triggers="hover">
+                    Check to not display legend in plot
+                  </b-tooltip>
                 </b-form-group>
 
                 <!-- vertical lines -->
@@ -1450,7 +1415,7 @@ window.onload=() => {
           dataType: "json",
         });
 
-        if (res && res.success) {
+        if (res?.success) {
           if (this.display_id) {
             this.update_display(payload);
           }
@@ -1607,7 +1572,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["config", "plot_type", "dataset_id"]),
+      ...Vuex.mapState(["config", "plot_type", "dataset_id", "user"]),
     },
     created() {
       // Needed for initial display after first plotting preview
@@ -1659,8 +1624,9 @@ window.onload=() => {
         const config = this.config;
         const plot_type = this.plot_type;
         const dataset_id = this.dataset_id;
-        const analysis_id = this.config.analysis ? this.config.analysis.id : null;
-        this.fetch_tsne_image({ config, plot_type, dataset_id, analysis_id });
+        const analysis = config.analysis ? config.analysis.id : null;
+        const analysis_owner_id = this.user.id;
+        this.fetch_tsne_image({ config, plot_type, dataset_id, analysis, analysis_owner_id });
       },
     },
   });
@@ -1798,11 +1764,11 @@ window.onload=() => {
         this.reverse_palette = this.config.reverse_palette;
     },
     watch: {
-      palette: function (newval) {
+      palette(newval) {
         this.set_color_palette(newval);
         this.update_display();
       },
-      reverse_palette: function (newval) {
+      reverse_palette(newval) {
         this.set_reverse_palette(newval);
         this.update_display();
       },
@@ -2231,15 +2197,11 @@ window.onload=() => {
     computed: {
       ...Vuex.mapState(["dataset_id", "config"]),
       analysis() {
-        if (this.private_or_public === "Public") {
-          return this.public_labels.find(
-            (el) => el.value === this.config.analysis_id
-          );
-        } else {
-          return this.private_labels.find(
-            (el) => el.value === this.config.analysis_id
-          );
-        }
+        return this.private_or_public === "Public" ? this.public_labels.find(
+          (el) => el.value === this.config.analysis_id
+        ) : this.private_labels.find(
+          (el) => el.value === this.config.analysis_id
+        );
       },
       ana_private_or_public() {
         // If an analaysis id is passed,
@@ -2267,11 +2229,7 @@ window.onload=() => {
         });
       },
       analyses() {
-        if (this.private_or_public === "Public") {
-          return this.public_labels;
-        } else {
-          return this.private_labels;
-        }
+        return this.private_or_public === "Public" ? this.public_labels : this.private_labels;
       },
     },
     async created() {
@@ -2309,7 +2267,7 @@ window.onload=() => {
                 <label class="mb-0">X</label>
                 <b-form-select :options='columns' v-model='x_axis' size='sm'>
                   <template slot="first">
-                    <option :value="null"></option>
+                    <option :value=null></option>
                   </template>
                 </b-form-select>
               </b-form-group>
@@ -2319,56 +2277,65 @@ window.onload=() => {
                 <label class="mb-0">Y</label>
                 <b-form-select :options='columns' v-model='y_axis' size='sm'>
                   <template slot="first">
-                  <option value="null"></option>
+                  <option value=null></option>
                   </template>
                 </b-form-select>
               </b-form-group>
 
               <b-form-group label-align-sm="right">
-                <b-icon class="float-right" v-b-tooltip.hover="'Check to enable ability to color by a category'" icon="question-circle-fill"></b-icon>
                 <b-form-checkbox v-model='show_colorized_legend'>
-                  Show colorized legend
+                  <label class="mb-0" id="show_colorized_legend">Show colorized legend</label>
                 </b-form-checkbox>
+                <b-tooltip target="show_colorized_legend" triggers="hover">
+                  Check to enable ability to color by a category
+                </b-tooltip>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend' label-align-sm="right">
+              <b-form-group v-show='show_colorized_legend' label-align-sm="right">
                 <b-icon class="float-right" v-b-tooltip.hover="'Data series for coloring plot'" icon="question-circle-fill"></b-icon>
                 <label class="mb-0">Colorize legend by:</label>
-                <b-form-select :options="columns" v-model='colorize_legend_by' size='sm'>
+                <b-form-select :options="Object.keys(levels)" v-model='colorize_legend_by' size='sm'>
                   <template slot="first">
                     <option :value="null"></option>
                   </template>
                 </b-form-select>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend && colorize_legend_by' label-align-sm="right">
+              <b-form-group v-show='show_colorized_legend && colorize_legend_by' label-align-sm="right">
                 <b-icon class="float-right" v-b-tooltip.hover="'Data series for creating separate plots by individual entities in a group'" icon="question-circle-fill"></b-icon>
                 <label class="mb-0">Plot by group:</label>
-                <b-form-select :options="columns" v-model='plot_by_group' size='sm'>
+                <b-form-select :options="Object.keys(levels)" v-model='plot_by_group' size='sm'>
                   <template slot="first">
                     <option :value="null"></option>
                   </template>
                 </b-form-select>
+                <b-alert :show="plot_by_group && num_plot_by_group_levels >= 10" variant="warning">
+                  Plot generation may be slow if the selected category has a large number of groups.
+                </b-alert>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend && plot_by_group' label-align-sm="right">
+              <b-form-group v-show='show_colorized_legend && plot_by_group' label-align-sm="right">
                 <b-icon class="float-right" v-b-tooltip.hover="'Maximum number of plots per row.  If not provided, all plots will be on one row'" icon="question-circle-fill"></b-icon>
                 <label class="mb-0">Max columns per row:</label>
                 <b-form-input type="number" v-model='max_columns' number size='sm' min="1"></b-form-input>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend && !plot_by_group' label-align-sm="right">
-                <b-icon class="float-right" v-b-tooltip.hover="'Check to skip the gene symbol plot'" icon="question-circle-fill"></b-icon>
+              <b-form-group v-show='show_colorized_legend && !plot_by_group' label-align-sm="right">
                 <b-form-checkbox v-model='skip_gene_plot'>
-                  Skip gene symbol plot
+                  <label class="mb-0" id="skip_gene_plot">Skip gene symbol plot</label>
                 </b-form-checkbox>
+                <b-tooltip target="skip_gene_plot" triggers="hover">
+                  Check to skip the gene symbol plot
+                </b-tooltip>
               </b-form-group>
 
-              <b-form-group v-if='show_colorized_legend' label-align-sm="right">
-                <b-icon class="float-right" v-b-tooltip.hover="'Check to make horizontal legend along the bottom of the plotspace'" icon="question-circle-fill"></b-icon>
+              <b-form-group v-show='show_colorized_legend' label-align-sm="right">
                 <b-form-checkbox v-model='horizontal_legend'>
-                  Place legend under plots
+                  <label class="mb-0" id="horizontal_legend">Place legend under plots</label>
                 </b-form-checkbox>
+                <b-tooltip target="horizontal_legend" triggers="hover">
+                  Check to make horizontal legend along the bottom of the plotspace
+                </b-tooltip>
               </b-form-group>
 
           </b-form-group>
@@ -2380,11 +2347,18 @@ window.onload=() => {
     components: {},
     data() {
       return {
+        // Since the config may not have these values, create so they aren't undefined
         show_colorized_legend: false,
+        horizontal_legend: false,
+        skip_gene_plot: false,
+        plot_by_group: null,
+        max_columns: 4,
+        colorize_legend_by: null,
       };
     },
     computed: {
       ...Vuex.mapState([
+        "user",
         "dataset_id",
         "config",
         "columns",
@@ -2393,46 +2367,6 @@ window.onload=() => {
         "tsne_is_loading",
         "levels",
       ]),
-      colorize_legend_by: {
-        get() {
-          return this.$store.state.config.colorize_legend_by;
-        },
-        set(value) {
-          this.$store.commit("set_colorize_legend_by", value);
-        },
-      },
-      plot_by_group: {
-        get() {
-          return this.$store.state.config.plot_by_group;
-        },
-        set(value) {
-          this.$store.commit("set_plot_by_group", value);
-        },
-      },
-      max_columns: {
-        get() {
-          return this.$store.state.config.max_columns;
-        },
-        set(value) {
-          this.$store.commit("set_max_columns", value);
-        },
-      },
-      skip_gene_plot: {
-        get() {
-          return this.$store.state.config.skip_gene_plot;
-        },
-        set(value) {
-          this.$store.commit("set_skip_gene_plot", value);
-        },
-      },
-      horizontal_legend: {
-        get() {
-          return this.$store.state.config.horizontal_legend;
-        },
-        set(value) {
-          this.$store.commit("set_horizontal_legend", value);
-        },
-      },
       x_axis: {
         get() {
           return this.$store.state.config.x_axis;
@@ -2449,11 +2383,18 @@ window.onload=() => {
           this.$store.commit("set_y_axis", value);
         },
       },
+      num_plot_by_group_levels() {
+        if (this.plot_by_group) {
+          return Object.keys(this.levels[this.plot_by_group]).length;
+        }
+        return -1;
+      }
     },
     created() {
       if ("x_axis" in this.config) this.x_axis = this.config.x_axis;
       if ("y_axis" in this.config) this.y_axis = this.config.y_axis;
       if ("colorize_legend_by" in this.config)
+        this.show_colorized_legend = true;
         this.colorize_legend_by = this.config.colorize_legend_by;
       if ("plot_by_group" in this.config)
         this.plot_by_group = this.config.plot_by_group;
@@ -2468,11 +2409,18 @@ window.onload=() => {
         dataset_id: this.dataset_id,
         analysis: this.config.analysis,
       });
+
+      console.log(this.plot_params_ready());
+      if (this.plot_params_ready()) {
+        console.log("Plot params ready");
+        this.draw_image();
+      }
+
     },
     watch: {
-      show_colorized_legend(val, oldval) {
+      show_colorized_legend(newval, oldval) {
         // if deselected, clear colorize legend select box
-        if (this.show_colorized_legend === false) {
+        if (newval !== true) {
           this.colorize_legend_by = null;
           this.skip_gene_plot = null;
           this.horizontal_legend = null;
@@ -2493,7 +2441,11 @@ window.onload=() => {
                   const group_key = this.plot_by_group;
                   order[group_key] = this.levels[group_key];
               }
-              this.$store.commit("set_order", order);
+
+              // This is to prevent a bug where the levels have not been set yet when loading a display.
+              if (oldval !== null) {
+                this.$store.commit("set_order", order);
+              }
             }
           this.draw_image();
         }
@@ -2527,11 +2479,11 @@ window.onload=() => {
           if (this.colorize_legend_by !== null) {
             // Set order in config so "display-order" will render
             if (newval !== null && this.levels) {
-       const group_key = this.plot_by_group;
+              const group_key = this.plot_by_group;
               // Add separately in case both are same dataseries group
               const colorize_key = this.colorize_legend_by;
-              var order = {};
-       order[group_key] = this.levels[group_key];
+              const order = {};
+              order[group_key] = this.levels[group_key];
               order[colorize_key] = this.levels[colorize_key];
               this.$store.commit("set_order", order);
             }
@@ -2548,6 +2500,7 @@ window.onload=() => {
     methods: {
       ...Vuex.mapActions([
         "fetch_h5ad_info",
+        "fetch_tsne_image",
         "set_image_data",
         "set_success",
         "set_message",
@@ -2555,43 +2508,30 @@ window.onload=() => {
         "set_order",
       ]),
       plot_params_ready() {
-        return this.x_axis && this.y_axis ? true : false;
-      },
-      get_image_data(gene_symbol) {
-        // then craziness: https://stackoverflow.com/a/48980526
-        // shift this out when the fetch_tsne_image method is done in Vuex
-
-        const analysis_id = this.config.analysis ? this.config.analysis.id : null;
-        return axios
-          .post(`/api/plot/${this.dataset_id}/tsne`, {
-              gene: this.config.gene_symbol,
-              analysis: analysis_id,
-              colorize_by: this.colorize_legend_by,
-              horizontal_legend: this.horizontal_legend,
-              skip_gene_plot: this.skip_gene_plot,
-              plot_by_group: this.plot_by_group,
-              max_columns: this.max_columns,
-              x_axis: this.x_axis,
-              y_axis: this.y_axis,
-              plot_type: this.plot_type,
-              analysis_owner_id: this.user_id,
-              colors: this.colors,
-              order: this.config.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime(),
-          })
-          .then((response) => {
-            return response.data;
-          });
+        return this.x_axis && this.x_axis !== "null" && this.y_axis && this.y_axis !== "null";
       },
       draw_image() {
-        this.set_tsne_is_loading(true);
-        this.get_image_data(this.config.gene_symbol).then((data) => {
-          this.set_tsne_is_loading(false);
-          this.set_image_data(data.image);
-          this.set_success(data.success);
-          this.set_message(data.message);
-        });
+        const dataset_id = this.dataset_id;
+        const analysis = this.config.analysis ? this.config.analysis.id : null;
+        const plot_type = this.plot_type;
+        const analysis_owner_id = this.user.id;
+
+        const config = {
+          gene_symbol: this.config.gene_symbol,
+          colorize_legend_by: this.colorize_legend_by,
+          horizontal_legend: this.horizontal_legend,
+          skip_gene_plot: this.skip_gene_plot,
+          plot_by_group: this.plot_by_group,
+          max_columns: this.max_columns,
+          x_axis: this.x_axis,
+          y_axis: this.y_axis,
+          colors: this.colors,
+          order: this.config.order,
+          // helps stop caching issues
+          timestamp: new Date().getTime(),
+        };
+
+        this.fetch_tsne_image({config, plot_type, dataset_id, analysis, analysis_owner_id})
       },
     },
   });
@@ -2934,14 +2874,14 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["plot_type", "chart_data", "config"]),
+      ...Vuex.mapState(["plot_type", "chart_data", "config", "user", "dataset_id"]),
       ...Vuex.mapGetters(["user_display"]),
       is_creating_new_display() {
         return this.display_id === "new";
       },
       is_type_plotly() {
         // handle legacy tsne dynamic plot option
-        var plot_type = this.plot_type;
+        let plot_type = this.plot_type;
         if (plot_type === "tsne_dynamic") {
           plot_type = "tsne/umap_dynamic";
         }
@@ -2972,12 +2912,21 @@ window.onload=() => {
         );
       },
     },
-    created() {
+    async created() {
+      // If user displays not generated (such as refreshing "edit" route page, then generate first)
+      if (! this.user_displays) {
+        const user_id = this.user.id;
+        const dataset_id = this.dataset_id;
+        await this.fetch_user_displays({user_id, dataset_id});
+      }
       const display_data = this.user_display(this.display_id);
       this.set_display_data(display_data);
     },
     methods: {
-      ...Vuex.mapActions(["set_display_data"]),
+      ...Vuex.mapActions([
+      "set_display_data",
+      "fetch_user_displays",
+    ]),
     },
   });
 
@@ -3036,7 +2985,7 @@ window.onload=() => {
       user_displays(state) {
         return state.user_displays.map((display) => {
           return {
-            is_default: state.default_display_id == display.id ? true : false,
+            is_default: state.default_display_id == display.id,
             ...display,
           };
         });
@@ -3044,7 +2993,7 @@ window.onload=() => {
       owner_displays(state) {
         return state.owner_displays.map((display) => {
           return {
-            is_default: state.default_display_id == display.id ? true : false,
+            is_default: state.default_display_id == display.id,
             ...display,
           };
         });
@@ -3436,12 +3385,13 @@ window.onload=() => {
           { cancelToken: cancel_source.token
           }).then((response) => {
             commit('set_available_plot_types', response.data);
-	  }).catch((thrown) => {
-          if (axios.isCancel(thrown)) {
-              console.log('Request canceled:', thrown.message);
-          } else {
-              // handle error
-          }
+	        }).catch((thrown) => {
+            if (axios.isCancel(thrown)) {
+                console.info('Request canceled:', thrown.message);
+            } else {
+                // handle error
+                console.error(thrown);
+            }
         });
       },
       async fetch_h5ad_info({ commit }, payload) {
@@ -3527,29 +3477,23 @@ window.onload=() => {
       },
       async fetch_tsne_image(
         { commit },
-        { config, plot_type, dataset_id, analysis_id }
+        { config, plot_type, dataset_id, analysis, analysis_owner_id }
       ) {
         commit("set_tsne_is_loading", true);
+        const payload = { ...config, plot_type, analysis, analysis_owner_id };
 
-        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, {
-            gene: config.gene_symbol,
-            analysis: analysis_id,
-            colorize_by: config.colorize_legend_by,
-            horizontal_legend: config.horizontal_legend,
-            skip_gene_plot: config.skip_gene_plot,
-            x_axis: config.x_axis,
-            y_axis: config.y_axis,
-            plot_type,
-            plot_by_group: config.plot_by_group,
-            max_columns: config.max_columns,
-            analysis_owner_id: this.user_id,
-            colors: config.colors,
-            order: config.order,
-            // helps stop caching issues
-            timestamp: new Date().getTime(),
-        });
+        const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, payload);
 
+        commit("set_x_axis", config.x_axis);
+        commit("set_y_axis", config.y_axis);
+        commit("set_colorize_legend_by", config.colorize_legend_by);
+        commit("set_horizontal_legend", config.horizontal_legend);
+        commit("set_skip_gene_plot", config.skip_gene_plot);
+        commit("set_plot_by_group", config.plot_by_group);
+        commit("set_max_columns", config.max_columns);
+        commit("set_colors", config.colors);
         commit("set_order", config.order);
+
         commit("set_image_data", data.image);
         commit("set_success", data.success);
         commit("set_message", data.message);

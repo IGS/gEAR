@@ -99,6 +99,10 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
         leftover_cards = len(new_handles) % NUM_HORIZONTAL_COLS
         num_chunks = int(len(new_handles) / NUM_HORIZONTAL_COLS)
 
+        # If number of groups is less than num_cols, they can just be put on a single line
+        if num_chunks == 0:
+           return (new_handles, new_labels)
+
         # Split into relatively equal chumks.
         handles_sublists = np.array_split(np.array(new_handles), num_chunks)
         labels_sublists = np.array_split(np.array(new_labels), num_chunks)
@@ -132,10 +136,10 @@ class TSNEData(Resource):
     def post(self, dataset_id):
         req = request.get_json()
 
-        gene_symbol = req.get('gene', None)
+        gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type', "tsne_static")
         analysis_id = req.get('analysis')
-        colorize_by = req.get('colorize_by')
+        colorize_by = req.get('colorize_legend_by')
         skip_gene_plot = req.get('skip_gene_plot', False)
         plot_by_group = req.get('plot_by_group', None) # One expression plot per group
         max_columns = req.get('max_columns')   # Max number of columns before plotting to a new row
@@ -265,7 +269,6 @@ class TSNEData(Resource):
 
             ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
             if colors is not None and len(colors) > 2:
-                colors = colors
                 adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
 
             elif color_idx_name in adata.obs:

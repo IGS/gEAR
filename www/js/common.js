@@ -15,7 +15,7 @@ const elementsWithTipsList = '[title]:not("path")';
 
 // Do any includes first
 $(document).ready(() => {
-    $('#navigation_bar').load('./include/navigation_bar.html', function() {
+    $('#navigation_bar').load('./include/navigation_bar.html', () => {
         // Load popover info
         load_forgot_password();
     });
@@ -51,6 +51,27 @@ $(document).ready(() => {
 
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
+        const head = document.getElementsByTagName('head')[0];
+        const body = document.getElementsByTagName('body')[0];
+
+        // load analytics
+        const ga_script = document.createElement('script');
+        ga_script.src = "https://www.google-analytics.com/analytics.js";
+        ga_script.async = ""
+        head.append(ga_script)
+
+        window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
+        ga('create', SITE_PREFS['google_analytics_4_measurement_id'], 'auto');
+        ga('set', 'anonymizeIp', true);
+        ga('set', 'transport', 'beacon');
+        ga('send', 'pageview')
+
+        // Load plugins, if any
+        for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
+            if (plugin_page_names.includes(page_name)) {
+                var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
+            }
+        }
 
         let page_name = location.pathname;
         if (page_name == "/") {
@@ -61,8 +82,8 @@ $(document).ready(() => {
         for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
             if (plugin_page_names.includes(page_name)) {
                 var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
-                var head = document.getElementsByTagName('head')[0];
-                var body = document.getElementsByTagName('body')[0];
+                head = document.getElementsByTagName('head')[0];
+                body = document.getElementsByTagName('body')[0];
 
                 // create a hidden element at the end of the document and put it there
                 var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
@@ -165,12 +186,12 @@ function common_datetime() {
 
 function copyToClipboard(text) {
     // https://stackoverflow.com/a/59594066
-    if (window.clipboardData && window.clipboardData.setData) {
+    if (window.clipboardData?.setData) {
         // IE specific code path to prevent textarea being shown while dialog is visible.
         return clipboardData.setData("Text", text);
 
     } else if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
-        var textarea = document.createElement("textarea");
+        const textarea = document.createElement("textarea");
         textarea.textContent = text;
         textarea.style.position = "fixed";  // Prevent scrolling to bottom of page in MS Edge.
         document.body.appendChild(textarea);
