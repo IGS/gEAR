@@ -51,8 +51,8 @@ $(document).ready(() => {
 
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
-        const head = document.getElementsByTagName('head')[0];
-        const body = document.getElementsByTagName('body')[0];
+        let head = document.getElementsByTagName('head')[0];
+        let body = document.getElementsByTagName('body')[0];
 
         // load analytics
         const ga_script = document.createElement('script');

@@ -320,7 +320,7 @@ class DatasetPanel extends Dataset {
     }
 
     // Generate single-gene preview images (Plotly) or plots
-    draw_preview_images(display) {
+    async draw_preview_images(display) {
         // check if config has been stringified
         const config =
             typeof display.plotly_config == "string"
@@ -341,42 +341,41 @@ class DatasetPanel extends Dataset {
                 display.plot_type === "tsne/umap_dynamic"
             ) {
                 const d = new PlotlyDisplay(display);
-                d.get_data(gene_symbol)
-                    .then(({ data }) => {
-                        const { plot_json, plot_config } = data;
-                        Plotly.toImage(
-                            { ...plot_json, ...{static_plot:true} },
-                            { height: 500, width: 500 }
-                        )
-                    })
-                    .then((url) => {
-                            $(`#modal-display-img-${display.id}`).attr("src", url);
-                        })
-                    .catch((err) => {
-                        if (err.name == "AbortError") {
-                            return;
-                        }
-                        console.error(err);
-                        throw err;
-                    });
-            } else if (display.plot_type === "svg") {
-                const target = `modal-display-${display.id}`;
-                const d = new SVGDisplay(display, null, null, target);
-                d.get_data(gene_symbol)
-                .then(({ data }) => {
-                    d.draw_chart(data);
-                })
-                .catch((err) => {
+                try {
+                    const { data } = await d.get_data(gene_symbol);
+                    const { plot_json } = data;
+                    const url = await Plotly.toImage(
+                                    { ...plot_json, ...{static_plot:true} },
+                                    { height: 500, width: 500 }
+                                );
+                    $(`#modal-display-img-${display.id}`).attr("src", url);
+                } catch (err) {
                     if (err.name == "AbortError") {
+                        console.info(err.message);
                         return;
                     }
-                    console.error(err);
+                    console.error(err.message);
                     throw err;
-                });
+                }
+
+            } else if (display.plot_type === "svg") {
+                const target = `modal-display-${display.id}`;
+                const d = new SVGDisplay(display, null, target);
+                try {
+                    const { data } = await d.get_data(gene_symbol);
+                    d.draw_chart(data);
+                } catch (err) {
+                    if (err.name == "AbortError") {
+                        console.info(err.message);
+                        return;
+                    }
+                    console.error(err.message);
+                    throw err;
+                }
             } else {
                 // tsne
                 const target = `modal-display-${display.id}`;
-                const d = new TsneDisplay(display, gene_symbol, null, target);
+                const d = new TsneDisplay(display, gene_symbol, target);
                 d.draw(gene_symbol);
             }
             $(`#modal-display-${display.id}-loading`).hide();
@@ -387,7 +386,7 @@ class DatasetPanel extends Dataset {
     }
 
     // Generate multigene preview plots
-    draw_preview_images_mg(display) {
+    async draw_preview_images_mg(display) {
         // check if config has been stringified
         const config =
             typeof display.plotly_config === "string"
@@ -400,23 +399,22 @@ class DatasetPanel extends Dataset {
         // Draw preview image
         if (gene_symbols) {
             const d = new MultigeneDisplay(display, gene_symbols);
-            d.get_data(gene_symbols)
-                .then(({ data }) => {
-                    const { plot_json } = data;
-                    Plotly.toImage(
-                        { ...plot_json, ...{static_plot:true} },
-                        { height: 500, width: 500 })
-                })
-                .then((url) => {
-                    $(`#modal-display-img-${display.id}`).attr("src", url);
-                })
-                .catch((err) => {
-                    if (err.name == "AbortError") {
-                        return;
-                    }
-                    console.error(err);
-                    throw err;
-                });
+            try {
+                const { data } = await d.get_data(gene_symbols);
+                const { plot_json } = data;
+                const url = await Plotly.toImage(
+                                { ...plot_json, ...{static_plot:true} },
+                                { height: 500, width: 500 }
+                            );
+                $(`#modal-display-img-${display.id}`).attr("src", url);
+            } catch (err) {
+                if (err.name == "AbortError") {
+                    console.info(err.message);
+                    return;
+                }
+                console.error(err.message);
+                throw err;
+            }
             $(`#modal-display-${display.id}-loading`).hide();
         } else {
             // Hide the container box for the single-gene plot

@@ -30,7 +30,7 @@ const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_
 
 const search_result_postselection_functions = [];
 
-window.onload=() => {
+window.onload= async () => {
     // check if the user is already logged in
     check_for_login();
 
@@ -60,7 +60,7 @@ window.onload=() => {
 
         if (document.URL.includes("index.html") ||
         window.location.pathname == '/' ) {
-            load_layouts();
+            await load_layouts();
         }
     }
 
@@ -419,7 +419,7 @@ function validate_permalink(scope) {
     });
 }
 
-function load_layouts() {
+async function load_layouts() {
     const session_id = Cookies.get('gear_session_id');
     const layout_share_id = getUrlParameter('layout_id');
 
@@ -429,7 +429,7 @@ function load_layouts() {
     }
 
     //organize user and domain profiles in a tree format
-    $.ajax({
+    await $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
         //async: false,

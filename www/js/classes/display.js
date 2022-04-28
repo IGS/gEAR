@@ -89,7 +89,7 @@ class Display {
 
                 while (attempts_left) {
                     var draw_success = this.draw_chart(data);
-                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    //(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
                     attempts_left -= 1;
 
                     // if it didn't work, wait one second and try again
@@ -118,7 +118,6 @@ class Display {
             this.show_error(message);
             return;
         }
-        Promise.resolve();
     }
 
     /**
