@@ -18,6 +18,9 @@ class DatasetCollectionPanel {
         if (!this.datasets) {
             this.datasets = new Array();
         }
+
+        this.controller = new AbortController(); // AbortController for fetch (axios) requests
+
     }
 
     load_frames({
@@ -41,7 +44,7 @@ class DatasetCollectionPanel {
             type: "POST",
             async: false, // Adding so datasets are updated before the set_layout() AJAX call happens
             data: {
-                session_id: session_id,
+                session_id,
                 permalink_share_id: dataset_id,
                 exclude_pending: 1,
                 default_domain: this.layout_label,
@@ -52,8 +55,8 @@ class DatasetCollectionPanel {
             $.each(data["datasets"], (_i, ds) => {
                 // Choose single-gene or multigene grid-width
                 const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
-                const dsp = new DatasetPanel(ds, grid_width, multigene, projection);
 
+                const dsp = new DatasetPanel(ds, grid_width, multigene, projection, this.controller);
 
                 if (dsp.load_status == "completed") {
                     // reformat the date
@@ -88,6 +91,10 @@ class DatasetCollectionPanel {
     reset() {
         this.datasets = [];
         $("#dataset_grid").empty();
+
+        this.controller.abort("New set of frames loaded. No need to draw previous plots"); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        this.controller = new AbortController(); // Create new controller for new set of frames
+
     }
 
     set_layout(

@@ -20,6 +20,7 @@ let projection = false;
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
+const controller = dataset_collection_panel.controller;
 
 const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
 const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
@@ -351,7 +352,7 @@ $(document).on('keydown', 'input#user_new_pass_1', function(){
 });
 
 // Disable Save password button until 1st and 2nd inputs match
-$(document).on('keyup', 'input#user_new_pass_2', function(){
+$(document).on('keyup', 'input#user_new_pass_2', () => {
     const pass_1 = $('input#user_new_pass_1').val();
 
     if ( $('input#user_new_pass_2').val() == pass_1 ) {
@@ -362,7 +363,7 @@ $(document).on('keyup', 'input#user_new_pass_2', function(){
 });
 
 // Submit new password
-$(document).on('click', 'button#save_user_new_pass', function(){
+$(document).on('click', 'button#save_user_new_pass', () => {
     // Hide password form and show waiting
     $('#valid_forgot_pass_modal_body_c').hide();
     $('#forgot_pass_modal_footer').hide();

@@ -33,7 +33,7 @@ $(document).ready(() => {
         $('a#main_logo').css('background-image', `url("../img/by_domain/${SITE_PREFS['domain_label']}/logo_standard.png")`);
 
         const title_page_root = `./include/by_domain/${SITE_PREFS['domain_label']}/page_title_root.html`;
-        $.get(title_page_root, function(data){
+        $.get(title_page_root, (data) => {
             $('title').html(`${data} - ${$('title').html()}`);
         });
 
@@ -67,15 +67,15 @@ $(document).ready(() => {
         ga('send', 'pageview')
 
         // Load plugins, if any
+        let page_name = location.pathname;
+        if (page_name == "/") {
+            page_name = 'index.html';
+        }
+
         for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
             if (plugin_page_names.includes(page_name)) {
                 var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
             }
-        }
-
-        let page_name = location.pathname;
-        if (page_name == "/") {
-            page_name = 'index.html';
         }
 
         // Load plugins, if any

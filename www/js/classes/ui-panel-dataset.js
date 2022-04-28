@@ -22,7 +22,8 @@ class DatasetPanel extends Dataset {
         { grid_position, ...args },
         grid_width,
         multigene = false,
-        projection = false
+        projection = false,
+        controller = null
     ) {
         super(args);
         this.grid_position = grid_position;
@@ -41,13 +42,19 @@ class DatasetPanel extends Dataset {
         this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
+        this.controller = controller;   // AbortController
     }
 
     // Call API to return observation information on this dataset
     fetch_h5ad_info (dataset_id, analysis) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         const base = `./api/h5ad/${dataset_id}`;
         const query = analysis ? `?analysis=${analysis.id}` : '';
-        return axios.get(`${base}${query}`);
+        return axios.get(`${base}${query}`, other_opts);
     }
 
     get_dataset_displays(user_id, dataset_id) {
@@ -95,6 +102,8 @@ class DatasetPanel extends Dataset {
         }
 
         data.primary_key = this.primary_key;
+        data.controller = this.controller;
+        data.projection_csv = this.projection_csv;
 
         let display;
         if (
@@ -106,18 +115,18 @@ class DatasetPanel extends Dataset {
             data.plot_type === "tsne_dynamic" || // legacy
             data.plot_type === "tsne/umap_dynamic"
         ) {
-            display = new PlotlyDisplay(data, this.projection_csv);
+            display = new PlotlyDisplay(data);
         } else if (data.plot_type === "svg") {
-            display = new SVGDisplay(data, this.grid_width, this.projection_csv);
+            display = new SVGDisplay(data, this.grid_width);
         } else if (
             data.plot_type === "tsne" ||
             data.plot_type === "tsne_static" ||
             data.plot_type === "umap_static" ||
             data.plot_type === "pca_static"
         ) {
-            display = new TsneDisplay(data, gene_symbol, this.projection_csv);
+            display = new TsneDisplay(data, gene_symbol);
         } else if (data.plot_type === "epiviz") {
-            display = new EpiVizDisplay(data, gene_symbol, this.projection_csv);
+            display = new EpiVizDisplay(data, gene_symbol);
         }
         this.display = display;
 
@@ -137,6 +146,8 @@ class DatasetPanel extends Dataset {
         }
 
         data.primary_key = this.primary_key;
+        data.controller = this.controller;
+        data.projection_csv = this.projection_csv;
 
         let display;
         if (
@@ -146,7 +157,7 @@ class DatasetPanel extends Dataset {
             data.plot_type === "mg_violin" ||
             data.plot_type === "volcano"
         ) {
-            display = new MultigeneDisplay(data, gene_symbols, this.projection_csv);
+            display = new MultigeneDisplay(data, gene_symbols);
         }
         this.display = display;
 
@@ -238,6 +249,9 @@ class DatasetPanel extends Dataset {
                 const res = await this.fetch_h5ad_info(this.id, undefined )
                 this.h5ad_info = res.data;
             } catch (err) {
+                if (err.name == "AbortError") {
+                    return;
+                }
                 this.show_error(
                     "Could not retrieve observation info for this dataset."
                 );
@@ -314,6 +328,8 @@ class DatasetPanel extends Dataset {
                 : display.plotly_config;
         const gene_symbol = config.gene_symbol;
 
+        display.controller = this.controller;
+
         if (gene_symbol) {
             if (
                 display.plot_type === "violin" ||
@@ -325,20 +341,37 @@ class DatasetPanel extends Dataset {
                 display.plot_type === "tsne/umap_dynamic"
             ) {
                 const d = new PlotlyDisplay(display);
-                d.get_data(gene_symbol).then(({ data }) => {
-                    const { plot_json, plot_config } = data;
-                    Plotly.toImage(
-                        { ...plot_json, ...{static_plot:true} },
-                        { height: 500, width: 500 }
-                    ).then((url) => {
-                        $(`#modal-display-img-${display.id}`).attr("src", url);
+                d.get_data(gene_symbol)
+                    .then(({ data }) => {
+                        const { plot_json, plot_config } = data;
+                        Plotly.toImage(
+                            { ...plot_json, ...{static_plot:true} },
+                            { height: 500, width: 500 }
+                        )
+                    })
+                    .then((url) => {
+                            $(`#modal-display-img-${display.id}`).attr("src", url);
+                        })
+                    .catch((err) => {
+                        if (err.name == "AbortError") {
+                            return;
+                        }
+                        console.error(err);
+                        throw err;
                     });
-                });
             } else if (display.plot_type === "svg") {
                 const target = `modal-display-${display.id}`;
                 const d = new SVGDisplay(display, null, null, target);
-                d.get_data(gene_symbol).then(({ data }) => {
+                d.get_data(gene_symbol)
+                .then(({ data }) => {
                     d.draw_chart(data);
+                })
+                .catch((err) => {
+                    if (err.name == "AbortError") {
+                        return;
+                    }
+                    console.error(err);
+                    throw err;
                 });
             } else {
                 // tsne
@@ -361,18 +394,29 @@ class DatasetPanel extends Dataset {
                 ? JSON.parse(display.plotly_config)
                 : display.plotly_config;
         const gene_symbols = config.gene_symbols;
+
+        display.controller = this.controller;
+
         // Draw preview image
         if (gene_symbols) {
             const d = new MultigeneDisplay(display, gene_symbols);
-            d.get_data(gene_symbols).then(({ data }) => {
-                const { plot_json } = data;
-                Plotly.toImage(
-                    { ...plot_json, ...{static_plot:true} },
-                    { height: 500, width: 500 }
-                ).then((url) => {
+            d.get_data(gene_symbols)
+                .then(({ data }) => {
+                    const { plot_json } = data;
+                    Plotly.toImage(
+                        { ...plot_json, ...{static_plot:true} },
+                        { height: 500, width: 500 })
+                })
+                .then((url) => {
                     $(`#modal-display-img-${display.id}`).attr("src", url);
+                })
+                .catch((err) => {
+                    if (err.name == "AbortError") {
+                        return;
+                    }
+                    console.error(err);
+                    throw err;
                 });
-            });
             $(`#modal-display-${display.id}-loading`).hide();
         } else {
             // Hide the container box for the single-gene plot
@@ -525,17 +569,26 @@ class DatasetPanel extends Dataset {
             input_value: projection_source,
             is_pca,
         };
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         let message = "There was an error projecting patterns onto this dataset.";
         try {
             const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
-                ...payload,
-            });
+                ...payload
+            }, other_opts
+            );
             if (data.success < 1) {
                 message = data.message;
                 throw data.message; // will be caught below
             }
             this.projection_csv = data.csv_file;
         } catch (e) {
+            if (e.name == "AbortError") {
+                return;
+            }
             this.show_error(message);
             throw message
         }

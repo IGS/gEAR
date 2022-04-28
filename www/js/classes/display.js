@@ -10,7 +10,9 @@ class Display {
         user_id,
         label,
         plot_type,
-        primary_key
+        primary_key,
+        projection_csv = null,
+        controller = null,
     }) {
         this.id = id;
         this.dataset_id = dataset_id;
@@ -21,6 +23,8 @@ class Display {
         this.data = null;
         this.first_draw = true; // Keep track of if this is the original draw so that effects are not doubly applied.
         this.zoomed = false;
+        this.projection_csv = projection_csv;   // Maybe use eventually but I don't think we can project on Epiviz displays
+        this.controller = controller;   // Abort controller for this display
     }
     zoom_in() {
         // data is already fetched, so all we need to do
@@ -68,41 +72,53 @@ class Display {
      */
     async draw(gene_symbol) {
         this.gene_symbol = gene_symbol;
-        const {
-            data
-        } = await this.get_data(gene_symbol);
-        if (data.success === -1) {
-            this.show_error(data.message);
-            return;
-        }
-        this.data = data;
-        if (this.zoomed) {
-            this.draw_zoomed();
-        } else {
-            let attempts_left = 3;
+        let message = "There was an error drawing the plot.";
 
-            while (attempts_left) {
-                var draw_success = this.draw_chart(data);
-                //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
-                attempts_left -= 1;
+        try {
+            const { data } = await this.get_data(gene_symbol);
+            if (data.success === -1) {
+                message = data.message;
+                throw e;
+            }
 
-                // if it didn't work, wait one second and try again
-                if (draw_success) {
-                    attempts_left = 0;
-                } else if (attempts_left) {
-                    // else the scope is lost in the anon function below
-                    var that = this;
-                    setTimeout(
-                        () => {
-                            draw_success = that.draw_chart(data);
-                            attempts_left -= 1;
-                        }, 1000);
+            this.data = data;
+            if (this.zoomed) {
+                this.draw_zoomed();
+            } else {
+                let attempts_left = 3;
+
+                while (attempts_left) {
+                    var draw_success = this.draw_chart(data);
+                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    attempts_left -= 1;
+
+                    // if it didn't work, wait one second and try again
+                    if (draw_success) {
+                        attempts_left = 0;
+                    } else if (attempts_left) {
+                        // else the scope is lost in the anon function below
+                        var that = this;
+                        setTimeout(
+                            () => {
+                                draw_success = that.draw_chart(data);
+                                attempts_left -= 1;
+                            }, 1000);
+                    }
                 }
             }
+            // Exit status 2 is status to show plot but append warning message
+            if (data.message && data.success === 2)
+                this.show_warning(this.data.message);
+
+        } catch (e) {
+            if (e.name == "AbortError") {
+                console.info(e.message);
+                return;
+            }
+            this.show_error(message);
+            return;
         }
-        // Exit status 2 is status to show plot but append warning message
-        if (data.message && data.success === 2)
-            this.show_warning(this.data.message);
+        Promise.resolve();
     }
 
     /**
@@ -111,42 +127,53 @@ class Display {
      */
     async draw_mg(gene_symbols) {
         this.gene_symbols = gene_symbols;
-        const {
-            data
-        } = await this.get_data(gene_symbols);
-        if (data.success === -1) {
-            this.show_error(data.message);
-            return;
-        }
-        this.data = data;
-        if (this.zoomed) {
-            this.draw_zoomed();
-        } else {
-            let attempts_left = 3;
+        let message = "There was an error drawing the plot.";
 
-            while (attempts_left) {
-                var draw_success = this.draw_chart(data);
-                //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
-                attempts_left -= 1;
+        try {
+            const { data } = await this.get_data(gene_symbol);
+            if (data.success === -1) {
+                message = data.message;
+                throw e;
+            }
 
-                // if it didn't work, wait one second and try again
-                if (draw_success) {
-                    attempts_left = 0;
-                } else if (attempts_left) {
-                    // else the scope is lost in the anon function below
-                    var that = this;
-                    setTimeout(
-                        () => {
-                            draw_success = that.draw_chart(data);
-                            attempts_left -= 1;
-                        }, 1000);
+            this.data = data;
+            if (this.zoomed) {
+                this.draw_zoomed();
+            } else {
+                let attempts_left = 3;
+
+                while (attempts_left) {
+                    var draw_success = this.draw_chart(data);
+                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    attempts_left -= 1;
+
+                    // if it didn't work, wait one second and try again
+                    if (draw_success) {
+                        attempts_left = 0;
+                    } else if (attempts_left) {
+                        // else the scope is lost in the anon function below
+                        var that = this;
+                        setTimeout(
+                            () => {
+                                draw_success = that.draw_chart(data);
+                                attempts_left -= 1;
+                            }, 1000);
+                    }
                 }
             }
+            // Exit status 2 is status to show plot but append warning message
+            if (data.message && data.success === 2)
+                this.show_warning(this.data.message);
+        } catch (e) {
+            if (e.name == "AbortError") {
+                console.info(e.message);
+                return;
+            }
+            this.show_error(message);
+            return;
         }
-        // Exit status 2 is status to show plot but append warning message
-        if (data.message && data.success === 2)
-            this.show_warning(this.data.message);
     }
+
     /**
      * Hides the display container
      */
@@ -212,18 +239,16 @@ class EpiVizDisplay extends Display {
      * the server for data, but query the server for the image.
      * @param {Object} Data - Display data
      * @param {string} gene_symbol - Gene symbol to visualize
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, gene_symbol, projection_csv, target) {
+    }, gene_symbol, target) {
         super(args);
         const config = plotly_config;
         this.gene_symbol = gene_symbol;
         this.econfig = config;
         this.extendRangeRatio = 10;
-        this.projection_csv = projection_csv;   // Maybe use eventually but I don't think we can project on Epiviz displays
 
         const genes_track = plotly_config.tracks["EPIVIZ-GENES-TRACK"];
         if (genes_track.length > 0) {
@@ -242,9 +267,14 @@ class EpiVizDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         const base = `/api/plot/${this.dataset_id}/epiviz`;
         const query = `?gene=${gene_symbol}&genome=${this.genome}`;
-        return axios.get(`${base}${query}`);
+        return axios.get(`${base}${query}`, other_opts);
         // return null;
     }
 
@@ -357,12 +387,11 @@ class PlotlyDisplay extends Display {
     /**
      * Initialize plotly display.
      * @param {Object} Data - Data used to draw violin, bar, or line.
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, projection_csv) {
+    }) {
         super(args);
         const {
             x_axis,
@@ -414,7 +443,6 @@ class PlotlyDisplay extends Display {
         this.reverse_palette = reverse_palette;
         this.order = order;
         this.analysis = analysis;
-        this.projection_csv = projection_csv;
     }
     clear_display() {
         $(`#dataset_${this.primary_key}_h5ad`).remove();
@@ -428,6 +456,11 @@ class PlotlyDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         return axios.post(`/api/plot/${this.dataset_id}`, {
             plot_type: this.plot_type,
             analysis_owner_id: this.user_id,
@@ -457,7 +490,7 @@ class PlotlyDisplay extends Display {
             order: this.order,
             analysis: this.analysis,
             projection_csv: this.projection_csv
-        });
+        }, other_opts);
     }
     /**
      * Draw chart.
@@ -579,12 +612,11 @@ class MultigeneDisplay extends Display {
      * Initialize dash display.
      * @param {Object} Data - Data used to draw any multigene plot
      * @param {Array} gene_symbols - Array of gene symbols
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, gene_symbols, projection_csv) {
+    }, gene_symbols) {
         super(args);
         const {
             primary_col,
@@ -647,7 +679,6 @@ class MultigeneDisplay extends Display {
         this.plot_title = plot_title;
         this.legend_title = legend_title;
         this.analysis = analysis;
-        this.projection_csv = projection_csv;
     }
     clear_display() {
         $(`#dataset_${this.primary_key}_mg`).remove();
@@ -662,6 +693,11 @@ class MultigeneDisplay extends Display {
      * @param {string} gene_symbols - Gene symbols to visualize.
      */
     async get_data(gene_symbols) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         return axios.post(`/api/plot/${this.dataset_id}/mg_dash`, {
             gene_symbols,
             analysis: this.analysis,
@@ -696,7 +732,7 @@ class MultigeneDisplay extends Display {
             plot_title: this.plot_title,
             legend_title: this.legend_title,
             projection_csv: this.projection_csv,
-        });
+        }, other_opts);
     }
     /**
      * Draw chart.
@@ -829,15 +865,13 @@ class SVGDisplay extends Display {
      * Initialize SVG
      * @param {Object} data - SVG display data
      * @param {number} grid_width - UI Panel width
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, grid_width, projection_csv, target) {
+    }, grid_width, target) {
         super(args);
         this.grid_width = grid_width;
-        this.projection_csv = projection_csv;
 
         this.target = target ? target : `dataset_${this.primary_key}`;
 
@@ -879,11 +913,16 @@ class SVGDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         let url = `/api/plot/${this.dataset_id}/svg?gene=${gene_symbol}`;
         if (this.projection_csv) {
             url += `&projection_csv=${this.projection_csv}`;
         }
-        return axios.get(url);
+        return axios.get(url, other_opts);
     }
     /**
      * Fetch the svg files from the server and cache them.
@@ -1139,8 +1178,7 @@ class SVGDisplay extends Display {
      * @param {object} data - SVG data
      */
     draw_legend(data, zoomed = false) {
-        let target;
-        target = zoomed ? `dataset_${this.primary_key}_svg_cc_zoomed` : `${this.target}_svg_c`;
+        const target = zoomed ? `dataset_${this.primary_key}_svg_cc_zoomed` : `${this.target}_svg_c`;
         const node = document.getElementById(target);
         // Create our legend svg
         const legend = d3
@@ -1346,9 +1384,8 @@ class TsneDisplay extends Display {
      * the server for data, but query the server for the image.
      * @param {Object} Data - Display data
      * @param {string} gene_symbol - Gene symbol to visualize
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
-    constructor({ plotly_config, ...args }, gene_symbol, projection_csv, target) {
+    constructor({ plotly_config, ...args }, gene_symbol, target) {
         super(args);
         const config = plotly_config;
         this.gene_symbol = gene_symbol;
@@ -1363,8 +1400,6 @@ class TsneDisplay extends Display {
         this.x_axis = config.x_axis;
         this.y_axis = config.y_axis;
 
-        this.projection_csv = projection_csv;
-
         this.target = target ? target : `dataset_${this.primary_key}`;
     }
     /**
@@ -1374,6 +1409,10 @@ class TsneDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
         return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
             gene_symbol,
             analysis: this.analysis_id,
@@ -1392,7 +1431,7 @@ class TsneDisplay extends Display {
             // helps stop caching issues
             timestamp: new Date().getTime(),
             projection_csv: this.projection_csv
-        });
+        }, other_opts);
     }
 
     draw_zoomed() {
