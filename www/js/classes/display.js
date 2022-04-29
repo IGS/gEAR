@@ -111,8 +111,8 @@ class Display {
                 this.show_warning(this.data.message);
 
         } catch (e) {
-            if (e.name == "AbortError") {
-                console.info(e.message);
+            if (e.name == "CanceledError") {
+                console.info("display draw canceled for previous request");
                 return;
             }
             this.show_error(message);
@@ -129,7 +129,7 @@ class Display {
         let message = "There was an error drawing the plot.";
 
         try {
-            const { data } = await this.get_data(gene_symbol);
+            const { data } = await this.get_data(gene_symbols);
             if (data.success === -1) {
                 message = data.message;
                 throw e;
@@ -164,8 +164,8 @@ class Display {
             if (data.message && data.success === 2)
                 this.show_warning(this.data.message);
         } catch (e) {
-            if (e.name == "AbortError") {
-                console.info(e.message);
+            if (e.name == "CanceledError") {
+                console.info("display multigene draw canceled for previous request");
                 return;
             }
             this.show_error(message);

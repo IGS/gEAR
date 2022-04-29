@@ -963,7 +963,12 @@ $("#projection_search_form").submit((event) => {
         select_search_result(first_thing, draw_display=false);
         set_scrollbar_props();
 
+        dataset_collection_panel.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        dataset_collection_panel.controller = new AbortController(); // Create new controller for new set of frames
+
+
         dataset_collection_panel.datasets.forEach(dataset => {
+            dataset.controller = dataset_collection_panel.controller;   // Replace the aborted controller with the new one
             dataset.run_projectR(projection_source, is_pca)
                 .then(() => {
 

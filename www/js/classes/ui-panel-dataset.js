@@ -237,9 +237,7 @@ class DatasetPanel extends Dataset {
         // For datasets with no h5ad (like Epiviz), we cannot call the multigene API to create a display
         // So return an explanation for this.
         if (!this.has_h5ad) {
-            this.show_error(
-                "This dataset type does not currently support curated multigene displays."
-            );
+            this.show_error("This dataset type does not currently support curated multigene displays.");
             return;
         }
 
@@ -249,19 +247,16 @@ class DatasetPanel extends Dataset {
                 const res = await this.fetch_h5ad_info(this.id, undefined )
                 this.h5ad_info = res.data;
             } catch (err) {
-                if (err.name == "AbortError") {
+                if (err.name == "CanceledError") {
+                    console.info("Canceled fetching h5ad info for previous request");
                     return;
                 }
-                this.show_error(
-                    "Could not retrieve observation info for this dataset."
-                );
+                this.show_error("Could not retrieve observation info for this dataset.");
                 return;
             }
         }
         if (!Object.keys(this.h5ad_info.obs_levels).length) {
-            this.show_error(
-                "This dataset does not have any categorical observations to plot from."
-            );
+            this.show_error("This dataset does not have any categorical observations to plot from.");
             return;
         }
 
@@ -350,8 +345,8 @@ class DatasetPanel extends Dataset {
                                 );
                     $(`#modal-display-img-${display.id}`).attr("src", url);
                 } catch (err) {
-                    if (err.name == "AbortError") {
-                        console.info(err.message);
+                    if (err.name == "CanceledError") {
+                        console.info("Canceled fetching Plotly preview image for previous request");
                         return;
                     }
                     console.error(err.message);
@@ -365,8 +360,8 @@ class DatasetPanel extends Dataset {
                     const { data } = await d.get_data(gene_symbol);
                     d.draw_chart(data);
                 } catch (err) {
-                    if (err.name == "AbortError") {
-                        console.info(err.message);
+                    if (err.name == "CanceledError") {
+                        console.info("Canceled fetching SVG preview image for previous request");
                         return;
                     }
                     console.error(err.message);
@@ -408,8 +403,8 @@ class DatasetPanel extends Dataset {
                             );
                 $(`#modal-display-img-${display.id}`).attr("src", url);
             } catch (err) {
-                if (err.name == "AbortError") {
-                    console.info(err.message);
+                if (err.name == "CanceledError") {
+                    console.info("Canceled fetching multigene preview image for previous request");
                     return;
                 }
                 console.error(err.message);
@@ -584,7 +579,8 @@ class DatasetPanel extends Dataset {
             }
             this.projection_csv = data.csv_file;
         } catch (e) {
-            if (e.name == "AbortError") {
+            if (e.name == "CanceledError") {
+                console.info("Canceled previous projectR request.");
                 return;
             }
             this.show_error(message);
