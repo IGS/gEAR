@@ -8,7 +8,7 @@ The base version of R installed on Ubuntu Bionic (18.04) is not a high enough ve
 
 ## Installing R
 
-Run `sudo sh ~jorvis/git/gEAR/docker/install_bioc.sh` to install R, Bioconductor, and projectR
+Run `sudo sh <gEAR\_git\_root>/docker/install_bioc.sh` to install R, Bioconductor, and projectR
 
 To ensure R's shared libraries are found create a file "libR.conf" in /etc/ld.so.conf.d and add the following contents:
 
@@ -21,4 +21,4 @@ Then run `sudo ldconfig` to cache the shared libraries.  You can confirm shared 
 
 ## Installing rpy2
 
-`/opt/Python-3.7.3/bin/pip3 install rpy2`
+`<python\_bin>/pip3 install rpy2`
