@@ -1,13 +1,13 @@
 ## Overview
 
 These are instructions for setting up the Python environment for Python
-environment, tested on Ubuntu 21.10.  Why not virtualenv or any
+environment, tested on Ubuntu 22.04.  Why not virtualenv or any
 other isolated python environment?  You could, but for a committed
 webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
 
     $ sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
-    $ sudo apt install libreadline-gplv2-dev libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
+    $ sudo apt install libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
 
     $ export PYTHONV=3.10.4
     $ export PYTHON_MINORV=3.10
@@ -70,7 +70,8 @@ Scanpy (or dependencies) assumes it can write in several directories which the w
     $ find ./ -name __pycache__ -exec chmod 777 {} \;
 
 Diffxpy (v0.7.4) is used in the multigene curator, but their version does not allow for free-ordering of conditions (for volcano plots).  I forked their code (adkinsrs/diffxpy), made the fix, and installed
-    $ sudo /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021
+    $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021
 
-
+The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
+    $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
 
