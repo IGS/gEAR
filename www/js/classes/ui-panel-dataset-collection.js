@@ -19,8 +19,6 @@ class DatasetCollectionPanel {
             this.datasets = new Array();
         }
 
-        this.controller = new AbortController(); // AbortController for fetch (axios) requests
-
     }
 
     load_frames({
@@ -56,6 +54,7 @@ class DatasetCollectionPanel {
                 // Choose single-gene or multigene grid-width
                 const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
 
+                this.reset_abort_controller();
                 const dsp = new DatasetPanel(ds, grid_width, multigene, projection, this.controller);
 
                 if (dsp.load_status == "completed") {
@@ -90,10 +89,18 @@ class DatasetCollectionPanel {
     reset() {
         this.datasets = [];
         $("#dataset_grid").empty();
+        this.reset_abort_controller();
+    }
 
-        this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+    reset_abort_controller() {
+        if (this.controller) {
+            this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        }
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+        for (const dataset of this.datasets) {
+            dataset.controller = this.controller;
+        }
     }
 
     set_layout(
@@ -158,11 +165,9 @@ class DatasetCollectionPanel {
 
     // Single-gene displays
     update_by_search_result(entry) {
-        this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
-        this.controller = new AbortController(); // Create new controller for new set of frames
+        this.reset_abort_controller();
 
         for (const dataset of this.datasets) {
-            dataset.controller = this.controller;   // Replace the aborted controller with the new one
             if (
                 typeof entry !== "undefined" &&
                 dataset.organism_id in entry.by_organism
@@ -181,11 +186,9 @@ class DatasetCollectionPanel {
     // Multigene displays
     // Only executes in "gene" mode
     update_by_all_results(entries) {
-        this.controller.abort("New set of genes to plot. No need to draw previous plots"); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
-        this.controller = new AbortController(); // Create new controller for new set of frames
+        this.reset_abort_controller();
 
         for (const dataset of this.datasets) {
-            dataset.controller = this.controller;   // Replace the aborted controller with the new one
             if (typeof entries !== "undefined") {
                 // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
                 // 'entries' is array of gene_symbols

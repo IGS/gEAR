@@ -752,6 +752,8 @@ $('#search_results').on("click", "a", function(e) {
     e.preventDefault(); //prevent page scrolling to top
     $(this).blur(); //removes focus so active's purple coloring can show
 
+    dataset_collection_panel.reset_abort_controller();
+
     let draw=true;
     if (projection) {
         draw=false;
@@ -963,12 +965,9 @@ $("#projection_search_form").submit((event) => {
         select_search_result(first_thing, draw_display=false);
         set_scrollbar_props();
 
-        dataset_collection_panel.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
-        dataset_collection_panel.controller = new AbortController(); // Create new controller for new set of frames
-
+        dataset_collection_panel.reset_abort_controller();
 
         dataset_collection_panel.datasets.forEach(dataset => {
-            dataset.controller = dataset_collection_panel.controller;   // Replace the aborted controller with the new one
             dataset.run_projectR(projection_source, is_pca)
                 .then(() => {
 
@@ -994,10 +993,10 @@ $("#projection_search_form").submit((event) => {
 
 $("#set_of_patterns").on('change', (event, projection_patterns) => {
     if ($('#set_of_patterns').val()) {
-        $.ajax({
+         $.ajax({
             type: "POST",
             url: "./cgi/get_pattern_element_list.cgi",
-            //async: false,
+            async: false,
             data: {
                 'file_name': $('#set_of_patterns').val(),
             },
