@@ -52,6 +52,7 @@ fixed paths have worked fine for decades.
       plotly==5.6.0 \
       python-dotenv==0.20.0 \
       requests==2.27.1 \
+      rpy2==3.5.1 \
       scanpy==1.8.2 \
       scanpy[louvain]==1.8.2 \
       scikit-learn==1.0.2 \
