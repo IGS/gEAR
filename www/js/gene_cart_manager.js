@@ -1,6 +1,7 @@
-var first_search = true;
-var animation_time = 200;
-var gc_id_to_delete = null;
+let first_search = true;
+const animation_time = 200;
+let gc_id_to_delete = null;
+let add_form_is_open = false;
 
 window.onload=function() {
     // check if the user is already logged in
@@ -350,7 +351,6 @@ $("#btn_create_cart_toggle").click(function(e) {
         $("#add_cart_panel").hide();
         $("#gc_viewport").show(animation_time);
         $("#view_controls").show(animation_time);
-
         $("#btn_create_cart_toggle").html('Create new cart');
         reset_add_form();
     } else {
@@ -358,44 +358,53 @@ $("#btn_create_cart_toggle").click(function(e) {
         $("#gc_viewport").hide();
         $("#add_cart_panel").show(animation_time);
         $('#new_cart_is_public').bootstrapToggle('off');
-
         $("#btn_create_cart_toggle").html('Cancel cart creation');
     }
 });
 
 $("#btn_gc_paste_unweighted_list").click(function(e) {
-    $("#new_cart_unweighted_header").addClass('bg-primary');
-    $("#new_cart_unweighted_header").css('color', 'white');
-    $("#btn_gc_upload_unweighted_list").addClass('disabled');
-    $("#btn_gc_upload_weighted_list").addClass('disabled');
-    $("#new_cart_pasted_genes_c").show();
-    $("#new_cart_form_c").show(animation_time);
-    $("#new_cart_upload_type").val('pasted_genes');
-    $("#file_upload_c").hide();
+    if (! add_form_is_open) {
+        $("#new_cart_unweighted_header").addClass('bg-primary');
+        $("#new_cart_unweighted_header").css('color', 'white');
+        $("#btn_gc_upload_unweighted_list").addClass('disabled');
+        $("#btn_gc_upload_weighted_list").addClass('disabled');
+        $("#new_cart_pasted_genes_c").show();
+        $("#new_cart_form_c").show(animation_time);
+        $("#new_cart_upload_type").val('pasted_genes');
+        $("#file_upload_c").hide();
+        add_form_is_open = true;
+    }
 });
 
 $("#btn_gc_upload_unweighted_list").click(function(e) {
-    $("#new_cart_unweighted_header").addClass('bg-primary');
-    $("#new_cart_unweighted_header").css('color', 'white');
-    $("#btn_gc_upload_weighted_list").addClass('disabled');
-    $("#btn_gc_paste_unweighted_list").addClass('disabled');
-    $("#new_cart_form_c").show(animation_time);
-    $("#new_cart_upload_type").val('uploaded-unweighted');
-    $("#file_upload_c").show();
+    if (! add_form_is_open) {
+        $("#new_cart_unweighted_header").addClass('bg-primary');
+        $("#new_cart_unweighted_header").css('color', 'white');
+        $("#btn_gc_upload_weighted_list").addClass('disabled');
+        $("#btn_gc_paste_unweighted_list").addClass('disabled');
+        $("#new_cart_form_c").show(animation_time);
+        $("#new_cart_upload_type").val('uploaded-unweighted');
+        $("#file_upload_c").show();
+        add_form_is_open = true;
+    }
 });
 
 $("#btn_gc_upload_weighted_list").click(function(e) {
-    $("#new_cart_weighted_header").addClass('bg-primary');
-    $("#new_cart_weighted_header").css('color', 'white');
-    $("#btn_gc_upload_unweighted_list").addClass('disabled');
-    $("#btn_gc_paste_unweighted_list").addClass('disabled');
-    $("#new_cart_form_c").show(animation_time);
-    $("#new_cart_upload_type").val('uploaded-weighted');
-    $("#file_upload_c").show();
+    if (! add_form_is_open) {
+        $("#new_cart_weighted_header").addClass('bg-primary');
+        $("#new_cart_weighted_header").css('color', 'white');
+        $("#btn_gc_upload_unweighted_list").addClass('disabled');
+        $("#btn_gc_paste_unweighted_list").addClass('disabled');
+        $("#new_cart_form_c").show(animation_time);
+        $("#new_cart_upload_type").val('uploaded-weighted');
+        $("#file_upload_c").show();
+        add_form_is_open = true;
+    }
 });
 
 $("#btn_new_cart_cancel").click(function(e) {
     $("#btn_create_cart_toggle").trigger('click');
+    $("#new_cart_pasted_genes_c").hide();
 });
 
 $('#new_cart_data').on('submit', function(e) {
@@ -560,6 +569,7 @@ function reset_add_form() {
 
     $("#new_cart_form_c").hide();
     $("#new_cart_pasted_genes_c").hide();
+    add_form_is_open = false;
 }
 
 function show_gc_action_note(gc_id, msg) {
