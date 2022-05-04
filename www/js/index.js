@@ -22,11 +22,19 @@ const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
 const controller = dataset_collection_panel.controller;
 
+/*
+Tree properties for constructor:
+treeDiv - Element to generate the tree structure on
+storedValElt - Element to store text, vals, and data properties on (if not in a treeDiv descendant "dropdown-toggle" element)
+*/
+
 const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
 const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
 
 const gene_cart_tree = new GeneCartTree({treeDiv: '#gene_cart_tree', storedValElt: '#search_param_gene_cart'});
 const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree', storedValElt: '#selected_gene_cart'});
+
+const projection_source_tree = new projectionSourceTree({treeDiv: '#projection_source_tree'});
 
 const search_result_postselection_functions = [];
 
@@ -65,7 +73,7 @@ window.onload= async () => {
     }
 
     // Get list of patterns to search for
-    populate_pattern_selection();
+    load_pattern_tree();
 
     // Was help_id found?
     const help_id = getUrlParameter('help_id');
@@ -161,8 +169,8 @@ window.onload= async () => {
 
         // fire the true search button, to submit the true form
         if (projection) {
-            $('#set_of_patterns').val(permalinked_projection_source)
-            $('#set_of_patterns').trigger("change", [$("#search_gene_symbol_intro").val()]);
+            $('#projection_source').val(permalinked_projection_source)
+            $('#projection_source').trigger("change", [$("#search_gene_symbol_intro").val()]);
             $("#submit_search_projection").trigger( "click" );
         } else {
             $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
@@ -397,7 +405,6 @@ $(document).on('click', 'button#save_user_new_pass', () => {
 });
 
 function validate_permalink(scope) {
-
     // Works for dataset or layout-based share IDs, which is differentiated by scope
     $.ajax({
         url : './cgi/validate_share_id.cgi',
@@ -538,13 +545,13 @@ function load_gene_carts(cart_share_id) {
         $("#selected_gene_cart_c").prop("disabled", true);
         gene_cart_tree.generateTree();
         selected_gene_cart_tree.generateTree();
-        //return d.done();
+        return;
     }
     $("#selected_gene_cart_c").prop("disabled", false);
     $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-            data: { 'session_id': session_id, 'share_id': cart_share_id },
+        data: { 'session_id': session_id, 'share_id': cart_share_id },
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
         const carts = {};
@@ -609,16 +616,93 @@ function load_gene_carts(cart_share_id) {
         gene_cart_tree.generateTree();
         selected_gene_cart_tree.generateTree();
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
-        //return d.fail();
     });
-    //return d.done();
+}
+
+async function load_weighted_gene_carts() {
+    const session_id = Cookies.get('gear_session_id');
+
+    if (!session_id) {
+        console.info("User is not logged in. Weighted gene carts not loaded.");
+        return;
+    }
+
+    await $.ajax({
+        url: './cgi/get_user_gene_carts.cgi',
+        type: 'post',
+        data: { 'session_id': session_id, "cart_type": "weighted-list" },
+        dataType: 'json'
+    }).done((data, textStatus, jqXHR) => {
+        const carts = {};
+        const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
+
+        for (const ctype of cart_types) {
+            carts[ctype] = [];
+            if (data[`${ctype}_carts`].length > 0) {
+                $.each(data[`${ctype}_carts`], (_i, item) => {
+                    carts[ctype].push({value: item.share_id,    // Use share ID as it is used in the cart file's basename
+                                        text: item.label,
+                                        folder_id: item.folder_id,
+                                        folder_label: item.folder_label,
+                                        folder_parent_id: item.folder_parent_id
+                                        });
+                });
+            }
+        }
+
+        // Tree is generated in `load_pattern_tree`
+        projection_source_tree.domainGeneCarts = carts.domain;
+        projection_source_tree.userGeneCarts = carts.user;
+        projection_source_tree.groupGeneCarts = carts.group;
+        projection_source_tree.sharedGeneCarts = carts.shared;
+        projection_source_tree.publicGeneCarts = carts.public;
+    })
+    .fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Weighted gene carts not sucessfully retrieved.");
+    });
+}
+
+async function populate_pattern_selection() {
+    await $.ajax({
+        type: "POST",
+        url: "./cgi/get_projection_pattern_list.cgi",
+        data: {
+            'session_id': CURRENT_USER.session_id,
+        },
+        dataType: "json",
+    }).done((data) => {
+        const patterns_list = [];
+
+        $.each(data, (_i, item) => {
+            patterns_list.push({value: item.id, text: item.label});
+        });
+
+        // Tree is generated in `load_pattern_tree`
+        projection_source_tree.projectionPatterns = patterns_list;
+        return;
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`,`Failed to populate patterns list`);
+    });
+}
+
+function load_pattern_tree() {
+    Promise.allSettled([load_weighted_gene_carts(), populate_pattern_selection()])
+        .then(() => {
+            projection_source_tree.generateTree();
+        })
+        .catch((err) => {
+            console.error(err);
+        });
 }
 
 // If user changes, update genecart/profile trees
-async function reload_trees(){
+function reload_trees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    await Promise.all([load_layouts(), load_gene_carts(gene_cart_id)]);
+    Promise.allSettled([load_layouts(), load_gene_carts(gene_cart_id), populate_pattern_selection()])
+        .catch((err) => {
+            console.error(err)
+        });
 }
 
 // Hide option menu when scope is changed.
@@ -630,24 +714,6 @@ $(document).on('click', '.scope_choice', function(){
 $(document).on('click', '#doc-link-choices li', function(){
     window.location.replace(`./manual.html?doc=${$(this).data('doc-link')}`);
 });
-
-function populate_pattern_selection() {
-    // NOTE: Called in common.js
-    $.ajax({
-        type: "POST",
-        url: "./cgi/get_projection_pattern_list.cgi",
-        data: {
-            'session_id': CURRENT_USER.session_id,
-        },
-        dataType: "json",
-    }).done((data, textStatus, jqXHR) => {
-            const pattern_list_tmpl = $.templates("#pattern_list_tmpl");    // recycling the template... same output
-            const pattern_list_html = pattern_list_tmpl.render(data);
-            $("#set_of_patterns").html(pattern_list_html);
-    }).fail((jqXHR, textStatus, errorThrown) => {
-        console.error(`Failed to populate patterns list: ${msg}`);
-    });
-}
 
 
 function populate_search_result_list(data) {
@@ -943,7 +1009,7 @@ $("#projection_search_form").submit((event) => {
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
-    const projection_source = $("#set_of_patterns").val() ? $("#set_of_patterns").val() : null;
+    const projection_source = $("#projection_source").val() ? $("#projection_source").val() : null;
     projection = true;
 
     // Add the patterns source to the history.
@@ -953,6 +1019,8 @@ $("#projection_search_form").submit((event) => {
 
     // Run ProjectR for the chosen pattern
     if (projection_source) {
+        const scope = $("#projection_source").data('scope');
+
         search_results = selected_projections;
 
         // Implementing search_genes.py results without the CGI execution
@@ -968,7 +1036,7 @@ $("#projection_search_form").submit((event) => {
         dataset_collection_panel.reset_abort_controller();
 
         dataset_collection_panel.datasets.forEach(dataset => {
-            dataset.run_projectR(projection_source, is_pca)
+            dataset.run_projectR(projection_source, is_pca, scope)
                 .then(() => {
 
                     if (dataset.projection_csv) {
@@ -991,33 +1059,33 @@ $("#projection_search_form").submit((event) => {
     return false;   // keeps the page from not refreshing
 })
 
-$("#set_of_patterns").on('change', (event, projection_patterns) => {
-    if ($('#set_of_patterns').val()) {
-         $.ajax({
-            type: "POST",
-            url: "./cgi/get_pattern_element_list.cgi",
-            async: false,
-            data: {
-                'file_name': $('#set_of_patterns').val(),
-            },
-            dataType: "json"
-        }).done((data) => {
-            const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
-            const pattern_elements_html = pattern_elements_tmpl.render(data);
-            $("#projection_pattern_elements").html(pattern_elements_html);
-            $("#projection_pattern_elements_c").show();
+$("#projection_source").on('change', (event, projection_patterns) => {
+    scope = $("#projection_source").data('scope');
+    $.ajax({
+        type: "POST",
+        url: "./cgi/get_pattern_element_list.cgi",
+        async: false,
+        data: {
+            'file_name': $('#projection_source').val(),
+            'scope': scope
+        },
+        dataType: "json"
+    }).done((data) => {
+        const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
+        const pattern_elements_html = pattern_elements_tmpl.render(data);
+        $("#projection_pattern_elements").html(pattern_elements_html);
+        $("#projection_pattern_elements_c").show();
 
-            // Check boxes for the elements that were found in the URL
-            if (projection_patterns) {
-                projection_patterns.split(',').forEach((pattern) => {
-                    $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
-                });
-            }
+        // Check boxes for the elements that were found in the URL
+        if (projection_patterns) {
+            projection_patterns.split(',').forEach((pattern) => {
+                $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
+            });
+        }
 
-        }).fail((jqXHR, textStatus, errorThrown) => {
-            console.error(`Failed to load dataset list because msg: ${msg}`);
-        });
-    }
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting list of patterns from source.');
+    });
 });
 
 // controls to enable user scrolling of results with mouse arrow

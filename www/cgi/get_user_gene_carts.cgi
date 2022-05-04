@@ -59,6 +59,7 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('share_id')
+    cart_type = form.getvalue('cart_type', None)
     current_user = geardb.get_user_from_session_id(session_id)
     if not current_user:
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
@@ -73,6 +74,14 @@ def main():
     group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
     shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
     public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
+
+    if cart_type:
+        domain_carts = filter_by_cart_type(domain_carts, cart_type)
+        user_carts = filter_by_cart_type(user_carts, cart_type)
+        group_carts = filter_by_cart_type(group_carts, cart_type)
+        shared_carts = filter_by_cart_type(shared_carts, cart_type)
+        public_carts = filter_by_cart_type(public_carts, cart_type)
+
 
     result = { 'domain_carts':domain_carts,
                 'group_carts':group_carts,
@@ -94,6 +103,21 @@ def filter_any_previous(ids, new_carts):
     return carts
     # fails to return rows when I try to sort.
     #return carts.sort(key=lambda a: a.__dict__['label'].lower())
+
+def filter_by_cart_type(carts, cart_type):
+    """ Filters a list of carts by cart_type
+
+    Args:
+        carts (List[GeneCart]): A list of GeneCart objects
+        cart_type (str): A string representing the cart type
+
+    Returns:
+        A list of GeneCart objects
+    """
+    if cart_type:
+        return [cart for cart in carts if cart.gctype == cart_type]
+    else:
+        return carts
 
 if __name__ == '__main__':
     main()

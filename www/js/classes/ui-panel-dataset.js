@@ -555,11 +555,11 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source, is_pca) {
+    async run_projectR(projection_source, is_pca, scope) {
         const dataset_id = this.id;
         const payload = {
-            scope: "repository",
             input_value: projection_source,
+            scope,
             is_pca,
         };
         const other_opts = {}

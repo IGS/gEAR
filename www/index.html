@@ -415,11 +415,21 @@
 
               <form id="projection_search_form"></form>
               <div id="projection_search_div">
-                <h3>Search Projections</h3>
-                <div class="form-group form-group-sm">
-                  <div id="set_of_patterns_c">
-                    <label for="set_of_patterns" class="control-label">Select pattern source</label>
-                    <select id="set_of_patterns" class="form-control form-control-sm"></select>
+                <div id="projection_source_container" class="form-group">
+                  <label id="projection_source_label" class="mb-0">Select Pattern Source</label>
+                  <div id="projection_source_c" class="dropdown">
+                    <div id="projection_source" value="" data-title="Click to change" class="js-pattern form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
+                    <div class="dropdown-menu" aria-labelledby="projection_source">
+                      <form class="px-4 py-3" onsubmit="return false;">
+                        <div class="input-group input-group-sm mb-3">
+                          <div class="input-group-prepend">
+                            <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                          </div>
+                          <input type="text" class="form-control" id="projection_source_tree_q" placeholder="Type to search for patterns or weighted gene carts">
+                        </div>
+                        <div id="projection_source_tree"></div>
+                      </form>
+                    </div>
                   </div>
                 </div>
 

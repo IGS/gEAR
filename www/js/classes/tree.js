@@ -56,6 +56,218 @@ class Tree {
 
 }
 
+class projectionSourceTree extends Tree {
+    /**
+     * Initialize projectionSourceTree
+     * @constructor
+     * @param {Object} Data - Tree data
+     */
+     constructor({
+        ...args
+    }={}, projectionPatterns, domainGeneCarts, groupGeneCarts, userGeneCarts, sharedGeneCarts, publicGeneCarts) {
+        super(args);
+        // NOTE: Projections may eventually be public/private/shared too
+        this.projectionPatterns = (projectionPatterns) ? projectionPatterns : [];
+        this.domainGeneCarts = (domainGeneCarts) ? domainGeneCarts : [];
+        this.userGeneCarts = (userGeneCarts) ? userGeneCarts : [] ;
+        this.groupGeneCarts = (groupGeneCarts) ? groupGeneCarts : [];
+        this.sharedGeneCarts = (sharedGeneCarts) ? sharedGeneCarts : [] ;
+        this.publicGeneCarts = (publicGeneCarts) ? publicGeneCarts : [] ;
+
+    }
+
+    addNode(treeData, id, parentID, text, nodeType, kwargs) {
+        let nodeClass ='';
+
+        if (nodeType == 'default') {
+            nodeClass = 'jstree-ocl';
+        } else if (nodeType == 'genecart') {
+            nodeClass = 'py-0'
+        }
+
+        treeData.push({
+            'id': id,
+            'parent': parentID,
+            'text': text,
+            'type': nodeType,
+            'a_attr': {
+                'class': nodeClass,
+            },
+            ...kwargs
+        })
+    }
+
+    getTotalWeightedCarts() {
+        // get the total number of weighted gene carts
+        return this.domainGeneCarts.length + this.userGeneCarts.length + this.groupGeneCarts.length + this.sharedGeneCarts.length + this.publicGeneCarts.length;
+    }
+
+    generateTreeData() {
+        // Create JSON tree structure for the data
+        const treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
+        const treeData = [
+            {'id':'projection_patterns_node', 'parent':'#', 'text':`Projection Pattern Source (${this.projectionPatterns.length})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
+            {'id':'weighted_genes_node', 'parent':'#', 'text':`Weighted Genes (${this.getTotalWeightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
+            {'id':'domain_node', 'parent':'weighted_genes_node', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'user_node', 'parent':'weighted_genes_node', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'group_node', 'parent':'weighted_genes_node', 'text':`Group gene carts (${this.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+        ];
+
+        $.each(this.projectionPatterns, (_i, item) => {
+            // ? Should the "genecart" icon change to a "projection pattern" icon?
+            // Projections patterns stored slightly differently than gene carts
+            this.addNode(treeData, item.value, 'projection_patterns_node', item.text, 'genecart', {"scope": "projection_pattern"});
+        });
+
+        $.each(this.domainGeneCarts, (_i, item) => {
+            // TODO: All this parent/grandparent logic should just go into addNode
+            // If there's a parent make sure it's added, doesn't currently handle grandparents
+            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
+                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
+                treeKeys[item.folder_parent_id] = true;
+            }
+
+            // Now do the same for the containing folder itself
+            if (item.folder_id) {
+                item.folder_id = `folder-${item.folder_id}`;
+
+                if (item.folder_parent_id) {
+                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
+                } else {
+                    item.folder_parent_id = 'domain_node';
+                }
+
+                if (! treeKeys.hasOwnProperty(item.folder_id)) {
+                    this.addNode(treeData, item.folder_id, item.folder_parent_id, item.folder_label, 'default');
+                    treeKeys[item.folder_id] = true;
+                }
+
+                this.addNode(treeData, item.value, item.folder_id, item.text, 'genecart', {"scope": "genecart"});
+            } else {
+                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
+                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart', {"scope": "genecart"})
+            }
+        });
+
+        $.each(this.userGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'user_node', item.text, 'genecart', {"scope": "genecart"})
+        });
+
+        $.each(this.groupGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'group_node', item.text, 'genecart', {"scope": "genecart"})
+        });
+
+        $.each(this.sharedGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'shared_node', item.text, 'genecart', {"scope": "genecart"})
+        });
+
+        $.each(this.publicGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'public_node', item.text, 'genecart', {"scope": "genecart"})
+        });
+
+        this.treeData = treeData;
+        return this.treeData;
+    }
+
+    // Load all saved gene carts for the current user
+    // TODO: Change based on gene cart manager page code
+    generateTree () {
+        this.generateTreeData();
+
+        // Update existing tree or generate new tree if it doesn't exist
+        if (this.tree) {
+            this.updateTreeData()
+        } else {
+            $(this.treeDiv).jstree({
+                'core':{
+                    'data':this.treeData,
+                },
+                'plugins': ["search", "types", "wholerow"],
+                /* Plugins
+                    search - search for matching items and expand tree if found
+                    types - Allows you to define node types with nesting rules and icons
+                    wholerow - makes each node block-level for easier selection
+                */
+                'search': {
+                    "show_only_matches": true
+                },
+                'types': {
+                    'default': {
+                        'icon': 'fa fa-folder-o'
+                    },
+                    'genecart': {
+                        'icon': 'fa fa-shopping-cart',
+                        'valid_children':[]
+                    }
+                }
+            })
+            this.setTree();
+        }
+
+        // TODO: Add some configuration to the Tree objects to not rely as heavily on a particular HTML design
+        /*
+        Example of a tree container structure, which relies on the positioning of the dropdown class
+        inspired by https://getbootstrap.com/docs/4.0/components/dropdowns/#examples
+
+        For this example:
+         '#datset_tree' is this.treeDiv
+         '#dataset_c' is this.dropdownElt
+         '#dataset' is this.dropdownToggleElt (and this.storedValElt)
+
+        <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
+          <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
+          <div class="dropdown-menu w-100" aria-labelledby="dataset">
+            <form class="px-4 py-3" onsubmit="return false;">
+              <div class="input-group input-group-sm mb-3">
+                <div class="input-group-prepend">
+                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                </div>
+                <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
+              </div>
+              <div id="dataset_tree"></div>
+            </form>
+          </div>
+        </div>  <!-- end dataset_c -->
+        */
+
+        // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
+        this.dropdownElt = $(this.treeDiv).closest('.dropdown');
+        // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
+        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first();
+        // This element will store the text, value, and data properties of the selected node
+        this.storedValElt = (this.storedValElt) ? this.storedValElt : this.dropdownToggleElt;
+        this.register_events();
+    }
+
+    register_events() {
+        const self = this;
+        this.register_search();
+
+        // Get genes from the selected gene cart
+        $(this.treeDiv).on('select_node.jstree', (_e, data) => {
+            // Though you can select multiple nodes in the tree, let's only select the first
+            const geneCartId = data.selected[0];  // Returns node 'id' property
+            if (data.node.type === "default") {
+                // TODO: If a branch is selected, a max call stack is exceeded
+                // Do not toggle if user is navigating a branch node
+                // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
+                return;
+            }
+            const selectedNode = data.instance.get_node(geneCartId);
+            $(self.storedValElt).text(selectedNode.text);
+            $(self.storedValElt).val(geneCartId);
+            // If data attributes were passed into the node, store them in this element for easy retrieval
+            for (const key in selectedNode.original) {
+                $(self.storedValElt).data(key, selectedNode.original[key]);
+            }
+            $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(self.storedValElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
+        }).jstree(true);
+    }
+};
+
 /**
  * Class representing a gene cart selection tree
  * @extends Tree
@@ -78,7 +290,7 @@ class GeneCartTree extends Tree {
 
     }
 
-    addNode(treeData, id, parentID, text, nodeType) {
+    addNode(treeData, id, parentID, text, nodeType, kwargs) {
         let nodeClass ='';
 
         if (nodeType == 'default') {
@@ -94,7 +306,8 @@ class GeneCartTree extends Tree {
             'type': nodeType,
             'a_attr': {
                 'class': nodeClass,
-            }
+            },
+            ...kwargs
         })
     }
 
@@ -194,32 +407,6 @@ class GeneCartTree extends Tree {
             this.setTree();
         }
 
-        // TODO: Add some configuration to the Tree objects to not rely as heavily on a particular HTML design
-        /*
-        Example of a tree container structure, which relies on the positioning of the dropdown class
-        inspired by https://getbootstrap.com/docs/4.0/components/dropdowns/#examples
-
-        For this example:
-         '#datset_tree' is this.treeDiv
-         '#dataset_c' is this.dropdownElt
-         '#dataset' is this.dropdownToggleElt (and this.storedValElt)
-
-        <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
-          <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
-          <div class="dropdown-menu w-100" aria-labelledby="dataset">
-            <form class="px-4 py-3" onsubmit="return false;">
-              <div class="input-group input-group-sm mb-3">
-                <div class="input-group-prepend">
-                  <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                </div>
-                <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
-              </div>
-              <div id="dataset_tree"></div>
-            </form>
-          </div>
-        </div>  <!-- end dataset_c -->
-        */
-
         // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
         this.dropdownElt = $(this.treeDiv).closest('.dropdown');
         // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
@@ -246,17 +433,13 @@ class GeneCartTree extends Tree {
             const selectedNode = data.instance.get_node(geneCartId);
             $(self.storedValElt).text(selectedNode.text);
             $(self.storedValElt).val(geneCartId);
+            // If data attributes were passed into the node, store them in this element for easy retrieval
+            for (const key in selectedNode.original) {
+                $(self.storedValElt).data(key, selectedNode.original[key]);
+            }
             $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
             $(self.storedValElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
         }).jstree(true);
-    }
-
-    loadFromDB() {
-        //pass
-    }
-
-    saveToDB() {
-        //pass
     }
 }
 
@@ -429,15 +612,6 @@ class ProfileTree extends Tree {
 
         }).jstree(true);
     }
-
-    loadFromDB() {
-        //pass
-    }
-
-    saveToDB() {
-        //pass
-    }
-
 }
 
 /**
@@ -579,13 +753,5 @@ class DatasetTree extends Tree {
             $(self.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
-    }
-
-    loadFromDB() {
-        //pass
-    }
-
-    saveToDB() {
-        //pass
     }
 }

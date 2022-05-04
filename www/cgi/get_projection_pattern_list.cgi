@@ -24,8 +24,7 @@ def main():
     else:
         user = None
 
-    # Initialize initial select option
-    result = [{"id":"", "title":"Choose set:"}]
+    result = []
 
     base_dir = Path(PATTERN_BASE_DIR)
 

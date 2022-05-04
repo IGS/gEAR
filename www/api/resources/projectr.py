@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import Resource
+from pathlib import Path
 import os, json, sys
 import geardb
 import gear.rfuncs as rfx
@@ -7,7 +8,12 @@ import gear.rfuncs as rfx
 import pandas as pd
 
 # TODO: Remove and figure out a good pattern directory structure
-PATTERN_BASE_DIR = "/var/www/patterns"
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PATTERN_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'patterns'))
+WEIGHTED_CARTS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'carts'))
+
+VALID_SCOPES = ["projection_pattern", "genecart"]
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
@@ -103,32 +109,40 @@ class ProjectR(Resource):
         loading_df = None
         projection_csv = None
 
-        if scope == "repository":
+        # Extension to append to filename if PCA analysis is requested
+        pca_ext = "_pca" if is_pca else ""
+
+
+        if scope == "projection_pattern":
             # Pattern repository
             # Row: Genes
             # Col: Patterns
             loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
             pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
 
-            pca_ext = "_pca" if is_pca else ""
-
             projection_csv = "/tmp/{}_{}{}.csv".format(dataset_id, pattern_title, pca_ext)
 
-            # Assumes first column is gene info. Standardize on a common index name
-            loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
-            loading_df.set_index('dataRowNames', inplace=True)
+
         elif scope == "dataset":
             # Previous analysis stored in a dataset
             # Row: Genes
             # Col: PCA/tSNE/UMAP 1/2
             pass
-        elif scope == "gene_cart":
+        elif scope == "genecart":
             # Weighted genes present... behaves exactly like the "repository" case
             # Row; Genes
             # Col: Weights
-            pass
+            # The gene cart "share_id" is passed to the CGI script as the file_name, which we can get the actual cart name from
+            input_file = "cart.{}.tab".format(input_value)
+            loading_df = pd.read_csv("{}/{}".format(WEIGHTED_CARTS_BASE_DIR, input_file), sep="\t")
+
+            projection_csv = "/tmp/{}_{}{}.csv".format(dataset_id, input_value, pca_ext)
         else:
             raise Exception("Invalid scope was called.")
+
+        # Assumes first column is gene info. Standardize on a common index name
+        loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
+        loading_df.set_index('dataRowNames', inplace=True)
 
         # NOTE: This will not work if there are no common genes (i.e. mouse patterns with human dataset)
 
