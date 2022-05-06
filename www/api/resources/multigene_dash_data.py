@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import Resource
+from pathlib import Path
 import pandas as pd
 import geardb
 
@@ -54,6 +55,10 @@ LOG10_TRANSFORMED_DATASETS = [
 , "80eadbe6-49ac-8eaf-f2fb-e07706cf117b"    # HRP dataset
 ]
 
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections'))
+
 def order_by_time_point(obs_df):
     """Order observations by time point column if it exists."""
     # check if time point order is intially provided in h5ad
@@ -91,12 +96,12 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-def create_projection_adata(dataset_adata, projection_csv):
+def create_projection_adata(dataset_adata, dataset_id, projection_csv):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
     try:
         import scanpy as sc
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
+        projection_adata = sc.read_csv("/{}/{}/{}".format(PROJECTIONS_BASE_DIR, dataset_id, projection_csv))
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
 
@@ -216,7 +221,7 @@ class MultigeneDashData(Resource):
 
         if projection_csv:
             try:
-                adata = create_projection_adata(adata, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_csv)
             except PlotError as pe:
                 return {
                     'success': -1,

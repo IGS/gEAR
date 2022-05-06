@@ -1,6 +1,6 @@
-from turtle import left
 from flask import request
 from flask_restful import Resource
+from pathlib import Path
 
 import scanpy as sc
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 
-import io, json, os, re, sys
+import io, os, re
 import geardb
 import base64
 from math import ceil
@@ -25,6 +25,10 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
 NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
+
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections'))
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -76,11 +80,12 @@ def create_colorscale_with_zero_gray(colorscale):
     newcolors[0, :] = gray
     return ListedColormap(newcolors)
 
-def create_projection_adata(dataset_adata, projection_csv):
+def create_projection_adata(dataset_adata, dataset_id, projection_csv):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
     try:
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
+        import scanpy as sc
+        projection_adata = sc.read_csv("/{}/{}/{}".format(PROJECTIONS_BASE_DIR, dataset_id, projection_csv))
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
 
@@ -172,7 +177,7 @@ class TSNEData(Resource):
 
         if projection_csv:
             try:
-                adata = create_projection_adata(adata, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_csv)
             except PlotError as pe:
                 return {
                     'success': -1,
