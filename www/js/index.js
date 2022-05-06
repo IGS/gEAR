@@ -14,6 +14,7 @@ let SELECTED_GENE = null;
 let dataset_id = null; //from permalink - dataset share ID
 let layout_id = null; //from permalink - profile grid layout ID
 let gene_cart_id = null; //from permalink - gene cart share ID
+let projection_id = null;   // from permalinek - projection source
 let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
 let projection = false;
@@ -72,8 +73,7 @@ window.onload= async () => {
         }
     }
 
-    // Get list of patterns to search for
-    load_pattern_tree();
+
 
     // Was help_id found?
     const help_id = getUrlParameter('help_id');
@@ -120,13 +120,19 @@ window.onload= async () => {
     }
 
     // Repopulate projection information
-    const permalinked_projection_source = getUrlParameter('projection_source');
+    projection_id = getUrlParameter('projection_source');
     const permalinked_is_pca = getUrlParameter('is_pca')
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
+    // Get list of patterns to search for
+    await load_pattern_tree(projection_id);
     // Only apply if both are present
-    if (permalinked_projection_source && permalinked_projection_patterns) {
+    if (projection_id && permalinked_projection_patterns) {
         // Patterns applied after HTML renders
         $("#search_gene_symbol_intro").val(permalinked_projection_patterns);
+        // Check boxes for the elements that were found in the URL
+        permalinked_projection_patterns.split(',').forEach((pattern) => {
+            $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
+        });
 
         $("#is_pca").prop('checked', permalinked_is_pca === "1");
 
@@ -169,8 +175,6 @@ window.onload= async () => {
 
         // fire the true search button, to submit the true form
         if (projection) {
-            $('#projection_source').val(permalinked_projection_source)
-            $('#projection_source').trigger("change", [$("#search_gene_symbol_intro").val()]);
             $("#submit_search_projection").trigger( "click" );
         } else {
             $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
@@ -619,12 +623,14 @@ function load_gene_carts(cart_share_id) {
     });
 }
 
-async function load_weighted_gene_carts() {
+async function load_weighted_gene_carts(cart_share_id) {
     const session_id = Cookies.get('gear_session_id');
+    let permalink_cart_id = null
+    let permalink_cart_label = null
 
     if (!session_id) {
         console.info("User is not logged in. Weighted gene carts not loaded.");
-        return;
+        return [permalink_cart_id, permalink_cart_label];
     }
 
     await $.ajax({
@@ -634,12 +640,19 @@ async function load_weighted_gene_carts() {
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
         const carts = {};
+
         const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
 
         for (const ctype of cart_types) {
             carts[ctype] = [];
             if (data[`${ctype}_carts`].length > 0) {
                 $.each(data[`${ctype}_carts`], (_i, item) => {
+                    // If cart permalink was passed in, retrieve gene_cart_id for future use.
+                    if (cart_share_id && item.share_id == cart_share_id) {
+                        permalink_cart_id = item.share_id;
+                        permalink_cart_label = item.label;
+                    }
+
                     carts[ctype].push({value: item.share_id,    // Use share ID as it is used in the cart file's basename
                                         text: item.label,
                                         folder_id: item.folder_id,
@@ -656,59 +669,82 @@ async function load_weighted_gene_carts() {
         projection_source_tree.groupGeneCarts = carts.group;
         projection_source_tree.sharedGeneCarts = carts.shared;
         projection_source_tree.publicGeneCarts = carts.public;
+
     })
     .fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Weighted gene carts not sucessfully retrieved.");
     });
+    return [permalink_cart_id, permalink_cart_label];
 }
 
-async function populate_pattern_selection() {
+async function populate_pattern_selection(projection_source) {
+    let permalink_projection_id = null
+    let permalink_projection_label = null
+
     await $.ajax({
         type: "POST",
         url: "./cgi/get_projection_pattern_list.cgi",
-        data: {
-            'session_id': CURRENT_USER.session_id,
-        },
+        data: {'session_id': CURRENT_USER.session_id},
         dataType: "json",
     }).done((data) => {
         const patterns_list = [];
 
         $.each(data, (_i, item) => {
-            patterns_list.push({value: item.id, text: item.label});
+            if (projection_source && item.id == projection_source) {
+                permalink_projection_id = item.id;
+                permalink_projection_label = item.title;
+            }
+            patterns_list.push({value: item.id,
+                 text: item.title
+            });
         });
 
         // Tree is generated in `load_pattern_tree`
         projection_source_tree.projectionPatterns = patterns_list;
-        return;
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`,`Failed to populate patterns list`);
     });
+    return [permalink_projection_id, permalink_projection_label];
 }
 
-function load_pattern_tree() {
-    Promise.allSettled([load_weighted_gene_carts(), populate_pattern_selection()])
-        .then(() => {
-            projection_source_tree.generateTree();
-        })
+async function load_pattern_tree(projection_id) {
+    const values = await Promise.allSettled([load_weighted_gene_carts(projection_id), populate_pattern_selection(projection_id)])
         .catch((err) => {
             console.error(err);
         });
+
+    // If projection info was in URL, one of the above should have the JSTree element returned
+    projection_source_tree.generateTree();
+
+    // If a permalink was provided, set the value in the tree and search bar
+    for (const val of values) {
+        if (val.value[0]) {
+            $("#projection_source").text(val.value[1]);
+            $("#projection_source").val(val.value[0]);
+            // At this point, the tree is generated but loading data attributes to the storedValElt does not occur until a node is selected.
+            // So we need to manually set the data attribute for the first-pass.
+            const tree_leaf = projection_source_tree.treeData.find(e => e.id === $("#projection_source").val());
+            $("#projection_source").data("scope", tree_leaf.scope);
+            $("#projection_source").trigger('change');
+            return;
+        }
+    }
 }
 
 // If user changes, update genecart/profile trees
 function reload_trees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    Promise.allSettled([load_layouts(), load_gene_carts(gene_cart_id), populate_pattern_selection()])
+    Promise.allSettled([load_layouts(), load_gene_carts(gene_cart_id), load_pattern_tree(projection_id)])
         .catch((err) => {
             console.error(err)
         });
 }
 
 // Hide option menu when scope is changed.
-$(document).on('click', '.scope_choice', function(){
-    $('#toggle_options').popover('hide');
-});
+$(document).on('click', '.scope_choice', () => {
+        $('#toggle_options').popover('hide');
+    });
 
 // Handle direct documentation links
 $(document).on('click', '#doc-link-choices li', function(){
@@ -1059,12 +1095,12 @@ $("#projection_search_form").submit((event) => {
     return false;   // keeps the page from not refreshing
 })
 
-$("#projection_source").on('change', (event, projection_patterns) => {
+$("#projection_source").on('change', (_event) => {
     scope = $("#projection_source").data('scope');
     $.ajax({
         type: "POST",
         url: "./cgi/get_pattern_element_list.cgi",
-        async: false,
+        async: false,   // No clue why this works but async/wait does not.. maybe it's the onchange event?
         data: {
             'file_name': $('#projection_source').val(),
             'scope': scope
@@ -1075,14 +1111,6 @@ $("#projection_source").on('change', (event, projection_patterns) => {
         const pattern_elements_html = pattern_elements_tmpl.render(data);
         $("#projection_pattern_elements").html(pattern_elements_html);
         $("#projection_pattern_elements_c").show();
-
-        // Check boxes for the elements that were found in the URL
-        if (projection_patterns) {
-            projection_patterns.split(',').forEach((pattern) => {
-                $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
-            });
-        }
-
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting list of patterns from source.');
     });

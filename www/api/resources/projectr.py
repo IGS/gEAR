@@ -12,8 +12,15 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PATTERN_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'patterns'))
 WEIGHTED_CARTS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'carts'))
+PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections'))
 
 VALID_SCOPES = ["projection_pattern", "genecart"]
+
+def build_projectR_output_file(dataset_id, input_value, pca_ext):
+    """Builds the output file path for the projectR analysis."""
+    projection_subdir = os.path.join(PROJECTIONS_BASE_DIR, dataset_id)
+    Path(projection_subdir).mkdir(parents=True, exist_ok=True)  # Create dir if it doesn't exist
+    return "{}/{}{}.csv".format(projection_subdir, dataset_id, input_value, pca_ext)
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
@@ -43,6 +50,33 @@ class ProjectRError(Exception):
         self.message = message
         super().__init__(self.message)
 
+class ProjectROutputFile(Resource):
+    """
+    Get or create path to output file. Will mkdir if the directory does not currently exist.
+    """
+
+    def post(self, dataset_id):
+        req = request.get_json()
+        scope = req.get('scope', "pattern")
+        input_value = req.get('input_value', None)  # This changes depending on scope
+        is_pca = req.get('is_pca', False)
+
+        projection_csv = None
+
+        # Extension to append to filename if PCA analysis is requested
+        pca_ext = "_pca" if is_pca else ""
+
+        if scope == "projection_pattern":
+            pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
+            projection_csv = build_projectR_output_file(dataset_id, pattern_title, pca_ext)
+        elif scope == "genecart":
+            input_file = "cart.{}.tab".format(input_value)
+            projection_csv = build_projectR_output_file(dataset_id, input_file, pca_ext)
+
+        else:
+            raise Exception("Invalid scope was called.")
+
+
 
 class ProjectR(Resource):
     """
@@ -61,6 +95,7 @@ class ProjectR(Resource):
         scope = req.get('scope', "pattern")
         input_value = req.get('input_value', None)  # This changes depending on scope
         is_pca = req.get('is_pca', False)
+        output_file = req.get('output_file', None)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # 'dataset_id' is the target dataset to be projected into the pattern space
@@ -107,7 +142,7 @@ class ProjectR(Resource):
         target_df = adata.to_df().transpose()
 
         loading_df = None
-        projection_csv = None
+        projection_csv = output_file
 
         # Extension to append to filename if PCA analysis is requested
         pca_ext = "_pca" if is_pca else ""
@@ -120,8 +155,8 @@ class ProjectR(Resource):
             loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
             pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
 
-            projection_csv = "/tmp/{}_{}{}.csv".format(dataset_id, pattern_title, pca_ext)
-
+            if not output_file:
+                projection_csv = build_projectR_output_file(dataset_id, pattern_title, pca_ext)
 
         elif scope == "dataset":
             # Previous analysis stored in a dataset
@@ -136,7 +171,9 @@ class ProjectR(Resource):
             input_file = "cart.{}.tab".format(input_value)
             loading_df = pd.read_csv("{}/{}".format(WEIGHTED_CARTS_BASE_DIR, input_file), sep="\t")
 
-            projection_csv = "/tmp/{}_{}{}.csv".format(dataset_id, input_value, pca_ext)
+            if not output_file:
+                projection_csv = build_projectR_output_file(dataset_id, input_file, pca_ext)
+
         else:
             raise Exception("Invalid scope was called.")
 

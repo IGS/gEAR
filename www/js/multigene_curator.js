@@ -87,6 +87,7 @@ window.onload= async () => {
         $("#dataset").val(linkedDatasetId);
         try {
             // Had difficulties triggering a "select_node.jstree" event, so just add the data info here
+            // In this case, the dataset tree is initialized but no node is officially selected.
             const tree_leaf = datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId);
             $("#dataset").text(tree_leaf.text);
             $("#dataset").data("organism-id", tree_leaf.organism_id);

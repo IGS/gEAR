@@ -6,6 +6,8 @@ Gene Cart and Profile tree stuff
 Just about everything here uses the JSTree library - jstree.com
 */
 
+// TODO: Add options to initialize tree with a selected node.
+
 /** Base class representing a tree structure */
 class Tree {
     /**
@@ -18,7 +20,7 @@ class Tree {
         , storedValElt
     } = {}) {
         this.treeDiv = treeDiv; // Element to generate the tree structure on
-        this.storedValElt = storedValElt;   // Element to store text, vals, and data properties on
+        this.storedValElt = storedValElt ? $(storedValElt) : null;   // Element to store text, vals, and data properties on
 
         this.setTree();
     }
