@@ -209,7 +209,7 @@ class Display {
     /**
      * Show warning overlay above plot
      */
-    show_warning(msg) { }
+    show_warning(msg) { return }
 
     /**
      * Show the plot container.

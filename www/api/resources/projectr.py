@@ -16,11 +16,14 @@ PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections')
 
 VALID_SCOPES = ["projection_pattern", "genecart"]
 
-def build_projectR_output_file(dataset_id, input_value, pca_ext):
+def build_projectR_output_file(dataset_id, input_value, pca_ext, mkdir=True):
     """Builds the output file path for the projectR analysis."""
     projection_subdir = os.path.join(PROJECTIONS_BASE_DIR, dataset_id)
-    Path(projection_subdir).mkdir(parents=True, exist_ok=True)  # Create dir if it doesn't exist
+    if mkdir:
+        Path(projection_subdir).mkdir(parents=True, exist_ok=True)  # Create dir if it doesn't exist
     return "{}/{}{}.csv".format(projection_subdir, dataset_id, input_value, pca_ext)
+
+
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
@@ -68,14 +71,17 @@ class ProjectROutputFile(Resource):
 
         if scope == "projection_pattern":
             pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
-            projection_csv = build_projectR_output_file(dataset_id, pattern_title, pca_ext)
+            projection_csv = build_projectR_output_file(dataset_id, pattern_title, pca_ext, mkdir=False)
         elif scope == "genecart":
             input_file = "cart.{}.tab".format(input_value)
-            projection_csv = build_projectR_output_file(dataset_id, input_file, pca_ext)
-
+            projection_csv = build_projectR_output_file(dataset_id, input_file, pca_ext, mkdir=False)
         else:
             raise Exception("Invalid scope was called.")
 
+        return {
+            "file_found": 1 if os.path.exists(projection_csv) else 0,
+            "csv_file": projection_csv
+        }
 
 
 class ProjectR(Resource):
@@ -92,10 +98,9 @@ class ProjectR(Resource):
         analysis_owner_id = req.get('analysis_owner_id', None)
         #plot_type = req.get('plot_type')
         #gene_symbols = req.get('gene_symbols', [])
-        scope = req.get('scope', "pattern")
+        scope = req.get('scope', "projection_pattern")
         input_value = req.get('input_value', None)  # This changes depending on scope
         is_pca = req.get('is_pca', False)
-        output_file = req.get('output_file', None)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # 'dataset_id' is the target dataset to be projected into the pattern space
@@ -142,7 +147,7 @@ class ProjectR(Resource):
         target_df = adata.to_df().transpose()
 
         loading_df = None
-        projection_csv = output_file
+        projection_csv = None
 
         # Extension to append to filename if PCA analysis is requested
         pca_ext = "_pca" if is_pca else ""
@@ -154,9 +159,7 @@ class ProjectR(Resource):
             # Col: Patterns
             loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
             pattern_title = input_value.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
-
-            if not output_file:
-                projection_csv = build_projectR_output_file(dataset_id, pattern_title, pca_ext)
+            projection_csv = build_projectR_output_file(dataset_id, pattern_title, pca_ext)
 
         elif scope == "dataset":
             # Previous analysis stored in a dataset
@@ -170,9 +173,7 @@ class ProjectR(Resource):
             # The gene cart "share_id" is passed to the CGI script as the file_name, which we can get the actual cart name from
             input_file = "cart.{}.tab".format(input_value)
             loading_df = pd.read_csv("{}/{}".format(WEIGHTED_CARTS_BASE_DIR, input_file), sep="\t")
-
-            if not output_file:
-                projection_csv = build_projectR_output_file(dataset_id, input_file, pca_ext)
+            projection_csv = build_projectR_output_file(dataset_id, input_file, pca_ext)
 
         else:
             raise Exception("Invalid scope was called.")

@@ -516,8 +516,52 @@ class DatasetPanel extends Dataset {
         $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
 
-    show_loading() {
+    show_warning(msg) {
+        this.show_hover_bar(msg, "warning");
+    }
+
+    show_info(msg) {
+        this.show_hover_bar(msg, "info");
+    }
+
+    show_hover_bar(msg, context ) {
+        const hover_msg = " Hover to see special information.";
+
+        const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
+        const template = `
+        <div class='dataset-${context} bg-${context}' id='dataset_${this.primary_key}_${context}'>
+            <i class='fa fa-exclamation-triangle'></i>
+            <span id="dataset_${this.primary_key}_msg">${hover_msg}</span>
+        </div>`;
+
+        // Add template above the dataset status panel.  It will disappear when the plot is generated.
+        // NOTE: must add to DOM before making selector variables
+        dataset_selector.prepend(template);
+
+        const hover_selector = $(`#dataset_${this.primary_key}_${context}`);
+        const msg_selector = $(`#dataset_${this.primary_key}_msg`);
+
+        // Add some CSS to warning to keep at top of container and not push display down
+        hover_selector.css('position', 'absolute').css('z-index', '2').css('color', 'black');
+
+        // Add hover events (via jQuery)
+        hover_selector.mouseover(() => {
+            msg_selector.html(msg);
+        });
+        hover_selector.mouseout(() => {
+            msg_selector.text(hover_msg);
+        });
+    }
+
+    show_loading({warning=null, info=null}={}) {
         $(`#${this.primary_key}_dataset_status_c h2`).text("Loading...");
+        if (warning) {
+            this.show_warning(warning);
+        }
+        else if (info) {
+            this.show_info(info);
+        }
+
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
 
         if (this.dtype !== "svg-expression") {
@@ -567,12 +611,17 @@ class DatasetPanel extends Dataset {
             other_opts.signal = this.controller.signal;
         }
 
+        const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
+        // If file was not found, put some loading text in the plot
+        if (! response.data.file_found) {
+            this.show_loading({
+                info:"ProjectR has not been run for this dataset and pattern yet. Plot generation may take a few minutes as projections are generated."
+            });
+        }
+
         let message = "There was an error projecting patterns onto this dataset.";
         try {
-            const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
-                ...payload
-            }, other_opts
-            );
+            const { data } = await axios.post(`/api/projectr/${dataset_id}`, payload, other_opts);
             if (data.success < 1) {
                 message = data.message;
                 throw data.message; // will be caught below
