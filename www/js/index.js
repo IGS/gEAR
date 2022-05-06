@@ -14,7 +14,6 @@ let SELECTED_GENE = null;
 let dataset_id = null; //from permalink - dataset share ID
 let layout_id = null; //from permalink - profile grid layout ID
 let gene_cart_id = null; //from permalink - gene cart share ID
-let projection_id = null;   // from permalinek - projection source
 let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
 let projection = false;
@@ -35,13 +34,18 @@ const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'
 const gene_cart_tree = new GeneCartTree({treeDiv: '#gene_cart_tree', storedValElt: '#search_param_gene_cart'});
 const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_tree', storedValElt: '#selected_gene_cart'});
 
-const projection_source_tree = new projectionSourceTree({treeDiv: '#projection_source_tree'});
+const projection_source_tree = new ProjectionSourceTree({treeDiv: '#projection_source_tree'});
 
 const search_result_postselection_functions = [];
 
 window.onload= async () => {
     // check if the user is already logged in
     check_for_login();
+
+    gene_cart_id = getUrlParameter('gene_cart_share_id');
+    const permalinked_projection_id = getUrlParameter('projection_source');
+
+    await load_all_trees(gene_cart_id, permalinked_projection_id);
 
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
@@ -66,14 +70,7 @@ window.onload= async () => {
         layout_id = getUrlParameter('layout_id');
         scope = "profile";
         get_index_info();
-
-        if (document.URL.includes("index.html") ||
-        window.location.pathname == '/' ) {
-            await load_layouts();
-        }
     }
-
-
 
     // Was help_id found?
     const help_id = getUrlParameter('help_id');
@@ -81,16 +78,14 @@ window.onload= async () => {
         validate_help_id(help_id);
     }
 
-    gene_cart_id = getUrlParameter('gene_cart_share_id');
-    load_gene_carts(gene_cart_id);
     if (gene_cart_id) {
+        console.info(`Gene cart share ID found: ${gene_cart_id}`);
         $('#intro_search_icon').trigger('click');
     }
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
-    const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
     if (permalinked_gsem !== (null || undefined)
         && permalinked_gsem === "0") {
@@ -109,24 +104,22 @@ window.onload= async () => {
     }
 
     // If gene symbols were provided (via either URL param method), click search button.
+    const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
-        sleep(1000).then(() => {
-            $('#intro_search_icon').trigger('click');
-        })
+        console.info(`Permanlinked gene symbols found: ${permalinked_gene_symbol}`);
+        $('#intro_search_icon').trigger('click');
     } else if (dataset_id) {
         $('#permalink_intro_c').show();
     }
 
-    // Repopulate projection information
-    projection_id = getUrlParameter('projection_source');
+    // Repopulate projection information... projection_source URL loaded earlier
     const permalinked_is_pca = getUrlParameter('is_pca')
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
-    // Get list of patterns to search for
-    await load_pattern_tree(projection_id);
+
     // Only apply if both are present
-    if (projection_id && permalinked_projection_patterns) {
+    if (permalinked_projection_id && permalinked_projection_patterns) {
         // Patterns applied after HTML renders
         $("#search_gene_symbol_intro").val(permalinked_projection_patterns);
         // Check boxes for the elements that were found in the URL
@@ -139,9 +132,8 @@ window.onload= async () => {
         // Correct tab is active
         $("#projection_tab").click();
         projection = true;
-        sleep(1000).then(() => {
-            $('#intro_search_icon').trigger('click');
-        })
+        console.info(`Projection ID found: ${permalinked_projection_id}`);
+        $('#intro_search_icon').trigger('click');
     }
 
     // The search button starts out disabled, make sure it gets re-enabled.
@@ -164,38 +156,6 @@ window.onload= async () => {
         multigene = $('#multi_pattern').is(':checked');
         set_multigene_plots(multigene, false);
     });
-
-    $('#intro_search_form').on('submit', (e) => {
-        // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
-        e.preventDefault();
-        $('#intro_content').hide();
-
-        $("#leftbar_main").show();
-        $("#viewport_main").show();
-
-        // fire the true search button, to submit the true form
-        if (projection) {
-            $("#submit_search_projection").trigger( "click" );
-        } else {
-            $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
-            $("#submit_search").trigger( "click" );
-        }
-    });
-
-    // Search from front page is clicked
-    $('#intro_search_icon').click(() => {
-        $('#intro_search_form').submit();
-    });
-
-    // Search from results page is clicked
-    $('#submit_search').click(() => {
-        $('#gene_search_form').submit();
-    })
-
-    // Display curations using projections instead of genes
-    $('#submit_search_projection').click(() => {
-        $('#projection_search_form').submit();
-    })
 
     $('#dataset_search_form').on('submit', (e) => {
         e.preventDefault();
@@ -303,7 +263,7 @@ window.onload= async () => {
     // Create an observer instance linked to the callback function
     const observer = new MutationObserver(function(mutationList, observer) {
         if (target_node) {
-            reload_trees();
+            load_all_trees(gene_cart_id, permalinked_projection_id);
             this.disconnect();  // Don't need to reload once the trees are updated
         }
     });
@@ -433,6 +393,8 @@ function validate_permalink(scope) {
 async function load_layouts() {
     const session_id = Cookies.get('gear_session_id');
     const layout_share_id = getUrlParameter('layout_id');
+    let active_layout_id = null;
+    let active_layout_label = null;
 
     // Temporary hack for Heller lab
     if (layout_share_id == '8d38b600' || layout_share_id == 'afd2eb77') {
@@ -443,7 +405,6 @@ async function load_layouts() {
     await $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
-        //async: false,
         data: { 'session_id': session_id, 'layout_share_id': layout_share_id },
         dataType: 'json'
     }).done((data) => {
@@ -455,9 +416,6 @@ async function load_layouts() {
             3.  Admin's active domain
             */
         const layouts = {};
-        let active_layout_id = null;
-        let active_layout_label = null;
-
         const layout_types = ['domain', 'user', 'group', 'shared']
 
         for (const ltype of layout_types) {
@@ -473,9 +431,9 @@ async function load_layouts() {
                                     });
 
                 if (item['share_id'] == layout_share_id) {
-                    active_layout_id = item['id'];
-                    active_layout_label = item['label'];
-                    layout_id = item['share_id'];
+                    active_layout_id = item.id;
+                    active_layout_label = item.label;
+                    layout_id = item.share_id;
                 }
             });
         }
@@ -485,12 +443,10 @@ async function load_layouts() {
         profile_tree.userProfiles = layouts.user;
         profile_tree.groupProfiles = layouts.group;
         profile_tree.sharedProfiles = layouts.shared;
-        profile_tree.generateTree();
         selected_profile_tree.domainProfiles = layouts.domain;
         selected_profile_tree.userProfiles = layouts.user;
         selected_profile_tree.groupProfiles = layouts.group;
         selected_profile_tree.sharedProfiles = layouts.shared;
-        selected_profile_tree.generateTree();
 
         // pass through again and look for one set by a cookie
         if (active_layout_id == null) {
@@ -535,14 +491,20 @@ async function load_layouts() {
         dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
 
     }).fail((jqXHR, textStatus, errorThrown) => {
-        profile_tree.generateTree();
-        selected_profile_tree.generateTree();
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });
+
+    profile_tree.generateTree();
+    selected_profile_tree.generateTree();
+
 }
 
-function load_gene_carts(cart_share_id) {
+async function load_gene_carts(cart_share_id) {
     const session_id = Cookies.get('gear_session_id');
+    let carts_found = false;
+    let permalink_cart_id = null
+    let permalink_cart_label = null
+    $("#selected_gene_cart_c").prop("disabled", false);
 
     if (!session_id) {
         //User is not logged in. Hide gene carts container
@@ -551,19 +513,14 @@ function load_gene_carts(cart_share_id) {
         selected_gene_cart_tree.generateTree();
         return;
     }
-    $("#selected_gene_cart_c").prop("disabled", false);
-    $.ajax({
+    await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
         data: { 'session_id': session_id, 'share_id': cart_share_id },
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
         const carts = {};
-        let permalink_cart_id = null
-        let permalink_cart_label = null
         const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
-        let carts_found = false;
-
         for (const ctype of cart_types) {
             carts[ctype] = [];
 
@@ -592,35 +549,34 @@ function load_gene_carts(cart_share_id) {
         gene_cart_tree.groupGeneCarts = carts.group;
         gene_cart_tree.sharedGeneCarts = carts.shared;
         gene_cart_tree.publicGeneCarts = carts.public;
-        gene_cart_tree.generateTree();
         selected_gene_cart_tree.domainGeneCarts = carts.domain;
         selected_gene_cart_tree.userGeneCarts = carts.user;
         selected_gene_cart_tree.groupGeneCarts = carts.group;
         selected_gene_cart_tree.sharedGeneCarts = carts.shared;
         selected_gene_cart_tree.publicGeneCarts = carts.public;
-        selected_gene_cart_tree.generateTree();
 
-        if (! carts_found ) {
-            $("#selected_gene_cart_c").prop("disabled", true);
-        }
-
-        // If gene_cart_permalink was provided:
-        // 1) Set the value in the gene cart tree and gene search bar
-        // 2) Trigger change event to populate the gene search bar with the genes
-        // 3) (Outside of function) Search button is clicked
-        // 4) (Outside of function) Show sidebar stuff in the display panel
-        if (permalink_cart_id) {
-            // This will also change selected_gene_cart via the "change" event trigger
-            $("#search_param_gene_cart").text(permalink_cart_label);
-            $("#search_param_gene_cart").val(permalink_cart_id);
-            $("#search_param_gene_cart").trigger('change');
-        }
     })
     .fail((jqXHR, textStatus, errorThrown) => {
-        gene_cart_tree.generateTree();
-        selected_gene_cart_tree.generateTree();
+
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
     });
+    if (! carts_found ) {
+        $("#selected_gene_cart_c").prop("disabled", true);
+    }
+    gene_cart_tree.generateTree();
+    selected_gene_cart_tree.generateTree();
+
+    // If gene_cart_permalink was provided:
+    // 1) Set the value in the gene cart tree and gene search bar
+    // 2) Trigger change event to populate the gene search bar with the genes
+    // 3) (Outside of function) Search button is clicked
+    // 4) (Outside of function) Show sidebar stuff in the display panel
+    if (permalink_cart_id) {
+        // This will also change selected_gene_cart via the "change" event trigger
+        $("#search_param_gene_cart").text(permalink_cart_label);
+        $("#search_param_gene_cart").val(permalink_cart_id);
+        $("#search_param_gene_cart").trigger('change');
+    }
 }
 
 async function load_weighted_gene_carts(cart_share_id) {
@@ -732,13 +688,14 @@ async function load_pattern_tree(projection_id) {
 }
 
 // If user changes, update genecart/profile trees
-function reload_trees(){
+async function load_all_trees(gene_cart_id, projection_id){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    Promise.allSettled([load_layouts(), load_gene_carts(gene_cart_id), load_pattern_tree(projection_id)])
+    await Promise.allSettled([load_layouts(), load_gene_carts(gene_cart_id), load_pattern_tree(projection_id)])
         .catch((err) => {
             console.error(err)
         });
+    console.info("Trees loaded");
 }
 
 // Hide option menu when scope is changed.
@@ -1379,3 +1336,36 @@ $(document).on("click", "#projection_pattern_select_all", () => {
 $(document).on("click", "#projection_pattern_deselect_all", () => {
     $('.js-projection-pattern-elts-check').prop('checked', false);
 });
+
+// SAdkins - 5/6/22 - Moved these functions to top level so they are loaded quicker, so triggers work without needing a timeout period before.
+$('#intro_search_form').on('submit', (e) => {
+    // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
+    e.preventDefault();
+    $('#intro_content').hide();
+
+    $("#leftbar_main").show();
+    $("#viewport_main").show();
+
+    // fire the true search button, to submit the true form
+    if (projection) {
+        $("#submit_search_projection").trigger( "click" );
+    } else {
+        $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
+        $("#submit_search").trigger( "click" );
+    }
+});
+
+// Search from front page is clicked
+$('#intro_search_icon').click(() => {
+    $('#intro_search_form').submit();
+});
+
+// Search from results page is clicked
+$('#submit_search').click(() => {
+    $('#gene_search_form').submit();
+})
+
+// Display curations using projections instead of genes
+$('#submit_search_projection').click(() => {
+    $('#projection_search_form').submit();
+})

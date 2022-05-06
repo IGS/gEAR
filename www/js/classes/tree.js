@@ -58,7 +58,7 @@ class Tree {
 
 }
 
-class projectionSourceTree extends Tree {
+class ProjectionSourceTree extends Tree {
     /**
      * Initialize projectionSourceTree
      * @constructor
