@@ -45,6 +45,10 @@ def main():
     input_type.add_argument('-f', '--input_file', type=str, help='Path to an input file to be read' )
     parser.add_argument('-id', '--organism_id', type=int, required=True, help='Database row ID for the organism being updated')
     parser.add_argument('-r', '--release_number', type=int, required=False, help='The number portion of the Ensembl release ID')
+    parser.add_argument('-a', '--accession', type=str, required=False, default="db_xref", help='The accession qualifier in the genbank file to use for loading in the "ensembl_id" field')
+    parser.add_argument('-g', '--gene_symbol', type=str, required=False, default="gene", help='The gene_symbol qualifier in the genbank file to use for loading in the "gene_symbol" field')
+    parser.add_argument('--dry_run', action='store_true', help='If specified, will not write to the database')
+
     args = parser.parse_args()
 
     files = []
@@ -56,7 +60,7 @@ def main():
     release_number = args.release_number if args.release_number else -1
 
     # For use when debugging
-    DO_DB_LOAD = True
+    DO_DB_LOAD = False if args.dry_run else True
 
     if len(files) == 0:
         raise Exception("ERROR: No input files matching the expected naming convention found")
@@ -101,12 +105,8 @@ def main():
                         chr_name = gb_record.features[0].qualifiers['chromosome'][0] \
                             if "chromosome" in gb_record.features[0].qualifiers \
                             else gb_record.features[0].qualifiers["molecule"][0]
-                    #else:
-                    #    # skip to the next one
-                    #    print("Neither 'chromosome' nor 'molecule' were found in this locus. Skipping...")
-                    #    continue
 
-                    annotations = process_gb_record(gb_record)
+                    annotations = process_gb_record(gb_record, args.accession, args.gene_symbol)
 
                     for ann in annotations:
                         if 'genbank_acc' not in ann.other_attributes:
@@ -291,9 +291,9 @@ def get_go_index(curs):
     return idx
 
 
-def get_gene_sym(feat):
-    if 'gene' in feat.qualifiers:
-        return feat.qualifiers['gene'][0].split(' ')[0]
+def get_gene_sym(feat, qual="gene"):
+    if qual in feat.qualifiers:
+        return feat.qualifiers[qual][0].split(' ')[0]
 
     return None
 
@@ -306,7 +306,7 @@ def get_product(feat):
 
     return product
 
-def process_gb_record(record):
+def process_gb_record(record, accession, gene_symbol):
     mol_id = record.name
     annotations = list()
     current_annot = None
@@ -315,7 +315,7 @@ def process_gb_record(record):
         if feat.type == 'source': continue
 
         # Only do the features associated with a gene
-        if 'gene' not in feat.qualifiers:
+        if gene_symbol not in feat.qualifiers:
             continue
 
         if feat.type == 'gene':
@@ -323,7 +323,7 @@ def process_gb_record(record):
             if current_annot is not None:
                 annotations.append(current_annot)
 
-            current_annot = process_gb_gene(feat)
+            current_annot = process_gb_gene(feat, accession, gene_symbol)
 
         elif feat.type == 'mRNA':
             current_annot.other_attributes['biotype'] = 'mRNA'
@@ -354,11 +354,13 @@ def process_gb_record(record):
 
     return annotations
 
-def process_gb_gene(gene):
+def process_gb_gene(gene, accession="db_xref", gene_symbol="gene"):
     """Generates a FunctionalAnnotation object from a Genbank gene feature
 
     Args:
         gene (_type_): Genbank gene feature
+        accession (_type_): Accession qualifier to use for the gene
+        gene_symbol (_type_): Gene symbol qualifier to use for the gene
 
     Returns:
         a FunctionAnnotation object
@@ -366,7 +368,7 @@ def process_gb_gene(gene):
     annot = annotation.FunctionalAnnotation()
     ensembl_id = None
 
-    if 'db_xref' in gene.qualifiers:
+    if accession == "db_xref" and 'db_xref' in gene.qualifiers:
         for dbxref in gene.qualifiers['db_xref']:
             m = re.match("GeneID:(\d+)", dbxref)
             if m:
@@ -374,14 +376,14 @@ def process_gb_gene(gene):
                 break
 
     # If db_xref is not present, then we attempt to use locus_tags
-    if ensembl_id is None and 'locus_tag' in gene.qualifiers:
-        ensembl_id = gene.qualifiers['locus_tag'][0]
+    elif accession in gene.qualifiers:
+        ensembl_id = gene.qualifiers[accession][0]
 
     annot.other_attributes['ensembl_id'] = ensembl_id
 
     # Can't find anything like this for NCBI
     annot.other_attributes['ensembl_version'] = None
-    annot.gene_symbol = get_gene_sym(gene)
+    annot.gene_symbol = get_gene_sym(gene, gene_symbol)
     annot.other_attributes['loc'] = get_coordinates(gene)
 
     return annot
