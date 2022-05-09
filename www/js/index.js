@@ -1032,7 +1032,7 @@ $("#projection_search_form").submit((event) => {
             dataset.run_projectR(projection_source, is_pca, scope)
                 .then(() => {
 
-                    if (dataset.projection_csv) {
+                    if (dataset.projection_id) {
                         if (multigene) {
                             // 'entries' is array of gene_symbols
                             dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });

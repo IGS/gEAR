@@ -38,7 +38,7 @@ class DatasetPanel extends Dataset {
         const single_or_multi = this.multigene ? "multi" : "single";
         const genes_or_projection = this.projection ? "projection" : "genes";
         this.primary_key = `${this.id}_${this.grid_position}_${genes_or_projection}_${single_or_multi}`;
-        this.projection_csv = null;
+        this.projection_id = null;
         this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
@@ -103,7 +103,7 @@ class DatasetPanel extends Dataset {
 
         data.primary_key = this.primary_key;
         data.controller = this.controller;
-        data.projection_csv = this.projection_csv;
+        data.projection_id = this.projection_id;
 
         let display;
         if (
@@ -147,7 +147,7 @@ class DatasetPanel extends Dataset {
 
         data.primary_key = this.primary_key;
         data.controller = this.controller;
-        data.projection_csv = this.projection_csv;
+        data.projection_id = this.projection_id;
 
         let display;
         if (
@@ -603,7 +603,6 @@ class DatasetPanel extends Dataset {
         const dataset_id = this.id;
         const payload = {
             input_value: projection_source,
-            scope,
             is_pca,
         };
         const other_opts = {}
@@ -611,13 +610,21 @@ class DatasetPanel extends Dataset {
             other_opts.signal = this.controller.signal;
         }
 
-        const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
-        // If file was not found, put some loading text in the plot
-        if (! response.data.file_found) {
-            this.show_loading({
-                info:"ProjectR has not been run for this dataset and pattern yet. Plot generation may take a few minutes as projections are generated."
-            });
+        try {
+            const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
+            // If file was not found, put some loading text in the plot
+            if (! response.data.csv_file) {
+                this.show_loading({
+                    info:"Plot generation may take a few minutes as projections need to be generated beforehand."
+                });
+            }
+            payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
+        } catch (e) {
+            this.show_error(e.message);
+            throw(e.message);
         }
+
+        payload.scope = scope;
 
         let message = "There was an error projecting patterns onto this dataset.";
         try {
@@ -626,7 +633,7 @@ class DatasetPanel extends Dataset {
                 message = data.message;
                 throw data.message; // will be caught below
             }
-            this.projection_csv = data.csv_file;
+            this.projection_id = data.projection_id;
         } catch (e) {
             if (e.name == "CanceledError") {
                 console.info("Canceled previous projectR request.");

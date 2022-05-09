@@ -11,7 +11,7 @@ class Display {
         label,
         plot_type,
         primary_key,
-        projection_csv = null,
+        projection_id = null,
         controller = null,
     }) {
         this.id = id;
@@ -23,7 +23,7 @@ class Display {
         this.data = null;
         this.first_draw = true; // Keep track of if this is the original draw so that effects are not doubly applied.
         this.zoomed = false;
-        this.projection_csv = projection_csv;   // Maybe use eventually but I don't think we can project on Epiviz displays
+        this.projection_id = projection_id;   // Maybe use eventually but I don't think we can project on Epiviz displays
         this.controller = controller;   // Abort controller for this display
     }
     zoom_in() {
@@ -488,7 +488,7 @@ class PlotlyDisplay extends Display {
             reverse_palette: this.reverse_palette,
             order: this.order,
             analysis: this.analysis,
-            projection_csv: this.projection_csv
+            projection_id: this.projection_id
         }, other_opts);
     }
     /**
@@ -730,7 +730,7 @@ class MultigeneDisplay extends Display {
             violin_add_points: this.violin_add_points,
             plot_title: this.plot_title,
             legend_title: this.legend_title,
-            projection_csv: this.projection_csv,
+            projection_id: this.projection_id,
         }, other_opts);
     }
     /**
@@ -918,8 +918,8 @@ class SVGDisplay extends Display {
         }
 
         let url = `/api/plot/${this.dataset_id}/svg?gene=${gene_symbol}`;
-        if (this.projection_csv) {
-            url += `&projection_csv=${this.projection_csv}`;
+        if (this.projection_id) {
+            url += `&projection_id=${this.projection_id}`;
         }
         return axios.get(url, other_opts);
     }
@@ -1429,7 +1429,7 @@ class TsneDisplay extends Display {
             horizontal_legend: this.horizontal_legend,
             // helps stop caching issues
             timestamp: new Date().getTime(),
-            projection_csv: this.projection_csv
+            projection_id: this.projection_id
         }, other_opts);
     }
 

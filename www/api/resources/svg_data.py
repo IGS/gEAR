@@ -40,7 +40,8 @@ class SvgData(Resource):
     """
     def get(self, dataset_id):
         gene_symbol = request.args.get('gene', None)
-        projection_csv = request.args.get('projection_csv', None)  # As CSV path
+        projection_id = request.args.get('projection_id', None)    # projection id of csv output
+        projection_csv = "{}.csv".format(projection_id)
 
         if not gene_symbol or not dataset_id:
             return {

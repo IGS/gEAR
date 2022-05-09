@@ -121,7 +121,8 @@ class PlotlyData(Resource):
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
-        projection_csv = req.get('projection_csv', None)  # As CSV path
+        projection_id = req.get('projection_id', None)    # projection id of csv output
+        projection_csv = "{}.csv".format(projection_id)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.

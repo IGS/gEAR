@@ -156,7 +156,8 @@ class TSNEData(Resource):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
         analysis_owner_id = req.get('analysis_owner_id')
-        projection_csv = req.get('projection_csv', None)   # As CSV path
+        projection_id = req.get('projection_id', None)    # projection id of csv output
+        projection_csv = "{}.csv".format(projection_id)
         sc.settings.figdir = '/tmp/'
 
         if not gene_symbol or not dataset_id:

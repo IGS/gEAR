@@ -163,7 +163,8 @@ class MultigeneDashData(Resource):
         # Misc options
         title = req.get('plot_title', None)
         legend_title = req.get('legend_title', None)
-        projection_csv = req.get('projection_csv', None)    # as CSV file
+        projection_id = req.get('projection_id', None)    # projection id of csv output
+        projection_csv = "{}.csv".format(projection_id)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
