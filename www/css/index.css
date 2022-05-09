@@ -50,8 +50,7 @@ div.dataset-status-container {
   align-items: center;
   text-align: center;
   width: 100%;
-  background-color: #b3bace;
-  opacity: 0.6;
+  background:rgb(179, 186, 206, 0.6); /* using this way to make transparent, so that hover child elts are not affected */
   overflow-wrap: normal;
   flex: 1 0 auto;
 }
@@ -60,6 +59,7 @@ div.dataset-status-container h2 {
   color: #2f103e;
   position: absolute;
   bottom: calc(100% - 50%);
+  opacity: 0.6;
 }
 div.empty-container {
   background-color: #ffffff;

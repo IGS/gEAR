@@ -96,8 +96,6 @@ class ProjectR(Resource):
         req = request.get_json()
         analysis = req.get('analysis', None)    # For source "dataset"
         analysis_owner_id = req.get('analysis_owner_id', None)
-        #plot_type = req.get('plot_type')
-        #gene_symbols = req.get('gene_symbols', [])
         scope = req.get('scope', "projection_pattern")
         input_value = req.get('input_value', None)  # This changes depending on scope
         is_pca = req.get('is_pca', False)
