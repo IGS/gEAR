@@ -517,20 +517,31 @@ class DatasetPanel extends Dataset {
     }
 
     show_warning(msg) {
-        this.show_hover_bar(msg, "warning");
+        args = {
+            "context": "warning"
+            , "icon": "fa-exclamation-triangle"
+            , "hover_msg": "Hover to see special warning"
+        }
+
+        this.show_hover_bar(msg, args);
     }
 
     show_info(msg) {
-        this.show_hover_bar(msg, "info");
+        args = {
+            "context": "info"
+            , "icon": "fa-exclamation-circle"
+            , "hover_msg": "Hover to see special information"
+        }
+        this.show_hover_bar(msg, args);
     }
 
-    show_hover_bar(msg, context ) {
-        const hover_msg = " Hover to see special information.";
+    show_hover_bar(msg, args) {
+        const { context, icon, hover_msg } = args;
 
         const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
         const template = `
         <div class='dataset-${context} bg-${context}' id='dataset_${this.primary_key}_${context}'>
-            <i class='fa fa-exclamation-triangle'></i>
+            <i class='fa ${icon} e'></i>
             <span id="dataset_${this.primary_key}_msg">${hover_msg}</span>
         </div>`;
 
