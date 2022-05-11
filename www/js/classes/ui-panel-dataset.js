@@ -517,7 +517,7 @@ class DatasetPanel extends Dataset {
     }
 
     show_warning(msg) {
-        args = {
+        const args = {
             "context": "warning"
             , "icon": "fa-exclamation-triangle"
             , "hover_msg": "Hover to see special warning"
@@ -527,7 +527,7 @@ class DatasetPanel extends Dataset {
     }
 
     show_info(msg) {
-        args = {
+        const args = {
             "context": "info"
             , "icon": "fa-exclamation-circle"
             , "hover_msg": "Hover to see special information"
@@ -540,7 +540,7 @@ class DatasetPanel extends Dataset {
 
         const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
         const template = `
-        <div class='dataset-${context} bg-${context}' id='dataset_${this.primary_key}_${context}'>
+        <div class='dataset-${context} bg-${context} px-1' id='dataset_${this.primary_key}_${context}'>
             <i class='fa ${icon} e'></i>
             <span id="dataset_${this.primary_key}_msg">${hover_msg}</span>
         </div>`;
@@ -613,7 +613,7 @@ class DatasetPanel extends Dataset {
     async run_projectR(projection_source, is_pca, scope) {
         const dataset_id = this.id;
         const payload = {
-            input_value: projection_source,
+            source_id: projection_source,
             is_pca,
         };
         const other_opts = {}

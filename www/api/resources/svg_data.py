@@ -41,7 +41,6 @@ class SvgData(Resource):
     def get(self, dataset_id):
         gene_symbol = request.args.get('gene', None)
         projection_id = request.args.get('projection_id', None)    # projection id of csv output
-        projection_csv = "{}.csv".format(projection_id)
 
         if not gene_symbol or not dataset_id:
             return {
@@ -50,18 +49,6 @@ class SvgData(Resource):
             }
 
         dataset = geardb.get_dataset_by_id(dataset_id)
-        # If the dataset is not public, make sure the user
-        # requesting resource owns the dataset
-        # This is commented right now until we work out modeling URL-shared datasets/profiles
-        #if not dataset.is_public:
-        #    session_id = request.cookies.get('gear_session_id')
-        #    user = geardb.get_user_from_session_id(session_id)
-        #    if user.id != dataset.owner_id:
-        #        return {
-        #            "success": -1,
-        #            "message": 'Only the owner can access this dataset.'
-        #        }
-
 
         h5_path = dataset.get_file_path()
         if not os.path.exists(h5_path):
@@ -72,14 +59,15 @@ class SvgData(Resource):
 
         adata = sc.read_h5ad(h5_path)
 
-        if projection_csv:
-            try:
-                adata = create_projection_adata(adata, dataset_id, projection_csv)
-            except PlotError as pe:
-                return {
-                    'success': -1,
-                    'message': str(pe),
-                }
+        if projection_id:
+          projection_csv = "{}.csv".format(projection_id)
+          try:
+              adata = create_projection_adata(adata, dataset_id, projection_csv)
+          except PlotError as pe:
+              return {
+                  'success': -1,
+                  'message': str(pe),
+              }
 
         gene_symbols = (gene_symbol,)
 

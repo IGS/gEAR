@@ -157,7 +157,6 @@ class TSNEData(Resource):
         user = geardb.get_user_from_session_id(session_id)
         analysis_owner_id = req.get('analysis_owner_id')
         projection_id = req.get('projection_id', None)    # projection id of csv output
-        projection_csv = "{}.csv".format(projection_id)
         sc.settings.figdir = '/tmp/'
 
         if not gene_symbol or not dataset_id:
@@ -176,7 +175,8 @@ class TSNEData(Resource):
 
         adata = ana.get_adata(backed=True)
 
-        if projection_csv:
+        if projection_id:
+            projection_csv = "{}.csv".format(projection_id)
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_csv)
             except PlotError as pe:

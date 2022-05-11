@@ -6,34 +6,18 @@
 
 import cgi
 import json
-import os, sys
+from pathlib import Path
 
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
-sys.path.append(lib_path)
-import geardb
+abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
+CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
-PATTERN_BASE_DIR = os.path.abspath(os.path.join('..', 'patterns'))
-WEIGHTED_CARTS_BASE_DIR = os.path.abspath(os.path.join('..', 'carts'))
-
-VALID_SCOPES = ["projection_pattern", "genecart"]
 
 def main():
     form = cgi.FieldStorage()
-    file_name = form.getvalue('file_name')
-    scope = form.getvalue('scope', "projection_pattern")
-
-    if scope not in VALID_SCOPES:
-        print("Status: 501 Not Implemented")
-        print('Content-Type: application/json\n\n')
-        print("Invalid scope: {}".format(scope))
-        return
+    source_id = form.getvalue('source_id')  # Root of the file name (minus extension)
 
     result = []
-    file_path = os.path.join(PATTERN_BASE_DIR, file_name)
-    if scope == "genecart":
-        # The gene cart "share_id" is passed to the CGI script as the file_name, which we can get the actual cart name from
-        file_name = "cart.{}.tab".format(file_name)
-        file_path = os.path.join(WEIGHTED_CARTS_BASE_DIR, file_name)
+    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
 
     for line in open(file_path):
         line = line.rstrip()

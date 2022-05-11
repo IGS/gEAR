@@ -120,7 +120,7 @@ class ProjectionSourceTree extends Tree {
         $.each(this.projectionPatterns, (_i, item) => {
             // ? Should the "genecart" icon change to a "projection pattern" icon?
             // Projections patterns stored slightly differently than gene carts
-            this.addNode(treeData, item.value, 'projection_patterns_node', item.text, 'genecart', {"scope": "projection_pattern"});
+            this.addNode(treeData, item.value, 'projection_patterns_node', item.text, 'genecart');
         });
 
         $.each(this.domainGeneCarts, (_i, item) => {
@@ -146,27 +146,27 @@ class ProjectionSourceTree extends Tree {
                     treeKeys[item.folder_id] = true;
                 }
 
-                this.addNode(treeData, item.value, item.folder_id, item.text, 'genecart', {"scope": "genecart"});
+                this.addNode(treeData, item.value, item.folder_id, item.text, 'genecart');
             } else {
                 // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
-                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart', {"scope": "genecart"})
+                this.addNode(treeData, item.value, 'domain_node', item.text, 'genecart')
             }
         });
 
         $.each(this.userGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'user_node', item.text, 'genecart', {"scope": "genecart"})
+            this.addNode(treeData, item.value, 'user_node', item.text, 'genecart')
         });
 
         $.each(this.groupGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'group_node', item.text, 'genecart', {"scope": "genecart"})
+            this.addNode(treeData, item.value, 'group_node', item.text, 'genecart')
         });
 
         $.each(this.sharedGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'shared_node', item.text, 'genecart', {"scope": "genecart"})
+            this.addNode(treeData, item.value, 'shared_node', item.text, 'genecart')
         });
 
         $.each(this.publicGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'public_node', item.text, 'genecart', {"scope": "genecart"})
+            this.addNode(treeData, item.value, 'public_node', item.text, 'genecart')
         });
 
         this.treeData = treeData;

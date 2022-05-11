@@ -1,22 +1,17 @@
-from matplotlib import projections
 from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
-import os, json, sys, uuid
+import json, sys, uuid
 import geardb
 import gear.rfuncs as rfx
 
 import pandas as pd
 
-# TODO: Remove and figure out a good pattern directory structure
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PATTERN_BASE_DIR = abs_path_www.joinpath('patterns')
-WEIGHTED_CARTS_BASE_DIR = abs_path_www.joinpath("carts")
+CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
 PROJECTIONS_JSON_BASENAME = 'projections.json'
-
-VALID_SCOPES = ["projection_pattern", "genecart"]
 
 """
 projections json format - one in each "projections/<dataset_id> subdirectory
@@ -33,13 +28,12 @@ projections json format - one in each "projections/<dataset_id> subdirectory
 """
 
 parser = reqparse.RequestParser(bundle_errors=True)
-parser.add_argument('input_value', help='Pattern source name required', type=str, required=True)
+parser.add_argument('source_id', help='Pattern source name required', type=str, required=True)
 parser.add_argument('is_pca', help="'is_pca' needs to be a boolean", type=bool,  required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
 parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used at the moment
 
 run_projectr_parser = parser.copy()
-run_projectr_parser.add_argument('scope', type=str, help='Bad scope choice: {error_msg}',  required=True, choices=VALID_SCOPES)
 run_projectr_parser.add_argument('projection_id', type=str, required=False)
 
 def build_projection_csv_path(dataset_id, projection_id):
@@ -102,23 +96,22 @@ class ProjectROutputFile(Resource):
                 "projection_id": None
             }
 
-        input_value = args['input_value']
+        source_id = args['source_id']
         is_pca = args['is_pca']
 
         projections_dict = json.load(open(projection_json_file))
 
         # If the pattern was not projected onto this dataset, initialize a list of configs
-        if not input_value in projections_dict:
-            # NOTE: tried to write JSON with empty list but it seems that key is skipped over.
+        if not source_id in projections_dict:
+            # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
             return {
                 "projection_id": None
             }
 
-        for config in projections_dict[input_value]:
+        for config in projections_dict[source_id]:
             if int(is_pca) == config['is_pca']:
                 projection_id = config['uuid']
                 projection_csv = build_projection_csv_path(dataset_id, projection_id)
-
                 return {
                     "projection_id": projection_id  if Path(projection_csv).is_file() else None
                 }
@@ -174,10 +167,9 @@ class ProjectR(Resource):
 
         """
 
-        input_value = args['input_value']
+        source_id = args['source_id']
         is_pca = args['is_pca']
         output_id = args['projection_id']
-        scope = args['scope']
 
         # Ensure target dataset has genes as rows
         target_df = adata.to_df().transpose()
@@ -186,27 +178,10 @@ class ProjectR(Resource):
 
         projection_csv = build_projection_csv_path(dataset_id, projection_id)
 
-        if scope == "projection_pattern":
-            # Pattern repository
-            # Row: Genes
-            # Col: Patterns
-            loading_df = pd.read_csv("{}/{}".format(PATTERN_BASE_DIR, input_value), sep="\t")
-
-        elif scope == "dataset":
-            # Previous analysis stored in a dataset
-            # Row: Genes
-            # Col: PCA/tSNE/UMAP 1/2
-            pass
-        elif scope == "genecart":
-            # Weighted genes present... behaves exactly like the "repository" case
-            # Row; Genes
-            # Col: Weights
-            # The gene cart "share_id" is passed to the CGI script as the file_name, which we can get the actual cart name from
-            input_file = "cart.{}.tab".format(input_value)
-            loading_df = pd.read_csv("{}/{}".format(WEIGHTED_CARTS_BASE_DIR, input_file), sep="\t")
-
-        else:
-            raise Exception("Invalid scope was called.")
+        # Row: Genes
+        # Col: Pattern weights
+        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
+        loading_df = pd.read_csv(file_path, sep="\t")
 
         # Assumes first column is gene info. Standardize on a common index name
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
@@ -230,7 +205,7 @@ class ProjectR(Resource):
             # Add new configuration to the list for this dictionary key
             projection_json_file = build_projection_json_path(dataset_id)
             projections_dict = json.load(open(projection_json_file))
-            projections_dict.setdefault(input_value, []).append({
+            projections_dict.setdefault(source_id, []).append({
                 "uuid": projection_id
                  , "is_pca": int(is_pca)
             })

@@ -5,35 +5,27 @@ Used by projection.html, this script gets a list of the available analysis patte
 Returns as a list
 """
 
-import cgi, json, os, sys
+import cgi, json
 from pathlib import Path
 
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
-sys.path.append(lib_path)
-
-import geardb
-
-PATTERN_BASE_DIR = os.path.abspath(os.path.join('..', 'patterns'))
+abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
+CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def main():
-    form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-
-    if session_id is not None:
-        user = geardb.get_user_from_session_id(session_id)
-    else:
-        user = None
+    #form = cgi.FieldStorage()
 
     result = []
 
-    base_dir = Path(PATTERN_BASE_DIR)
-
-    for p_file in base_dir.iterdir():
+    for p_file in CARTS_BASE_DIR.iterdir():
         name = p_file.name    # get basname
         if not name.endswith(".tab"):   # skip non-tab files, like .gitignore
             continue
-        title = name.replace('.tab', '').replace('ROWmeta_DIMRED_', '')
-        result.append({"id":name, "title":title})
+        # NOTE: Weighted gene carts may be retrieved here in the future as well.
+        if name.startswith("cart."):    # skip weighted gene carts, as those are handled separately.
+            continue
+        source_id = name.replace('.tab', '')
+        title = source_id.replace('ROWmeta_DIMRED_', '')
+        result.append({"id":source_id, "title":title})
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

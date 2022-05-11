@@ -609,7 +609,9 @@ async function load_weighted_gene_carts(cart_share_id) {
                         permalink_cart_label = item.label;
                     }
 
-                    carts[ctype].push({value: item.share_id,    // Use share ID as it is used in the cart file's basename
+                    share_id = "cart." + item.share_id; // normalizing name for easy filepath retrieval
+
+                    carts[ctype].push({value: share_id,    // Use share ID as it is used in the cart file's basename
                                         text: item.label,
                                         folder_id: item.folder_id,
                                         folder_label: item.folder_label,
@@ -640,7 +642,7 @@ async function populate_pattern_selection(projection_source) {
     await $.ajax({
         type: "POST",
         url: "./cgi/get_projection_pattern_list.cgi",
-        data: {'session_id': CURRENT_USER.session_id},
+        //data: {'session_id': CURRENT_USER.session_id},
         dataType: "json",
     }).done((data) => {
         const patterns_list = [];
@@ -1059,7 +1061,7 @@ $("#projection_source").on('change', (_event) => {
         url: "./cgi/get_pattern_element_list.cgi",
         async: false,   // No clue why this works but async/wait does not.. maybe it's the onchange event?
         data: {
-            'file_name': $('#projection_source').val(),
+            'source_id': $('#projection_source').val(),
             'scope': scope
         },
         dataType: "json"
