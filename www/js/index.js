@@ -879,6 +879,7 @@ $("#gene_search_form").submit((event) => {
 
     $("#too_many_genes_warning").hide();
     $('#search_result_count').text('');
+    $('#scoring_and_gradient_menu').show();
 
     // MG disabled
     $('#search_results_scrollbox').show();
@@ -981,6 +982,7 @@ $("#projection_search_form").submit((event) => {
 
     $('#recent_updates_c').hide();
     $('#searching_indicator_c').show();
+    $('#scoring_and_gradient_menu').hide(); // Not sure if this is relevant for projections
 
     // Get selected projections and add as state
     const selected_projections = [];
@@ -1069,7 +1071,10 @@ $("#projection_source").on('change', (_event) => {
         const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
         const pattern_elements_html = pattern_elements_tmpl.render(data);
         $("#projection_pattern_elements").html(pattern_elements_html);
-        $("#projection_pattern_elements_c").show();
+        // Only show if multigene is enabled. All projections are used in single gene search.
+        if (multigene) {
+            $("#projection_pattern_elements_c").show();
+        }
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting list of patterns from source.');
     });
@@ -1201,8 +1206,6 @@ function add_state_history(searched_entities, projection_source=null, is_pca=nul
     }
 
     if (projection_source) {
-        state_info.projection_patterns = searched_entities;
-        state_url += `&projection_patterns=${searched_entities}`;
         state_info.projection_source = projection_source;
         state_url += `&projection_source=${projection_source}`;
 
@@ -1210,7 +1213,11 @@ function add_state_history(searched_entities, projection_source=null, is_pca=nul
             state_info.is_pca = Number(is_pca);
             state_url += `&is_pca=${state_info.is_pca}`;
         }
-
+        // If a single-projection display, do not bother adding the list of patterns
+        if (state_info.multigene_plots == 1) {
+            state_info.projection_patterns = searched_entities;
+            state_url += `&projection_patterns=${searched_entities}`;
+        }
     } else {
         // gene_cart_id automatically enables the exact_match and populates gene symbols,
         // so let's not crowd up the history with that.
@@ -1305,10 +1312,16 @@ function set_multigene_plots(is_enabled, show_tooltip=true) {
     if (is_enabled) {
         $(".js-multigene:visible img").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
         $(".js-multigene img").attr('src', 'img/icons/multi-dna.svg');
-    } else {
-        $(".js-multigene:visible img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
-        $(".js-multigene img").attr('src', 'img/icons/single-dna.svg');
+        // projection tab stuff
+        $("#projection_pattern_deselect_all").click();
+        $("#projection_pattern_elements_c").show();
+        return;
     }
+    $(".js-multigene:visible img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
+    $(".js-multigene img").attr('src', 'img/icons/single-dna.svg');
+    // projection tab stuff
+    $("#projection_pattern_select_all").click();
+    $("#projection_pattern_elements_c").hide();
 }
 
 // Show gene-related container and options
