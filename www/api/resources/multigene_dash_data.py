@@ -213,7 +213,7 @@ class MultigeneDashData(Resource):
         # Ensure datasets are not doubly log-transformed
         # In the case of projection inputs, we don't want to log-transform either
         is_log10 = False
-        if dataset_id in LOG10_TRANSFORMED_DATASETS or projection_csv:
+        if dataset_id in LOG10_TRANSFORMED_DATASETS or projection_id:
             is_log10 = True
 
         success = 1
@@ -575,6 +575,30 @@ class MultigeneDashData(Resource):
                     "text":legend_title
                 }
             )
+
+        # Change plot elements to indicuate projections instead of genes
+        if projection_id:
+            fig.update_layout(
+                legend_title_text=fig.layout.legend.title.text.replace("gene", "projection").replace("Gene", "Projection") if fig.layout.legend.title.text else None
+                , title_text=fig.layout.title.text.replace("gene", "projection").replace("Gene", "Projection") if fig.layout.title.text else None
+            )
+            fig.for_each_xaxis(
+                lambda a: a.update(
+                    title={
+                        "text": a.title.text.replace("gene", "projection").replace("Gene", "Projection") if a.title.text else None
+
+                    }
+                )
+            )
+            fig.for_each_yaxis(
+                lambda a: a.update(
+                    title={
+                        "text": a.title.text.replace("gene", "projection").replace("Gene", "Projection") if a.title.text else None
+
+                    }
+                )
+            )
+
 
         # Pop any default height and widths being added
         fig["layout"].pop("height", None)
