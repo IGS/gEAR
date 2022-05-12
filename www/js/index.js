@@ -119,11 +119,23 @@ window.onload= async () => {
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
 
     // Only apply if both are present
-    if (permalinked_projection_id && permalinked_projection_patterns) {
+    if (permalinked_projection_id) {
+
+        let selected_projections_string;
+        if (permalinked_projection_patterns) {
+            selected_projections_string = permalinked_projection_patterns;
+        } else {
+            // jQuery .map() returns a jQuery object, not an array, so use .get() to convert to array
+            const selected_projections =  $('.js-projection-pattern-elts-check').map(function() {
+                return $(this).data('label');
+            }).get();
+            selected_projections_string = selected_projections.join(',');
+        }
+
         // Patterns applied after HTML renders
-        $("#search_gene_symbol_intro").val(permalinked_projection_patterns);
+        $("#search_gene_symbol_intro").val(selected_projections_string);
         // Check boxes for the elements that were found in the URL
-        permalinked_projection_patterns.split(',').forEach((pattern) => {
+        selected_projections_string.split(',').forEach((pattern) => {
             $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
         });
 
@@ -865,7 +877,6 @@ $("#gene_search_form").submit((event) => {
     set_multigene_plots(multigene, false);
 
     $('#recent_updates_c').hide();
-    $('#searching_indicator_c').show();
 
     const formData = $("#gene_search_form").serializeArray();
 
@@ -895,7 +906,6 @@ $("#gene_search_form").submit((event) => {
         }
     }
 
-    $('#search_results').empty();
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
@@ -981,7 +991,6 @@ $("#projection_search_form").submit((event) => {
     const is_pca = $('#is_pca').is(':checked');
 
     $('#recent_updates_c').hide();
-    $('#searching_indicator_c').show();
     $('#scoring_and_gradient_menu').hide(); // Not sure if this is relevant for projections
 
     // Get selected projections and add as state
@@ -1002,7 +1011,6 @@ $("#projection_search_form").submit((event) => {
         $('#multigene_search_indicator').show();
     }
 
-    $('#search_results').empty();
     // show search results
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
@@ -1377,10 +1385,18 @@ $('#intro_search_icon').click(() => {
 
 // Search from results page is clicked
 $('#submit_search').click(() => {
+    $('#search_results').empty();
+    $('#search_result_count').empty();
+    $('#searching_indicator_c').show();
+
     $('#gene_search_form').submit();
 })
 
 // Display curations using projections instead of genes
 $('#submit_search_projection').click(() => {
+    $('#search_results').empty();
+    $('#search_result_count').empty();
+    $('#searching_indicator_c').show();
+
     $('#projection_search_form').submit();
 })
