@@ -11,7 +11,7 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
-PROJECTIONS_JSON_BASENAME = 'projections.json'
+PROJECTIONS_JSON_BASENAME = "projections.json"
 
 """
 projections json format - one in each "projections/<dataset_id> subdirectory
@@ -200,6 +200,8 @@ class ProjectR(Resource):
                 return {"success": -1, "message": message}
 
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
+            # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
+            projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
             projection_patterns_df.to_csv(projection_csv)
 
             # Add new configuration to the list for this dictionary key

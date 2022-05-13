@@ -177,7 +177,6 @@ class TSNEData(Resource):
 
         if projection_id:
             projection_csv = "{}.csv".format(projection_id)
-            print("IN HERE", file=sys.stderr)
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_csv)
             except PlotError as pe:
@@ -187,7 +186,6 @@ class TSNEData(Resource):
                 }
 
         gene_symbols = (gene_symbol,)
-        print(adata.var, file=sys.stderr)
         if 'gene_symbol' in adata.var.columns:
             gene_filter = adata.var.gene_symbol.isin(gene_symbols)
             if not gene_filter.any():
