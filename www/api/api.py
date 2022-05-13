@@ -1,7 +1,7 @@
 # Include our lib directory on system path
 # so we have access to modules
 from pathlib import Path
-import sys, os
+import sys
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
