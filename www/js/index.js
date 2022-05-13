@@ -985,6 +985,9 @@ $("#projection_search_form").submit((event) => {
     // If front page MG was enabled, ensure correct radio button is selected
     if (multigene) {
         $('#multi_pattern').click();
+    } else {
+        // If single gene, select all genes
+        $(`.js-projection-pattern-elts-check`).prop('checked', true);
     }
 
     const is_pca = $('#is_pca').is(':checked');
