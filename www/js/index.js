@@ -615,13 +615,14 @@ async function load_weighted_gene_carts(cart_share_id) {
             carts[ctype] = [];
             if (data[`${ctype}_carts`].length > 0) {
                 $.each(data[`${ctype}_carts`], (_i, item) => {
+                    const share_id = `cart.${item.share_id}`; // normalizing name for easy filepath retrieval
+
                     // If cart permalink was passed in, retrieve gene_cart_id for future use.
-                    if (cart_share_id && item.share_id == cart_share_id) {
-                        permalink_cart_id = item.share_id;
+                    if (cart_share_id && share_id == cart_share_id) {
+                        permalink_cart_id = share_id;
                         permalink_cart_label = item.label;
                     }
 
-                    share_id = "cart." + item.share_id; // normalizing name for easy filepath retrieval
 
                     carts[ctype].push({value: share_id,    // Use share ID as it is used in the cart file's basename
                                         text: item.label,
@@ -1406,6 +1407,5 @@ $('#submit_search_projection').click(() => {
 
     // Scope selection
     $('#toggle_options').hide();  // Not sure if this is relevant for projections
-
     $('#projection_search_form').submit();
 })
