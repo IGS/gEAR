@@ -4,8 +4,9 @@ from pathlib import Path
 import sys, os
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
-abs_path_lib = os.path.join(str(abs_path_gear), 'lib')
-sys.path.insert(0, abs_path_lib)
+abs_path_lib = abs_path_gear.joinpath('lib')
+# abs_path_lib is a Path object so we need to convert to string
+sys.path.insert(0, str(abs_path_lib))
 
 # Prevent matplotlib backend rendering errors
 # when imporing scanpy in resource modules

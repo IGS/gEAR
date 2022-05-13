@@ -12,7 +12,7 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections'))
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 def create_projection_adata(dataset_adata, dataset_id, projection_csv):
     # Create AnnData object out of readable CSV file

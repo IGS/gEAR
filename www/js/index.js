@@ -890,7 +890,6 @@ $("#gene_search_form").submit((event) => {
 
     $("#too_many_genes_warning").hide();
     $('#search_result_count').text('');
-    $('#scoring_and_gradient_menu').show();
 
     // MG disabled
     $('#search_results_scrollbox').show();
@@ -991,7 +990,6 @@ $("#projection_search_form").submit((event) => {
     const is_pca = $('#is_pca').is(':checked');
 
     $('#recent_updates_c').hide();
-    $('#scoring_and_gradient_menu').hide(); // Not sure if this is relevant for projections
 
     // Get selected projections and add as state
     const selected_projections = [];
@@ -1385,18 +1383,26 @@ $('#intro_search_icon').click(() => {
 
 // Search from results page is clicked
 $('#submit_search').click(() => {
+    // Reset some stuff before submission, so it does not show while AJAX stuff is happening
     $('#search_results').empty();
     $('#search_result_count').empty();
     $('#searching_indicator_c').show();
+
+    // Scope selection
+    $('#toggle_options').show();
 
     $('#gene_search_form').submit();
 })
 
 // Display curations using projections instead of genes
 $('#submit_search_projection').click(() => {
+    // Reset some stuff before submission, so it does not show while AJAX stuff is happening
     $('#search_results').empty();
     $('#search_result_count').empty();
     $('#searching_indicator_c').show();
+
+    // Scope selection
+    $('#toggle_options').hide();  // Not sure if this is relevant for projections
 
     $('#projection_search_form').submit();
 })

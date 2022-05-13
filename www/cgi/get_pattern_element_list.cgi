@@ -11,7 +11,6 @@ from pathlib import Path
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
-
 def main():
     form = cgi.FieldStorage()
     source_id = form.getvalue('source_id')  # Root of the file name (minus extension)

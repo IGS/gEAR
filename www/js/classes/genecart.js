@@ -27,19 +27,15 @@ class GeneCart {
             url: "./cgi/save_new_genecart_json.cgi",
             dataType: "json",
             data: JSON.stringify(this),
-            success: function(data) {
-                if (callback) {
-                    gc.id = data['id']
-                    callback(gc);
-                }
-            },
-            error: function(msg) {
-
-                // TODO: Currently msg is an Object so nothing useful shows in console.log
-                console.log(`error: ${msg}`);
-                if (errCallback) {
-                    errCallback(gc);
-                }
+        }).done((data) => {
+            if (callback) {
+                gc.id = data.id
+                callback(gc);
+            }
+        }).fail((jqXHR) => {
+            console.error(jqXHR.responseText);
+            if (errCallback) {
+                errCallback(gc);
             }
         });
     }
@@ -61,15 +57,15 @@ class GeneCart {
            // contentType: 'multipart/form-data',
             processData: false,
             cache: false,
-            success: function(data) {
-                if (callback) {
-                    gc.id = data['id']
-                    callback(gc);
-                }
-            },
-            error: function(msg) {
-                // TODO: Currently msg is an Object so nothing useful shows in console.log
-                console.log(`error: ${msg}`);
+        }).done((data) => {
+            if (callback) {
+                gc.id = data.id
+                callback(gc);
+            }
+        }).fail((jqXHR) => {
+            console.error(jqXHR.responseText);
+            if (errCallback) {
+                errCallback(gc);
             }
         });
     }
@@ -79,7 +75,7 @@ class GeneCart {
         this.genes.push(gene)
     }
 
-    save(callback, errCallback=null) {
+    save(callback=null, errCallback=null) {
         /*
         If the 'id' is empty, it's assumed to be new, so an INSERT is
         performed.  Otherwise, if ID is populated this does an
@@ -98,6 +94,13 @@ class GeneCart {
     update_cart_in_db(callback, errCallback=null) {
         alert("Not implemented yet");
         return false;
+    }
+}
+
+class WeightedGeneCart extends GeneCart {
+    constructor ({...args} = {}, weight_labels) {
+        super(args);
+        this.weight_labels = weight_labels || [];
     }
 }
 

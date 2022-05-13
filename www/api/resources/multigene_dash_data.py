@@ -57,7 +57,7 @@ LOG10_TRANSFORMED_DATASETS = [
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections'))
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 def order_by_time_point(obs_df):
     """Order observations by time point column if it exists."""

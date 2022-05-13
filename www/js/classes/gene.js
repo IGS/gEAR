@@ -13,3 +13,11 @@ class Gene {
     }
 
 }
+
+class WeightedGene extends Gene {
+    constructor ({...args} = {}, weights) {
+        super(args);
+        this.weights = weights || [];
+    }
+
+}

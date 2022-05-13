@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.colors import ListedColormap
 
-import io, os, re
+import io, os, re, sys
 import geardb
 import base64
 from math import ceil
@@ -28,7 +28,7 @@ NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = os.path.abspath(os.path.join(abs_path_www, 'projections'))
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -177,6 +177,7 @@ class TSNEData(Resource):
 
         if projection_id:
             projection_csv = "{}.csv".format(projection_id)
+            print("IN HERE", file=sys.stderr)
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_csv)
             except PlotError as pe:
@@ -186,6 +187,7 @@ class TSNEData(Resource):
                 }
 
         gene_symbols = (gene_symbol,)
+        print(adata.var, file=sys.stderr)
         if 'gene_symbol' in adata.var.columns:
             gene_filter = adata.var.gene_symbol.isin(gene_symbols)
             if not gene_filter.any():
