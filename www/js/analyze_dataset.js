@@ -881,7 +881,9 @@ async function populate_dataset_selection() {
             if (dataset_id !== undefined) {
                 $("#dataset_id").val(dataset_id);
                 try {
-                    $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
+                    const tree_leaf = dataset_tree.treeData.find(e => e.dataset_id === dataset_id);
+                    $('#dataset_id').text(tree_leaf.text);
+                    $("#dataset_id").data("organism-id", tree_leaf.organism_id);
                     $("#dataset_id").trigger("change");
                 } catch {
                     console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
