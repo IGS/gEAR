@@ -20,7 +20,7 @@ let projection = false;
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
-const controller = dataset_collection_panel.controller;
+const { controller } = dataset_collection_panel;
 
 /*
 Tree properties for constructor:
@@ -38,14 +38,19 @@ const projection_source_tree = new ProjectionSourceTree({treeDiv: '#projection_s
 
 const search_result_postselection_functions = [];
 
-window.onload= async () => {
+window.onload = async () => {
     // check if the user is already logged in
     check_for_login();
+
+    // Ensure "exact match" and "multigene" tooltips work upon page load
+    $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
     gene_cart_id = getUrlParameter('gene_cart_share_id');
     const permalinked_projection_id = getUrlParameter('projection_source');
 
     await load_all_trees(gene_cart_id, permalinked_projection_id);
+    // TODO: If search is clicked before trees are loaded, gene is searched twice as submission happens twice.
+    // Disable search button until trees are loaded.
 
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
@@ -83,8 +88,7 @@ window.onload= async () => {
         $('#intro_search_icon').trigger('click');
     }
 
-    // Ensure "exact match" and "multigene" tooltips work upon page load
-    $('#intro_search_div [data-toggle="tooltip"]').tooltip();
+
 
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
     if (permalinked_gsem !== (null || undefined)
@@ -108,7 +112,7 @@ window.onload= async () => {
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
 
-        console.info(`Permanlinked gene symbols found: ${permalinked_gene_symbol}`);
+        console.info(`Permalinked gene symbols found: ${permalinked_gene_symbol}`);
         $('#intro_search_icon').trigger('click');
     } else if (dataset_id) {
         $('#permalink_intro_c').show();
@@ -947,7 +951,6 @@ $("#gene_search_form").submit((event) => {
         });
 
         set_scrollbar_props();
-        return false;
     }).fail((jqXHR, textStatus, errorThrown) => {
         $('#searching_indicator_c').hide();
 
@@ -1305,11 +1308,11 @@ function set_exact_match(is_enabled, show_tooltip=true) {
     }
 
     if (is_enabled) {
-        $(".js-exact-match img").attr("src", "img/arrow_target_selected.png");
-        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently on).").tooltip(action); // Show is added so the old version of the tooltip does not persist
+        $(".js-exact-match").attr("src", "img/arrow_target_selected.png");
+        $(".js-exact-match:visible").attr('data-original-title', "Exact match (currently on).").tooltip(action); // Show is added so the old version of the tooltip does not persist
     } else {
-        $(".js-exact-match img").attr("src", "img/arrow_target_unselected.png");
-        $(".js-exact-match:visible img").attr('data-original-title', "Exact match (currently off).").tooltip(action);
+        $(".js-exact-match").attr("src", "img/arrow_target_unselected.png");
+        $(".js-exact-match:visible").attr('data-original-title', "Exact match (currently off).").tooltip(action);
     }
 }
 
@@ -1320,8 +1323,8 @@ function set_multigene_plots(is_enabled, show_tooltip=true) {
     }
 
     if (is_enabled) {
-        $(".js-multigene:visible img").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
-        $(".js-multigene img").attr('src', 'img/icons/multi-dna.svg');
+        $(".js-multigene:visible").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
+        $(".js-multigene").attr('src', 'img/icons/multi-dna.svg');
         // projection tab stuff
         $("#projection_pattern_deselect_all").click();
         $("#projection_pattern_elements_c").show();
@@ -1365,11 +1368,11 @@ $(document).on("click", "#projection_pattern_deselect_all", () => {
 // SAdkins - 5/6/22 - Moved these functions to top level so they are loaded quicker, so triggers work without needing a timeout period before.
 $('#intro_search_form').on('submit', (e) => {
     // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
-    e.preventDefault();
     $('#intro_content').hide();
 
     $("#leftbar_main").show();
     $("#viewport_main").show();
+
 
     // fire the true search button, to submit the true form
     if (projection) {
@@ -1378,15 +1381,16 @@ $('#intro_search_form').on('submit', (e) => {
         $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
         $("#submit_search").trigger( "click" );
     }
+    return false;   // prevent the default action
 });
 
 // Search from front page is clicked
-$('#intro_search_icon').click(() => {
+$('#intro_search_icon').click((e) => {
     $('#intro_search_form').submit();
 });
 
 // Search from results page is clicked
-$('#submit_search').click(() => {
+$('#submit_search').click((e) => {
     // Reset some stuff before submission, so it does not show while AJAX stuff is happening
     $('#search_results').empty();
     $('#search_result_count').empty();
@@ -1399,7 +1403,7 @@ $('#submit_search').click(() => {
 })
 
 // Display curations using projections instead of genes
-$('#submit_search_projection').click(() => {
+$('#submit_search_projection').click((e) => {
     // Reset some stuff before submission, so it does not show while AJAX stuff is happening
     $('#search_results').empty();
     $('#search_result_count').empty();
