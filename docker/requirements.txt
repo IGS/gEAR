@@ -6,10 +6,10 @@ numba==0.50.1
 llvmlite==0.33.0rc1   # For numba
 jupyter==1.0.0
 xlrd==1.2.0
-requests==2.23.0
-plotly==4.14.3
+requests==2.27.1
+plotly==5.6.0
 kaleido==0.2.1
-dash-bio==0.6.1
+dash-bio==1.0.2
 MulticoreTSNE==0.1
 Pillow==7.1.1
 biopython==1.76
