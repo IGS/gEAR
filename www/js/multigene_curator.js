@@ -208,8 +208,7 @@ async function loadDatasets () {
 // Draw plotly chart to image
 async function drawPreviewImage (display) {
     // check if config has been stringified
-    let config;
-    config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
+    const config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
 
     const { data } = await getData(datasetId, config);
 
@@ -680,6 +679,7 @@ function loadDisplayConfigHtml (plotConfig) {
             $(`#${escapedField}_clusterbar`).prop('checked', true).click();
         }
         $('#matrixplot').prop('checked', plotConfig.matrixplot);
+        $('#center_around_zero').prop('checked', plotConfig.center_around_zero);
         $('#cluster_obs').prop('checked', plotConfig.cluster_obs);
         $('#cluster_genes').prop('checked', plotConfig.cluster_obs);
         $('#flip_axes').prop('checked', plotConfig.flip_axes);
@@ -917,8 +917,8 @@ $('#dataset').change(async function () {
     $('#no_observations_error').hide();
 
     // Create promises to get genes and observations for this dataset
-    const geneSymbolsPromise = fetchGeneSymbols({ datasetId, undefined })
-    const h5adPromise =  fetchH5adInfo({ datasetId, undefined });
+    const geneSymbolsPromise = fetchGeneSymbols({ datasetId, analysis: undefined })
+    const h5adPromise =  fetchH5adInfo({ datasetId, analysis: undefined });
 
     // Execute both in parallel
     geneSymbols = await geneSymbolsPromise;
@@ -1183,14 +1183,23 @@ $(document).on('change', 'input[name="obs_secondary"]', () => {
     $('#secondary_order_help').hide();
 });
 
+// Determine if condition has no groups so the sort container will be disabled or not.
 $(document).on('change', '.js-obs-levels', function () {
-    const id = this.id;
+    const id = this.id; // This is not escaped
     const group = id.replace('_dropdown', '');
     const escapedGroup = $.escapeSelector(group);
-    const propData = $(`#${id}`).select2('data');
+    const propData = $(`#${escapedGroup}_dropdown`).select2('data');
     const props = propData.map((elem) => elem.id);
     $(`#${escapedGroup}_primary`).prop("disabled", false);
     $(`#${escapedGroup}_secondary`).prop("disabled", false);
+    // Update sortables with current filters list
+    if ($(`#${escapedGroup}_primary`).is(":checked")) {
+        createObsSortable(group, "primary");
+
+    }
+    if ($(`#${escapedGroup}_secondary`).is(":checked")) {
+        createObsSortable(group, "secondary");
+    }
     // Disable sorting until it is known that filters have length
     if (!props.length) {
         $(`#${escapedGroup}_primary`).prop("disabled", true);
@@ -1274,6 +1283,7 @@ $(document).on('click', '#create_plot', async () => {
             plotConfig.clusterbar_fields.push($(elem).val());
         });
         plotConfig.matrixplot = $('#matrixplot').is(':checked');
+        plotConfig.center_around_zero = $('#center_around_zero').is(':checked');
         plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
         plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
         plotConfig.flip_axes = $('#flip_axes').is(':checked');

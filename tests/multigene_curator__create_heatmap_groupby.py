@@ -18,10 +18,6 @@ This testing script performs the following actions:
 
 import argparse, sys, time
 
-from selenium import webdriver
-
-from selenium.webdriver.common.by import By
-
 import common.multigene_curator as mg
 
 
@@ -39,8 +35,7 @@ def main():
 
     results = []
 
-    browser = webdriver.Chrome()
-    mg_test = mg.MGTest("Heatmap", browser)
+    mg_test = mg.MGTest("Heatmap")
 
     try:
         mg_test.browser.get(url)
@@ -53,12 +48,6 @@ def main():
             results.append({"success": 0, "label": "Dataset selected from tree"})
 
         time.sleep(mg_test.timeout)
-
-        if mg_test.test_plot_load_after_dataset_selection():
-            results.append({"success": 1, "label": "Default plot loaded after dataset selection"})
-        else:
-            results.append({"success": 0, "label": "Default plot loaded after dataset selection"})
-
 
         # Choose some genes
         if mg_test.test_gene_entry():

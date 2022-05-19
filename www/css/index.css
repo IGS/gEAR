@@ -113,7 +113,9 @@ div#go_terms_table_c {
 div.h5ad-container {
   height: 350px;
 }
-
+div.input-group-text {
+    padding: 6px 8px;
+}
 div.input-group-text img {
   width: 20px;
 }
@@ -129,8 +131,10 @@ div#intro_search_c {
   border: 1px solid #aba9bf;
   border-radius: 5px;
 }
-div#intro_search_icon:hover,
-div#exact_match_icon:hover {
+.js-search:hover,
+.js-exact-match:hover,
+.js-multigene:hover,
+.js-gene-cart-icon:hover {
   cursor: pointer;
 }
 div#intro_search_options_c h1 {
@@ -166,29 +170,9 @@ div#primary_annotation_attributes dd {
 div#search_container {
   background-color: rgb(255, 255, 255);
   width: 100%;
-  margin: 10px 0 0 10px;
-  padding-right: 30px;
 }
 div#search_container h3 {
   margin-top: 25px;
-}
-div#search_info {
-  font-size: 80%;
-  font-weight: bold;
-}
-div#search_info span {
-  font-weight: normal;
-}
-div#searched_gene {
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-div.search_option {
-  font-size: 100%;
-  margin: 5px 0 5px 0;
-}
-div.search_option_c {
-    background-color: white;
 }
 div.search_result_c {
   display: block;
@@ -247,10 +231,6 @@ div.section_panel p {
     margin: 5px 0 0 5px;
 }
 div.section_panels_row {
-    margin-bottom: 10px;
-}
-div#selected_gene_cart_loading_c {
-    display: none;
     margin-bottom: 10px;
 }
 div.sidebar_section {
@@ -526,4 +506,32 @@ li.scope_choice:hover {
 .datasetbox-menu li {
   white-space: nowrap;
   padding-right: 5px !important;  /* Give some cushion to the longest submenu name */
+}
+
+/* Style the tab */
+.tab {
+  display: inline-block;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+
+/* Style the buttons that are used to open the tab content */
+.tab button {
+  background-color: inherit;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
 }

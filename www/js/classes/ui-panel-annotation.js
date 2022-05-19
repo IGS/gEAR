@@ -59,10 +59,11 @@ class FunctionalAnnotationPanel {
         }
     }
 
-    display_first_organism() {
+    autoselect_organism() {
         /*
           Given a full annotation structure this displays the first one.  Here, 'first' is arbitrary
-          so we'll start in this priority, skipping any for which annotation isn't found:
+          so we'll start in this priority, skipping any for which annotation isn't found or for 
+          which there are no datasets of that organism in this profile:
 
           mouse > human > zebrafish > chicken
 
@@ -72,11 +73,19 @@ class FunctionalAnnotationPanel {
          */
         this.reset();
 
-        var organism_id = 1;
-        var first_id = null;
+        // Build lookup of organisms present
+        let organism_ids_present = new Set();
+        for (const dsp of dataset_collection_panel.datasets) {
+            organism_ids_present.add(dsp.organism_id);
+        }
+        
+        let organism_id = 1;
+        let first_id = null;
+        
         while (organism_id <= this.max_organism_id) {
             if (typeof this.annotation !== 'undefined' && 
-                typeof this.annotation['by_organism'][organism_id] !== 'undefined') {
+                typeof this.annotation['by_organism'][organism_id] !== 'undefined' &&
+                organism_ids_present.has(organism_id)) {
                 if (first_id == null) {
                     first_id = organism_id;
                     this.set_active_organism(organism_id);

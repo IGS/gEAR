@@ -8,6 +8,24 @@ import os
 import sys
 import geardb
 
+class PlotError(Exception):
+    """Error based on plotting issues."""
+    def __init__(self, message="") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+def create_projection_adata(dataset_adata, projection_csv):
+    # Create AnnData object out of readable CSV file
+    # ? Does it make sense to put this in the geardb/Analysis class?
+    try:
+        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
+    except:
+        raise PlotError("Could not create projection AnnData object from CSV.")
+
+    projection_adata.obs = dataset_adata.obs
+    projection_adata.var["gene_symbol"] = projection_adata.var_names
+    return projection_adata
+
 class SvgData(Resource):
     """Resource for retrieving data from h5ad to be used to color svgs.
 
@@ -17,7 +35,9 @@ class SvgData(Resource):
         SVG data
     """
     def get(self, dataset_id):
-        gene_symbol = request.args.get('gene')
+        gene_symbol = request.args.get('gene', None)
+        projection_csv = request.args.get('projection_csv', None)  # As CSV path
+
         if not gene_symbol or not dataset_id:
             return {
                 "success": -1,
@@ -46,6 +66,16 @@ class SvgData(Resource):
             }
 
         adata = sc.read_h5ad(h5_path)
+
+        if projection_csv:
+            try:
+                adata = create_projection_adata(adata, projection_csv)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
+
         gene_symbols = (gene_symbol,)
 
         if 'gene_symbol' in adata.var.columns:

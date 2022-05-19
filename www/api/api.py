@@ -27,6 +27,7 @@ from resources.dataset_display import DatasetDisplay
 from resources.gene_symbols import GeneSymbols
 from resources.tsne_data import TSNEData
 from resources.epiviz_data import EpivizData
+from resources.projectr import ProjectR
 
 app = Flask(__name__)
 api = Api(app)
@@ -38,6 +39,7 @@ api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
+api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')

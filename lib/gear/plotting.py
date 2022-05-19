@@ -328,8 +328,9 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         }
 
     # Ensure label is one of the labels that is not lost from "gropuby"
-    if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
-        raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
+    # TODO: Fix to only work when the df has been 'groupby' transformed
+    #if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
+    #    raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
 
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
     plotting_args["hover_data"] = { col: False for col in df.columns.tolist() }

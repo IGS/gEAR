@@ -90,6 +90,10 @@ WORKDIR /tmp
 RUN echo "install.packages(c(\"BiocManager\"), repos=\"http://lib.stat.cmu.edu/R/CRAN/\")" | R --save --restore || exit 1
 RUN echo "BiocManager::install(c(\"projectR\"), ask=FALSE)" | R --save --restore || exit 1
 
+# ProjectR install.  Must be done before rpy2 is installed
+COPY ./install_bioc.sh /tmp/.
+RUN /tmp/install_bioc.sh
+
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
 WORKDIR /tmp

@@ -33,7 +33,10 @@ def main():
         layout = geardb.Layout(user_id=user.id, label=layout_name,
                                is_current=0, members=None)
         layout.save()
-        result = {'layout_id': layout.id, 'layout_label': layout.label}
+        result = {'layout_id': layout.id,
+                  'layout_label': layout.label,
+                  'layout_share_id': layout.share_id
+        }
 
     print(json.dumps(result))
 

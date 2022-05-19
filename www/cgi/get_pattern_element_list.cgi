@@ -12,8 +12,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-# this obviously needs to change
-PATTERN_BASE_DIR = '/usr/local/projects/gEAR/projectr/HuttCtxDevoLMDhs_to_ARKctxDevo3Ksc'
+PATTERN_BASE_DIR = os.path.abspath(os.path.join('..', 'patterns'))
 
 def main():
     form = cgi.FieldStorage()
@@ -31,7 +30,7 @@ def main():
 
         # we only care about the first line
         break
-    
+
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
 

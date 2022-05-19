@@ -3,11 +3,17 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
+#from needle.cases import NeedleTestCase
+#from needle.driver import NeedleChrome
+
 from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class MGTest:
     plot_type: str
     browser: webdriver = webdriver.Chrome()
+    baseline_directory: str = "visual_regression_screenshots"
+    cleanup_on_success = True
+
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
     genecart_to_load: str = "sadkins_savetest"
     genecart_to_save: str = "sadkins_selenium"
@@ -16,6 +22,10 @@ class MGTest:
     condition_cat: str = "cluster"
     filter_by: list = field(default_factory=lambda: ["HC (i)", "SC (i)", "TEC"])
     timeout: int = 5
+
+    #@classmethod
+    #def get_web_driver(cls):
+    #    return NeedleChrome()
 
     def test_dataset_selection(self) -> bool:
         print("-- DATASET SELECTION")
@@ -87,14 +97,6 @@ class MGTest:
         try:
             create_plot_btn = self.browser.find_element(By.ID, "create_plot")
             create_plot_btn.click()
-            plot_container = WebDriverWait(self.browser, timeout=self.timeout).until(lambda d: d.find_element(By.CLASS_NAME,'plotly-container'))
-            return True if plot_container else False
-        except:
-            return False
-
-    def test_plot_load_after_dataset_selection(self) -> bool:
-        print("-- PLOT LOADING AFTER SELECTION OF DATASET")
-        try:
             plot_container = WebDriverWait(self.browser, timeout=self.timeout).until(lambda d: d.find_element(By.CLASS_NAME,'plotly-container'))
             return True if plot_container else False
         except:

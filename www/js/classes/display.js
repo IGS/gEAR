@@ -203,16 +203,18 @@ class EpiVizDisplay extends Display {
      * the server for data, but query the server for the image.
      * @param {Object} Data - Display data
      * @param {string} gene_symbol - Gene symbol to visualize
+     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, gene_symbol, target) {
+    }, gene_symbol, projection_csv, target) {
         super(args);
         const config = plotly_config;
         this.gene_symbol = gene_symbol;
         this.econfig = config;
         this.extendRangeRatio = 10;
+        this.projection_csv = projection_csv;   // Maybe use eventually but I don't think we can project on Epiviz displays
 
         const genes_track = plotly_config.tracks["EPIVIZ-GENES-TRACK"];
         if (genes_track.length > 0) {
@@ -272,7 +274,7 @@ class EpiVizDisplay extends Display {
     }
 
     epiviz_template(config) {
-let epiviztemplate = "";
+        let epiviztemplate = "";
         for (const track in config.tracks) {
             const track_config = config.tracks[track];
             track_config.forEach((tc) => {
@@ -346,11 +348,12 @@ class PlotlyDisplay extends Display {
     /**
      * Initialize plotly display.
      * @param {Object} Data - Data used to draw violin, bar, or line.
+     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }) {
+    }, projection_csv) {
         super(args);
         const {
             x_axis,
@@ -402,6 +405,7 @@ class PlotlyDisplay extends Display {
         this.reverse_palette = reverse_palette;
         this.order = order;
         this.analysis = analysis;
+        this.projection_csv = projection_csv;
     }
     clear_display() {
         $(`#dataset_${this.primary_key}_h5ad`).remove();
@@ -443,6 +447,7 @@ class PlotlyDisplay extends Display {
             reverse_palette: this.reverse_palette,
             order: this.order,
             analysis: this.analysis,
+            projection_csv: this.projection_csv
         });
     }
     /**
@@ -586,11 +591,12 @@ class PlotlyDisplay extends Display {
      * Initialize dash display.
      * @param {Object} Data - Data used to draw any multigene plot
      * @param {Array} gene_symbols - Array of gene symbols
+     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, gene_symbols) {
+    }, gene_symbols, projection_csv) {
         super(args);
         const {
             primary_col,
@@ -599,6 +605,7 @@ class PlotlyDisplay extends Display {
             obs_filters,
             clusterbar_fields,
             matrixplot,
+            center_around_zero,
             cluster_obs,
             cluster_genes,
             flip_axes,
@@ -629,6 +636,7 @@ class PlotlyDisplay extends Display {
         this.obs_filters = obs_filters;
         this.clusterbar_fields = clusterbar_fields;
         this.matrixplot = matrixplot;
+        this.center_around_zero = center_around_zero;
         this.cluster_obs = cluster_obs;
         this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
@@ -651,6 +659,7 @@ class PlotlyDisplay extends Display {
         this.plot_title = plot_title;
         this.legend_title = legend_title;
         this.analysis = analysis;
+        this.projection_csv = projection_csv;
     }
     clear_display() {
         $(`#dataset_${this.primary_key}_mg`).remove();
@@ -676,6 +685,7 @@ class PlotlyDisplay extends Display {
             obs_filters: this.obs_filters,
             clusterbar_fields: this.clusterbar_fields,
             matrixplot: this.matrixplot,
+            center_around_zero: this.center_around_zero,
             cluster_obs: this.cluster_obs,
             cluster_genes: this.cluster_genes,
             flip_axes: this.flip_axes,
@@ -697,6 +707,7 @@ class PlotlyDisplay extends Display {
             violin_add_points: this.violin_add_points,
             plot_title: this.plot_title,
             legend_title: this.legend_title,
+            projection_csv: this.projection_csv,
         });
     }
     /**
@@ -846,13 +857,15 @@ class SVGDisplay extends Display {
      * Initialize SVG
      * @param {Object} data - SVG display data
      * @param {number} grid_width - UI Panel width
+     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, grid_width, target) {
+    }, grid_width, projection_csv, target) {
         super(args);
         this.grid_width = grid_width;
+        this.projection_csv = projection_csv;
 
         this.target = target ? target : `dataset_${this.primary_key}`;
 
@@ -894,7 +907,11 @@ class SVGDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
-        return axios.get(`/api/plot/${this.dataset_id}/svg?gene=${gene_symbol}`);
+        let url = `/api/plot/${this.dataset_id}/svg?gene=${gene_symbol}`;
+        if (this.projection_csv) {
+            url += `&projection_csv=${this.projection_csv}`;
+        }
+        return axios.get(url);
     }
     /**
      * Fetch the svg files from the server and cache them.
@@ -1360,20 +1377,24 @@ class TsneDisplay extends Display {
    * the server for data, but query the server for the image.
    * @param {Object} Data - Display data
    * @param {string} gene_symbol - Gene symbol to visualize
+   * @param {String} projection_csv - Basename of CSV file containing projection data
    */
-  constructor({ plotly_config, ...args }, gene_symbol, target) {
+  constructor({ plotly_config, ...args }, gene_symbol, projection_csv, target) {
     super(args);
     const config = plotly_config;
     this.gene_symbol = gene_symbol;
     this.analysis_id = config.analysis ? config.analysis.id : null;
-    this.colors = JSON.stringify(config.colors);
-    this.order = JSON.stringify(config.order);
+    this.colors = config.colors;
+    this.order = config.order;
     this.colorize_legend_by = config.colorize_legend_by;
     this.skip_gene_plot = config.skip_gene_plot;
+    this.horizontal_legend = config.horizontal_legend;
     this.plot_by_group = config.plot_by_group;
     this.max_columns = config.max_columns;
     this.x_axis = config.x_axis;
     this.y_axis = config.y_axis;
+
+    this.projection_csv = projection_csv;
 
     this.target = target ? target : `dataset_${this.primary_key}`;
   }
@@ -1384,24 +1405,25 @@ class TsneDisplay extends Display {
    * @param {string} gene_symbol - Gene symbol to visualize.
    */
    get_data(gene_symbol) {
-      return axios.get(`/api/plot/${this.dataset_id}/tsne`, {
-          params: {
-              gene: gene_symbol,
-              analysis: this.analysis_id,
-              plot_type: this.plot_type,
-              colorize_by: this.colorize_legend_by,
-              skip_gene_plot: this.skip_gene_plot,
-              plot_by_group: this.plot_by_group,
-              max_columns: this.max_columns,
-              x_axis: this.x_axis,
-              y_axis: this.y_axis,
-              analysis_owner_id: this.user_id,
-              colors: this.colors,
-              order: this.order,
-              // helps stop caching issues
-              timestamp: new Date().getTime()
-          }
-      });
+        return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
+            gene_symbol,
+            analysis: this.analysis_id,
+            plot_type: this.plot_type,
+            colorize_legend_by: this.colorize_legend_by,
+            skip_gene_plot: this.skip_gene_plot,
+            horizontal_legend: this.horizontal_legend,
+            plot_by_group: this.plot_by_group,
+            max_columns: this.max_columns,
+            x_axis: this.x_axis,
+            y_axis: this.y_axis,
+            analysis_owner_id: this.user_id,
+            colors: this.colors,
+            order: this.order,
+            horizontal_legend: this.horizontal_legend,
+            // helps stop caching issues
+            timestamp: new Date().getTime(),
+            projection_csv: this.projection_csv
+        });
   }
 
   draw_zoomed() {
