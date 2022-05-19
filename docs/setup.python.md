@@ -29,7 +29,7 @@ fixed paths have worked fine for decades.
     $ ./pip3 install --upgrade pip
 
     $ ./pip3 install \
-      anndata==0.8.0 \
+      anndata==0.7.8 \
       biocode==0.10.0 \
       biopython==1.79 \
       dash-bio==1.0.2 \
@@ -41,7 +41,6 @@ fixed paths have worked fine for decades.
       kaleido==0.2.1 \
       llvmlite==0.38.0 \
       mod-wsgi==4.9.0 \
-      MulticoreTSNE==0.1 \
       mysql-connector-python==8.0.28 \
       numba==0.55.1 \
       numexpr==2.8.1 \
@@ -58,7 +57,7 @@ fixed paths have worked fine for decades.
       scikit-learn==1.0.2 \
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
-      xlrd==2.0.1
+      xlrd==1.2.0
 
 SAdkins note - Installing dash-bio (0.6.1) on the devel server by itself upgraded plotly to 5.3.1.  So we need to install dash==1.2.1 and plotly==4.14.3 if they are not this.
 
