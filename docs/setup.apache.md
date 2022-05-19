@@ -48,8 +48,8 @@ Aside from the default things, these sections are important
             SetHandler cgi-script
     </FilesMatch>
 
-    WSGIPythonHome "/opt/Python-3.7.3"
-    LoadModule wsgi_module "/opt/Python-3.7.3/lib/python3.7/site-packages/mod_wsgi/server/mod_wsgi-py37.cpython-37m-x86_64-linux-gnu.so"
+    WSGIPythonHome "/opt/Python-3.10.4"
+    LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
 
 ### /etc/apache2/sites-available/000-default.conf
 
