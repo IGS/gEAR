@@ -534,7 +534,7 @@ function update_ui_after_weighted_gene_cart_save_failure(gc) {
 	$("#saved_weighted_gene_cart_info_c > p").html("There was an issue saving the weighted gene cart.");
 	$("#saved_weighted_gene_cart_info_c > p").removeClass("text-success").addClass("text-danger");
 	$("#saved_weighted_gene_cart_info_c").show();
-    report_error(`Error saving gene cart: ${msg}`);
+    report_error(`Error saving gene cart: ${gc.label}`);
     $('#save_weighted_gene_cart').attr("disabled", false);
 }
 
