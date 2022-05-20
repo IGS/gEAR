@@ -102,7 +102,7 @@ def main():
             return_error_response(msg)
 
         try:
-            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', use_raw=True, groups=cond1_composite_idx, reference=cond2_composite_idx[0], n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
+            sc.tl.rank_genes_groups(adata, 'comparison_composite_index', groups=cond1_composite_idx, reference=cond2_composite_idx[0], n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
         except Exception as e:
             msg = "scanpy.rank_genes_groups failed.\n{}".format(str(e))
             return_error_response(msg)
