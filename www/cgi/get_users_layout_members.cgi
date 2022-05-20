@@ -25,7 +25,7 @@ def main():
     result = { 'layout_members':[] }
     layout = geardb.get_layout_by_id(layout_id)
 
-    if layout.user_id == user.id:
+    if layout and layout.user_id == user.id:
         layout.get_members()
         result['layout_members'] = layout.members
         
