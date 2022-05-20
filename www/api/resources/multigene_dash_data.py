@@ -469,14 +469,6 @@ class MultigeneDashData(Resource):
                 fig.data[-1]["zmin"] = 0
                 fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D array
 
-            # Clustergram has a bug where the space where dendrograms should appear is still whitespace
-            # Need to adjust the domains of those subplots if no clustering is required
-            if not (cluster_genes or cluster_obs):
-                fig.layout["xaxis4"]["domain"] = [0,0]
-                fig.layout["xaxis5"]["domain"] = [0,0.95]
-                fig.layout["yaxis2"]["domain"] = [1,1]
-                fig.layout["yaxis5"]["domain"] = [0,1]
-
             # Need the obs metadata again for mapping clusterbars to indexes
             df = pd.concat([df, df_cols], axis=1)
 
