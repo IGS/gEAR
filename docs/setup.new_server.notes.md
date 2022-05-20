@@ -17,6 +17,9 @@ Reboot if there are kernel updates (or just to be safe if you don't know.)
 
 Follow instructions in our setup.mysql.md document
 
+### R
+sudo apt install r-base
+
 ### Python
 
 Follow instructions in setup.python.md document
