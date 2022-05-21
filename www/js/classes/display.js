@@ -1383,7 +1383,7 @@ class TsneDisplay extends Display {
     super(args);
     const config = plotly_config;
     this.gene_symbol = gene_symbol;
-    this.analysis_id = config.analysis ? config.analysis.id : null;
+    this.analysis = config.analysis;
     this.colors = config.colors;
     this.order = config.order;
     this.colorize_legend_by = config.colorize_legend_by;
@@ -1407,7 +1407,7 @@ class TsneDisplay extends Display {
    get_data(gene_symbol) {
         return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
             gene_symbol,
-            analysis: this.analysis_id,
+            analysis: this.analysis,
             plot_type: this.plot_type,
             colorize_legend_by: this.colorize_legend_by,
             skip_gene_plot: this.skip_gene_plot,
