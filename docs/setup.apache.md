@@ -144,6 +144,18 @@ Then, finally restart apache again.
 
       $ sudo service apache2 restart
 
+## Optional configurations
+
+I don't like the new private tmp directories employed lately, as they don't servive service restarts
+and we make use of the tmp area while the users are building pipelines.  Turn this off by editing
+the following file:
+
+### /etc/systemd/system/multi-user.target.wants/apache2.service
+
+And then setting this line:
+
+    PrivateTmp=false
+
 
 ## Common errors
 
