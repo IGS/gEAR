@@ -78,26 +78,29 @@ def main():
         ana.type = 'user_unsaved'
 
     dest_datafile_path = ana.dataset_path()
+    dest_datafile_dir = os.path.dirname(dest_datafile_path)
+
+    if not os.path.exists(dest_datafile_dir):
+        os.makedirs(dest_datafile_dir)
 
     ## I don't see how to get the save options to specify a directory
     # sc.settings.figdir = 'whateverpathyoulike' # scanpy issue #73
-    os.chdir(os.path.dirname(dest_datafile_path))
+    os.chdir(dest_datafile_dir)
 
-    # Previous steps have copied adata to raw, but if we got here via primary
-    #  This probably hasn't happened.  Do it now.
-    if not adata.raw:
-        adata.raw = adata
+    # Reset index to gene symbol to ensure gene names are the plot labels
+    adata.var.reset_index(inplace=True)
+    adata.var.set_index('gene_symbol', inplace=True)
 
-    adata.raw.var.reset_index(inplace=True)
-    adata.raw.var.set_index('gene_symbol', inplace=True)
+    # Deduplicate gene_symbols
+    adata = adata[:, adata.var.index.duplicated() == False]
 
-    gene_symbols = adata.raw.var.index.tolist()
+    adata.var_names_make_unique()
+    gene_symbols = adata.var.index.tolist()
     marker_genes = normalize_marker_genes(gene_symbols, marker_genes)
 
-    # NOTE: This will probably need to be updated if we update Scanpy due to some changes to adata.raw I believe
-    # Currently does not work on my Docker instance, which is using a more recent version of Scanpy since I could not build with the gEAR prod versions anymore
-    sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, save='_goi.png')
-    sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, save='_goi.png')
+    # scanpy auto-adds a hyphen at the end of the plot basenames for these plots
+    sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, save='goi.png')
+    sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, save='goi.png')
 
     result = {'success': 1}
 
