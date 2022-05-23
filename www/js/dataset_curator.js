@@ -160,10 +160,10 @@ window.onload=() => {
     },
     methods: {
       async draw_image() {
-        const dataset_id = this.dataset_id;
-        const plot_type = this.display_data.plot_type;
+        const { dataset_id } = this;
+        const { plot_type } = this.display_data;
         const config = this.display_data.plotly_config;
-        const analysis = config.analysis ? config.analysis.id : null;
+        const { analysis } = config;
         const analysis_owner_id = this.display_data.user_id;
 
         // This has to be separate from "fetch_tsne_image" because in user/owner displays, different image data may be returned
@@ -1624,7 +1624,7 @@ window.onload=() => {
         const config = this.config;
         const plot_type = this.plot_type;
         const dataset_id = this.dataset_id;
-        const analysis = config.analysis ? config.analysis.id : null;
+        const analysis = config.analysis
         const analysis_owner_id = this.user.id;
         this.fetch_tsne_image({ config, plot_type, dataset_id, analysis, analysis_owner_id });
       },
@@ -2512,7 +2512,7 @@ window.onload=() => {
       },
       draw_image() {
         const dataset_id = this.dataset_id;
-        const analysis = this.config.analysis ? this.config.analysis.id : null;
+        const analysis = this.config.analysis;
         const plot_type = this.plot_type;
         const analysis_owner_id = this.user.id;
 
@@ -2855,8 +2855,6 @@ window.onload=() => {
             </svg-chart>
             <tsne-chart
               v-if='is_type_tsne'
-              :analysis_id='config.analysis ? config.analysis.id : null'
-              :gene_symbol='config.gene_symbol'
             ></tsne-chart>
           </b-col>
         </b-row>

@@ -1414,7 +1414,7 @@ class TsneDisplay extends Display {
         }
         return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
             gene_symbol,
-            analysis: this.analysis_id,
+            analysis: this.analysis,
             plot_type: this.plot_type,
             colorize_legend_by: this.colorize_legend_by,
             skip_gene_plot: this.skip_gene_plot,

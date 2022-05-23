@@ -2,15 +2,15 @@
 # Dockerfile to build gEAR web application
 ############################################################
 
-FROM ubuntu:bionic
+FROM ubuntu:impish
+# ubuntu 21.10
 
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
 ARG CMAKE_VERSION=3.19.8
 ARG CMAKE_URL=https://github.com/Kitware/CMake/archive/refs/tags/v${CMAKE_VERSION}.tar.gz
 
-#ARG PYTHON_VERSION=3.7.3
-ARG PYTHON_VERSION=3.9.9
+ARG PYTHON_VERSION=3.10.4
 ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz
 
 ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
@@ -18,7 +18,7 @@ ARG GEAR_BRANCH=main
 
 # Install packages to Ubuntu
 RUN apt-get -qq update \
-  && DEBIAN_FRONTEND="noninteractive" apt-get -qq install -y --no-install-recommends \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   libffi-dev \
   libsqlite-dev \
   libsqlite3-dev \
@@ -30,6 +30,8 @@ RUN apt-get -qq update \
   libgdbm-dev \
   libc6-dev \
   libbz2-dev \
+  lzma \
+  liblzma-dev \
   hdf5-helpers \
   hdf5-tools \
   libhdf5-dev \
@@ -37,6 +39,7 @@ RUN apt-get -qq update \
   libblas-dev \
   liblapack-dev \
   libxml2-dev \
+  cmake \
   curl \
   wget \
   git \
@@ -57,15 +60,18 @@ RUN apt-get -qq update \
 	libpcre3 \
 	libpcre3-dev \
   # Required for rpy2
+  r-base-dev \
+  r-base \
   libgomp1 \
   # Apache2 and PHP
+  libapache2-mod-wsgi-py3 \
   apache2-dev \
   apache2 \
   php \
   libapache2-mod-php \
   # Cleanup
-  && apt-get -qq clean autoclean \
-  && apt-get -qq autoremove -y \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
 
 ENV LLVM_CONFIG=/usr/bin/llvm-config-9
@@ -98,7 +104,8 @@ RUN wget $PYTHON_URL \
   && cd /tmp \
   && rm -rf  Python-${PYTHON_VERSION}* \
   && mkdir -p /opt/bin \
-  && ln -s /opt/Python-${PYTHON_VERSION}/bin/python3 /opt/bin/python3
+  && ln -s /opt/Python-${PYTHON_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.10.so.1.0 /usr/lib/
 
 # Get gEAR code.  Currently cannot do a git clone by normal means due to the repo being "private"
 WORKDIR /opt
@@ -114,12 +121,11 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 # NOTE: Installing custom version of diffxpy that I forked and fixed a function to work
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
-RUN ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.9.so.1.0 /usr/lib/ \
-  && ./pip3 install --upgrade pip \
+RUN ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
   && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@0464d2ab1faa0947d90e29f93018ec678e050585 \
   && apt-get -qq update \
-  && apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
+  #&& apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Scikit-learn lib -> https://stackoverflow.com/a/70016416

@@ -387,7 +387,7 @@ window.onload=() => {
 
         get_tsne_image_data($("#sbs_tsne_gene_symbol").val(), dsp.config).then(
             data => {
-                if (typeof data === 'object') {
+                if (typeof data === 'object' || typeof data === "undefined") {
                     // If this is true, there was an error
                     $("#sbs_tsne_gene_not_found").show();
                 } else {
@@ -540,25 +540,23 @@ function update_ui_after_weighted_gene_cart_save_failure(gc) {
 
 function get_tsne_image_data(gene_symbol, config) {
     // then craziness: https://stackoverflow.com/a/48980526
-    return axios.get(`/api/plot/${current_analysis.dataset_id}/tsne`, {
-        params: {
-            gene_symbol,
-            analysis: current_analysis.id,
-            colorize_legend_by: config.colorize_legend_by,
-            plot_type: 'tsne',
-            plot_by_group: config.plot_by_group,
-            max_columns: config.max_columns,
-            horizontal_legend: config.horizontal_legend,
-            x_axis: config.x_axis,
-            y_axis: config.y_axis,
-            analysis_owner_id: current_analysis.user_id,
-            colors: config.colors,
-            // helps stop caching issues
-            timestamp: new Date().getTime()
-        }
-    }).then(
-      response => {return response.data.image}
-    )
+    return axios.post(`/api/plot/${current_analysis.dataset_id}/tsne`, {
+        gene_symbol,
+        analysis: current_analysis,
+        colorize_legend_by: config.colorize_legend_by,
+        plot_type: 'tsne_static',
+        plot_by_group: config.plot_by_group,
+        max_columns: config.max_columns,
+        horizontal_legend: config.horizontal_legend,
+        x_axis: config.x_axis,
+        y_axis: config.y_axis,
+        analysis_owner_id: current_analysis.user_id,
+        colors: config.colors,
+        // helps stop caching issues
+        timestamp: new Date().getTime()
+    }).then(response => {
+        return response.data.image
+    }); // end axios
 }
 
 function apply_primary_filter() {
