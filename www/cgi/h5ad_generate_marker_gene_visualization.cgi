@@ -99,8 +99,8 @@ def main():
     marker_genes = normalize_marker_genes(gene_symbols, marker_genes)
 
     # scanpy auto-adds a hyphen at the end of the plot basenames for these plots
-    sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, save='goi.png')
-    sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, save='goi.png')
+    sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, use_raw=False, save='goi.png')
+    sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, use_raw=False, save='goi.png')
 
     result = {'success': 1}
 
