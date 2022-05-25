@@ -16,7 +16,13 @@ This document is intended to capture all the customizations to the apache2 confi
 
     $ sudo apt install php
 
-The php.ini file also needs updating on some systems to get around file upload limitations.
+The php.ini file also needs updating on some systems to get around file upload limitations. Visit
+the test PHP page in gEAR, look for the 'Configuration file (php.ini) Path' setting, then modify
+that one.
+
+     http://localhost/cgi/test.php
+
+Modifications to make:
 
     post_max_size = 3000M
     upload_max_filesize = 3000M
