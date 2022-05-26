@@ -1042,13 +1042,13 @@ class LayoutCollection:
             label=row[1],
             is_current=row[2],
             user_id=row[3],
-            share_id=row[4],            
+            share_id=row[4],
             is_domain=row[5],
             folder_id=row[6],
             folder_parent_id=row[7],
             folder_label=row[8]
         )
-        
+
         layout.dataset_count = row[9]
         return layout
 
@@ -1142,9 +1142,9 @@ class LayoutCollection:
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
               GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
-        """ 
+        """
         cursor.execute(qry, (user.id,))
-        
+
         for row in cursor:
             layout = self._row_to_layout_object(row)
             self.layouts.append(layout)
@@ -1173,7 +1173,7 @@ class LayoutCollection:
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
-        
+
         for row in cursor:
             layout = self._row_to_layout_object(row)
             self.layouts.append(layout)
@@ -1181,7 +1181,7 @@ class LayoutCollection:
         cursor.close()
         conn.close()
         return self.layouts
-    
+
 @dataclass
 class DatasetLink:
     id: int = None
@@ -1225,7 +1225,7 @@ class DatasetDisplay:
             cursor = conn.get_cursor()
 
             sql = """
-                  UPDATE dataset_display 
+                  UPDATE dataset_display
                      SET dataset_id = %s,
                          user_id = %s,
                          label = %s,
@@ -1241,7 +1241,7 @@ class DatasetDisplay:
             conn.commit()
             cursor.close()
             conn.close()
-    
+
 @dataclass
 class Dataset:
     id: str
@@ -1288,14 +1288,14 @@ class Dataset:
 
     def get_displays(self):
         """
-        Populates the dataset displays attribute, a list of DatasetDisplay objects 
+        Populates the dataset displays attribute, a list of DatasetDisplay objects
         related to this dataset.
         """
         conn = Connection()
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT id, user_id, label, plot_type, plotly_config 
+              SELECT id, user_id, label, plot_type, plotly_config
                 FROM dataset_display
                WHERE dataset_id = %s
         """
@@ -1314,10 +1314,10 @@ class Dataset:
 
             self.displays.append(display)
 
-        return self.displays
-
         cursor.close()
         conn.close()
+
+        return self.displays
 
     def get_file_path(self, session_id=None):
         """
@@ -2176,8 +2176,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
                 FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
@@ -2203,8 +2203,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
                 FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
@@ -2230,10 +2230,10 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
-                FROM gene_cart gc 
+                FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.user_id = %s
@@ -2260,8 +2260,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, 
-                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc,
+                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id,
                      f.parent_id, f.label as folder_label
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
@@ -2270,7 +2270,7 @@ class GeneCartCollection:
                      JOIN gene_cart gc ON gcgm.gene_cart_id=gc.id
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
-               WHERE u.id = %s 
+               WHERE u.id = %s
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
             ORDER BY gc.label
         """
@@ -2289,8 +2289,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
                 FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
@@ -2314,10 +2314,10 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
-                FROM gene_cart gc 
+                FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.is_public = 1
