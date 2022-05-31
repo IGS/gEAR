@@ -134,14 +134,19 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
 def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
-    # Heatmap is located on xaxis5 and yaxis5
-    obs_axis = "yaxis5" if flip_axes else "xaxis5"
-    gene_axis = "xaxis5" if flip_axes else "yaxis5"
+    print(fig.layout, file=sys.stderr)
 
-    # Left-side dendrogram is xaxis4 and yaxis4
-    # Top-sie dendrogram is xaxis2 and yaxis2
-    obs_dendro_axis = "yaxis2" if flip_axes else "xaxis4"
-    gene_dendro_axis = "xaxis2" if flip_axes else "yaxis4"
+    # Heatmap is located on xaxis5 and yaxis5 in dash-0.6.1
+    # Moved to xaxis11 and yaxis11 in dash-1.0.2
+    obs_axis = "yaxis11" if flip_axes else "xaxis11"
+    gene_axis = "xaxis11" if flip_axes else "yaxis11"
+
+    # Left-side dendrogram is xaxis4 and yaxis4 in dash=0.6.1
+    # Moved to xaxis9 and yaxis9 in dash=1.0.2
+    # Top-sie dendrogram is xaxis2 and yaxis2 in dash=0.6.1
+    # Moved to xaxis3 and yaxis3 in dash=1.0.2
+    obs_dendro_axis = "yaxis3" if flip_axes else "xaxis9"
+    gene_dendro_axis = "xaxis3" if flip_axes else "yaxis9"
 
     fig.update_layout(
         title={
@@ -187,7 +192,7 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_
 
     # Information that will help posittion the "groups" colorbars
     num_colorbars = len(col_group_markers.keys())
-    max_heatmap_domain = max(fig.layout["yaxis5"]["domain"])
+    max_heatmap_domain = max(fig.layout["yaxis11"]["domain"])
     curr_colorbar_y = 0
 
     for key, val in col_group_markers.items():
@@ -243,7 +248,8 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_
     fig.layout[gene_axis].pop("range", None)
 
     for cgl in col_group_traces:
-        fig.append_trace(cgl, 2, 2)
+        # This was 2, 2 in Dash 0.6.1 but is now 3, 3 in Dash 1.0.2
+        fig.append_trace(cgl, 3, 3)
 
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False, distance_metric="euclidean"):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
@@ -305,7 +311,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
 
 def create_clustergram_observation_labels(df, fig, colname="composite_index", flip_axes=False):
     """Create a set of labels to replace the current ticktext in the clustergram."""
-    obs_axis = "yaxis5" if flip_axes else "xaxis5"
+    obs_axis = "yaxis11" if flip_axes else "xaxis11"
     obs_order = fig.layout[obs_axis]["ticktext"]    # Gets order of composite index observations
     return df.reindex(obs_order)[colname].tolist()  # reindex based on the observation order, and return the labels
 

@@ -46,6 +46,7 @@ fixed paths have worked fine for decades.
       numexpr==2.8.1 \
       numpy==1.21.5 \
       opencv-python==4.5.5.64 \
+      openpyxl==3.0.10 \
       pandas==1.4.1 \
       Pillow==9.0.1 \
       plotly==5.6.0 \
