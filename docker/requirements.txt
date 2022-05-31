@@ -17,7 +17,7 @@ biocode==0.9.0
 python-dotenv==0.14.0
 Flask==1.1.2
 itsdangerous==2.0.1 # See -> https://stackoverflow.com/a/71206978
-mysql-connector-python==8.0.12  # Using >8.0.18 gives a segmentation fault.  Need 8.0.20 for prod/devel/servers
+mysql-connector-python==8.0.28
 SQLAlchemy==1.2.12
 Flask-RESTful==0.3.8
 mod-wsgi==4.9.0

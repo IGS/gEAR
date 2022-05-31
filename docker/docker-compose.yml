@@ -10,7 +10,7 @@ services:
       MYSQL_USER: [user]
       MYSQL_PASSWORD: [user_pw]
       MYSQL_ROOT_PASSWORD: [root_pw]
-    image: mysql:5.7
+    image: mysql:8.0.29-oracle  # for arm64v8 architecture
     networks:
       - gear
     ports:
