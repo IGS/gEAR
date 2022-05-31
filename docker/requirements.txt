@@ -11,17 +11,17 @@ plotly==5.6.0
 kaleido==0.2.1
 dash-bio==1.0.2
 MulticoreTSNE==0.1
-Pillow==7.1.1
+Pillow==9.0.1
 biopython==1.79
-biocode==0.9.0
-python-dotenv==0.14.0
-Flask==1.1.2
-itsdangerous==2.0.1 # See -> https://stackoverflow.com/a/71206978
+biocode==0.10.0
+python-dotenv==0.20.0
+Flask==2.1.0
+itsdangerous==2.1.2 # See -> https://stackoverflow.com/a/71206978
 mysql-connector-python==8.0.28
-SQLAlchemy==1.2.12
-Flask-RESTful==0.3.8
+SQLAlchemy==1.4.32
+Flask-RESTful==0.3.9
 mod-wsgi==4.9.0
-opencv-python==4.5.4.60
+opencv-python==4.5.5.64
 anndata==0.7.8
 h5py==2.10.0    # Installed through scanpy but that version breaks things
 rpy2    # For projectR
