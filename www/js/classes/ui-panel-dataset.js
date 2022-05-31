@@ -640,11 +640,14 @@ class DatasetPanel extends Dataset {
         let message = "There was an error projecting patterns onto this dataset.";
         try {
             const { data } = await axios.post(`/api/projectr/${dataset_id}`, payload, other_opts);
-            if (data.success < 1) {
+            if (data.message) {
                 message = data.message;
-                throw data.message; // will be caught below
+            }
+            if (data.success < 1) {
+                throw message; // will be caught below
             }
             this.projection_id = data.projection_id;
+            this.show_info(message)
         } catch (e) {
             if (e.name == "CanceledError") {
                 console.info("Canceled previous projectR request.");

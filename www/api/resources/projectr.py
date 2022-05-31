@@ -132,25 +132,39 @@ class ProjectR(Resource):
         session_id = request.cookies.get('gear_session_id')
         args = run_projectr_parser.parse_args()
 
-        # Currently no analyses are supported yet.
-        try:
-            ana = get_analysis(None, dataset_id, session_id, None)
-        except ProjectRError as pe:
-            return {
-                'success': -1,
-                'message': str(pe),
-            }
-
-        # Using adata with "backed" mode does not work with volcano plot
-        adata = ana.get_adata(backed=False)
-
         success = 1
         message = ""
 
-        """
-        What has been done
-        * A PC was selected as the input pattern
+        source_id = args['source_id']
+        is_pca = args['is_pca']
+        output_id = args['projection_id']
 
+        projection_id = output_id if output_id else uuid.uuid4()
+        projection_csv = build_projection_csv_path(dataset_id, projection_id)
+        projection_json_file = build_projection_json_path(dataset_id)
+
+        # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
+        if Path(projection_csv).is_file():
+            print("INFO: Found exisitng projection_csv file {}, loading it.".format(projection_csv))
+
+            # Projection already exists, so we can just return info we want to return in a message
+            projections_dict = json.load(open(projection_json_file))
+            common_genes = None
+            for config in projections_dict[source_id]:
+                if int(is_pca) == config['is_pca']:
+                    common_genes = config.get('num_common_genes', None)
+                    break
+
+            if common_genes:
+                message = "Found {} common genes between the target dataset and the pattern file.".format(common_genes)
+
+            return {
+                "success": success
+                , "message": message
+                , "projection_id": projection_id
+            }
+
+        """
         Steps
 
         1. Load matrix from DataMTX.tab or Anndata.X.  The observations and genes are largely stripped away
@@ -163,20 +177,25 @@ class ProjectR(Resource):
             * One thing is to transpose projectR output,
         6. Extract input pattern row (as index) from projectionPattern
 
-        Only step 4 needs to be in R, and I guess we could use rpy2 to call that.
-
+        Only step 4 needs to be in R, and we use rpy2 to call that.
         """
 
-        source_id = args['source_id']
-        is_pca = args['is_pca']
-        output_id = args['projection_id']
+
+        # NOTE Currently no analyses are supported yet.
+        try:
+            ana = get_analysis(None, dataset_id, session_id, None)
+        except ProjectRError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
+
+        # Using adata with "backed" mode does not work with volcano plot
+        adata = ana.get_adata(backed=False)
 
         # Ensure target dataset has genes as rows
         target_df = adata.to_df().transpose()
         loading_df = None
-        projection_id = output_id if output_id else uuid.uuid4()
-
-        projection_csv = build_projection_csv_path(dataset_id, projection_id)
 
         # Row: Genes
         # Col: Pattern weights
@@ -187,36 +206,62 @@ class ProjectR(Resource):
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
         loading_df.set_index('dataRowNames', inplace=True)
 
-        # NOTE: This will not work if there are no common genes (i.e. mouse patterns with human dataset)
-
-        # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
-        if Path(projection_csv).is_file():
-            print("INFO: Found exisitng projection_csv file {}, loading it.".format(projection_csv))
-        else:
-
-            # Perform overlap to see if there are overlaps between genes from both dataframes
-            if target_df.index.intersection(loading_df.index).empty:
+        # Perform overlap to see if there are overlaps between genes from both dataframes
+        # If the index does not overlap, perhaps one of the other columns will.
+        index_intersection = target_df.index.intersection(loading_df.index)
+        intersection_size = index_intersection.size
+        if index_intersection.empty:
+            for col in adata.var.columns:
+                target_series = set(adata.var[col].tolist())
+                loading_series = set(loading_df.index.tolist())
+                series_intersection = target_series.intersection(loading_series)
+                if adata.var[col].dtype.name == "category" and series_intersection:
+                    print("INFO: Found that adata.var column '{}' in dataset overlaps with loading file {}".format(col, source_id))
+                    intersection_size = len(series_intersection)
+                    # Map the dataset gene index to the loading file gene index
+                    genes_dict = dict(zip(adata.var.index, adata.var[col]))
+                    # Rename dataset df to use same gene symbols as the loading file
+                    target_df.rename(index=genes_dict, inplace=True)
+                    break
+            else:
                 message = "No common genes between the target dataset and the pattern file."
                 return {"success": -1, "message": message}
 
-            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
-            # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
-            projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
-            projection_patterns_df.to_csv(projection_csv)
+        message = "Found {} common genes between the target dataset and the pattern file.".format(intersection_size)
 
-            # Add new configuration to the list for this dictionary key
-            projection_json_file = build_projection_json_path(dataset_id)
-            projections_dict = json.load(open(projection_json_file))
-            projections_dict.setdefault(source_id, []).append({
-                "uuid": projection_id
-                 , "is_pca": int(is_pca)
-            })
-            write_to_json(projections_dict, projection_json_file)
+        """
+        # NOTE: This is not needed for now, but may happen later
+        # Perform a mapping of the dataset genes to the loading file genes
+        # 1. Get dataset db entry using dataset_id, including the organism ID
+        # 2. For every gene in the loading file, determine if they overlap with the dataset adata.var.index
+        # 3. If they do not, then perform a db search for each gene in the loading file to get an Ensembl ID for the common organism
+        # 4. Re-map the genes in the loading file to the Ensembl IDs
+        ds = geardb.get_dataset_by_id(dataset_id)
+        try:
+            organism_id = ds.organism_id
+        except:
+            message = "Dataset was not found in the database. Please contact a gEAR admin."
+            return {"success": -1, "message": message}
+        """
 
+        projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
+        # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
+        projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
+        projection_patterns_df.to_csv(projection_csv)
+
+        # Add new configuration to the list for this dictionary key
+        projections_dict = json.load(open(projection_json_file))
+        projections_dict.setdefault(source_id, []).append({
+            "uuid": projection_id
+            , "is_pca": int(is_pca)
+            , "num_common_genes": intersection_size
+        })
+        write_to_json(projections_dict, projection_json_file)
 
         return {
             "success": success
             , "message": message
             , "projection_id": projection_id
         }
+
 
