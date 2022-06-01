@@ -1,9 +1,9 @@
-numpy==1.19.3  # Installed in prior 'pip install' command
-numexpr==2.7.3  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
-scanpy[louvain]==1.8.2  # uses louvain 0.7.1
-pandas==1.3.4
-numba==0.50.1
-llvmlite==0.33.0rc1   # For numba
+numpy==1.21.5
+numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
+scanpy[louvain]==1.7.2  # uses louvain 0.7.1
+pandas==1.4.1
+numba==0.55.1
+llvmlite==0.38.0   # For numba
 jupyter==1.0.0
 xlrd==1.2.0
 requests==2.27.1
@@ -11,17 +11,17 @@ plotly==5.6.0
 kaleido==0.2.1
 dash-bio==1.0.2
 MulticoreTSNE==0.1
-Pillow==7.1.1
-biopython==1.76
-biocode==0.9.0
-python-dotenv==0.14.0
-Flask==1.1.2
-itsdangerous==2.0.1 # See -> https://stackoverflow.com/a/71206978
-mysql-connector-python==8.0.12  # Using >8.0.18 gives a segmentation fault.  Need 8.0.20 for prod/devel/servers
-SQLAlchemy==1.2.12
-Flask-RESTful==0.3.8
+Pillow==9.0.1
+biopython==1.79
+biocode==0.10.0
+python-dotenv==0.20.0
+Flask==2.1.0
+itsdangerous==2.1.2 # See -> https://stackoverflow.com/a/71206978
+mysql-connector-python==8.0.28
+SQLAlchemy==1.4.32
+Flask-RESTful==0.3.9
 mod-wsgi==4.9.0
-opencv-python==4.5.4.60
+opencv-python==4.5.5.64
 anndata==0.7.8
 h5py==2.10.0    # Installed through scanpy but that version breaks things
 rpy2    # For projectR
