@@ -26,7 +26,7 @@ class GeneCart {
             type: "POST",
             url: "./cgi/save_new_genecart_json.cgi",
             dataType: "json",
-            data: JSON.stringify(this),
+            data: JSON.stringify(gc),
         }).done((data) => {
             if (callback) {
                 gc.id = data.id
@@ -35,12 +35,12 @@ class GeneCart {
         }).fail((jqXHR) => {
             console.error(jqXHR.responseText);
             if (errCallback) {
-                errCallback(gc);
+                errCallback(gc, jqXHR.responseText);
             }
         });
     }
 
-    add_cart_to_db_from_form(callback, form_data) {
+    add_cart_to_db_from_form(form_data, callback, errCallback=null) {
         /*
           This method is to save a cart by submitting form data.  Once
           completed the object properties are filled in and the callback
@@ -65,7 +65,7 @@ class GeneCart {
         }).fail((jqXHR) => {
             console.error(jqXHR.responseText);
             if (errCallback) {
-                errCallback(gc);
+                errCallback(gc, jqXHR.responseText);
             }
         });
     }

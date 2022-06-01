@@ -7,12 +7,31 @@ a NEW GeneCart object
 """
 
 import cgi, json
-import os, re, sys
+import re, sys
+from pathlib import Path
 
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
-sys.path.append(lib_path)
-from pprint import pprint
+TWO_LEVELS_UP = 2
+abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
+abs_path_lib = abs_path_gear.joinpath('lib')
+sys.path.insert(0, str(abs_path_lib))
 import geardb
+
+abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
+CARTS_BASE_DIR = abs_path_www.joinpath("carts")
+
+
+def validate_weighted_gene_cart(df):
+    """Ensure weighted gene cart meets the requirements.  Returns a boolean."""
+    # Check that first column is identifiers, second column is gene symbols, and following columns are numeric weights
+    if len(df.columns) < 3:
+        return False
+    if df[df.columns[0]].dtype != 'string' \
+        or df[df.columns[1]].dtype != 'string' \
+        or df[df.columns[2:]].dtype != 'float64':
+        return False
+    if not df.columns[0].is_unique:
+        return False
+    return True
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -55,6 +74,7 @@ def main():
 
     elif upload_type == 'uploaded-weighted':
         import scanpy as sc
+        import pandas as pd
         import string
         gc.gctype = 'weighted-list'
 
@@ -63,29 +83,39 @@ def main():
         valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
         fileitem.filename = ''.join(c for c in fileitem.filename if c in valid_chars)
 
-        file_ext = os.path.splitext(fileitem.filename)[1]
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-        carts_dir =  os.path.join(package_dir, '..', 'carts')
-        source_file_path = os.path.join(carts_dir, "cart.{0}{1}".format(gc.share_id, file_ext))
-        h5dest_file_path = os.path.join(carts_dir, "cart.{0}.h5ad".format(gc.share_id))
+        source_file_ext = ".tab"
+        source_file_path = CARTS_BASE_DIR.joinpath("cart.{0}{1}".format(gc.share_id, source_file_ext))
+        h5dest_file_path = CARTS_BASE_DIR.joinpath("cart.{0}.h5ad".format(gc.share_id))
 
-        with open(source_file_path, 'wb') as sfh:
-            sfh.write(fileitem.file.read())
+        df = None
+        try:
+            if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
+                df = pd.read_excel(fileitem.file, sheet_name=0)
+            elif fileitem.filename.endswith('tab'):
+                df = pd.read_csv(fileitem.file, sep='\t')
+            elif fileitem.filename.endswith('csv'):
+                df = pd.read_csv(fileitem.file, sep=',')
+            else:
+                raise Exception("Unsupported file type for carts uploaded. File name: {0}".format(fileitem.filename))
 
-        if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
-            adata = sc.read_excel(source_file_path, index_col=0).transpose()
-            adata.write(filename=h5dest_file_path)
+            is_valid = validate_weighted_gene_cart(df)
 
-        elif fileitem.filename.endswith('tab'):
-            adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True).transpose()
-            adata.write(filename=h5dest_file_path)
+            if not is_valid:
+                raise Exception("Weighted gene cart is not valid. Ensure first column is unique identifiers, second column is gene symbols, and following columns are numeric weights.")
 
-        elif fileitem.filename.endswith('csv'):
-            adata = sc.read_csv(source_file_path, first_column_names=True).transpose()
-            adata.write(filename=h5dest_file_path)
+            # Write dataframe to tab file
+            try:
+                df.to_csv(source_file_path, sep='\t', index=False)
+            except:
+                raise Exception("Could not write data to tab file: {0}".format(source_file_path))
 
-        else:
-            raise Exception("Unsupported file type for carts uploaded. File name: {0}".format(fileitem.filename))
+        except Exception as e:
+            print(str(e))
+            sys.exit()
+
+        # Convert tab-delimited to h5ad
+        adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True).transpose()
+        adata.write(filename=h5dest_file_path)
 
     gc.save()
 

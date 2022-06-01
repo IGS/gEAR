@@ -40,12 +40,12 @@ def main():
             # Read from JSON properties instead of from the cart object
             # Write the tab file out
             with open(source_file_path, 'wb') as sfh:
-                headers = ["dataRowNames"]
+                headers = ["identifier", "gene_symbol"]
                 headers.extend(data["weight_labels"])
                 sfh.write(('\t'.join(headers) + '\n').encode())
 
                 for gene in data["genes"]:
-                    row = [gene["id"]]
+                    row = [gene["id"], gene["gene_symbol"]]
                     weights = [str(w) for w in gene["weights"]]
                     row.extend(weights)
                     sfh.write(('\t'.join(row) + '\n').encode())

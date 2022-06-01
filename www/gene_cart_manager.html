@@ -80,7 +80,7 @@
               </div>
             </form>
           </div> <!-- #controls_primary_search -->
-          
+
           <div id='add_cart_controls_c'>
             <button type="button" id="btn_create_cart_toggle" class="btn btn-sm btn-primary">Create new cart</button>
           </div>
@@ -119,7 +119,7 @@
               <div id="initial_instructions_header" class="row">
                 <div id="initial_instructions_bar" class="col-sm-11">
                   Click for instructions
-                  
+
                 </div>
                 <div id="initial_instructions_closer" class="col-sm-1 pt-1">
                   <i class="fa fa-window-close pull-right"></i>
@@ -131,7 +131,7 @@
                     The column on the left is to help you find gene carts either you have made
                     or others have made visible to you.  You can search via keywords or use
                     the faceted search options to get results like "Show me all gene carts
-                    for mouse added in the last month." 
+                    for mouse added in the last month."
                   </p>
                   <p>
                     You can also click the "Create new cart" button to make a new cart of
@@ -140,7 +140,7 @@
                   </p>
                 </div>
               </div>
-            </div> 
+            </div>
           </div> <!-- end initial_instructions_c -->
           <div id="add_cart_panel" class="row shown_later">
             <div class="col-sm-12">
@@ -211,8 +211,11 @@
                             <textarea class="form-control" id="new_cart_ldesc" name="new_cart_ldesc" rows="3"></textarea>
                           </div>
                           <div id="file_upload_c" class="form-group">
-                            <label for="new_cart_file">File upload</label>
+                            <label for="new_cart_file">File upload:</label>
                             <input class="pl-3 pr-3" name="new_cart_file" type="file" id="new_cart_file"/>
+                          </div>
+                          <div class="form-group">
+                            <a id="cart_upload_reqs" tabindex="0" class="btn btn-sm text-link" role="button" data-toggle="popover" data-trigger="focus" title="Requirements" data-content="<p>CSV, TAB, or Excel-format files only.<br/><br/>First column must be unique gene identifiers.<br/>Second column must be gene symbols.<br/>Extra columns must be numeric weights.<p>">Click for requirements</a>
                           </div>
                           <div class="form-group shown_later" id="new_cart_pasted_genes_c">
                             <label for="new_cart_pasted_genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
@@ -325,7 +328,7 @@
                            <select class="form-control" id="result_gc_id_{{:id}}_editable_organism_id" data-original-val="{{:organism_id}}"></select>
                          </div>
                        </div>
-                       
+
                        <div class="col-sm-3"><span class="att_label">Owner</span> {{:user_name}}</div>
                        <div class="col-sm-3"><span class="att_label">Added</span> {{:date_added}}</div>
                      </div>
@@ -335,7 +338,7 @@
                            {{if gctype == "weighted-list" }}
                               <button id="btn_gc_{{:id}}_preview" class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}" data-gc-share-id="{{:share_id}}"
                                       data-placement="top" title="Show gene list"><i class="fa fa-list-ul"></i> Preview</button>
-                              
+
                               <button id="btn_gc_{{:id}}_loading" class="btn btn-default btn-sm btn-outline-secondary shown_later" data-toggle="tooltip" data-gc-id="{{:id}}"
                                       data-placement="top" title="Loading">
                                   <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -344,7 +347,7 @@
 
                               <button id="btn_gc_{{:id}}_hider" class="btn btn-default btn-sm btn-outline-secondary gc_weighted_gene_list_hider shown_later" data-toggle="tooltip" data-gc-id="{{:id}}"
                                       data-placement="top" title="Hide gene list"><i class="fa fa-eye-slash"></i> Hide</button>
-                              
+
                            {{else}}
                               <button class="btn btn-default btn-sm btn-outline-secondary gc_unweighted_gene_list_toggle" data-toggle="tooltip" data-gc-id="{{:id}}"
                                       data-placement="top" title="Show gene list"><i class="fa fa-list-ul"></i> {{:gene_count}} genes</button>
@@ -367,7 +370,7 @@
                      <div class="row">
                        <div class="col-sm-3"></div>
                        <div class="col-sm-9 pl-4">
-                         <span class="gc_action_note"></span>                         
+                         <span class="gc_action_note"></span>
                        </div>
                      </div> <!-- end .row -->
                      <div class="row">
@@ -379,7 +382,7 @@
                               {{for genes}}
                                <li class="mt-1">{{:}}</li>
                               {{/for}}
-                              </ul> 
+                              </ul>
                            {{/if}}
                        </div>
                      </div> <!-- end .row -->
@@ -393,7 +396,7 @@
             </div> <!-- gc_list_c -->
           </div> <!-- #view_controls -->
         </div> <!-- #main_panel -->
-        
+
       </div>
     </div><!-- end #main_row -->
  </div> <!-- end #main_content -->

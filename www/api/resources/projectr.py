@@ -211,21 +211,8 @@ class ProjectR(Resource):
         index_intersection = target_df.index.intersection(loading_df.index)
         intersection_size = index_intersection.size
         if index_intersection.empty:
-            for col in adata.var.columns:
-                target_series = set(adata.var[col].tolist())
-                loading_series = set(loading_df.index.tolist())
-                series_intersection = target_series.intersection(loading_series)
-                if adata.var[col].dtype.name == "category" and series_intersection:
-                    print("INFO: Found that adata.var column '{}' in dataset overlaps with loading file {}".format(col, source_id))
-                    intersection_size = len(series_intersection)
-                    # Map the dataset gene index to the loading file gene index
-                    genes_dict = dict(zip(adata.var.index, adata.var[col]))
-                    # Rename dataset df to use same gene symbols as the loading file
-                    target_df.rename(index=genes_dict, inplace=True)
-                    break
-            else:
-                message = "No common genes between the target dataset and the pattern file."
-                return {"success": -1, "message": message}
+            message = "No common genes between the target dataset and the pattern file."
+            return {"success": -1, "message": message}
 
         message = "Found {} common genes between the target dataset and the pattern file.".format(intersection_size)
 

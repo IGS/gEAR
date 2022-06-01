@@ -133,54 +133,54 @@ window.onload=() => {
         check_dependencies_and_run(run_analysis_tsne);
     });
 
-    $('#cg_download_table_f').on('click', function() {
-        var qry_id = $('#query_cluster').val();
-        var ref_id = $('#reference_cluster').val();
+    $('#cg_download_table_f').on('click', () => {
+        const qry_id = $('#query_cluster').val();
+        const ref_id = $('#reference_cluster').val();
 
         download_table_as_excel('compare_genes_table_f',
-                                'cluster_comparison_' + qry_id + '_vs_' +
+                                `cluster_comparison_${qry_id}_vs_` +
                                 ref_id + '.xls');
     });
 
-    $('#cg_download_table_r').on('click', function() {
-        var qry_id = $('#query_cluster').val();
-        var ref_id = $('#reference_cluster').val();
+    $('#cg_download_table_r').on('click', () => {
+        const qry_id = $('#query_cluster').val();
+        const ref_id = $('#reference_cluster').val();
 
         download_table_as_excel('compare_genes_table_r',
-                                'cluster_comparison_' + ref_id + '_vs_' +
+                                `cluster_comparison_${ref_id}_vs_` +
                                 qry_id + '.xls');
     });
 
-    $("#cg_show_table_f").on('click', function() {
+    $("#cg_show_table_f").on('click', () => {
         if ($("#compare_genes_table_f").is(":visible")) {
             $("#compare_genes_table_f").hide(500);
             $("#cg_show_table_f").html(' Show table');
             $("#cg_show_table_f").removeClass('fa-eye-slash');
             $("#cg_show_table_f").addClass('fa-eye');
-        } else{
-            $("#compare_genes_table_f").show(500);
-            $("#cg_show_table_f").html(' Hide table');
-            $("#cg_show_table_f").addClass('fa-eye-slash');
-            $("#cg_show_table_f").removeClass('fa-eye');
+            return;
         }
+        $("#compare_genes_table_f").show(500);
+        $("#cg_show_table_f").html(' Hide table');
+        $("#cg_show_table_f").addClass('fa-eye-slash');
+        $("#cg_show_table_f").removeClass('fa-eye');
     });
 
-    $("#cg_show_table_r").on('click', function() {
+    $("#cg_show_table_r").on('click', () => {
         if ($("#compare_genes_table_r").is(":visible")) {
             $("#compare_genes_table_r").hide(500);
             $("#cg_show_table_r").html(' Show table');
             $("#cg_show_table_r").removeClass('fa-eye-slash');
             $("#cg_show_table_r").addClass('fa-eye');
-        } else{
-            $("#compare_genes_table_r").show(500);
-            $("#cg_show_table_r").html(' Hide table');
-            $("#cg_show_table_r").addClass('fa-eye-slash');
-            $("#cg_show_table_r").removeClass('fa-eye');
+            return;
         }
+        $("#compare_genes_table_r").show(500);
+        $("#cg_show_table_r").html(' Hide table');
+        $("#cg_show_table_r").addClass('fa-eye-slash');
+        $("#cg_show_table_r").removeClass('fa-eye');
     });
 
     $('.tooltoggle').change( function() {
-        var analysis_block_id = '#analysis_' + $(this).data('analysis-name');
+        const analysis_block_id = `#analysis_${$(this).data('analysis-name')}`;
 
         if ( $(this).prop('checked') ) {
             $(analysis_block_id).show();
@@ -200,49 +200,49 @@ window.onload=() => {
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").hide();
-        } else {
-            show_working("Loading stored analysis");
+            return;
+        }
+        show_working("Loading stored analysis");
 
-            $('#new_analysis_label_c').hide();
-            reset_workbench();
+        $('#new_analysis_label_c').hide();
+        reset_workbench();
 
-            var analysis_type = $(this).find(':selected').data('analysis-type');
+        const analysis_type = $(this).find(':selected').data('analysis-type');
 
-            load_stored_analysis($(this).find(':selected').data('analysis-id'),
-                                 analysis_type,
-                                 $(this).find(':selected').data('dataset-id'));
+        load_stored_analysis($(this).find(':selected').data('analysis-id'),
+         analysis_type,
+         $(this).find(':selected').data('dataset-id'));
 
-            if (analysis_type == 'user_unsaved') {
-                $("#primary_analysis_notification").hide();
-                $("#analysis_action_c").show();
-                $("#analysis_status_info_c").hide();
-                $("#btn_make_public_copy").hide();
-                $("#btn_delete_saved_analysis").hide();
-                $("#btn_delete_unsaved_analysis").show();
-            } else if (analysis_type == 'user_saved') {
-                $("#primary_analysis_notification").hide();
-                $("#analysis_action_c").hide();
-                $("#analysis_status_info").text("This analysis is stored in your profile.");
-                $("#analysis_status_info_c").show();
-                $("#btn_make_public_copy").show();
-                $("#btn_delete_saved_analysis").show();
-                $("#btn_delete_unsaved_analysis").hide();
-            } else if (analysis_type == 'public') {
-                $("#primary_analysis_notification").hide();
-                $("#analysis_action_c").hide();
-                $("#analysis_status_info").text("Changes made to this public analysis will spawn a local copy within your profile.");
-                $("#analysis_status_info_c").show();
-                $("#btn_make_public_copy").hide();
-                $("#btn_delete_saved_analysis").hide();
-                $("#btn_delete_unsaved_analysis").hide();
-            } else if (analysis_type == 'primary') {
-                $("#primary_analysis_notification").show();
-                $("#analysis_action_c").hide();
-                $("#analysis_status_info_c").hide();
-                $("#btn_make_public_copy").hide();
-                $("#btn_delete_saved_analysis").hide();
-                $("#btn_delete_unsaved_analysis").hide();
-            }
+        if (analysis_type == 'user_unsaved') {
+            $("#primary_analysis_notification").hide();
+            $("#analysis_action_c").show();
+            $("#analysis_status_info_c").hide();
+            $("#btn_make_public_copy").hide();
+            $("#btn_delete_saved_analysis").hide();
+            $("#btn_delete_unsaved_analysis").show();
+        } else if (analysis_type == 'user_saved') {
+            $("#primary_analysis_notification").hide();
+            $("#analysis_action_c").hide();
+            $("#analysis_status_info").text("This analysis is stored in your profile.");
+            $("#analysis_status_info_c").show();
+            $("#btn_make_public_copy").show();
+            $("#btn_delete_saved_analysis").show();
+            $("#btn_delete_unsaved_analysis").hide();
+        } else if (analysis_type == 'public') {
+            $("#primary_analysis_notification").hide();
+            $("#analysis_action_c").hide();
+            $("#analysis_status_info").text("Changes made to this public analysis will spawn a local copy within your profile.");
+            $("#analysis_status_info_c").show();
+            $("#btn_make_public_copy").hide();
+            $("#btn_delete_saved_analysis").hide();
+            $("#btn_delete_unsaved_analysis").hide();
+        } else if (analysis_type == 'primary') {
+            $("#primary_analysis_notification").show();
+            $("#analysis_action_c").hide();
+            $("#analysis_status_info_c").hide();
+            $("#btn_make_public_copy").hide();
+            $("#btn_delete_saved_analysis").hide();
+            $("#btn_delete_unsaved_analysis").hide();
         }
     });
 
@@ -530,11 +530,12 @@ function update_ui_after_weighted_gene_cart_save_success(gc) {
     done_working("Saved weighted gene cart", false);
 }
 
-function update_ui_after_weighted_gene_cart_save_failure(gc) {
+function update_ui_after_weighted_gene_cart_save_failure(gc, message) {
 	$("#saved_weighted_gene_cart_info_c > p").html("There was an issue saving the weighted gene cart.");
 	$("#saved_weighted_gene_cart_info_c > p").removeClass("text-success").addClass("text-danger");
 	$("#saved_weighted_gene_cart_info_c").show();
     report_error(`Error saving gene cart: ${gc.label}`);
+    report_error(message);
     $('#save_weighted_gene_cart').attr("disabled", false);
 }
 
