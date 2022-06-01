@@ -82,14 +82,14 @@ window.onload=() => {
         <template v-if='plot_params_ready || preconfigured'>
           <img :id="preview_id"></img>
           <template v-if='success > 1 && !preconfigured'>
-            <b-card bg-variant="warning" title="Warning">
-            <p class='card-text'>{{ message }}</p>
-            </b-card>
+            <b-alert variant="warning" dismissible>
+            {{ message }}
+            </b-alert>
           </template>
           <template v-if='success < 0'>
-            <b-card bg-variant="danger" text-variant="white" title="Error">
-            <p class='card-text'>{{ message }}</p>
-            </b-card>
+            <b-alert variant="danger" dismissible>
+            {{ message }}
+            </b-alert>
           </template>
         </template>
       </div>
@@ -185,14 +185,14 @@ window.onload=() => {
             <div ref='chart'></div>
           </b-card-body>
           <template v-if='success > 1'>
-            <b-card bg-variant="warning" title="Warning">
-            <p class='card-text'>{{ message }}</p>
-            </b-card>
+            <b-alert variant="warning" dismissible>
+            {{ message }}
+            </b-alert>
           </template>
           <template v-if='success < 0'>
-            <b-card bg-variant="danger" text-variant="white" title="Error">
-            <p class='card-text'>{{ message }}</p>
-            </b-card>
+            <b-alert variant="danger" dismissible>
+            {{ message }}
+            </b-alert>
           </template>
         </div>
         <div v-else ref='chart' style='height:230px'></div>
@@ -361,14 +361,14 @@ window.onload=() => {
             <img class='img-fluid' v-if='img' :src='imgData'></img>
           </div>
           <template v-if='success > 1'>
-            <b-card bg-variant="warning" title="Warning">
-            <p class='card-text'>{{ message }}</p>
-            </b-card>
+            <b-alert variant="warning" dismissible>
+            {{ message }}
+            </b-alert>
           </template>
           <template v-if='success < 0'>
-            <b-card bg-variant="danger" text-variant="white" title="Error">
-            <p class='card-text'>{{ message }}</p>
-            </b-card>
+            <b-alert variant="danger" dismissible>
+            {{ message }}
+            </b-alert>
           </template>
         </div>
         <div v-else ref='chart'>
