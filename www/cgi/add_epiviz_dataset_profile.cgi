@@ -6,6 +6,7 @@
 
 
 import cgi
+import html
 from datetime import datetime
 import json
 import numpy as np
@@ -27,8 +28,8 @@ def main():
     result = {'success':0}
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    dataset_uid = cgi.escape(form.getvalue('dataset_uid'))
-    share_uid = cgi.escape(form.getvalue('share_uid'))
+    dataset_uid = html.escape(form.getvalue('dataset_uid'))
+    share_uid = html.escape(form.getvalue('share_uid'))
     dataset_name = form.getvalue('title')
     dataset_description = form.getvalue('description')
     dataset_config = form.getvalue("epiviz_config")
