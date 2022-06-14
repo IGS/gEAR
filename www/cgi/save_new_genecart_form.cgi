@@ -25,16 +25,26 @@ def validate_weighted_gene_cart(df):
     # Check that first column is identifiers, second column is gene symbols, and following columns are numeric weights
     if len(df.columns) < 3:
         return False
-    if df[df.columns[0]].dtype != 'string' \
-        or df[df.columns[1]].dtype != 'string' \
-        or df[df.columns[2:]].dtype != 'float64':
+
+    # Objects are variable string length.
+    if df[df.columns[0]].dtype not in ["string", "object"] \
+        or df[df.columns[1]].dtype not in ["string", "object"]:
         return False
-    if not df.columns[0].is_unique:
+
+    # The third column onward must be a numeric weight
+    for col in df[df.columns[2:]]:
+        if df[col].dtype != 'float64':
+            return False
+
+    # The first column has to be unique identifiers
+    if not df[df.columns[0]].is_unique:
         return False
+
     return True
 
 def main():
     print('Content-Type: application/json\n\n')
+
     gc = geardb.GeneCart()
     form = cgi.FieldStorage()
 
@@ -73,14 +83,14 @@ def main():
             raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
 
     elif upload_type == 'uploaded-weighted':
-        import scanpy as sc
+        import anndata
         import pandas as pd
         import string
         gc.gctype = 'weighted-list'
 
         # sanitize the file name
         fileitem = form['new_cart_file']
-        valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+        valid_chars = "-_.() {}{}".format(string.ascii_letters, string.digits)
         fileitem.filename = ''.join(c for c in fileitem.filename if c in valid_chars)
 
         source_file_ext = ".tab"
@@ -91,7 +101,7 @@ def main():
         try:
             if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
                 df = pd.read_excel(fileitem.file, sheet_name=0)
-            elif fileitem.filename.endswith('tab'):
+            elif fileitem.filename.endswith('tab') or fileitem.filename.endswith('tsv'):
                 df = pd.read_csv(fileitem.file, sep='\t')
             elif fileitem.filename.endswith('csv'):
                 df = pd.read_csv(fileitem.file, sep=',')
@@ -109,13 +119,19 @@ def main():
             except:
                 raise Exception("Could not write data to tab file: {0}".format(source_file_path))
 
+            # First two columns make adata.var
+            var = df[df.columns[:2]]
+            var.set_index(var.columns[0], inplace=True)
+            # Remaining columns make adata.X
+            X = df[df.columns[2:]].transpose().to_numpy()
+            obs = pd.DataFrame(index=df.columns[2:])
+            # Create the anndata object and write to h5ad
+            adata = anndata.AnnData(X=X, obs=obs, var=var)
+            adata.write(filename=h5dest_file_path)
+
         except Exception as e:
             print(str(e))
-            sys.exit()
-
-        # Convert tab-delimited to h5ad
-        adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True).transpose()
-        adata.write(filename=h5dest_file_path)
+            sys.exit(1)
 
     gc.save()
 

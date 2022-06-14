@@ -10,6 +10,9 @@ This script is appropriate to call when passing JSON directly.
 
 import json
 import sys
+import anndata
+import pandas as pd
+
 from pathlib import Path
 
 TWO_LEVELS_UP = 2
@@ -22,6 +25,7 @@ abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def main():
+    print("Content-Type: application/json\n\n")
 
     # NOTE: Not going to add weighted gene and cart info, but may add subclasses in the future
     gc = geardb.GeneCart()
@@ -50,20 +54,30 @@ def main():
                     row.extend(weights)
                     sfh.write(('\t'.join(row) + '\n').encode())
         except AttributeError as e:
-            print("Status: 500 Internal Server Error")
-            print("Content-Type: application/json;charset=utf-8\n")
-            print("GeneCart object is not a weighted list")
             print(str(e))
-            sys.exit()
+            sys.exit(1)
+
+        df = pd.read_csv(source_file_path, sep='\t')
 
         # Write the h5ad file out
-        adata = sc.read_csv(source_file_path, delimiter="\t", first_column_names=True).transpose()
-        adata.write(filename=h5dest_file_path)
+        try:
+            # First two columns make adata.var
+            var = df[df.columns[:2]]
+            var.set_index(var.columns[0], inplace=True)
+            # Remaining columns make adata.X
+            X = df[df.columns[2:]].transpose().to_numpy()
+            obs = pd.DataFrame(index=df.columns[2:])
+            # Create the anndata object and write to h5ad
+            adata = anndata.AnnData(X=X, obs=obs, var=var)
+            adata.write(filename=h5dest_file_path)
+
+        except Exception as e:
+            print(str(e))
+            sys.exit(1)
 
     gc.save()
 
     result = { 'id': gc.id }
-    print("Content-Type: application/json\n\n")
     print(json.dumps(result))
 
 

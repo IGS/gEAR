@@ -906,16 +906,21 @@ function update_ui_after_gene_cart_save_failure(gc, message) {
 	$("#create_gene_cart_dialog").hide("fade");
 	$("#saved_gene_cart_info_c > h3").html(`There was an issue saving the gene cart. ${message}`);
 	$("#saved_gene_cart_info_c").show();
+	$("#save_gene_cart").prop("disabled", false);
 }
 
 function update_ui_after_weighted_gene_cart_save_success(gc) {
-	$("#saved_weighted_gene_cart_info_c > p").html(`Cart "${gc.label}" successfully saved.`);
-	$("#saved_weighted_gene_cart_info_c > p").removeClass("text-danger").addClass("text-success");
+	$("#saved_weighted_gene_cart_info_c > .status").html(`Cart "${gc.label}" successfully saved.`);
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-danger").addClass("text-success");
 	$("#saved_weighted_gene_cart_info_c").show();
+	$("#saved_weighted_gene_cart_info_c > .alert").hide();
 }
 
 function update_ui_after_weighted_gene_cart_save_failure(gc, message) {
-	$("#saved_weighted_gene_cart_info_c > p").html(`There was an issue saving the weighted gene cart. ${message}`);
-	$("#saved_weighted_gene_cart_info_c > p").removeClass("text-success").addClass("text-danger");
+	$("#saved_weighted_gene_cart_info_c > .status").html("There was an issue saving the weighted gene cart.");
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-success").addClass("text-danger");
+	$("#saved_weighted_gene_cart_info_c > .alert").show();
+	$("#saved_weighted_gene_cart_info_c > .message").html(message);
 	$("#saved_weighted_gene_cart_info_c").show();
+	$("#saved_weighted_gene_cart").prop("disabled", false);
 }
