@@ -204,9 +204,25 @@
           </div>
 
           <div id="weighted_gene_cart_c" style="display:none;">
-            <div class="form-group form-group-sm w-25">
-              <label for="weighted_gene_cart_name" class="control-label">Cart name to create:</label>
-              <input class="form-control mb-1" type="text" value="" id="weighted_gene_cart_name" />
+            <div class="form-group form-group-sm form-row">
+              <label for="weighted_gene_cart_name col-1" class="control-label">Cart name to create:</label>
+              <input class="form-control mb-1 mx-2 col-3" type="text" value="" id="weighted_gene_cart_name" />
+              <div class="col-6">
+                <label for="weighted_gene_cart_name" class="control-label">Fold-change:</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-raw" value="raw" checked>
+                  <label class="form-check-label" for="log-raw">Raw</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-2" value="log2">
+                  <label class="form-check-label" for="log-2">Log2</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-10" value="log10">
+                  <label class="form-check-label" for="log-10">Log10</label>
+                </div>
+              </div>
+
             </div>
             <button id="save_weighted_gene_cart" class="btn btn-sm btn-purple">Save Weighted Gene Cart</button>
             <div id='saved_weighted_gene_cart_info_c' style="display:none;">

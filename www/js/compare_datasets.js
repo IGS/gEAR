@@ -799,20 +799,44 @@ function save_gene_cart() {
 
 function save_weighted_gene_cart() {
 	// must have access to USER_SESSION_ID
+	foldchange_label = "FC"
+	switch ($('input[name=foldchange_to_save]:checked').val()) {
+		case "log2":
+			foldchange_label = "Log2FC";
+			break;
+		case "log10":
+			foldchange_label = "Log10FC";
+			break;
+		default: // 'raw'
+			foldchange_label = foldchange_label;
+	}
+
 	const gc = new WeightedGeneCart({
 		session_id: CURRENT_USER.session_id,
 		label: $("#weighted_gene_cart_name").val(),
 		gctype: 'weighted-list',
 		organism_id: $("#dataset_id").data('organism-id'),
 		is_public: 0
-	}, weight_labels=['FC']
+	}, weight_labels=[foldchange_label]
 	);
 
 	plot_data.gene_ids.forEach((gene_id, i) => {
+		foldchange = plot_data.fold_changes[i]
+		switch ($('input[name=foldchange_to_save]:checked').val()) {
+			case "log2":
+				foldchange = Math.log2(foldchange);
+				break;
+			case "log10":
+				foldchange = Math.log10(foldchange);
+				break;
+			default: // 'raw'
+				foldchange = foldchange;
+		}
+
 		const gene = new WeightedGene({
 			id: gene_id,
 			gene_symbol: plot_data.symbols[i]
-		}, weights=[plot_data.fold_changes[i]]
+		}, weights=[foldchange]
 		);
 		gc.add_gene(gene);
 	});
@@ -922,5 +946,5 @@ function update_ui_after_weighted_gene_cart_save_failure(gc, message) {
 	$("#saved_weighted_gene_cart_info_c > .alert").show();
 	$("#saved_weighted_gene_cart_info_c > .message").html(message);
 	$("#saved_weighted_gene_cart_info_c").show();
-	$("#saved_weighted_gene_cart").prop("disabled", false);
+	$("#save_weighted_gene_cart").prop("disabled", false);
 }
