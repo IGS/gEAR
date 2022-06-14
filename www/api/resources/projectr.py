@@ -199,11 +199,14 @@ class ProjectR(Resource):
 
         # Row: Genes
         # Col: Pattern weights
+        # TODO: prioritize reading from h5ad file.
         file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
         loading_df = pd.read_csv(file_path, sep="\t")
 
         # Assumes first column is gene info. Standardize on a common index name
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
+        # Drop the gene symbol column
+        loading_df = loading_df.drop(loading_df.columns[1], axis=1)
         loading_df.set_index('dataRowNames', inplace=True)
 
         # Perform overlap to see if there are overlaps between genes from both dataframes

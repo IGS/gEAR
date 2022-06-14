@@ -16,6 +16,8 @@ def main():
     source_id = form.getvalue('source_id')  # Root of the file name (minus extension)
 
     result = []
+
+    # TODO: Consider loading from h5ad instead of tab if it exists
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
 
     for line in open(file_path):
@@ -23,7 +25,8 @@ def main():
         # on the first line, the file should be all pattern names after the first column
         cols = line.split("\t")
 
-        for col in cols[1:]:
+        # Col 0 is uniq ID, col 1 is gene symbol.
+        for col in cols[2:]:
             result.append({'label': col})
 
         # we only care about the first line
