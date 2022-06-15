@@ -4,6 +4,7 @@ from pathlib import Path
 import json, sys, uuid
 import geardb
 import gear.rfuncs as rfx
+from gear.rfuncs import RError
 
 import pandas as pd
 
@@ -65,15 +66,11 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
 
         # Let's not fail if the file isn't there
         if not Path(h5_path).is_file():
-            raise ProjectRError("No h5 file found for this dataset")
+            raise FileNotFoundError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-class ProjectRError(Exception):
-    """Error based on issues that would manifest in the projectR call."""
-    def __init__(self, message="") -> None:
-        self.message = message
-        super().__init__(self.message)
+
 
 class ProjectROutputFile(Resource):
     """
@@ -180,14 +177,13 @@ class ProjectR(Resource):
         Only step 4 needs to be in R, and we use rpy2 to call that.
         """
 
-
         # NOTE Currently no analyses are supported yet.
         try:
             ana = get_analysis(None, dataset_id, session_id, None)
-        except ProjectRError as pe:
+        except Exception as e:
             return {
-                'success': -1,
-                'message': str(pe),
+                'success': -1
+                , 'message': str(e)
             }
 
         # Using adata with "backed" mode does not work with volcano plot
@@ -234,7 +230,14 @@ class ProjectR(Resource):
             return {"success": -1, "message": message}
         """
 
-        projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
+        try:
+            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
+        except RError as re:
+            return {
+                'success': -1
+                , 'message': str(re)
+            }
+
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
         projection_patterns_df.to_csv(projection_csv)
