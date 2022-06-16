@@ -50,11 +50,11 @@ run_projectr_parser = parser.copy()
 run_projectr_parser.add_argument('projection_id', type=str, required=False)
 
 def build_projection_csv_path(dir_id, file_id, scope):
-    """Build the path to the csv file for a given projection."""
+    """Build the path to the csv file for a given projection. Returns a Path object."""
     return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, "{}.csv".format(file_id))
 
 def build_projection_json_path(dir_id, scope):
-    """Build the path to the projections json for a given dataset or genecart directory."""
+    """Build the path to the projections json for a given dataset or genecart directory. Returns a Path object."""
     return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME)
 
 def write_to_json(projections_dict, projection_json_file):
@@ -103,14 +103,16 @@ class ProjectROutputFile(Resource):
         if not genecart_projection_json_file.parent.is_dir():
             genecart_projection_json_file.parent.mkdir(parents=True)
 
-        projection_files = [dataset_projection_json_file, genecart_projection_json_file]
+        # Create the genecart projection json file if it doesn't exist
+        # We will use the dataset json file as a check if a projection already exists though
+        if not genecart_projection_json_file.is_file():
+            genecart_projection_json_file.touch()
+            write_to_json({}, genecart_projection_json_file) # create empty json file
 
-        # If the json file exists, we can read it and get the output file path
-        # Assume the "genecart" equivalent has not been created yet either
-        if not Path(dataset_projection_json_file).is_file():
-            for f in projection_files:
-                Path(f).touch()
-                write_to_json({}, f) # create empty json file
+        # If the dataset json file exists, we can read it and get the output file path
+        if not dataset_projection_json_file.is_file():
+            dataset_projection_json_file.touch()
+            write_to_json({}, dataset_projection_json_file) # create empty json file
             return {
                 "projection_id": None
             }
