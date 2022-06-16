@@ -613,7 +613,7 @@ class DatasetPanel extends Dataset {
     async run_projectR(projection_source, is_pca, scope) {
         const dataset_id = this.id;
         const payload = {
-            source_id: projection_source,
+            genecart_id: projection_source,
             is_pca,
         };
         const other_opts = {}

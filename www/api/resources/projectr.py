@@ -15,21 +15,33 @@ PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
 PROJECTIONS_JSON_BASENAME = "projections.json"
 
 """
-projections json format - one in each "projections/<dataset_id> subdirectory
+projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
 
 {
-  <pattern_source>: [
+  <cart.abc123>: [
     configuration options dict * N configs
     ],
-  <pattern_source 2>: [
+  <cart.def456: [
     configuration_options dict * N configs
     ]
+}
+
+Also one in each "projections/by_genecart/<genecart_id> subdirectory.
+Total number of projections in whole by_genecart directory = total number in by_dataset directory.
+
+{
+    <dataset123>: [
+        configuration options dict * N configs
+    ],
+    <dataset456: [
+        configuration options dict * N configs
+    ],
 }
 
 """
 
 parser = reqparse.RequestParser(bundle_errors=True)
-parser.add_argument('source_id', help='Pattern source name required', type=str, required=True)
+parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required', type=str, required=True)
 parser.add_argument('is_pca', help="'is_pca' needs to be a boolean", type=bool,  required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
 parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used at the moment
@@ -37,16 +49,17 @@ parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used a
 run_projectr_parser = parser.copy()
 run_projectr_parser.add_argument('projection_id', type=str, required=False)
 
-def build_projection_csv_path(dataset_id, projection_id):
-    return Path(PROJECTIONS_BASE_DIR).joinpath(dataset_id, "{}.csv".format(projection_id))
+def build_projection_csv_path(dir_id, file_id, scope):
+    """Build the path to the csv file for a given projection."""
+    return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, "{}.csv".format(file_id))
 
-def build_projection_json_path(dataset_id):
-    return Path(PROJECTIONS_BASE_DIR).joinpath(dataset_id, PROJECTIONS_JSON_BASENAME)
+def build_projection_json_path(dir_id, scope):
+    """Build the path to the projections json for a given dataset or genecart directory."""
+    return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME)
 
 def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
-
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
     """Return analysis object based on various factors."""
@@ -79,38 +92,44 @@ class ProjectROutputFile(Resource):
 
     def post(self, dataset_id):
         args = parser.parse_args()
+        genecart_id = args['genecart_id']
+        is_pca = args['is_pca']
 
-        if not Path(PROJECTIONS_BASE_DIR).joinpath(dataset_id).is_dir():
-            Path(PROJECTIONS_BASE_DIR).joinpath(dataset_id).mkdir(parents=True)
+        dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
+        if not dataset_projection_json_file.parent.is_dir():
+            dataset_projection_json_file.parent.mkdir(parents=True)
 
-        projection_json_file = build_projection_json_path(dataset_id)
+        genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
+        if not genecart_projection_json_file.parent.is_dir():
+            genecart_projection_json_file.parent.mkdir(parents=True)
+
+        projection_files = [dataset_projection_json_file, genecart_projection_json_file]
 
         # If the json file exists, we can read it and get the output file path
-        if not Path(projection_json_file).is_file():
-            Path(projection_json_file).touch()
-            write_to_json({}, projection_json_file) # create empty json file
+        # Assume the "genecart" equivalent has not been created yet either
+        if not Path(dataset_projection_json_file).is_file():
+            for f in projection_files:
+                Path(f).touch()
+                write_to_json({}, f) # create empty json file
             return {
                 "projection_id": None
             }
 
-        source_id = args['source_id']
-        is_pca = args['is_pca']
-
-        projections_dict = json.load(open(projection_json_file))
+        projections_dict = json.load(open(dataset_projection_json_file))
 
         # If the pattern was not projected onto this dataset, initialize a list of configs
-        if not source_id in projections_dict:
+        if not genecart_id in projections_dict:
             # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
             return {
                 "projection_id": None
             }
 
-        for config in projections_dict[source_id]:
+        for config in projections_dict[genecart_id]:
             if int(is_pca) == config['is_pca']:
                 projection_id = config['uuid']
-                projection_csv = build_projection_csv_path(dataset_id, projection_id)
+                dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
                 return {
-                    "projection_id": projection_id  if Path(projection_csv).is_file() else None
+                    "projection_id": projection_id  if Path(dataset_projection_csv).is_file() else None
                 }
 
         # If we get here, we didn't find a file for this config
@@ -132,22 +151,25 @@ class ProjectR(Resource):
         success = 1
         message = ""
 
-        source_id = args['source_id']
+        genecart_id = args['genecart_id']
         is_pca = args['is_pca']
         output_id = args['projection_id']
 
         projection_id = output_id if output_id else uuid.uuid4()
-        projection_csv = build_projection_csv_path(dataset_id, projection_id)
-        projection_json_file = build_projection_json_path(dataset_id)
+        dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+        dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
+
+        genecart_projection_csv = build_projection_csv_path(genecart_id, projection_id, "genecart")
+        genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
 
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
-        if Path(projection_csv).is_file():
-            print("INFO: Found exisitng projection_csv file {}, loading it.".format(projection_csv))
+        if Path(dataset_projection_csv).is_file():
+            print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv))
 
             # Projection already exists, so we can just return info we want to return in a message
-            projections_dict = json.load(open(projection_json_file))
+            projections_dict = json.load(open(dataset_projection_json_file))
             common_genes = None
-            for config in projections_dict[source_id]:
+            for config in projections_dict[genecart_id]:
                 if int(is_pca) == config['is_pca']:
                     common_genes = config.get('num_common_genes', None)
                     break
@@ -196,8 +218,14 @@ class ProjectR(Resource):
         # Row: Genes
         # Col: Pattern weights
         # TODO: prioritize reading from h5ad file.
-        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
-        loading_df = pd.read_csv(file_path, sep="\t")
+        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(genecart_id))
+        try:
+            loading_df = pd.read_csv(file_path, sep="\t")
+        except FileNotFoundError:
+            return {
+                'success': -1
+                , 'message': "Could not find pattern file {}".format(file_path)
+            }
 
         # Assumes first column is gene info. Standardize on a common index name
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
@@ -240,16 +268,32 @@ class ProjectR(Resource):
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
-        projection_patterns_df.to_csv(projection_csv)
+        projection_patterns_df.to_csv(dataset_projection_csv)
+
+        # Symlink dataset_projection_csv to genecart_projection_csv
+        dataset_projection_csv.symlink_to(genecart_projection_csv)
 
         # Add new configuration to the list for this dictionary key
-        projections_dict = json.load(open(projection_json_file))
-        projections_dict.setdefault(source_id, []).append({
+        dataset_projections_dict = json.load(open(dataset_projection_json_file))
+        dataset_projections_dict.setdefault(genecart_id, []).append({
             "uuid": projection_id
             , "is_pca": int(is_pca)
             , "num_common_genes": intersection_size
+            , "num_genecart_genes": loading_df.shape[1]
+            , "num_dataset_genes": target_df.shape[1]
         })
-        write_to_json(projections_dict, projection_json_file)
+        write_to_json(dataset_projections_dict, dataset_projection_json_file)
+
+        # Do the same for the genecart version
+        genecart_projections_dict = json.load(open(genecart_projection_json_file))
+        genecart_projections_dict.setdefault(dataset_id, []).append({
+            "uuid": projection_id
+            , "is_pca": int(is_pca)
+            , "num_common_genes": intersection_size
+            , "num_genecart_genes": loading_df.shape[1]
+            , "num_dataset_genes": target_df.shape[1]
+        })
+        write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
         return {
             "success": success
