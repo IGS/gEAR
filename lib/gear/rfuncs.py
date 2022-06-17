@@ -6,8 +6,6 @@ rfuncs.py - Miscellaneous R-style functions called through rpy2
 import sys  # for print debugging
 import traceback    # for debugging
 
-import gc
-
 import rpy2.robjects as ro
 from rpy2.robjects.packages import importr
 from rpy2.robjects import pandas2ri
@@ -57,7 +55,7 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         projectR = importr('projectR')
     except Exception as e:
         print("ERROR: {}".format(str(e)), file=sys.stderr)
-        print(traceback.print_exc(), file=sys.stderr)
+        #print(traceback.print_exc(), file=sys.stderr)  # Uncomment for debugging
         raise RError("Could not import projectR package.")
 
     # Convert from pandas dataframe to R data.frame
@@ -83,7 +81,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         try:
             projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_object, full=False)
         except Exception as e:
-            gc.collect()    # collect R garbage
             print("ERROR: {}".format(str(e)), file=sys.stderr)
             print(traceback.print_exc(), file=sys.stderr)
             raise RError("Error: Could not run projectR command.")
@@ -95,7 +92,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
     with localconverter(ro.default_converter + pandas2ri.converter):
         projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
 
-    gc.collect()    # collect R garbage
     return projection_patterns_df
 
 
