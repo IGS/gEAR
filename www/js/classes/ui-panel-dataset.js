@@ -539,15 +539,21 @@ class DatasetPanel extends Dataset {
         const { context, icon, hover_msg } = args;
 
         const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
+
         const template = `
         <div class='dataset-${context} bg-${context} px-1' id='dataset_${this.primary_key}_${context}'>
             <i class='fa ${icon} e'></i>
             <span id="dataset_${this.primary_key}_msg">${hover_msg}</span>
         </div>`;
 
-        // Add template above the dataset status panel.  It will disappear when the plot is generated.
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(template);
+        // If template already exists, replace it
+        if ($(`#dataset_${this.primary_key}_${context}`).length > 0) {
+            $(`#dataset_${this.primary_key}_${context}`).replaceWith(template);
+        } else {
+            // Add template above the dataset status panel.  It will disappear when the plot is generated.
+            // NOTE: must add to DOM before making selector variables
+            dataset_selector.prepend(template);
+        }
 
         const hover_selector = $(`#dataset_${this.primary_key}_${context}`);
         const msg_selector = $(`#dataset_${this.primary_key}_msg`);
