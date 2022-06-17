@@ -95,23 +95,25 @@ class ProjectROutputFile(Resource):
         genecart_id = args['genecart_id']
         is_pca = args['is_pca']
 
+        # Create the directory if it doesn't exist
+        # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
         if not dataset_projection_json_file.parent.is_dir():
-            dataset_projection_json_file.parent.mkdir(parents=True)
+            dataset_projection_json_file.parent.mkdir(parents=True, exist_ok=True)
 
         genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
         if not genecart_projection_json_file.parent.is_dir():
-            genecart_projection_json_file.parent.mkdir(parents=True)
+            genecart_projection_json_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Create the genecart projection json file if it doesn't exist
         # We will use the dataset json file as a check if a projection already exists though
         if not genecart_projection_json_file.is_file():
-            genecart_projection_json_file.touch()
+            genecart_projection_json_file.touch(exist_ok=True)
             write_to_json({}, genecart_projection_json_file) # create empty json file
 
         # If the dataset json file exists, we can read it and get the output file path
         if not dataset_projection_json_file.is_file():
-            dataset_projection_json_file.touch()
+            dataset_projection_json_file.touch(exist_ok=True)
             write_to_json({}, dataset_projection_json_file) # create empty json file
             return {
                 "projection_id": None

@@ -1,9 +1,10 @@
 #!/bin/bash
 
-Rver="R-3.6.3"  # Consider moving up to v4
+Rmaj=R-4
+Rver="${Rmaj}.2.0"  # Consider moving up to v4
 
 # Install and build R (Using 'apt-get install' on Ubuntu Trusty installs version 3.0.2 of R)
-curl https://cran.r-project.org/src/base/R-3/${Rver}.tar.gz | tar -C /opt -zx
+curl https://cran.r-project.org/src/base/${Rmaj}/${Rver}.tar.gz | tar -C /opt -zx
 cd /opt/${Rver}
 /opt/${Rver}/configure --with-readline=no --enable-R-shlib --enable-BLAS-shlib --with-x=no || exit 1
 make || exit 1
