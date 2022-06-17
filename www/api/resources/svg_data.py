@@ -22,7 +22,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_csv):
     # ? Does it make sense to put this in the geardb/Analysis class?
     try:
         import scanpy as sc
-        projection_adata = sc.read_csv("/{}/{}/{}".format(PROJECTIONS_BASE_DIR, dataset_id, projection_csv))
+        projection_adata = sc.read_csv("/{}/by_dataset/{}/{}".format(PROJECTIONS_BASE_DIR, dataset_id, projection_csv))
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
 
