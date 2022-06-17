@@ -272,8 +272,9 @@ class ProjectR(Resource):
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
         projection_patterns_df.to_csv(dataset_projection_csv)
 
-        # Symlink dataset_projection_csv to genecart_projection_csv
-        dataset_projection_csv.symlink_to(genecart_projection_csv)
+        # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse)
+        # NOTE: In the Docker instance, symlink reflects path to the mounted volume, not the local path
+        genecart_projection_csv.symlink_to(dataset_projection_csv)
 
         # Add new configuration to the list for this dictionary key
         dataset_projections_dict = json.load(open(dataset_projection_json_file))
