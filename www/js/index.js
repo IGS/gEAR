@@ -1171,14 +1171,14 @@ $('.js-gene-cart').change( function() {
         // Get the gene cart members and populate the gene symbol search bar
         $.ajax({
             url: './cgi/get_gene_cart_members.cgi',
-            //async: false,
+            async: false,   // No clue why this works but async/wait does not.. maybe it's the onchange event?
             type: 'post',
             data: params
         }).done((data) => {
             if (data.success === 1) {
                 const gene_symbols_array = []
                 // format gene symbols into search string
-                $.each(data.gene_symbols, function (i, item) {
+                $.each(data.gene_symbols, (i, item) => {
                     gene_symbols_array.push(item.label);
                 });
                 //deduplicate gene cart
