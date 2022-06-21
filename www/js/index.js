@@ -88,8 +88,6 @@ window.onload = async () => {
         $('#intro_search_icon').trigger('click');
     }
 
-
-
     const permalinked_gsem = getUrlParameter('gene_symbol_exact_match');
     if (permalinked_gsem !== (null || undefined)
         && permalinked_gsem === "0") {
@@ -1302,35 +1300,28 @@ function update_datasetframes_generesults() {
 }
 
 function set_exact_match(is_enabled, show_tooltip=true) {
-    let action = "hide";
-    if (show_tooltip) {
-        action = "show";
-    }
-
+    const action = show_tooltip ? "show" : "hide";
     if (is_enabled) {
-        $(".js-exact-match").attr("src", "img/arrow_target_selected.png");
+        $(".js-exact-match img").attr("src", "img/arrow_target_selected.png");
         $(".js-exact-match:visible").attr('data-original-title', "Exact match (currently on).").tooltip(action); // Show is added so the old version of the tooltip does not persist
     } else {
-        $(".js-exact-match").attr("src", "img/arrow_target_unselected.png");
+        $(".js-exact-match img").attr("src", "img/arrow_target_unselected.png");
         $(".js-exact-match:visible").attr('data-original-title', "Exact match (currently off).").tooltip(action);
     }
 }
 
 function set_multigene_plots(is_enabled, show_tooltip=true) {
-    let action = "hide";
-    if (show_tooltip) {
-        action = "show";
-    }
+    const action = show_tooltip ? "show" : "hide";
 
     if (is_enabled) {
         $(".js-multigene:visible").attr('data-original-title', "Multigene displays enabled. Click to search for single-gene displays.").tooltip(action);
-        $(".js-multigene").attr('src', 'img/icons/multi-dna.svg');
+        $(".js-multigene img").attr('src', 'img/icons/multi-dna.svg');
         // projection tab stuff
         $("#projection_pattern_deselect_all").click();
         $("#projection_pattern_elements_c").show();
         return;
     }
-    $(".js-multigene:visible img").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
+    $(".js-multigene:visible").attr('data-original-title', "Single-gene displays enabled. Click to search for multigene displays.").tooltip(action);
     $(".js-multigene img").attr('src', 'img/icons/single-dna.svg');
     // projection tab stuff
     $("#projection_pattern_select_all").click();
