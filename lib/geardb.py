@@ -184,7 +184,7 @@ def get_dataset_id_from_share_id(share_id):
     dataset_id = None
 
     qry = "SELECT id FROM dataset WHERE share_id = %s"
-    cursor.execute(qry, share_id)
+    cursor.execute(qry, (share_id,))
 
     for row in cursor:
         dataset_id = row[0]
