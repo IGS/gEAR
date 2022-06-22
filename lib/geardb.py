@@ -1582,10 +1582,17 @@ class DatasetCollection:
                 else:
                     tag_list = row[16].replace(',', ', ')
 
+                # valid pubmed IDs are numeric
+                m = re.match("\d+", str(row[3]))
+                if m:
+                    pubmed_id = row[3]
+                else:
+                    pubmed_id = None
+
                 dataset = Dataset(id=row[0],
                                   title=row[1],
                                   organism_id=row[19],
-                                  pubmed_id=row[3],
+                                  pubmed_id=pubmed_id,
                                   geo_id=row[4],
                                   is_public=row[5],
                                   ldesc=row[6],
