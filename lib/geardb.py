@@ -174,6 +174,27 @@ def get_dataset_count():
         conn.close()
         return c[0]
 
+def get_dataset_id_from_share_id(share_id):
+    """
+    Given a share_id passed this returns a numeric dataset.id if a corresponding one
+    is found. Otherwise, None is returned
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+    dataset_id = None
+
+    qry = "SELECT id FROM dataset WHERE share_id = %s"
+    cursor.execute(qry, (share_id,))
+
+    for row in cursor:
+        dataset_id = row[0]
+    
+    cursor.close()
+    conn.close()
+
+    return dataset_id
+
+    
 def get_gene_by_id(gene_id):
     """
     Given a gene_id passed this returns a Gene object with all attributes populated. Returns
@@ -1561,10 +1582,17 @@ class DatasetCollection:
                 else:
                     tag_list = row[16].replace(',', ', ')
 
+                # valid pubmed IDs are numeric
+                m = re.match("\d+", str(row[3]))
+                if m:
+                    pubmed_id = row[3]
+                else:
+                    pubmed_id = None
+
                 dataset = Dataset(id=row[0],
                                   title=row[1],
                                   organism_id=row[19],
-                                  pubmed_id=row[3],
+                                  pubmed_id=pubmed_id,
                                   geo_id=row[4],
                                   is_public=row[5],
                                   ldesc=row[6],
@@ -1599,6 +1627,9 @@ class DatasetCollection:
                 dataset.dataset_id = dataset.id
                 dataset.user_id = dataset.owner_id
                 dataset.math_format = dataset.math_default
+                # plot_default needs to be removed everywhere
+                # load_status needs to be removed everywhere
+                # schematic_image ?
 
                 if get_links:
                     dataset.get_links()

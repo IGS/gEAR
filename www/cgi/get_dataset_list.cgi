@@ -341,70 +341,20 @@ def get_users_datasets(cursor, user_id):
     return datasets
 
 def get_permalink_dataset(cursor, permalink_id):
-    qry = """
-       SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
-              u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
-              d.marked_for_removal, d.date_added, d.load_status,
-              IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags, d.has_h5ad, d.plot_default,
-              d.organism_id
-         FROM dataset d
-              JOIN organism o ON d.organism_id=o.id
-              JOIN guser u ON d.owner_id=u.id
-              LEFT JOIN dataset_tag dt ON dt.dataset_id = IFNULL(d.id, 'NULL')
-              LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
-        WHERE d.share_id = %s
-        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc, d.dtype,
-               u.id, u.user_name, d.schematic_image, d.share_id, d.math_default,
-               d.marked_for_removal, d.date_added, d.load_status, d.plot_default, d.organism_id
-    """
-    cursor.execute(qry, (permalink_id,))
-    dataset = list()
+    dataset_id = geardb.get_dataset_id_from_share_id(permalink_id)
+    dsc = geardb.DatasetCollection()
+    dsc.get_by_dataset_ids(ids=[dataset_id])
+    datasets = list()
 
-    for row in cursor:
-        # skip dataset if marked for removal
-        if row[13] == 1:
-            continue
-        else:
+    if len(dsc.datasets):
+        ds = dsc.datasets[0]
+        ds.grid_position = 100
+        ds.grid_width = 6
+        ds.mg_grid_width = 6
+        ds.is_permalink = 1
+        datasets.append(ds)
 
-            if row[8] == 1:
-                access_level = 'Public'
-            else:
-                access_level = 'Private'
-
-            date_added = row[14].isoformat()
-
-            if row[16] == 'NULL':
-                tag_list = None
-            else:
-                tag_list = row[16].replace(',', ', ')
-
-            dataset.append({
-                'dataset_id': row[0],
-                'grid_position': 100,
-                'grid_width': 4,
-                'mg_grid_width': 6,
-                'title': row[1],
-                'organism': row[2],
-                'pubmed_id': row[3],
-                'geo_id': row[4],
-                'access': access_level,
-                'ldesc': row[6],
-                'dtype': row[7],
-                'user_id': row[8],
-                'user_name': row[9],
-                'schematic_image': row[10],
-                'share_id': row[11],
-                'math_format': row[12],
-                'date_added': date_added,
-                'is_permalink': 1,
-                'load_status': row[15],
-                'tags': tag_list,
-                'has_h5ad': row[17],
-                'plot_format': row[18],
-                "organism_id": row[19]
-            })
-
-    return dataset
+    return datasets
 
 
 def get_user_id_from_session_id(cursor, session_id):
