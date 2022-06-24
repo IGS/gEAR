@@ -14,7 +14,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 from flask import Flask
-from flask_restful import Resource, Api
+from flask_restful import Api
 
 # Import resources
 from resources.plotly_data import PlotlyData

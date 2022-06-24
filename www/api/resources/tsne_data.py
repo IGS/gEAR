@@ -3,12 +3,9 @@ from flask_restful import Resource
 from pathlib import Path
 
 import scanpy as sc
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm
-from matplotlib.colors import ListedColormap
 
-import io, os, re, sys
+import io, os, re
 import geardb
 import base64
 from math import ceil
@@ -72,6 +69,9 @@ def calculate_num_legend_cols(group_len):
 
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap
+
     # Create custom colorscale with gray at the 0.0 level
     # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
     ylorrd = cm.get_cmap(colorscale, 256)
@@ -305,6 +305,8 @@ class TSNEData(Resource):
             loc is the portion of the legend that will be at the bbox_to_anchor point.
             So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
             """
+
+            import matplotlib.pyplot as plt
 
             # If plotting by group the plot dimensions need to be determined
             if plot_by_group:

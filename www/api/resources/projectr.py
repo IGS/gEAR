@@ -1,7 +1,7 @@
 from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
-import json, sys, uuid
+import json, uuid
 import geardb
 import gear.rfuncs as rfx
 from gear.rfuncs import RError

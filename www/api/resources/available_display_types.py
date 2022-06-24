@@ -1,8 +1,6 @@
 from flask import request
 from flask_restful import Resource
-import scanpy as sc
 import os
-import sys
 import geardb
 
 def tsne_or_umap_present(ana):
@@ -36,7 +34,7 @@ class AvailableDisplayTypes(Resource):
 
         line = False
         scatter = True  # Should always have scatter as an option
-        contour = False
+        #contour = False
         tsne_static = False
         umap_static = False
         pca_static = False
@@ -59,6 +57,10 @@ class AvailableDisplayTypes(Resource):
 
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
             ana.discover_type()
+
+            # Import here so that Flask-RESTful does not import it with every API call.
+            import scanpy as sc
+
             adata = sc.read_h5ad(ana.dataset_path())
             if hasattr(adata, 'obsm') and 'X_tsne' in adata.obsm:
                 tsne_static = True
