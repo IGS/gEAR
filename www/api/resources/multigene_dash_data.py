@@ -174,25 +174,6 @@ class MultigeneDashData(Resource):
 
         adata.obs = order_by_time_point(adata.obs)
 
-        # Reorder the categorical values in the observation dataframe
-        if sort_order:
-            obs_keys = sort_order.keys()
-            for key in obs_keys:
-                col = adata.obs[key]
-                try:
-                    # Some columns might be numeric, therefore
-                    # we don't want to reorder these
-                    reordered_col = col.cat.reorder_categories(
-                        sort_order[key], ordered=True)
-                    adata.obs[key] = reordered_col
-
-                    # Ensure filter order aligns with sort order
-                    # NOTE: Off-chance sort order may have more elements than filter key
-                    # if filters are changed after sort order list is generated.
-                    filters[key] = sort_order[key]
-                except:
-                    pass
-
         # get a map of all levels for each column
         columns = adata.obs.select_dtypes(include="category").columns.tolist()
 
@@ -221,7 +202,6 @@ class MultigeneDashData(Resource):
                     'success': -1,
                     'message': str(pe),
                 }
-
 
         # Success levels
         # -1 Failure
@@ -279,6 +259,36 @@ class MultigeneDashData(Resource):
             if filtered_composite_indexes:
                 condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
+
+        # Reorder the categorical values in the observation dataframe
+        if sort_order:
+            # Ensure selected primary and secondary columns are in the correct order
+            sort_fields = []
+            if primary_col:
+                sort_fields.append(primary_col)
+            if secondary_col and secondary_col != primary_col:
+                sort_fields.append(secondary_col)
+            # Add the rest of the sort order observation keys if any others exist.
+            # Currently this should only consist of the primary and secondary columns, but may be extended in the future.
+            obs_keys = sort_order.keys()
+            for key in obs_keys:
+                if key not in sort_fields:
+                    sort_fields.append(key)
+
+            # Now reorder the dataframe
+            for key in sort_fields:
+                col = selected.obs[key]
+                try:
+                    # Some columns might be numeric, therefore
+                    # we don't want to reorder these
+                    reordered_col = col.cat.reorder_categories(
+                        sort_order[key], ordered=True)
+                    selected.obs[key] = reordered_col
+                except:
+                    pass
+
+            # Sort selected.obs based on reordered categorical columns
+            selected.obs = selected.obs.sort_values(by=sort_fields)
 
         var_index = selected.var.index.name
 
@@ -430,20 +440,6 @@ class MultigeneDashData(Resource):
             if not matrixplot:
                 df = df.drop(columns=groupby_index)
 
-            sort_fields = []
-            if primary_col:
-                sort_fields.append(primary_col)
-            if secondary_col and not primary_col == secondary_col:
-                sort_fields.append(secondary_col)
-
-            # Sort the dataframe before plotting
-            sortby = groupby_fields
-            if sort_fields:
-                sortby = sort_fields
-
-            sorted_df = df.sort_values(by=sortby)
-            df = df.reindex(sorted_df.index.tolist())
-
             # Drop the obs metadata now that the dataframe is sorted
             # They cannot be in there when the clustergram is made
             # But save it to add back in later
@@ -503,9 +499,7 @@ class MultigeneDashData(Resource):
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
             df["gene_symbol"] = df[var_index].map(ensm_to_gene)
 
-            violin_func = mg.create_violin_plot
-            if stacked_violin:
-                violin_func = mg.create_stacked_violin_plot
+            violin_func = mg.create_stacked_violin_plot if stacked_violin else mg.create_violin_plot
 
             fig = violin_func(df
                 , groupby_filters
