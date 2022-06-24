@@ -49,41 +49,40 @@ $(document).ready(() => {
             }
         });
 
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
+
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
-        let head = document.getElementsByTagName('head')[0];
-        let body = document.getElementsByTagName('body')[0];
+        const head = document.getElementsByTagName('head')[0];
+        const body = document.getElementsByTagName('body')[0];
 
-            // load analytics
-            const ga_script = document.createElement('script');
-            //ga_script.src = "https://www.google-analytics.com/analytics.js";
-            ga_script.src = "https://www.googletagmanager.com/gtag/js?id=" + SITE_PREFS['google_analytics_4_measurement_id'];
-            ga_script.async = ""
-            head.append(ga_script)
+        // load analytics
+        const ga_script = document.createElement('script');
+        //ga_script.src = "https://www.google-analytics.com/analytics.js";
+        ga_script.src = "https://www.googletagmanager.com/gtag/js?id=" + SITE_PREFS['google_analytics_4_measurement_id'];
+        ga_script.async = ""
+        head.append(ga_script)
 
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
 
-        // Load plugins, if any
+
         let page_name = location.pathname;
         if (page_name == "/") {
             page_name = 'index.html';
         }
 
-        for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
-            if (plugin_page_names.includes(page_name)) {
-                var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
-            }
-        }
+
 
         // Load plugins, if any
         for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
             if (plugin_page_names.includes(page_name)) {
                 var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
-                head = document.getElementsByTagName('head')[0];
-                body = document.getElementsByTagName('body')[0];
 
                 // create a hidden element at the end of the document and put it there
                 var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
@@ -91,8 +90,8 @@ $(document).ready(() => {
                 plugin_html_element.id = plugin_name + "_html_c";
                 plugin_html_element.style = "display: none;"
                 body.append(plugin_html_element)
-                $.get(plugin_import_html_url, function(data) {
-                    $('#' + plugin_name + "_html_c").html(data);
+                $.get(plugin_import_html_url, (data) => {
+                    $(`#${plugin_name}_html_c`).html(data);
                 });
 
                 var plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
@@ -143,7 +142,7 @@ function check_browser() {
         Cookies.set('gear_browser_ischrome', isChrome, { expires: 1 });
     } else {
         if (!isChrome) {
-            console.log("Unsupported browser detected");
+            console.warn("Unsupported browser detected");
         }
     }
 }; //end check_browser()
@@ -207,7 +206,7 @@ function copyToClipboard(text) {
     }
 }
 
-$('#navigation_bar').on('click', '#btn_sign_in', function(e){
+$('#navigation_bar').on('click', '#btn_sign_in', (e) => {
     // Reset the appearance in case there was a previous login error
     $('#user_email').css({ 'color':'black', 'font-weight':'normal' });
     $('#user_pass').css({ 'color':'black', 'font-weight':'normal' });
@@ -325,57 +324,57 @@ function handle_login_ui_updates() {
         $('#login_controls').show();
         //TODO: This is ugly, but hide() doesn't work here.
         $('#loggedin_controls').attr("style", "display: none !important");
+        return;
+    }
 
-    } else {
-        $('#loggedin_controls').show();
-        //TODO: This is ugly, but hide() doesn't work here.
-        $('#login_controls').attr("style", "display: none !important");
+    $('#loggedin_controls').show();
+    //TODO: This is ugly, but hide() doesn't work here.
+    $('#login_controls').attr("style", "display: none !important");
 
-        if (document.URL.includes("analyze_dataset.html")) {
-            populate_dataset_selection();
+    if (document.URL.includes("analyze_dataset.html")) {
+        populate_dataset_selection();
 
-        } else if (document.URL.includes("compare_datasets.html")) {
-            populate_dataset_selection_controls();
-            $("#create_gene_cart").prop("disabled", false);
-            $("#create_gene_cart").attr("title", "Create a gene cart with these genes");
+    } else if (document.URL.includes("compare_datasets.html")) {
+        populate_dataset_selection_controls();
+        $("#create_gene_cart").prop("disabled", false);
+        $("#create_gene_cart").attr("title", "Create a gene cart with these genes");
 
-        } else if (document.URL.includes("contact.html")) {
-            $('a#comment_link').parent().addClass('active');
+    } else if (document.URL.includes("contact.html")) {
+        $('a#comment_link').parent().addClass('active');
 
-        } else if (document.URL.includes("create_account.html")) {
-            $('#account_creation_form_c').hide();
-            $('#account_already_created_c').show();
+    } else if (document.URL.includes("create_account.html")) {
+        $('#account_creation_form_c').hide();
+        $('#account_already_created_c').show();
 
-        } else if (document.URL.includes("dataset_explorer.html")) {
-            // these are defined in dataset_explorer.js
-            load_preliminary_data();
-            $("#controls_profile_nouser_c").remove();
-            $("#your_dataset_filter").show();
+    } else if (document.URL.includes("dataset_explorer.html")) {
+        // these are defined in dataset_explorer.js
+        load_preliminary_data();
+        $("#controls_profile_nouser_c").remove();
+        $("#your_dataset_filter").show();
 
-        } else if (document.URL.includes("gene_cart_manager.html")) {
-            // these are defined in dataset_explorer.js
-            load_preliminary_data();
+    } else if (document.URL.includes("gene_cart_manager.html")) {
+        // these are defined in dataset_explorer.js
+        load_preliminary_data();
 
-        } else if (document.URL.includes("manual.html")) {
-            $('a#manual_link').parent().addClass('active');
+    } else if (document.URL.includes("manual.html")) {
+        $('a#manual_link').parent().addClass('active');
 
-        }
+    }
 
-        if (document.URL.includes("upload_dataset.html") ||
-            document.URL.includes("dataset_explorer.html") ||
-            document.URL.includes("gene_cart_manager.html") ||
-            document.URL.includes("analyze_dataset.html") ||
-            document.URL.includes("projection.html") ||
-            document.URL.includes("user_profile.html") ||
-            document.URL.includes("upload_epigenetic_data.html") ||
-            document.URL.includes("dataset_curator.html") ||
-            document.URL.includes("multigene_curator.html") ||
-            document.URL.includes("epiviz_panel_designer.html")) {
-            $('div#login_warning').hide();
-            $('div#login_checking').hide();
-            $('div#main_content').show();
-            $('input#session_id').val(CURRENT_USER.session_id);
-        }
+    if (document.URL.includes("upload_dataset.html") ||
+        document.URL.includes("dataset_explorer.html") ||
+        document.URL.includes("gene_cart_manager.html") ||
+        document.URL.includes("analyze_dataset.html") ||
+        document.URL.includes("projection.html") ||
+        document.URL.includes("user_profile.html") ||
+        document.URL.includes("upload_epigenetic_data.html") ||
+        document.URL.includes("dataset_curator.html") ||
+        document.URL.includes("multigene_curator.html") ||
+        document.URL.includes("epiviz_panel_designer.html")) {
+        $('div#login_warning').hide();
+        $('div#login_checking').hide();
+        $('div#main_content').show();
+        $('input#session_id').val(CURRENT_USER.session_id);
     }
 }
 
@@ -478,25 +477,25 @@ $(document).on('click', 'button.click-once', function(e) {
 function download_table_as_excel(table_id, filename) {
     table_str = '';
 
-    $('#' + table_id + ' thead tr th').each(function() {
-        console.log("Adding a header row of table " + table_id);
-        table_str += $(this).text() + "\t";
+    $(`#${table_id} thead tr th`).each(function() {
+        console.info(`Adding a header row of table ${table_id}`);
+        table_str += `${$(this).text()}\t`;
     });
-    table_str = table_str.trim() + "\n";
+    table_str = `${table_str.trim()}\n`;
 
-    $('#' + table_id + ' tbody tr').each(function() {
-        console.log("Adding a body row of table " + table_id);
-        var rows = $(this).find('td');
+    $(`#${table_id} tbody tr`).each(function() {
+        console.info(`Adding a body row of table ${table_id}`);
+        const rows = $(this).find('td');
 
         rows.each(function() {
-            table_str += $(this).text() + "\t";
+            table_str += `${$(this).text()}\t`;
         });
 
-        table_str = table_str.trim() + "\n";
+        table_str = `${table_str.trim()}\n`;
     });
 
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(table_str));
+    const element = document.createElement('a');
+    element.setAttribute('href', `data:text/plain;charset=utf-8,${encodeURIComponent(table_str)}`);
     element.setAttribute('download', filename);
     element.style.display = 'none';
     document.body.appendChild(element);
