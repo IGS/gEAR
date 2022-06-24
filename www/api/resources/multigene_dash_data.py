@@ -446,16 +446,6 @@ class MultigeneDashData(Resource):
             if not matrixplot:
                 df = df.drop(columns=groupby_index)
 
-
-
-            # Sort the dataframe before plotting
-            #sortby = groupby_fields
-            #if sort_fields:
-            #    sortby = sort_fields
-
-            #sorted_df = df.sort_values(by=sortby)
-            #df = df.reindex(sorted_df.index.tolist())
-
             # Drop the obs metadata now that the dataframe is sorted
             # They cannot be in there when the clustergram is made
             # But save it to add back in later
