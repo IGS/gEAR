@@ -214,48 +214,47 @@ window.onload=() => {
         zoom_out_dataset();
     });
 
-    // If a ProfileTree element is selected from the results page,
-    // adjust state history and other results page things
-    // These are adjustments that are normally made when the "search" button is hit
-    $(document).on('change', '#selected_profile', () => {
-        //TODO: get rid of redundancy with #search_gene_form.submit()
-
-        // split on combination of space and comma (individually or both together.)
-        const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
-        // Remove duplicates in gene search if they exist
-        const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
-        const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
-
-        // Update search history
-        add_state_history(curated_searched_gene_symbols);
-
-        $("#too_many_genes_warning").hide();
-        $('#search_result_count').text('');
-        if (multigene) {
-            // MG enabled
-            $('#search_results_scrollbox').hide();
-            $('#multigene_search_indicator').show();
-            // Show warning if too many genes are entered
-            if (uniq_gene_symbols.length > 10) {
-                $("#too_many_genes_warning").text(`There are currently ${uniq_gene_symbols.length} genes to be searched and plotted. This can be potentially slow. Also be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
-                $("#too_many_genes_warning").show();
-            }
-        } else {
-            // MG disabled
-            $('#search_results_scrollbox').show();
-            $('#multigene_search_indicator').hide();
-        }
-
-        // Adjust num_genes badge (this does not use the result from search_genes.py so that may mismatch if "exact" is not chosen)
-        // TODO: Actually run search_genes.py to get annotation information
-        $('#search_result_count').text(uniq_gene_symbols.length);
-    });
-
     // If a ProfileTree element is selected, this is changed and the new layout is set
     // NOTE: I don't think #search_param_profile needs to be a trigger
     $(document).on('change', '#search_param_profile, #selected_profile', function() {
         dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
         layout_id = $(this).data('profile-share-id');
+
+        // If a ProfileTree element is selected from the results page,
+        // adjust state history and other results page things
+        // These are adjustments that are normally made when the "search" button is hit
+        if (this.id === "selected_profile") {
+
+            // split on combination of space and comma (individually or both together.)
+            const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+            // Remove duplicates in gene search if they exist
+            const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+            const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
+
+            // Update search history
+            add_state_history(curated_searched_gene_symbols);
+
+            $("#too_many_genes_warning").hide();
+            $('#search_result_count').text('');
+            if (multigene) {
+                // MG enabled
+                $('#search_results_scrollbox').hide();
+                $('#multigene_search_indicator').show();
+                // Show warning if too many genes are entered
+                if (uniq_gene_symbols.length > 10) {
+                    $("#too_many_genes_warning").text(`There are currently ${uniq_gene_symbols.length} genes to be searched and plotted. This can be potentially slow. Also be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
+                    $("#too_many_genes_warning").show();
+                }
+            } else {
+                // MG disabled
+                $('#search_results_scrollbox').show();
+                $('#multigene_search_indicator').hide();
+            }
+
+            // Adjust num_genes badge (this does not use the result from search_genes.py so that may mismatch if "exact" is not chosen)
+            // TODO: Actually run search_genes.py to get annotation information
+            $('#search_result_count').text(uniq_gene_symbols.length);
+        }
     });
 
     $( document ).on("click", ".scope_choice", function() {
