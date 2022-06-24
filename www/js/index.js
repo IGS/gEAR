@@ -1209,6 +1209,11 @@ function add_state_history(searched_entities, projection_source=null, is_pca=nul
     let state_url = "/index.html?"
         + `multigene_plots=${state_info.multigene_plots}`;
 
+     // Currently dataset share id and layout id URL params are mutually exclusive (or neither is used)
+     if (dataset_id) {
+        state_info.share_id = dataset_id;
+        state_url += `&share_id=${dataset_id}`;
+    }
 
     if (layout_id) {
         state_info.layout_id = layout_id;
