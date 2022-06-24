@@ -16,7 +16,6 @@ const elementsWithTipsList = '[title]:not("path")';
 // Do any includes first
 $(document).ready(() => {
     $('#navigation_bar').load('./include/navigation_bar.html', () => {
-        console.log('Navigation bar loaded');
         // Load popover info
         load_forgot_password();
     });
@@ -136,7 +135,7 @@ function check_browser() {
         Cookies.set('gear_browser_ischrome', isChrome, { expires: 1 });
     } else {
         if (!isChrome) {
-            console.log("Unsupported browser detected");
+            console.warn("Unsupported browser detected");
         }
     }
 }; //end check_browser()
@@ -322,7 +321,6 @@ function handle_login_ui_updates() {
     }
 
     $('#loggedin_controls').show();
-    console.log("logged in controls shown");
     //TODO: This is ugly, but hide() doesn't work here.
     $('#login_controls').attr("style", "display: none !important");
 
@@ -475,13 +473,13 @@ function download_table_as_excel(table_id, filename) {
     table_str = '';
 
     $('#' + table_id + ' thead tr th').each(function() {
-        console.log("Adding a header row of table " + table_id);
+        console.info("Adding a header row of table " + table_id);
         table_str += $(this).text() + "\t";
     });
     table_str = table_str.trim() + "\n";
 
     $('#' + table_id + ' tbody tr').each(function() {
-        console.log("Adding a body row of table " + table_id);
+        console.info("Adding a body row of table " + table_id);
         var rows = $(this).find('td');
 
         rows.each(function() {
