@@ -54,17 +54,17 @@ $(document).ready(() => {
         let head = document.getElementsByTagName('head')[0];
         let body = document.getElementsByTagName('body')[0];
 
-        // load analytics
-        const ga_script = document.createElement('script');
-        ga_script.src = "https://www.google-analytics.com/analytics.js";
-        ga_script.async = ""
-        head.append(ga_script)
+            // load analytics
+            const ga_script = document.createElement('script');
+            //ga_script.src = "https://www.google-analytics.com/analytics.js";
+            ga_script.src = "https://www.googletagmanager.com/gtag/js?id=" + SITE_PREFS['google_analytics_4_measurement_id'];
+            ga_script.async = ""
+            head.append(ga_script)
 
-        window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
-        ga('create', SITE_PREFS['google_analytics_4_measurement_id'], 'auto');
-        ga('set', 'anonymizeIp', true);
-        ga('set', 'transport', 'beacon');
-        ga('send', 'pageview')
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
 
         // Load plugins, if any
         let page_name = location.pathname;
