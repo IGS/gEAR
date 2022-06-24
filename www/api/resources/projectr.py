@@ -185,6 +185,9 @@ class ProjectR(Resource):
                 "success": success
                 , "message": message
                 , "projection_id": projection_id
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": loading_df.shape[1]
+                , "num_dataset_genes": target_df.shape[1]
             }
 
         """
@@ -231,21 +234,44 @@ class ProjectR(Resource):
                 , 'message': "Could not find pattern file {}".format(file_path)
             }
 
-        # Assumes first column is gene info. Standardize on a common index name
+        # Store gene symbol series before dropping later
+        #gene_syms_series = loading_df[1]
+
+        # Assumes first column is unique identifiers. Standardize on a common index name
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
+
         # Drop the gene symbol column
         loading_df = loading_df.drop(loading_df.columns[1], axis=1)
         loading_df.set_index('dataRowNames', inplace=True)
 
+        num_target_genes = target_df.shape[1]
+        num_loading_genes = loading_df.shape[1]
+
         # Perform overlap to see if there are overlaps between genes from both dataframes
-        # If the index does not overlap, perhaps one of the other columns will.
         index_intersection = target_df.index.intersection(loading_df.index)
         intersection_size = index_intersection.size
-        if index_intersection.empty:
-            message = "No common genes between the target dataset and the pattern file."
-            return {"success": -1, "message": message}
 
-        message = "Found {} common genes between the target dataset and the pattern file.".format(intersection_size)
+        # If no overlap on the genecart unique identifiers, try to overlap on the dropped gene symbols column
+        #if index_intersection.empty:
+        #    series_intersection = target_df.index.intersection(gene_syms_series)
+        #    intersection_size = series_intersection.size
+
+        # If gene symbols overlap, replace loading_df index with gene_syms_series
+        #if intersection_size:
+        #    pass
+
+
+        if intersection_size == 0:
+            message = "No common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(num_target_genes, num_loading_genes)
+            return {
+                "success": -1
+                , "message": message
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
+
+        message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
         """
         # NOTE: This is not needed for now, but may happen later
@@ -268,6 +294,9 @@ class ProjectR(Resource):
             return {
                 'success': -1
                 , 'message': str(re)
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
             }
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
@@ -284,8 +313,8 @@ class ProjectR(Resource):
             "uuid": projection_id
             , "is_pca": int(is_pca)
             , "num_common_genes": intersection_size
-            , "num_genecart_genes": loading_df.shape[1]
-            , "num_dataset_genes": target_df.shape[1]
+            , "num_genecart_genes": num_loading_genes
+            , "num_dataset_genes": num_target_genes
         })
         write_to_json(dataset_projections_dict, dataset_projection_json_file)
 
@@ -295,8 +324,8 @@ class ProjectR(Resource):
             "uuid": projection_id
             , "is_pca": int(is_pca)
             , "num_common_genes": intersection_size
-            , "num_genecart_genes": loading_df.shape[1]
-            , "num_dataset_genes": target_df.shape[1]
+            , "num_genecart_genes": num_loading_genes
+            , "num_dataset_genes": num_target_genes
         })
         write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
@@ -304,6 +333,9 @@ class ProjectR(Resource):
             "success": success
             , "message": message
             , "projection_id": projection_id
+            , "num_common_genes": intersection_size
+            , "num_genecart_genes": num_loading_genes
+            , "num_dataset_genes": num_target_genes
         }
 
 
