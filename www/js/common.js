@@ -1,6 +1,8 @@
 let CURRENT_USER = null;
 let SITE_PREFS = null;
 
+let session_id = null;
+
 // extends JQuery to provide an .exists() function for any selector
 $.fn.exists = function () {
     return this.length !== 0;
