@@ -4,9 +4,6 @@
 */
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-
     // Set the curator link href for when the user gets that far
     var home_url = `./index.html`;
     var data_manager_url = `./dataset_explorer.html`;
@@ -72,7 +69,7 @@ window.addEventListener('WebComponentsReady', function() {
                             null,
                             "default",
                             "default",
-                            []   
+                            []
                         ))
                     });
 
@@ -114,11 +111,11 @@ function changeGenome() {
 
     if (genes_track) {
         genes_track.remove();
-    } 
-    
+    }
+
     var gtrack = document.createElement("epiviz-genes-track");
     gtrack.slot = "charts";
-    gtrack.measurements = [{                            
+    gtrack.measurements = [{
         id: genome,
         name: genome,
         type: "range",
@@ -133,7 +130,7 @@ function changeGenome() {
         metadata: ["geneid", "exons_start", "exons_end", "gene"]
     }];
     nav_elem.appendChild(gtrack);
-    
+
 }
 
 function get_epiviz_profile() {
@@ -229,7 +226,7 @@ $("#submit").click(function(e) {
                 } else {
                     var msg = "An upload error has occurred. Please try again.";
                     alert_user(msg);
-    
+
                     //reset submit button area
                     $("#submit").text("Submit");
                     $("#submit").attr("disabled", false);
@@ -239,7 +236,7 @@ $("#submit").click(function(e) {
                 console.log('jqXHR: ', jqXHR);
                 console.log('textStatus: ', textStatus);
                 console.log('errorThrown: ', errorThrown);
-    
+
                 var msg = "Unable to finish dataset upload. Please try again.";
                 alert_user(msg);
             }

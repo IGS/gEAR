@@ -7,7 +7,7 @@
 */
 
 'use strict';
-/* global $, axios, Plotly, CURRENT_USER, session_id, check_for_login */
+/* global $, axios, Plotly, CURRENT_USER, session_id */
 
 let numObs = 0; // dummy value to initialize with
 
@@ -68,9 +68,6 @@ window.onload= async () => {
     // Changing the dataset will start triggering these to show
     $('#plot_type_container').hide();
     $('#gene_container').hide();
-
-    // check if the user is already logged in
-    check_for_login();
 
     // Load gene carts and datasets before the dropdown appears
     await reloadTrees ();

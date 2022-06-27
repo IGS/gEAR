@@ -10,9 +10,6 @@ var stepper = null;
 var UPLOAD_STEP = 0; //tracks which step user is on
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-
     // Generate the UID that will be used for this submission
     dataset_uid = guid('long');
     share_uid = guid('short');
@@ -112,7 +109,7 @@ function validate_metadata(filename) {
                             disable_continue = true;
                         }
                     }
-                    
+
                     if (message) {
                         row_styling = 'danger';
                         disable_continue = true;
