@@ -19,7 +19,10 @@ GITHUB_ACCESS_TOKEN=os.getenv("GITHUB_ACCESS_TOKEN")
 GEAR_GIT_URL="https://api.github.com/repos/jorvis/gEAR/issues"
 ASSIGNEES=["songeric1107"]
 
-SITE_COMMENTS_PROJ_URL="https://api.github.com/projects/columns/8150789/cards" # Corresponds to jorvis/gEAR
+PRIVATE_COL_ID = "8150789"  # "Site Comments" project column to jorvis/gEAR
+PUBLIC_COL_ID = "15595055"  # same column but for IGS/gEAR
+
+SITE_COMMENTS_PROJ_URL="https://api.github.com/projects/columns/{}/cards".format(PRIVATE_COL_ID)
 
 SCREENSHOT_DIR = "contact_screenshots"
 SCREENSHOT_URL = 'https://umgear.org/{}'.format(SCREENSHOT_DIR)
@@ -81,7 +84,7 @@ def main():
     if private == "false":
         # "false" is javascript string "false"
         git_url = GEAR_GIT_URL.replace("jorvis", "IGS")
-        site_comments_url = SITE_COMMENTS_PROJ_URL.replace("8150789", "15595055")
+        site_comments_url = SITE_COMMENTS_PROJ_URL.replace(PRIVATE_COL_ID, PUBLIC_COL_ID)
 
     # Code from https://realpython.com/python-requests/
     try:
