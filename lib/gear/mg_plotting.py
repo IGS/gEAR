@@ -134,8 +134,6 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
 def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
 
-    print(fig.layout, file=sys.stderr)
-
     # Heatmap is located on xaxis5 and yaxis5 in dash-0.6.1
     # Moved to xaxis11 and yaxis11 in dash-1.0.2
     obs_axis = "yaxis11" if flip_axes else "xaxis11"

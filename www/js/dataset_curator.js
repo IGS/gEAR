@@ -1647,7 +1647,6 @@ window.onload=() => {
 
       this.unsubscribe = this.$store.subscribe((mutation, state) => {
         if (mutation.type === "set_colors") {
-          //console.log("triggered set_colors");
           this.get_colors_array();
         }
       });
@@ -2389,9 +2388,7 @@ window.onload=() => {
         analysis: this.config.analysis,
       });
 
-      console.log(this.plot_params_ready());
       if (this.plot_params_ready()) {
-        console.log("Plot params ready");
         this.draw_image();
       }
 

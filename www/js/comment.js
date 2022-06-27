@@ -205,7 +205,6 @@ function check_required_fields() {
 
 // closed alert bar
 $(".alert-container").on("click", "button.close-alert", () => {
-  //console.log('CLOSING ALERT!');
   $(".alert-container").hide();
 });
 
