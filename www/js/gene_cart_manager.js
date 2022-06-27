@@ -4,8 +4,6 @@ let gc_id_to_delete = null;
 let add_form_is_open = false;
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
 
     // Initialize Bootstrap popovers
     $('#cart_upload_reqs').popover({html:true});
@@ -164,8 +162,6 @@ $(document).on('click', '#cancel_gc_delete', function() {
 $(document).on('click', '#confirm_gc_delete', function() {
     $('.delete_gc').popover('hide');
 
-    session_id = Cookies.get('gear_session_id');
-
     $.ajax({
         url : './cgi/remove_gene_cart.cgi',
         type: "POST",
@@ -210,7 +206,6 @@ $(document).on('click', '.edit_gc_cancel', function() {
 });
 
 $(document).on('click', '.edit_gc_save', function() {
-    session_id = Cookies.get('gear_session_id');
     var gc_id = $(this).data('gc-id');
     var selector_base = "#result_gc_id_" + gc_id;
     var new_visibility = $(selector_base + "_editable_visibility").prop("checked") ? 1 : 0;
@@ -425,7 +420,6 @@ $('#new_cart_data').on('submit', function() {
 
     $("#new_cart_label").removeClass("input-validation-error");
 
-    session_id = Cookies.get('gear_session_id');
     const is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
 
     const formData = new FormData($(this)[0]);

@@ -3,11 +3,6 @@ const FILE_UPLOAD_LIMIT = 10_485_760; // 10 MB
 let screenshot = null;
 
 window.onload = () => {
-  // check if the user is already logged in
-  // THIS IS A HACK. The "check_for_login" function is executing before the navigation bar is loaded.
-  sleep(500).then(() => {
-    check_for_login();
-  })
 
   // generate list of tags from database
   get_tag_list();

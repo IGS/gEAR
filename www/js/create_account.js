@@ -1,10 +1,8 @@
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-    
+
     $('#btn_account_creation_cancel').click(function(e) {
         e.preventDefault();
-        
+
         // redirect to home page
         window.location.href = "./index.html";
     });
@@ -17,7 +15,7 @@ window.onload=function() {
         if (validate_account_creation_form(formData) == false){
             return false;
         }
-        
+
         $.ajax({
             url : './cgi/create_account.cgi',
             type: "POST",
@@ -36,7 +34,7 @@ window.onload=function() {
 
                     // $('#login_controls').hide();
                     $('#login_controls').attr("style", "display: none !important");
-                    
+
                     $('#loggedin_controls').show();
                     // https://github.com/js-cookie/js-cookie
                     Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });

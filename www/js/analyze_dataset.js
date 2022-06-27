@@ -1,8 +1,8 @@
 current_analysis = null;
-var clicked_marker_genes = new Set();
-var entered_marker_genes = new Set();
-var current_label = null;
-var analysis_labels = new Set();
+let clicked_marker_genes = new Set();
+let entered_marker_genes = new Set();
+let current_label = null;
+let analysis_labels = new Set();
 
 // TODO:  Check font sizes on all instruction blocks
 // TODO:  Check if mitochrondrial QC actually returned anything
@@ -13,10 +13,6 @@ var analysis_labels = new Set();
 const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload=() => {
-    // check if the user is already logged in
-    check_for_login();
-    session_id = Cookies.get('gear_session_id');
-
     $('[data-toggle="tooltip"]').tooltip()
 
 

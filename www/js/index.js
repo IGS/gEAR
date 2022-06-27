@@ -39,8 +39,6 @@ const projection_source_tree = new ProjectionSourceTree({treeDiv: '#projection_s
 const search_result_postselection_functions = [];
 
 window.onload = async () => {
-    // check if the user is already logged in
-    check_for_login();
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
@@ -404,7 +402,6 @@ function validate_permalink(scope) {
 }
 
 async function load_layouts() {
-    const session_id = Cookies.get('gear_session_id');
     const layout_share_id = getUrlParameter('layout_id');
     let active_layout_id = null;
     let active_layout_label = null;
@@ -513,7 +510,6 @@ async function load_layouts() {
 }
 
 async function load_gene_carts(cart_share_id) {
-    const session_id = Cookies.get('gear_session_id');
     let carts_found = false;
     let permalink_cart_id = null
     let permalink_cart_label = null
@@ -593,7 +589,6 @@ async function load_gene_carts(cart_share_id) {
 }
 
 async function load_weighted_gene_carts(cart_share_id) {
-    const session_id = Cookies.get('gear_session_id');
     let permalink_cart_id = null
     let permalink_cart_label = null
 

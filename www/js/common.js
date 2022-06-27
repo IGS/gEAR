@@ -18,6 +18,7 @@ $(document).ready(() => {
     $('#navigation_bar').load('./include/navigation_bar.html', () => {
         // Load popover info
         load_forgot_password();
+        check_for_login();
     });
 
     $.ajax({
@@ -122,7 +123,7 @@ function check_browser() {
     Sets a cookie for so user will not get alerted after initial alert. Expires 1 day.
     */
 
-    var isChrome = Cookies.get('gear_browser_ischrome');
+    let isChrome = Cookies.get('gear_browser_ischrome');
     if (typeof isChrome === 'undefined') {
         // Check if the browser is Chrome
         isChrome = navigator.userAgent.toLowerCase().includes('chrome');

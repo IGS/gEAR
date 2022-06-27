@@ -3626,9 +3626,6 @@ window.onload=() => {
     computed: {
       ...Vuex.mapState(["user"]),
     },
-    beforeCreate() {
-      check_for_login();
-    },
     created() {
       // We want to check for session when the curator app is first created
       sleep(500).then(() => {
