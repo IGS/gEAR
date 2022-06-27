@@ -18,6 +18,10 @@ $(document).ready(() => {
     $('#navigation_bar').load('./include/navigation_bar.html', () => {
         // Load popover info
         load_forgot_password();
+
+        // Now that the navigation bar is loaded, we can check if the user is logged in
+        // and by extension, handle the login UI updates
+        check_for_login();
     });
 
     $.ajax({

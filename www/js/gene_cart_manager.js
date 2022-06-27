@@ -4,9 +4,6 @@ let gc_id_to_delete = null;
 let add_form_is_open = false;
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-
     $("#search_clear").click(function(){
         $("#search_terms").val('');
         submit_search();
@@ -21,13 +18,13 @@ window.onload=function() {
     });
 
     $('#submit_search').submit(function(event) {
-        event.preventDefault(); 
+        event.preventDefault();
         submit_search();
     });
 
     $('#sort_by').on('change', function() {
         submit_search();
-    });    
+    });
 
     $("#initial_instructions_bar").on('click', function() {
         if ($("#initial_instructions_body").is(":visible")) {
@@ -82,7 +79,7 @@ window.onload=function() {
     $(document).on('click', 'button.view_gc', function(e){
         window.location = "./p?c=" + $(this).val();
     });
-    
+
     // Generic function to handle all collapsable menus
     // h.expandable_control is clicked and looks for plus/minus icons as siblings
     // and an .expandable_target as a direct child
@@ -128,14 +125,14 @@ window.onload=function() {
             $(this).siblings().removeClass('selected');
         } else {
             if (! $(this).hasClass('selected')) {
-                // If turning on, make sure all_selector is off                
+                // If turning on, make sure all_selector is off
                 $(this).parent().find("li.all_selector").removeClass('selected');
 
                 // If this selection group has the 'only_one' option deselect the rest
                 if ($(this).parent().hasClass('only_one')) {
                     $(this).siblings().removeClass('selected');
                 }
-                
+
                 $(this).addClass('selected');
             } else {
                 // If turning off, make sure at least one other option is selected, else set
@@ -160,8 +157,6 @@ $(document).on('click', '#cancel_gc_delete', function() {
 
 $(document).on('click', '#confirm_gc_delete', function() {
     $('.delete_gc').popover('hide');
-
-    session_id = Cookies.get('gear_session_id');
 
     $.ajax({
         url : './cgi/remove_gene_cart.cgi',
@@ -207,7 +202,6 @@ $(document).on('click', '.edit_gc_cancel', function() {
 });
 
 $(document).on('click', '.edit_gc_save', function() {
-    session_id = Cookies.get('gear_session_id');
     var gc_id = $(this).data('gc-id');
     var selector_base = "#result_gc_id_" + gc_id;
     var new_visibility = $(selector_base + "_editable_visibility").prop("checked") ? 1 : 0;
@@ -248,7 +242,7 @@ $(document).on('click', '.edit_gc_save', function() {
 
             $(selector_base + "_display_organism").html(
                 $(selector_base + "_editable_organism_id > option[value='" + new_organism_id + "']")
-            );            
+            );
             $(selector_base + "_editable_organism_id").data("original-val", new_organism_id);
 
             // Put interface back to view mode.
@@ -421,8 +415,7 @@ $('#new_cart_data').on('submit', function(e) {
     } else {
         $("#new_cart_label").removeClass("input-validation-error");
     }
-    
-    session_id = Cookies.get('gear_session_id');
+
     var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
 
     var formData = new FormData($(this)[0]);
@@ -473,7 +466,7 @@ function gene_cart_saved() {
 
 function load_preliminary_data() {
     /*
-      Loads all the parts of the page which need initial calls from the server, such as 
+      Loads all the parts of the page which need initial calls from the server, such as
       database-driven select boxes.
     */
     load_organism_list()
@@ -550,7 +543,7 @@ function process_weighted_gc_list(gc_id, jdata) {
 function reset_add_form() {
     $("#btn_new_cart_saving").hide();
     $("#btn_new_cart_save").show();
-    
+
     $("#new_cart_label").val('');
     $("#new_cart_ldesc").val('');
     $("#new_cart_pasted_genes").val('');
@@ -562,7 +555,7 @@ function reset_add_form() {
 
     $("#new_cart_weighted_header").removeClass('bg-primary');
     $("#new_cart_weighted_header").css('color', 'black');
-    
+
     $("#btn_gc_paste_unweighted_list").removeClass('disabled');
     $("#btn_gc_upload_unweighted_list").removeClass('disabled');
     $("#btn_gc_upload_weighted_list").removeClass('disabled');
@@ -589,7 +582,7 @@ function submit_search() {
         $("#sort_by").val('relevance');
         first_search = false;
     }
-    
+
     var search_criteria = {
         'session_id': session_id,
         'search_terms': $("#search_terms").val(),
@@ -615,7 +608,7 @@ function submit_search() {
 	        console.log('errorThrown= ', errorThrown);
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         }
-    }); //end ajax for search    
+    }); //end ajax for search
 };
 
 function update_gene_cart_list_buttons() {

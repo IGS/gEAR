@@ -32,9 +32,6 @@ const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_
 const search_result_postselection_functions = [];
 
 window.onload=() => {
-    // check if the user is already logged in
-    check_for_login();
-
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
     scope = "permalink";
@@ -425,7 +422,6 @@ function validate_permalink(scope) {
 
 function load_layouts() {
     const d = new $.Deferred();
-    const session_id = Cookies.get('gear_session_id');
     const layout_share_id = getUrlParameter('layout_id');
 
     // Temporary hack for Heller lab
@@ -543,7 +539,6 @@ function load_layouts() {
 
 function load_gene_carts(cart_share_id) {
     const d = new $.Deferred();
-    const session_id = Cookies.get('gear_session_id');
 
     if (!session_id) {
         //User is not logged in. Hide gene carts container
