@@ -28,7 +28,10 @@ let geneSymbols = null;
 const datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
 const geneCartTree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
-const plotTypes = ['dotplot', 'heatmap', 'mg_violin', 'quadrant', 'volcano'];
+// Listing plot types divided by category, as well as create a master list
+const genesAsAxisPlotTypes = ["dotplot", "heatmap", "mg_violin"];
+const genesAsDataPlotTypes = ["quadrant", "volcano"];
+const plotTypes = [...genesAsAxisPlotTypes, ...genesAsDataPlotTypes];
 
 const dotplotOptsIds = ["#obs_primary_container", "#obs_secondary_container"];
 const heatmapOptsIds = ["#heatmap_options_container", "#obs_primary_container", "#obs_secondary_container"];
@@ -63,36 +66,17 @@ const continuousPalettes = [
 ];
 const discretePalettes = ["alphabet", "vivid", "light24", "dark24"];
 
-window.onload= async () => {
+window.onload = () => {
     // Hide further configs until a dataset is chosen.
     // Changing the dataset will start triggering these to show
     $('#plot_type_container').hide();
     $('#gene_container').hide();
-
-    // Load gene carts and datasets before the dropdown appears
-    await reloadTrees ();
 
     // Initialize plot types
      $('#plot_type_select').select2({
         placeholder: 'Choose how to plot',
         width: '25%'
     });
-
-    // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-    const linkedDatasetId = getUrlParameter("dataset_id");
-    if (linkedDatasetId) {
-        $("#dataset").val(linkedDatasetId);
-        try {
-            // Had difficulties triggering a "select_node.jstree" event, so just add the data info here
-            const tree_leaf = datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId);
-            $("#dataset").text(tree_leaf.text);
-            $("#dataset").data("organism-id", tree_leaf.organism_id);
-            $("#dataset").data("dataset-id", tree_leaf.dataset_id);
-            $("#dataset").trigger('change');
-        } catch {
-            console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
-        }
-    }
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -346,11 +330,36 @@ async function draw (datasetId, payload) {
     drawChart(data, datasetId);
 }
 
+// Load gene carts and datasets before the dropdown appears
+$(document).on("build_jstrees", async () => {
+    await reloadTrees();
+
+    // If brought here by the "gene search results" page, curate on the dataset ID that referred us
+    const linkedDatasetId = getUrlParameter("dataset_id");
+    if (linkedDatasetId) {
+        $("#dataset").val(linkedDatasetId);
+        try {
+            // Had difficulties triggering a "select_node.jstree" event, so just add the data info here
+            const tree_leaf = datasetTree.treeData.find(e => e.dataset_id === linkedDatasetId);
+            $("#dataset").text(tree_leaf.text);
+            $("#dataset").data("organism-id", tree_leaf.organism_id);
+            $("#dataset").data("dataset-id", tree_leaf.dataset_id);
+            $("#dataset").trigger('change');
+        } catch {
+            console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
+        }
+    }
+});
+
 // If user changes, update genecart/profile trees
 async function reloadTrees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    await Promise.all([loadDatasets(), loadGeneCarts()]);
+    await Promise.allSettled([loadDatasets(), loadGeneCarts()])
+        .catch((err) => {
+            console.error(err)
+        });
+    console.info("Trees loaded");
 }
 
 // Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
@@ -487,6 +496,13 @@ function createObsSortable (obsLevel, scope) {
     sortCategories[scope] = obsLevel;
 
     $(`#${scope}_order_label`).show();
+}
+
+function createGeneSortable () {
+    const tmpl = $.templates('#gene_sortable_tmpl');
+    const html = tmpl.render({ genesFilter });
+    $('#gene_sortable').html(html);
+    $('#gene_sortable').sortable();
 }
 
 // Render dropdowns specific to the dot plot
@@ -717,57 +733,49 @@ function loadDisplayConfigHtml (plotConfig) {
 }
 
 // Load all saved gene carts for the current user
-function loadGeneCarts () {
-    const d = new $.Deferred();
-
+async function loadGeneCarts () {
     if (!session_id) {
         // User is not logged in. Hide gene carts container
         $('#gene_cart_container').hide();
-        d.resolve();
-    } else {
-        $.ajax({
-            url: './cgi/get_user_gene_carts.cgi',
-            type: 'post',
-            data: { session_id },
-            dataType: 'json',
-            success(data, _textStatus, _jqXHR) { // source https://stackoverflow.com/a/20915207/2900840
-                const carts = {};
-                const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
-                let cartsFound = false;
-
-                for (const ctype of cartTypes) {
-                    carts[ctype] = [];
-
-                    if (data[`${ctype}_carts`].length > 0) {
-                        cartsFound = true;
-
-                        //User has some profiles
-                        $.each(data[`${ctype}_carts`], (_i, item) => {
-                            carts[ctype].push({value: item.id, text: item.label });
-                        });
-                    }
-                }
-
-                geneCartTree.domainGeneCarts = carts.domain;
-                geneCartTree.userGeneCarts = carts.user;
-                geneCartTree.groupGeneCarts = carts.group;
-                geneCartTree.sharedGeneCarts = carts.shared;
-                geneCartTree.publicGeneCarts = carts.public;
-                geneCartTree.generateTree();
-
-                if (! cartsFound ) {
-                    $('#gene_cart_container').show();
-                }
-
-                d.resolve();
-            },
-            error(_jqXHR, _errorThrown) {
-                // display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-                d.fail();
-            }
-        });
+        return;
     }
-    d.promise();
+    await $.ajax({
+        url: './cgi/get_user_gene_carts.cgi',
+        type: 'post',
+        data: { session_id },
+        dataType: 'json'
+    }).done((data) => {
+        const carts = {};
+        const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
+        let cartsFound = false;
+
+        for (const ctype of cartTypes) {
+            carts[ctype] = [];
+
+            if (data[`${ctype}_carts`].length > 0) {
+                cartsFound = true;
+
+                //User has some profiles
+                $.each(data[`${ctype}_carts`], (_i, item) => {
+                    carts[ctype].push({value: item.id, text: item.label });
+                });
+            }
+        }
+
+        geneCartTree.domainGeneCarts = carts.domain;
+        geneCartTree.userGeneCarts = carts.user;
+        geneCartTree.groupGeneCarts = carts.group;
+        geneCartTree.sharedGeneCarts = carts.shared;
+        geneCartTree.publicGeneCarts = carts.public;
+        geneCartTree.generateTree();
+
+        if (! cartsFound ) {
+            $('#gene_cart_container').show();
+        }
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        console.error(`Error getting session info: ${textStatus}`);
+    });
 }
 
 function saveGeneCart () {
@@ -1140,11 +1148,18 @@ $(document).on('change', '#gene_dropdown', () => {
         $("#too_many_genes_warning").show();
     }
 
+    $('#gene_sort_container').hide();
+
     // Cannot cluster columns with just one gene (because function is only available
     // in dash.clustergram which requires 2 or more genes in plot)
     if (genesFilter.length > 1) {
         $("#cluster_obs").prop("disabled", false);
         $("#cluster_genes").prop("disabled", false);
+
+        if (genesAsAxisPlotTypes.includes($('#plot_type_select').val())) {
+            $('#gene_sort_container').show();
+            createGeneSortable();
+        }
         return;
     }
     $("#cluster_obs").prop("disabled", true);
@@ -1443,6 +1458,8 @@ $(document).on('click', '#gene_cart_clear', () => {
 $(document).on('click', '#reset_opts', async function () {
     $('#options_container').show();
     $('#options_spinner').show();
+
+    $('#gene_sort_container').hide();
 
     // Reset sorting order
     sortCategories = {"primary": null, "secondary": null};
