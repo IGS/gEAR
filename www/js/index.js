@@ -803,10 +803,12 @@ function select_search_result(elm) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
+    /*
     if (!projection_source) {
         annotation_panel.annotation = search_results[gene_sym];
         annotation_panel.autoselect_organism();
     }
+    */
 
     // hide the intro, show the search result box
     if( $('#site_intro_c').is(':visible') ) {
