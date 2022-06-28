@@ -49,7 +49,10 @@ class AvailableDisplayTypes(Resource):
         svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
         if os.path.exists(svg_path):
           svg_exists = True
-
+          
+        # Import here so that Flask-RESTful does not import it with every API call.
+        import scanpy as sc
+          
         # Have a public dataset or user_saved dataset
         if analysis_id:
             # session_id = request.cookies.get('gear_session_id')
@@ -57,9 +60,6 @@ class AvailableDisplayTypes(Resource):
 
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
             ana.discover_type()
-
-            # Import here so that Flask-RESTful does not import it with every API call.
-            import scanpy as sc
 
             adata = sc.read_h5ad(ana.dataset_path())
             if hasattr(adata, 'obsm') and 'X_tsne' in adata.obsm:
