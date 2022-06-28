@@ -40,25 +40,21 @@ class DatasetPanel extends Dataset {
         this.projection_csv = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
-
-        this.fetch_h5ad_info({ dataset_id: this.id, analysis: undefined }).then(
-            (data) => {
-                this.h5ad_info = data;
-            }
-        );
+        this.h5ad_info = null;
     }
 
     // Call API to return observation information on this dataset
-    fetch_h5ad_info (payload) {
-        const { dataset_id, analysis } = payload;
+    fetch_h5ad_info (dataset_id, analysis) {
+        const other_opts = {}
+        /*
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+        */
+
         const base = `./api/h5ad/${dataset_id}`;
         const query = analysis ? `?analysis=${analysis.id}` : '';
-        return $.ajax({
-            url: `${base}${query}`,
-            dataType: 'json',
-            type: "GET",
-            async: false
-        });
+        return axios.get(`${base}${query}`, other_opts);
     }
 
     get_dataset_displays(user_id, dataset_id) {
@@ -245,6 +241,19 @@ class DatasetPanel extends Dataset {
         }
 
         // All multigene plot types require a categorical observation to plot from. So there would be no curations for these datasets anyways.
+        if (! this.h5ad_info) {
+            try {
+                const res = await this.fetch_h5ad_info(this.id, undefined )
+                this.h5ad_info = res.data;
+            } catch (err) {
+                if (err.name == "CanceledError") {
+                    console.info("Canceled fetching h5ad info for previous request");
+                    return;
+                }
+                this.show_error("Could not retrieve observation info for this dataset.");
+                return;
+            }
+        }
         if (!Object.keys(this.h5ad_info.obs_levels).length) {
             this.show_error(
                 "This dataset does not have any categorical observations to plot from."
