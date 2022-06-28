@@ -487,7 +487,7 @@ function createObsSortable (obsLevel, scope) {
     const escapedObsLevel = $.escapeSelector(obsLevel);
     const propData = $(`#${escapedObsLevel}_dropdown`).select2('data');
     const sortData = propData.map((elem) => elem.id);
-    const tmpl = $.templates('#obs_sortable_tmpl');
+    const tmpl = $.templates('#sortable_tmpl');
     const html = tmpl.render({ sortData });
     $(`#${scope}_sortable`).html(html);
     $(`#${scope}_sortable`).sortable();
@@ -498,9 +498,10 @@ function createObsSortable (obsLevel, scope) {
     $(`#${scope}_order_label`).show();
 }
 
-function createGeneSortable () {
-    const tmpl = $.templates('#gene_sortable_tmpl');
-    const html = tmpl.render({ genesFilter });
+// Render the sortable list for selected genes.
+function createGeneSortable (sortData) {
+    const tmpl = $.templates('#sortable_tmpl');
+    const html = tmpl.render({ sortData });
     $('#gene_sortable').html(html);
     $('#gene_sortable').sortable();
 }
@@ -1140,11 +1141,11 @@ $(document).on('change', '#cluster_obs', () => {
 });
 
 $(document).on('change', '#gene_dropdown', () => {
-    const genesFilter = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+    const genes = $('#gene_dropdown').select2('data').map((elem) => elem.id);
     // Show warning if too many genes are entered
     $("#too_many_genes_warning").hide();
-    if (genesFilter.length > 10) {
-        $("#too_many_genes_warning").text(`There are currently ${genesFilter.length} genes to be plotted. Be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
+    if (genes.length > 10) {
+        $("#too_many_genes_warning").text(`There are currently ${genes.length} genes to be plotted. Be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
         $("#too_many_genes_warning").show();
     }
 
@@ -1152,13 +1153,13 @@ $(document).on('change', '#gene_dropdown', () => {
 
     // Cannot cluster columns with just one gene (because function is only available
     // in dash.clustergram which requires 2 or more genes in plot)
-    if (genesFilter.length > 1) {
+    if (genes.length > 1) {
         $("#cluster_obs").prop("disabled", false);
         $("#cluster_genes").prop("disabled", false);
 
         if (genesAsAxisPlotTypes.includes($('#plot_type_select').val())) {
             $('#gene_sort_container').show();
-            createGeneSortable();
+            createGeneSortable(genes);
         }
         return;
     }
@@ -1250,6 +1251,11 @@ $(document).on('click', '#create_plot', async () => {
     }
 
     plotConfig.gene_symbols = genesFilter = $('#gene_dropdown').select2('data').map((elem) => elem.id);
+
+    // If genes were selected and sorted, set to the sort order
+    if ($('#gene_sortable').children().length > 0) {
+        plotConfig.gene_symbols = genesFilter = $('#gene_sortable').sortable('toArray', {attribute: "value"});
+    }
 
     const sortOrder = {};
     const categoriesUsed = [];
@@ -1459,7 +1465,9 @@ $(document).on('click', '#reset_opts', async function () {
     $('#options_container').show();
     $('#options_spinner').show();
 
-    $('#gene_sort_container').hide();
+    if ( !genesFilter ) {
+        $('#gene_sort_container').hide();
+    }
 
     // Reset sorting order
     sortCategories = {"primary": null, "secondary": null};

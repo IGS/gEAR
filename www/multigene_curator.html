@@ -539,11 +539,12 @@
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
-          <div class="modal-body" id="gene_sortable">
+          <div class="modal-body">
+            <small class="form-text text-muted">Changes will automatically be applied.</small>
+            <ul id="gene_sortable" class="list-group"></ul>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-purple" id="gene_sort_apply">Apply</button>
           </div>
         </div>
       </div>
@@ -559,12 +560,6 @@
           {{/for}}
         </select>
       </div>
-    </script>
-
-    <script id="gene_sortable_tmpl" type="text/x-jsrender">
-      {{for sortData}}
-      <li class="ui-state-default list-group-item p-1" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
-      {{/for}}
     </script>
 
     <script id="obs_primary_tmpl" type="text/x-jsrender">
@@ -624,7 +619,7 @@
       </div>
     </script>
 
-    <script id="obs_sortable_tmpl" type="text/x-jsrender">
+    <script id="sortable_tmpl" type="text/x-jsrender">
       {{for sortData}}
       <li class="ui-state-default list-group-item p-1" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
       {{/for}}
