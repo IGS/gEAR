@@ -3,7 +3,7 @@ const animation_time = 200;
 let gc_id_to_delete = null;
 let add_form_is_open = false;
 
-window.onload=function() {
+window.onload= () => {
 
     // Initialize Bootstrap popovers
     $('#cart_upload_reqs').popover({html:true});
@@ -417,6 +417,8 @@ $('#new_cart_data').on('submit', function() {
         $("#btn_new_cart_saving").hide();
         return false;
     }
+
+    var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
 
     $("#new_cart_label").removeClass("input-validation-error");
 

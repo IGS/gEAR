@@ -15,7 +15,6 @@ const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 window.onload=() => {
     $('[data-toggle="tooltip"]').tooltip()
 
-
     $('.tooltoggle').bootstrapToggle('disable');
 
     $('#asvg_flavor_tooltip').tooltip({
@@ -821,6 +820,8 @@ function load_stored_analysis(analysis_id, analysis_type, dataset_id) {
         }
     });
 }
+
+$(document).on("build_jstrees", () => populate_dataset_selection());
 
 async function populate_dataset_selection() {
     $('#pre_dataset_spinner').show();

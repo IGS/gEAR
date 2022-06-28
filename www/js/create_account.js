@@ -1,5 +1,4 @@
 window.onload=function() {
-
     $('#btn_account_creation_cancel').click(function(e) {
         e.preventDefault();
 

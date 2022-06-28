@@ -4,7 +4,6 @@
 */
 
 window.onload=function() {
-
     // Set the curator link href for when the user gets that far
     var home_url = `./index.html`;
     var data_manager_url = `./dataset_explorer.html`;

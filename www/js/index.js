@@ -28,6 +28,12 @@ treeDiv - Element to generate the tree structure on
 storedValElt - Element to store text, vals, and data properties on (if not in a treeDiv descendant "dropdown-toggle" element)
 */
 
+/*
+Tree properties for constructor:
+treeDiv - Element to generate the tree structure on
+storedValElt - Element to store text, vals, and data properties on (if not in a treeDiv descendant "dropdown-toggle" element)
+*/
+
 const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
 const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
 
@@ -38,17 +44,10 @@ const projection_source_tree = new ProjectionSourceTree({treeDiv: '#projection_s
 
 const search_result_postselection_functions = [];
 
-window.onload = async () => {
+window.onload = () => {
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
-
-    gene_cart_id = getUrlParameter('gene_cart_share_id');
-    const permalinked_projection_id = getUrlParameter('projection_source');
-
-    await load_all_trees(gene_cart_id, permalinked_projection_id);
-    // TODO: If search is clicked before trees are loaded, gene is searched twice as submission happens twice.
-    // Disable search button until trees are loaded.
 
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
@@ -81,6 +80,7 @@ window.onload = async () => {
         validate_help_id(help_id);
     }
 
+    gene_cart_id = getUrlParameter('gene_cart_share_id');
     if (gene_cart_id) {
         console.info(`Gene cart share ID found: ${gene_cart_id}`);
         $('#intro_search_icon').trigger('click');
@@ -119,8 +119,8 @@ window.onload = async () => {
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
 
     // Only apply if both are present
+    const permalinked_projection_id = getUrlParameter('projection_source');
     if (permalinked_projection_id) {
-
         let selected_projections_string;
         if (permalinked_projection_patterns) {
             selected_projections_string = permalinked_projection_patterns;
@@ -272,9 +272,9 @@ window.onload = async () => {
     const target_node = document.getElementById('loggedin_controls');
     const safer_node = document.getElementById("navigation_bar");   // Empty div until loaded
     // Create an observer instance linked to the callback function
-    const observer = new MutationObserver(function(mutationList, observer) {
+    const observer = new MutationObserver(function(_mutationList, _observer) {
         if (target_node) {
-            load_all_trees(gene_cart_id, permalinked_projection_id);
+            load_all_trees();
             this.disconnect();  // Don't need to reload once the trees are updated
         }
     });
@@ -324,6 +324,10 @@ function validate_help_id(help_id) {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error validating help ID');
     });
 };
+
+// TODO: If search is clicked before trees are loaded, gene is searched twice as submission happens twice.
+// Disable search button until trees are loaded.
+$(document).on("build_jstrees", async () => await load_all_trees());
 
 // Disable 2nd password input until 1st is populated
 $(document).on('keydown', 'input#user_new_pass_1', function(){
@@ -509,11 +513,12 @@ async function load_layouts() {
 
 }
 
-async function load_gene_carts(cart_share_id) {
+async function load_gene_carts() {
     let carts_found = false;
     let permalink_cart_id = null
     let permalink_cart_label = null
     $("#selected_gene_cart_c").prop("disabled", false);
+    const cart_share_id = getUrlParameter('gene_cart_share_id');
 
     if (!session_id) {
         //User is not logged in. Hide gene carts container
@@ -651,7 +656,7 @@ async function populate_pattern_selection(projection_source) {
     await $.ajax({
         type: "POST",
         url: "./cgi/get_projection_pattern_list.cgi",
-        //data: {'session_id': CURRENT_USER.session_id},
+        //data: {session_id},
         dataType: "json",
     }).done((data) => {
         const patterns_list = [];
@@ -674,7 +679,8 @@ async function populate_pattern_selection(projection_source) {
     return [permalink_projection_id, permalink_projection_label];
 }
 
-async function load_pattern_tree(projection_id) {
+async function load_pattern_tree() {
+    const projection_id = getUrlParameter('projection_source');
     const values = await Promise.allSettled([load_weighted_gene_carts(projection_id), populate_pattern_selection(projection_id)])
         .catch((err) => {
             console.error(err);
@@ -699,10 +705,10 @@ async function load_pattern_tree(projection_id) {
 }
 
 // If user changes, update genecart/profile trees
-async function load_all_trees(gene_cart_id, projection_id){
+async function load_all_trees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    await Promise.allSettled([load_layouts(), load_gene_carts(gene_cart_id), load_pattern_tree(projection_id)])
+    await Promise.allSettled([load_layouts(), load_gene_carts(), load_pattern_tree()])
         .catch((err) => {
             console.error(err)
         });
@@ -718,7 +724,6 @@ $(document).on('click', '.scope_choice', () => {
 $(document).on('click', '#doc-link-choices li', function(){
     window.location.replace(`./manual.html?doc=${$(this).data('doc-link')}`);
 });
-
 
 function populate_search_result_list(data) {
     // so we can display in sorted order.  javascript sucks like that.

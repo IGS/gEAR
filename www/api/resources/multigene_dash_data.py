@@ -246,6 +246,18 @@ class MultigeneDashData(Resource):
             if plot_type == "heatmap" and len(selected.var) == 1:
                 raise PlotError("Only one gene from the searched gene symbols was found in dataset.  The heatmap option require at least 2 genes to plot.")
 
+            # Get a list of sorted ensembld IDs based on the specified gene symbol order
+            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
+            # Since genes were restricted to one Ensembl ID we can invert keys and vals
+            gene_to_ensm = {y:x for x,y in ensm_to_gene.items()}
+
+            # Collect all genes from the unfiltered dataset
+            dataset_genes = adata.var['gene_symbol'].unique().tolist()
+            # Gene symbols list may have genes not in the dataset.
+            normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
+            # Sort ensembl IDs based on the gene symbol order
+            sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
+
         # Make a composite index of all categorical types
         selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
         selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
@@ -329,39 +341,6 @@ class MultigeneDashData(Resource):
                 normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
                 mg.add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
-        elif plot_type == "dotplot":
-            df = selected.to_df()
-
-            if not primary_col:
-                return {
-                    'success': -1,
-                    'message': "The 'primary_col' option required for dot plots."
-                }
-
-            groupby_filters = [primary_col]
-            if secondary_col and not primary_col == secondary_col:
-                groupby_filters.append(secondary_col)
-
-            for gb in groupby_filters:
-                df[gb] = selected.obs[gb]
-
-            # 1) Flatten to long-form
-            # 2) Create a gene symbol column by mapping to the Ensembl IDs
-            df = df.melt(id_vars=groupby_filters)
-            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            df["gene_symbol"] = df[var_index].map(ensm_to_gene)
-
-            # Percent of all cells in this group where the gene has expression
-            percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
-            groupby = ["gene_symbol"]
-            groupby.extend(groupby_filters)
-            grouped = df.groupby(groupby)
-            df = grouped.agg(['mean', 'count', ('percent', percent)]) \
-                .fillna(0) \
-                .reset_index()
-
-            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title)
-
         elif plot_type == "quadrant":
             # Get list of normalized genes before dataframe filtering takes place
             if gene_symbols:
@@ -397,22 +376,53 @@ class MultigeneDashData(Resource):
                     success = 2
                     message += "<li>One or more genes had no fold change in both comparisons and will not be annotated: {}</li>".format(', '.join(genes_none_none))
 
+        elif plot_type == "dotplot":
+            df = selected.to_df()
+
+            # Sort Ensembl ID columns by the gene symbol order
+            df = df[sorted_ensm]
+
+            if not primary_col:
+                return {
+                    'success': -1,
+                    'message': "The 'primary_col' option required for dot plots."
+                }
+
+            groupby_filters = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
+
+            for gb in groupby_filters:
+                df[gb] = selected.obs[gb]
+
+            # 1) Flatten to long-form
+            # 2) Create a gene symbol column by mapping to the Ensembl IDs
+            df = df.melt(id_vars=groupby_filters)
+
+            # Add "gene_symbol" as a column, make it categorical to ensure the sort order is preserved when melted
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
+            df["gene_symbol"] = df["gene_symbol"].cat.reorder_categories(
+                        gene_symbols, ordered=True)
+            df = df.sort_values(by=["gene_symbol"])
+
+            # Percent of all cells in this group where the gene has expression
+            percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
+            groupby = ["gene_symbol"]
+            groupby.extend(groupby_filters)
+
+            grouped = df.groupby(groupby)
+            df = grouped.agg(['mean', 'count', ('percent', percent)]) \
+                .fillna(0) \
+                .reset_index()
+
+            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title)
 
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
             df = selected.to_df()
 
-            # Sort alphabetically. Other plot types don't need sorting or sort via groupby
-            gene_symbols.sort()
-            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            # Since genes were restricted to one Ensembl ID we can invert keys and vals
-            gene_to_ensm = {y:x for x,y in ensm_to_gene.items()}
-
-            # Reorder the dataframe columns based on sorted gene symbols
-            dataset_genes = adata.var['gene_symbol'].unique().tolist()
-            normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
-            sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
+            # Sort Ensembl ID columns by the gene symbol order
             df = df[sorted_ensm]
 
             groupby_index = "composite_index"
@@ -486,6 +496,9 @@ class MultigeneDashData(Resource):
         elif plot_type == "mg_violin":
             df = selected.to_df()
 
+            # Sort Ensembl ID columns by the gene symbol order
+            df = df[sorted_ensm]
+
             if not primary_col:
                 return {
                     'success': -1,
@@ -502,8 +515,12 @@ class MultigeneDashData(Resource):
             # 1) Flatten to long-form
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
             df = df.melt(id_vars=groupby_filters)
-            ensm_to_gene = selected.var.to_dict()["gene_symbol"]
-            df["gene_symbol"] = df[var_index].map(ensm_to_gene)
+
+            # Add "gene_symbol" as a column, make it categorical to ensure the sort order is preserved when melted
+            df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
+            df["gene_symbol"] = df["gene_symbol"].cat.reorder_categories(
+                        gene_symbols, ordered=True)
+            df = df.sort_values(by=["gene_symbol"])
 
             violin_func = mg.create_stacked_violin_plot if stacked_violin else mg.create_violin_plot
 

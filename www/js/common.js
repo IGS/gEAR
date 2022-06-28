@@ -1,6 +1,8 @@
 let CURRENT_USER = null;
 let SITE_PREFS = null;
 
+let session_id = null;
+
 // extends JQuery to provide an .exists() function for any selector
 $.fn.exists = function () {
     return this.length !== 0;
@@ -143,10 +145,8 @@ function check_browser() {
 
         //Set cookie so user does not repeatedly get Unsupported browser message
         Cookies.set('gear_browser_ischrome', isChrome, { expires: 1 });
-    } else {
-        if (!isChrome) {
-            console.warn("Unsupported browser detected");
-        }
+    } else if (!isChrome) {
+        console.warn("Unsupported browser detected");
     }
 }; //end check_browser()
 
@@ -176,6 +176,9 @@ function check_for_login() {
         handle_login_ui_updates();
     }
 
+    // Now that session_id has been obtained, we can trigger events that depend on it
+    $(document).trigger("build_jstrees");
+
     return session_id;
 }
 
@@ -192,7 +195,7 @@ function copyToClipboard(text) {
         // IE specific code path to prevent textarea being shown while dialog is visible.
         return clipboardData.setData("Text", text);
 
-    } else if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
+    } else if (document.queryCommandSupported?.("copy")) {
         const textarea = document.createElement("textarea");
         textarea.textContent = text;
         textarea.style.position = "fixed";  // Prevent scrolling to bottom of page in MS Edge.

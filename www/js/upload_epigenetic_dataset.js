@@ -26,7 +26,6 @@ function disable_submit() {
 }
 
 window.onload=function() {
-
     // Set the curator link href for when the user gets that far
     var home_url = `./index.html`;
     var epiviz_panel_designer_url = `./epiviz_panel_designer.html`;

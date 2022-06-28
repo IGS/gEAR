@@ -10,7 +10,6 @@ var current_dataset_list_label = 'recent';
 var mgmt_mode = false;
 
 window.onload=function() {
-
     $('#selected_layout').on('change', function() {
         update_layout_dataset_id_list();
         update_view_buttons();

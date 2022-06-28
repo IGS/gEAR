@@ -3,7 +3,6 @@ const FILE_UPLOAD_LIMIT = 10_485_760; // 10 MB
 let screenshot = null;
 
 window.onload = () => {
-
   // generate list of tags from database
   get_tag_list();
 
@@ -206,7 +205,6 @@ function check_required_fields() {
 
 // closed alert bar
 $(".alert-container").on("click", "button.close-alert", () => {
-  //console.log('CLOSING ALERT!');
   $(".alert-container").hide();
 });
 
