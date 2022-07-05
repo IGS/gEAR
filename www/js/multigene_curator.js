@@ -16,6 +16,7 @@ let sortCategories = {"primary": null, "secondary": null}; // Control sorting or
 let genesFilter = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
+const paletteInformation = {};    // Store information about the colorscales
 
 let selectedGenes = null;  // Genes selected in a plot (e.g. volcano with lasso tool)
 
@@ -33,35 +34,65 @@ const genesAsAxisPlotTypes = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlotTypes = ["quadrant", "volcano"];
 const plotTypes = [...genesAsAxisPlotTypes, ...genesAsDataPlotTypes];
 
-const dotplotOptsIds = ["#obs_primary_container", "#obs_secondary_container"];
-const heatmapOptsIds = ["#heatmap_options_container", "#obs_primary_container", "#obs_secondary_container"];
+const dotplotOptsIds = ["#obs_primary_container", "#obs_secondary_container", "#colorscale_container"];
+const heatmapOptsIds = ["#heatmap_options_container", "#obs_primary_container", "#obs_secondary_container", '#colorscale_container'];
 const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container"];
-const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#obs_secondary_container"];
+const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#obs_secondary_container", '#colorscale_container'];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 
 // color palettes
-const continuousPalettes = [
+// Obtained from https://plotly.com/python/builtin-colorscales/
+// and https://plotly.com/python/discrete-color/
+// The "dotplot" property means these are possible for dotplots
+const availablePalettes = [
     {
-        label: "Multi-color scales",
+        label: "Qualitative Scales",
+        continuous: false,
         options: [
-            { value: "YlOrRd", text: "Yellow-Orange-Red" },
-            { value: "Viridis", text: "Viridis" },
+            // These need to be kept up-to-date with the "color_swatch_map" in lib/mg_plotting.py
+            { value: "alphabet", text: "Alphabet (26 colors)" },
+            { value: "bold", text: "Bold (11 colos)" },
+            { value: "d3", text: "D3 (10 colors)" },
+            { value: "dark24", text: "Dark (24 colors)" },
+            { value: "light24", text: "Light (24 colors)" },
+            { value: "safe", text: "Safe (11 colors)" },
+            { value: "vivid", text: "Vivid (11 colors)" },
+        ]
+    },
+    {
+        label: "Sequential Scales",
+        continuous: true,
+        options: [
+            { value: "greys", text: "Greys" },
+            { value: "blues", text: "Blues" },
+            { value: "purp", text: "Purples" }, // Cannot use in dotplot
+            { value: "reds", text: "Reds" },
+            { value: "bluered", text: "Blue-Red" },
+            { value: "dense", text: "Dense" },
+            { value: "electric", text: "Electric" },
+            { value: "ylgnbu", text: "Yellow-Green-Blue" },
+            { value: "ylorrd", text: "Yellow-Orange-Red" },
         ],
     },
     {
-        label: "Single-color scales",
+        label: "Diverging Scales",
+        continuous: true,
         options: [
-            { value: "Greys", text: "Greyscale" },
-            { value: "Blues", text: "Bluescale" },
-            { value: "Purp", text: "Purplescale" },
+            { value: "earth", text: "Earth" },
+            { value: "piyg", text: "Pink-Green" },
+            { value: "prgn", text: "Purple-Green" },
+            { value: "rdbu", text: "Red-Blue" },
+            { value: "rdylbu", text: "Red-Yellow-Blue" },
         ],
     },
     {
-        label: "Diverging Colorscales",
+        label: "Color Vision Accessibility Scales",
+        continuous: true,
         options: [
-            { value: "RdBu", text: "Red-Blue" },
-            { value: "PiYG", text: "Pink-Yellow-Green" },
-        ],
+            { value: "cividis", text: "Cividis" },
+            { value: "inferno", text: "Inferno" },
+            { value: "viridis", text: "Viridis" },
+        ]
     },
 ];
 const discretePalettes = ["alphabet", "vivid", "light24", "dark24"];
@@ -75,8 +106,11 @@ window.onload = () => {
     // Initialize plot types
      $('#plot_type_select').select2({
         placeholder: 'Choose how to plot',
-        width: '25%'
+        width: '25%',
+        minimumResultsForSearch: -1
     });
+
+    getColorscaleData();
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -522,7 +556,8 @@ function createHeatmapDropdowns (obsLevels) {
     // Initialize differential expression test dropdown
     $('#distance_select').select2({
         placeholder: 'Choose distance metric',
-        width: '25%'
+        width: '25%',
+        minimumResultsForSearch: -1
     });
 
     $('#cluster_obs_warning').hide();
@@ -559,7 +594,8 @@ function createQuadrantDropdowns (obsLevels) {
     // Initialize differential expression test dropdown
     $('#de_test_select').select2({
         placeholder: 'Choose DE testing algorithm',
-        width: '25%'
+        width: '25%',
+        minimumResultsForSearch: -1
     });
 }
 
@@ -605,9 +641,102 @@ function createVolcanoDropdowns (obsLevels) {
     // Initialize differential expression test dropdown
     $('#de_test_select').select2({
         placeholder: 'Choose DE testing algorithm',
-        width: '25%'
+        width: '25%',
+        minimumResultsForSearch: -1
     });
 
+}
+
+// Call the API to get colorscale data
+async function getColorscaleData () {
+    // I don't like using an API call on this but some of these colorscales are plotly-specific
+    // and I could not find a way to get them from Plotly.js
+    for (const types in availablePalettes) {
+        const palettes = availablePalettes[types].options;
+        for (const palette in palettes) {
+            const { value } = palettes[palette];
+            try {
+                const {data} = await axios.get(`/api/mg_palette?colorscale=${value}`);
+                paletteInformation[value] = data;
+            } catch (e) {
+                console.error(`Could not load colorscale data for '${value}': ${e}`);
+            };
+        }
+    };
+}
+
+// Load colorscale select2 object and populate with data
+function loadColorscaleSelect (isContinuous=false) {
+
+    let filteredPalettes = availablePalettes;
+
+    // If plot that uses continuous colorscales is chosen, then filter availablePalettes to only those for continuous plots
+    // If not continuous, then filter to only those for discrete plots
+    filteredPalettes = isContinuous ?
+        availablePalettes.filter((type) => type.continuous) :
+        availablePalettes.filter((type) => !type.continuous);
+
+    const tmpl = $.templates('#select_colorscale_tmpl');
+    const html = tmpl.render(filteredPalettes);
+    $('#colorscale_select').html(html);
+
+
+    $('#colorscale_select').select2({
+        placeholder: 'OPTIONAL: Choose a color palette',
+        templateResult: (result) => {return formatColorscaleState(result, isContinuous)},  // Executes every time the dropdown is opened
+        width: '50%',
+        minimumResultsForSearch: -1
+    });
+}
+
+// Create the template for the colorscale select2 option dropdown
+function formatColorscaleState (state, isContinuous=false) {
+    // Needs to be here to avoid catching the "loading" state JSON object
+    if (!state.id) {
+        return state.text;
+    }
+    // TODO: Drop jQuery here and use vanilla JS
+    const fragment = $(document.createDocumentFragment());
+    const canvas = $(`<canvas id="gradient_${state.element.value}" width="150" height="20" class="pr-3"></canvas>`);
+    fragment.append(canvas);
+    // Add [0] to "canvas" to return the DOM object instead of the jQuery object
+    if (isContinuous) {
+        createCanvasGradient(paletteInformation[state.element.value], canvas[0]);
+    } else {
+        createCanvasScale(paletteInformation[state.element.value], canvas[0]);
+    }
+    const text_span = $(`<span class="pl-3">${state.text}</span>`);
+    fragment.append(text_span);
+
+    return fragment[0];
+}
+
+// Create the gradient for the canvas element using a given colorscale's information and the element HTML object
+function createCanvasGradient(data, elem) {
+    const ctx = elem.getContext("2d");  // canvas element
+    const grid = ctx.createLinearGradient(0, 0, elem.width, 0);    // Fill across but not down
+    // Add the colors to the gradient
+    for (const color of data) {
+        grid.addColorStop(color[0], color[1]);
+    }
+    // Fill the canvas with the gradient
+    ctx.fillStyle = grid;
+    ctx.fillRect(0, 0, elem.width, 20);
+}
+
+function createCanvasScale(data, elem) {
+    const elemWidth = elem.width;
+    const ctx = elem.getContext("2d");  // canvas element
+    // Add the colors to the scale
+    const { length } = data;
+    const width = elemWidth/length;   // 100 is length of canvas
+    for (const color of data) {
+        ctx.fillStyle = color[1];
+        // The length/length+1 is to account for the fact that the last color has a value of 1.0
+        // Otherwise the last color would be cut off
+        const x = color[0] * (length/(length+1)) * elemWidth;
+        ctx.fillRect(x, 0, width, 20);
+    }
 }
 
 function curateObservations (obsLevels) {
@@ -671,8 +800,7 @@ function loadDisplayConfigHtml (plotConfig) {
     obsFilters = plotConfig.obs_filters;
     for (const property in obsFilters) {
         const escapedProperty = $.escapeSelector(property);
-        $(`#${escapedProperty}_dropdown`).val(obsFilters[property]);
-        $(`#${escapedProperty}_dropdown`).trigger('change');
+        $(`#${escapedProperty}_dropdown`).val(obsFilters[property]).trigger('change');
     }
 
     const escapedPrimary = $.escapeSelector(plotConfig.primary_col);
@@ -682,6 +810,9 @@ function loadDisplayConfigHtml (plotConfig) {
     $(`#${escapedSecondary}_secondary`).prop('checked', true).click();
 
     $('#plot_title').val(plotConfig.plot_title);
+
+    $('#colorscale_select').val(plotConfig.colorscale).trigger('change');
+    $('#reverse_colorscale').prop('checked', plotConfig.reverse_colorscale);
 
     // Populate plot type-specific dropdowns and checkbox options
     switch ($('#plot_type_select').val()) {
@@ -1099,14 +1230,18 @@ $('#plot_type_select').change(() => {
         $(id).hide();
     });
 
+    let isContinuous = false;
+
     switch ($('#plot_type_select').val()) {
     case 'dotplot':
+        isContinuous = true;
         dotplotOptsIds.forEach(id => {
             $(id).show();
         })
         $("#gene_selection_help").text("Choose the genes to include in plot.");
         break;
     case 'heatmap':
+        isContinuous = true;
         heatmapOptsIds.forEach(id => {
             $(id).show();
         });
@@ -1131,6 +1266,10 @@ $('#plot_type_select').change(() => {
         });
         $("#gene_selection_help").text("OPTIONAL: Gene selection is optional for this plot type. Selected genes are annotated in the plot.");
     }
+
+    // Filter the colorscale dropdown based on the plot type
+    loadColorscaleSelect(isContinuous);
+
 });
 
 $(document).on('change', '#cluster_obs', () => {
@@ -1279,6 +1418,10 @@ $(document).on('click', '#create_plot', async () => {
 
     plotConfig.plot_title = $('#plot_title').val();
 
+    // Colorscale settings
+    plotConfig.colorscale = $('#colorscale_select').select2('data')[0].id;
+    plotConfig.reverse_colorscale = $('#reverse_colorscale').is(':checked');
+
     // Add specific plotConfig options depending on plot type
     switch (plotType) {
     case 'dotplot':
@@ -1405,7 +1548,6 @@ $(document).on('click', '#create_plot', async () => {
         }
     }
 
-
     // Render dataset plot HTML
     const plotTemplate = $.templates('#dataset_plot_tmpl');
     const plotHtml = plotTemplate.render({ dataset_id: datasetId });
@@ -1432,7 +1574,7 @@ $(document).on('click', '#create_plot', async () => {
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
 $(document).on('click', '.js-all', function () {
-    const id = this.id;
+    const { id } = this;
     const group = id.replace('_all', '');
     const escapedGroup = $.escapeSelector(group);
 
@@ -1442,7 +1584,7 @@ $(document).on('click', '.js-all', function () {
 
 // If "all" button is clicked, populate dropdown with all groups in this observation
 $(document).on('click', '.js-clear', function () {
-    const id = this.id;
+    const { id } = this;
     const group = id.replace('_clear', '');
     const escapedGroup = $.escapeSelector(group);
 

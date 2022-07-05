@@ -1,3 +1,4 @@
+import re
 from flask import request
 from flask_restful import Resource
 import pandas as pd
@@ -129,6 +130,8 @@ class MultigeneDashData(Resource):
         primary_col = req.get('primary_col', None)
         secondary_col = req.get('secondary_col', None)
         sort_order = req.get('sort_order', {})
+        colorscale = req.get('colorscale', None)    # If None, this can override the "reverse_colorscale" param by using defaults.
+        reverse_colorscale = req.get('reverse_colorscale', False)
         # Heatmap opts
         clusterbar_fields = req.get('clusterbar_fields', [])
         matrixplot = req.get('matrixplot', False)
@@ -409,7 +412,7 @@ class MultigeneDashData(Resource):
                 .fillna(0) \
                 .reset_index()
 
-            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title)
+            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale)
 
         elif plot_type == "heatmap":
             # Filter genes and slice the adata to get a dataframe
@@ -464,16 +467,9 @@ class MultigeneDashData(Resource):
                 , flip_axes
                 , center_around_zero
                 , distance_metric
+                , colorscale
+                , reverse_colorscale
                 )
-
-            # The current clustergram palette used when centering values around zero should be reversed
-            fig.data[-1]["reversescale"] = center_around_zero
-            if center_around_zero:
-                fig.data[-1]["zmid"] = 0
-            else:
-                # both zmin and zmax are required
-                fig.data[-1]["zmin"] = 0
-                fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D array
 
             # Need the obs metadata again for mapping clusterbars to indexes
             df = pd.concat([df, df_cols], axis=1)
@@ -521,6 +517,8 @@ class MultigeneDashData(Resource):
             fig = violin_func(df
                 , groupby_filters
                 , is_log10
+                , colorscale
+                , reverse_colorscale
                 )
 
             # Add jitter-based args (to make beeswarm plot)
@@ -590,3 +588,15 @@ class MultigeneDashData(Resource):
             , 'plot_json': json.loads(plot_json)
             , "plot_config": get_config()
         }
+
+class PaletteData(Resource):
+    def get(self):
+        colorscale = request.args.get('colorscale', None)
+
+        if not colorscale:
+            raise Exception("No colorscale provided")
+
+        try:
+            return mg.get_colorscale(colorscale)
+        except Exception as e:
+            raise Exception(str(e))
