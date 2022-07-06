@@ -10,9 +10,6 @@ let current_dataset_list_label = 'recent';
 let mgmt_mode = false;
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-
     $('#selected_layout').on('change', function() {
         update_layout_dataset_id_list();
         update_view_buttons();
@@ -32,7 +29,7 @@ window.onload=function() {
     });
 
     $('#submit_search').submit(function(event) {
-        event.preventDefault(); 
+        event.preventDefault();
         submit_search();
     });
 
@@ -45,7 +42,7 @@ window.onload=function() {
     });
 
     $(document).on('click', 'button.view_dataset', function(e){
-        window.location = "./p?s=" + $(this).val();        
+        window.location = "./p?s=" + $(this).val();
     });
 
     // Generic function to handle all collapsable menus
@@ -105,14 +102,14 @@ window.onload=function() {
             $(this).siblings().removeClass('selected');
         } else {
             if (! $(this).hasClass('selected')) {
-                // If turning on, make sure all_selector is off                
+                // If turning on, make sure all_selector is off
                 $(this).parent().find("li.all_selector").removeClass('selected');
 
                 // If this selection group has the 'only_one' option deselect the rest
                 if ($(this).parent().hasClass('only_one')) {
                     $(this).siblings().removeClass('selected');
                 }
-                
+
                 $(this).addClass('selected');
             } else {
                 // If turning off, make sure at least one other option is selected, else set
@@ -151,13 +148,6 @@ window.onload=function() {
             $(selector_base + " .dataset-expander i").addClass('fa-expand');
         }
     });
-
-    /*
-    // replacing with popover
-    $(document).on('click', 'button.add2profile', function() {
-        dataset_id = $(this).attr('value');
-        add_to_profile(dataset_id);
-    }); */
 
     $(document).on('click', 'button.edit_dataset', function() {
         var dataset_id = $(this).data('dataset-id');
@@ -221,7 +211,6 @@ $(document).on('click', '#cancel_layout_add', function() {
 $(document).on('click', '.confirm_layout_add', function() {
     $('#btn_add_layout').popover('hide');
 
-    session_id = Cookies.get('gear_session_id');
     $.ajax({
         url : './cgi/add_layout.cgi',
         type: "POST",
@@ -260,7 +249,6 @@ $(document).on('click', '#cancel_dataset_delete', function() {
 $(document).on('click', '.confirm_dataset_delete', function() {
     $('.delete_dataset').popover('hide');
 
-    session_id = Cookies.get('gear_session_id');
 
     $.ajax({
         url : './cgi/remove_dataset.cgi',
@@ -312,7 +300,6 @@ $(document).on('click', '.edit_dataset_cancel', function() {
 });
 
 $(document).on('click', '.edit_dataset_save', function() {
-    session_id = Cookies.get('gear_session_id');
     var dataset_id = $(this).data('dataset-id');
     var selector_base = "#result_dataset_id_" + dataset_id;
     var new_visibility = $(selector_base + "_visibility").val();
@@ -345,10 +332,10 @@ $(document).on('click', '.edit_dataset_save', function() {
                     visibility_html = '<h3><span class="badge badge-danger">Private dataset</span></h3>';
                 }
                 $(selector_base + "_display_visibility").html(visibility_html);
-                
+
                 $(selector_base + "_editable_title").data("original-val", new_title);
                 $(selector_base + "_display_title").html(new_title);
-                
+
                 $(selector_base + "_editable_pubmed_id").data("original-val", new_pubmed_id);
                 var pubmed_html = "<span class='att_label'>Pubmed</span>";
 
@@ -375,7 +362,7 @@ $(document).on('click', '.edit_dataset_save', function() {
 
                 $(selector_base + "_editable_ldesc").data("original-val", new_ldesc);
                 $(selector_base + "_display_ldesc").html(new_ldesc);
-                
+
                 // Put interface back to view mode.
                 $(selector_base + " .editable-version").hide();
                 $(selector_base + " .is-editable").show();
@@ -387,7 +374,7 @@ $(document).on('click', '.edit_dataset_save', function() {
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         }
     }); //end ajax
-});   
+});
 
 $('#btn_delete_layout').popover({
 		animation: true,
@@ -410,7 +397,6 @@ $(document).on('click', '#cancel_layout_delete', function() {
 $(document).on('click', '.confirm_layout_delete', function() {
     $('#btn_delete_layout').popover('hide');
 
-    session_id = Cookies.get('gear_session_id');
     $.ajax({
         url : './cgi/remove_layout.cgi',
         type: "POST",
@@ -419,7 +405,7 @@ $(document).on('click', '.confirm_layout_delete', function() {
         success: function(data, textStatus, jqXHR) {
             if ( data['success'] == 1 ) {
                 old_value = $('#selected_layout').val();
-                
+
                 // Reset the select box to be the first option
                 $('#selected_layout').val($("#selected_layout option:first").val());
 
@@ -439,7 +425,7 @@ $(document).on('click', '.confirm_layout_delete', function() {
 });
 
 $(document).on('click', 'ul.layout_links li', function() {
-    window.location = "./p?l=" + $(this).data('profile-share-id');  
+    window.location = "./p?l=" + $(this).data('profile-share-id');
 });
 
 $("#btn_arrangement_view").click(function(e) {
@@ -447,7 +433,7 @@ $("#btn_arrangement_view").click(function(e) {
     if (current_dataset_list_label != $('#selected_layout').find(':selected').data('share-id')) {
         $("#btn_view_layout_datasets").trigger('click');
     }
-    
+
     $("#btn_arrangement_view").addClass('active');
     $("#btn_list_view_compact").removeClass('active');
     $("#btn_list_view_expanded").removeClass('active');
@@ -463,7 +449,7 @@ $("#btn_list_view_compact").click(function(e) {
 
     $("#dataset_arrangement_c").hide();
     $("#dataset_list_c").show();
-    
+
     // find all elements with class 'expandable-view' and make sure they also have 'expanded-view-hidden'
     $(".expandable-view").each(function() {
         $(this).addClass("expanded-view-hidden");
@@ -477,7 +463,7 @@ $("#btn_list_view_expanded").click(function(e) {
 
     $("#dataset_arrangement_c").hide();
     $("#dataset_list_c").show();
-    
+
     // find all elements with class 'expandable-view' and make sure they also have 'expanded-view-hidden'
     $(".expandable-view").each(function() {
         $(this).removeClass("expanded-view-hidden");
@@ -486,7 +472,6 @@ $("#btn_list_view_expanded").click(function(e) {
 
 $(document).on('click', 'button#btn_save_layout', function() {
     layout_id =  $('#selected_layout').val()
-    session_id = Cookies.get('gear_session_id');
     dataset_id_string = "";
     dataset_widths_string = "";
 
@@ -576,11 +561,10 @@ $("#btn_view_layout_datasets").click(function(e) {
 	        console.log('errorThrown= ', errorThrown);
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         }
-    }); //end ajax for search 
+    }); //end ajax for search
 });
 
 function add_to_profile(dataset_id) {
-    session_id = Cookies.get('gear_session_id');
 
     $.ajax({
         url : './cgi/add_dataset_to_layout.cgi',
@@ -643,7 +627,7 @@ function load_initial_results() {
     } else {
         params['custom_list'] = 'most_recent';
     }
-    
+
     $.ajax({
         url : './cgi/search_datasets.cgi',
         type: "POST",
@@ -657,12 +641,10 @@ function load_initial_results() {
 	        console.log('errorThrown= ', errorThrown);
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         }
-    }); //end ajax for search    
+    }); //end ajax for search
 }
 
 function load_organism_list() {
-    session_id = Cookies.get('gear_session_id');
-    
     $.ajax({
         url : './cgi/get_organism_list.cgi',
         type: "GET",
@@ -681,7 +663,7 @@ function load_organism_list() {
 
 function load_preliminary_data() {
     /*
-      Loads all the parts of the page which need initial calls from the server, such as 
+      Loads all the parts of the page which need initial calls from the server, such as
       database-driven select boxes.
     */
     load_organism_list();
@@ -691,8 +673,6 @@ function load_preliminary_data() {
 
 
 function load_user_layouts() {
-    session_id = Cookies.get('gear_session_id');
-
     if (session_id) {
         $.ajax({
             url : './cgi/get_user_layouts.cgi',
@@ -732,7 +712,7 @@ function process_search_results(data, result_label) {
     if ($("#selected_layout").find(':selected').data("is-domain") == "1") {
         domain_profile_selected = true;
     }
-    
+
     for (const dataset of data['datasets']) {
         // make date_added nicer looking
         dataset['date_formatted'] = new Date(dataset['date_added']);
@@ -742,7 +722,7 @@ function process_search_results(data, result_label) {
         for (i = 0; i < dataset['layouts'].length; i++) {
             dataset['layouts'][i] = JSON.parse(dataset['layouts'][i]);
         }
-        
+
         // some fields should never have whitespace
         if (dataset['pubmed_id'] !== 'None' && dataset['pubmed_id']) {
             dataset['pubmed_id'] = dataset['pubmed_id'].trim();
@@ -802,7 +782,7 @@ function process_search_results(data, result_label) {
     if (mgmt_mode) {
         $(".profile_control").show();
     } else {
-        $(".profile_control").hide();        
+        $(".profile_control").hide();
     }
 
     // Respect whatever the current view is
@@ -862,8 +842,6 @@ function process_search_results(data, result_label) {
 }
 
 function remove_from_profile(dataset_id) {
-    session_id = Cookies.get('gear_session_id');
-
     $.ajax({
         url : './cgi/remove_dataset_from_layout.cgi',
         type: "POST",
@@ -875,7 +853,7 @@ function remove_from_profile(dataset_id) {
                 $("#result_dataset_id_" + dataset_id + " button.add2profile").prop("disabled", false);
                 $("#result_dataset_id_" + dataset_id + " button.removefromprofile").prop("disabled", true);
                 show_dataset_action_note(dataset_id, "Dataset removed from profile");
-                
+
                 // Javascript needs a better remove by value for arrays
                 current_layout_dataset_ids = current_layout_dataset_ids.filter(val => val !== dataset_id);
 
@@ -916,7 +894,7 @@ function submit_search() {
         $("#sort_by").val('relevance');
         first_search = false;
     }
-    
+
     var search_criteria = {
         'session_id': session_id,
         'search_terms': $("#search_terms").val(),
@@ -943,7 +921,7 @@ function submit_search() {
 	        console.log('errorThrown= ', errorThrown);
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         }
-    }); //end ajax for search    
+    }); //end ajax for search
 };
 
 function update_add_remove_buttons() {
@@ -965,7 +943,7 @@ function update_add_remove_buttons() {
             $(this).find("button.delete_dataset").hide();
             $(this).find("button.edit_dataset").hide();
         }
-        
+
         if (domain_profile_selected) {
             $(this).find("button.add2profile").prop("disabled", true);
             $(this).find("button.removefromprofile").prop("disabled", true);
@@ -989,7 +967,7 @@ function update_layout_dataset_id_list() {
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
             current_layout_dataset_ids = [];
-            
+
             for (var lm of data['layout_members']) {
                 lm = JSON.parse(lm);
                 current_layout_dataset_ids.push(lm['dataset_id']);
@@ -1009,7 +987,7 @@ function update_view_buttons() {
     // Controls the on/off and visibility status of the compact/expanded/arrangement view buttons
     if ($('#selected_layout').find(':selected').data('is-domain') == "1") {
         $("#btn_arrangement_view").hide();
-        
+
         // is arrangement the current view?  If so, set to compact
         if ($("#btn_arrangement_view").hasClass('active')) {
             $("#btn_list_view_compact").trigger('click');

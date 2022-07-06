@@ -13,12 +13,7 @@ var analysis_labels = new Set();
 const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload=() => {
-    // check if the user is already logged in
-    check_for_login();
-    session_id = Cookies.get('gear_session_id');
-
     $('[data-toggle="tooltip"]').tooltip()
-
 
     $('.tooltoggle').bootstrapToggle('disable');
 
@@ -753,6 +748,8 @@ function load_stored_analysis(analysis_id, analysis_type, dataset_id) {
         }
     });
 }
+
+$(document).on("build_jstrees", () => populate_dataset_selection());
 
 async function populate_dataset_selection() {
     $('#pre_dataset_spinner').show();

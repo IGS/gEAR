@@ -1,20 +1,11 @@
 from flask import request
 from flask_restful import Resource
-import os, json, sys
+import os
 import geardb
-from gear.plotting import get_config
-from plotly.utils import PlotlyJSONEncoder
 
 import pandas as pd
 
-import rpy2.robjects as robjects
-from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
-from rpy2.robjects.conversion import localconverter
-from rpy2.robjects.vectors import StrVector
-
 # TODO: Remove and figure out a good pattern directory structure
-import plotly.express as px
 PATTERN_BASE_DIR = "/var/www/patterns"
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
@@ -45,6 +36,12 @@ def run_projectR_cmd(target_df, loading_df):
     Pass the inputs into the projectR function written in R.
     Return Pandas dataframe of the projectR output
     """
+
+    import rpy2.robjects as robjects
+    from rpy2.robjects.packages import importr
+    from rpy2.robjects import pandas2ri
+    from rpy2.robjects.conversion import localconverter
+    from rpy2.robjects.vectors import StrVector
 
     projectR = importr('projectR')
 

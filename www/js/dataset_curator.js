@@ -81,16 +81,13 @@ window.onload=() => {
         </div>
         <template v-if='plot_params_ready || preconfigured'>
           <img :id="preview_id"></img>
-          <template v-if='success > 1 && !preconfigured'>
-            <b-alert variant="warning" dismissible>
-            {{ message }}
-            </b-alert>
-          </template>
-          <template v-if='success < 0'>
-            <b-alert variant="danger" dismissible>
-            {{ message }}
-            </b-alert>
-          </template>
+          <b-alert :show="success > 1 && !preconfigured" variant="warning" dismissible>
+          {{ message }}
+          </b-alert>
+
+          <b-alert :show="success < 0" variant="danger" dismissible>
+          {{ message }}
+          </b-alert>
         </template>
       </div>
     `,
@@ -184,16 +181,13 @@ window.onload=() => {
             class='elevation border-0 mb-5'>
             <div ref='chart'></div>
           </b-card-body>
-          <template v-if='success > 1'>
-            <b-alert variant="warning" dismissible>
-            {{ message }}
-            </b-alert>
-          </template>
-          <template v-if='success < 0'>
-            <b-alert variant="danger" dismissible>
-            {{ message }}
-            </b-alert>
-          </template>
+          <b-alert :show="success > 1" variant="warning" dismissible>
+          {{ message }}
+          </b-alert>
+
+          <b-alert :show="success < 0" variant="danger" dismissible>
+          {{ message }}
+          </b-alert>
         </div>
         <div v-else ref='chart' style='height:230px'></div>
       </div>
@@ -360,16 +354,13 @@ window.onload=() => {
           <div v-else ref='chart'>
             <img class='img-fluid' v-if='img' :src='imgData'></img>
           </div>
-          <template v-if='success > 1'>
-            <b-alert variant="warning" dismissible>
-            {{ message }}
-            </b-alert>
-          </template>
-          <template v-if='success < 0'>
-            <b-alert variant="danger" dismissible>
-            {{ message }}
-            </b-alert>
-          </template>
+          <b-alert :show="success > 1" variant="warning" dismissible>
+          {{ message }}
+          </b-alert>
+
+          <b-alert :show="success < 0" variant="danger" dismissible>
+          {{ message }}
+          </b-alert>
         </div>
         <div v-else ref='chart'>
           <div v-if='!imgData' class='col align-middle text-center mt-5 pt-4'>
@@ -1647,7 +1638,6 @@ window.onload=() => {
 
       this.unsubscribe = this.$store.subscribe((mutation, state) => {
         if (mutation.type === "set_colors") {
-          //console.log("triggered set_colors");
           this.get_colors_array();
         }
       });
@@ -2389,9 +2379,7 @@ window.onload=() => {
         analysis: this.config.analysis,
       });
 
-      console.log(this.plot_params_ready());
       if (this.plot_params_ready()) {
-        console.log("Plot params ready");
         this.draw_image();
       }
 
@@ -3604,9 +3592,6 @@ window.onload=() => {
     store,
     computed: {
       ...Vuex.mapState(["user"]),
-    },
-    beforeCreate() {
-      check_for_login();
     },
     created() {
       // We want to check for session when the curator app is first created

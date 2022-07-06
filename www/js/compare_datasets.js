@@ -55,10 +55,6 @@ const log10_transformed_datasets = [
 const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload = () => {
-	// check if the user is already logged in
-	check_for_login();
-	session_id = Cookies.get("gear_session_id");
-
 	$(".btn-apply-filter").on("click", () => {
 		$(".initial_instructions").hide();
 		$("#myChart").html("");
@@ -443,6 +439,8 @@ function stringify_all_conditions(condition) {
 	}
 	return sanitized_condition;
 }
+
+$(document).on("build_jstrees", () => populate_dataset_selection_controls);
 
 async function populate_dataset_selection_controls() {
 	const dataset_id = getUrlParameter("dataset_id");

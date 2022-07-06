@@ -19,8 +19,6 @@ class User {
     }
 
     set_default_profile() {
-        session_id = Cookies.get('gear_session_id');
-
         if (!session_id) {
             //User not logged in.
             if (! this.profile) {

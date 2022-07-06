@@ -4,11 +4,6 @@
 */
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-    session_id = Cookies.get('gear_session_id');
-
-    //console.log(session_id);
     sleep(500).then(() => {
         // If CURRENT_USER is defined at this point, add information as placeholder test
         if (CURRENT_USER) {
