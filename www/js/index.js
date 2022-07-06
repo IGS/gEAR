@@ -400,7 +400,6 @@ $(document).on('click', 'button#save_user_new_pass', function(){
 });
 
 function validate_permalink(scope) {
-
     // Works for dataset or layout-based share IDs, which is differentiated by scope
     $.ajax({
         url : './cgi/validate_share_id.cgi',
