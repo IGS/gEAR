@@ -3,7 +3,7 @@
 """
 
 This is a unified, all-purpose annotation loader for the gEAR database. It converts the 
-GBK-formatted ENSEMBL releases to an H5AD file.  
+GBK-formatted ENSEMBL releases to an HDF5 file.  
 
 TODO:
 
