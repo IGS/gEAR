@@ -627,6 +627,8 @@ class PlotlyDisplay extends Display {
             violin_add_points,
             plot_title,
             legend_title,
+            colorscale,
+            reverse_colorscale,
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
@@ -658,6 +660,8 @@ class PlotlyDisplay extends Display {
         this.violin_add_points = violin_add_points;
         this.plot_title = plot_title;
         this.legend_title = legend_title;
+        this.colorscale = colorscale;
+        this.reverse_colorscale = reverse_colorscale;
         this.analysis = analysis;
         this.projection_csv = projection_csv;
     }
@@ -707,6 +711,8 @@ class PlotlyDisplay extends Display {
             violin_add_points: this.violin_add_points,
             plot_title: this.plot_title,
             legend_title: this.legend_title,
+            colorscale: this.colorscale,
+            reverse_colorscale: this.reverse_colorscale,
             projection_csv: this.projection_csv,
         });
     }
