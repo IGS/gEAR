@@ -1,13 +1,13 @@
-var first_search = true;
-var animation_time = 200;
-var current_layout_dataset_ids = [];
-var dataset_id_to_delete = null;
+let first_search = true;
+let animation_time = 200;
+let current_layout_dataset_ids = [];
+let dataset_id_to_delete = null;
 
 // Values are recent, search, or a profile share ID
-var current_dataset_list_label = 'recent';
+let current_dataset_list_label = 'recent';
 
 // toggles whether we are in profile management mode
-var mgmt_mode = false;
+let mgmt_mode = false;
 
 window.onload=function() {
     $('#selected_layout').on('change', function() {
@@ -149,11 +149,6 @@ window.onload=function() {
         }
     });
 
-    $(document).on('click', 'button.add2profile', function() {
-        dataset_id = $(this).attr('value');
-        add_to_profile(dataset_id);
-    });
-
     $(document).on('click', 'button.edit_dataset', function() {
         var dataset_id = $(this).data('dataset-id');
         var selector_base = "#result_dataset_id_" + dataset_id;
@@ -241,6 +236,10 @@ $(document).on('click', '.confirm_layout_add', function() {
 });
 
 // Popover for these is created within process_search_results()
+
+$(document).on('click', '#cancel_make_public_and_add', function() {
+    $('.add2profile').popover('hide');
+});
 
 $(document).on('click', '#cancel_dataset_delete', function() {
     dataset_id_to_delete = null;
@@ -807,9 +806,38 @@ function process_search_results(data, result_label) {
 		html: true,
 		placement: 'auto',
         container: 'body'
-    }).on('show.bs.popover', function(e) {
+    }).on('shown.bs.popover', function(e) {
         // e.target is the popover trigger..
         dataset_id_to_delete = $(e.target).val();
+    });
+
+    $('button.add2profile').popover({
+		animation: true,
+		trigger: 'click',
+		title: "Add to public profile?",
+		content: "<p>This dataset is currently private. It must be made public before adding to a public profile. (You can do this by clicking the button to edit the datasets and then changing from private to public)</p>" +
+		    "<div class='btn-toolbar' style='width:250px'>" +
+		    "<button id='cancel_make_public_and_add' class='btn btn-default' value='cancel_mpa'>OK</button>" +
+		    "</div>",
+		html: true,
+		placement: 'auto',
+        container: 'body'
+    }).on('click', function(e) {
+        // e.target is the popover trigger..
+        // e.target is set to the wrong thing if the user clicks the icon part of the button
+        if (e.target.nodeName == "I") {
+            e.target = e.target.parentElement;
+        }
+
+        // if it's a private dataset and public profile, show a warning. Else just add.
+        if ($(e.target).data('is-public') != "1" &&
+            $("#selected_layout").find(':selected').data("is-public") == "1") {
+
+            // show the pop up (happens by default)
+        } else {
+            $('button.add2profile').popover('hide');
+            add_to_profile($(this).attr('value'));
+        }
     });
 }
 
