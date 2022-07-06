@@ -37,7 +37,7 @@ const selected_gene_cart_tree = new GeneCartTree({treeDiv: '#selected_gene_cart_
 
 const search_result_postselection_functions = [];
 
-window.onload = () => {
+$(document).on("handle_page_loading", () => {
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
@@ -274,7 +274,7 @@ window.onload = () => {
     // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
     // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
     observer.observe(target_node || safer_node , { attributes: true });
-};
+});
 
 function get_index_info() {
     $.ajax({
@@ -407,9 +407,10 @@ function validate_permalink(scope) {
     });
 }
 
-function load_layouts() {
-    const d = new $.Deferred();
+async function load_layouts() {
     const layout_share_id = getUrlParameter('layout_id');
+    let active_layout_id = null;
+    let active_layout_label = null;
 
     // Temporary hack for Heller lab
     if (layout_share_id == '8d38b600' || layout_share_id == 'afd2eb77') {
@@ -417,90 +418,57 @@ function load_layouts() {
     }
 
     //organize user and domain profiles in a tree format
-    $.ajax({
+    await $.ajax({
         url: './cgi/get_user_layouts.cgi',
         type: 'post',
-        async: false,
         data: { 'session_id': session_id, 'layout_share_id': layout_share_id },
-        dataType: 'json',
-        success(data, textStatus, jqXHR) {
-            /*
-              Priority of displayed profile:
-                0.  Passed layout ID via layout_id URL parameter
-                1.  Cookie value
-                2.  User's DB-saved value (when they go to a machine, and there's no cookie)
-                3.  Admin's active domain
-             */
-            const layouts = {};
-            let active_layout_id = null;
-            let active_layout_label = null;
+        dataType: 'json'
+    }).done((data) => {
+        /*
+            Priority of displayed profile:
+            0.  Passed layout ID via layout_id URL parameter
+            1.  Cookie value
+            2.  User's DB-saved value (when they go to a machine, and there's no cookie)
+            3.  Admin's active domain
+            */
+        const layouts = {};
+        const layout_types = ['domain', 'user', 'group', 'shared']
 
-            const layout_types = ['domain', 'user', 'group', 'shared']
+        for (const ltype of layout_types) {
+            layouts[ltype] = [];
 
+            $.each(data[`${ltype}_layouts`], (_i, item) => {
+                layouts[ltype].push({value: item['id'],
+                                        text: item['label'],
+                                        share_id: item['share_id'],
+                                        folder_id: item['folder_id'],
+                                        folder_parent_id: item['folder_parent_id'],
+                                        folder_label: item['folder_label']
+                                    });
+
+                if (item['share_id'] == layout_share_id) {
+                    active_layout_id = item.id;
+                    active_layout_label = item.label;
+                    layout_id = item.share_id;
+                }
+            });
+        }
+
+        // Generate the tree structure for the layouts
+        profile_tree.domainProfiles = layouts.domain;
+        profile_tree.userProfiles = layouts.user;
+        profile_tree.groupProfiles = layouts.group;
+        profile_tree.sharedProfiles = layouts.shared;
+        selected_profile_tree.domainProfiles = layouts.domain;
+        selected_profile_tree.userProfiles = layouts.user;
+        selected_profile_tree.groupProfiles = layouts.group;
+        selected_profile_tree.sharedProfiles = layouts.shared;
+
+        // pass through again and look for one set by a cookie
+        if (active_layout_id == null) {
             for (const ltype of layout_types) {
-                layouts[ltype] = [];
-
                 $.each(data[`${ltype}_layouts`], (_i, item) => {
-                    layouts[ltype].push({value: item['id'],
-                                         text: item['label'],
-                                         share_id: item['share_id'],
-                                         folder_id: item['folder_id'],
-                                         folder_parent_id: item['folder_parent_id'],
-                                         folder_label: item['folder_label']
-                                        });
-
-                    if (item['share_id'] == layout_share_id) {
-                        active_layout_id = item['id'];
-                        active_layout_label = item['label'];
-                        layout_id = item['share_id'];
-                    }
-                });
-            }
-
-            // Generate the tree structure for the layouts
-            profile_tree.domainProfiles = layouts.domain;
-            profile_tree.userProfiles = layouts.user;
-            profile_tree.groupProfiles = layouts.group;
-            profile_tree.sharedProfiles = layouts.shared;
-            profile_tree.generateTree();
-            selected_profile_tree.domainProfiles = layouts.domain;
-            selected_profile_tree.userProfiles = layouts.user;
-            selected_profile_tree.groupProfiles = layouts.group;
-            selected_profile_tree.sharedProfiles = layouts.shared;
-            selected_profile_tree.generateTree();
-
-            // pass through again and look for one set by a cookie
-            if (active_layout_id == null) {
-                for (const ltype of layout_types) {
-                    $.each(data[`${ltype}_layouts`], (_i, item) => {
-                        if (item.label == CURRENT_USER.profile) {
-                            active_layout_id = item.id;
-                            active_layout_label = item.label;
-                            layout_id = item.share_id;
-                            return false;
-                        }
-                    });
-                }
-            }
-
-            // pass through again and look for one set as current by the user
-            if (active_layout_id == null) {
-                for (const ltype of ['user', 'group']) {
-                    $.each(data[`${ltype}_layouts`], (_i, item) => {
-                        if ( item['is_domain'] == 0 && item.is_current == 1 ) {
-                            active_layout_id = item.id;
-                            active_layout_label = item.label;
-                            layout_id = item.share_id;
-                            return false;
-                        }
-                    });
-                }
-            }
-
-            // pass through again if no active layout was found for user and choose the admin's
-            if (active_layout_id == null) {
-                $.each(data['domain_layouts'], (_i, item) => {
-                    if ( item['is_domain'] == 1 && item.is_current == 1 ) {
+                    if (item.label == CURRENT_USER.profile) {
                         active_layout_id = item.id;
                         active_layout_label = item.label;
                         layout_id = item.share_id;
@@ -508,20 +476,43 @@ function load_layouts() {
                     }
                 });
             }
-
-            dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
-
-            d.resolve();
-        },
-        error(jqXHR, _textStatus, errorThrown) {
-            profile_tree.generateTree();
-            selected_profile_tree.generateTree();
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
-            d.fail();
         }
+
+        // pass through again and look for one set as current by the user
+        if (active_layout_id == null) {
+            for (const ltype of ['user', 'group']) {
+                $.each(data[`${ltype}_layouts`], (_i, item) => {
+                    if ( item['is_domain'] == 0 && item.is_current == 1 ) {
+                        active_layout_id = item.id;
+                        active_layout_label = item.label;
+                        layout_id = item.share_id;
+                        return false;
+                    }
+                });
+            }
+        }
+
+        // pass through again if no active layout was found for user and choose the admin's
+        if (active_layout_id == null) {
+            $.each(data['domain_layouts'], (_i, item) => {
+                if ( item['is_domain'] == 1 && item.is_current == 1 ) {
+                    active_layout_id = item.id;
+                    active_layout_label = item.label;
+                    layout_id = item.share_id;
+                    return false;
+                }
+            });
+        }
+
+        dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });
 
-    d.promise();
+    profile_tree.generateTree();
+    selected_profile_tree.generateTree();
+
 }
 
 function load_gene_carts() {
@@ -734,6 +725,10 @@ async function load_all_trees(){
             console.error(err)
         });
     console.info("Trees loaded");
+
+    // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
+    $(document).trigger("handle_page_loading");
+
 }
 
 // Hide option menu when scope is changed.
@@ -1020,27 +1015,41 @@ $("#projection_search_form").submit((event) => {
 
     // Run ProjectR for the chosen pattern
     if (projection_source) {
+        const scope = $("#projection_source").data('scope');
+
         search_results = selected_projections;
-        dataset_collection_panel.run_projectR_on_all_datasets(projection_source).then(() => {
 
-            // Implementing search_genes.py results without the CGI execution
-            // ? Can we use the DIMRED_meta file to get annotation info?
-            populate_search_result_list(selected_projections);
-            $('#searching_indicator_c').hide();
-            $('#intro_content').hide('fade', {}, 400, () => {
-                if (multigene){
-                    dataset_collection_panel.update_by_all_results(selected_projections);
-                } else {
-                    // auto-select the first match.  first <a class="list-group-item"
-                    const first_thing = $('#search_results a.list-group-item').first();
-                    select_search_result(first_thing);
-                }
-            });
+        // Implementing search_genes.py results without the CGI execution
+        // ? Can we use the DIMRED_meta file to get annotation info?
+        populate_search_result_list(selected_projections);
+        $('#searching_indicator_c').hide();
+        $('#intro_content').hide('fade', {}, 400);
+        // auto-select the first match.  first <a class="list-group-item"
+        const first_thing = $('#search_results a.list-group-item').first();
+        select_search_result(first_thing, draw_display=false);
+        set_scrollbar_props();
 
-            set_scrollbar_props();
+        dataset_collection_panel.reset_abort_controller();
 
-        });
+        dataset_collection_panel.datasets.forEach(dataset => {
+            dataset.run_projectR(projection_source, is_pca, scope)
+                .then(() => {
 
+                    if (dataset.projection_id) {
+                        if (multigene) {
+                            // 'entries' is array of gene_symbols
+                            dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
+                        } else {
+                            dataset.draw({ gene_symbol: first_thing.data('gene_symbol')});
+                        }
+                    } else {
+                        if (dataset.display) dataset.display.clear_display();
+                        dataset.show_no_match();
+                    }
+
+                })
+                .catch(error => console.error(error));
+        })
     }
     return false;   // keeps the page from not refreshing
 })

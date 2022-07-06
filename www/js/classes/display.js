@@ -10,7 +10,9 @@ class Display {
         user_id,
         label,
         plot_type,
-        primary_key
+        primary_key,
+        projection_id = null,
+        controller = null,
     }) {
         this.id = id;
         this.dataset_id = dataset_id;
@@ -19,7 +21,10 @@ class Display {
         this.plot_type = plot_type;
         this.primary_key = primary_key; // Combination of dataset_id, grid_position, and single/multigene indicator
         this.data = null;
+        this.first_draw = true; // Keep track of if this is the original draw so that effects are not doubly applied.
         this.zoomed = false;
+        this.projection_id = projection_id;   // Maybe use eventually but I don't think we can project on Epiviz displays
+        this.controller = controller;   // Abort controller for this display
     }
     zoom_in() {
         // data is already fetched, so all we need to do
@@ -67,12 +72,15 @@ class Display {
      */
     async draw(gene_symbol) {
         this.gene_symbol = gene_symbol;
-        const {
-            data
-        } = await this.get_data(gene_symbol);
-        if (data.success === -1) {
-            this.show_error(data.message);
-        } else {
+        let message = "There was an error drawing the plot.";
+
+        try {
+            const { data } = await this.get_data(gene_symbol);
+            if (data.success === -1) {
+                message = data.message;
+                throw e;
+            }
+
             this.data = data;
             if (this.zoomed) {
                 this.draw_zoomed();
@@ -81,7 +89,7 @@ class Display {
 
                 while (attempts_left) {
                     var draw_success = this.draw_chart(data);
-                    //console.log(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
+                    //(this.dataset_id + " - Drawing attempts left: " + attempts_left + " success: " + draw_success);
                     attempts_left -= 1;
 
                     // if it didn't work, wait one second and try again
@@ -101,20 +109,32 @@ class Display {
             // Exit status 2 is status to show plot but append warning message
             if (data.message && data.success === 2)
                 this.show_warning(this.data.message);
+
+        } catch (e) {
+            if (e.name == "CanceledError") {
+                console.info("display draw canceled for previous request");
+                return;
+            }
+            this.show_error(message);
+            return;
         }
     }
+
     /**
      *  Draw the multigene visualization.
      * @param {string} gene_symbols - Gene Symbols to visualize.
      */
-     async draw_mg(gene_symbols) {
+    async draw_mg(gene_symbols) {
         this.gene_symbols = gene_symbols;
-        const {
-            data
-        } = await this.get_data(gene_symbols);
-        if (data.success === -1) {
-            this.show_error(data.message);
-        } else {
+        let message = "There was an error drawing the plot.";
+
+        try {
+            const { data } = await this.get_data(gene_symbols);
+            if (data.success === -1) {
+                message = data.message;
+                throw e;
+            }
+
             this.data = data;
             if (this.zoomed) {
                 this.draw_zoomed();
@@ -143,8 +163,16 @@ class Display {
             // Exit status 2 is status to show plot but append warning message
             if (data.message && data.success === 2)
                 this.show_warning(this.data.message);
+        } catch (e) {
+            if (e.name == "CanceledError") {
+                console.info("display multigene draw canceled for previous request");
+                return;
+            }
+            this.show_error(message);
+            return;
         }
     }
+
     /**
      * Hides the display container
      */
@@ -181,13 +209,20 @@ class Display {
     /**
      * Show warning overlay above plot
      */
-    show_warning(msg) {}
+    show_warning(msg) { return }
 
     /**
      * Show the plot container.
      */
     show() {
         $(`#dataset_${this.primary_key}_h5ad.plot-container`).show();
+    }
+
+    /**
+     * Add label that shows full text of axis labels upon hover of axis
+     */
+    create_hover_info_area(target_div) {
+        $(`#${target_div}`).append(`<div class="hoverarea" ></div>`);
     }
 }
 
@@ -203,18 +238,16 @@ class EpiVizDisplay extends Display {
      * the server for data, but query the server for the image.
      * @param {Object} Data - Display data
      * @param {string} gene_symbol - Gene symbol to visualize
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, gene_symbol, projection_csv, target) {
+    }, gene_symbol, target) {
         super(args);
         const config = plotly_config;
         this.gene_symbol = gene_symbol;
         this.econfig = config;
         this.extendRangeRatio = 10;
-        this.projection_csv = projection_csv;   // Maybe use eventually but I don't think we can project on Epiviz displays
 
         const genes_track = plotly_config.tracks["EPIVIZ-GENES-TRACK"];
         if (genes_track.length > 0) {
@@ -233,9 +266,14 @@ class EpiVizDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         const base = `/api/plot/${this.dataset_id}/epiviz`;
         const query = `?gene=${gene_symbol}&genome=${this.genome}`;
-        return axios.get(`${base}${query}`);
+        return axios.get(`${base}${query}`, other_opts);
         // return null;
     }
 
@@ -260,7 +298,7 @@ class EpiVizDisplay extends Display {
             const epiviznav = document.querySelector(`#${this.target}_epiviznav`);
             epiviznav.setAttribute("chr", this.data.chr);
             const nstart = this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio);
-            const nend = this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)
+            const nend = this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio);
             epiviznav.setAttribute("start", nstart);
             epiviznav.setAttribute("end", nend);
             epiviznav.range = epiviznav.getGenomicRange(this.data.chr, nstart, nend);
@@ -292,10 +330,10 @@ class EpiVizDisplay extends Display {
                 temp_track += ` style='min-height:200px;'></${track}> `;
 
                 epiviztemplate += temp_track;
-            })
+            });
         }
 
-        return epiviztemplate
+        return epiviztemplate;
     }
 
     /**
@@ -306,32 +344,32 @@ class EpiVizDisplay extends Display {
         // the chr, start and end should come from query - map gene to genomic position.
 
         return `
-      <div id='${this.target}_epiviz' class='epiviz-container'>
-        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
-        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
+        <div id='${this.target}_epiviz' class='epiviz-container'>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
 
-        <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
+            <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
 
-        <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
-          id='${this.target}_epivizds'
-          provider-id="fileapi"
-          provider-url="${this.econfig.dataserver}">
-        </epiviz-data-source>
-        <epiviz-navigation
-          hide-chr-input
-          hide-search
-          hide-add-chart
-          show-viewer
-          id='${this.target}_epiviznav'
-          chr='${this.data.chr}'
-          start=${this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
-          end=${this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
-          viewer=${`/epiviz.html?dataset_id=${this.id}&chr=${this.data.chr}&start=${this.data.start}&end=${this.data.end}`}
-        >
-          ${this.epiviztemplate}
-        </epiviz-navigation>
-      </div>
-    `;
+            <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
+            id='${this.target}_epivizds'
+            provider-id="fileapi"
+            provider-url="${this.econfig.dataserver}">
+            </epiviz-data-source>
+            <epiviz-navigation
+            hide-chr-input
+            hide-search
+            hide-add-chart
+            show-viewer
+            id='${this.target}_epiviznav'
+            chr='${this.data.chr}'
+            start=${this.data.start - Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
+            end=${this.data.end + Math.round((this.data.end - this.data.start) * this.extendRangeRatio)}
+            viewer=${`/epiviz.html?dataset_id=${this.id}&chr=${this.data.chr}&start=${this.data.start}&end=${this.data.end}`}
+            >
+            ${this.epiviztemplate}
+            </epiviz-navigation>
+        </div>
+        `;
     }
 
     clear_display() {
@@ -348,12 +386,11 @@ class PlotlyDisplay extends Display {
     /**
      * Initialize plotly display.
      * @param {Object} Data - Data used to draw violin, bar, or line.
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, projection_csv) {
+    }) {
         super(args);
         const {
             x_axis,
@@ -405,7 +442,6 @@ class PlotlyDisplay extends Display {
         this.reverse_palette = reverse_palette;
         this.order = order;
         this.analysis = analysis;
-        this.projection_csv = projection_csv;
     }
     clear_display() {
         $(`#dataset_${this.primary_key}_h5ad`).remove();
@@ -419,6 +455,11 @@ class PlotlyDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         return axios.post(`/api/plot/${this.dataset_id}`, {
             plot_type: this.plot_type,
             analysis_owner_id: this.user_id,
@@ -447,8 +488,8 @@ class PlotlyDisplay extends Display {
             reverse_palette: this.reverse_palette,
             order: this.order,
             analysis: this.analysis,
-            projection_csv: this.projection_csv
-        });
+            projection_id: this.projection_id
+        }, other_opts);
     }
     /**
      * Draw chart.
@@ -460,35 +501,21 @@ class PlotlyDisplay extends Display {
         const target_div = `dataset_${this.primary_key}_h5ad`;
         const {
             plot_json,
-            plot_config
         } = data;
 
         this.hide_loading();
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-        const config_mods = {
-            responsive: false,
-        };
-
-        const config = {
-            ...plot_config,
-            ...config_mods,
-        };
-
-        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
+        // Get config
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        const update_layout = get_plotly_updates(index_conf, this.plot_type, "layout");
+
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
+        Plotly.relayout(target_div, update_layout);
 
         return true;
     }
@@ -506,46 +533,36 @@ class PlotlyDisplay extends Display {
         this.hide_loading();
         const {
             plot_json,
-            plot_config
         } = this.data;
+
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        // Do not need to add plot_display_config stuff since this.data has the updates already
     }
 
     show() {
         $(`#dataset_${this.primary_key} .plot-container`).show();
     }
     template() {
-        const template = `
+        return `
         <div
           id='dataset_${this.primary_key}_h5ad'
           class="h5ad-container"
           style="position: relative;">
         </div>
-      `;
-        return template;
+        `;
     }
     zoomed_template() {
-        const template = `
+        return `
         <div
           style='height:70vh;'
           id='dataset_${this.primary_key}_h5ad_zoomed'
           class="h5ad-container">
         </div>
-      `;
-        return template;
+        `;
     }
 
     /**
@@ -555,7 +572,7 @@ class PlotlyDisplay extends Display {
 
         const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_h5ad` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_h5ad`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -566,8 +583,8 @@ class PlotlyDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_h5ad_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_h5ad_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_h5ad_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_h5ad_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -578,7 +595,7 @@ class PlotlyDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 }
 
@@ -586,17 +603,16 @@ class PlotlyDisplay extends Display {
  * Class representing a multigene display drawn with Dash
  * @extends Display
  */
- class MultigeneDisplay extends Display {
+class MultigeneDisplay extends Display {
     /**
      * Initialize dash display.
      * @param {Object} Data - Data used to draw any multigene plot
      * @param {Array} gene_symbols - Array of gene symbols
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, gene_symbols, projection_csv) {
+    }, gene_symbols) {
         super(args);
         const {
             primary_col,
@@ -663,7 +679,6 @@ class PlotlyDisplay extends Display {
         this.colorscale = colorscale;
         this.reverse_colorscale = reverse_colorscale;
         this.analysis = analysis;
-        this.projection_csv = projection_csv;
     }
     clear_display() {
         $(`#dataset_${this.primary_key}_mg`).remove();
@@ -678,6 +693,11 @@ class PlotlyDisplay extends Display {
      * @param {string} gene_symbols - Gene symbols to visualize.
      */
     async get_data(gene_symbols) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         return axios.post(`/api/plot/${this.dataset_id}/mg_dash`, {
             gene_symbols,
             analysis: this.analysis,
@@ -713,8 +733,8 @@ class PlotlyDisplay extends Display {
             legend_title: this.legend_title,
             colorscale: this.colorscale,
             reverse_colorscale: this.reverse_colorscale,
-            projection_csv: this.projection_csv,
-        });
+            projection_id: this.projection_id,
+        }, other_opts);
     }
     /**
      * Draw chart.
@@ -726,40 +746,29 @@ class PlotlyDisplay extends Display {
         const target_div = `dataset_${this.primary_key}_mg`;
         const {
             plot_json,
-            plot_config
         } = data;
 
         this.hide_loading();
         $(`#dataset_${this.primary_key}`).append(this.template());
         this.show();
 
-        if (this.plot_type == "heatmap") {
+        // Get config
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
+
+        if (this.plot_type == "heatmap" && this.first_draw) {
+            // These functions modify `this.data` by reference, so we need to ensure we only call them once.
+            // Subsequent draw_chart calls will have the correct data, post-modification
+            this.first_draw = false;
             adjustExpressionColorbar(plot_json.data);
             adjustClusterColorbars(plot_json.data);
         }
 
-        const config_mods = {
-            responsive: false,
-        };
-
-        const config = {
-            ...plot_config,
-            ...config_mods,
-        };
-
-        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, config);
-
         // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        const update_layout = get_plotly_updates(index_conf, this.plot_type, "layout");
+
+        Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
+        Plotly.relayout(target_div, update_layout);
 
         return true;
     }
@@ -777,46 +786,38 @@ class PlotlyDisplay extends Display {
         this.hide_loading();
         const {
             plot_json,
-            plot_config
         } = this.data;
+
+        // Get config
+        const index_conf = post_plotly_config.index;
+        const plot_config = get_plotly_updates(index_conf, this.plot_type, "config");
 
         Plotly.newPlot(target_div, plot_json.data, plot_json.layout, plot_config);
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
-        const index_conf = post_plotly_config.index;
-        for (const idx in index_conf) {
-        const conf = index_conf[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == this.plot_type) {
-            const update_data = "data" in conf ? conf.data : {}
-            const update_layout = "layout" in conf ? conf.layout : {}
-            Plotly.update(target_div, update_data, update_layout)
-            }
-        }
+        // Do not need to add plot_display_config stuff since this.data has the updates already
+
     }
 
     show() {
         $(`#dataset_${this.primary_key} .plot-container`).show();
     }
     template() {
-        const template = `
+        return `
         <div
           id='dataset_${this.primary_key}_mg'
           class="h5ad-container"
           style="position: relative;">
         </div>
-      `;
-        return template;
+        `;
     }
     zoomed_template() {
-        const template = `
+        return `
         <div
           style='max-width:96%; height:70vh;'
           id='dataset_${this.primary_key}_mg_zoomed'
           class="h5ad-container">
         </div>
-      `;
-        return template;
+        `;
     }
 
     /**
@@ -826,7 +827,7 @@ class PlotlyDisplay extends Display {
 
         const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_mg` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_mg`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_mg_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -837,8 +838,8 @@ class PlotlyDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_mg_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_mg_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_mg_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_mg_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -849,7 +850,7 @@ class PlotlyDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 
 }
@@ -863,15 +864,13 @@ class SVGDisplay extends Display {
      * Initialize SVG
      * @param {Object} data - SVG display data
      * @param {number} grid_width - UI Panel width
-     * @param {String} projection_csv - Basename of CSV file containing projection data
      */
     constructor({
         plotly_config,
         ...args
-    }, grid_width, projection_csv, target) {
+    }, grid_width, target) {
         super(args);
         this.grid_width = grid_width;
-        this.projection_csv = projection_csv;
 
         this.target = target ? target : `dataset_${this.primary_key}`;
 
@@ -913,11 +912,16 @@ class SVGDisplay extends Display {
      * @param {string} gene_symbol - Gene symbol to visualize.
      */
     get_data(gene_symbol) {
-        let url = `/api/plot/${this.dataset_id}/svg?gene=${gene_symbol}`;
-        if (this.projection_csv) {
-            url += `&projection_csv=${this.projection_csv}`;
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
         }
-        return axios.get(url);
+
+        let url = `/api/plot/${this.dataset_id}/svg?gene=${gene_symbol}`;
+        if (this.projection_id) {
+            url += `&projection_id=${this.projection_id}`;
+        }
+        return axios.get(url, other_opts);
     }
     /**
      * Fetch the svg files from the server and cache them.
@@ -962,8 +966,7 @@ class SVGDisplay extends Display {
         const NA_FIELD_PLACEHOLDER = -0.012345679104328156;
         const NA_FIELD_COLOR = '#808080';
 
-        let paths;
-        paths = zoomed ? this.zoomed_paths : svgs[this.dataset_id];
+        const paths = zoomed ? this.zoomed_paths : svgs[this.dataset_id];
 
         const {
             data: expression
@@ -1008,7 +1011,7 @@ class SVGDisplay extends Display {
             const tissues = Object.keys(data.data);
 
             // Sometimes path isn't defined yet - latency/async issue??
-            if (! paths) {
+            if (!paths) {
                 return false;
             }
 
@@ -1174,8 +1177,7 @@ class SVGDisplay extends Display {
      * @param {object} data - SVG data
      */
     draw_legend(data, zoomed = false) {
-        let target;
-        target = zoomed ? `dataset_${this.primary_key}_svg_cc_zoomed` : `${this.target}_svg_c`;
+        const target = zoomed ? `dataset_${this.primary_key}_svg_cc_zoomed` : `${this.target}_svg_c`;
         const node = document.getElementById(target);
         // Create our legend svg
         const legend = d3
@@ -1187,12 +1189,12 @@ class SVGDisplay extends Display {
         const defs = legend.append('defs');
         // Define our gradient shape
         const linear_gradient = defs
-              .append('linearGradient')
-              .attr('id', `${this.target}-linear-gradient${zoomed ? '_zoomed' : ''}`)
-              .attr('x1', '0%')
-              .attr('y1', '0%')
-              .attr('x2', '100%')
-              .attr('y2', '0%');
+            .append('linearGradient')
+            .attr('id', `${this.target}-linear-gradient${zoomed ? '_zoomed' : ''}`)
+            .attr('x1', '0%')
+            .attr('y1', '0%')
+            .attr('x2', '100%')
+            .attr('y2', '0%');
 
         // TODO: Issues to resolve here.  The 'atf4' gene in this datasets:
         //  The Adult Cochlea Response to PTS-Inducing Noise - Summary View
@@ -1231,7 +1233,7 @@ class SVGDisplay extends Display {
                 //  it, so we can do a proper three-color range
                 // midpoint offset calculation, so the mid color is at 0
                 //var mid_offset = (1 - (min / max - min))*100;
-                const mid_offset = (Math.abs(min)/(max + Math.abs(min)))*100;
+                const mid_offset = (Math.abs(min) / (max + Math.abs(min))) * 100;
 
                 linear_gradient
                     .append('stop')
@@ -1273,9 +1275,9 @@ class SVGDisplay extends Display {
             );
 
         const xScale = d3
-              .scaleLinear()
-              .domain([min, max])
-              .range([0, width / 2]);
+            .scaleLinear()
+            .domain([min, max])
+            .range([0, width / 2]);
 
         const xAxis = d3
             .axisBottom()
@@ -1294,16 +1296,15 @@ class SVGDisplay extends Display {
     template() {
         const svg_class =
             this.grid_width == 8 ?
-            'grid-width-8' :
-            this.grid_width == 12 ?
-            'grid-width-12' :
-            '';
+                'grid-width-8' :
+                this.grid_width == 12 ?
+                    'grid-width-12' :
+                    '';
         const template = `
       <div
         id="${this.target}_svg_cc"
-        style="position: relative; display:none; ${
-          this.target.includes('modal') ? 'height:100%;' : ''
-        }"
+        style="position: relative; display:none; ${this.target.includes('modal') ? 'height:100%;' : ''
+            }"
         class="h5ad-svg-container ${svg_class}">
         <div
           id="${this.target}_svg_c"
@@ -1322,29 +1323,28 @@ class SVGDisplay extends Display {
     }
 
     zoomed_template() {
-        const template = `
-    <div
-      id="dataset_${this.primary_key}_svg_cc_zoomed"
-      style='display:none'
-      class="h5ad-svg-container-zoomed">
-      <div
-        id="dataset_${this.primary_key}_svg_c_zoomed"
-        class="svg-content" data-dataset-id="${this.dataset_id}"
-        data-path="datasets_uploaded/${this.dataset_id}.svg">
-      </div>
-    </div>
-  `;
-        return template;
+        return `
+        <div
+        id="dataset_${this.primary_key}_svg_cc_zoomed"
+        style='display:none'
+        class="h5ad-svg-container-zoomed">
+            <div
+                id="dataset_${this.primary_key}_svg_c_zoomed"
+                class="svg-content" data-dataset-id="${this.dataset_id}"
+                data-path="datasets_uploaded/${this.dataset_id}.svg">
+            </div>
+        </div>
+        `;
     }
 
     /**
      * Display warning above the plot
      */
-     show_warning(msg) {
+    show_warning(msg) {
 
         const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_svg_cc` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_svg_cc`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_svg_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -1355,8 +1355,8 @@ class SVGDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.append(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_svg_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_svg_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_svg_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_svg_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('bottom', '0').css('z-index', '2');
@@ -1367,7 +1367,7 @@ class SVGDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
 }
 
@@ -1376,41 +1376,42 @@ class SVGDisplay extends Display {
  * @extends Display
  */
 class TsneDisplay extends Display {
-  /**
-   * Initialize tSNE
-   * This subclass of display takes an extra argument, gene symbol.
-   * This is because we draw this one differently and don't query
-   * the server for data, but query the server for the image.
-   * @param {Object} Data - Display data
-   * @param {string} gene_symbol - Gene symbol to visualize
-   * @param {String} projection_csv - Basename of CSV file containing projection data
-   */
-  constructor({ plotly_config, ...args }, gene_symbol, projection_csv, target) {
-    super(args);
-    const config = plotly_config;
-    this.gene_symbol = gene_symbol;
-    this.analysis = config.analysis;
-    this.colors = config.colors;
-    this.order = config.order;
-    this.colorize_legend_by = config.colorize_legend_by;
-    this.skip_gene_plot = config.skip_gene_plot;
-    this.horizontal_legend = config.horizontal_legend;
-    this.plot_by_group = config.plot_by_group;
-    this.max_columns = config.max_columns;
-    this.x_axis = config.x_axis;
-    this.y_axis = config.y_axis;
+    /**
+     * Initialize tSNE
+     * This subclass of display takes an extra argument, gene symbol.
+     * This is because we draw this one differently and don't query
+     * the server for data, but query the server for the image.
+     * @param {Object} Data - Display data
+     * @param {string} gene_symbol - Gene symbol to visualize
+     */
+    constructor({ plotly_config, ...args }, gene_symbol, target) {
+        super(args);
+        const config = plotly_config;
+        this.gene_symbol = gene_symbol;
+        this.analysis_id = config.analysis ? config.analysis.id : null;
+        this.colors = config.colors;
+        this.order = config.order;
+        this.colorize_legend_by = config.colorize_legend_by;
+        this.skip_gene_plot = config.skip_gene_plot;
+        this.horizontal_legend = config.horizontal_legend;
+        this.plot_by_group = config.plot_by_group;
+        this.max_columns = config.max_columns;
+        this.x_axis = config.x_axis;
+        this.y_axis = config.y_axis;
 
-    this.projection_csv = projection_csv;
-
-    this.target = target ? target : `dataset_${this.primary_key}`;
-  }
-  /**
-   * Get data for the tsne. This return the tsne image, and
-   * is used mainly to check if the request is successful
-   * before appending img to the DOM.
-   * @param {string} gene_symbol - Gene symbol to visualize.
-   */
-   get_data(gene_symbol) {
+        this.target = target ? target : `dataset_${this.primary_key}`;
+    }
+    /**
+     * Get data for the tsne. This return the tsne image, and
+     * is used mainly to check if the request is successful
+     * before appending img to the DOM.
+     * @param {string} gene_symbol - Gene symbol to visualize.
+     */
+    get_data(gene_symbol) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
         return axios.post(`/api/plot/${this.dataset_id}/tsne`, {
             gene_symbol,
             analysis: this.analysis,
@@ -1428,55 +1429,55 @@ class TsneDisplay extends Display {
             horizontal_legend: this.horizontal_legend,
             // helps stop caching issues
             timestamp: new Date().getTime(),
-            projection_csv: this.projection_csv
-        });
-  }
+            projection_id: this.projection_id
+        }, other_opts);
+    }
 
-  draw_zoomed() {
-    this.draw_zoomed_chart();
-  }
-  /**
-   * Draw tSNE chart.
-   */
-  draw_chart() {
-    this.clear_display();
-    const target_div = `#${this.target}`;
-    const target_div_img = `#${this.target}_tsne img`;
-    $(target_div).append(this.template());
-    $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
-    this.hide_loading();
-    this.show();
-    return true;
-  }
+    draw_zoomed() {
+        this.draw_zoomed_chart();
+    }
+    /**
+     * Draw tSNE chart.
+     */
+    draw_chart() {
+        this.clear_display();
+        const target_div = `#${this.target}`;
+        const target_div_img = `#${this.target}_tsne img`;
+        $(target_div).append(this.template());
+        $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
+        this.hide_loading();
+        this.show();
+        return true;
+    }
 
-  // Essentially recycled the "draw_chart" function
-  draw_zoomed_chart() {
-    this.clear_display();
-    const target_div = `#dataset_zoomed div#${this.target}`;
-    const target_div_img = `${target_div}_tsne_zoomed img`;
-    $(target_div).append(this.zoomed_template());
-    $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
-    this.hide_loading();
-    this.show();
-  }
+    // Essentially recycled the "draw_chart" function
+    draw_zoomed_chart() {
+        this.clear_display();
+        const target_div = `#dataset_zoomed div#${this.target}`;
+        const target_div_img = `${target_div}_tsne_zoomed img`;
+        $(target_div).append(this.zoomed_template());
+        $(target_div_img).attr('src', `data:image/png;base64,${this.data.image}`);
+        this.hide_loading();
+        this.show();
+    }
 
-  /**
-   * HTML template representing the tSNE image
-   */
-  template() {
-    return `
-      <div id='${this.target}_tsne' class='img-static-container' style="position: relative;">
-        <img style='max-width:96%; max-height:40em;'></img>
-      </div>
-    `;
+    /**
+     * HTML template representing the tSNE image
+     */
+    template() {
+        return `
+        <div id='${this.target}_tsne' class='img-static-container' style="position: relative;">
+            <img style='max-width:96%; max-height:40em;'></img>
+        </div>
+        `;
     }
 
     zoomed_template() {
         return `
-    <div id='${this.target}_tsne_zoomed' class='img-static-container'>
-      <img style='max-width:96%; max-height:70em;'></img>
-    </div>
-  `;
+        <div id='${this.target}_tsne_zoomed' class='img-static-container'>
+            <img style='max-width:96%; max-height:70em;'></img>
+        </div>
+        `;
     }
 
     clear_display() {
@@ -1487,11 +1488,11 @@ class TsneDisplay extends Display {
     /**
      * Display warning above the plot
      */
-     show_warning(msg) {
+    show_warning(msg) {
 
-        const hover_msg = " Hover to see warning."
+        const hover_msg = " Hover to see warning.";
 
-        const dataset_selector = $( `#dataset_${this.primary_key}_tsne` );
+        const dataset_selector = $(`#dataset_${this.primary_key}_tsne`);
         const warning_template = `
         <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_tsne_warning'>
             <i class='fa fa-exclamation-triangle'></i>
@@ -1502,8 +1503,8 @@ class TsneDisplay extends Display {
         // NOTE: must add to DOM before making selector variables
         dataset_selector.prepend(warning_template);
 
-        const warning_selector = $( `#dataset_${this.primary_key}_tsne_warning` );
-        const msg_selector = $( `#dataset_${this.primary_key}_tsne_msg` );
+        const warning_selector = $(`#dataset_${this.primary_key}_tsne_warning`);
+        const msg_selector = $(`#dataset_${this.primary_key}_tsne_msg`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         warning_selector.css('position', 'absolute').css('z-index', '2');
@@ -1514,6 +1515,22 @@ class TsneDisplay extends Display {
         });
         warning_selector.mouseout(() => {
             msg_selector.text(hover_msg);
-       });
+        });
     }
+}
+
+// *** General functions ***
+
+// Get updates and additions to plot from the plot_display_config JS object
+function get_plotly_updates(conf_area, plot_type, category) {
+    let updates = {};
+    for (const idx in conf_area) {
+        const conf = conf_area[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == "all" || conf.plot_type == plot_type) {
+            const update = category in conf ? conf[category] : {};
+            updates = { ...updates, ...update };    // Merge updates
+        }
+    }
+    return updates;
 }

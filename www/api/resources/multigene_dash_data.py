@@ -5,7 +5,7 @@ import pandas as pd
 import geardb
 
 import json, os
-from gear.mg_plotting import get_config, PlotError
+from gear.mg_plotting import PlotError
 import gear.mg_plotting as mg
 
 from plotly.utils import PlotlyJSONEncoder
@@ -574,10 +574,6 @@ class MultigeneDashData(Resource):
         fig["layout"].pop("height", None)
         fig["layout"].pop("width", None)
 
-        fig["layout"]["dragmode"] = "select"
-        # Make Plotly controls flush with right of plot
-        fig["layout"]["modebar"] = {"orientation": "v"}
-
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
         # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response occasionally
@@ -586,7 +582,6 @@ class MultigeneDashData(Resource):
             , "message": message
             , 'gene_symbols': gene_symbols
             , 'plot_json': json.loads(plot_json)
-            , "plot_config": get_config()
         }
 
 class PaletteData(Resource):
