@@ -1,4 +1,5 @@
 
+from audioop import reverse
 import sys
 from itertools import cycle, product
 
@@ -12,10 +13,24 @@ import plotly.graph_objects as go
 import dash_bio as dashbio
 from plotly.subplots import make_subplots
 
-DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic if more groups are chosen
 ALPHABET_COLORS = px.colors.qualitative.Alphabet
+BOLD_COLORS = px.colors.qualitative.Bold
+D3_COLORS = px.colors.qualitative.D3
+DARK24_COLORS = px.colors.qualitative.Dark24  # 24 colors.  Could be problematic if more groups are chosen
 LIGHT24_COLORS = px.colors.qualitative.Light24
+SAFE_COLORS = px.colors.qualitative.Safe
 VIVID_COLORS = px.colors.qualitative.Vivid
+
+color_swatch_map = {
+    "alphabet": ALPHABET_COLORS
+    , "bold": BOLD_COLORS
+    , "d3": D3_COLORS
+    , "dark24": DARK24_COLORS
+    , "light24": LIGHT24_COLORS
+    , "safe": SAFE_COLORS
+    , "vivid": VIVID_COLORS
+}
+
 PALETTE_CYCLER = [DARK24_COLORS, ALPHABET_COLORS, LIGHT24_COLORS, VIVID_COLORS]
 
 # Fractional count to add to all values so log can be computed on non-expressed (0) values
@@ -60,7 +75,7 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
 
-def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
+def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colorscale="Bluered", reverse_colorscale=False):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -94,6 +109,9 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
     if is_log10:
         mean = df['value', 'mean']
 
+    if not colorscale:
+        colorscale="Bluered"
+
     fig.add_scatter(
         x=multicategory
         , y=df["gene_symbol"]
@@ -104,7 +122,8 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None):
         , mode="markers"
         , marker=dict(
             color=mean
-            , colorscale=['rgb(0,0,255)','rgb(150,0,90)','rgb(255,0,0)']
+            , colorscale=colorscale
+            , reversescale=reverse_colorscale
             , size=df["value", "percent"]
             , sizemode="area"
             , colorbar=dict(
@@ -249,7 +268,8 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels = None, is_
         # This was 2, 2 in Dash 0.6.1 but is now 3, 3 in Dash 1.0.2
         fig.append_trace(cgl, 3, 3)
 
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False, distance_metric="euclidean"):
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
+                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -292,7 +312,15 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         else:
             row_dist = distance_metric
 
-    return dashbio.Clustergram(
+    # In the default colorscheme, reversing the scheme depends on if the plot centers around zero.
+    if not colorscale:
+        reverse_colorscale = True if center_around_zero else False
+
+    # Heatmap colors
+    if not colorscale:
+        colorscale = "RdYlBu" if center_around_zero else "Reds"
+
+    fig = dashbio.Clustergram(
         data=values
         , column_labels=col_labels
         , row_labels=row_labels
@@ -301,11 +329,22 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , col_dist=col_dist
         , row_dist=row_dist
         , center_values=center_around_zero
-        , color_map="RdYlBu" if center_around_zero else "Reds" # Heatmap colors
+        , color_map=colorscale
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
         , line_width=1                      # Make dendrogram lines thicker
         , log_transform=False if is_log10 else True
     )
+
+    fig.data[-1]["reversescale"] = reverse_colorscale
+
+    if center_around_zero:
+        fig.data[-1]["zmid"] = 0
+    else:
+        # both zmin and zmax are required
+        fig.data[-1]["zmin"] = 0
+        fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D array
+
+    return fig
 
 def create_clustergram_observation_labels(df, fig, colname="composite_index", flip_axes=False):
     """Create a set of labels to replace the current ticktext in the clustergram."""
@@ -519,14 +558,19 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
 ### Violin fxns
 
-def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
+def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, reverse_colorscale=False):
     """Create a stacked violin plot.  Returns the figure."""
 
     # Preserve sort order passed to plot, and assign colors to primary category groups
     primary_groups = df[groupby_filters[0]].unique().tolist()
     secondary_groups = df[groupby_filters[1]].unique().tolist() if len(groupby_filters) > 1 else []
 
-    color_cycler = cycle(VIVID_COLORS)
+    if not colorscale:
+        colorscale = "vivid"
+
+    colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
+    color_cycler = cycle(colors)
+
     color_map = {cat: next(color_cycler) for cat in primary_groups}
 
     # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
@@ -635,9 +679,13 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False):
 
     return fig
 
-def create_violin_plot(df, groupby_filters, is_log10=False):
+def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, reverse_colorscale=False):
     """Creates a violin plot.  Returns the figure."""
-    color_cycler = cycle(VIVID_COLORS)
+    if not colorscale:
+        colorscale = "vivid"
+
+    colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
+    color_cycler = cycle(colors)
 
     fig = go.Figure()
 
@@ -1034,3 +1082,19 @@ class PlotError(Exception):
     def __init__(self, message="") -> None:
         self.message = message
         super().__init__(self.message)
+
+def get_colorscale(colorscale):
+    """Return colorscale 2D list for the selected premade colorscale."""
+    if colorscale.lower() in px.colors.named_colorscales():
+        return px.colors.get_colorscale(colorscale)
+    # Must be a qualitative colorscale
+    if colorscale not in color_swatch_map:
+        raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
+
+    # Create a 2d list of colors for the selected colorscale at equal distances
+    # to keep consistent with continuous colors
+    colorscale_list = []
+    length = len(color_swatch_map[colorscale]) - 1
+    for i, color in enumerate(color_swatch_map[colorscale]):
+        colorscale_list.append([i/length, color])
+    return colorscale_list

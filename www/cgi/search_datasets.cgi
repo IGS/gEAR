@@ -137,7 +137,7 @@ def main():
                 qry_params.extend([user.id])
 
         if search_terms:
-            selects.append(' MATCH(d.title, d.ldesc, d.geo_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
+            selects.append(' MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
             wheres.append(' AND MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE)')
 
             # this is the only instance where a placeholder can be in the SELECT statement, so it will
@@ -191,7 +191,7 @@ def main():
         )
 
     if DEBUG_MODE:
-        ofh = open('/tmp/debug', 'wt')
+        ofh = open('/tmp/dataset.search.debug', 'wt')
         ofh.write("QRY:\n{0}\n".format(qry))
         ofh.write("QRY_params:\n{0}\n".format(qry_params))
         ofh.close()

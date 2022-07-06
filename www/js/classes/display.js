@@ -646,6 +646,8 @@ class MultigeneDisplay extends Display {
             violin_add_points,
             plot_title,
             legend_title,
+            colorscale,
+            reverse_colorscale,
             analysis,   // Analysis
         } = plotly_config;
         this.gene_symbols = gene_symbols;
@@ -659,8 +661,8 @@ class MultigeneDisplay extends Display {
         this.cluster_obs = cluster_obs;
         this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
-        this.distance_metric = distance_metric,
-            this.adj_pvals = adj_pvals;
+        this.distance_metric = distance_metric;
+        this.adj_pvals = adj_pvals;
         this.annot_nonsig = annotate_nonsignificant;
         this.include_zero_fc = include_zero_fc;
         this.fold_change_cutoff = fold_change_cutoff;
@@ -677,6 +679,8 @@ class MultigeneDisplay extends Display {
         this.violin_add_points = violin_add_points;
         this.plot_title = plot_title;
         this.legend_title = legend_title;
+        this.colorscale = colorscale;
+        this.reverse_colorscale = reverse_colorscale;
         this.analysis = analysis;
     }
     clear_display() {
@@ -730,6 +734,8 @@ class MultigeneDisplay extends Display {
             violin_add_points: this.violin_add_points,
             plot_title: this.plot_title,
             legend_title: this.legend_title,
+            colorscale: this.colorscale,
+            reverse_colorscale: this.reverse_colorscale,
             projection_id: this.projection_id,
         }, other_opts);
     }

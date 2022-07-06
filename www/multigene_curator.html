@@ -211,6 +211,7 @@
                   Center the mean expression values around zero.
                 </label>
               </div>
+              <small id="center_around_zero_help" class="form-text text-muted">Choosing a diverging colorscale is recommended when enabling this option, and a sequential colorscale when disabling this option.</small>
             </div>
             <div class="form-group" id="cluster_obs_checkbox_container">
               <div class="form-check">
@@ -367,12 +368,25 @@
             </select>
           </div>
 
-          <div>
+          <div class="form-group">
             <label class="form-check-label" for="plot_title">Adjust plot title</label>
             <small id="plot_title_help" class="form-text text-muted">If left blank, plot will have a default title or no title.</small>
             <input class="form-control col-6" id="plot_title" placeholder="Enter name of title.">
           </div>
-        </fieldset> <!-- end options -->
+
+          <div class="form-group" id="colorscale_container">
+            <label class="form-check-label" for="colorscale_select">Select colorscale for plot</label>
+            <small id="colorscale_help" class="form-text text-muted">Select the colorscale used in this plot. Leaving unselected will use a default colorscale particular to the plot type.</small>
+            <select class="form-control" id="colorscale_select" aria-describedby="colorscale_help"></select>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="reverse_colorscale">
+              <label class="form-check-label" for="reverse_colorscale">
+                Reverse colorscale used in plot.
+              </label>
+            </div>
+          </div>
+        </fieldset>
+        <!-- end options -->
 
         <!-- Action buttons-->
         <div id="action_buttons" class="my-3">
@@ -670,6 +684,16 @@
         {{/props}}
       </optgroup>
       {{/props}}
+    </script>
+
+    <script id="select_colorscale_tmpl" type="text/x-jsrender">
+      <option></option>
+      <optgroup label="{{:label}}">
+        {{for options}}
+          {{!-- key is list index, prop is the value --}}
+          <option value="{{:value}}">{{:text}}</option>
+        {{/for}}
+      </optgroup>
     </script>
 
     <script id="dataset_plot_tmpl" type="text/x-jsrender">

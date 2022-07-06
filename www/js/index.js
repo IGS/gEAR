@@ -28,12 +28,6 @@ treeDiv - Element to generate the tree structure on
 storedValElt - Element to store text, vals, and data properties on (if not in a treeDiv descendant "dropdown-toggle" element)
 */
 
-/*
-Tree properties for constructor:
-treeDiv - Element to generate the tree structure on
-storedValElt - Element to store text, vals, and data properties on (if not in a treeDiv descendant "dropdown-toggle" element)
-*/
-
 const profile_tree = new ProfileTree({treeDiv: '#profile_tree'});
 const selected_profile_tree = new ProfileTree({treeDiv: '#selected_profile_tree'});
 
@@ -44,7 +38,7 @@ const projection_source_tree = new ProjectionSourceTree({treeDiv: '#projection_s
 
 const search_result_postselection_functions = [];
 
-window.onload = () => {
+$(document).on("handle_page_loading", () => {
 
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
@@ -281,7 +275,7 @@ window.onload = () => {
     // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
     // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
     observer.observe(target_node || safer_node , { attributes: true });
-};
+});
 
 function get_index_info() {
     $.ajax({
@@ -713,6 +707,10 @@ async function load_all_trees(){
             console.error(err)
         });
     console.info("Trees loaded");
+
+    // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
+    $(document).trigger("handle_page_loading");
+
 }
 
 // Hide option menu when scope is changed.
@@ -1061,7 +1059,6 @@ $("#projection_search_form").submit((event) => {
                 })
                 .catch(error => console.error(error));
         })
-
     }
     return false;   // keeps the page from not refreshing
 })

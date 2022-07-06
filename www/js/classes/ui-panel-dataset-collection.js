@@ -36,7 +36,6 @@ class DatasetCollectionPanel {
 
         // we have to do this because 'this' gets scoped out within the AJAX call
         const dsc_panel = this;
-
         $.ajax({
             url: "./cgi/get_dataset_list.cgi",
             type: "POST",
@@ -160,7 +159,6 @@ class DatasetCollectionPanel {
                 display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
         }
-
     }
 
     // Single-gene displays
@@ -199,5 +197,4 @@ class DatasetCollectionPanel {
             }
         }
     }
-
 }
