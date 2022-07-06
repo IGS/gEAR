@@ -3,12 +3,18 @@
 """
 
 This is a unified, all-purpose annotation loader for the gEAR database. It converts the 
-GBK-formatted ENSEMBL releases to an H5AD file.  It runs in two modes:
+GBK-formatted ENSEMBL releases to an H5AD file.  
+
+TODO:
+
+Add a mode option to have it run in two modes:
 
    - 'full' (default): Stores all attributes of the annotation
    - 'minimal': Stores only the identifier and gene symbol of each gene
 
-In either case, the identifier is the index
+In either case, the identifier is the index.
+
+Currently, it exports the 'full' version.
 
 """
 
