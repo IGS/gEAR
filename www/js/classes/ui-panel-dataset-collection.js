@@ -14,6 +14,7 @@ class DatasetCollectionPanel {
         this.datasets = datasets;
         this.layout_id = layout_id;
         this.layout_label = layout_label;
+        //this.colorblind_mode = false;   // Should the cividis color scheme be used for all plots
 
         if (!this.datasets) {
             this.datasets = new Array();
@@ -51,7 +52,8 @@ class DatasetCollectionPanel {
                 $.each(data["datasets"], (_i, ds) => {
                     // Choose single-gene or multigene grid-width
                     const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
-                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection);
+
+                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.controller);
 
                     if (dsp.load_status == "completed") {
                         // reformat the date
@@ -88,6 +90,18 @@ class DatasetCollectionPanel {
     reset() {
         this.datasets = [];
         $("#dataset_grid").empty();
+        this.reset_abort_controller();
+    }
+
+    reset_abort_controller() {
+        if (this.controller) {
+            this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        }
+        this.controller = new AbortController(); // Create new controller for new set of frames
+
+        for (const dataset of this.datasets) {
+            dataset.controller = this.controller;
+        }
     }
 
     set_layout(
@@ -152,6 +166,8 @@ class DatasetCollectionPanel {
 
     // Single-gene displays
     update_by_search_result(entry) {
+        this.reset_abort_controller();
+
         for (const dataset of this.datasets) {
             if (
                 typeof entry !== "undefined" &&
@@ -169,7 +185,10 @@ class DatasetCollectionPanel {
     }
 
     // Multigene displays
+    // Only executes in "gene" mode
     update_by_all_results(entries) {
+        this.reset_abort_controller();
+
         for (const dataset of this.datasets) {
             if (typeof entries !== "undefined") {
                 // TODO: Do something with "by_organism" like single-gene "update_by_search_result"

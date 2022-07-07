@@ -22,7 +22,8 @@ class DatasetPanel extends Dataset {
         { grid_position, ...args },
         grid_width,
         multigene = false,
-        projection = false
+        projection = false,
+        controller = null
     ) {
         super(args);
         this.grid_position = grid_position;
@@ -37,20 +38,19 @@ class DatasetPanel extends Dataset {
         const single_or_multi = this.multigene ? "multi" : "single";
         const genes_or_projection = this.projection ? "projection" : "genes";
         this.primary_key = `${this.id}_${this.grid_position}_${genes_or_projection}_${single_or_multi}`;
-        this.projection_csv = null;
+        this.projection_id = null;
+        this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
-        this.h5ad_info = null;
+        this.controller = controller;   // AbortController
     }
 
     // Call API to return observation information on this dataset
     fetch_h5ad_info (dataset_id, analysis) {
         const other_opts = {}
-        /*
         if (this.controller) {
             other_opts.signal = this.controller.signal;
         }
-        */
 
         const base = `./api/h5ad/${dataset_id}`;
         const query = analysis ? `?analysis=${analysis.id}` : '';
@@ -102,6 +102,8 @@ class DatasetPanel extends Dataset {
         }
 
         data.primary_key = this.primary_key;
+        data.controller = this.controller;
+        data.projection_id = this.projection_id;
 
         let display;
         if (
@@ -113,18 +115,18 @@ class DatasetPanel extends Dataset {
             data.plot_type === "tsne_dynamic" || // legacy
             data.plot_type === "tsne/umap_dynamic"
         ) {
-            display = new PlotlyDisplay(data, this.projection_csv);
+            display = new PlotlyDisplay(data);
         } else if (data.plot_type === "svg") {
-            display = new SVGDisplay(data, this.grid_width, this.projection_csv);
+            display = new SVGDisplay(data, this.grid_width);
         } else if (
             data.plot_type === "tsne" ||
             data.plot_type === "tsne_static" ||
             data.plot_type === "umap_static" ||
             data.plot_type === "pca_static"
         ) {
-            display = new TsneDisplay(data, gene_symbol, this.projection_csv);
+            display = new TsneDisplay(data, gene_symbol);
         } else if (data.plot_type === "epiviz") {
-            display = new EpiVizDisplay(data, gene_symbol, this.projection_csv);
+            display = new EpiVizDisplay(data, gene_symbol);
         }
         this.display = display;
 
@@ -144,6 +146,8 @@ class DatasetPanel extends Dataset {
         }
 
         data.primary_key = this.primary_key;
+        data.controller = this.controller;
+        data.projection_id = this.projection_id;
 
         let display;
         if (
@@ -153,7 +157,7 @@ class DatasetPanel extends Dataset {
             data.plot_type === "mg_violin" ||
             data.plot_type === "volcano"
         ) {
-            display = new MultigeneDisplay(data, gene_symbols, this.projection_csv);
+            display = new MultigeneDisplay(data, gene_symbols);
         }
         this.display = display;
 
@@ -325,6 +329,8 @@ class DatasetPanel extends Dataset {
                 : display.plotly_config;
         const gene_symbol = config.gene_symbol;
 
+        display.controller = this.controller;
+
         if (gene_symbol) {
             if (
                 display.plot_type === "violin" ||
@@ -372,6 +378,9 @@ class DatasetPanel extends Dataset {
                 ? JSON.parse(display.plotly_config)
                 : display.plotly_config;
         const gene_symbols = config.gene_symbols;
+
+        display.controller = this.controller;
+
         // Draw preview image
         if (gene_symbols) {
             const d = new MultigeneDisplay(display, gene_symbols);
@@ -529,25 +538,51 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source) {
+    async run_projectR(projection_source, is_pca, scope) {
         const dataset_id = this.id;
         const payload = {
-            scope: "repository",
-            input_value: projection_source,
+            genecart_id: projection_source,
+            is_pca,
         };
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         try {
-            const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
-                ...payload,
-            });
-            if (data.success < 1 && this.display) {
-                this.show_error(data.message);
+            const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
+            // If file was not found, put some loading text in the plot
+            if (! response.data.projection_id) {
+                this.show_loading({
+                    info:"Plot generation may take a few minutes as projections need to be generated beforehand."
+                });
+            }
+            payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
+        } catch (e) {
+            this.show_error(e.message);
+            throw(e.message);
+        }
+
+        payload.scope = scope;
+
+        let message = "There was an error projecting patterns onto this dataset.";
+        try {
+            const { data } = await axios.post(`/api/projectr/${dataset_id}`, payload, other_opts);
+            if (data.message) {
+                message = data.message;
+            }
+            if (data.success < 1) {
+                throw message; // will be caught below
+            }
+            this.projection_id = data.projection_id;
+            this.show_info(message)
+        } catch (e) {
+            if (e.name == "CanceledError") {
+                console.info("Canceled previous projectR request.");
                 return;
             }
-            this.projection_csv = data.csv_file;
-        } catch (e) {
-            const message = "There was an error in making this projection.";
-            const success = -1;
             this.show_error(message);
+            throw message
         }
     }
 }

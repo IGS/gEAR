@@ -20,6 +20,7 @@ let projection = false;
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
+const { controller } = dataset_collection_panel;
 
 /*
 Tree properties for constructor:
@@ -823,7 +824,18 @@ function show_search_result_info_box() {
 $('#search_results').on("click", "a", function(e) {
     e.preventDefault(); //prevent page scrolling to top
     $(this).blur(); //removes focus so active's purple coloring can show
-    select_search_result(this);
+
+    dataset_collection_panel.reset_abort_controller();
+
+    let draw=true;
+    if (projection) {
+        draw=false;
+
+        dataset_collection_panel.datasets.forEach((dataset) => {
+            dataset.draw({gene_symbol: $(this).data("gene_symbol")});
+        });
+    }
+    select_search_result(this, draw_display=draw);
 });
 
 // Warn user if no datasets in profile
