@@ -1,8 +1,10 @@
-current_analysis = null;
-var clicked_marker_genes = new Set();
-var entered_marker_genes = new Set();
-var current_label = null;
-var analysis_labels = new Set();
+"use strict";
+
+let current_analysis = null;
+let clicked_marker_genes = new Set();
+let entered_marker_genes = new Set();
+let current_label = null;
+let analysis_labels = new Set();
 
 // TODO:  Check font sizes on all instruction blocks
 // TODO:  Check if mitochrondrial QC actually returned anything
@@ -27,7 +29,7 @@ window.onload=() => {
     });
 
 
-    $( "#dataset_id" ).on('change', () => {
+    $( "#dataset_id" ).on('change', async () => {
         show_working("Loading dataset");
 
         $('.js-next-step').hide();
@@ -41,7 +43,8 @@ window.onload=() => {
                                          'dataset_is_raw': true});
 
         $(".initial_instructions").hide();
-        get_dataset_info($("#dataset_id").val());
+        // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
+        await get_dataset_info($("#dataset_id").val());
         load_preliminary_figures($("#dataset_id").val());
     });
 
@@ -660,32 +663,30 @@ function download_marker_genes_table() {
 }
 
 //TODO: move this into a generic utils module
-function get_dataset_info(dataset_id) {
+async function get_dataset_info(dataset_id) {
     $("#stored_analyses_c").hide();
 
-    $.ajax({
+    await $.ajax({
         type: "POST",
         url: "./cgi/get_dataset_info.cgi",
         data: {'dataset_id': dataset_id, 'include_shape': 1},
-        dataType: "json",
-        success: function(data) {
-            var ds = new Dataset(data);
+        dataType: "json"
+    }).done((data) => {
+        const ds = new Dataset(data);
 
-            $('#new_analysis_label').val(current_analysis.label);
+        $('#new_analysis_label').val(current_analysis.label);
 
-            // TODO: make Analysis.dataset the replacement for Analysis.dataset_id
-            current_analysis.dataset = ds;
+        // TODO: make Analysis.dataset the replacement for Analysis.dataset_id
+        current_analysis.dataset = ds;
 
-            update_selected_dataset(ds);
-            $("#dataset_info").show();
-            $("#analysis_list_c").show();
-            analysis_labels = current_analysis.get_saved_analyses_list(ds.id, 0);
-            done_working();
-        },
-        error: function(xhr, status, msg) {
-            report_error("Failed to access dataset");
-            report_error("Failed ID was: " + dataset_id + " because msg: " + msg);
-        }
+        update_selected_dataset(ds);
+        $("#dataset_info").show();
+        $("#analysis_list_c").show();
+        analysis_labels = current_analysis.get_saved_analyses_list(ds.id, 0);
+        done_working();
+    }).fail((xhr, status, msg) => {
+        report_error("Failed to access dataset");
+        report_error(`Failed ID was: ${dataset_id} because msg: ${msg}`);
     });
 }
 
@@ -698,25 +699,23 @@ function load_preliminary_figures(dataset_id) {
         data: {'dataset_id': current_analysis.dataset_id, 'analysis_id': current_analysis.id,
                'analysis_type': current_analysis.type, 'session_id': current_analysis.user_session_id
               },
-        dataType: "json",
-        success: function(data) {
-            $("#primary_initial_plot_loading_c").hide();
+        dataType: "json"
+    }).done((data) => {
+        $("#primary_initial_plot_loading_c").hide();
 
-            if (data['success'] == 1) {
-                $('#primary_initial_violin_c').html('<a target="_blank" href="./datasets/' + dataset_id + '.prelim_violin.png"><img src="./datasets/' + dataset_id + '.prelim_violin.png" class="img-fluid img-zoomed" /></a>');
-                $('#primary_initial_scatter_c').html('<a target="_blank" href="./datasets/' + dataset_id + '.prelim_n_genes.png"><img src="./datasets/' + dataset_id + '.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>');
-                done_working("Prelim plots displayed");
-            } else {
-                $('#primary_initial_violin_c').html('Preliminary plots not yet generated. Continue your analysis.');
-                done_working("Prelim figures missing.");
-            }
-
-            $("#primary_initial_plot_c").show(500);
-        },
-        error: function(xhr, status, msg) {
-            report_error("Failed to access dataset");
-            report_error("Failed ID was: " + dataset_id + " because msg: " + msg);
+        if (data['success'] == 1) {
+            $('#primary_initial_violin_c').html(`<a target="_blank" href="./datasets/${dataset_id}.prelim_violin.png"><img src="./datasets/` + dataset_id + '.prelim_violin.png" class="img-fluid img-zoomed" /></a>');
+            $('#primary_initial_scatter_c').html(`<a target="_blank" href="./datasets/${dataset_id}.prelim_n_genes.png"><img src="./datasets/` + dataset_id + '.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>');
+            done_working("Prelim plots displayed");
+        } else {
+            $('#primary_initial_violin_c').html('Preliminary plots not yet generated. Continue your analysis.');
+            done_working("Prelim figures missing.");
         }
+
+        $("#primary_initial_plot_c").show(500);
+    }).fail((xhr, status, msg) => {
+        report_error("Failed to access dataset");
+        report_error(`Failed ID was: ${dataset_id} because msg: ${msg}`);
     });
 }
 
@@ -761,61 +760,58 @@ async function populate_dataset_selection() {
             'for_page': 'analyze_dataset',
             'include_dataset_id': getUrlParameter('dataset_id')
         },
-        dataType: "json",
-        success(data) {
-            let counter = 0
-            // Populate select box with dataset information owned by the user
-            const user_datasets = [];
-            if (data.user.datasets.length > 0) {
-              // User has some profiles
-              $.each(data.user.datasets, (_i, item) => {
-                if (item) {
-                    user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
-                }
-              });
+        dataType: "json"
+    }).done((data) => {
+        let counter = 0
+        // Populate select box with dataset information owned by the user
+        const user_datasets = [];
+        if (data.user.datasets.length > 0) {
+            // User has some profiles
+            $.each(data.user.datasets, (_i, item) => {
+            if (item) {
+                user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
             }
-            // Next, add datasets shared with the user
-            const shared_datasets = [];
-            if (data.shared_with_user.datasets.length > 0) {
-              // User has some profiles
-              $.each(data.shared_with_user.datasets, (_i, item) => {
-                if (item) {
-                    shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
-                }
-              });
-            }
-            // Now, add public datasets
-            const domain_datasets = [];
-            if (data.public.datasets.length > 0) {
-              // User has some profiles
-              $.each(data.public.datasets, (_i, item) => {
-                  if (item) {
-                    domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
-                  }
-              });
-            }
-
-            dataset_tree.userDatasets = user_datasets;
-            dataset_tree.sharedDatasets = shared_datasets;
-            dataset_tree.domainDatasets = domain_datasets;
-            dataset_tree.generateTree();
-
-            // was there a requested dataset ID already?
-            const dataset_id = getUrlParameter('dataset_id');
-            if (dataset_id !== undefined) {
-                $("#dataset_id").val(dataset_id);
-                try {
-                    $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
-                    $("#dataset_id").trigger("change");
-                } catch {
-                    console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
-                }
-            }
-
-        },
-        error(xhr, status, msg) {
-            report_error(`Failed to load dataset list because msg: ${msg}`);
+            });
         }
+        // Next, add datasets shared with the user
+        const shared_datasets = [];
+        if (data.shared_with_user.datasets.length > 0) {
+            // User has some profiles
+            $.each(data.shared_with_user.datasets, (_i, item) => {
+            if (item) {
+                shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+            }
+            });
+        }
+        // Now, add public datasets
+        const domain_datasets = [];
+        if (data.public.datasets.length > 0) {
+            // User has some profiles
+            $.each(data.public.datasets, (_i, item) => {
+                if (item) {
+                domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
+                }
+            });
+        }
+
+        dataset_tree.userDatasets = user_datasets;
+        dataset_tree.sharedDatasets = shared_datasets;
+        dataset_tree.domainDatasets = domain_datasets;
+        dataset_tree.generateTree();
+
+        // was there a requested dataset ID already?
+        const dataset_id = getUrlParameter('dataset_id');
+        if (dataset_id !== undefined) {
+            $("#dataset_id").val(dataset_id);
+            try {
+                $('#dataset_id').text(dataset_tree.treeData.find(e => e.dataset_id === dataset_id).text);
+                $("#dataset_id").trigger("change");
+            } catch {
+                console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
+            }
+        }
+    }).fail((xhr, status, msg) => {
+        report_error(`Failed to load dataset list because msg: ${msg}`);
     });
     $('#pre_dataset_spinner').hide();
 }

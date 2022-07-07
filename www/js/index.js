@@ -141,6 +141,8 @@ $(document).on("handle_page_loading", () => {
         $('#intro_search_icon').trigger('click');
     }
 
+    // TODO: I think everything beyond this point could actually be in a window.onload event or set global.
+
     // The search button starts out disabled, make sure it gets re-enabled.
     $("button#submit_search").prop( "disabled", false );
 
@@ -515,9 +517,11 @@ async function load_layouts() {
 
 }
 
-function load_gene_carts() {
-    const d = new $.Deferred();
-
+async function load_gene_carts() {
+    let carts_found = false;
+    let permalink_cart_id = null
+    let permalink_cart_label = null
+    $("#selected_gene_cart_c").prop("disabled", false);
     const cart_share_id = getUrlParameter('gene_cart_share_id');
 
     if (!session_id) {
@@ -525,84 +529,70 @@ function load_gene_carts() {
         $("#selected_gene_cart_c").prop("disabled", true);
         gene_cart_tree.generateTree();
         selected_gene_cart_tree.generateTree();
-        d.resolve();
-    } else {
-        $("#selected_gene_cart_c").prop("disabled", false);
-        $.ajax({
+        return;
+    }
+    await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-            data: { 'session_id': session_id, 'share_id': cart_share_id },
-        dataType: 'json',
-        success(data, textStatus, jqXHR) { //source https://stackoverflow.com/a/20915207/2900840
-            const carts = {};
-            let permalink_cart_id = null
-            let permalink_cart_label = null
-            const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
-            let carts_found = false;
+        data: { 'session_id': session_id, 'share_id': cart_share_id },
+        dataType: 'json'
+    }).done((data, textStatus, jqXHR) => {
+        const carts = {};
+        const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
+        for (const ctype of cart_types) {
+            carts[ctype] = [];
 
-            for (const ctype of cart_types) {
-                carts[ctype] = [];
+            if (data[`${ctype}_carts`].length > 0) {
+                carts_found = true;
 
-                if (data[`${ctype}_carts`].length > 0) {
-                    carts_found = true;
+                $.each(data[`${ctype}_carts`], (_i, item) => {
+                    // If cart permalink was passed in, retrieve gene_cart_id for future use.
+                    if (cart_share_id && item.share_id == cart_share_id) {
+                        permalink_cart_id = item.id;
+                        permalink_cart_label = item.label;
+                    }
 
-                    $.each(data[`${ctype}_carts`], (_i, item) => {
-                        // If cart permalink was passed in, retrieve gene_cart_id for future use.
-                        if (cart_share_id && item.share_id == cart_share_id) {
-                            permalink_cart_id = item.id;
-                            permalink_cart_label = item.label;
-                        }
-
-                        carts[ctype].push({value: item.id,
-                                           text: item.label,
-                                           folder_id: item.folder_id,
-                                           folder_label: item.folder_label,
-                                           folder_parent_id: item.folder_parent_id
-                                          });
-                    });
-                }
+                    carts[ctype].push({value: item.id,
+                                        text: item.label,
+                                        folder_id: item.folder_id,
+                                        folder_label: item.folder_label,
+                                        folder_parent_id: item.folder_parent_id
+                                        });
+                });
             }
-
-            gene_cart_tree.domainGeneCarts = carts.domain;
-            gene_cart_tree.userGeneCarts = carts.user;
-            gene_cart_tree.groupGeneCarts = carts.group;
-            gene_cart_tree.sharedGeneCarts = carts.shared;
-            gene_cart_tree.publicGeneCarts = carts.public;
-            gene_cart_tree.generateTree();
-            selected_gene_cart_tree.domainGeneCarts = carts.domain;
-            selected_gene_cart_tree.userGeneCarts = carts.user;
-            selected_gene_cart_tree.groupGeneCarts = carts.group;
-            selected_gene_cart_tree.sharedGeneCarts = carts.shared;
-            selected_gene_cart_tree.publicGeneCarts = carts.public;
-            selected_gene_cart_tree.generateTree();
-
-            if (! carts_found ) {
-                $("#selected_gene_cart_c").prop("disabled", true);
-            }
-
-            // If gene_cart_permalink was provided:
-            // 1) Set the value in the gene cart tree and gene search bar
-            // 2) Trigger change event to populate the gene search bar with the genes
-            // 3) (Outside of function) Search button is clicked
-            // 4) (Outside of function) Show sidebar stuff in the display panel
-            if (permalink_cart_id) {
-                // This will also change selected_gene_cart via the "change" event trigger
-                $("#search_param_gene_cart").text(permalink_cart_label);
-                $("#search_param_gene_cart").val(permalink_cart_id);
-                $("#search_param_gene_cart").trigger('change');
-            }
-
-            d.resolve();
-        },
-        error(jqXHR, textStatus, errorThrown) {
-            gene_cart_tree.generateTree();
-            selected_gene_cart_tree.generateTree();
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
-            d.fail();
         }
-        });
+
+        gene_cart_tree.domainGeneCarts = carts.domain;
+        gene_cart_tree.userGeneCarts = carts.user;
+        gene_cart_tree.groupGeneCarts = carts.group;
+        gene_cart_tree.sharedGeneCarts = carts.shared;
+        gene_cart_tree.publicGeneCarts = carts.public;
+        selected_gene_cart_tree.domainGeneCarts = carts.domain;
+        selected_gene_cart_tree.userGeneCarts = carts.user;
+        selected_gene_cart_tree.groupGeneCarts = carts.group;
+        selected_gene_cart_tree.sharedGeneCarts = carts.shared;
+        selected_gene_cart_tree.publicGeneCarts = carts.public;
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
+    });
+    if (! carts_found ) {
+        $("#selected_gene_cart_c").prop("disabled", true);
     }
-    return d.promise();
+    gene_cart_tree.generateTree();
+    selected_gene_cart_tree.generateTree();
+
+    // If gene_cart_permalink was provided:
+    // 1) Set the value in the gene cart tree and gene search bar
+    // 2) Trigger change event to populate the gene search bar with the genes
+    // 3) (Outside of function) Search button is clicked
+    // 4) (Outside of function) Show sidebar stuff in the display panel
+    if (permalink_cart_id) {
+        // This will also change selected_gene_cart via the "change" event trigger
+        $("#search_param_gene_cart").text(permalink_cart_label);
+        $("#search_param_gene_cart").val(permalink_cart_id);
+        $("#search_param_gene_cart").trigger('change');
+    }
 }
 
 async function load_weighted_gene_carts(cart_share_id) {
@@ -1163,35 +1153,35 @@ $('.js-gene-cart').change( function() {
     if (typeof session_id !== 'undefined') {
         // Get the gene cart members and populate the gene symbol search bar
         $.ajax({
-        url: './cgi/get_gene_cart_members.cgi',
-        async: false,
-        type: 'post',
-        data: params,
-        success: function (data, newValue, oldValue) {
-            if (data.success === 1) {
-                const gene_symbols_array = []
-                // format gene symbols into search string
-                $.each(data.gene_symbols, function (i, item) {
-                    gene_symbols_array.push(item.label);
-                });
-                //deduplicate gene cart
-                const dedup_gene_symbols_array = [...new Set(gene_symbols_array)]
+            url: './cgi/get_gene_cart_members.cgi',
+            async: false,
+            type: 'post',
+            data: params,
+            success: function (data, newValue, oldValue) {
+                if (data.success === 1) {
+                    const gene_symbols_array = []
+                    // format gene symbols into search string
+                    $.each(data.gene_symbols, function (i, item) {
+                        gene_symbols_array.push(item.label);
+                    });
+                    //deduplicate gene cart
+                    const dedup_gene_symbols_array = [...new Set(gene_symbols_array)]
 
-                gene_symbols = dedup_gene_symbols_array.join(' ')
-                $('.js-gene-symbols').val(gene_symbols);
+                    gene_symbols = dedup_gene_symbols_array.join(' ')
+                    $('.js-gene-symbols').val(gene_symbols);
 
-                // determine if searching for exact matches
-                exact_match = true;
-                set_exact_match(exact_match);
-                $(".js-exact-match img").tooltip('hide'); // Do not want it to autoshow since it most likely is not hovered over right now
-            } else {
-                $('.js-gene-cart').text(oldValue);
-                $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-                    '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                    '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
+                    // determine if searching for exact matches
+                    exact_match = true;
+                    set_exact_match(exact_match);
+                    $(".js-exact-match img").tooltip('hide'); // Do not want it to autoshow since it most likely is not hovered over right now
+                } else {
+                    $('.js-gene-cart').text(oldValue);
+                    $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
+                        '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                        '<p class="alert-message"><strong>Oops! </strong> ' + data.error + '</p></div>').show();
+                }
+                d.resolve();
             }
-            d.resolve();
-        }
         });
     } else {
         d.resolve();

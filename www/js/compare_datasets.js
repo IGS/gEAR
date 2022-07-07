@@ -440,7 +440,7 @@ function stringify_all_conditions(condition) {
 	return sanitized_condition;
 }
 
-$(document).on("build_jstrees", () => populate_dataset_selection_controls);
+$(document).on("build_jstrees", () => populate_dataset_selection_controls());
 
 async function populate_dataset_selection_controls() {
 	const dataset_id = getUrlParameter("dataset_id");
