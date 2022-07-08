@@ -905,7 +905,7 @@ class SVGDisplay extends Display {
             // Got the colors by importing plotly.express as px and then running
             // px.colors.sample_colorscale(px.colors.get_colorscale("cividis"), 3)
             this.low_color = 'rgb(254, 232, 56)';
-            this.mid_color = 'rgb(125, 124, 118)';
+            this.mid_color = null; // I found adding the mid color skews the whole scheme towards the high color
             this.high_color = 'rgb(0, 34, 78)';
         };
 
