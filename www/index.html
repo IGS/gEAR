@@ -457,7 +457,7 @@
                 </script>
               </div>
               -->
-              
+
               <div id="selected_profile_container" class="form-group">
                 <label id="selected_profile_label" class="mb-0">Select Profile</label>
                 <div id="selected_profile_c" class="dropdown">
@@ -474,6 +474,14 @@
                     </form>
                   </div>
                 </div> <!-- end selected_profile_c -->
+              </div>
+              <div class="form-group form-group-sm">
+                <div class="form-check" data-toggle="tooltip" data-placement="right" title="If checked, plots will use a colorscheme suitable for those with color-vision deficiencies.">
+                  <input class="form-check-input" type="checkbox" id="colorblind_enable">
+                  <label class="form-check-label" for="colorblind_enable">
+                    Enable color-vision deficiency colors
+                  </label>
+                </div>
               </div>
               <!--
               <div id="submit_search_projection" class="js-search form-group form-group-sm">
@@ -549,6 +557,11 @@
             Main panel of active page
         ------------------------------------------->
           <div id="viewport_main" class="main_column col-10">
+            <div class="alert-info alert" role="alert" id="functional_not_supported_alert" style="display:none;">
+              <p>
+                Functional annotation information is not available for multigene searches and for projection patterns.
+              </p>
+            </div>
             <div id="links_out_c" class="row search_result_c">
               <div class="col-12">
                 <div id="searched_gene">

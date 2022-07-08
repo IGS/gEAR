@@ -788,7 +788,15 @@ function select_search_result(elm) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    if (!projection) {
+    // The "if" part will currently never be executed on main
+    if ((projection)) {
+        $('#functional_not_supported_alert').show();
+        $('#links_out_c').hide();
+        $('#gene_details_c').hide();
+    } else {
+        $('#functional_not_supported_alert').hide();
+        $('#links_out_c').show();
+        $('#gene_details_c').show();
         annotation_panel.annotation = search_results[gene_sym];
         annotation_panel.autoselect_organism();
     }
@@ -915,6 +923,9 @@ $("#gene_search_form").submit((event) => {
     // Add Exact Match param
     formData.push({"name": "exact_match", "value" :Number(exact_match)});
 
+    $('#functional_not_supported_alert').hide();
+
+
     $.ajax({
         url : './cgi/search_genes.py',
         type: "POST",
@@ -928,6 +939,9 @@ $("#gene_search_form").submit((event) => {
             $('#intro_content').hide('fade', {}, 400, () => {
                 if (multigene){
                     dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+                    $('#functional_not_supported_alert').show();
+                    $('#links_out_c').hide();
+                    $('#gene_details_c').hide();
                 } else {
                     // auto-select the first match.  first <a class="list-group-item"
                     const first_thing = $('#search_results a.list-group-item').first();
@@ -1401,4 +1415,21 @@ $('#submit_search_projection').click((e) => {
     // Scope selection
     $('#toggle_options').hide();  // Not sure if this is relevant for projections
     $('#projection_search_form').submit();
+})
+
+$('#colorblind_enable').change((e) => {
+    if ($('#colorblind_enable').is(':checked')) {
+        dataset_collection_panel.enable_colorblind();
+        return;
+    }
+    dataset_collection_panel.disable_colorblind();
+
+    // Submit gene or projection search again
+    // We will be on the right tab already, so we don't need to reload page elements
+    if (projection) {
+        $('#projection_search_form').submit();
+        return;
+    }
+    $('#gene_search_form').submit();
+
 })
