@@ -904,9 +904,9 @@ class SVGDisplay extends Display {
         if (this.colorblind_mode) {
             // Got the colors by importing plotly.express as px and then running
             // px.colors.sample_colorscale(px.colors.get_colorscale("cividis"), 3)
-            this.low_color = 'rgb(0, 34, 78)';
+            this.low_color = 'rgb(254, 232, 56)';
             this.mid_color = 'rgb(125, 124, 118)';
-            this.high_color = 'rgb(254, 232, 56)';
+            this.high_color = 'rgb(0, 34, 78)';
         };
 
         this.clear_display();
