@@ -23,7 +23,8 @@ class DatasetPanel extends Dataset {
         grid_width,
         multigene = false,
         projection = false,
-        controller = null
+        colorblind_mode = false,
+        controller = null,
     ) {
         super(args);
         this.grid_position = grid_position;
@@ -42,6 +43,7 @@ class DatasetPanel extends Dataset {
         this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
+        this.colorblind_mode = colorblind_mode;
         this.controller = controller;   // AbortController
     }
 
@@ -104,25 +106,17 @@ class DatasetPanel extends Dataset {
         data.primary_key = this.primary_key;
         data.controller = this.controller;
         data.projection_id = this.projection_id;
+        data.colorblind_mode = this.colorblind_mode;
 
         let display;
         if (
-            data.plot_type === "bar" ||
-            data.plot_type === "scatter" ||
-            data.plot_type === "violin" ||
-            data.plot_type === "line" ||
-            data.plot_type === "contour" ||
-            data.plot_type === "tsne_dynamic" || // legacy
-            data.plot_type === "tsne/umap_dynamic"
+            ["bar", "scatter", "violin", "line", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(data.plot_type)
         ) {
             display = new PlotlyDisplay(data);
         } else if (data.plot_type === "svg") {
             display = new SVGDisplay(data, this.grid_width);
         } else if (
-            data.plot_type === "tsne" ||
-            data.plot_type === "tsne_static" ||
-            data.plot_type === "umap_static" ||
-            data.plot_type === "pca_static"
+            ["tsne", "tsne_static", "umap_static", "pca_static"].includes(data.plot_type)
         ) {
             display = new TsneDisplay(data, gene_symbol);
         } else if (data.plot_type === "epiviz") {
@@ -148,14 +142,11 @@ class DatasetPanel extends Dataset {
         data.primary_key = this.primary_key;
         data.controller = this.controller;
         data.projection_id = this.projection_id;
+        data.colorblind_mode = this.colorblind_mode;
 
         let display;
         if (
-            data.plot_type === "dotplot" ||
-            data.plot_type === "heatmap" ||
-            data.plot_type === "quadrant" ||
-            data.plot_type === "mg_violin" ||
-            data.plot_type === "volcano"
+            ["dotplot", "heatmap", "quadrant", "mg_violin", "volcano"].includes(data.plot_type)
         ) {
             display = new MultigeneDisplay(data, gene_symbols);
         }
@@ -327,19 +318,14 @@ class DatasetPanel extends Dataset {
             typeof display.plotly_config == "string"
                 ? JSON.parse(display.plotly_config)
                 : display.plotly_config;
-        const gene_symbol = config.gene_symbol;
+        const { gene_symbol } = config;
 
         display.controller = this.controller;
+        display.colorblind_mode = this.colorblind_mode;
 
         if (gene_symbol) {
             if (
-                display.plot_type === "violin" ||
-                display.plot_type === "bar" ||
-                display.plot_type === "line" ||
-                display.plot_type === "scatter" ||
-                display.plot_type === "contour" ||
-                display.plot_type === "tsne_dynamic" || // legacy
-                display.plot_type === "tsne/umap_dynamic"
+                ["violin", "bar", "line", "scatter", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(display.plot_type)
             ) {
                 const d = new PlotlyDisplay(display);
                 d.get_data(gene_symbol).then(({ data }) => {
@@ -377,9 +363,10 @@ class DatasetPanel extends Dataset {
             typeof display.plotly_config === "string"
                 ? JSON.parse(display.plotly_config)
                 : display.plotly_config;
-        const gene_symbols = config.gene_symbols;
+        const { gene_symbols } = config;
 
         display.controller = this.controller;
+        display.colorblind_mode = this.colorblind_mode;
 
         // Draw preview image
         if (gene_symbols) {

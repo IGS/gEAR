@@ -13,6 +13,7 @@ class Display {
         primary_key,
         projection_id = null,
         controller = null,
+        colorblind_mode = false,
     }) {
         this.id = id;
         this.dataset_id = dataset_id;
@@ -25,6 +26,7 @@ class Display {
         this.zoomed = false;
         this.projection_id = projection_id;   // Maybe use eventually but I don't think we can project on Epiviz displays
         this.controller = controller;   // Abort controller for this display
+        this.colorblind_mode = colorblind_mode;
     }
     zoom_in() {
         // data is already fetched, so all we need to do
@@ -273,6 +275,7 @@ class EpiVizDisplay extends Display {
 
         const base = `/api/plot/${this.dataset_id}/epiviz`;
         const query = `?gene=${gene_symbol}&genome=${this.genome}`;
+        // TODO: Add colorblind mode to query
         return axios.get(`${base}${query}`, other_opts);
         // return null;
     }
@@ -488,7 +491,8 @@ class PlotlyDisplay extends Display {
             reverse_palette: this.reverse_palette,
             order: this.order,
             analysis: this.analysis,
-            projection_id: this.projection_id
+            projection_id: this.projection_id,
+            colorblind_mode: this.colorblind_mode
         }, other_opts);
     }
     /**
@@ -734,6 +738,7 @@ class MultigeneDisplay extends Display {
             colorscale: this.colorscale,
             reverse_colorscale: this.reverse_colorscale,
             projection_id: this.projection_id,
+            colorblind_mode: this.colorblind_mode
         }, other_opts);
     }
     /**
@@ -894,6 +899,15 @@ class SVGDisplay extends Display {
         this.low_color = low_color;
         this.mid_color = mid_color;
         this.high_color = high_color;
+
+        // If colorblind mode activated, replace using "cividis" palette
+        if (this.colorblind_mode) {
+            // Got the colors by importing plotly.express as px and then running
+            // px.colors.sample_colorscale(px.colors.get_colorscale("cividis"), 3)
+            this.low_color = 'rgb(0, 34, 78)';
+            this.mid_color = 'rgb(125, 124, 118)';
+            this.high_color = 'rgb(254, 232, 56)';
+        };
 
         this.clear_display();
         $(`#${this.target}`).append(this.template());
@@ -1429,7 +1443,8 @@ class TsneDisplay extends Display {
             horizontal_legend: this.horizontal_legend,
             // helps stop caching issues
             timestamp: new Date().getTime(),
-            projection_id: this.projection_id
+            projection_id: this.projection_id,
+            colorblind_mode: this.colorblind_mode,
         }, other_opts);
     }
 

@@ -1420,9 +1420,9 @@ $('#submit_search_projection').click((e) => {
 $('#colorblind_enable').change((e) => {
     if ($('#colorblind_enable').is(':checked')) {
         dataset_collection_panel.enable_colorblind();
-        return;
+    } else {
+        dataset_collection_panel.disable_colorblind();
     }
-    dataset_collection_panel.disable_colorblind();
 
     // Submit gene or projection search again
     // We will be on the right tab already, so we don't need to reload page elements

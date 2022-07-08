@@ -161,7 +161,8 @@ class MultigeneDashData(Resource):
         # Misc options
         title = req.get('plot_title', None)
         legend_title = req.get('legend_title', None)
-        projection_csv = req.get('projection_csv', None)    # as CSV file
+        projection_id = req.get('projection_id', None)    # projection id of csv output
+        colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
@@ -197,7 +198,8 @@ class MultigeneDashData(Resource):
         success = 1
         message = ""
 
-        if projection_csv:
+        if projection_id:
+            projection_csv = "{}.csv".format(projection_id)
             try:
                 adata = create_projection_adata(adata, projection_csv)
             except PlotError as pe:

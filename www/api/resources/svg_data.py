@@ -36,7 +36,7 @@ class SvgData(Resource):
     """
     def get(self, dataset_id):
         gene_symbol = request.args.get('gene', None)
-        projection_csv = request.args.get('projection_csv', None)  # As CSV path
+        projection_id = request.args.get('projection_id', None)    # projection id of csv output
 
         if not gene_symbol or not dataset_id:
             return {
@@ -67,7 +67,8 @@ class SvgData(Resource):
 
         adata = sc.read_h5ad(h5_path)
 
-        if projection_csv:
+        if projection_id:
+            projection_csv = "{}.csv".format(projection_id)
             try:
                 adata = create_projection_adata(adata, projection_csv)
             except PlotError as pe:
@@ -103,55 +104,55 @@ class SvgData(Resource):
             df = df.iloc[:,[0]] # Note, put the '0' in a list to return a DataFrame.  Not having in list returns DataSeries instead
 
         scores = {
-          "dataset": {
-            "dataset_id": dataset_id,
-            "min": float(adata.X[~np.isnan(adata.X)].min()),
-            "max": float(adata.X[~np.isnan(adata.X)].max())
-          },
-          "gene": {
-            "gene": gene_symbol,
-            "min": float(selected.X[~np.isnan(selected.X)].min()),
-            "max": float(selected.X[~np.isnan(selected.X)].max())
-          },
-          "tissue": dict()
+            "dataset": {
+                "dataset_id": dataset_id,
+                "min": float(adata.X[~np.isnan(adata.X)].min()),
+                "max": float(adata.X[~np.isnan(adata.X)].max())
+            },
+            "gene": {
+                "gene": gene_symbol,
+                "min": float(selected.X[~np.isnan(selected.X)].min()),
+                "max": float(selected.X[~np.isnan(selected.X)].max())
+            },
+            "tissue": dict()
         }
 
         tissues = adata.obs.index.tolist()
         for tissue in tissues:
-          tissue_adata = adata[tissue, :]
-          scores['tissue'][tissue] = {
-            "min": float(tissue_adata.X[~np.isnan(tissue_adata.X)].min()),
-            "max": float(tissue_adata.X[~np.isnan(tissue_adata.X)].max())
-          }
+            tissue_adata = adata[tissue, :]
+            scores['tissue'][tissue] = {
+                "min": float(tissue_adata.X[~np.isnan(tissue_adata.X)].min()),
+                "max": float(tissue_adata.X[~np.isnan(tissue_adata.X)].max())
+            }
 
         # Get the average for all cells if there is a cell_type
         # in case there is an SVG path that has the convention
         # {tissue}--mean
         if 'cell_type' in selected.obs.columns:
-          df = selected.to_df()
-          df = pd.concat([df, selected.obs["cell_type"]], axis=1)
+            df = selected.to_df()
+            df = pd.concat([df, selected.obs["cell_type"]], axis=1)
 
-          cell_type_avgs = df.groupby('cell_type').mean()
-          # Add mean label
-          mean_labels = cell_type_avgs.reset_index()['cell_type'].apply(
-            lambda cell_type: f"{cell_type}--mean")
-          cell_type_avgs = cell_type_avgs.set_index(mean_labels)
+            cell_type_avgs = df.groupby('cell_type').mean()
+            # Add mean label
+            mean_labels = cell_type_avgs.reset_index()['cell_type'].apply(
+                lambda cell_type: f"{cell_type}--mean")
+            cell_type_avgs = cell_type_avgs.set_index(mean_labels)
 
-          # Remove column in order to match both df and cell_type_avgs
-          # for concatenation
-          del df['cell_type']
-          # Concatenate our dataframe with cell_type averages with our
-          # dataframe with all the tissues.
-          df = pd.concat([df, cell_type_avgs])
+            # Remove column in order to match both df and cell_type_avgs
+            # for concatenation
+            del df['cell_type']
+            # Concatenate our dataframe with cell_type averages with our
+            # dataframe with all the tissues.
+            df = pd.concat([df, cell_type_avgs])
         else:
-          df = selected.to_df()
-          df = pd.concat([df, selected.obs], axis=1)
+            df = selected.to_df()
+            df = pd.concat([df, selected.obs], axis=1)
 
         df = df.rename(columns={df.columns[0]: "data"})
 
         return {
-          "success": success,
-          "message": message,
-          "scores": scores,
-          **df.to_dict()
+            "success": success,
+            "message": message,
+            "scores": scores,
+            **df.to_dict()
         }

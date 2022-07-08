@@ -116,7 +116,8 @@ class PlotlyData(Resource):
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
-        projection_csv = req.get('projection_csv', None)  # As CSV path
+        projection_id = req.get('projection_id', None)    # projection id of csv output
+        colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.
@@ -198,7 +199,8 @@ class PlotlyData(Resource):
             except:
                 pass
 
-        if projection_csv:
+        if projection_id:
+            projection_csv = "{}.csv".format(projection_id)
             try:
                 adata = create_projection_adata(adata, projection_csv)
             except PlotError as pe:
