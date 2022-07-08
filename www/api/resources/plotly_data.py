@@ -1,7 +1,7 @@
 from flask import request
 from flask_restful import Resource
 import pandas as pd
-import copy, json, os, re
+import copy, json, os, re, sys
 import geardb
 import numbers
 from gear.plotting import generate_plot, plotly_color_map, PlotError
@@ -261,6 +261,26 @@ class PlotlyData(Resource):
                 if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
                     df[x_axis] = selected.obsm["X_pca"].transpose()[X]
                     df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
+
+        if color_map and color_name:
+            # Validate if all color map keys are in the dataframe columns
+            # Ran into an issue where the color map keys were truncated compared to the dataframe column values
+            col_values = set(df[color_name].unique())
+            diff = col_values.difference(color_map.keys())
+            if diff:
+                message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
+                message += "Will set color map key values to the unique values in the dataframe column."
+                print(message, file=sys.stderr)
+                # Sort both the colormap and dataframe column alphabetically
+                sorted_column_values = sorted(col_values)
+                updated_color_map = {}
+                # Replace all the colormap values with the dataframe column values
+                # There is a good chance that the dataframe column values will be in the same order as the colormap values
+                for idx, val in enumerate(sorted(color_map.keys())):
+                    col_val = sorted_column_values[idx]
+                    updated_color_map[col_val] = color_map[val]
+
+                color_map = updated_color_map
 
         if color_name and not (color_map or palette):
             # For numerical color dimensions, we want to use
