@@ -6,6 +6,7 @@ import geardb
 import numbers
 from gear.plotting import generate_plot, plotly_color_map, PlotError
 from plotly.utils import PlotlyJSONEncoder
+import plotly.express.colors as pxc
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -289,6 +290,26 @@ class PlotlyData(Resource):
                         if re.search(COLOR_HEX_PTRN, color_hex[0]):
                             color_map = {name[0]:name[1] for name, group in grouped}
 
+        # Save original passed-in colormap or palette, so that it is not written by the colorblind version
+        chosen_color_map = color_map if color_map else None
+        chosen_palette = palette if palette else None
+
+        # NOTE: If no color_name category, just leave color as "purple"
+        # Using the reversed cividis scale so that higher expression values are darker
+        if colorblind_mode:
+            # Discrete scales = Viridis
+            # Continuous scales = Reversed Cividis
+            if palette:
+                palette = "cividis_r"
+            elif color_map:
+                if isinstance(color_map, list):
+                    color_map = pxc.get_colorscale("cividis_r")
+                elif isinstance(color_map, dict):
+                    num_entries = len(color_map)
+                    viridis_colors =  pxc.get_colorscale("viridis")
+                    sampled_colors = pxc.sample_colorscale(viridis_colors, num_entries)
+                    color_map = {key: value for key, value in zip(color_map.keys(), sampled_colors)}
+
         if 'replicate' in df and plot_type == 'scatter':
             df = df.drop(['replicate'], axis=1)
 
@@ -394,8 +415,8 @@ class PlotlyData(Resource):
             "facet_row": facet_row,
             "facet_col": facet_col,
             # only send back colormap for categorical color dimension
-            "plot_colors": color_map if isinstance(color_map, dict) else None,
-            "plot_palette": palette,
+            "plot_colors": chosen_color_map if isinstance(chosen_color_map, dict) else None,
+            "plot_palette": chosen_palette,
             "reverse_palette":reverse_palette,
             "plot_order": order_res,
         }
