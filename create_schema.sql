@@ -5,6 +5,7 @@ CREATE TABLE guser (
        email          VARCHAR(255),
        institution    VARCHAR(255),
        pass           VARCHAR(50),
+       colorblind_mode TINYINT(1) DEFAULT 0,
        updates_wanted TINYINT(1),
        is_admin       TINYINT(1) DEFAULT 0,
        help_id        VARCHAR(50),

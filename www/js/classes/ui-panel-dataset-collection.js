@@ -14,22 +14,11 @@ class DatasetCollectionPanel {
         this.datasets = datasets;
         this.layout_id = layout_id;
         this.layout_label = layout_label;
-        this.colorblind_mode = false;   // Should the cividis color scheme be used for all plots
 
         if (!this.datasets) {
             this.datasets = new Array();
         }
     }
-
-    enable_colorblind() {
-        console.info('Colorblind mode enabled');
-        this.colorblind_mode = true;
-    };
-
-    disable_colorblind() {
-        console.info('Colorblind mode disabled');
-        this.colorblind_mode = false;
-    };
 
     load_frames({
         dataset_id = null,
@@ -63,7 +52,7 @@ class DatasetCollectionPanel {
                     // Choose single-gene or multigene grid-width
                     const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
 
-                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.colorblind_mode, dsc_panel.controller);
+                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.controller);
 
                     if (dsp.load_status == "completed") {
                         // reformat the date

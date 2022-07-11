@@ -43,7 +43,6 @@ class DatasetPanel extends Dataset {
         this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
-        this.colorblind_mode = colorblind_mode;
         this.controller = controller;   // AbortController
     }
 
@@ -106,7 +105,7 @@ class DatasetPanel extends Dataset {
         data.primary_key = this.primary_key;
         data.controller = this.controller;
         data.projection_id = this.projection_id;
-        data.colorblind_mode = this.colorblind_mode;
+        data.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         let display;
         if (
@@ -142,7 +141,7 @@ class DatasetPanel extends Dataset {
         data.primary_key = this.primary_key;
         data.controller = this.controller;
         data.projection_id = this.projection_id;
-        data.colorblind_mode = this.colorblind_mode;
+        data.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         let display;
         if (
@@ -321,7 +320,7 @@ class DatasetPanel extends Dataset {
         const { gene_symbol } = config;
 
         display.controller = this.controller;
-        display.colorblind_mode = this.colorblind_mode;
+        display.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         if (gene_symbol) {
             if (
@@ -366,7 +365,7 @@ class DatasetPanel extends Dataset {
         const { gene_symbols } = config;
 
         display.controller = this.controller;
-        display.colorblind_mode = this.colorblind_mode;
+        display.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         // Draw preview image
         if (gene_symbols) {

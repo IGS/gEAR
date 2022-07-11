@@ -3,7 +3,7 @@
  common.js within this project
 */
 
-window.onload=function() {
+window.onload=() => {
     sleep(500).then(() => {
         // If CURRENT_USER is defined at this point, add information as placeholder test
         if (CURRENT_USER) {
@@ -18,7 +18,7 @@ window.onload=function() {
 
 };
 
-$(document).on('keyup', '#newPassword, #repeatPassword', function () {
+$(document).on('keyup', '#newPassword, #repeatPassword', () => {
     // Originally was adding "match/nomatch" classes to #passwordMatch
     // but for some reason, class does not want to be removed once added
     if ($('#newPassword').val() == $('#repeatPassword').val()) {
@@ -31,17 +31,13 @@ $(document).on('keyup', '#newPassword, #repeatPassword', function () {
 });
 
 // Toggle if password is visible or not
-$('#showPassword').on('click', function() {
-    var x = document.getElementById("newPassword");
-    if (x.type === "password") {
-    x.type = "text";
-    } else {
-    x.type = "password";
-    }
+$('#showPassword').on('click', () => {
+    const x = document.getElementById("newPassword");
+    x.type = x.type === "password" ? "text" : "password";
 });
 
 // Save changed user settings
-$(document).on('click', "#submit_preferences", function(e) {
+$(document).on('click', "#submit_preferences", (e) => {
 
     // Prevent page refresh
     e.preventDefault();
@@ -59,7 +55,7 @@ $(document).on('click', "#submit_preferences", function(e) {
     $("#submit_preferences").attr("disabled", true);
     $('#help_id').val(CURRENT_USER.help_id);
 
-    var formData = $("#settings_form").serializeArray();
+    const formData = $("#settings_form").serializeArray();
     formData.push({
         'name':'scope',
         'value':'settings_change'
@@ -74,21 +70,17 @@ $(document).on('click', "#submit_preferences", function(e) {
         type: "POST",
         data : formData,
         dataType:"json",
-        success: function(data, textStatus, jqXHR) {
-            if (data['success'] == 1) {
+        success(data, _textStatus, _jqXHR) {
+            if (data.success == 1) {
                 var msg = "Settings have been saved!";
                 alert_user_success(msg);
             } else {
                 var msg = "An error occurred while updating preferences.  Please try again.";
                 alert_user_error(msg);
-	          }
+           }
         },
-        error: function (jqXHR, textStatus, errorThrown) {
-            console.log('jqXHR: ', jqXHR);
-            console.log('textStatus: ', textStatus);
-            console.log('errorThrown: ', errorThrown);
-
-            var msg = "Unable to update preferences. Please try again.";
+        error(jqXHR, textStatus, errorThrown) {
+            const msg = "Unable to update preferences. Please try again.";
             alert_user_error(msg);
         }
     }); //end ajax

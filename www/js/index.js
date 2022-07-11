@@ -1416,20 +1416,3 @@ $('#submit_search_projection').click((e) => {
     $('#toggle_options').hide();  // Not sure if this is relevant for projections
     $('#projection_search_form').submit();
 })
-
-$('#colorblind_enable').change((e) => {
-    if ($('#colorblind_enable').is(':checked')) {
-        dataset_collection_panel.enable_colorblind();
-    } else {
-        dataset_collection_panel.disable_colorblind();
-    }
-
-    // Submit gene or projection search again
-    // We will be on the right tab already, so we don't need to reload page elements
-    if (projection) {
-        $('#projection_search_form').submit();
-        return;
-    }
-    $('#gene_search_form').submit();
-
-})

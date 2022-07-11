@@ -1,15 +1,16 @@
 "use strict";
 
 class User {
-    constructor ({id, name, email, institution, updates_wanted, is_admin,
+    constructor ({id, name, email, institution, colorblind_mode, updates_wanted, is_admin,
                   help_id, date_created, session_id} = {}) {
         this.id = id;
         this.user_name = name;
         this.email = email;
         this.institution = institution;
+        this.colorblind_mode = colorblind_mode === 1;
         this.updates_wanted = updates_wanted;
         // Note: Store is_admin as boolean in database rather than 0/1?
-        this.is_admin = (is_admin === 1) ? true : false;
+        this.is_admin = is_admin === 1;
         this.help_id = help_id;
         this.date_created = date_created;
         this.session_id = session_id;
@@ -29,22 +30,22 @@ class User {
             //Set profile to 'Hearing (default)'
             // TODO: Get this UI call out of here.
             $('#selected_profile').text(this.profile);
-        } else {
-            //User is logged in.
-            if (! this.profile) {
-                //Get user's default profile
-                this.profile = Cookies.get('gear_default_domain');
-            }
-            if (! this.profile) {
-                this.profile = "Hearing (site default)"
-            }
+            return;
+        }
+        //User is logged in.
+        if (! this.profile) {
+            //Get user's default profile
+            this.profile = Cookies.get('gear_default_domain');
+        }
+        if (! this.profile) {
+            this.profile = "Hearing (site default)"
+        }
 
-            // Selected profile is empty if user has a domain selected as primary.
-            // Populate it with that domain
-            if ( $('#selected_profile').text() == 'Empty') {
-                $('#selected_profile').text(this.profile);
-                $('#search_param_profile').text(this.profile);
-            }
+        // Selected profile is empty if user has a domain selected as primary.
+        // Populate it with that domain
+        if ( $('#selected_profile').text() == 'Empty') {
+            $('#selected_profile').text(this.profile);
+            $('#search_param_profile').text(this.profile);
         }
     }
 }
