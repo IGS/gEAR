@@ -333,7 +333,15 @@ class MultigeneDashData(Resource):
                 , [lower_logfc_threshold, upper_logfc_threshold]
                 , use_adj_pvals
                 )
-            mg.modify_volcano_plot(fig, query_val, ref_val)
+
+            downcolor = None
+            upcolor = None
+            # Use reversed "cividis" colorscheme
+            if colorblind_mode:
+                downcolor = "rgb(254, 232, 56)"
+                upcolor = "rgb(0, 34, 78)"
+
+            mg.modify_volcano_plot(fig, query_val, ref_val, downcolor, upcolor)
 
             if gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
@@ -364,7 +372,9 @@ class MultigeneDashData(Resource):
                     'message': str(pe),
                 }
 
-            fig = mg.create_quadrant_plot(df, control_val, compare1_val, compare2_val)
+            colorscale = "viridis" if colorblind_mode else None
+
+            fig = mg.create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale)
             # Annotate selected genes
             if gene_symbols:
                 genes_not_found, genes_none_none = mg.add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
@@ -414,6 +424,10 @@ class MultigeneDashData(Resource):
                 .fillna(0) \
                 .reset_index()
 
+            # Reverse Cividis so that dark is higher expression
+            if colorblind_mode:
+                colorscale = "cividis_r"
+
             fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale)
 
         elif plot_type == "heatmap":
@@ -459,6 +473,10 @@ class MultigeneDashData(Resource):
             # They cannot be in there when the clustergram is made
             # But save it to add back in later
             df_cols = pd.concat([df.pop(cat) for cat in groupby_fields], axis=1)
+
+            # Reverse Cividis so that dark is higher expression
+            if colorblind_mode:
+                colorscale = "cividis_r"
 
             # "df" must be obs label for rows and genes for cols only
             fig = mg.create_clustergram(df
@@ -515,6 +533,10 @@ class MultigeneDashData(Resource):
             df = df.sort_values(by=["gene_symbol"])
 
             violin_func = mg.create_stacked_violin_plot if stacked_violin else mg.create_violin_plot
+
+            # I think Viridis lends itself to quantitative plots than Cividis.
+            if colorblind_mode:
+                colorscale = "viridis"
 
             fig = violin_func(df
                 , groupby_filters
