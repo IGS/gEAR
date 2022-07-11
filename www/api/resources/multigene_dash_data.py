@@ -237,6 +237,9 @@ class MultigeneDashData(Resource):
         # ADATA - Observations are rows, genes are columns
         selected = adata
 
+        print("Initial adata")
+        print(selected["Pf4+_Cells_59", "ENSMUSG00000024497"].X)
+
         # These plot types filter to only the specific genes.
         # The other plot types use all genes and rather annotate the specific ones.
         if plot_type in ['dotplot', 'heatmap', 'mg_violin'] and gene_filter is not None:
@@ -257,6 +260,9 @@ class MultigeneDashData(Resource):
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
+        print("after filtering genes")
+        print(selected["Pf4+_Cells_59", "ENSMUSG00000024497"].X)
+
         # Make a composite index of all categorical types
         selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
         selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
@@ -276,6 +282,9 @@ class MultigeneDashData(Resource):
             if filtered_composite_indexes:
                 condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
+
+        print("after filtering conditions")
+        print(selected["Pf4+_Cells_59", "ENSMUSG00000024497"].X)
 
         # Reorder the categorical values in the observation dataframe
         if sort_order:
@@ -305,7 +314,10 @@ class MultigeneDashData(Resource):
                     pass
 
             # Sort selected.obs based on reordered categorical columns
-            selected.obs = selected.obs.sort_values(by=sort_fields)
+            #selected.obs = selected.obs.sort_values(by=sort_fields)
+
+        print("final filtered adata")
+        print(selected["Pf4+_Cells_59", "ENSMUSG00000024497"].X)
 
         var_index = selected.var.index.name
 
