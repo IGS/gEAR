@@ -9,10 +9,8 @@ window.onload=() => {
         if (CURRENT_USER) {
             $('#email').attr('placeholder', CURRENT_USER.email);
             $('#institution').attr('placeholder', CURRENT_USER.institution);
-            $('#wantUpdates').prop('checked', false);
-            if (CURRENT_USER.updates_wanted == 1) {
-                $('#wantUpdates').prop('checked', true);
-            }
+            $('#colorblind_mode').prop('checked', CURRENT_USER.colorblind_mode);
+            $('#wantUpdates').prop('checked', CURRENT_USER.updates_wanted);
         }
     })
 

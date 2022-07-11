@@ -8,7 +8,7 @@ class User {
         this.email = email;
         this.institution = institution;
         this.colorblind_mode = colorblind_mode === 1;
-        this.updates_wanted = updates_wanted;
+        this.updates_wanted = updates_wanted === 1;
         // Note: Store is_admin as boolean in database rather than 0/1?
         this.is_admin = is_admin === 1;
         this.help_id = help_id;

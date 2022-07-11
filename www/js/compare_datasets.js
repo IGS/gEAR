@@ -361,7 +361,7 @@ $(document).on('change', '.js-cat-check', function (e) {
 $(document).on('click', '.js-cat-collapse', function (e) {
 	// If category was clicked, then toggle collapsable element
 	// Controlling via JS instead of "data-target" since we may need to escape CSS selectors
-	const id = this.id;
+	const { id } = this;
 	const category = id.replace('_collapse', '');
 	const escapedCategory = $.escapeSelector(category);
 	const category_collaspable = $(`#${escapedCategory}_body`);
@@ -387,8 +387,7 @@ $(document).on('change', '.js-group-check', function(e) {
 	// If there is a combination of checked/unchecked the "each" loop breaks early
 	let all = true;
 	$(category_collaspable).find('input[type="checkbox"]').each(function(){
-		const return_value = all = ($(this).prop("checked") === checked);
-		return return_value;
+		return all = ($(this).prop("checked") === checked);
 	});
 
 	if (all) {
@@ -658,6 +657,8 @@ function plot_data_to_graph(data) {
 		modebar: {orientation: "v"}
 	};
 
+	annotation_color = CURRENT_USER.colorblind_mode ? 'rgb(125, 124, 118)' : "crimson";
+
 	// Take genes to search for and highlight their datapoint in the plot
 	const genes_not_found = [];
 	if ($('#highlighted_genes').val()) {
@@ -677,10 +678,10 @@ function plot_data_to_graph(data) {
 				y: plotdata[i].y[j],
 				text:plotdata[i].id[j],
 				font: {
-					color: "crimson",
+					color: annotation_color,
 				},
 				showarrow: true,
-				arrowcolor: "crimson",
+				arrowcolor: annotation_color,
 
 				});
 				found = true;
