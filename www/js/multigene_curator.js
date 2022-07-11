@@ -135,9 +135,10 @@ window.onload = () => {
 
 // Call API to return plot JSON data
 async function getData (datasetId, payload) {
+    payload.colorblind_mode = CURRENT_USER.colorblind_mode;
     try {
         return await axios.post(`/api/plot/${datasetId}/mg_dash`, {
-            ...payload
+            ...payload,
         })
     } catch (e) {
 
@@ -224,7 +225,6 @@ async function loadDatasets () {
 async function drawPreviewImage (display) {
     // check if config has been stringified
     const config = typeof display.plotly_config === 'string' ? JSON.parse(display.plotly_config) : display.plotly_config;
-
     const { data } = await getData(datasetId, config);
 
     // If there was an error in the plot, put alert up
