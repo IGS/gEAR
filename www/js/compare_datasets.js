@@ -229,7 +229,8 @@ function load_comparison_graph() {
 		$("#fold_change_std_dev").html(data.fold_change_std_dev);
 		plot_data = data;
 		plot_data_to_graph(data);
-		} else {
+			return;
+		}
 		// Handle graphing failures
 		$("#plot_loading").hide();
 		$("#ticket_dataset_id").text(dataset_id);
@@ -238,7 +239,6 @@ function load_comparison_graph() {
 		$("#ticket_datasety_condition").text(condition_y_string);
 		$("#ticket_error_msg").html(data.error);
 		$("#error_loading_c").show();
-		}
 	},
 	error(jqXHR, textStatus, errorThrown) {
 		// Handle graphing failures
@@ -589,6 +589,9 @@ function plot_data_to_graph(data) {
 		}
 		}
 
+		pass_color = CURRENT_USER.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		fail_color = CURRENT_USER.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+
 		plotdata = $("input[name='stat_action']:checked").val() == "colorize" ? [
 		{
 			id: passing.id,
@@ -601,7 +604,7 @@ function plot_data_to_graph(data) {
 			type: "scatter",
 			text: passing.labels,
 			marker: {
-			color: "#FF0000",
+			color: pass_color,
 			size: 4,
 			},
 		},
@@ -616,7 +619,7 @@ function plot_data_to_graph(data) {
 			type: "scatter",
 			text: failing.labels,
 			marker: {
-			color: "#A1A1A1",
+			color: fail_color,
 			size: 4,
 			},
 		},

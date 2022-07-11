@@ -374,13 +374,13 @@ window.onload=() => {
         $('#sbs_tsne_plot_c').show();
 
         show_working("Generating tSNE display");
-        var ds = current_analysis.dataset;
-        var dsp = new DatasetPanel({...ds});
+        const ds = current_analysis.dataset;
+        const dsp = new DatasetPanel({...ds});
 
         const data = await dsp.get_embedded_tsne_display(dsp.id);
         dsp.config = data.plotly_config;
 
-        var img = document.createElement('img');
+        const img = document.createElement('img');
         img.className = 'img-fluid';
 
         get_tsne_image_data($("#sbs_tsne_gene_symbol").val(), dsp.config).then(
@@ -390,7 +390,7 @@ window.onload=() => {
                     $("#sbs_tsne_gene_not_found").show();
                 } else {
                     // place image
-                    img.src = "data:image/png;base64," + data
+                    img.src = `data:image/png;base64,${data}`
                     document.getElementById('sbs_tsne_plot_c').appendChild(img);
                 }
             }
@@ -466,6 +466,7 @@ window.onload=() => {
 }
 
 function get_tsne_image_data(gene_symbol, config) {
+    config.colorblind_mode = CURRENT_USER.colorblind_mode;
     // then craziness: https://stackoverflow.com/a/48980526
     return axios.post(`/api/plot/${current_analysis.dataset_id}/tsne`, {
         gene_symbol,
@@ -479,6 +480,7 @@ function get_tsne_image_data(gene_symbol, config) {
         y_axis: config.y_axis,
         analysis_owner_id: current_analysis.user_id,
         colors: config.colors,
+        colorblind_mode: config.colorblind_mode,
         // helps stop caching issues
         timestamp: new Date().getTime()
     }).then(response => {
