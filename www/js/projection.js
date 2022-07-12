@@ -1,3 +1,5 @@
+// ! This code was for early prototyping and is no longer used
+
 let SELECTED_PATTERN_LABEL = null;
 
 window.onload=() => {

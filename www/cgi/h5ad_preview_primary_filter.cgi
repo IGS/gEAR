@@ -6,7 +6,7 @@ Pre-filter graphics should have been generated already by this script:
     gear/bin/generate_initial_composition_plots.py
 
 This CGI used to actually generate it live, but not just checks for the
-presence of the images and returns success:1 if there, and success:0 if 
+presence of the images and returns success:1 if there, and success:0 if
 not present.
 
 """
@@ -24,11 +24,6 @@ import geardb
 # this is needed so that we don't get TclError failures in the underlying modules
 import matplotlib
 matplotlib.use('Agg')
-
-import numpy as np
-
-import scanpy as sc
-sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()

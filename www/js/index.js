@@ -142,6 +142,8 @@ $(document).on("handle_page_loading", () => {
         $('#intro_search_icon').trigger('click');
     }
 
+    // TODO: I think everything beyond this point could actually be in a window.onload event or set global.
+
     // The search button starts out disabled, make sure it gets re-enabled.
     $("button#submit_search").prop( "disabled", false );
 
@@ -563,9 +565,7 @@ async function load_gene_carts() {
         selected_gene_cart_tree.sharedGeneCarts = carts.shared;
         selected_gene_cart_tree.publicGeneCarts = carts.public;
 
-    })
-    .fail((jqXHR, textStatus, errorThrown) => {
-
+    }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
     });
     if (! carts_found ) {
@@ -917,32 +917,27 @@ $("#gene_search_form").submit((event) => {
     $('#links_out_c').show();
     $('#gene_details_c').show();
 
-    // NOTE: There is a good chance this will move back into the "search_genes.py" block after gene aliasing is implemented.
-    if (multigene) {
-        dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
-        $('#searching_indicator_c').hide();
-        $('#intro_content').hide('fade', {}, 400);
-            $('#functional_not_supported_alert').show();
-            $('#links_out_c').hide();
-            $('#gene_details_c').hide();
-
-        return false;
-    }
-
     $.ajax({
         url : './cgi/search_genes.py',
         type: "POST",
         data : formData,
-        dataType:"json"
+        dataType:"json",
     }).done((data) => {
         // reset search_results
         search_results = data;
         populate_search_result_list(data);
         $('#searching_indicator_c').hide();
         $('#intro_content').hide('fade', {}, 400, () => {
-            // auto-select the first match.  first <a class="list-group-item"
-            const first_thing = $('#search_results a.list-group-item').first();
-            select_search_result(first_thing);
+            if (multigene){
+                dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+                $('#functional_not_supported_alert').show();
+                $('#links_out_c').hide();
+                $('#gene_details_c').hide();
+            } else {
+                // auto-select the first match.  first <a class="list-group-item"
+                const first_thing = $('#search_results a.list-group-item').first();
+                select_search_result(first_thing);
+            }
         });
 
         set_scrollbar_props();

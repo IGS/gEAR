@@ -4,6 +4,8 @@ from pathlib import Path
 
 import scanpy as sc
 import numpy as np
+from matplotlib import cm
+import matplotlib.colors as mcolors
 
 import io, os, re
 import geardb
@@ -78,7 +80,7 @@ def create_colorscale_with_zero_gray(colorscale):
     newcolors = ylorrd(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
     gray = np.array([192/256, 192/256, 192/256, 1])
     newcolors[0, :] = gray
-    return ListedColormap(newcolors)
+    return mcolors.ListedColormap(newcolors)
 
 def create_projection_adata(dataset_adata, dataset_id, projection_csv):
     # Create AnnData object out of readable CSV file
@@ -92,6 +94,13 @@ def create_projection_adata(dataset_adata, dataset_id, projection_csv):
     projection_adata.obs = dataset_adata.obs
     projection_adata.var["gene_symbol"] = projection_adata.var_names
     return projection_adata
+
+def get_colorblind_scale(n_colors):
+    """Get a colorblind friendly colorscale (Viridis). Return n colors spaced equidistantly."""
+    cividis = cm.get_cmap("viridis", n_colors)
+    colors = cividis.colors
+    # convert to hex since I ran into some issues using rpg colors
+    return [mcolors.rgb2hex(color) for color in colors]
 
 def sort_legend(figure, sort_order, horizontal_legend=False):
     """Sort legend of plot."""
@@ -157,6 +166,7 @@ class TSNEData(Resource):
         user = geardb.get_user_from_session_id(session_id)
         analysis_owner_id = req.get('analysis_owner_id')
         projection_id = req.get('projection_id', None)    # projection id of csv output
+        colorblind_mode = req.get('colorblind_mode', False)
         sc.settings.figdir = '/tmp/'
 
         if not gene_symbol or not dataset_id:
@@ -265,7 +275,8 @@ class TSNEData(Resource):
         if plot_by_group:
             skip_gene_plot = None
 
-        new_YlOrRd = create_colorscale_with_zero_gray("YlOrRd")
+        # Reverse cividis so "light" is at 0 and 'dark' is at incresing expression
+        expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else "YlOrRd")
 
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
@@ -288,6 +299,13 @@ class TSNEData(Resource):
                     if re.search(COLOR_HEX_PTRN, color_hex[0]):
                         color_map = {name[0]:name[1] for name, group in grouped}
                         adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+
+
+            if colorblind_mode:
+                # build a cividis color map for the colorblind mode
+                cb_colors = get_colorblind_scale(len(adata.obs[colorize_by].unique()))
+                color_map = {name:cb_colors[idx] for idx, name in enumerate(adata.obs[colorize_by].cat.categories)}
+                adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
 
             # Calculate the number of columns in the legend (if applicable)
             num_cols = calculate_num_legend_cols(len(adata.obs[colorize_by].unique()))
@@ -340,7 +358,7 @@ class TSNEData(Resource):
                     # Filter only expression values for a particular group.
                     adata.obs["split_by_group"] = adata.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=new_YlOrRd, ax=f, show=False, use_raw=False, title=name, vmax=max_expression)
+                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -349,7 +367,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -383,7 +401,7 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, ax=f1, show=False, use_raw=False)
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
                     f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
@@ -391,7 +409,7 @@ class TSNEData(Resource):
                         io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                         f2.get_legend().remove()  # Remove legend added by scanpy
         else:
-            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=new_YlOrRd, return_fig=True, use_raw=False)
+            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False)
 
         io_pic = io.BytesIO()
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
@@ -404,10 +422,3 @@ class TSNEData(Resource):
             "message": message,
             "image": base64.b64encode(io_pic.read()).decode("utf-8")
         }
-
-
-
-
-
-
-

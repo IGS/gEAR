@@ -54,7 +54,7 @@ class DatasetCollectionPanel {
                 const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
 
                 this.reset_abort_controller();
-                const dsp = new DatasetPanel(ds, grid_width, multigene, projection, this.controller);
+                const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.controller);
 
                 if (dsp.load_status == "completed") {
                     // reformat the date

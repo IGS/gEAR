@@ -395,50 +395,64 @@ def add_gene_annotations_to_quadrant_plot(fig, gene_symbols_list) -> None:
     return genes_not_found, genes_none_none
 
 
-def create_quadrant_plot(df, control_val, compare1_val, compare2_val):
+def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale=None):
     """Generate a quadrant (fourway) plot.  Returns Plotly figure."""
+
+    # Default colors
+    colors = ["red", "black" "lightgreen", "orange", "brown", "cyan", "green", "purple"]
+
+    # If scale is sequential, split into equal colors equal to the number of categories
+    # If scale is discrete, use the colorscale
+    if colorscale:
+        if colorscale.lower() in px.colors.named_colorscales():
+            px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), len(colors))
+        elif colorscale not in color_swatch_map:
+            # Not all the quantitivate colorscales available are in the color_swatch_map
+            raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
+        else:
+            colors = color_swatch_map[colorscale]
 
     # Break the data up into different logfoldchange categories
     traces = [
         {
             "df":df[(df["s1_c_log2FC"] > 0) & (df["s2_c_log2FC"] > 0)]
             , "name":"UP/UP"
-            , "color":"red"
+            , "color":colors[0]
         },
         {
             "df":df[(df["s1_c_log2FC"] < 0) & (df["s2_c_log2FC"] < 0)]
             , "name":"DOWN/DOWN"
-            , "color":"black"
+            , "color":colors[1]
         },
         {
             "df":df[(df["s1_c_log2FC"] > 0) & (df["s2_c_log2FC"] < 0)]
             , "name":"UP/DOWN"
-            , "color":"lightgreen"
+            , "color":colors[2]
         },
         {
             "df":df[(df["s1_c_log2FC"] < 0) & (df["s2_c_log2FC"] > 0)]
             , "name":"DOWN/UP"
-            , "color":"orange"
+            , "color":colors[3]
         },
         {
             "df":df[(df["s1_c_log2FC"] > 0) & (df["s2_c_log2FC"] == 0)]
             , "name":"UP/NONE"
-            , "color":"brown"
+            , "color":colors[4]
         },
         {
             "df":df[(df["s1_c_log2FC"] == 0) & (df["s2_c_log2FC"] > 0)]
             , "name":"NONE/UP"
-            , "color":"cyan"
+            , "color":colors[5]
         },
         {
             "df":df[(df["s1_c_log2FC"] < 0) & (df["s2_c_log2FC"] == 0)]
             , "name":"DOWN/NONE"
-            , "color":"green"
+            , "color":colors[6]
         },
         {
             "df":df[(df["s1_c_log2FC"] == 0) & (df["s2_c_log2FC"] < 0)]
             , "name":"NONE/DOWN"
-            , "color":"purple"
+            , "color":colors[7]
         },
         {
             "df":df[(df["s1_c_log2FC"] == 0) & (df["s2_c_log2FC"] == 0)]
@@ -566,7 +580,17 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=N
     if not colorscale:
         colorscale = "vivid"
 
-    colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
+    # If scale is sequential, split into equal colors equal to the number of categories
+    # If scale is discrete, use the colorscale
+    colors = None
+    if colorscale.lower() in px.colors.named_colorscales():
+        num_colors = len(primary_groups)
+        px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), num_colors)
+    elif colorscale not in color_swatch_map:
+        # Not all the quantitivate colorscales available are in the color_swatch_map
+        raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
+    else:
+        colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
     color_cycler = cycle(colors)
 
     color_map = {cat: next(color_cycler) for cat in primary_groups}
@@ -682,7 +706,17 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
     if not colorscale:
         colorscale = "vivid"
 
-    colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
+    # If scale is sequential, split into equal colors equal to the number of categories
+    # If scale is discrete, use the colorscale
+    colors = None
+    if colorscale.lower() in px.colors.named_colorscales():
+        num_colors = df["gene_symbol"].unique().tolist()
+        px.colors.sample_colorscale(px.colors.get_colorscale(colorscale), num_colors)
+    elif colorscale not in color_swatch_map:
+        # Not all the quantitivate colorscales available are in the color_swatch_map
+        raise Exception("Colorscale {} not a valid colorscale to choose from".format(colorscale))
+    else:
+        colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
     color_cycler = cycle(colors)
 
     fig = go.Figure()
@@ -823,7 +857,7 @@ def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pv
 
     )
 
-def modify_volcano_plot(fig, query, ref):
+def modify_volcano_plot(fig, query, ref, downcolor=None, upcolor=None):
     """Adjust figure data to show up- and down-regulated data differently.  Edits figure in-place."""
     new_data = []
     sig_data = []
@@ -840,6 +874,9 @@ def modify_volcano_plot(fig, query, ref):
 
     fig.data[0]["name"] = "Nonsignificant Genes"
 
+    downcolor = downcolor or "#636EFA"
+    upcolor = upcolor or "#EF553B"
+
     #Split the signifcant data into up- and down-regulated traces
     for data in sig_data:
         if data["name"] and data["name"] == "Point(s) of interest":
@@ -848,7 +885,7 @@ def modify_volcano_plot(fig, query, ref):
                 , "text":[]
                 , "x":[]
                 , "y":[]
-                , "marker":{"color":"#636EFA"}
+                , "marker":{"color":downcolor}
             }
 
             upregulated = {
@@ -856,7 +893,7 @@ def modify_volcano_plot(fig, query, ref):
                 , "text":[]
                 , "x":[]
                 , "y":[]
-                , "marker":{"color":"#EF553B"}
+                , "marker":{"color":upcolor}
             }
             for i in range(len(data['x'])):
                 if data['x'][i] > 0:

@@ -337,11 +337,7 @@ function handle_login_ui_updates() {
     //TODO: This is ugly, but hide() doesn't work here.
     $('#login_controls').attr("style", "display: none !important");
 
-    if (document.URL.includes("analyze_dataset.html")) {
-        populate_dataset_selection();
-
-    } else if (document.URL.includes("compare_datasets.html")) {
-        populate_dataset_selection_controls();
+    if (document.URL.includes("compare_datasets.html")) {
         $("#create_gene_cart").prop("disabled", false);
         $("#create_gene_cart").attr("title", "Create a gene cart with these genes");
 

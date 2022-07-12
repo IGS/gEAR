@@ -31,10 +31,6 @@ After a plot has been generated, you can assign the plot a name and click "Save 
 
 After a plot has been generated, you can specify the dimensions and scale of the image to download (as a PNG).
 
-## Heatmap things
-
-If the "Group by Category" option is checked, and a gene is clicked on the heatmap, a supplementary violin plot will be created. This violin plot can also be created and saved if "Violin" is selected in the plot type.
-
 ## Volcano plot things
 
 After a volcano plot has been generated, you can use the lasso tool or the rectangular selection tool to select some gene datapoints within the plot.  These selected genes will show in a new panel, where you can assign a name to this gene collection and save as a new gene cart.

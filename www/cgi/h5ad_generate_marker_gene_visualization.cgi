@@ -100,8 +100,8 @@ def main():
 
     # NOTE: This will probably need to be updated if we update Scanpy due to some changes to adata.raw I believe
     # Currently does not work on my Docker instance, which is using a more recent version of Scanpy since I could not build with the gEAR prod versions anymore
-    sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, use_raw=False, save='_goi.png')
-    sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, use_raw=False, save='_goi.png')
+    sc.pl.dotplot(adata, marker_genes, groupby=cluster_method, use_raw=False, save='goi.png')
+    sc.pl.stacked_violin(adata, marker_genes, groupby=cluster_method, rotation=90, use_raw=False, save='goi.png')
 
     result = {'success': 1}
 

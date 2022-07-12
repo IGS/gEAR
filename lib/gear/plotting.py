@@ -1,3 +1,4 @@
+from matplotlib.pyplot import plot
 from plotly import exceptions
 from plotly.colors import unlabel_rgb
 from plotly.subplots import make_subplots
@@ -123,7 +124,6 @@ def _adjust_colorscale(plotting_args, colormap=None, palette=None):
         if palette:
             plotting_args["color_continuous_scale"] = palette
 
-    # There is no palette option for discrete mapping
     return plotting_args
 
 def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=None ):
@@ -491,7 +491,6 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
             # Safeguard against grouping by an empty list
             # use dataframe instead
             special_func(**new_plotting_args, row=1, col=1)
-
 
         #TODO: Since graph_object plots don't need 'category_orders' decide if we can drop passing that to the px functions
         fig.update_layout(template=blank_template)

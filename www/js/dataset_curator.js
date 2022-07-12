@@ -109,12 +109,12 @@ window.onload=() => {
     computed: {
       ...Vuex.mapState([
         "dataset_id",
-        "analysis",
         "config",
         "image_data",
         "success",
         "message",
         "tsne_is_loading",
+        "colorblind_mode",
       ]),
       is_loading() {
         return (this.preconfigured && this.display_tsne_is_loading == true) ||
@@ -157,14 +157,14 @@ window.onload=() => {
     },
     methods: {
       async draw_image() {
-        const { dataset_id } = this;
+        const { dataset_id, colorblind_mode } = this;
         const { plot_type } = this.display_data;
         const config = this.display_data.plotly_config;
         const { analysis } = config;
         const analysis_owner_id = this.display_data.user_id;
 
         // This has to be separate from "fetch_tsne_image" because in user/owner displays, different image data may be returned
-        const payload = { ...config, plot_type, analysis, analysis_owner_id };
+        const payload = { ...config, plot_type, analysis, analysis_owner_id, colorblind_mode};
         const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, payload);
 
         this.display_tsne_is_loading = false;
@@ -220,7 +220,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["dataset_id"]),
+      ...Vuex.mapState(["dataset_id", "colorblind_mode"]),
     },
     watch: {
       async svg(svg) {
@@ -294,8 +294,17 @@ window.onload=() => {
           high_color = this.high_color;
         }
 
+        // If colorblind mode activated, replace using "cividis" palette
+        if (this.colorblind_mode) {
+          // Got the colors by importing plotly.express as px and then running
+          // px.colors.sample_colorscale(px.colors.get_colorscale("cividis"), 3)
+          low_color = 'rgb(254, 232, 56)';
+          mid_color = null; // I found adding the mid color skews the whole scheme towards the high color
+          high_color = 'rgb(0, 34, 78)';
+      };
+
         const score = chart_data.scores[this.scoring_method];
-        const paths = this.paths;
+        const { paths } = this;
         const { data: expression } = chart_data;
         if (
           this.scoring_method === "gene" ||
@@ -393,7 +402,8 @@ window.onload=() => {
       if (this.display_data) {
         this.loading = true;
         const { plotly_config, plot_type } = this.display_data;
-        const payload = { ...plotly_config, plot_type };
+        const { colorblind_mode } = this;
+        const payload = { ...plotly_config, plot_type, colorblind_mode };
         const { data } = await axios.post(
           `/api/plot/${this.dataset_id}`,
           payload
@@ -410,8 +420,9 @@ window.onload=() => {
     computed: {
       ...Vuex.mapState([
         "dataset_id"
-      , "plot_type"
-    ]),
+        , "colorblind_mode"
+        , "plot_type"
+      ]),
       is_there_data() {
         if (this.data === null) return false;
         return (
@@ -1177,6 +1188,7 @@ window.onload=() => {
         "columns",
         "levels", // Can use to determine categorical series
         "plot_type",
+        "colorblind_mode"
       ]),
     },
     created() {
@@ -1317,9 +1329,8 @@ window.onload=() => {
           vlines: this.vlines,
         };
 
-        const plot_type = this.plot_type;
-        const dataset_id = this.dataset_id;
-        this.fetch_plotly_data({ config, plot_type, dataset_id });
+        const { plot_type, dataset_id, colorblind_mode } = this;
+        this.fetch_plotly_data({ config, plot_type, dataset_id, colorblind_mode});
       },
       addRow() {
         // Add new 'vertical-line' component
@@ -1563,7 +1574,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["config", "plot_type", "dataset_id", "user"]),
+      ...Vuex.mapState(["config", "plot_type", "dataset_id", "user", "colorblind_mode"]),
     },
     created() {
       // Needed for initial display after first plotting preview
@@ -1599,11 +1610,9 @@ window.onload=() => {
         );
         this.set_order(order);
 
-        const config = this.config;
-        const plot_type = this.plot_type;
-        const dataset_id = this.dataset_id;
+        const { config, plot_type, dataset_id, colorblind_mode } = this;
 
-        this.fetch_plotly_data({ config, plot_type, dataset_id });
+        this.fetch_plotly_data({ config, plot_type, dataset_id, colorblind_mode });
       },
       reorder_tsne_display() {
         // Convert order from array of objects to a single object
@@ -1612,12 +1621,10 @@ window.onload=() => {
           {}
         );
         this.set_order(order);
-        const config = this.config;
-        const plot_type = this.plot_type;
-        const dataset_id = this.dataset_id;
-        const analysis = config.analysis
+        const { config, plot_type, dataset_id, colorblind_mode } = this;
+        const { analysis } = config
         const analysis_owner_id = this.user.id;
-        this.fetch_tsne_image({ config, plot_type, dataset_id, analysis, analysis_owner_id });
+        this.fetch_tsne_image({ config, plot_type, dataset_id, analysis, analysis_owner_id, colorblind_mode });
       },
     },
   });
@@ -1744,7 +1751,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["config", "plot_type", "dataset_id"]),
+      ...Vuex.mapState(["config", "plot_type", "dataset_id", "colorblind_mode"]),
     },
     created() {
       // Needed for initial display after first plotting preview
@@ -1770,11 +1777,9 @@ window.onload=() => {
         "fetch_plotly_data",
       ]),
       update_display() {
-        const config = this.config;
-        const plot_type = this.plot_type;
-        const dataset_id = this.dataset_id;
+        const { config, plot_type, dataset_id, colorblind_mode } = this;
 
-        this.fetch_plotly_data({ config, plot_type, dataset_id });
+        this.fetch_plotly_data({ config, plot_type, dataset_id, colorblind_mode });
       },
     },
   });
@@ -1957,7 +1962,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["dataset_id", "plot_type", "config", "chart_data"]),
+      ...Vuex.mapState(["dataset_id", "plot_type", "config", "chart_data", "colorblind_mode"]),
       is_creating_new_display() {
         return this.display_id === null;
       },
@@ -1977,11 +1982,10 @@ window.onload=() => {
         // if we are creating a new display, we do not
         // want to automatically generate a chart, and
         // wait for user to specify config options
-        const config = this.config;
-        const plot_type = this.plot_type;
+        const { config, plot_type, colorblind_mode } = this;
 
         const dataset_id = this.dataset_id;
-        this.fetch_plotly_data({ config, plot_type, dataset_id });
+        this.fetch_plotly_data({ config, plot_type, dataset_id, colorblind_mode });
       }
     },
     methods: {
@@ -2356,6 +2360,7 @@ window.onload=() => {
         "image_data",
         "tsne_is_loading",
         "levels",
+        "colorblind_mode"
       ]),
       x_axis: {
         get() {
@@ -2499,9 +2504,8 @@ window.onload=() => {
         return this.x_axis && this.x_axis !== "null" && this.y_axis && this.y_axis !== "null";
       },
       draw_image() {
-        const dataset_id = this.dataset_id;
-        const analysis = this.config.analysis;
-        const plot_type = this.plot_type;
+        const { dataset_id, plot_type, colorblind_mode } = this;
+        const { analysis } = this.config;
         const analysis_owner_id = this.user.id;
 
         const config = {
@@ -2519,7 +2523,7 @@ window.onload=() => {
           timestamp: new Date().getTime(),
         };
 
-        this.fetch_tsne_image({config, plot_type, dataset_id, analysis, analysis_owner_id})
+        this.fetch_tsne_image({config, plot_type, dataset_id, analysis, analysis_owner_id, colorblind_mode})
       },
     },
   });
@@ -2919,6 +2923,7 @@ window.onload=() => {
   const store = new Vuex.Store({
     state: {
       user: null,
+      colorblind_mode: false,
       display_id: null,
       user_displays: [],
       owner_displays: [],
@@ -2990,6 +2995,9 @@ window.onload=() => {
       set_user(state, user) {
         state.user = user;
       },
+      set_colorblind_mode(state, cb_mode) {
+        state.colorblind_mode = cb_mode;
+      },
       set_dataset_id(state, dataset_id) {
         state.dataset_id = dataset_id;
       },
@@ -3018,12 +3026,7 @@ window.onload=() => {
         };
 
         if (
-          plot_type === "bar" ||
-          plot_type === "line" ||
-          plot_type === "violin" ||
-          plot_type === "scatter" ||
-          plot_type === "contour" ||
-          plot_type === "tsne/umap_dynamic"
+          ["bar", "line", "violin", "scatter", "contour", "tsne/umap_dynamic"].includes(plot_type)
         ) {
           Vue.set(state.config, "x_axis", null);
           Vue.set(state.config, "y_axis", null);
@@ -3055,10 +3058,7 @@ window.onload=() => {
             high_color: "#401362",
           });
         } else if (
-          plot_type === "tsne_static" ||
-          plot_type === "umap_static" ||
-          plot_type === "pca_static" ||
-          plot_type === "tsne"
+          ["tsne_static", "umap_static", "pca_static", "tsne"].includes(plot_type)
         ) {
           // tsne
           Vue.set(state.config, "x_axis", null);
@@ -3245,14 +3245,6 @@ window.onload=() => {
       set_max_columns(state, max_cols) {
         state.config.max_columns = max_cols;
       },
-      /*  Set earlier
-      set_x_axis(state, x_axis) {
-        state.config.x_axis = x_axis;
-      },
-      set_y_axis(state, y_axis) {
-        state.config.y_axis = y_axis;
-      },
-      */
       set_image_data(state, image_data) {
         state.image_data = image_data;
       },
@@ -3397,9 +3389,9 @@ window.onload=() => {
         commit("set_columns", obs_columns);
         commit("set_levels", obs_levels);
       },
-      async fetch_plotly_data({ commit }, { config, plot_type, dataset_id }) {
+      async fetch_plotly_data({ commit }, { config, plot_type, dataset_id, colorblind_mode}) {
         commit("set_loading_chart", true);
-        const payload = { ...config, plot_type };
+        const payload = { ...config, plot_type, colorblind_mode };
         const { data } = await axios.post(`/api/plot/${dataset_id}`, payload);
         commit("set_chart_data", data);
 
@@ -3463,10 +3455,10 @@ window.onload=() => {
       },
       async fetch_tsne_image(
         { commit },
-        { config, plot_type, dataset_id, analysis, analysis_owner_id }
+        { config, plot_type, dataset_id, analysis, analysis_owner_id, colorblind_mode }
       ) {
         commit("set_tsne_is_loading", true);
-        const payload = { ...config, plot_type, analysis, analysis_owner_id };
+        const payload = { ...config, plot_type, analysis, analysis_owner_id, colorblind_mode };
 
         const { data } = await axios.post(`/api/plot/${dataset_id}/tsne`, payload);
 
@@ -3620,6 +3612,7 @@ window.onload=() => {
         // If CURRENT_USER is defined at this point, add information as placeholder test
         if (CURRENT_USER) {
           this.$store.commit("set_user", CURRENT_USER);
+          this.$store.commit("colorblind_mode", CURRENT_USER.colorblind_mode);
         }
       });
     },
