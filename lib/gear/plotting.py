@@ -1,14 +1,12 @@
+# Purely kept so we can debug with sys.stderr
+from itertools import cycle
+
+import plotly.express as px
+import plotly.graph_objects as go
 from matplotlib.pyplot import plot
 from plotly import exceptions
 from plotly.colors import unlabel_rgb
 from plotly.subplots import make_subplots
-import plotly.express as px
-import plotly.graph_objects as go
-
-from itertools import cycle
-
-# Purely kept so we can debug with sys.stderr
-import sys
 
 px.defaults.template = "none"
 blank_template = go.layout.Template()

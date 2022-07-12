@@ -1,12 +1,12 @@
-from flask import request, make_response, jsonify, abort
-from flask_restful import Resource
+import os
+
+import geardb
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import json
-import os
-import sys
-import geardb
+from flask import request
+from flask_restful import Resource
+
 
 class PlotError(Exception):
     """Error based on plotting issues."""

@@ -1,12 +1,17 @@
+import copy
+import json
+import numbers
+import os
+import re
+import sys
+
+import geardb
+import pandas as pd
+import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
-import pandas as pd
-import copy, json, os, re, sys
-import geardb
-import numbers
-from gear.plotting import generate_plot, plotly_color_map, PlotError
+from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
-import plotly.express.colors as pxc
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 

@@ -1,16 +1,12 @@
 
-from audioop import reverse
-import sys
 from itertools import cycle, product
 
-import pandas as pd
+import dash_bio as dashbio
 import diffxpy.api as de
-
 import numpy as np
-
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import dash_bio as dashbio
 from plotly.subplots import make_subplots
 
 ALPHABET_COLORS = px.colors.qualitative.Alphabet

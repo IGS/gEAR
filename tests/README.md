@@ -75,6 +75,7 @@ To save a screenshot from Chrome:
 * Download table
 * Use visual tool like needle (python package) for visual regression testing (plot doesn't differ)
   * TODO: https://github.com/python-needle/needle
+* colorblind mode (check colorized filter colorscheme)
 
 #### Dataset (single-gene) curator
 
@@ -88,6 +89,7 @@ To save a screenshot from Chrome:
 * Create a tSNE/uMAP plot
   * split and color by a category
 * Load an existing plot
+* colorblind mode
 
 #### Multigene curator
 
@@ -127,7 +129,10 @@ To save a screenshot from Chrome:
 * Save a new gene cart
   * From volcano or quadrant
 * Use visual tool like needle (python package) for visual regression testing (plot doesn't differ)
-
+* Ensure heatmap and matrixplot expression value for a single gene and observation/celltype is correct
+  * This tests that sorting was fine
+  * For heatmaps/violins/dotplots
+* colorblind mode (check all plots
 
 #### Manual Documentation
 
