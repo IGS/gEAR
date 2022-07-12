@@ -494,7 +494,7 @@ function apply_primary_filter() {
 
     // If a user redoes the primary filters, it's assumed they want to do this on the primary
     //  datasource again.  This allows them to lessen the stringency of a filter.
-    original_analysis_type = current_analysis.type
+    const original_analysis_type = current_analysis.type
     current_analysis.type = 'primary'
 
     if ($('#filter_cells_lt_n_genes_selected').is(":checked")) {
@@ -655,7 +655,7 @@ function download_marker_genes_table() {
         file_contents += row.join("\t") + "\n";
     });
 
-    var element = document.createElement('a');
+    const element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(file_contents));
     element.setAttribute('download', 'marker_genes.xls');
     element.style.display = 'none';
@@ -732,7 +732,7 @@ function load_stored_analysis(analysis_id, analysis_type, dataset_id) {
               },
         dataType: "json",
         success: function(data) {
-            ana = Analysis.load_from_json(data);
+            const ana = Analysis.load_from_json(data);
             ana.dataset = current_analysis.dataset;
             current_analysis = ana;
 
@@ -1382,7 +1382,7 @@ function show_working(msg) {
 
 function update_manual_marker_gene_entries(gene_str) {
     entered_marker_genes = new Set();
-    var gene_syms = gene_str.split(',');
+    const gene_syms = gene_str.split(',');
 
     for (gene_sym of gene_syms) {
         gene_sym = gene_sym.trim();
