@@ -179,7 +179,7 @@ class ProjectR(Resource):
                 if int(is_pca) == config['is_pca']:
                     common_genes = config.get('num_common_genes', None)
                     genecart_genes = config.get('num_genecart_genes', -1)
-                    dataset_genes = config.get('num_dataset_genes, -1)
+                    dataset_genes = config.get('num_dataset_genes', -1)
                     break
 
             if common_genes:
