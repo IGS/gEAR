@@ -1,16 +1,19 @@
+
+import base64
+import io
+import os
+import re
+from math import ceil
+
+import geardb
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import scanpy as sc
+
 from flask import request
 from flask_restful import Resource
-from pathlib import Path
-
-import scanpy as sc
-import numpy as np
 from matplotlib import cm
-import matplotlib.colors as mcolors
-
-import io, os, re
-import geardb
-import base64
-from math import ceil
 
 sc.settings.set_figure_params(dpi=100)
 

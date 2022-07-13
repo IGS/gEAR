@@ -1,15 +1,13 @@
+import json
+import os
+
+import gear.mg_plotting as mg
+import geardb
+import pandas as pd
 from flask import request
 from flask_restful import Resource
-from pathlib import Path
-import pandas as pd
-import geardb
-
-import json, os
 from gear.mg_plotting import PlotError
-import gear.mg_plotting as mg
-
 from plotly.utils import PlotlyJSONEncoder
-
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata

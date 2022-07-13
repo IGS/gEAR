@@ -1,11 +1,11 @@
-from flask import request
-from flask_restful import Resource
-from pathlib import Path
+import os
+
+import geardb
 import numpy as np
 import pandas as pd
 import scanpy as sc
-import os
-import geardb
+from flask import request
+from flask_restful import Resource
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
