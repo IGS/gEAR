@@ -24,12 +24,39 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 
 These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.).
 
+### Testing using SeleniumBase
+
+The preferred way to do visual regression testing is to use SeleniumBase to take the screenshot and HTML data.  Data is stored in the "visual_baseline" directory.  For each test name, a directory will be created for that test name.  The first time `seleniumbase.BaseCase.check_window()` is run, it will save a screenshot as "baseline.png" and a series of text files corresponding to various levels of HTML granularity.
+
+There are three levels of HTML logs:
+
+1. Nested HTML elements
+2. Number 1, plus the attribute properties present
+3. Number 2, plus the attribute values present
+
+Calling `check_window(<test_name>, <log_level>)` after a baseline image is present will compare the current browser window's HTML tags to those in the specified level chosen, and will also screenshot a "latest" image for viewing. If the current HTML tags do not match those from the baseline run, the test fails.
+
+Read https://seleniumbase.io/examples/visual_testing/ReadMe/ for more infomation about
+other processes that happen when this is called.
+
+### Manual screenshots
+
 To save a screenshot from Chrome:
 
 1. Right-click page -> Inspect
 2. Find div/element/HTML subset that contains the image you want to save
 3. Right-click element -> Capture Node Screenshot.
-4. The PNG image should download to a specified default location.  You can then rename it and move it to the "visual_regression_screenshots" directory for future use.
+4. The PNG image should download to a specified default location.  You can then rename it and move it to a "visual_regression_screenshots" directory for future use.
+
+This could be used for image regression purposes, but currently we have no implementation of this.
+
+## Writing SeleniumBase tests
+
+The paradigm that seems easiest to work with is to use two classes. The first class represents the page being tested, including properties to use in testing. This class will also contain the code that deals with page navigation and manipulation. The second class represents the tests and assertions, and is an extension of the SeleniumBase.BaseCase class.  Do note that an instance from the second class will be passed to methods in the first class, as that object is the SeleniumBase driver itself.
+
+For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`.
+
+Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 
 ### Completed UI tests
 

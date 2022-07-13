@@ -3,9 +3,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
-#from needle.cases import NeedleTestCase
-#from needle.driver import NeedleChrome
-
 from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class MGTest:
@@ -22,6 +19,9 @@ class MGTest:
     condition_cat: str = "cluster"
     filter_by: list = field(default_factory=lambda: ["HC (i)", "SC (i)", "TEC"])
     timeout: int = 5
+
+    # TODO: Add test for checking indiviudal adata[obs, ensmbl_id] value and df[ensembl_id, obs] value to check for sort preservation
+    # Add a similar test for checking the mean of a cell type for the same ensembl_id
 
     #@classmethod
     #def get_web_driver(cls):

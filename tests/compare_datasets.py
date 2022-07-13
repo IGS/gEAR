@@ -7,6 +7,7 @@ To run as localhost (to test on Docker images), pass in --data=localhost as a op
 from seleniumbase import BaseCase
 
 from dataclasses import dataclass, field
+
 @dataclass(frozen=True)
 class ComparePage:
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
@@ -21,19 +22,20 @@ class ComparePage:
 
     # sb => SeleniumBase "test" class object
 
+    def get_class_text(self, sb, class_name):
+        return sb.get_text("." + class_name)
+
+    def get_id_text(self, sb, label_id):
+        return sb.get_text("#" + label_id)
+
     def nav_to_url(self, sb):
         sb.get("http://localhost:8080/compare_datasets.html" if sb.data == "localhost" else "https://umgear.org/compare_datasets.html")
-
-    def failed_plot_creation(self, sb):
-        sb.click("#btn_apply_dataset_changes")
-        sb.assert_element("#error_loading_c")
 
     def highlighted_genes_in_table_highlighted(self, sb):
         pass
 
     def plot_creation(self, sb):
         sb.click("#btn_apply_dataset_changes")
-        sb.assert_element(".plotly")
 
     def select_conditions(self, sb):
         sb.click("#condition_x_tab")
@@ -57,44 +59,13 @@ class ComparePage:
         sb.type("#dataset_tree_q", "kelley")
         sb.click(".jstree-search:contains('{}')".format(self.dataset))
 
+    def select_significance_test(self, sb, select_value):
+        sb.select_option_by_value("#statistical_test", select_value)
+
     def selected_genes_in_table(self, sb):
         pass
 
     """
-    def test_condition_label_adjustment(self) -> bool:
-        # Should reflect in the plot's axes
-        print("-- VERIFY CONDITION LABELS SHOW ON AXES")
-        x_label = self.browser.find_element(By.ID, "x_label").getText()
-        y_label = self.browser.find_element(By.ID, "y_label").getText()
-
-        if not self.test_plot_creation():
-            return False
-
-        # Assumes the plot axes titles are the first/only elements with this class
-        xtitle = self.browser.find_element(By.CLASS_NAME, "xtitle").getText()
-        ytitle = self.browser.find_element(By.CLASS_NAME, "ytitle").getText()
-
-        if xtitle == x_label and ytitle == y_label:
-            return True
-        return False
-
-    def test_significance_test_colorize(self) -> bool:
-        # Perform a colorize significance test
-        print("-- SIGNIFICANCE TEST - COLORIZE MODE")
-        try:
-            sig_select = Select(self.browser.find_element(By.ID, "statistical_test"))
-            sig_select.select_by_value('t-test')
-            if not self.test_plot_creation():
-                return False
-            points = self.browser.find_elements(By.CLASS_NAME, "points")
-            # Looking for at least one red-colored point
-            RED = Color.from_string('red')
-            for p in points:
-                if p.value_of_css_property("fill") == RED:
-                    return True
-            return False
-        except:
-            return False
 
     def test_significance_test_filter(self) -> bool:
         # Perform a colorize significance test
@@ -178,6 +149,7 @@ class CompareTests(BaseCase):
         cp.select_dataset(self)
         cp.select_conditions(self)
         cp.plot_creation(self)
+        self.assert_element(".plotly")
         cp.plot_visual_regression(self, "normal_plot", 2)   # id values in plot get randomized, so stick with level 2
 
     def test_invalid_plot_duplicate_conditions(self):
@@ -186,7 +158,8 @@ class CompareTests(BaseCase):
         cp.nav_to_url(self)
         cp.select_dataset(self)
         cp.select_same_conditions(self)
-        cp.failed_plot_creation(self)
+        cp.plot_creation(self)
+        self.assert_element("#error_loading_c")
 
     def test_conditions_are_preserved_upon_change(self):
         """Test that selected conditions are saved even when choosing the opposite axis' set of conditions."""
@@ -199,3 +172,28 @@ class CompareTests(BaseCase):
         self.click("#condition_y_tab")
         self.assert_true(self.is_selected("input[data-group='{}']".format(cp.y_selection)), msg="'y' conditions were not saved after the switch.")
 
+    def test_axis_label_adjustment(self) -> None:
+        """Test that the axes labels are adjusted when conditions are changed."""
+        cp = ComparePage()
+        cp.nav_to_url(self)
+        cp.select_dataset(self)
+        x_label = cp.get_id_text(self, "x_label")
+        y_label = cp.get_id_text(self, "y_label")
+        cp.plot_creation(self)
+        # Labels should reflect in the plot's axes
+        # Assumes the plot axes titles are the first/only elements with this class
+        x_title = cp.get_class_text(self, "xtitle")
+        y_title = cp.get_class_text(self, "ytitle")
+        self.assert_equal(x_label, x_title, msg="X-axis label was not adjusted when conditions were changed.")
+        self.assert_equal(y_label, y_title, msg="Y-axis label was not adjusted when conditions were changed.")
+
+    def test_significance_test_colorize(self) -> bool:
+        """Test that a colorized plot is created when a significance test is performed with the "colorize" radio checked."""
+        cp = ComparePage()
+        cp.nav_to_url(self)
+        cp.select_dataset(self)
+        cp.select_significance_test(self, "t-test") # colorize should already be checked by default
+        cp.plot_creation(self)
+        points_fill = self.get_property_value(".points", "fill")
+        red_points = list(filter(self.is_attribute_present("fill", "#FF0000"), points_fill))
+        self.assert_true(len(red_points) > 0, msg="No points were colored red when a colorized significance test was performed.")
