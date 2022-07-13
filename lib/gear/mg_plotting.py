@@ -399,7 +399,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
     """Generate a quadrant (fourway) plot.  Returns Plotly figure."""
 
     # Default colors
-    colors = ["red", "black" "lightgreen", "orange", "brown", "cyan", "green", "purple"]
+    colors = ["red", "black", "lightgreen", "orange", "brown", "cyan", "green", "purple"]
 
     # If scale is sequential, split into equal colors equal to the number of categories
     # If scale is discrete, use the colorscale
