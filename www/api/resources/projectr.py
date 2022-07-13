@@ -173,9 +173,13 @@ class ProjectR(Resource):
             # Projection already exists, so we can just return info we want to return in a message
             projections_dict = json.load(open(dataset_projection_json_file))
             common_genes = None
+            genecart_genes = None
+            dataset_genes = None
             for config in projections_dict[genecart_id]:
                 if int(is_pca) == config['is_pca']:
                     common_genes = config.get('num_common_genes', None)
+                    genecart_genes = config.get('num_genecart_genes', -1)
+                    dataset_genes = config.get('num_dataset_genes, -1)
                     break
 
             if common_genes:
@@ -186,8 +190,8 @@ class ProjectR(Resource):
                 , "message": message
                 , "projection_id": projection_id
                 , "num_common_genes": common_genes
-                , "num_genecart_genes": loading_df.shape[1]
-                , "num_dataset_genes": target_df.shape[1]
+                , "num_genecart_genes": genecart_genes
+                , "num_dataset_genes": dataset_genes
             }
 
         """
