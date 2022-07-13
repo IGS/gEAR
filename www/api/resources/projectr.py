@@ -248,8 +248,8 @@ class ProjectR(Resource):
         loading_df = loading_df.drop(loading_df.columns[1], axis=1)
         loading_df.set_index('dataRowNames', inplace=True)
 
-        num_target_genes = target_df.shape[1]
-        num_loading_genes = loading_df.shape[1]
+        num_target_genes = target_df.shape[0]
+        num_loading_genes = loading_df.shape[0]
 
         # Perform overlap to see if there are overlaps between genes from both dataframes
         index_intersection = target_df.index.intersection(loading_df.index)
