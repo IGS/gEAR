@@ -185,7 +185,7 @@ class ProjectR(Resource):
                 "success": success
                 , "message": message
                 , "projection_id": projection_id
-                , "num_common_genes": intersection_size
+                , "num_common_genes": common_genes
                 , "num_genecart_genes": loading_df.shape[1]
                 , "num_dataset_genes": target_df.shape[1]
             }
