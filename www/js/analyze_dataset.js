@@ -1454,14 +1454,14 @@ function update_manual_marker_gene_entries(gene_str) {
     entered_marker_genes = new Set();
     const gene_syms = gene_str.split(',');
 
-    for (gene_sym of gene_syms) {
+    for (let gene_sym of gene_syms) {
         gene_sym = gene_sym.trim();
         if (gene_sym) {
             entered_marker_genes.add(gene_sym);
         }
     }
 
-    var counter_set = new Set([...entered_marker_genes, ...clicked_marker_genes]);
+    const counter_set = new Set([...entered_marker_genes, ...clicked_marker_genes]);
     $('#marker_genes_unique_count').text(counter_set.size);
     $('#marker_genes_entered_count').text(entered_marker_genes.size);
 }
@@ -1469,5 +1469,5 @@ function update_manual_marker_gene_entries(gene_str) {
 function update_selected_dataset(ds) {
     $("#selected_dataset_title").html(ds['title']);
     $("#selected_dataset_shape_initial").html(ds.shape());
-    $("<li>Changed dataset to: " + ds.title + "</li>").prependTo("#action_log");
+    $(`<li>Changed dataset to: ${ds.title}</li>`).prependTo("#action_log");
 }
