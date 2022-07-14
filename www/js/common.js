@@ -562,3 +562,24 @@ function image_loaded(img) {
 
     return true;
 }
+
+// Source: https://dev.to/kepta/comment/5e6f (read main article for breakdown of function)
+function asyncLimit (fn, n) {
+    // n is the number of concurrent calls allowed
+    // Create a queue of functions to be called, never to exceed n.
+    // When a promise is resolved, ensure only 1 new function is added to the pending queue.
+
+    const pendingPromises = new Set();
+    return async function(...args) {
+        while (pendingPromises.size >= n) {
+            await Promise.race(pendingPromises);
+        }
+
+        const p = fn.apply(this, args);
+        const r = p.catch(() => {});
+        pendingPromises.add(r);
+        await r;
+        pendingPromises.delete(r);
+        return p;
+    }
+}

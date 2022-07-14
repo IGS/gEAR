@@ -1035,25 +1035,12 @@ $("#projection_search_form").submit((event) => {
 
         dataset_collection_panel.reset_abort_controller();
 
-        dataset_collection_panel.datasets.forEach(dataset => {
-            dataset.run_projectR(projection_source, is_pca, scope)
-                .then(() => {
+        const promise_limit = 8;
+        const run_async_projection = asyncLimit(run_projection, promise_limit);
+        dataset_collection_panel.datasets.map((dataset) => {
+            run_async_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
+        });
 
-                    if (dataset.projection_id) {
-                        if (multigene) {
-                            // 'entries' is array of gene_symbols
-                            dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
-                        } else {
-                            dataset.draw({ gene_symbol: first_thing.data('gene_symbol')});
-                        }
-                    } else {
-                        if (dataset.display) dataset.display.clear_display();
-                        dataset.show_no_match();
-                    }
-
-                })
-                .catch(error => console.error(error));
-        })
     }
     return false;   // keeps the page from not refreshing
 })
@@ -1191,6 +1178,26 @@ $('.js-gene-cart').change( function() {
         });
     }
 });
+
+async function run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing) {
+    try {
+       await dataset.run_projectR(projection_source, is_pca, scope);
+       if (dataset.projection_id) {
+           if (multigene) {
+               // 'entries' is array of gene_symbols
+               dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
+           } else {
+               dataset.draw({ gene_symbol: first_thing.data('gene_symbol') });
+           }
+       } else {
+           if (dataset.display)
+               dataset.display.clear_display();
+           dataset.show_no_match();
+       }
+
+   } catch(error) { console.error(error)};
+}
+
 
 // Set the state history based on current conditions
 function add_state_history(searched_entities, projection_source=null, is_pca=null) {
