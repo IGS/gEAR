@@ -4,6 +4,7 @@ import io
 import os
 import re
 from math import ceil
+from pathlib import Path
 
 import geardb
 import matplotlib.colors as mcolors
