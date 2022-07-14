@@ -1035,10 +1035,13 @@ $("#projection_search_form").submit((event) => {
 
         dataset_collection_panel.reset_abort_controller();
 
-        const promise_limit = 8;
-        const run_async_projection = asyncLimit(run_projection, promise_limit);
+        // SAdkins - Leaving this code in here, but I don't think it works any better than just a standard async/await call with memory management
+        //const promise_limit = 8;
+        //const run_async_projection = asyncLimit(run_projection, promise_limit);
         dataset_collection_panel.datasets.map((dataset) => {
-            run_async_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
+            run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
+            //run_async_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
+
         });
 
     }
