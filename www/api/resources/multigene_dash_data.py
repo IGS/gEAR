@@ -409,7 +409,7 @@ class MultigeneDashData(Resource):
             # Add "gene_symbol" as a column, make it categorical to ensure the sort order is preserved when melted
             df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
             df["gene_symbol"] = df["gene_symbol"].cat.reorder_categories(
-                        gene_symbols, ordered=True)
+                        normalized_genes_list, ordered=True)
             df = df.sort_values(by=["gene_symbol"])
 
             # Percent of all cells in this group where the gene has expression
@@ -527,7 +527,7 @@ class MultigeneDashData(Resource):
             # Add "gene_symbol" as a column, make it categorical to ensure the sort order is preserved when melted
             df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
             df["gene_symbol"] = df["gene_symbol"].cat.reorder_categories(
-                        gene_symbols, ordered=True)
+                        normalized_genes_list, ordered=True)
             df = df.sort_values(by=["gene_symbol"])
 
             violin_func = mg.create_stacked_violin_plot if stacked_violin else mg.create_violin_plot
