@@ -36,16 +36,13 @@ class Tree {
     }
 
     register_search() {
-    // Code from "search" section of https://www.jstree.com/plugins/
-    // Sets text input to search as tree search box.
-    const self = this;
     let to = false;
     // Requires searchbox to be named #{treeDiv}_q
     $(`${this.treeDiv}_q`).keyup(() => {
         if (to) { clearTimeout(to); }
         to = setTimeout(() => {
-        const v = $(`${self.treeDiv}_q`).val();
-        self.tree.search(v);
+            const v = $(`${this.treeDiv}_q`).val();
+            this.tree.search(v);
         }, 250);
     });
     }
@@ -66,16 +63,24 @@ class ProjectionSourceTree extends Tree {
      */
      constructor({
         ...args
-    }={}, projectionPatterns, domainGeneCarts, groupGeneCarts, userGeneCarts, sharedGeneCarts, publicGeneCarts) {
+    }={}, weightedDomainGeneCarts, weightedGroupGeneCarts, weightedUserGeneCarts, weightedSharedGeneCarts, weightedPublicGeneCarts,
+        unweightedDomainGeneCarts, unweightedGroupGeneCarts, unweightedUserGeneCarts, unweightedSharedGeneCarts, unweightedPublicGeneCarts) {
         super(args);
-        // NOTE: Projections may eventually be public/private/shared too
-        this.projectionPatterns = (projectionPatterns) ? projectionPatterns : [];
-        this.domainGeneCarts = (domainGeneCarts) ? domainGeneCarts : [];
-        this.userGeneCarts = (userGeneCarts) ? userGeneCarts : [] ;
-        this.groupGeneCarts = (groupGeneCarts) ? groupGeneCarts : [];
-        this.sharedGeneCarts = (sharedGeneCarts) ? sharedGeneCarts : [] ;
-        this.publicGeneCarts = (publicGeneCarts) ? publicGeneCarts : [] ;
 
+        this.weighted = {
+            domainGeneCarts: (weightedDomainGeneCarts) ? weightedDomainGeneCarts : []
+            , groupGeneCarts: (weightedGroupGeneCarts) ? weightedGroupGeneCarts : []
+            , userGeneCarts: (weightedUserGeneCarts) ? weightedUserGeneCarts : []
+            , sharedGeneCarts: (weightedSharedGeneCarts) ? weightedSharedGeneCarts : []
+            , publicGeneCarts: (weightedPublicGeneCarts) ? weightedPublicGeneCarts : []
+        };
+        this.unweighted = {
+            domainGeneCarts: (unweightedDomainGeneCarts) ? unweightedDomainGeneCarts : []
+            , groupGeneCarts: (unweightedGroupGeneCarts) ? unweightedGroupGeneCarts : []
+            , userGeneCarts: (unweightedUserGeneCarts) ? unweightedUserGeneCarts : []
+            , sharedGeneCarts: (unweightedSharedGeneCarts) ? unweightedSharedGeneCarts : []
+            , publicGeneCarts: (unweightedPublicGeneCarts) ? unweightedPublicGeneCarts : []
+        }
     }
 
     addNode(treeData, id, parentID, text, nodeType, kwargs) {
@@ -101,27 +106,31 @@ class ProjectionSourceTree extends Tree {
 
     getTotalWeightedCarts() {
         // get the total number of weighted gene carts
-        return this.domainGeneCarts.length + this.userGeneCarts.length + this.groupGeneCarts.length + this.sharedGeneCarts.length + this.publicGeneCarts.length;
+        return Object.keys(this.weighted).reduce((acc, curr) => acc + this.weighted[curr].length, 0);
+    }
+
+    getTotalUnweightedCarts() {
+        // get the total number of unweighted gene carts
+        return Object.keys(this.unweighted).reduce((acc, curr) => acc + this.unweighted[curr].length, 0);
     }
 
     generateTreeData() {
         // Create JSON tree structure for the data
         const treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
         const treeData = [
-            {'id':'projection_patterns_node', 'parent':'#', 'text':`Projection Pattern Source (${this.projectionPatterns.length})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
+            {'id':'unweighted_genes_node', 'parent':'#', 'text':`Unweighted Genes(${this.getTotalUnweightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
+            {'id':'uw_domain_node', 'parent':'unweighted_genes_node', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_user_node', 'parent':'unweighted_genes_node', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_group_node', 'parent':'unweighted_genes_node', 'text':`Group gene carts (${this.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_shared_node', 'parent':'unweighted_genes_node', 'text':`Gene carts shared with you (${this.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_public_node', 'parent':'unweighted_genes_node', 'text':`Public carts from other users (${this.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'weighted_genes_node', 'parent':'#', 'text':`Weighted Genes (${this.getTotalWeightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
-            {'id':'domain_node', 'parent':'weighted_genes_node', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'weighted_genes_node', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'group_node', 'parent':'weighted_genes_node', 'text':`Group gene carts (${this.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_domain_node', 'parent':'weighted_genes_node', 'text':`Highlighted gene carts (${this.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_user_node', 'parent':'weighted_genes_node', 'text':`Your gene carts (${this.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_group_node', 'parent':'weighted_genes_node', 'text':`Group gene carts (${this.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
-
-        $.each(this.projectionPatterns, (_i, item) => {
-            // ? Should the "genecart" icon change to a "projection pattern" icon?
-            // Projections patterns stored slightly differently than gene carts
-            this.addNode(treeData, item.value, 'projection_patterns_node', item.text, 'genecart');
-        });
 
         $.each(this.domainGeneCarts, (_i, item) => {
             // TODO: All this parent/grandparent logic should just go into addNode
@@ -244,7 +253,6 @@ class ProjectionSourceTree extends Tree {
     }
 
     register_events() {
-        const self = this;
         this.register_search();
 
         // Get genes from the selected gene cart
@@ -258,14 +266,14 @@ class ProjectionSourceTree extends Tree {
                 return;
             }
             const selectedNode = data.instance.get_node(geneCartId);
-            $(self.storedValElt).text(selectedNode.text);
-            $(self.storedValElt).val(geneCartId);
+            $(this.storedValElt).text(selectedNode.text);
+            $(this.storedValElt).val(geneCartId);
             // If data attributes were passed into the node, store them in this element for easy retrieval
             for (const key in selectedNode.original) {
-                $(self.storedValElt).data(key, selectedNode.original[key]);
+                $(this.storedValElt).data(key, selectedNode.original[key]);
             }
-            $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
-            $(self.storedValElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
+            $(this.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(this.storedValElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
         }).jstree(true);
     }
 };
@@ -588,7 +596,6 @@ class ProfileTree extends Tree {
 
     // Register various ProfileTree events as object properties are updated.
     register_events() {
-        const self = this;
         this.register_search();
 
         // Get layout from the selected node and close dropdown
@@ -604,13 +611,13 @@ class ProfileTree extends Tree {
             // The dropdown toggle text/val change already happens in DatasetCollectionPanel->set_layouts() for the index page,
             // but this should be set to assist with other pages.
             const selectedNode = data.instance.get_node(layoutId);
-            $(self.storedValElt).text(selectedNode.text);
-            $(self.storedValElt).val(layoutId);
-            $(self.storedValElt).data("profile-id", selectedNode.original.profile_id);
-            $(self.storedValElt).data("profile-label", selectedNode.original.profile_label);
-            $(self.storedValElt).data("profile-share-id", selectedNode.original.profile_share_id);
-            $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
-            $(self.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
+            $(this.storedValElt).text(selectedNode.text);
+            $(this.storedValElt).val(layoutId);
+            $(this.storedValElt).data("profile-id", selectedNode.original.profile_id);
+            $(this.storedValElt).data("profile-label", selectedNode.original.profile_label);
+            $(this.storedValElt).data("profile-share-id", selectedNode.original.profile_share_id);
+            $(this.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(this.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
     }
@@ -733,7 +740,6 @@ class DatasetTree extends Tree {
 
     // Register various DatasetTree events as object properties are updated.
     register_events() {
-        const self = this;
         this.register_search();
 
         // Get layout from the selected node and close dropdown
@@ -747,12 +753,12 @@ class DatasetTree extends Tree {
                 return;
             }
             const selectedNode = data.instance.get_node(datasetId);
-            $(self.storedValElt).text(selectedNode.text);
-            $(self.storedValElt).val(selectedNode.original.dataset_id);
-            $(self.storedValElt).data("dataset-id", selectedNode.original.dataset_id);
-            $(self.storedValElt).data("organism-id", selectedNode.original.organism_id);
-            $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
-            $(self.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
+            $(this.storedValElt).text(selectedNode.text);
+            $(this.storedValElt).val(selectedNode.original.dataset_id);
+            $(this.storedValElt).data("dataset-id", selectedNode.original.dataset_id);
+            $(this.storedValElt).data("organism-id", selectedNode.original.organism_id);
+            $(this.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(this.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
 
         }).jstree(true);
     }

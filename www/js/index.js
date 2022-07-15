@@ -509,7 +509,7 @@ async function load_layouts() {
 
 }
 
-async function load_gene_carts() {
+async function load_unweighted_gene_carts() {
     let carts_found = false;
     let permalink_cart_id = null
     let permalink_cart_label = null
@@ -630,11 +630,11 @@ async function load_weighted_gene_carts(cart_share_id) {
         }
 
         // Tree is generated in `load_pattern_tree`
-        projection_source_tree.domainGeneCarts = carts.domain;
-        projection_source_tree.userGeneCarts = carts.user;
-        projection_source_tree.groupGeneCarts = carts.group;
-        projection_source_tree.sharedGeneCarts = carts.shared;
-        projection_source_tree.publicGeneCarts = carts.public;
+        projection_source_tree.weightedDomainGeneCarts = carts.domain;
+        projection_source_tree.weightedUserGeneCarts = carts.user;
+        projection_source_tree.weightedGroupGeneCarts = carts.group;
+        projection_source_tree.weightedSharedGeneCarts = carts.shared;
+        projection_source_tree.weightedPublicGeneCarts = carts.public;
 
     })
     .fail((jqXHR, textStatus, errorThrown) => {
@@ -643,39 +643,9 @@ async function load_weighted_gene_carts(cart_share_id) {
     return [permalink_cart_id, permalink_cart_label];
 }
 
-async function populate_pattern_selection(projection_source) {
-    let permalink_projection_id = null
-    let permalink_projection_label = null
-
-    await $.ajax({
-        type: "POST",
-        url: "./cgi/get_projection_pattern_list.cgi",
-        //data: {session_id},
-        dataType: "json",
-    }).done((data) => {
-        const patterns_list = [];
-
-        $.each(data, (_i, item) => {
-            if (projection_source && item.id == projection_source) {
-                permalink_projection_id = item.id;
-                permalink_projection_label = item.title;
-            }
-            patterns_list.push({value: item.id,
-                 text: item.title
-            });
-        });
-
-        // Tree is generated in `load_pattern_tree`
-        projection_source_tree.projectionPatterns = patterns_list;
-    }).fail((jqXHR, textStatus, errorThrown) => {
-        display_error_bar(`${jqXHR.status} ${errorThrown.name}`,`Failed to populate patterns list`);
-    });
-    return [permalink_projection_id, permalink_projection_label];
-}
-
 async function load_pattern_tree() {
     const projection_id = getUrlParameter('projection_source');
-    const values = await Promise.allSettled([load_weighted_gene_carts(projection_id), populate_pattern_selection(projection_id)])
+    const values = await load_weighted_gene_carts(projection_id)
         .catch((err) => {
             console.error(err);
         });
@@ -702,10 +672,12 @@ async function load_pattern_tree() {
 async function load_all_trees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
-    await Promise.allSettled([load_layouts(), load_gene_carts(), load_pattern_tree()])
-        .catch((err) => {
-            console.error(err)
-        });
+    try {
+        await Promise.allSettled([load_layouts(), load_unweighted_gene_carts()]);
+        await load_pattern_tree();  // Will load unweighted gene carts too.
+    } catch (err) {
+        console.error(err)
+    }
     console.info("Trees loaded");
 
     // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
