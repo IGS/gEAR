@@ -650,21 +650,22 @@ async function load_pattern_tree() {
             console.error(err);
         });
 
+    projection_source_tree.addGeneCartTreeData(gene_cart_tree);
+
     // If projection info was in URL, one of the above should have the JSTree element returned
     projection_source_tree.generateTree();
 
     // If a permalink was provided, set the value in the tree and search bar
-    for (const val of values) {
-        if (val.value[0]) {
-            $("#projection_source").text(val.value[1]);
-            $("#projection_source").val(val.value[0]);
-            // At this point, the tree is generated but loading data attributes to the storedValElt does not occur until a node is selected.
-            // So we need to manually set the data attribute for the first-pass.
-            const tree_leaf = projection_source_tree.treeData.find(e => e.id === $("#projection_source").val());
-            $("#projection_source").data("scope", tree_leaf.scope);
-            $("#projection_source").trigger('change');
-            return;
-        }
+    // TODO: Figure out how to get this from weighted or unweighted cart
+    if (values[0]) {
+        $("#projection_source").text(val.values[1]);
+        $("#projection_source").val(val.values[0]);
+        // At this point, the tree is generated but loading data attributes to the storedValElt does not occur until a node is selected.
+        // So we need to manually set the data attribute for the first-pass.
+        const tree_leaf = projection_source_tree.treeData.find(e => e.id === $("#projection_source").val());
+        $("#projection_source").data("scope", tree_leaf.scope);
+        $("#projection_source").trigger('change');
+        return;
     }
 }
 
