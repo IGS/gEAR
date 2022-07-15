@@ -180,7 +180,7 @@ class TSNEData(Resource):
             }
 
         try:
-            ana = get_analysis(analysis_id, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
         except PlotError as pe:
             return {
                 "success": -1,
