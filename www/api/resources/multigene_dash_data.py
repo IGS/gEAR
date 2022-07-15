@@ -240,9 +240,14 @@ class MultigeneDashData(Resource):
         if plot_type in ['dotplot', 'heatmap', 'mg_violin'] and gene_filter is not None:
             selected = selected[:, gene_filter]
 
-            if plot_type == "heatmap" and len(selected.var) == 1:
-                raise PlotError("Only one gene from the searched gene symbols was found in dataset.  The heatmap option require at least 2 genes to plot.")
-
+            try:
+                if plot_type == "heatmap" and len(selected.var) == 1:
+                    raise PlotError("Only one gene from the searched gene symbols was found in dataset.  The heatmap option require at least 2 genes to plot.")
+            except PlotError as pe:
+                return {
+                    "success": -1,
+                    "message": str(pe)
+                }
             # Get a list of sorted ensembld IDs based on the specified gene symbol order
             ensm_to_gene = selected.var.to_dict()["gene_symbol"]
             # Since genes were restricted to one Ensembl ID we can invert keys and vals
