@@ -156,7 +156,7 @@ class TSNEData(Resource):
 
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type', "tsne_static")
-        analysis_id = req.get('analysis')
+        analysis = req.get('analysis')
         colorize_by = req.get('colorize_legend_by')
         skip_gene_plot = req.get('skip_gene_plot', False)
         plot_by_group = req.get('plot_by_group', None) # One expression plot per group
@@ -215,7 +215,7 @@ class TSNEData(Resource):
             }
 
         # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
-        if analysis_id is None or analysis_id in ["null", "undefined", dataset_id]:
+        if analysis is None or analysis in ["null", "undefined", dataset_id]:
             for ds in [x_axis, y_axis]:
                 if ds not in adata.obs:
                     return {
