@@ -1402,7 +1402,7 @@ class TsneDisplay extends Display {
         super(args);
         const config = plotly_config;
         this.gene_symbol = gene_symbol;
-        this.analysis_id = config.analysis ? config.analysis.id : null;
+        this.analysis = config.analysis || null;
         this.colors = config.colors;
         this.order = config.order;
         this.colorize_legend_by = config.colorize_legend_by;
