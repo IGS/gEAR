@@ -314,13 +314,9 @@ class ProjectionSourceTree extends Tree {
         return this.treeData;
     }
 
-    generateTree() {
-        super.generateTree();
-    }
+    generateTree() { super.generateTree(); }
 
-    registerEvents() {
-        super.registerEvents();
-    }
+    registerEvents() { super.registerEvents(); }
 };
 
 /**
@@ -384,13 +380,9 @@ class GeneCartTree extends Tree {
         return this.treeData;
     }
 
-    generateTree() {
-        super.generateTree();
-    }
+    generateTree() { super.generateTree(); }
 
-    registerEvents() {
-        super.registerEvents();
-    }
+    registerEvents() { super.registerEvents(); }
 }
 
 /**
@@ -466,13 +458,9 @@ class ProfileTree extends Tree {
         return this.treeData;
     }
 
-    generateTree() {
-        super.generateTree();
-    }
+    generateTree() { super.generateTree(); }
 
-    registerEvents() {
-        super.registerEvents();
-    }
+    registerEvents() { super.registerEvents(); }
 }
 
 /**
@@ -534,11 +522,7 @@ class DatasetTree extends Tree {
         return this.treeData;
     }
 
-    generateTree() {
-        super.generateTree();
-    }
+    generateTree() { super.generateTree(); }
 
-    registerEvents() {
-        super.registerEvents();
-    }
+    registerEvents() { super.registerEvents(); }
 }
