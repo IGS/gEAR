@@ -20,7 +20,7 @@ class Tree {
         , storedValElt
     } = {}) {
         this.treeDiv = treeDiv; // Element to generate the tree structure on
-        this.storedValElt = storedValElt ? $(storedValElt) : null;   // Element to store text, vals, and data properties on
+        this.storedValElt = storedValElt || null;   // Element to store text, vals, and data properties on
 
         this.setTree();
     }
@@ -37,7 +37,7 @@ class Tree {
 
     // Update the contents of a JSTree object with new data.
     updateTreeData(newData=null) {
-        (this.tree).settings.core.data = newData ? newData : this.treeData;
+        (this.tree).settings.core.data = newData || this.treeData;
         (this.tree).refresh();
     }
 
@@ -161,7 +161,9 @@ class Tree {
     }
 
     // Register various Tree events as object properties are updated.
-    registerEvents() {
+    registerEvents(dataKeyAsVal="") {
+        // datadKeyAsVal - if set, the data-key attribute of the selected node will be used as the value of the dropdown
+
         this.registerSearch();
 
         // Get genes from the selected gene cart
@@ -176,7 +178,9 @@ class Tree {
             }
             const selectedNode = data.instance.get_node(selectedID);
             $(this.storedValElt).text(selectedNode.text);
-            $(this.storedValElt).val(selectedID);
+
+            const val = dataKeyAsVal ? selectedNode.original[dataKeyAsVal] : selectedNode.id;
+            $(this.storedValElt).val(val);
             // $(this.storedValElt).val(selectedNode.original.dataset_id);
 
             // If data attributes were passed into the node, store them in this element for easy retrieval
@@ -524,5 +528,5 @@ class DatasetTree extends Tree {
 
     generateTree() { super.generateTree(); }
 
-    registerEvents() { super.registerEvents(); }
+    registerEvents() { super.registerEvents("dataset_id"); }
 }
