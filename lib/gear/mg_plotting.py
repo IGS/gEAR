@@ -1199,6 +1199,8 @@ def get_discrete_colors(fields, colorscale="vivid", reverse_colorscale=False, ):
         colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
     return colors
 
+# NOTE: Currently not used as I refactored the code to use the existing retrieved colorscales
+# But keeping this here in case I want to use it again in the future
 def get_colorscale(colorscale):
     """Return colorscale 2D list for the selected premade colorscale."""
     if colorscale.lower() in px.colors.named_colorscales():
