@@ -43,7 +43,6 @@ const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 // color palettes
 // Obtained from https://plotly.com/python/builtin-colorscales/
 // and https://plotly.com/python/discrete-color/
-// The "dotplot" property means these are possible for dotplots
 const availablePalettes = [
     {
         label: "Qualitative Scales",
@@ -51,7 +50,7 @@ const availablePalettes = [
         options: [
             // These need to be kept up-to-date with the "color_swatch_map" in lib/mg_plotting.py
             { value: "alphabet", text: "Alphabet (26 colors)" },
-            { value: "bold", text: "Bold (11 colos)" },
+            { value: "bold", text: "Bold (11 colors)" },
             { value: "d3", text: "D3 (10 colors)" },
             { value: "dark24", text: "Dark (24 colors)" },
             { value: "light24", text: "Light (24 colors)" },
