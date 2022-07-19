@@ -631,15 +631,3 @@ class MultigeneDashData(Resource):
             , 'gene_symbols': gene_symbols
             , 'plot_json': json.loads(plot_json)
         }
-
-class PaletteData(Resource):
-    def get(self):
-        colorscale = request.args.get('colorscale', None)
-
-        if not colorscale:
-            raise Exception("No colorscale provided")
-
-        try:
-            return mg.get_colorscale(colorscale)
-        except Exception as e:
-            raise Exception(str(e))

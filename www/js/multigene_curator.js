@@ -16,7 +16,6 @@ let sortCategories = {"primary": null, "secondary": null}; // Control sorting or
 let genesFilter = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
-const paletteInformation = {};    // Store information about the colorscales
 
 let selectedGenes = null;  // Genes selected in a plot (e.g. volcano with lasso tool)
 
@@ -40,62 +39,6 @@ const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container"];
 const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#obs_secondary_container", '#colorscale_container'];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 
-// color palettes
-// Obtained from https://plotly.com/python/builtin-colorscales/
-// and https://plotly.com/python/discrete-color/
-// The "dotplot" property means these are possible for dotplots
-const availablePalettes = [
-    {
-        label: "Qualitative Scales",
-        continuous: false,
-        options: [
-            // These need to be kept up-to-date with the "color_swatch_map" in lib/mg_plotting.py
-            { value: "alphabet", text: "Alphabet (26 colors)" },
-            { value: "bold", text: "Bold (11 colos)" },
-            { value: "d3", text: "D3 (10 colors)" },
-            { value: "dark24", text: "Dark (24 colors)" },
-            { value: "light24", text: "Light (24 colors)" },
-            { value: "safe", text: "Safe (11 colors)" },
-            { value: "vivid", text: "Vivid (11 colors)" },
-        ]
-    },
-    {
-        label: "Sequential Scales",
-        continuous: true,
-        options: [
-            { value: "greys", text: "Greys" },
-            { value: "blues", text: "Blues" },
-            { value: "purp", text: "Purples" }, // Cannot use in dotplot
-            { value: "reds", text: "Reds" },
-            { value: "bluered", text: "Blue-Red" },
-            { value: "dense", text: "Dense" },
-            { value: "electric", text: "Electric" },
-            { value: "ylgnbu", text: "Yellow-Green-Blue" },
-            { value: "ylorrd", text: "Yellow-Orange-Red" },
-        ],
-    },
-    {
-        label: "Diverging Scales",
-        continuous: true,
-        options: [
-            { value: "earth", text: "Earth" },
-            { value: "piyg", text: "Pink-Green" },
-            { value: "prgn", text: "Purple-Green" },
-            { value: "rdbu", text: "Red-Blue" },
-            { value: "rdylbu", text: "Red-Yellow-Blue" },
-        ],
-    },
-    {
-        label: "Color Vision Accessibility Scales",
-        continuous: true,
-        options: [
-            { value: "cividis", text: "Cividis" },
-            { value: "inferno", text: "Inferno" },
-            { value: "viridis", text: "Viridis" },
-        ]
-    },
-];
-
 window.onload = () => {
     // Hide further configs until a dataset is chosen.
     // Changing the dataset will start triggering these to show
@@ -108,8 +51,6 @@ window.onload = () => {
         width: '25%',
         minimumResultsForSearch: -1
     });
-
-    getColorscaleData();
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -634,24 +575,6 @@ function createVolcanoDropdowns (obsLevels) {
 
 }
 
-// Call the API to get colorscale data
-async function getColorscaleData () {
-    // I don't like using an API call on this but some of these colorscales are plotly-specific
-    // and I could not find a way to get them from Plotly.js
-    for (const types in availablePalettes) {
-        const palettes = availablePalettes[types].options;
-        for (const palette in palettes) {
-            const { value } = palettes[palette];
-            try {
-                const {data} = await axios.get(`/api/mg_palette?colorscale=${value}`);
-                paletteInformation[value] = data;
-            } catch (e) {
-                console.error(`Could not load colorscale data for '${value}': ${e}`);
-            };
-        }
-    };
-}
-
 // Load colorscale select2 object and populate with data
 function loadColorscaleSelect (isContinuous=false) {
 
@@ -716,7 +639,7 @@ function createCanvasScale(data, elem) {
     const ctx = elem.getContext("2d");  // canvas element
     // Add the colors to the scale
     const { length } = data;
-    const width = elemWidth/length;   // 100 is length of canvas
+    const width = elemWidth/length;   // 150 is length of canvas
     for (const color of data) {
         ctx.fillStyle = color[1];
         // The length/length+1 is to account for the fact that the last color has a value of 1.0
