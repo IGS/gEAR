@@ -18,7 +18,7 @@ from flask_restful import Api
 
 # Import resources
 from resources.plotly_data import PlotlyData
-from resources.multigene_dash_data import MultigeneDashData, PaletteData
+from resources.multigene_dash_data import MultigeneDashData
 from resources.h5ad import H5ad
 from resources.svg_data import SvgData
 from resources.top_pca_genes import TopPCAGenes
@@ -37,7 +37,6 @@ api = Api(app)
 
 api.add_resource(PlotlyData, '/plot/<dataset_id>') # May want to add /plotly to this endpoint for consistency
 api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
-api.add_resource(PaletteData, '/mg_palette')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')

@@ -630,11 +630,11 @@ async function load_weighted_gene_carts(cart_share_id) {
         }
 
         // Tree is generated in `load_pattern_tree`
-        projection_source_tree.weightedDomainGeneCarts = carts.domain;
-        projection_source_tree.weightedUserGeneCarts = carts.user;
-        projection_source_tree.weightedGroupGeneCarts = carts.group;
-        projection_source_tree.weightedSharedGeneCarts = carts.shared;
-        projection_source_tree.weightedPublicGeneCarts = carts.public;
+        projection_source_tree.weighted.domainGeneCarts = carts.domain;
+        projection_source_tree.weighted.userGeneCarts = carts.user;
+        projection_source_tree.weighted.groupGeneCarts = carts.group;
+        projection_source_tree.weighted.sharedGeneCarts = carts.shared;
+        projection_source_tree.weighted.publicGeneCarts = carts.public;
 
     })
     .fail((jqXHR, textStatus, errorThrown) => {
