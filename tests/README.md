@@ -54,7 +54,7 @@ This could be used for image regression purposes, but currently we have no imple
 
 The paradigm that seems easiest to work with is to use two classes. The first class represents the page being tested, including properties to use in testing. This class will also contain the code that deals with page navigation and manipulation. The second class represents the tests and assertions, and is an extension of the SeleniumBase.BaseCase class.  Do note that an instance from the second class will be passed to methods in the first class, as that object is the SeleniumBase driver itself.
 
-For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`.
+For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`. If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely.
 
 Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 
@@ -74,15 +74,7 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
   * With incorrect credentials
   * With correct credentials
 
-### Current and pending UI tests
-
-#### Main Page - Display Panel mode
-
-#### Contact Us
-
-#### Analysis (single-cell) workbench
-
-#### Comparision tool
+#### Comparison tool
 
 * Select dataset
 * Select conditions
@@ -97,12 +89,26 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
   * Not found genes show in that div
 * Select genes from plot
   * Ensure they show in table
-  * Ensure highlighted genes are colored
+  * Ensure highlighted genes are colored (Pou4f3)
+* Visual regression testing
+* Download gene selection table
 * Name and save gene cart
-* Download table
-* Use visual tool like needle (python package) for visual regression testing (plot doesn't differ)
-  * TODO: https://github.com/python-needle/needle
-* colorblind mode (check colorized filter colorscheme)
+
+
+### Current and pending UI tests
+
+#### Main Page - Display Panel mode
+
+#### Contact Us
+
+#### Analysis (single-cell) workbench
+
+#### Colorblind mode
+
+* Comparision tool
+* Dataset curator
+* Multigene curator
+* Main page - display panel
 
 #### Dataset (single-gene) curator
 
@@ -116,7 +122,6 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 * Create a tSNE/uMAP plot
   * split and color by a category
 * Load an existing plot
-* colorblind mode
 
 #### Multigene curator
 
@@ -159,7 +164,6 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 * Ensure heatmap and matrixplot expression value for a single gene and observation/celltype is correct
   * This tests that sorting was fine
   * For heatmaps/violins/dotplots
-* colorblind mode (check all plots
 
 #### Manual Documentation
 
