@@ -109,7 +109,7 @@ $(document).on("handle_page_loading", () => {
     }
 
     // Repopulate projection information... projection_source URL loaded earlier
-    const permalinked_is_pca = getUrlParameter('is_pca')
+    const permalinked_is_nmf = getUrlParameter('is_nmf')
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
 
     // Only apply if both are present
@@ -133,7 +133,7 @@ $(document).on("handle_page_loading", () => {
             $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
         });
 
-        $("#is_pca").prop('checked', permalinked_is_pca === "1");
+        $("#is_nmf").prop('checked', permalinked_is_nmf === "1");
 
         // Correct tab is active
         $("#projection_tab").click();
@@ -957,7 +957,8 @@ $("#projection_search_form").submit((event) => {
         $(`.js-projection-pattern-elts-check`).prop('checked', true);
     }
 
-    const is_pca = $('#is_pca').is(':checked');
+    const is_nmf = $('#is_nmf').is(':checked'); // This is added to state history
+    const is_pca = !is_nmf; // This is passed to the API
 
     $('#recent_updates_c').hide();
 
@@ -986,7 +987,7 @@ $("#projection_search_form").submit((event) => {
     projection = true;
 
     // Add the patterns source to the history.
-    add_state_history(selected_projections_string, projection_source, is_pca);
+    add_state_history(selected_projections_string, projection_source, is_nmf);
 
     dataset_collection_panel.load_frames({dataset_id, multigene, projection});
 
@@ -1176,7 +1177,7 @@ async function run_projection(dataset, projection_source, is_pca, scope, selecte
 
 
 // Set the state history based on current conditions
-function add_state_history(searched_entities, projection_source=null, is_pca=null) {
+function add_state_history(searched_entities, projection_source=null, is_nmf=null) {
     const state_info = {
         'multigene_plots': Number(multigene)
     };
@@ -1199,9 +1200,9 @@ function add_state_history(searched_entities, projection_source=null, is_pca=nul
         state_info.projection_source = projection_source;
         state_url += `&projection_source=${projection_source}`;
 
-        if (is_pca) {
-            state_info.is_pca = Number(is_pca);
-            state_url += `&is_pca=${state_info.is_pca}`;
+        if (is_nmf) {
+            state_info.is_nmf = Number(is_nmf);
+            state_url += `&is_nmf=${state_info.is_nmf}`;
         }
         // If a single-projection display, do not bother adding the list of patterns
         if (state_info.multigene_plots == 1) {

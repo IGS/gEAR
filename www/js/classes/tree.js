@@ -185,7 +185,8 @@ class Tree {
 
             // If data attributes were passed into the node, store them in this element for easy retrieval
             for (const key in selectedNode.original) {
-                $(this.storedValElt).data(key, selectedNode.original[key]);
+                const formattedKey = key.replace(/_/g, '-');
+                $(this.storedValElt).data(formattedKey, selectedNode.original[key]);
             }
             $(this.dropdownToggleElt).dropdown('toggle');  // Close dropdown
             $(this.storedValElt).change(); // Force the change event to fire, triggering downstream things like getting cart members
