@@ -156,7 +156,7 @@ class TSNEData(Resource):
 
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type', "tsne_static")
-        analysis = req.get('analysis')
+        analysis = req.get('analysis', None)
         colorize_by = req.get('colorize_legend_by')
         skip_gene_plot = req.get('skip_gene_plot', False)
         plot_by_group = req.get('plot_by_group', None) # One expression plot per group
