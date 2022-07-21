@@ -658,8 +658,8 @@ async function load_pattern_tree() {
     // If a permalink was provided, set the value in the tree and search bar
     // TODO: Figure out how to get this from weighted or unweighted cart
     if (values[0]) {
-        $("#projection_source").text(val.values[1]);
-        $("#projection_source").val(val.values[0]);
+        $("#projection_source").text(values[1]);
+        $("#projection_source").val(values[0]);
         // At this point, the tree is generated but loading data attributes to the storedValElt does not occur until a node is selected.
         // So we need to manually set the data attribute for the first-pass.
         const tree_leaf = projection_source_tree.treeData.find(e => e.id === $("#projection_source").val());
