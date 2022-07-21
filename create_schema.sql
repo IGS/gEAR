@@ -82,6 +82,7 @@ CREATE TABLE gene (
        biotype          VARCHAR(100),
        INDEX            org_idx (organism_id),
        INDEX            org_sym (organism_id, gene_symbol),
+       INDEX            gene_sym (gene_symbol),
        FOREIGN KEY (organism_id) REFERENCES organism(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
