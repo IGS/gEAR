@@ -36,7 +36,8 @@ def convert_r_matrix_to_r_prcomp(mtx):
     Convert R-style matrix to R-style prcomp object
     """
     # mtx is a matrix of numbers with PCs in columns
-    prcomp_obj = ri.ListSexpVector({"rotation": mtx})   # low-level equivalent to ro.ListVector
+    from rpy2.robjects import ListVector
+    prcomp_obj = ListVector({"rotation": mtx})
     prcomp_obj.rclass = "prcomp"    # Convert to prcomp-class object
     return prcomp_obj
 
@@ -68,6 +69,14 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
             target_r_df = ro.conversion.py2rpy(target_df)
             loading_r_df = ro.conversion.py2rpy(loading_df)
 
+        if target_df.empty:
+            ri.endr(1)  # Exit with fatal state
+            raise RError("Target (dataset) dataframe is empty.")
+
+        if loading_df.empty:
+            ri.endr(1)  # Exit with fatal state
+            raise RError("Loading (pattern) dataframe is empty.")
+
         # data.frame to matrix (projectR has no data.frame signature)
         target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
         loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
@@ -78,8 +87,12 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
 
         # Modify the R-style matrix to be a prcomp object if necessary
         loading_r_object = loading_r_matrix
+
         if is_pca:
             loading_r_object = convert_r_matrix_to_r_prcomp(loading_r_matrix)
+            if not loading_r_object:
+                ri.endr(1)  # Exit with fatal state
+                raise RError("Could not convert loading matrix to R prcomp object.")
 
         # Run project R command.  Get projectionPatterns matrix
         try:
