@@ -110,9 +110,9 @@ window.onload = () => {
 		populate_condition_selection_control();
 		// Change the default if the dataset is already log10 transformed
 		if (log10_transformed_datasets.includes($('#dataset_id').val())) {
-		$('#log_base').val('10');
+			$('#log_base').val('10');
 		} else {
-		$('#log_base').val('2');
+			$('#log_base').val('2');
 		}
 	});
 
@@ -156,12 +156,14 @@ function download_selected_genes() {
 
 	let file_contents =
 		$("#log_base").val() == "raw"
-		? "gene_symbol\tp-value\tfold change\t"
+		? "gene_symbol\tp-value\traw fold change\t"
 		+ x_label + "\t"
 		+ y_label + "\n"
-		: "gene_symbol\tp-value\tfold change\t"
+		: "gene_symbol\tp-value\traw fold change\t"
 		+ x_label + " (log" + $("#log_base").val() +")\t"
 		+ y_label + " (log" + $("#log_base").val() +")\n";
+
+
 
 	selected_data.points.forEach((pt) => {
 		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
@@ -801,12 +803,15 @@ function save_gene_cart() {
 
 function save_weighted_gene_cart() {
 	// must have access to USER_SESSION_ID
-	foldchange_label = "FC"
-	switch ($('input[name=foldchange_to_save]:checked').val()) {
-		case "log2":
+	let foldchange_label = "FC"
+
+	const foldchange_to_save = Number($('input[name=foldchange_to_save]:checked').val());
+
+	switch (foldchange_to_save) {
+		case 2:
 			foldchange_label = "Log2FC";
 			break;
-		case "log10":
+		case 10:
 			foldchange_label = "Log10FC";
 			break;
 		default: // 'raw'
@@ -822,13 +827,15 @@ function save_weighted_gene_cart() {
 	}, weight_labels=[foldchange_label]
 	);
 
+
 	plot_data.gene_ids.forEach((gene_id, i) => {
-		foldchange = plot_data.fold_changes[i]
-		switch ($('input[name=foldchange_to_save]:checked').val()) {
-			case "log2":
+		let foldchange = plot_data.fold_changes[i]	// currently "raw" values
+
+		switch (foldchange_to_save) {
+			case 2:
 				foldchange = Math.log2(foldchange);
 				break;
-			case "log10":
+			case 10:
 				foldchange = Math.log10(foldchange);
 				break;
 			default: // 'raw'
