@@ -494,6 +494,8 @@ function save_weighted_gene_cart() {
             return;
         }
 
+        const weight_labels = data.pc_data.columns;
+
         // must have access to USER_SESSION_ID
         const gc = new WeightedGeneCart({
             session_id: CURRENT_USER.session_id,
@@ -501,14 +503,15 @@ function save_weighted_gene_cart() {
             gctype: 'weighted-list',
             organism_id: $("#dataset_id").data('organism-id'),
             is_public: 0
-        }, weight_labels=data.pc_data.columns
+        }, weight_labels
         );
 
         data.pc_data.index.forEach((gene_id, i) => {
+            const weights = data.pc_data.data[i];
             const gene = new WeightedGene({
                 id: gene_id,
                 gene_symbol: data.gene_symbols[i]
-            }, weights=data.pc_data.data[i]
+            }, weights
             );
             gc.add_gene(gene);
         });
