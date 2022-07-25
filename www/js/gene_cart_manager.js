@@ -258,9 +258,9 @@ $(document).on('click', '.edit_gc_save', function() {
 
 $(document).on('click', '.download_gc', function() {
     /*
-      Reformats the <ul> containing the gene symbols into a text file with one gene
-      per row.
-     */
+        Reformats the <ul> containing the gene symbols into a text file with one gene
+        per row.
+    */
     var gc_id = $(this).data('gc-id');
     var file_contents = '';
 
@@ -310,14 +310,12 @@ $(document).on('click', '.gc_weighted_gene_list_toggle', function() {
         type: "POST",
         data : {'share_id': share_id},
         dataType:"json",
-        success: function(data, textStatus, jqXHR) {
-            process_weighted_gc_list(gc_id, data['preview_json']);
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-	        console.log('textStatus= ', textStatus);
-	        console.log('errorThrown= ', errorThrown);
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-        }
+    }).done(function(data, textStatus, jqXHR) {
+        process_weighted_gc_list(gc_id, data['preview_json']);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log('textStatus= ', textStatus);
+        console.log('errorThrown= ', errorThrown);
+        display_error_bar(jqXHR.status + ' ' + errorThrown.name);
     }); //end ajax
 });
 
@@ -417,8 +415,6 @@ $('#new_cart_data').on('submit', function() {
         $("#btn_new_cart_saving").hide();
         return false;
     }
-
-    var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
 
     $("#new_cart_label").removeClass("input-validation-error");
 
