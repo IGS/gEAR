@@ -213,7 +213,7 @@ class ProjectionSourceTree extends Tree {
      * @constructor
      * @param {Object} Data - Tree data
      */
-     constructor({
+    constructor({
         ...args
     }={}, weightedDomainGeneCarts, weightedGroupGeneCarts, weightedUserGeneCarts, weightedSharedGeneCarts, weightedPublicGeneCarts,
         unweightedDomainGeneCarts, unweightedGroupGeneCarts, unweightedUserGeneCarts, unweightedSharedGeneCarts, unweightedPublicGeneCarts) {
@@ -261,7 +261,7 @@ class ProjectionSourceTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         const treeData = [
-            {'id':'unweighted_genes_node', 'parent':'#', 'text':`Unweighted Genes(${this.getTotalUnweightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
+            {'id':'unweighted_genes_node', 'parent':'#', 'text':`Unweighted Genes (${this.getTotalUnweightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
             {'id':'uw_domain_node', 'parent':'unweighted_genes_node', 'text':`Highlighted gene carts (${this.unweighted.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'uw_user_node', 'parent':'unweighted_genes_node', 'text':`Your gene carts (${this.unweighted.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'uw_group_node', 'parent':'unweighted_genes_node', 'text':`Group gene carts (${this.unweighted.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
