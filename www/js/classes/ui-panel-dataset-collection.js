@@ -141,6 +141,11 @@ class DatasetCollectionPanel {
                 if (data.success == 1) {
                     //Was a search already performed?
                     if ($("#search_gene_symbol").val()) {
+                        if (projection) {
+                            update_datasetframes_projections();
+                            return;
+                        }
+
                         // User has already searched, automatically update datasets and gene searches
                         update_datasetframes_generesults();
                     }

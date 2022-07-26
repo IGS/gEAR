@@ -524,6 +524,7 @@ li.scope_choice:hover {
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
+  outline: none;
   padding: 0.625rem 0rem;
   transition: 0.3s;
   color: white;

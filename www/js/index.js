@@ -201,7 +201,7 @@ $(document).on("handle_page_loading", () => {
     // If a ProfileTree element is selected, this is changed and the new layout is set
     // NOTE: I don't think #search_param_profile needs to be a trigger
     $(document).on('change', '#search_param_profile, #selected_profile', function() {
-        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene);
+        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene, projection);
         layout_id = $(this).data('profile-share-id');
 
         // If a ProfileTree element is selected from the results page,
@@ -738,7 +738,7 @@ function populate_search_result_list(data) {
 
 var lastCall = 0;
 function select_search_result(elm, draw_display=true) {
-    //TODO Prevents this function from being double-called by #gene_search_form.submit()
+    //TODO Prevent this function from being double-called by #gene_search_form.submit()
     const callTime = new Date().getTime();
     if (callTime - lastCall <= 500) {
       return false;
@@ -908,6 +908,7 @@ $("#gene_search_form").submit((event) => {
                 $('#gene_details_c').hide();
             } else {
                 // auto-select the first match.  first <a class="list-group-item"
+                // Also draws the plot for each dataset.
                 const first_thing = $('#search_results a.list-group-item').first();
                 select_search_result(first_thing);
             }
@@ -998,7 +999,6 @@ $("#projection_search_form").submit((event) => {
         search_results = selected_projections;
 
         // Implementing search_genes.py results without the CGI execution
-        // ? Can we use the DIMRED_meta file to get annotation info?
         populate_search_result_list(selected_projections);
         $('#searching_indicator_c').hide();
         $('#intro_content').hide('fade', {}, 400);
@@ -1158,21 +1158,21 @@ $('.js-gene-cart').change( function() {
 
 async function run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing) {
     try {
-       await dataset.run_projectR(projection_source, is_pca, scope);
-       if (dataset.projection_id) {
-           if (multigene) {
-               // 'entries' is array of gene_symbols
-               dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
-           } else {
-               dataset.draw({ gene_symbol: first_thing.data('gene_symbol') });
-           }
-       } else {
-           if (dataset.display)
-               dataset.display.clear_display();
-           dataset.show_no_match();
-       }
+        await dataset.run_projectR(projection_source, is_pca, scope);
+        if (dataset.projection_id) {
+            if (multigene) {
+                // 'entries' is array of gene_symbols
+                dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
+            } else {
+                dataset.draw({ gene_symbol: first_thing.data('gene_symbol') });
+            }
+        } else {
+            if (dataset.display)
+                dataset.display.clear_display();
+            dataset.show_no_match();
+        }
 
-   } catch(error) { console.error(error)};
+    } catch(error) { console.error(error)};
 }
 
 
@@ -1256,27 +1256,48 @@ function set_scrollbar_props() {
     }
 }
 
-// automatically reloads dataset grid and resubmits gene search
-function update_datasetframes_generesults() {
-    function resubmit_gene_search() {
+function update_datasetframes_projections() {
+
+    const is_nmf = $('#is_nmf').is(':checked'); // This is added to state history
+    const is_pca = !is_nmf; // This is passed to the API
+
+    // Get selected projections and add as state
+    const selected_projections = [];
+    $('.js-projection-pattern-elts-check:checked').each(function() {
+        // Needs to be Object so it can be the same structure as "search_genes.py" so it fits nicesly in populate_search_result_list()
+        const label = $(this).data('label');
+        selected_projections[label] = label;
+    });
+
+    // Assumes that projection source is still present.
+    const projection_source = $("#projection_source").val();
+    if (!projection_source) {
         return;
-        // SAdkins - 1/6/22 - commenting out since it loads double the frames
-        //$('#gene_search_form').trigger('submit');
     }
 
-    $.when( resubmit_gene_search() ).done(() => {
-        if (multigene){
-            // split on combination of space and comma (individually or both together.)
-            const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
-            // Remove duplicates in gene search if they exist
-            const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
-            dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
-        } else {
-            // auto-select the first match.  first <a class="list-group-item"
-            const first_thing = $('#search_results a.list-group-item').first();
-            select_search_result(first_thing);
-        }
+    const scope = $("#projection_source").data('scope');
+    const first_thing = $('#search_results a.list-group-item').first();
+    select_search_result(first_thing, draw_display=false);
+
+    // Run ProjectR for the chosen pattern
+    dataset_collection_panel.datasets.map((dataset) => {
+        run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
     });
+}
+
+// automatically reloads dataset grid and resubmits gene search
+function update_datasetframes_generesults() {
+    if (multigene){
+        // split on combination of space and comma (individually or both together.)
+        const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
+        // Remove duplicates in gene search if they exist
+        const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+        dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+    } else {
+        // auto-select the first match.  first <a class="list-group-item"
+        const first_thing = $('#search_results a.list-group-item').first();
+        select_search_result(first_thing);
+    }
 }
 
 function set_exact_match(is_enabled, show_tooltip=true) {
