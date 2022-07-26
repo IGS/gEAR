@@ -64,11 +64,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
             ri.endr(1)  # Exit with fatal state
             raise RError("Could not import projectR package.")
 
-        # Convert from pandas dataframe to R data.frame
-        with localconverter(ro.default_converter + pandas2ri.converter):
-            target_r_df = ro.conversion.py2rpy(target_df)
-            loading_r_df = ro.conversion.py2rpy(loading_df)
-
         if target_df.empty:
             ri.endr(1)  # Exit with fatal state
             raise RError("Target (dataset) dataframe is empty.")
@@ -76,6 +71,11 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         if loading_df.empty:
             ri.endr(1)  # Exit with fatal state
             raise RError("Loading (pattern) dataframe is empty.")
+
+        # Convert from pandas dataframe to R data.frame
+        with localconverter(ro.default_converter + pandas2ri.converter):
+            target_r_df = ro.conversion.py2rpy(target_df)
+            loading_r_df = ro.conversion.py2rpy(loading_df)
 
         # data.frame to matrix (projectR has no data.frame signature)
         target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
@@ -93,6 +93,19 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
             if not loading_r_object:
                 ri.endr(1)  # Exit with fatal state
                 raise RError("Could not convert loading matrix to R prcomp object.")
+
+        # Test if "loading" R matrix (post-adjustment) is empty
+        # TODO: Seems when this is enabled I get an "embedded R is not ready to use" error
+        """
+        r_all = ri.baseenv["all"]
+        r_isna = ri.baseenv["is.na"]
+        if r_all(r_isna(target_r_matrix)):
+            ri.endr(1)  # Exit with fatal state
+            raise RError("Target (dataset) R-matrix is empty.")
+        if r_all(r_isna(loading_r_object)):
+            ri.endr(1)  # Exit with fatal state
+            raise RError("Loading (pattern) R-matrix is empty.")
+        """
 
         # Run project R command.  Get projectionPatterns matrix
         try:
