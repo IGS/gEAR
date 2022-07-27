@@ -59,7 +59,7 @@ class Tree {
         // parentID should already be in the tree.
         if (! this.treeKeys.hasOwnProperty(item.folder_parent_id)) {
             this.addNode(treeData, item.folder_parent_id, null, item.folder_label, 'default');
-            treeKeys[item.folder_parent_id] = true;
+            this.treeKeys[item.folder_parent_id] = true;
         }
 
         // If this item is in a folder (branch), add folder to tree.
@@ -69,7 +69,7 @@ class Tree {
         }
 
         // Add the current item to the tree. Will be a leaf node.
-        this.addNode(treeData, item.value, item.folder_id , item.text, this.nodeType, ...kwargs);
+        this.addNode(treeData, item.value, item.folder_id , item.text, this.nodeType, {...kwargs});
     }
 
     // Add a node to the tree. Edits "treeData" inplace.
@@ -241,11 +241,19 @@ class ProjectionSourceTree extends Tree {
 
     addGeneCartTreeData(geneCartTree) {
         // Merge unweighted gene cart properties into this object's properties
-        this.unweighted.domainGeneCarts = geneCartTree.domainGeneCarts;
-        this.unweighted.groupGeneCarts = geneCartTree.groupGeneCarts;
-        this.unweighted.userGeneCarts = geneCartTree.userGeneCarts;
-        this.unweighted.sharedGeneCarts = geneCartTree.sharedGeneCarts;
-        this.unweighted.publicGeneCarts = geneCartTree.publicGeneCarts;
+        // If genecart is a weighted gene cart, do not add (this would cause duplicated tree node ids)
+
+        const domainValues = this.weighted.domainGeneCarts.map(gc => gc.db_value);
+        const groupValues = this.weighted.groupGeneCarts.map(gc => gc.db_value);
+        const userValues = this.weighted.userGeneCarts.map(gc => gc.db_value);
+        const sharedValues = this.weighted.sharedGeneCarts.map(gc => gc.db_value);
+        const publicValues = this.weighted.publicGeneCarts.map(gc => gc.db_value);
+
+        this.unweighted.domainGeneCarts = geneCartTree.domainGeneCarts.filter(gc => !domainValues.includes(gc.value));
+        this.unweighted.groupGeneCarts = geneCartTree.groupGeneCarts.filter(gc => !groupValues.includes(gc.value));
+        this.unweighted.userGeneCarts = geneCartTree.userGeneCarts.filter(gc => !userValues.includes(gc.value));
+        this.unweighted.sharedGeneCarts = geneCartTree.sharedGeneCarts.filter(gc => !sharedValues.includes(gc.value));
+        this.unweighted.publicGeneCarts = geneCartTree.publicGeneCarts.filter(gc => !publicValues.includes(gc.value));
     }
 
     getTotalWeightedCarts() {
@@ -274,6 +282,12 @@ class ProjectionSourceTree extends Tree {
             {'id':'w_shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this.weighted.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'w_public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this.weighted.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
+
+        // ? Currently item.value for weighted gene carts is the gene cart share ID,
+        // ? but for unweighted gene carts it is the db ID.
+        // ? Is it worth refactoring so that the item.value is the db ID for both types?
+        // ? If so, then item.value will need to ensure that no duplicates occur.
+        // ? Could make use of "data" attribute in the tree node to store the original value and cart share ID.
 
         $.each(this.weighted.domainGeneCarts, (_i, item) => {
             this.addNestedNode(treeData, item, 'w_domain_node');

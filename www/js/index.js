@@ -625,7 +625,8 @@ async function load_weighted_gene_carts(cart_share_id) {
                                         text: item.label,
                                         folder_id: item.folder_id,
                                         folder_label: item.folder_label,
-                                        folder_parent_id: item.folder_parent_id
+                                        folder_parent_id: item.folder_parent_id,
+                                        db_value: item.id   // Return db ID to compare with unweighted genecart item value
                                         });
                 });
             }
