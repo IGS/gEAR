@@ -109,7 +109,7 @@ $(document).on("handle_page_loading", () => {
     }
 
     // Repopulate projection information... projection_source URL loaded earlier
-    const permalinked_is_nmf = getUrlParameter('is_nmf')
+    const permalinked_projection_algo = getUrlParameter('projection_algo')
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
 
     // Only apply if both are present
@@ -133,7 +133,9 @@ $(document).on("handle_page_loading", () => {
             $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
         });
 
-        $("#is_nmf").prop('checked', permalinked_is_nmf === "1");
+        if (permalinked_projection_algo) {
+            $(`input[name='projection_algo'][value='${permalinked_projection_algo}']`).prop("checked",true);
+        }
 
         // Correct tab is active
         $("#projection_tab").click();
@@ -958,8 +960,8 @@ $("#projection_search_form").submit((event) => {
         $(`.js-projection-pattern-elts-check`).prop('checked', true);
     }
 
-    const is_nmf = $('#is_nmf').is(':checked'); // This is added to state history
-    const is_pca = !is_nmf; // This is passed to the API
+    const projection_algorithm = $('[name="projection_algo"]:checked').val();
+    const is_pca = projection_algorithm == 'pca';
 
     $('#recent_updates_c').hide();
 
@@ -988,7 +990,9 @@ $("#projection_search_form").submit((event) => {
     projection = true;
 
     // Add the patterns source to the history.
-    add_state_history(selected_projections_string, projection_source, is_nmf);
+    console.log(projection_algorithm);
+    console.log(is_pca);
+    add_state_history(selected_projections_string, projection_source, projection_algorithm);
 
     dataset_collection_panel.load_frames({dataset_id, multigene, projection});
 
@@ -1177,7 +1181,7 @@ async function run_projection(dataset, projection_source, is_pca, scope, selecte
 
 
 // Set the state history based on current conditions
-function add_state_history(searched_entities, projection_source=null, is_nmf=null) {
+function add_state_history(searched_entities, projection_source=null, projection_algorithm=null) {
     const state_info = {
         'multigene_plots': Number(multigene)
     };
@@ -1200,9 +1204,9 @@ function add_state_history(searched_entities, projection_source=null, is_nmf=nul
         state_info.projection_source = projection_source;
         state_url += `&projection_source=${projection_source}`;
 
-        if (is_nmf) {
-            state_info.is_nmf = Number(is_nmf);
-            state_url += `&is_nmf=${state_info.is_nmf}`;
+        if (projection_algorithm) {
+            state_info.projection_algo = projection_algorithm;
+            state_url += `&projection_algo=${state_info.projection_algo}`;
         }
         // If a single-projection display, do not bother adding the list of patterns
         if (state_info.multigene_plots == 1) {
@@ -1258,8 +1262,7 @@ function set_scrollbar_props() {
 
 function update_datasetframes_projections() {
 
-    const is_nmf = $('#is_nmf').is(':checked'); // This is added to state history
-    const is_pca = !is_nmf; // This is passed to the API
+    const is_pca = $('[name="projection_algo"]').filter(':checked').val() == 'pca';
 
     // Get selected projections and add as state
     const selected_projections = [];

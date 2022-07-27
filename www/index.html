@@ -356,7 +356,6 @@
       </div>
         <div class="row">
           <div id="leftbar_main" class="col-2">
-
             <div class="tab" role="tablist">
               <button class="active" id="gene_tab" onclick="show_gene()">Gene</button>
               <button id="projection_tab" onclick="show_projection()">Projection</button>
@@ -416,7 +415,7 @@
               <form id="projection_search_form"></form>
               <div id="projection_search_div">
                 <div id="projection_source_container" class="form-group">
-                  <label id="projection_source_label" class="mb-0">Select Pattern Source</label>
+                  <h3 id="projection_source_label">Select Pattern Source</h3>
                   <div id="projection_source_c" class="dropdown">
                     <div id="projection_source" value="" data-title="Click to change" class="js-pattern form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
                     <div class="dropdown-menu" aria-labelledby="projection_source">
@@ -433,16 +432,24 @@
                   </div>
                 </div>
 
-                <div class="form-group form-group-sm">
-                  <div class="form-check" data-toggle="tooltip" data-placement="right" title="If checked, will run a non-negative matrix factorization (NMF) projection.">
-                    <input class="form-check-input" type="checkbox" id="is_nmf">
-                    <label class="form-check-label" for="is_nmf">
-                      Patterns are from NMF
+                <div id="projection_algorithm_c" class="form-group form-group-sm"  data-toggle="tooltip" data-placement="right" title="Choose which projection algorithm to use">
+                  <h3>Select Algorithm</h3>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="projection_algo" id="pca_algo" value="pca" checked>
+                    <label class="form-check-label" for="pca_algo">
+                      Principal Component Analysis (PCA)
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="nmf">
+                    <label class="form-check-label" for="nmf_algo">
+                      Non-Negative Matrix factorization (NMF)
                     </label>
                   </div>
                 </div>
 
                 <div id="projection_display_mode_c" class="form-group form-group-sm">
+                  <h3>Select Display Mode</h3>
                   <div class="form-check">
                     <input class="form-check-input" type="radio" name="projection_display_mode" id="single_pattern" value="single" checked>
                     <label class="form-check-label" for="single_pattern">
@@ -482,7 +489,7 @@
               </div>
 
               <div id="selected_profile_container" class="form-group">
-                <label id="selected_profile_label" class="mb-0">Select Profile</label>
+                <h3 id="selected_profile_label">Select Profile</h3>
                 <div id="selected_profile_c" class="dropdown">
                   <div id="selected_profile" value="" data-title="Click to change" class="js-profile form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
                   <div class="dropdown-menu" aria-labelledby="selected_profile">
