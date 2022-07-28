@@ -837,7 +837,7 @@ async function loadGeneCarts () {
 function saveGeneCart () {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id
+        session_id
         , label: $("#gene_cart_name").val()
         , gctype: "unweighted-list"
         , organism_id:  $("#dataset").data('organism-id')
@@ -855,6 +855,57 @@ function saveGeneCart () {
     gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 }
 
+/*
+function saveWeightedGeneCart() {
+	// must have access to USER_SESSION_ID
+	foldchangeLabel = "FC"
+	switch ($('input[name=foldchange_to_save]:checked').val()) {
+		case "log2":
+			foldchangeLabel = "Log2FC";
+			break;
+		case "log10":
+			foldchangeLabel = "Log10FC";
+			break;
+		default: // 'raw'
+			foldchangeLabel = foldchangeLabel;
+	}
+
+	const gc = new WeightedGeneCart({
+		session_id
+		, label: $("#weighted_gene_cart_name").val()
+		, gctype: 'weighted-list'
+		, organism_id: $("#dataset_id").data('organism-id')
+		, is_public: 0
+	}, weight_labels=[foldchangeLabel]
+	);
+
+    data.points.forEach((pt) => {
+		foldchange = pt.data.x[pt.pointNumber].toFixed(1)
+		switch ($('input[name=foldchange_to_save]:checked').val()) {
+			case "log2":
+				foldchange = Math.log2(foldchange);
+				break;
+			case "log10":
+				foldchange = Math.log10(foldchange);
+				break;
+			default: // 'raw'
+				foldchange = foldchange;
+		}
+
+		const gene = new WeightedGene({
+			//id: pt.data.text[pt.pointNumber], //ENSEMBL ID
+            id: pt.data.gene_id[pt.pointNumber], // ! same issue as saveGeneCart selection
+			gene_symbol: pt.data.text[pt.pointNumber]
+		}, weights=[foldchange]
+		);
+		gc.add_gene(gene);
+
+    });
+
+	gc.save(update_ui_after_weighted_gene_cart_save_success, update_ui_after_weighted_gene_cart_save_failure);
+}
+*/
+
 function updateUIAfterGeneCartSaveSuccess(gc) {
 	$("#saved_gene_cart_info_c > h3").html(`Cart: ${gc.label}`);
     $('#saved_gene_cart_info_c > h3').addClass('text-success');
@@ -866,6 +917,22 @@ function updateUIAfterGeneCartSaveFailure(gc) {
     $('#saved_gene_cart_info_c > h3').text('Issue with saving gene cart.');
     $('#saved_gene_cart_info_c > h3').addClass('text-danger');
     $('#saved_gene_cart_info_c').show();
+}
+
+function updateUIAfterWeightedGeneCartSaveSuccess(gc) {
+	$("#saved_weighted_gene_cart_info_c > .status").html(`Cart "${gc.label}" successfully saved.`);
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-danger").addClass("text-success");
+	$("#saved_weighted_gene_cart_info_c").show();
+	$("#saved_weighted_gene_cart_info_c > .alert").hide();
+}
+
+function updateUIAfterWeightedGeneCartSaveFailure(gc, message) {
+	$("#saved_weighted_gene_cart_info_c > .status").html("There was an issue saving the weighted gene cart.");
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-success").addClass("text-danger");
+	$("#saved_weighted_gene_cart_info_c > .alert").show();
+	$("#saved_weighted_gene_cart_info_c > .message").html(message);
+	$("#saved_weighted_gene_cart_info_c").show();
+	$("#save_weighted_gene_cart").prop("disabled", false);
 }
 
 function fetchDatasetInfo (datasetId) {
@@ -1068,6 +1135,24 @@ $("#save_gene_cart").on("click", () => {
     }
     $("#save_gene_cart").prop('disabled', false);
 });
+
+/*
+$("#weighted_gene_cart_name").on("input", function () {
+    if ($(this).val() == "") {
+        $("#save_weighted_gene_cart").prop("disabled", true);
+    } else {
+        $("#save_weighted_gene_cart").prop("disabled", false);
+    }
+});
+$("#save_weighted_gene_cart").on("click", () => {
+    $("#save_weighted_gene_cart").prop("disabled", true);
+    if (CURRENT_USER) {
+        saveWeightedGeneCart();
+    } else {
+        alert("You must be signed in to do that.");
+    }
+});
+*/
 
 $("#download_plot").on("click", () => {
     Plotly.downloadImage(
@@ -1482,9 +1567,11 @@ $(document).on('click', '#create_plot', async () => {
     if (["quadrant", "volcano"].includes(plotType)) {
         $('#dataset_plot').removeClass("col").addClass("col-9");
         $('#genes_list_bar').show();
+        //$('#save_weighted_gene_cart_btn').show();
     } else {
         $('#dataset_plot').addClass("col").removeClass("col-9");
         $('#genes_list_bar').hide();
+        //$('#save_weighted_gene_cart_btn').hide();
     }
 
     // Draw the updated chart
@@ -1693,9 +1780,11 @@ $(document).on('click', '.js-load-display', async function () {
     if (["quadrant", "volcano"].includes(display.plot_type)) {
         $('#dataset_plot').removeClass("col").addClass("col-10");
         $('#genes_list_bar').show();
+        //$('#save_weighted_gene_cart_btn').show();
     } else {
         $('#dataset_plot').addClass("col").removeClass("col-10");
         $('#genes_list_bar').hide();
+        //$('#save_weighted_gene_cart_btn').hide();
     }
     await draw(datasetId, plotConfig);
     $('#plot_spinner').hide();
