@@ -385,7 +385,7 @@ class GeneCartTree extends Tree {
         ];
 
         $.each(this.domainGeneCarts, (_i, item) => {
-            addNestedNode(treeData, item, "domain_node")
+            this.addNestedNode(treeData, item, "domain_node")
         });
 
         $.each(this.userGeneCarts, (_i, item) => {
