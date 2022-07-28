@@ -2,8 +2,8 @@
 # Dockerfile to build gEAR web application
 ############################################################
 
-FROM ubuntu:impish
-# ubuntu 21.10
+FROM ubuntu:jammy
+# ubuntu 22.04
 
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
@@ -51,7 +51,7 @@ RUN apt-get -qq update \
   python3-dev \
   python3-tk \
   openssh-server \
-  llvm-9* \
+  llvm \
   # Required for R
 	gfortran \
   libbz2-dev \
