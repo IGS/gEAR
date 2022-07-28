@@ -236,7 +236,8 @@ class ProjectionSourceTree extends Tree {
     }
 
     nodeType = "genecart";
-    treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true, 'public_node': true};
+    treeKeys = {'uw_domain_node': true, 'uw_user_node': true, 'uw_group_node': true, 'uw_shared_node': true, 'uw_public_node': true
+        , 'w_domain_node': true, 'w_user_node': true, 'w_group_node': true, 'w_shared_node': true, 'w_public_node': true};
     leafIcon = 'fa-shopping-cart';
 
     addGeneCartTreeData(geneCartTree) {
@@ -254,6 +255,14 @@ class ProjectionSourceTree extends Tree {
         this.unweighted.userGeneCarts = geneCartTree.userGeneCarts.filter(gc => !userValues.includes(gc.value));
         this.unweighted.sharedGeneCarts = geneCartTree.sharedGeneCarts.filter(gc => !sharedValues.includes(gc.value));
         this.unweighted.publicGeneCarts = geneCartTree.publicGeneCarts.filter(gc => !publicValues.includes(gc.value));
+
+        /*
+        this.unweighted.domainGeneCarts.forEach(gc => {gc.value = gc.share_id});
+        this.unweighted.groupGeneCarts.forEach(gc => {gc.value = gc.share_id});
+        this.unweighted.userGeneCarts.forEach(gc => {gc.value = gc.share_id});
+        this.unweighted.sharedGeneCarts.forEach(gc => {gc.value = gc.share_id});
+        this.unweighted.publicGeneCarts.forEach(gc => {gc.value = gc.share_id});
+        */
     }
 
     getTotalWeightedCarts() {
