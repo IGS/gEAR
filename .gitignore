@@ -15,4 +15,5 @@ www/js/dataset_manager.js
 www/tests/test_dataset_curator_plotly.py
 www/datasets_epigenetic/uploads/files/*
 www/.DS_Store
+www/.cache
 .DS_Store

@@ -52,8 +52,10 @@ class Tree {
 
         // If the item grandparent node does not exist, add the passed-in parent ID
         // Same goes for the if this item is in a folder or not.
+        // ! Issue - If multiple trees use the same nodes, the node is shared between them and issues ensue.
         item.folder_parent_id = item.folder_parent_id || parentID;
-        item.folder_id = item.folder_id ? `folder-${item.folder_id}` : parentID;
+        item.folder_id = item.folder_id ? `${this.treeDiv}-folder-${item.folder_id}` : parentID;
+        item.folder_id.replace("folder-folder-", "folder-");    // Prevent buildup of folder-folder-folder-folder-...
 
         // Add the grandparent node if it doesn't exist
         // parentID should already be in the tree.
@@ -181,7 +183,6 @@ class Tree {
 
             const val = dataKeyAsVal ? selectedNode.original[dataKeyAsVal] : selectedNode.id;
             $(this.storedValElt).val(val);
-            // $(this.storedValElt).val(selectedNode.original.dataset_id);
 
             // If data attributes were passed into the node, store them in this element for easy retrieval
             for (const key in selectedNode.original) {
@@ -236,8 +237,8 @@ class ProjectionSourceTree extends Tree {
     }
 
     nodeType = "genecart";
-    treeKeys = {'uw_domain_node': true, 'uw_user_node': true, 'uw_group_node': true, 'uw_shared_node': true, 'uw_public_node': true
-        , 'w_domain_node': true, 'w_user_node': true, 'w_group_node': true, 'w_shared_node': true, 'w_public_node': true};
+    treeKeys = {//'uw_domain_node': true, 'uw_user_node': true, 'uw_group_node': true, 'uw_shared_node': true, 'uw_public_node': true,
+        'w_domain_node': true, 'w_user_node': true, 'w_group_node': true, 'w_shared_node': true, 'w_public_node': true};
     leafIcon = 'fa-shopping-cart';
 
     addGeneCartTreeData(geneCartTree) {
@@ -250,11 +251,18 @@ class ProjectionSourceTree extends Tree {
         const sharedValues = this.weighted.sharedGeneCarts.map(gc => gc.db_value);
         const publicValues = this.weighted.publicGeneCarts.map(gc => gc.db_value);
 
-        this.unweighted.domainGeneCarts = geneCartTree.domainGeneCarts.filter(gc => !domainValues.includes(gc.value));
-        this.unweighted.groupGeneCarts = geneCartTree.groupGeneCarts.filter(gc => !groupValues.includes(gc.value));
-        this.unweighted.userGeneCarts = geneCartTree.userGeneCarts.filter(gc => !userValues.includes(gc.value));
-        this.unweighted.sharedGeneCarts = geneCartTree.sharedGeneCarts.filter(gc => !sharedValues.includes(gc.value));
-        this.unweighted.publicGeneCarts = geneCartTree.publicGeneCarts.filter(gc => !publicValues.includes(gc.value));
+        const domainGeneCarts = geneCartTree.domainGeneCarts.filter(gc => !domainValues.includes(gc.value));
+        const groupGeneCarts = geneCartTree.groupGeneCarts.filter(gc => !groupValues.includes(gc.value));
+        const userGeneCarts = geneCartTree.userGeneCarts.filter(gc => !userValues.includes(gc.value));
+        const sharedGeneCarts = geneCartTree.sharedGeneCarts.filter(gc => !sharedValues.includes(gc.value));
+        const publicGeneCarts = geneCartTree.publicGeneCarts.filter(gc => !publicValues.includes(gc.value));
+
+        // Uses 'deepCopy' from common.js
+        this.unweighted.domainGeneCarts = deepCopy(domainGeneCarts);
+        this.unweighted.groupGeneCarts = deepCopy(groupGeneCarts);
+        this.unweighted.userGeneCarts = deepCopy(userGeneCarts);
+        this.unweighted.sharedGeneCarts = deepCopy(sharedGeneCarts);
+        this.unweighted.publicGeneCarts = deepCopy(publicGeneCarts);
 
         /*
         this.unweighted.domainGeneCarts.forEach(gc => {gc.value = gc.share_id});
@@ -278,6 +286,7 @@ class ProjectionSourceTree extends Tree {
     generateTreeData() {
         // Create JSON tree structure for the data
         const treeData = [
+            /*
             {'id':'unweighted_genes_node', 'parent':'#', 'text':`Unweighted Genes (${this.getTotalUnweightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
             {'id':'uw_domain_node', 'parent':'unweighted_genes_node', 'text':`Highlighted gene carts (${this.unweighted.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'uw_user_node', 'parent':'unweighted_genes_node', 'text':`Your gene carts (${this.unweighted.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
@@ -290,6 +299,12 @@ class ProjectionSourceTree extends Tree {
             {'id':'w_group_node', 'parent':'weighted_genes_node', 'text':`Group gene carts (${this.weighted.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'w_shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this.weighted.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'w_public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this.weighted.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            */
+            {'id':'w_domain_node', 'parent':'#', 'text':`Highlighted Patterns (${this.weighted.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_user_node', 'parent':'#', 'text':`Your Patterns (${this.weighted.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_group_node', 'parent':'#', 'text':`Group Patterns (${this.weighted.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_shared_node', 'parent':'#', 'text':`Patterns shared with you (${this.weighted.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_public_node', 'parent':'#', 'text':`Public Patterns from other users (${this.weighted.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
         // ? Currently item.value for weighted gene carts is the gene cart share ID,
@@ -299,7 +314,8 @@ class ProjectionSourceTree extends Tree {
         // ? Could make use of "data" attribute in the tree node to store the original value and cart share ID.
 
         $.each(this.weighted.domainGeneCarts, (_i, item) => {
-            this.addNestedNode(treeData, item, 'w_domain_node');
+            //this.addNestedNode(treeData, item, 'w_domain_node');
+            this.addNode(treeData, item.value, 'w_domain_node', item.text, this.nodeType)
         });
 
         $.each(this.weighted.userGeneCarts, (_i, item) => {
@@ -318,6 +334,7 @@ class ProjectionSourceTree extends Tree {
             this.addNode(treeData, item.value, 'w_public_node', item.text, this.nodeType)
         });
 
+        /*
         $.each(this.unweighted.domainGeneCarts, (_i, item) => {
             this.addNestedNode(treeData, item, 'uw_domain_node');
         });
@@ -337,6 +354,7 @@ class ProjectionSourceTree extends Tree {
         $.each(this.unweighted.publicGeneCarts, (_i, item) => {
             this.addNode(treeData, item.value, 'uw_public_node', item.text, this.nodeType)
         });
+        */
 
         this.treeData = treeData;
         return this.treeData;

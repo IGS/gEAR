@@ -455,10 +455,11 @@ async function load_layouts() {
         profile_tree.userProfiles = layouts.user;
         profile_tree.groupProfiles = layouts.group;
         profile_tree.sharedProfiles = layouts.shared;
-        selected_profile_tree.domainProfiles = layouts.domain;
-        selected_profile_tree.userProfiles = layouts.user;
-        selected_profile_tree.groupProfiles = layouts.group;
-        selected_profile_tree.sharedProfiles = layouts.shared;
+        // NOTE: Need to deep copy the carts so the same node is not referenced in multiple trees.
+        selected_profile_tree.domainProfiles = deepCopy(layouts.domain);
+        selected_profile_tree.userProfiles = deepCopy(layouts.user);
+        selected_profile_tree.groupProfiles = deepCopy(layouts.group);
+        selected_profile_tree.sharedProfiles = deepCopy(layouts.shared);
 
         // pass through again and look for one set by a cookie
         if (active_layout_id == null) {
@@ -561,11 +562,12 @@ async function load_unweighted_gene_carts() {
         gene_cart_tree.groupGeneCarts = carts.group;
         gene_cart_tree.sharedGeneCarts = carts.shared;
         gene_cart_tree.publicGeneCarts = carts.public;
-        selected_gene_cart_tree.domainGeneCarts = carts.domain;
-        selected_gene_cart_tree.userGeneCarts = carts.user;
-        selected_gene_cart_tree.groupGeneCarts = carts.group;
-        selected_gene_cart_tree.sharedGeneCarts = carts.shared;
-        selected_gene_cart_tree.publicGeneCarts = carts.public;
+        // NOTE: Need to deep copy the carts so the same node is not referenced in multiple trees.
+        selected_gene_cart_tree.domainGeneCarts = deepCopy(carts.domain);
+        selected_gene_cart_tree.userGeneCarts = deepCopy(carts.user);
+        selected_gene_cart_tree.groupGeneCarts = deepCopy(carts.group);
+        selected_gene_cart_tree.sharedGeneCarts = deepCopy(carts.shared);
+        selected_gene_cart_tree.publicGeneCarts = deepCopy(carts.public);
 
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
@@ -653,7 +655,7 @@ async function load_pattern_tree() {
             console.error(err);
         });
 
-    projection_source_tree.addGeneCartTreeData(gene_cart_tree);
+    //projection_source_tree.addGeneCartTreeData(gene_cart_tree);
 
     // If projection info was in URL, one of the above should have the JSTree element returned
     projection_source_tree.generateTree();

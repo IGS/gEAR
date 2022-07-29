@@ -583,3 +583,7 @@ function asyncLimit (fn, n) {
         return p;
     }
 }
+
+function deepCopy(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
