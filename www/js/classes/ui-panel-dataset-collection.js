@@ -139,12 +139,13 @@ class DatasetCollectionPanel {
                 data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
             }).done((data) => {
                 if (data.success == 1) {
+                    if (projection) {
+                        update_datasetframes_projections();
+                        return;
+                    }
+
                     //Was a search already performed?
                     if ($("#search_gene_symbol").val()) {
-                        if (projection) {
-                            update_datasetframes_projections();
-                            return;
-                        }
 
                         // User has already searched, automatically update datasets and gene searches
                         update_datasetframes_generesults();
