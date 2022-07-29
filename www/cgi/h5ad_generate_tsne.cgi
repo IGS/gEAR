@@ -77,7 +77,7 @@ def main():
         sc.tl.tsne(adata, n_pcs=n_pcs, random_state=random_state)
 
     if compute_umap == 1:
-        sc.tl.umap(adata, maxiter=200)
+        sc.tl.umap(adata, maxiter=500)
 
     if compute_neighbors == 1 or compute_tsne == 1 or compute_umap == 1:
         adata.write(dest_datafile_path)
@@ -112,10 +112,10 @@ def main():
                     sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
             else:
                 if plot_tsne == 1:
-                    sc.pl.tsne(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
+                    sc.pl.tsne(adata, color=genes_to_color, color_map='YlOrRd', save=".png")
 
                 if plot_umap == 1:
-                    sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', use_raw=False, save=".png")
+                    sc.pl.umap(adata, color=genes_to_color, color_map='YlOrRd', save=".png")
         except ValueError as err:
             # scanpy seems to change this error string every release
             #print("DEBUG: error string:{0}".format(str(err)), file=sys.stderr)
