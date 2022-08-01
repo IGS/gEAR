@@ -983,10 +983,9 @@ $("#projection_search_form").submit((event) => {
     // Add the patterns source to the history.
     add_state_history(selected_projections_string, projection_source, projection_algorithm);
 
-    dataset_collection_panel.load_frames({dataset_id, multigene, projection});
-
     // Run ProjectR for the chosen pattern
     if (projection_source) {
+        dataset_collection_panel.load_frames({dataset_id, multigene, projection});
         const scope = $("#projection_source").data('scope');
 
         search_results = selected_projections;
@@ -1009,8 +1008,12 @@ $("#projection_search_form").submit((event) => {
             //run_async_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
 
         });
-
+        return false;  // keeps the page from not refreshing
     }
+
+    $("#viewport_intro").show();
+    $('#permalink_intro_c').show();
+    $("#functional_not_supported_alert").hide();    // otherwise it shows way at the bottom of the screen
     return false;   // keeps the page from not refreshing
 })
 
@@ -1329,6 +1332,10 @@ function show_gene_search_view() {
     $('#gene_search_div').show();
     $('#projection_search_div').hide();
     $('#submit_search_projection').hide();
+
+    $("#gene_permalink_info").show();
+    $('#projection_permalink_info').hide();
+
     show_functional_panel();
 }
 
@@ -1337,6 +1344,10 @@ function show_projection_search_view() {
     $('#projection_search_div').show();
     $('#submit_search_projection').show();
     $('#gene_search_div').hide();
+
+    $("#gene_permalink_info").hide();
+    $('#projection_permalink_info').show();
+
     hide_functional_panel();
 
 }
