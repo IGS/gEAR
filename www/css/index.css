@@ -508,41 +508,6 @@ li.scope_choice:hover {
   padding-right: 5px !important;  /* Give some cushion to the longest submenu name */
 }
 
-/* Style the tab */
-/* inspiration from https://headlessui.com/react/tabs */
-.tab {
-  display: inline-block;
-  overflow: hidden;
-  border-radius: 0.75rem; /* rem -> font size of the root (html) element */
-  padding:0.25rem;
-  background-color: var(--main-section-launcher-bg-color-active);
-}
-
-/* Style the buttons that are used to open the tab content */
-.tab button {
-  background-color: inherit;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  outline: none;
-  padding: 0.625rem 0rem;
-  transition: 0.3s;
-  color: white;
-  width: 5rem;
-}
-
-/* Change background color of buttons on hover */
-.tab button:hover,
-.tab button:active {
-  background-color: var(--main-section-launcher-bg-color-inactive);
-}
-
-/* Create an active/current tablink class */
-.tab button.active {
-  background-color: white;
-  color: var(--main-section-launcher-bg-color-active);
-}
-
 #submit_search_projection {
   background-color: var(--main-section-launcher-bg-color-active);
 }

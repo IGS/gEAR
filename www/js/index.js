@@ -112,9 +112,15 @@ $(document).on("handle_page_loading", () => {
     const permalinked_projection_algo = getUrlParameter('projection_algo')
     const permalinked_projection_patterns = getUrlParameter('projection_patterns');
 
+    if (permalinked_projection_algo) {
+        $(`input[name='projection_algo'][value='${permalinked_projection_algo}']`).prop("checked",true);
+        projection = true;
+    }
+
     // Only apply if both are present
     const permalinked_projection_id = getUrlParameter('projection_source');
     if (permalinked_projection_id) {
+        projection = true;
         let selected_projections_string;
         if (permalinked_projection_patterns) {
             selected_projections_string = permalinked_projection_patterns;
@@ -133,14 +139,10 @@ $(document).on("handle_page_loading", () => {
             $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
         });
 
-        if (permalinked_projection_algo) {
-            $(`input[name='projection_algo'][value='${permalinked_projection_algo}']`).prop("checked",true);
-        }
-
-        // Correct tab is active
-        $("#projection_tab").click();
-        projection = true;
         console.info(`Projection ID found: ${permalinked_projection_id}`);
+    }
+
+    if (projection) {
         $('#intro_search_icon').trigger('click');
     }
 
@@ -152,13 +154,13 @@ $(document).on("handle_page_loading", () => {
     // If exact match icon is clicked, toggle parameters
     $('.js-exact-match').click(() => {
         exact_match = !exact_match;
-        set_exact_match(exact_match);
+        set_exact_match(!exact_match);
     });
 
     // If MG search icon is clicked, toggle parameters
     $('.js-multigene').click(() => {
         multigene = !multigene;
-        set_multigene_plots(multigene);
+        set_multigene_plots(!multigene);
     });
 
     // If multi-pattern set, toggle multigene

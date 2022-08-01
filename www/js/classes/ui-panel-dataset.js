@@ -405,7 +405,7 @@ class DatasetPanel extends Dataset {
     }
 
     register_events() {
-        const primary_key = this.primary_key;
+        const { primary_key } = this;
 
         // redraw plot when user changes display
         $(`#dataset_${primary_key}`).on("changePlot", (e, display_id) =>
@@ -421,21 +421,16 @@ class DatasetPanel extends Dataset {
 
         // info event
         $(`#dataset_${primary_key}_info_launcher`).click(() => {
-            // SAdkins - found bug where if single-gene/multigene is toggled,
-            // two modals will be overlayed.  Dispose of the earlier one.
-            //$(`#dataset_${primary_key}_info`).modal('dispose');
 
             const panel = dataset_collection_panel.datasets.find(
                 (d) => d.id == this.id
             );
 
-            // get default display id for this display?
-
             const { id, title, ldesc, schematic_image } = panel;
             const infobox_tmpl = $.templates("#tmpl_infobox");
             const infobox_html = infobox_tmpl.render({
                 dataset_id: id,
-                primary_key: this.primary_key,
+                primary_key,
                 title,
                 ldesc,
                 schematic_image,
@@ -515,7 +510,7 @@ class DatasetPanel extends Dataset {
 
     show_info(msg) {
         const args = {
-            "context": "info"
+            "context": "info"   // be careful that id does not overlap "infobox" id.  Added "hover" in name to avoid conflict
             , "icon": "fa-exclamation-circle"
             , "hover_msg": "Hover to see special information"
         }
@@ -526,24 +521,28 @@ class DatasetPanel extends Dataset {
         const { context, icon, hover_msg } = args;
 
         const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
+        const hover_id = `dataset_${this.primary_key}_hover_${context}`
+        let hover_selector = $(`#${hover_id}`);
 
         const template = `
-        <div class='dataset-${context} bg-${context} px-1' id='dataset_${this.primary_key}_${context}'>
+        <div class='dataset-${context} bg-${context} px-1' id='${hover_id}'>
             <i class='fa ${icon} e'></i>
             <span id="dataset_${this.primary_key}_msg">${hover_msg}</span>
         </div>`;
 
         // If template already exists, replace it
-        if ($(`#dataset_${this.primary_key}_${context}`).length > 0) {
-            $(`#dataset_${this.primary_key}_${context}`).replaceWith(template);
+        if (hover_selector.length > 0) {
+            hover_selector.replaceWith(template);
         } else {
             // Add template above the dataset status panel.  It will disappear when the plot is generated.
             // NOTE: must add to DOM before making selector variables
             dataset_selector.prepend(template);
         }
 
-        const hover_selector = $(`#dataset_${this.primary_key}_${context}`);
         const msg_selector = $(`#dataset_${this.primary_key}_msg`);
+
+        // refresh hover selector since element has been added to DOM
+        hover_selector = $(`#${hover_id}`);
 
         // Add some CSS to warning to keep at top of container and not push display down
         hover_selector.css('position', 'absolute').css('z-index', '2').css('color', 'black');
