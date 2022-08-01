@@ -1219,9 +1219,13 @@ function add_state_history(searched_entities, projection_source=null, projection
         state_url += `&layout_id=${layout_id}`;
     }
 
-    if (projection_source) {
-        state_info.projection_source = projection_source;
-        state_url += `&projection_source=${projection_source}`;
+    if (projection) {
+
+        // If "transfer learning button on front page was clicked, this will initially be undefined
+        if (projection_source) {
+            state_info.projection_source = projection_source;
+            state_url += `&projection_source=${projection_source}`;
+        }
 
         if (projection_algorithm) {
             state_info.projection_algo = projection_algorithm;
