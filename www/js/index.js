@@ -776,14 +776,8 @@ function select_search_result(elm, draw_display=true) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    if ((projection)) {
-        $('#functional_not_supported_alert').show();
-        $('#links_out_c').hide();
-        $('#gene_details_c').hide();
-    } else {
-        $('#functional_not_supported_alert').hide();
-        $('#links_out_c').show();
-        $('#gene_details_c').show();
+    if (! projection) {
+        // Functional panel is shown via gene_search_form submit event
         annotation_panel.annotation = search_results[gene_sym];
         annotation_panel.autoselect_organism();
     }
@@ -891,10 +885,6 @@ $("#gene_search_form").submit((event) => {
     // Add Exact Match param
     formData.push({"name": "exact_match", "value" :Number(exact_match)});
 
-    $('#functional_not_supported_alert').hide();
-    $('#links_out_c').show();
-    $('#gene_details_c').show();
-
     $.ajax({
         url : './cgi/search_genes.py',
         type: "POST",
@@ -907,9 +897,7 @@ $("#gene_search_form").submit((event) => {
         $('#intro_content').hide('fade', {}, 400, () => {
             if (multigene){
                 dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
-                $('#functional_not_supported_alert').show();
-                $('#links_out_c').hide();
-                $('#gene_details_c').hide();
+                hide_functional_panel();
             } else {
                 // auto-select the first match.  first <a class="list-group-item"
                 // Also draws the plot for each dataset.
@@ -1339,8 +1327,7 @@ function show_gene_search_view() {
     $('#gene_search_div').show();
     $('#projection_search_div').hide();
     $('#submit_search_projection').hide();
-    $('#functional_not_supported_alert').hide();
-    $('#gene_details_c').show();
+    show_functional_panel();
 }
 
 // Show projection-related container and options
@@ -1348,8 +1335,20 @@ function show_projection_search_view() {
     $('#projection_search_div').show();
     $('#submit_search_projection').show();
     $('#gene_search_div').hide();
+    hide_functional_panel();
+
+}
+
+function hide_functional_panel() {
     $('#functional_not_supported_alert').show();
     $('#gene_details_c').hide();
+    $('#links_out_c').hide();
+}
+
+function show_functional_panel() {
+    $('#functional_not_supported_alert').hide();
+    $('#gene_details_c').show();
+    $('#links_out_c').show();
 }
 
 // Events to select and deselect all projection pattern checkboxes
