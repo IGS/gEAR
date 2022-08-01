@@ -38,7 +38,7 @@ $(document).ready(function() {
 
         // Hide non-side panel stuff
         $('#note_panel_closer').hide();
-        $('#navigation_bar, #page_name, #controls, #main_panel, #site_intro_c, #sidebar, footer').hide();
+        $('#navigation_bar, #page_name, #controls, #main_panel, #sidebar, footer').hide();
 
         // show fullwindow text editing area
         $('#note_fullwindow_c').show();

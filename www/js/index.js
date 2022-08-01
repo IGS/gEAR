@@ -788,12 +788,6 @@ function select_search_result(elm, draw_display=true) {
         annotation_panel.autoselect_organism();
     }
 
-    // hide the intro, show the search result box
-    if( $('#site_intro_c').is(':visible') ) {
-        $('#site_intro_c').hide({easing: 'fade', duration: 400});
-        $('#recent_updates_c').hide({easing: 'fade', duration: 400, complete: show_search_result_info_box});
-    }
-
     if (draw_display) {
         dataset_collection_panel.update_by_search_result(search_results[gene_sym]);
     }
@@ -804,18 +798,6 @@ function select_search_result(elm, draw_display=true) {
 
 function isNumeric(n) {
     return !isNaN(parseFloat(n)) && isFinite(n);
-}
-
-function show_search_result_info_box() {
-    if( dataset_id ) {
-        // show links_out and gene_annot with zoom_on
-        $('#links_out_c, #gene_details_c').addClass('search_result_c').removeClass('search_result_c_DISABLED').show('fade', {}, 400);
-        $('#dataset_zoomed_c').show('fade', {}, 400);
-    } else {
-        // $('div.search_result_c').show('fade', {}, 400);
-        $('.search_result_c_DISABLED').addClass('search_result_c').removeClass('search_result_c_DISABLED');
-        // $('div.search_result_c').toggleClass('search_result_c_DISABLED');
-    }
 }
 
 $('#search_results').on("click", "a", function(e) {
@@ -873,7 +855,6 @@ $("#gene_search_form").submit((event) => {
     set_exact_match(exact_match, false);
     set_multigene_plots(multigene, false);
 
-    $('#recent_updates_c').hide();
 
     const formData = $("#gene_search_form").serializeArray();
 
@@ -984,8 +965,6 @@ $("#projection_search_form").submit((event) => {
 
     const projection_algorithm = $('[name="projection_algo"]:checked').val();
     const is_pca = projection_algorithm == 'pca';
-
-    $('#recent_updates_c').hide();
 
     // Get selected projections and add as state
     const selected_projections = [];
