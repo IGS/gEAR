@@ -301,10 +301,7 @@ function handle_login_ui_updates() {
             $('div#main_content').hide();
         }
 
-        if (document.URL.includes("compare_datasets.html")) {
-            populate_dataset_selection_controls();
-
-        } else if (document.URL.includes("manual.html")) {
+        if (document.URL.includes("manual.html")) {
             $('a#manual_link').parent().addClass('active');
 
         } else if (document.URL.includes("contact.html")) {
