@@ -77,7 +77,7 @@ def main():
         sc.tl.tsne(adata, n_pcs=n_pcs, random_state=random_state)
 
     if compute_umap == 1:
-        sc.tl.umap(adata)
+        sc.tl.umap(adata, maxiter=500)
 
     if compute_neighbors == 1 or compute_tsne == 1 or compute_umap == 1:
         adata.write(dest_datafile_path)

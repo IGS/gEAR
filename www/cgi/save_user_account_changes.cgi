@@ -28,8 +28,8 @@ def main():
     new_password = form.getvalue('new_password')
     email = form.getvalue('email')
     institution = form.getvalue('institution')
-    colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
-    updates_wanted = form.getvalue('wantUpdates')   # Either "on" or "off" because it's a checkbox
+    colorblind_mode = form.getvalue('colorblind_mode', "off")  # checkbox
+    updates_wanted = form.getvalue('wantUpdates', "off")   # Either "on" or "off" because it's a checkbox
     scope = form.getvalue('scope') # 'password'
     result = {}
 
@@ -67,13 +67,11 @@ def main():
             mid_query_settings.append(" institution = %s")
             field_values.append(institution)
 
-        colorblind_mode = 0 # checkbox is off
         if colorblind_mode:
             colorblind_mode = 1 if colorblind_mode == 'on' else 0
         mid_query_settings.append(" colorblind_mode = %s")
         field_values.append(colorblind_mode)
 
-        updates_wanted = 0  # checkbox is off
         if updates_wanted:
             updates_wanted = 1 if updates_wanted == 'on' else 0
         mid_query_settings.append(" updates_wanted = %s")
