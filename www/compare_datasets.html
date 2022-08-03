@@ -99,62 +99,58 @@
 
           <div id="chart_settings">
             <h3>Data filters / settings</h3>
-            <form>
-              <div class="form-group-sm">
-                <label for="log_base" class="control-label mb-0 mt-2">Apply log transformation</label>
-                <select id="log_base" class="form-control form-control-sm">
-                  <option value="raw">None - Raw values</option>
-                  <option value="2" selected="selected">Log2</option>
-                  <option value="10">Log10</option>
-                </select>
-              </div>
-              <div class="form-group-sm">
-                <label for="fold_change_cutoff" class="control-label mb-0 mt-2">Adjust fold change cutoff (>= N)</label>
-                <input id="fold_change_cutoff" class="form-control form-control-sm" value="2.0"/>
-              </div>
-              <div class="form-group-sm">
-                <label for="std_dev_num_cutoff" class="control-label mb-0 mt-2">Adjust standard deviation</label>
-                <select id="std_dev_num_cutoff" class="form-control form-control-sm">
-                  <option value="0" selected="selected">No filter</option>
-                  <option value="1">1 standard deviation</option>
-                  <option value="2">2 standard deviations</option>
-                </select>
-              </div>
-            </form>
+            <div class="form-group-sm">
+              <label for="log_base" class="control-label mb-0 mt-2">Apply log transformation</label>
+              <select id="log_base" class="form-control form-control-sm">
+                <option value="raw">None - Raw values</option>
+                <option value="2" selected="selected">Log2</option>
+                <option value="10">Log10</option>
+              </select>
+            </div>
+            <div class="form-group-sm">
+              <label for="fold_change_cutoff" class="control-label mb-0 mt-2">Adjust fold change cutoff (>= N)</label>
+              <input id="fold_change_cutoff" class="form-control form-control-sm" value="2.0"/>
+            </div>
+            <div class="form-group-sm">
+              <label for="std_dev_num_cutoff" class="control-label mb-0 mt-2">Adjust standard deviation</label>
+              <select id="std_dev_num_cutoff" class="form-control form-control-sm">
+                <option value="0" selected="selected">No filter</option>
+                <option value="1">1 standard deviation</option>
+                <option value="2">2 standard deviations</option>
+              </select>
+            </div>
             <h3>Significance test</h3>
-            <form>
-              <div class="form-group-sm">
-                <label id="statistical_test_label" for="statistical_test" class="control-label mb-0 mt-1">Select significance test</label>
-                <select id="statistical_test" class="form-control form-control-sm">
-                  <option value="" selected="selected">None</option>
-                  <option value="t-test">T-test</option>
-                  <option value="t-test_overestim_var">T-test (overestimated variance)</option>
-                  <option value="wilcoxon">Wilcoxon-Rank-Sum</option>
-                </select>
+            <div class="form-group-sm">
+              <label id="statistical_test_label" for="statistical_test" class="control-label mb-0 mt-1">Select significance test</label>
+              <select id="statistical_test" class="form-control form-control-sm">
+                <option value="" selected="selected">None</option>
+                <option value="t-test">T-test</option>
+                <option value="t-test_overestim_var">T-test (overestimated variance)</option>
+                <option value="wilcoxon">Wilcoxon-Rank-Sum</option>
+              </select>
+            </div>
+            <div class="form-group-sm">
+              <label for="test_pval_cutoff" class="control-label mb-0 mt-2">Adjust p-value cutoff</label>
+              <input type="number" id="test_pval_cutoff" class="form-control form-control-sm" min=0 max=1.0 value=0.05 disabled />
+            </div>
+            <div class="form-group-sm" id="stat_action_options_c">
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" class="custom-control-input" value="colorize" id="stat_action_colorize" name="stat_action" checked />
+                <label class="custom-control-label" for="stat_action_colorize">Colorize</label>
               </div>
-              <div class="form-group-sm">
-                <label for="test_pval_cutoff" class="control-label mb-0 mt-2">Adjust p-value cutoff</label>
-                <input type="number" id="test_pval_cutoff" class="form-control form-control-sm" min=0 max=1.0 value=0.05 disabled/>
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" class="custom-control-input" value="filter" id="stat_action_filter" name="stat_action" />
+                <label class="custom-control-label" for="stat_action_filter">Filter</label>
               </div>
-              <div class="form-group-sm" id="stat_action_options_c">
-                <div class="custom-control custom-radio custom-control-inline">
-                  <input type="radio" class="custom-control-input" value="colorize" id="stat_action_colorize" name="stat_action" checked />
-                  <label class="custom-control-label" for="stat_action_colorize">Colorize</label>
-                </div>
-                <div class="custom-control custom-radio custom-control-inline">
-                  <input type="radio" class="custom-control-input" value="filter" id="stat_action_filter" name="stat_action" />
-                  <label class="custom-control-label" for="stat_action_filter">Filter</label>
-                </div>
-              </div>
-              <h3>Highlight genes</h3>
-              <div class="form-group-sm">
-                <input id="highlighted_genes" class="form-control form-control-sm" type="text" placeholder="comma-separated genes"/>
-              </div>
-              <div class="form-group-sm">
-                <hr />
-                <button id='btn_apply_dataset_changes2' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
-              </div>
-            </form>
+            </div>
+            <h3>Highlight genes</h3>
+            <div class="form-group-sm">
+              <input id="highlighted_genes" class="form-control form-control-sm" type="text" placeholder="comma-separated genes"/>
+            </div>
+            <div class="form-group-sm">
+              <hr />
+              <button id='btn_apply_dataset_changes2' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
+            </div>
             <ul>
               <li>Fold change std dev: <span id='fold_change_std_dev'></span></li>
             </ul>

@@ -212,43 +212,43 @@ function load_comparison_graph() {
 	$("#genes_not_found").empty().hide();
 
 	$.ajax({
-	url: "./cgi/get_dataset_comparison.cgi",
-	type: "POST",
-	data: {
-		dataset_id,
-		condition_x: condition_x_string,
-		condition_y: condition_y_string,
-		fold_change_cutoff: $("#fold_change_cutoff").val(),
-		std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
-		log_transformation: $("#log_base").val(),
-		statistical_test: $("#statistical_test").val(),
-	},
-	dataType: "json",
-	success(data, textStatus, jqXHR) {
-		if (data.success == 1) {
-		$("#fold_change_std_dev").html(data.fold_change_std_dev);
-		plot_data = data;
-		plot_data_to_graph(data);
-			return;
-		}
-		// Handle graphing failures
-		$("#plot_loading").hide();
-		$("#ticket_dataset_id").text(dataset_id);
-		$("#ticket_dataset_text").text(dataset_text);
-		$("#ticket_datasetx_condition").text(condition_x_string);
-		$("#ticket_datasety_condition").text(condition_y_string);
-		$("#ticket_error_msg").html(data.error);
-		$("#error_loading_c").show();
-	},
-	error(jqXHR, textStatus, errorThrown) {
-		// Handle graphing failures
-		$("#plot_loading").hide();
-		$("#ticket_dataset_id").text(dataset_id);
-		$("#ticket_dataset_text").text(dataset_text);
-		$("#ticket_datasetx_condition").text(condition_x_string);
-		$("#ticket_datasety_condition").text(condition_y_string);
-		$("#error_loading_c").show();
-	},
+		url: "./cgi/get_dataset_comparison.cgi",
+		type: "POST",
+		data: {
+			dataset_id,
+			condition_x: condition_x_string,
+			condition_y: condition_y_string,
+			fold_change_cutoff: $("#fold_change_cutoff").val(),
+			std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
+			log_transformation: $("#log_base").val(),
+			statistical_test: $("#statistical_test").val(),
+		},
+		dataType: "json",
+		success(data, textStatus, jqXHR) {
+			if (data.success == 1) {
+			$("#fold_change_std_dev").html(data.fold_change_std_dev);
+			plot_data = data;
+			plot_data_to_graph(data);
+				return;
+			}
+			// Handle graphing failures
+			$("#plot_loading").hide();
+			$("#ticket_dataset_id").text(dataset_id);
+			$("#ticket_dataset_text").text(dataset_text);
+			$("#ticket_datasetx_condition").text(condition_x_string);
+			$("#ticket_datasety_condition").text(condition_y_string);
+			$("#ticket_error_msg").html(data.error);
+			$("#error_loading_c").show();
+		},
+		error(jqXHR, textStatus, errorThrown) {
+			// Handle graphing failures
+			$("#plot_loading").hide();
+			$("#ticket_dataset_id").text(dataset_id);
+			$("#ticket_dataset_text").text(dataset_text);
+			$("#ticket_datasetx_condition").text(condition_x_string);
+			$("#ticket_datasety_condition").text(condition_y_string);
+			$("#error_loading_c").show();
+		},
 	});
 }
 
