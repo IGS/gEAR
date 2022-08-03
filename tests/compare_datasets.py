@@ -54,10 +54,18 @@ class ComparePage:
 
     def select_dataset(self, sb):
         sb.wait_for_element_not_visible("#pre_dataset_spinner")   # Give time for the API to load datasets
-        sb.sleep(1)  # A little more buffer room
+        sb.sleep(2)  # A little more buffer room
         sb.click("#dataset_id")
         sb.type("#dataset_tree_q", "kelley")
         sb.click(".jstree-search:contains('{}')".format(self.dataset))
+
+    def select_genes_in_plot(self, sb):
+        # In order to make the modebar options visible, we need to hover over the plot
+        sb.hover_and_click(".plotly", ".modebar-btn[data-title='Box Select']")
+        # Use drag and drop to select the genes (x to right, y up, start in middle of plot)
+        sb.drag_and_drop_with_offset(".nsewdrag", 400, -400)
+        # For now, I think it's easier to select all genes with a double click (but the table will be larger)
+        #sb.double_click(".nsewdrag")
 
     def select_significance_test(self, sb, select_value):
         sb.select_option_by_value("#statistical_test", select_value)
@@ -172,7 +180,7 @@ class CompareTests(BaseCase):
                 break
         self.assert_true(red_found, msg="No points were colored red when a colorized significance test was performed.")
 
-    def test_significance_test_filter(self):
+    def no_test_significance_test_filter(self):
         """Test that a colorized plot is created when a significance test is performed with the "filter" radio checked."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -183,9 +191,7 @@ class CompareTests(BaseCase):
         num_unfiltered_points = len(points)
         # Get filtered points
         cp.select_significance_test(self, "t-test") # colorize should already be checked by default
-        elt = self.get_element("#stat_action_options_c")
-        print(elt.get_attribute("innerHTML"))
-        self.click("#stat_action_filter")
+        self.click("#stat_action_filter")   # TODO: Fix... element is not visible with is_displayed() so click doesn't work
         cp.plot_creation(self)
         points = self.find_visible_elements(".points path")
         num_filtered_points = len(points)
@@ -196,21 +202,21 @@ class CompareTests(BaseCase):
         cp.nav_to_url(self)
         cp.select_dataset(self)
         cp.select_conditions(self, cp.condition_cat, cp.x_selection, cp.y_selection)
-        self.type('#highlighted_genes', ', '.join(self.genes))
+        self.type('#highlighted_genes', ', '.join(cp.genes))
         cp.plot_creation(self)
         # All three genes are in this plot
-        gene_annotation = self.find_visible_elements('[data-unformatted="{}"'.format(self.genes[0]))
-        self.assert_true(len(gene_annotation) > 0, msg="Genes that should have been in plot were not found in the plot.")
+        gene_annotation = self.find_visible_elements('[data-unformatted="{}"'.format(cp.genes[0]))
+        self.assert_true(len(gene_annotation), msg="Genes that should have been in plot were not found in the plot.")
 
     def no_test_notfound_gene_highlighting(self):
         cp = ComparePage()
         cp.nav_to_url(self)
         cp.select_dataset(self)
         cp.select_conditions(self, cp.condition_cat, cp.x_selection, cp.y_selection)
-        self.type('#highlighted_genes', ', '.join(self.invalid_gene))
+        self.type('#highlighted_genes', cp.invalid_gene)
         cp.plot_creation(self)
         gene_not_found = self.get_text('#genes_not_found')
-        self.assert_true((gene_not_found and self.invalid_gene in gene_not_found), msg="Genes that should not have been in plot were found in the plot.")
+        self.assert_true((gene_not_found and cp.invalid_gene in gene_not_found), msg="Genes that should not have been in plot were found in the plot.")
 
     def no_test_genes_in_selection_table(self):
         """Test that highlighted genes are in the selection table."""
@@ -218,20 +224,21 @@ class CompareTests(BaseCase):
         cp.nav_to_url(self)
         cp.select_dataset(self)
         cp.select_conditions(self, cp.condition_cat, cp.x_selection, cp.y_selection)
-        self.type('#highlighted_genes', ', '.join(self.genes))
+        self.type('#highlighted_genes', ', '.join(cp.genes))
         cp.plot_creation(self)
-        # Select some points
-        self.click("[data-title='Box Select']")
-        # Drag across all points (start in upper left of chart and grab all points 300px right and down)
-        # This should hopefully grab the Pou4f3 gene.
-        self.drag_and_drop_with_offset(".points", 300, 300)
+        cp.select_genes_in_plot(self)
         self.assert_element_visible('#tbl_selected_genes')
-        table_elts = self.find_visible_elements('#tbl_selected_genes td.text_truncate')
-        table_genes = self.get_text(table_elts)
-        self.assert_true(self.genes[0] in table_genes, msg="Genes that should have been in table were not found in the table.")
-        bg_color = self.get_property(table_elts, "background-color")
-        green_bg = list(filter(lambda c: c == PALE_GREEN, bg_color))
-        self.assert_true(len(green_bg), msg="Highlighted genes in table were not colored appropriately.")
+        # Was highlighted gene in selection table?
+        table_elts = self.find_visible_elements('#tbl_selected_genes td.text-truncate')
+        highlighted_gene_found = False
+        for e in table_elts:
+            if e.text in cp.genes:
+                highlighted_gene_found = True
+                break
+        self.assert_true(highlighted_gene_found, msg="Genes that should have been in table were not found in the table.")
+        # Was green text found in table for a highlighted gene? Applied to .table-success class
+        success_elts = self.find_visible_elements('#tbl_selected_genes tr.table-success')
+        self.assert_true(len(success_elts), msg="Highlighted genes in table were not colored appropriately.")
 
     def no_test_download_table(self):
         """Test that gene selection table can be downloaded."""
@@ -240,10 +247,7 @@ class CompareTests(BaseCase):
         cp.select_dataset(self)
         cp.select_conditions(self, cp.condition_cat, cp.x_selection, cp.y_selection)
         cp.plot_creation(self)
-        # Select some points
-        self.click("[data-title='Box Select']")
-        # Drag across all points (start in upper left of chart and grab all points 300px right and down)
-        self.drag_and_drop_with_offset(".points", 300, 300)
+        cp.select_genes_in_plot(self)
         self.assert_element_visible('#tbl_selected_genes')
         self.click("#download_gene_table")
         self.assert_downloaded_file("selected_genes.tsv")
@@ -257,10 +261,7 @@ class CompareTests(BaseCase):
         cp.select_dataset(self)
         cp.select_conditions(self, cp.condition_cat, cp.x_selection, cp.y_selection)
         cp.plot_creation(self)
-        # Select some points
-        self.click("[data-title='Box Select']")
-        # Drag across all points (start in upper left of chart and grab all points 300px right and down)
-        self.drag_and_drop_with_offset(".points", 300, 300)
+        cp.select_genes_in_plot(self)
         self.assert_element_visible('#tbl_selected_genes')
         self.click("#create_gene_cart")
         # Name cart
