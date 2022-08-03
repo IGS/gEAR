@@ -85,32 +85,33 @@ class ComparePage:
 
 class CompareTests(BaseCase):
 
-    def no_test_valid_login(self):
+    def test_valid_login(self):
         """Test that user can successfully log in."""
         cp = ComparePage()
         cp.nav_to_url(self)
         cp.login(self)
         self.assert_element_visible("#user_logged_in")
 
-    def no_test_invalid_user_email(self):
+    def test_invalid_user_email(self):
         """Test that user can't log in with invalid user email."""
         cp = ComparePage()
         cp.nav_to_url(self)
         # Incorrect user and password
         cp.login(self, "slartibartfast@magrathea.com", "hangthesenseofit")
-        color = self.get_property("#user_email", "color")
-        self.assert_true(color == RED, "User should not be logged in")
+        # Cannot get color from CSS property since it wasn't computed.  Instead use style attribute string
+        style = self.get_attribute("#user_email", "style")
+        self.assert_true("color: {}".format(RED) in style, "User should not be logged in")
 
-    def no_test_invalid_password(self):
+    def test_invalid_password(self):
         """Test that user can't log in with invalid password."""
         cp = ComparePage()
         cp.nav_to_url(self)
         # Correct user, incorrect password
         cp.login(self, config['test']['user_email'], "hangthesenseofit")
-        color = self.get_property("#user_pass", "color")
-        self.assert_true(color == RED, "User should have incorrect password")
+        style = self.get_attribute("#user_pass", "style")
+        self.assert_true("color: {}".format(RED) in style, "User should have incorrect password")
 
-    def no_test_create_standard_plot(self):
+    def test_create_standard_plot(self):
         """Tests that a basic plot can be created."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -120,7 +121,7 @@ class CompareTests(BaseCase):
         self.assert_element(".plotly")
         cp.plot_visual_regression(self, "normal_plot", 2)   # id values in plot get randomized, so stick with level 2
 
-    def no_test_invalid_plot_duplicate_conditions(self):
+    def test_invalid_plot_duplicate_conditions(self):
         """Tests that a basic plot fails if X- and Y- conditions are the same."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -129,7 +130,7 @@ class CompareTests(BaseCase):
         cp.plot_creation(self)
         self.assert_element("#error_loading_c")
 
-    def no_est_conditions_are_preserved_upon_change(self):
+    def test_conditions_are_preserved_upon_change(self):
         """Test that selected conditions are saved even when choosing the opposite axis' set of conditions."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -142,7 +143,7 @@ class CompareTests(BaseCase):
         y_selected = self.is_selected("input[data-group='{}']".format(cp.y_selection))
         self.assert_true(y_selected, msg="'y' conditions were not saved after the switch.")
 
-    def no_test_axis_label_adjustment(self):
+    def test_axis_label_adjustment(self):
         """Test that the axes labels are adjusted when conditions are changed."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -161,7 +162,7 @@ class CompareTests(BaseCase):
         self.assert_equal(x_label, x_title, msg="X-axis title was not adjusted in plot.")
         self.assert_equal(y_label, y_title, msg="Y-axis title was not adjusted in plot.")
 
-    def no_test_significance_test_colorize(self):
+    def test_significance_test_colorize(self):
         """Test that a colorized plot is created when a significance test is performed with the "colorize" radio checked."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -180,7 +181,7 @@ class CompareTests(BaseCase):
                 break
         self.assert_true(red_found, msg="No points were colored red when a colorized significance test was performed.")
 
-    def no_test_significance_test_filter(self):
+    def test_significance_test_filter(self):
         """Test that a colorized plot is created when a significance test is performed with the "filter" radio checked."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -190,14 +191,16 @@ class CompareTests(BaseCase):
         points = self.find_visible_elements(".points path")
         num_unfiltered_points = len(points)
         # Get filtered points
-        cp.select_significance_test(self, "t-test") # colorize should already be checked by default
-        self.click("#stat_action_filter")   # TODO: Fix... element is not visible with is_displayed() so click doesn't work
+        cp.select_significance_test(self, "t-test")
+        # NOTE: The "custom-control-input" class on the radio button seems to make it not visible (z-index: -1)
+        # Initially I was going to use the normal "form-check-input" class, but I found that clicking the label works
+        self.click("#stat_action_filter_label")
         cp.plot_creation(self)
         points = self.find_visible_elements(".points path")
         num_filtered_points = len(points)
         self.assert_not_equal(num_unfiltered_points, num_filtered_points, msg="Points were not filtered when a filtered significance test was performed.")
 
-    def no_test_found_gene_highlighting(self):
+    def test_found_gene_highlighting(self):
         cp = ComparePage()
         cp.nav_to_url(self)
         cp.select_dataset(self)
@@ -208,7 +211,7 @@ class CompareTests(BaseCase):
         gene_annotation = self.find_visible_elements('[data-unformatted="{}"'.format(cp.genes[0]))
         self.assert_true(len(gene_annotation), msg="Genes that should have been in plot were not found in the plot.")
 
-    def no_test_notfound_gene_highlighting(self):
+    def test_notfound_gene_highlighting(self):
         cp = ComparePage()
         cp.nav_to_url(self)
         cp.select_dataset(self)
@@ -218,7 +221,7 @@ class CompareTests(BaseCase):
         gene_not_found = self.get_text('#genes_not_found')
         self.assert_true((gene_not_found and cp.invalid_gene in gene_not_found), msg="Genes that should not have been in plot were found in the plot.")
 
-    def no_test_genes_in_selection_table(self):
+    def test_genes_in_selection_table(self):
         """Test that highlighted genes are in the selection table."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -240,7 +243,7 @@ class CompareTests(BaseCase):
         success_elts = self.find_visible_elements('#tbl_selected_genes tr.table-success')
         self.assert_true(len(success_elts), msg="Highlighted genes in table were not colored appropriately.")
 
-    def no_test_download_table(self):
+    def test_download_table(self):
         """Test that gene selection table can be downloaded."""
         cp = ComparePage()
         cp.nav_to_url(self)
@@ -253,7 +256,7 @@ class CompareTests(BaseCase):
         self.assert_downloaded_file("selected_genes.tsv")
         self.delete_downloaded_file_if_present("selected_genes.tsv")
 
-    def no_test_save_gene_cart(self):
+    def test_save_gene_cart(self):
         """Test that a gene cart can be named and saved."""
         cp = ComparePage()
         cp.nav_to_url(self)
