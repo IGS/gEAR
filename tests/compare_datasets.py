@@ -1,10 +1,12 @@
+#!/opt/bin/python3
+
 """
 To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name.
 
 To run as localhost (to test on Docker images), pass in --data=localhost as a option after the script name.
 """
 
-import configparser
+import configparser, random
 
 from seleniumbase import BaseCase
 
@@ -19,7 +21,7 @@ PALE_GREEN = 'rgb(195, 230, 203)'
 @dataclass(frozen=True)
 class ComparePage:
     dataset: str = "P1, mouse, scRNA-seq, utricle, hair cells, supporting cells, and transitional epithelial cells (Kelley)"
-    genecart_to_save: str = "sadkins_selenium"
+    genecart_to_save: str = "compare_selenium_{}".format(random.randint(0, 999999))
     genes: list = field(default_factory=lambda: ["Pou4f3", "Rfx7", "Sox2"])
     invalid_gene: str = "abc123"
     condition_cat: str = "cluster"
@@ -116,6 +118,7 @@ class CompareTests(BaseCase):
         cp = ComparePage()
         cp.nav_to_url(self)
         cp.select_dataset(self)
+        self.assert_true(self.get_text("#dataset_id") == cp.dataset, "Dataset should be {}".format(cp.dataset))
         cp.select_conditions(self, cp.condition_cat, cp.x_selection, cp.y_selection)
         cp.plot_creation(self)
         self.assert_element(".plotly")
@@ -268,10 +271,7 @@ class CompareTests(BaseCase):
         self.assert_element_visible('#tbl_selected_genes')
         self.click("#create_gene_cart")
         # Name cart
-        import random
-        random_int = random.randint(0, 999999)
-        cart_name = "Test Cart {}".format(random_int)
-        self.type("#gene_cart_name", cart_name)
+        self.type("#gene_cart_name", cp.genecart_to_save)
         # Save cart
         self.click("#save_gene_cart")
         self.assert_element_visible('#gene_cart_member_count')

@@ -54,7 +54,7 @@ This could be used for image regression purposes, but currently we have no imple
 
 The paradigm that seems easiest to work with is to use two classes. The first class represents the page being tested, including properties to use in testing. This class will also contain the code that deals with page navigation and manipulation. The second class represents the tests and assertions, and is an extension of the SeleniumBase.BaseCase class.  Do note that an instance from the second class will be passed to methods in the first class, as that object is the SeleniumBase driver itself.
 
-For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`. If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.
+For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  To run all scripts in the directory, omit the `<script>` in the pytest arguments. It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`. If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.
 
 Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 
@@ -62,9 +62,18 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 
 SeleniumBase has it's own "assert" statements, like "assert_element_visible". Unlike the traditional pytest assert statements, these do not take an optional message argument in case of assertion failure.  Don't be like me and spend hours trying to figure out what the test wasn't passing when the element clearly existed.
 
+SeleniumBase also has a way to defer the assertion failure on a test case.  This is very useful if you want to find all the bugs in the test before failing the test.  To do this, you use one of the following functions:
+
+* `BaseCase.deferred_assert_element`
+* `BaseCase.deferred_assert_element_present`
+* `BaseCase.deferred_assert_text`
+* `BaseCase.deferred_check_window` (for visual regression testing)
+
+To process these at the end of the test, call `BaseCase.process_deferred_asserts()`
+
 ### Note about matching colors
 
-When trying to check a property for the correct color (to indicate success, error, etc.), match the color using RGB values. From my experience, hex-codes, CSS shorthand names ("red", "slategray", etc.), and RGBA values do not match.
+When trying to check a property for the correct color (to indicate success, error, etc.), match the color using RGB values. From my experience, hex-codes, CSS shorthand names ("red", "darkgrey", etc.), and RGBA values do not match.
 
 ### Note on retrying failed tests
 
@@ -121,6 +130,8 @@ Currently I have had some issues with a test succeeding or failing on an inconsi
 * Dataset curator
 * Multigene curator
 * Main page - display panel
+
+#### Tests that use a private dataset instead of a public one (requires login)
 
 #### Dataset (single-gene) curator
 
