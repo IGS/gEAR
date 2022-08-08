@@ -54,9 +54,25 @@ This could be used for image regression purposes, but currently we have no imple
 
 The paradigm that seems easiest to work with is to use two classes. The first class represents the page being tested, including properties to use in testing. This class will also contain the code that deals with page navigation and manipulation. The second class represents the tests and assertions, and is an extension of the SeleniumBase.BaseCase class.  Do note that an instance from the second class will be passed to methods in the first class, as that object is the SeleniumBase driver itself.
 
-For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  To run all scripts in the directory, omit the `<script>` in the pytest arguments. It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`. If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.
+For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`. It will run all tests with "test_" as the function name.
+
+To run all scripts in the directory, omit the `<script>` in the pytest arguments, or pass in a directory
+. It will run all tests from files with "test_*.py" or "*_test.py" as the filename
+
+To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`.
+
+If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.  You can also pass in `--demo` which runs the test at a slower rate, and gives visual indicators on which elements are being interacted with (i.e. clicks). Adding `--headless` runs the tests with a headless browser, which can be good if you are running tests on a server, or while you are doing work (when the browser will pop up in front of the window you are working in).
 
 Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
+
+### Note about commonalities with Selenium
+
+SeleniumBase runs Selenium methods under the hood, and provides default timeout settings, and by default uses CSS selectors... both of which are normally written out explicitly in a Selenium test.  They can each be modified in pretty much every function with a "timeout" argument or a "by" argument, respectively.
+
+You can also use method like `BaseCase.find_element(selector)` to return a WebElement object that can be used with Selenium methods.  A method like `BaseCase.find_elements(selector)` returns a list of WebElement objects to iterate over.  There are also variations of these commands, which handle specfic situations such as if the element is visible, clickable, present, or not.
+
+References: https://seleniumbase.io/help_docs/method_summary/
+https://github.com/seleniumbase/SeleniumBase/blob/master/seleniumbase/fixtures/base_case.py (for breakdowns of the methods themselves)
 
 ### Note about assert statements
 
