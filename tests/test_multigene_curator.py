@@ -17,8 +17,11 @@ config = configparser.ConfigParser()
 config.read('../gear.ini')
 
 RED = 'rgb(255, 0, 0)'
-PALE_GREEN = 'rgb(195, 230, 203)'
 GREY = 'rgb(128, 128, 128)'
+
+# This just verifies the HTML tags are identical.  With Plotly and Select2, IDs are randomized.
+# I find that occasionally attributes and HTML tag order is randomized too, so it may be good to set this to 0 for a dry-run
+VISUAL_LEVEL = 2
 
 @dataclass(frozen=True)
 class MultigenePage:
@@ -27,7 +30,6 @@ class MultigenePage:
     genecart_to_save: str = "multigene_genecart_selenium_{}".format(random.randint(0, 999999))
     display_to_save: str = "multigene_display_selenium_{}".format(random.randint(0, 999999))
     genes: list = field(default_factory=lambda: ["Pou4f3", "Rfx7", "Sox2"])
-    invalid_gene: str = "abc123"
     condition_cat: str = "cluster"  # Currently this dataset has only "cluster" and "louvain" which are the same set of groups
     filter_by: list = field(default_factory=lambda: ["HC (i)", "SC (i)", "TEC"])
 
@@ -63,12 +65,14 @@ class MultigenePage:
                 elt.click()
                 return
 
-    def enter_genes(self, sb):
+    def enter_genes(self, sb, genes=[]):
         gene_dropdown_select = "gene_dropdown"
         select2_gene_box = self.select2_container.format(gene_dropdown_select)
         select2_gene_textarea = "{} + span textarea".format(select2_gene_box)
         sb.click(select2_gene_textarea)
-        for gene in self.genes:
+        if not genes:
+            genes = self.genes
+        for gene in genes:
             sb.add_text(select2_gene_textarea, gene)
             # Clicking "Enter" would add the first returned gene to the list, which may be incorrect (ex: search Sox2, get Qsox2)
             # Find the gene in the list and click on it
@@ -95,9 +99,9 @@ class MultigenePage:
             self.click_by_select2_text(sb, cluster_dropdown, cat)
         return select2_filter_condition # return element "id"
 
-    def plot_creation(self, sb):
+    def plot_creation(self, sb, sleep=5):
         sb.click("#create_plot")
-        sb.sleep(10)
+        sb.sleep(sleep)
 
     def plot_visual_regression(self, sb, img_name, level=3, deferred=False):
         """
@@ -120,6 +124,7 @@ class MultigenePage:
         sb.click("#dataset")    # Worth noting this is "dataset_id" on other pages
         sb.type("#dataset_tree_q", "kelley")
         sb.click(".jstree-search:contains('{}')".format(self.dataset))
+        sb.sleep(1)
 
     def select_de_algo(self, sb, algo="Welch's t-test"):
         de_algo_select  = "de_test_select"
@@ -169,17 +174,12 @@ class MultigenePage:
         sb.click(ref_container)
         self.click_by_select2_text(sb, ref, "SC (i)", optgroup=self.condition_cat)
 
-
-    ### OPTIONS TESTING
-
-    def add_clusterbar(self) -> bool:
+    def add_clusterbar(self):
         print(" -- CLUSTERBAR CATEGORY SELECTION")
-
+        pass
 
     def sortable_primary_order(self):
         pass
-
-    ### POST-PLOT OPTIONS
 
     def save_new_display(self):
         pass
@@ -217,10 +217,11 @@ class MultigeneTests(BaseCase):
         self.assert_true("color: {}".format(RED) in style, "User should have incorrect password")
 
     # TODO: Test colorpalette, and colorblindness
-    # TODO: Test if no genes are selected for dotplot (bad), or volcano plot (good).  Test if 1 gene is selected for heatmap (bad)
+    # ? self.accept_alert() does not work. Alert box seems to be accepted before this is executed (see https://github.com/seleniumbase/SeleniumBase/discussions/1284)
 
     #! Currently does not work as genecart JSTree is not loaded after login
     def test_genecart_entry(self):
+        # Can also alternatively import pytest and use @pytest.skip(reason="blah") fixture
         self.skip(reason="Not working as genecart JSTree is not loaded after login")
         # ---
         mg = MultigenePage()
@@ -235,66 +236,95 @@ class MultigeneTests(BaseCase):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
-        # Don't need to worry about selecting genes
-        select2_elt = mg.select_plot_type(self, "Heatmap")
-        self.assert_true(select2_elt.text == "Heatmap", "Heatmap plot type should be selected")
+        # Don't need to worry about selecting genes.  Heatmap, Dotplot, or Violin bring up filters
+        mg.select_plot_type(self, "Heatmap")
         select2_filter_box = mg.filter_by_selection(self)
         select2_filter_box_elts = self.find_elements("{} .select2-selection__choice__display ".format(select2_filter_box))
         self.assert_true(len(select2_filter_box_elts), "Filter selection box should have {} conditions".format(len(mg.filter_by)))
         # ? Not sure where to go next with this
 
+    def test_plot_dotplot(self):
+        mg = MultigenePage()
+        mg.nav_to_url(self)
+        mg.select_dataset(self)
+        select2_elt = mg.select_plot_type(self, "Dotplot")
+        self.assert_true(select2_elt.text == "Dotplot", "Dotplot plot type should be selected")
+        # Test no genes entered
+        mg.plot_creation(self)
+
+        # Now put in genes
+        select2_gene_box = mg.enter_genes(self)
+        select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
+        self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
+        # Primary Category is mandatory
+        self.click("#{}_primary".format(mg.condition_cat))
+        mg.plot_creation(self)
+        self.deferred_assert_element(".plotly")
+        mg.plot_visual_regression(self, "dotplot_no_opts", VISUAL_LEVEL, True)
+        # ---
+        self.process_deferred_asserts()
+
     def test_plot_heatmap(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
-        select2_gene_box = mg.enter_genes(self)
-        select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
-        self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
         select2_elt = mg.select_plot_type(self, "Heatmap")
         self.assert_true(select2_elt.text == "Heatmap", "Heatmap plot type should be selected")
         self.click("#matrixplot")   # Enabled by default so turn off
+        # Test no genes entered
+        mg.plot_creation(self)
+
+        # Test one gene entered and clear gene
+        select2_gene_box = mg.enter_genes(self, ["Pou4f3"])
+        mg.plot_creation(self)
+
+        self.click("{} .select2-selection__choice__remove".format(select2_gene_box))
+        # Now put in genes
+        select2_gene_box = mg.enter_genes(self)
+        select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
+        self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_no_opts", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_no_opts", VISUAL_LEVEL, True)
         # Flip axes
         self.click("#flip_axes")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_flip_axes", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_flip_axes", VISUAL_LEVEL, True)
         self.click("#flip_axes")
         # Change distance metric
         select2_elt = mg.select_distance_metric(self, "Manhattan (Cityblock)")
         self.assert_true(select2_elt.text == "Manhattan (Cityblock)", "Manhattan distance metric should be selected")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_distance_metric", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_distance_metric", VISUAL_LEVEL, True)
         select2_elt = mg.select_distance_metric(self, "Euclidean")
         self.assert_true(select2_elt.text == "Euclidean", "Euclidean distance metric should be selected")
         # Cluster genes
         self.click("#cluster_genes")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_cluster_genes", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_cluster_genes", VISUAL_LEVEL, True)
         self.click("#cluster_genes")
         # Cluster observations
         self.click("#cluster_obs")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_cluster_obs", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_cluster_obs", VISUAL_LEVEL, True)
         self.click("#cluster_obs")
         # Cluster both
         self.click("#cluster_genes")
         self.click("#cluster_obs")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_cluster_both", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_cluster_both", VISUAL_LEVEL, True)
         self.click("#cluster_genes")
         self.click("#cluster_obs")
         # Sort by Primary Category
         self.click("#{}_primary".format(mg.condition_cat))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_primary", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_primary", VISUAL_LEVEL, True)
         # ---
         self.process_deferred_asserts()
 
@@ -302,69 +332,61 @@ class MultigeneTests(BaseCase):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
+        select2_elt = mg.select_plot_type(self, "Heatmap")
+        self.assert_true(select2_elt.text == "Heatmap", "Heatmap plot type should be selected")
+        # Test no genes entered
+        mg.plot_creation(self)
+
+        # Test one gene entered and clear gene
+        select2_gene_box = mg.enter_genes(self, ["Pou4f3"])
+        mg.plot_creation(self)
+
+        self.click("{} .select2-selection__choice__remove".format(select2_gene_box))
+        # Now put in genes
         select2_gene_box = mg.enter_genes(self)
         select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
         self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
-        select2_elt = mg.select_plot_type(self, "Heatmap")
-        self.assert_true(select2_elt.text == "Heatmap", "Heatmap plot type should be selected")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "heatmap_matrixplot", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "heatmap_matrixplot", VISUAL_LEVEL, True)
         # Flip axes
         self.click("#flip_axes")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "matrixplot_flip_axes", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "matrixplot_flip_axes", VISUAL_LEVEL, True)
         # Change distance metric
         select2_elt = mg.select_distance_metric(self, "Manhattan (Cityblock)")
         self.assert_true(select2_elt.text == "Manhattan (Cityblock)", "Manhattan distance metric should be selected")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "matrixplot_distance_metric", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "matrixplot_distance_metric", VISUAL_LEVEL, True)
         select2_elt = mg.select_distance_metric(self, "Euclidean")
         self.assert_true(select2_elt.text == "Euclidean", "Euclidean distance metric should be selected")
         # Cluster genes
         self.click("#cluster_genes")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "matrixplot_cluster_genes", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "matrixplot_cluster_genes", VISUAL_LEVEL, True)
         self.click("#cluster_genes")
         # Cluster observations
         self.click("#cluster_obs")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "matrixplot_cluster_obs", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "matrixplot_cluster_obs", VISUAL_LEVEL, True)
         self.click("#cluster_obs")
         # Cluster both
         self.click("#cluster_genes")
         self.click("#cluster_obs")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "matrixplot_cluster_both", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "matrixplot_cluster_both", VISUAL_LEVEL, True)
         self.click("#cluster_genes")
         self.click("#cluster_obs")
         # Sort by Primary Category
         self.click("#{}_primary".format(mg.condition_cat))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "matrixplot_primary", 2, True)   # id values in plot get randomized, so stick with level 2
-        # ---
-        self.process_deferred_asserts()
-
-    def test_plot_dotplot(self):
-        mg = MultigenePage()
-        mg.nav_to_url(self)
-        mg.select_dataset(self)
-        select2_gene_box = mg.enter_genes(self)
-        select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
-        self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
-        select2_elt = mg.select_plot_type(self, "Dotplot")
-        self.assert_true(select2_elt.text == "Dotplot", "Dotplot plot type should be selected")
-        # Primary Category is mandatory
-        self.click("#{}_primary".format(mg.condition_cat))
-        mg.plot_creation(self)
-        self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "dotplot_no_opts", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "matrixplot_primary", VISUAL_LEVEL, True)
         # ---
         self.process_deferred_asserts()
 
@@ -372,15 +394,15 @@ class MultigeneTests(BaseCase):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
+        select2_elt = mg.select_plot_type(self, "Quadrant")
+        self.assert_true(select2_elt.text == "Quadrant", "Quadrant plot type should be selected")
         select2_gene_box = mg.enter_genes(self)
         select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
         self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
-        select2_elt = mg.select_plot_type(self, "Quadrant")
-        self.assert_true(select2_elt.text == "Quadrant", "Quadrant plot type should be selected")
         mg.select_quadrant_conditions(self)
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "quadrant_no_opts", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "quadrant_no_opts", VISUAL_LEVEL, True)
         # Instead of checking for the presence of grey points, let's check the legend instead.  This should save time
         traces = self.find_visible_elements(".traces text")
         grey_found = False
@@ -394,14 +416,14 @@ class MultigeneTests(BaseCase):
         self.type("#quadrant_foldchange_cutoff", "1.5")   # default value is 2
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "quadrant_foldchange_cutoff_adjusted", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "quadrant_foldchange_cutoff_adjusted", VISUAL_LEVEL, True)
         self.click("#quadrant_foldchange_cutoff")
         self.type("#quadrant_foldchange_cutoff", "2")
         # Test excluding zero-foldchange genes (normally in gray)
         self.click("#include_zero_foldchange")  # disable
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "quadrant_zero_foldchange_off", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "quadrant_zero_foldchange_off", VISUAL_LEVEL, True)
         self.click("#include_zero_foldchange")  # enable
         traces = self.find_visible_elements(".traces text")
         grey_found = False
@@ -415,15 +437,15 @@ class MultigeneTests(BaseCase):
         self.type("#quadrant_fdr_cutoff", "0.1")   # default value is 0.05
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "quadrant_fdr_cutoff_adjusted", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "quadrant_fdr_cutoff_adjusted", VISUAL_LEVEL, True)
         self.click("#quadrant_fdr_cutoff")
         self.type("#quadrant_fdr_cutoff", "0.05")
         # Change DE algorithm
         select2_elt = mg.select_de_algo(self, "Wilcoxon rank-sum test")
         self.assert_true(select2_elt.text == "Wilcoxon rank-sum test", "Wilcoxon rank-sum test should be selected")
-        mg.plot_creation(self)
+        mg.plot_creation(self, sleep=10)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "quadrant_de_algo", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "quadrant_de_algo", VISUAL_LEVEL, True)
         select2_elt = mg.select_de_algo(self, "Welch's t-test")
         self.assert_true(select2_elt.text == "Welch's t-test", "Welch's t-test should be selected")
         # ---
@@ -433,26 +455,29 @@ class MultigeneTests(BaseCase):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
+        select2_elt = mg.select_plot_type(self, "Violin")
+        self.assert_true(select2_elt.text == "Violin", "Violin plot type should be selected")
+        # Test no genes entered
+        mg.plot_creation(self)
+        # Now put in genes
         select2_gene_box = mg.enter_genes(self)
         select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
         self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
-        select2_elt = mg.select_plot_type(self, "Violin")
-        self.assert_true(select2_elt.text == "Violin", "Violin plot type should be selected")
         # Primary Category is mandatory
         self.click("#{}_primary".format(mg.condition_cat))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "violin_no_opts", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "violin_no_opts", VISUAL_LEVEL, True)
         # Add jitter
         self.click("#violin_add_points")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "violin_jitter", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "violin_jitter", VISUAL_LEVEL, True)
         # Sort by Primary Category
         self.click("#{}_primary".format(mg.condition_cat))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "violin_primary", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "violin_primary", VISUAL_LEVEL, True)
         # ---
         self.process_deferred_asserts()
 
@@ -460,27 +485,30 @@ class MultigeneTests(BaseCase):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
+        select2_elt = mg.select_plot_type(self, "Violin")
+        self.assert_true(select2_elt.text == "Violin", "Violin plot type should be selected")
+        # Test no genes entered
+        mg.plot_creation(self)
+        # Now put in genes
         select2_gene_box = mg.enter_genes(self)
         select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
         self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
-        select2_elt = mg.select_plot_type(self, "Violin")
-        self.assert_true(select2_elt.text == "Violin", "Violin plot type should be selected")
         self.click("#stacked_violin")
         # Primary Category is mandatory
         self.click("#{}_primary".format(mg.condition_cat))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "stacked_violin", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "stacked_violin", VISUAL_LEVEL, True)
         # Add jitter
         self.click("#violin_add_points")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "stacked_violin_jitter", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "stacked_violin_jitter", VISUAL_LEVEL, True)
         # Sort by Primary Category
         self.click("#{}_primary".format(mg.condition_cat))
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "stacked_violin_primary", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "stacked_violin_primary", VISUAL_LEVEL, True)
         # ---
         self.process_deferred_asserts()
 
@@ -488,33 +516,33 @@ class MultigeneTests(BaseCase):
         mg = MultigenePage()
         mg.nav_to_url(self)
         mg.select_dataset(self)
+        select2_elt = mg.select_plot_type(self, "Volcano")
+        self.assert_true(select2_elt.text == "Volcano", "Volcano plot type should be selected")
         select2_gene_box = mg.enter_genes(self)
         select2_gene_box_elts = self.find_elements("{} .select2-selection__choice__display".format(select2_gene_box))
         self.assert_true(len(select2_gene_box_elts), "Gene selection box should have {} genes".format(len(mg.genes)))
-        select2_elt = mg.select_plot_type(self, "Volcano")
-        self.assert_true(select2_elt.text == "Volcano", "Volcano plot type should be selected")
         mg.select_volcano_conditions(self)
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "volcano_no_opts", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "volcano_no_opts", VISUAL_LEVEL, True)
         # Disable annotation of nonsignificant genes
         self.click("#annot_nonsig")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "volcano_annot_nonsig_off", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "volcano_annot_nonsig_off", VISUAL_LEVEL, True)
         self.click("#annot_nonsig")
         # Now disable adjusted p-values
         self.click("#adj_pvals")
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "volcano_adj_pvals_off", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "volcano_adj_pvals_off", VISUAL_LEVEL, True)
         self.click("#adj_pvals")
         # Change DE algorithm
         select2_elt = mg.select_de_algo(self, "Wilcoxon rank-sum test")
         self.assert_true(select2_elt.text == "Wilcoxon rank-sum test", "Wilcoxon rank-sum test should be selected")
-        mg.plot_creation(self)
+        mg.plot_creation(self, sleep=10)
         self.deferred_assert_element(".plotly")
-        mg.plot_visual_regression(self, "volcano_de_algo", 2, True)   # id values in plot get randomized, so stick with level 2
+        mg.plot_visual_regression(self, "volcano_de_algo", VISUAL_LEVEL, True)
         select2_elt = mg.select_de_algo(self, "Welch's t-test")
         self.assert_true(select2_elt.text == "Welch's t-test", "Welch's t-test should be selected")
         # ---

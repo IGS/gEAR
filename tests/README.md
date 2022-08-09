@@ -54,6 +54,8 @@ This could be used for image regression purposes, but currently we have no imple
 
 The paradigm that seems easiest to work with is to use two classes. The first class represents the page being tested, including properties to use in testing. This class will also contain the code that deals with page navigation and manipulation. The second class represents the tests and assertions, and is an extension of the SeleniumBase.BaseCase class.  Do note that an instance from the second class will be passed to methods in the first class, as that object is the SeleniumBase driver itself.
 
+Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
+
 For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`. It will run all tests with "test_" as the function name.
 
 To run all scripts in the directory, omit the `<script>` in the pytest arguments, or pass in a directory
@@ -61,9 +63,16 @@ To run all scripts in the directory, omit the `<script>` in the pytest arguments
 
 To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`.
 
-If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.  You can also pass in `--demo` which runs the test at a slower rate, and gives visual indicators on which elements are being interacted with (i.e. clicks). Adding `--headless` runs the tests with a headless browser, which can be good if you are running tests on a server, or while you are doing work (when the browser will pop up in front of the window you are working in).
+If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.  You can also pass in `--demo` which runs the test at a slower rate, and gives visual indicators on which elements are being interacted with (i.e. clicks).
 
-Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
+** RECOMMENDED ** Adding `--headless` runs the tests with a headless browser, which can be good if you are running tests on a server, or while you are doing work (when the browser will pop up in front of the window you are working in).
+
+Reference: https://seleniumbase.io/help_docs/customizing_test_runs/#seleniumbase-methods-api-reference
+
+You can also add "browser capabilities" to the Selenium Webdriver by passing them in a JSON string using the `--cap-string` argument, or in a file using `--cap-file`.
+
+References: https://www.selenium.dev/documentation/webdriver/capabilities/shared/
+https://seleniumbase.io/help_docs/desired_capabilities/#seleniumbase-methods-api-reference
 
 ### Note about commonalities with Selenium
 
@@ -87,9 +96,17 @@ SeleniumBase also has a way to defer the assertion failure on a test case.  This
 
 To process these at the end of the test, call `BaseCase.process_deferred_asserts()`
 
+It is also worth noting that the "deferred_assert_element*" methods have a conditional where if the URL has not changed, the "timeout" parameter is set to 1, which can be problematic if one is waiting for a plot to load. In this case, it is better to set a sleep event after the plot creation.
+
 ### Note about matching colors
 
 When trying to check a property for the correct color (to indicate success, error, etc.), match the color using RGB values. From my experience, hex-codes, CSS shorthand names ("red", "darkgrey", etc.), and RGBA values do not match.
+
+### Note about alert boxes
+
+Seems that the Selenium Webdriver capabilities for choosing how to handle "alert" modals is ignored, and the default of dismissing and notifying is forced in SeleniumBase.  For this reason, I would advise not trying to handle alerts yourself and just assumed they were already clicked
+
+https://github.com/seleniumbase/SeleniumBase/discussions/1284
 
 ### Note on retrying failed tests
 

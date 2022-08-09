@@ -43,7 +43,7 @@ class ComparePage:
 
     def plot_creation(self, sb):
         sb.click("#btn_apply_dataset_changes")  # I believe the default timeout will be enough to generate the plot
-        sb.sleep(10)
+        sb.sleep(5)
 
     def select_conditions(self, sb, condition_category, x_selection, y_selection):
         sb.click("#condition_x_tab")
