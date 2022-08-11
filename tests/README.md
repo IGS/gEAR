@@ -8,6 +8,8 @@ Generally testing progresses in a few phases
 
 Starting with API testing allows us to make sure the API is working properly to do things like create accounts, insert datasets, etc.  This also sets the stage for UI testing with the data created during these first API steps.  The UI is then tested, and then we remove the testing data.
 
+Reference:  https://towardsdatascience.com/unit-testing-python-data-visualizations-18e0250430
+
 ### Completed API tests
 
 None yet listed
@@ -20,7 +22,9 @@ None yet listed
 
 We use Selenium for this and these steps can take a while. Automated UI testing isn't necessarily quick, and there are a lot of pages/features to check.
 
-## Visual regression testing
+Reference: https://medium.com/empathyco/the-front-end-testing-of-data-visualizations-29a5644b9e0e
+
+### Visual regression testing
 
 These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.).
 
@@ -148,6 +152,32 @@ Currently I have had some issues with a test succeeding or failing on an inconsi
 * Download gene selection table
 * Name and save gene cart
 
+#### Multigene Curator
+
+* Create a heatmap
+  * Must have 2+ genes
+  * Alt heatmap with cluster observations checkbox
+  * Alt heatmap with cluster genes checkbox
+  * Alt heatmap with axes flipped
+  * Distance metric for clustering observations/genes
+  * Matrix plot
+  * Sort by primary category
+* Create a violin
+  * Stacked violin plot
+  * With jitter
+* Create a volcano
+  * REQUIRED - query/ref conditions
+    * Window alert if not chosen or category is different
+  * DE Algorithm
+  * Annotate non-signficant p-values
+  * Use adjusted p-vals
+* Create a dotplot
+* Create a quadrant plot
+  * REQUIRED - query1/query2/ref conditions
+    * Window alert if not chosen or category is different
+  * DE Algorithm
+  * Foldchange cutuff
+  * FDR cutoff
 
 ### Current and pending UI tests
 
@@ -184,30 +214,6 @@ Currently I have had some issues with a test succeeding or failing on an inconsi
 * Ensure plot is loaded when dataset is chosen (loaded from saved displays or default volcano plot)
 * Volcanoes should be disabled when no categories have 2+ groups
 * Quadrants should be disabled when no categories have 3+ groups
-* Create a heatmap
-  * Must have 2+ genes
-  * Alt heatmap with cluster observations checkbox
-  * Alt heatmap with cluster genes checkbox
-  * Alt heatmap with axes flipped
-  * Distance metric for clustering observations/genes
-* Create a violin
-  * Stacked violin plot
-  * With jitter
-* Create a volcano
-  * Categories should be not available from select if they have <2 groups
-  * REQUIRED - query/ref conditions
-    * Window alert if not chosen or category is different
-  * DE Algorithm
-  * Annotate non-signficant p-values
-  * Use adjusted p-vals
-* Create a dotplot
-* Create a quadrant plot
-  * Categories should be not available from select if they have <3 groups
-  * REQUIRED - query1/query2/ref conditions
-    * Window alert if not chosen or category is different
-  * DE Algorithm
-  * Foldchange cutuff
-  * FDR cutoff
 * Misc.
   * Primary category
   * Secondary category (may need to choose a new dataset)
@@ -220,6 +226,13 @@ Currently I have had some issues with a test succeeding or failing on an inconsi
 * Ensure heatmap and matrixplot expression value for a single gene and observation/celltype is correct
   * This tests that sorting was fine
   * For heatmaps/violins/dotplots
+
+#### Analysis (single-cell) Workbench
+
+* Go through all steps in new analysis
+* Resume unsaved analysis
+* Resume saved analysis
+* Load primary analysis
 
 #### Manual Documentation
 

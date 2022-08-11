@@ -21,7 +21,7 @@ GREY = 'rgb(128, 128, 128)'
 
 # This just verifies the HTML tags are identical.  With Plotly and Select2, IDs are randomized.
 # I find that occasionally attributes and HTML tag order is randomized too, so it may be good to set this to 0 for a dry-run
-VISUAL_LEVEL = 2
+VISUAL_LEVEL = 0
 
 @dataclass(frozen=True)
 class MultigenePage:
