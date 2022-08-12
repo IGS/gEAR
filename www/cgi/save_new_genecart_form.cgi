@@ -106,7 +106,7 @@ def main():
             elif fileitem.filename.endswith('csv'):
                 df = pd.read_csv(fileitem.file, sep=',')
             else:
-                raise Exception("Unsupported file type for carts uploaded. File name: {0}".format(fileitem.filename))
+                raise Exception("Unsupported file type for carts uploaded. File name: {0}. Supported extensions: ['xlsx', 'xls', 'tab', 'tsv', 'csv']".format(fileitem.filename))
 
             is_valid = validate_weighted_gene_cart(df)
 
