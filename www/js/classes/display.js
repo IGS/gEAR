@@ -1,3 +1,6 @@
+// Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
+const new_d3 = d3;
+
 /** Base class representing a display */
 class Display {
     /**
@@ -997,25 +1000,25 @@ class SVGDisplay extends Display {
             if (this.mid_color) {
                 if (min >= 0) {
                     // All values greater than 0, do right side of three-color
-                    color_range = d3
+                    color_range = new_d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([this.mid_color, this.high_color]);
                 } else if (max <= 0) {
                     // All values under 0, do left side of three-color
-                    color_range = d3
+                    color_range = new_d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([this.low_color, this.mid_color]);
                 } else {
                     // We have a good value range, do the three-color
-                    color_range = d3
+                    color_range = new_d3
                         .scaleLinear()
                         .domain([min, 0, max])
                         .range([this.low_color, this.mid_color, this.high_color]);
                 }
             } else {
-                color_range = d3
+                color_range = new_d3
                     .scaleLinear()
                     .domain([min, max])
                     .range([this.low_color, this.high_color]);
@@ -1041,7 +1044,7 @@ class SVGDisplay extends Display {
                         }
 
                         if (!this.target.includes('modal')) {
-                            const tooltip = d3
+                            const tooltip = new_d3
                                 .select('#tip')
                                 .attr('class', 'tooltip')
                                 .style('opacity', 0);
@@ -1054,10 +1057,10 @@ class SVGDisplay extends Display {
                                 if (math == 'log2') {
                                     score = df.format('.2f')(Math.log2(expression[tissue]));
                                 } else if (math == 'log10') {
-                                    score = d3.format('.2f')(Math.log10(expression[tissue]));
+                                    score = new_d3.format('.2f')(Math.log10(expression[tissue]));
                                 } else {
                                     //math == 'raw'
-                                    score = d3.format('.2f')(expression[tissue]);
+                                    score = new_d3.format('.2f')(expression[tissue]);
                                 }
                                 const tmpl_tooltip = $.templates('#tmpl_tooltip');
                                 const tooltip_html = tmpl_tooltip.render({
@@ -1097,17 +1100,17 @@ class SVGDisplay extends Display {
                     } = score[tissue];
 
                     if (min >= 0) {
-                        color_range[tissue] = d3
+                        color_range[tissue] = new_d3
                             .scaleLinear()
                             .domain([min, max])
                             .range([this.mid_color, this.high_color]);
                     } else if (max <= 0) {
-                        color_range[tissue] = d3
+                        color_range[tissue] = new_d3
                             .scaleLinear()
                             .domain([min, max])
                             .range([this.low_color, this.mid_color]);
                     } else {
-                        color_range[tissue] = d3
+                        color_range[tissue] = new_d3
                             .scaleLinear()
                             .domain([min, 0, max])
                             .range([this.low_color, this.mid_color, this.high_color]);
@@ -1120,7 +1123,7 @@ class SVGDisplay extends Display {
                         max
                     } = score[tissue];
 
-                    color_range[tissue] = d3
+                    color_range[tissue] = new_d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([this.low_color, this.high_color]);
@@ -1138,7 +1141,7 @@ class SVGDisplay extends Display {
                         path.attr('fill', color_scale(expression[tissue]));
 
                         if (!this.target.includes('modal')) {
-                            const tooltip = d3
+                            const tooltip = new_d3
                                 .select('#tip')
                                 .attr('class', 'tooltip')
                                 .style('opacity', 0);
@@ -1151,10 +1154,10 @@ class SVGDisplay extends Display {
                                 if (math == 'log2') {
                                     score = df.format('.2f')(Math.log2(expression[tissue]));
                                 } else if (math == 'log10') {
-                                    score = d3.format('.2f')(Math.log10(expression[tissue]));
+                                    score = new_d3.format('.2f')(Math.log10(expression[tissue]));
                                 } else {
                                     //math == 'raw'
-                                    score = d3.format('.2f')(expression[tissue]);
+                                    score = new_d3.format('.2f')(expression[tissue]);
                                 }
                                 const tmpl_tooltip = $.templates('#tmpl_tooltip');
                                 const tooltip_html = tmpl_tooltip.render({
@@ -1194,7 +1197,7 @@ class SVGDisplay extends Display {
         const target = zoomed ? `dataset_${this.primary_key}_svg_cc_zoomed` : `${this.target}_svg_c`;
         const node = document.getElementById(target);
         // Create our legend svg
-        const legend = d3
+        const legend = new_d3
             .select(node)
             .append('svg')
             .style('position', 'absolute')
@@ -1288,12 +1291,12 @@ class SVGDisplay extends Display {
                 `url(#${this.target}-linear-gradient${zoomed ? '_zoomed' : ''}`
             );
 
-        const xScale = d3
+        const xScale = new_d3
             .scaleLinear()
             .domain([min, max])
             .range([0, width / 2]);
 
-        const xAxis = d3
+        const xAxis = new_d3
             .axisBottom()
             .ticks(3)
             .scale(xScale);
