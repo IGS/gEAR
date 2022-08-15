@@ -63,7 +63,7 @@ class SCAnalysisPage:
         sb.type("#dataset_tree_q", "P2, mouse, scRNA-seq, cochlea")
         sb.click(".jstree-search:contains('{}')".format(self.dataset))
 
-class MultigeneTests(BaseCase):
+class SCAnalysisPageTests(BaseCase):
 
     def test_valid_login(self):
         """Test that user can successfully log in."""

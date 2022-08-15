@@ -24,6 +24,8 @@ We use Selenium for this and these steps can take a while. Automated UI testing 
 
 Reference: https://medium.com/empathyco/the-front-end-testing-of-data-visualizations-29a5644b9e0e
 
+TODO: Should we monkeypatch API and CGI calls to speed things along? - https://docs.pytest.org/en/7.1.x/how-to/monkeypatch.html
+
 ### Visual regression testing
 
 These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.).
