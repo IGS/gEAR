@@ -328,8 +328,6 @@ class TSNEData(Resource):
             So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
             """
 
-            import matplotlib.pyplot as plt
-
             # If plotting by group the plot dimensions need to be determined
             if plot_by_group:
                 column_order = adata.obs[plot_by_group].unique()
