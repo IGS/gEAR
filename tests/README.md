@@ -8,6 +8,8 @@ Generally testing progresses in a few phases
 
 Starting with API testing allows us to make sure the API is working properly to do things like create accounts, insert datasets, etc.  This also sets the stage for UI testing with the data created during these first API steps.  The UI is then tested, and then we remove the testing data.
 
+Reference:  https://towardsdatascience.com/unit-testing-python-data-visualizations-18e0250430
+
 ### Completed API tests
 
 None yet listed
@@ -20,7 +22,11 @@ None yet listed
 
 We use Selenium for this and these steps can take a while. Automated UI testing isn't necessarily quick, and there are a lot of pages/features to check.
 
-## Visual regression testing
+Reference: https://medium.com/empathyco/the-front-end-testing-of-data-visualizations-29a5644b9e0e
+
+TODO: Should we monkeypatch API and CGI calls to speed things along? - https://docs.pytest.org/en/7.1.x/how-to/monkeypatch.html
+
+### Visual regression testing
 
 These kind of tests take a screenshot of a particular HTML element and compare it to a baseline screenshot to ensure the images have not changed.  This is useful to ensure plots have not changed over time (via algorithm or parameters, etc.).
 
@@ -54,9 +60,63 @@ This could be used for image regression purposes, but currently we have no imple
 
 The paradigm that seems easiest to work with is to use two classes. The first class represents the page being tested, including properties to use in testing. This class will also contain the code that deals with page navigation and manipulation. The second class represents the tests and assertions, and is an extension of the SeleniumBase.BaseCase class.  Do note that an instance from the second class will be passed to methods in the first class, as that object is the SeleniumBase driver itself.
 
-For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`.  It will run all tests with "test_" as the function name. To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`. If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely.
-
 Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
+
+For SeleniumBase tests, we will use pytest to run the tests. To run these tests, run `pytest <script>`. It will run all tests with "test_" as the function name.
+
+To run all scripts in the directory, omit the `<script>` in the pytest arguments, or pass in a directory
+. It will run all tests from files with "test_*.py" or "*_test.py" as the filename
+
+To run in a localhost environment (to test on Docker images), pass in `--data=localhost` as a option after the script name, which gets stored in `SeleniumBase.BaseCase.data`.
+
+If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.  You can also pass in `--demo` which runs the test at a slower rate, and gives visual indicators on which elements are being interacted with (i.e. clicks).
+
+** RECOMMENDED ** Adding `--headless` runs the tests with a headless browser, which can be good if you are running tests on a server, or while you are doing work (when the browser will pop up in front of the window you are working in).
+
+Reference: https://seleniumbase.io/help_docs/customizing_test_runs/#seleniumbase-methods-api-reference
+
+You can also add "browser capabilities" to the Selenium Webdriver by passing them in a JSON string using the `--cap-string` argument, or in a file using `--cap-file`.
+
+References: https://www.selenium.dev/documentation/webdriver/capabilities/shared/
+https://seleniumbase.io/help_docs/desired_capabilities/#seleniumbase-methods-api-reference
+
+### Note about commonalities with Selenium
+
+SeleniumBase runs Selenium methods under the hood, and provides default timeout settings, and by default uses CSS selectors... both of which are normally written out explicitly in a Selenium test.  They can each be modified in pretty much every function with a "timeout" argument or a "by" argument, respectively.
+
+You can also use method like `BaseCase.find_element(selector)` to return a WebElement object that can be used with Selenium methods.  A method like `BaseCase.find_elements(selector)` returns a list of WebElement objects to iterate over.  There are also variations of these commands, which handle specfic situations such as if the element is visible, clickable, present, or not.
+
+References: https://seleniumbase.io/help_docs/method_summary/
+https://github.com/seleniumbase/SeleniumBase/blob/master/seleniumbase/fixtures/base_case.py (for breakdowns of the methods themselves)
+
+### Note about assert statements
+
+SeleniumBase has it's own "assert" statements, like "assert_element_visible". Unlike the traditional pytest assert statements, these do not take an optional message argument in case of assertion failure.  Don't be like me and spend hours trying to figure out what the test wasn't passing when the element clearly existed.
+
+SeleniumBase also has a way to defer the assertion failure on a test case.  This is very useful if you want to find all the bugs in the test before failing the test.  To do this, you use one of the following functions:
+
+* `BaseCase.deferred_assert_element`
+* `BaseCase.deferred_assert_element_present`
+* `BaseCase.deferred_assert_text`
+* `BaseCase.deferred_check_window` (for visual regression testing)
+
+To process these at the end of the test, call `BaseCase.process_deferred_asserts()`
+
+It is also worth noting that the "deferred_assert_element*" methods have a conditional where if the URL has not changed, the "timeout" parameter is set to 1, which can be problematic if one is waiting for a plot to load. In this case, it is better to set a sleep event after the plot creation.
+
+### Note about matching colors
+
+When trying to check a property for the correct color (to indicate success, error, etc.), match the color using RGB values. From my experience, hex-codes, CSS shorthand names ("red", "darkgrey", etc.), and RGBA values do not match.
+
+### Note about alert boxes
+
+Seems that the Selenium Webdriver capabilities for choosing how to handle "alert" modals is ignored, and the default of dismissing and notifying is forced in SeleniumBase.  For this reason, I would advise not trying to handle alerts yourself and just assumed they were already clicked
+
+https://github.com/seleniumbase/SeleniumBase/discussions/1284
+
+### Note on retrying failed tests
+
+Currently I have had some issues with a test succeeding or failing on an inconsistent basis. Seleniumbase is designed to auto-wait for an element to render or appear visible (with an adjustable timeout).  If you wish to have a test rerun, you can add `from seleniumbase import decorators` and add the `@retry_on_exception` fixture to any pytest function.  Alternatively in the `pytest` command, pass in `--reruns=<NUM> --reruns-delay=<SECONDS>`
 
 ### Completed UI tests
 
@@ -94,6 +154,32 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 * Download gene selection table
 * Name and save gene cart
 
+#### Multigene Curator
+
+* Create a heatmap
+  * Must have 2+ genes
+  * Alt heatmap with cluster observations checkbox
+  * Alt heatmap with cluster genes checkbox
+  * Alt heatmap with axes flipped
+  * Distance metric for clustering observations/genes
+  * Matrix plot
+  * Sort by primary category
+* Create a violin
+  * Stacked violin plot
+  * With jitter
+* Create a volcano
+  * REQUIRED - query/ref conditions
+    * Window alert if not chosen or category is different
+  * DE Algorithm
+  * Annotate non-signficant p-values
+  * Use adjusted p-vals
+* Create a dotplot
+* Create a quadrant plot
+  * REQUIRED - query1/query2/ref conditions
+    * Window alert if not chosen or category is different
+  * DE Algorithm
+  * Foldchange cutuff
+  * FDR cutoff
 
 ### Current and pending UI tests
 
@@ -109,6 +195,8 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 * Dataset curator
 * Multigene curator
 * Main page - display panel
+
+#### Tests that use a private dataset instead of a public one (requires login)
 
 #### Dataset (single-gene) curator
 
@@ -128,30 +216,6 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 * Ensure plot is loaded when dataset is chosen (loaded from saved displays or default volcano plot)
 * Volcanoes should be disabled when no categories have 2+ groups
 * Quadrants should be disabled when no categories have 3+ groups
-* Create a heatmap
-  * Must have 2+ genes
-  * Alt heatmap with cluster observations checkbox
-  * Alt heatmap with cluster genes checkbox
-  * Alt heatmap with axes flipped
-  * Distance metric for clustering observations/genes
-* Create a violin
-  * Stacked violin plot
-  * With jitter
-* Create a volcano
-  * Categories should be not available from select if they have <2 groups
-  * REQUIRED - query/ref conditions
-    * Window alert if not chosen or category is different
-  * DE Algorithm
-  * Annotate non-signficant p-values
-  * Use adjusted p-vals
-* Create a dotplot
-* Create a quadrant plot
-  * Categories should be not available from select if they have <3 groups
-  * REQUIRED - query1/query2/ref conditions
-    * Window alert if not chosen or category is different
-  * DE Algorithm
-  * Foldchange cutuff
-  * FDR cutoff
 * Misc.
   * Primary category
   * Secondary category (may need to choose a new dataset)
@@ -164,6 +228,13 @@ Reference: https://seleniumbase.io/help_docs/syntax_formats/ (see #5)
 * Ensure heatmap and matrixplot expression value for a single gene and observation/celltype is correct
   * This tests that sorting was fine
   * For heatmaps/violins/dotplots
+
+#### Analysis (single-cell) Workbench
+
+* Go through all steps in new analysis
+* Resume unsaved analysis
+* Resume saved analysis
+* Load primary analysis
 
 #### Manual Documentation
 

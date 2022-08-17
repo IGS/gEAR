@@ -825,7 +825,7 @@ async function loadGeneCarts () {
         geneCartTree.publicGeneCarts = carts.public;
         geneCartTree.generateTree();
 
-        if (! cartsFound ) {
+        if (cartsFound ) {
             $('#gene_cart_container').show();
         }
 
