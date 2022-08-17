@@ -1027,14 +1027,79 @@ class Layout:
 
 @dataclass
 class LayoutCollection:
+    # keep an index of folder IDs and their parent-most root IDs (tree walk needed here)
+    root_folder_idx: dict = field(default_factory=dict, repr=False)
+
+    # a simple index of folders and their parent IDs (this is a simple db query)
+    folder_idx: dict = field(default_factory=dict, repr=False)
+    
     layouts: List[Layout] = field(default_factory=list)
 
+    def __post_init__(self):
+        if len(self.folder_idx) == 0:
+            self._populate_folder_index()
+            self._populate_root_folder_index()
+    
     def __repr__(self):
         return json.dumps(self.__dict__)
 
     def _serialize_json(self):
         # Called when json modules attempts to serialize
         return self.__dict__
+
+    def _get_root_folder_id(self, folder_id):
+        """
+        Recursive function to drive to the parent-most folder ID of
+        any folder in the tree.
+
+        Assumes self.folder_idx and self.root_folder_idx have been populated
+        """
+
+        # if the entry in folder_idx has a value, it's not a root node, so recurse.
+        if self.folder_idx[folder_id]:
+            return self._get_root_folder_id(self.folder_idx[folder_id])
+        else:
+            # else this is a root node
+            return folder_id
+
+    def _populate_folder_index(self):
+        """
+        Populates the self.folder_idx attribute with a dictionary where the index is
+        folder ID and value is that folder's parent ID.
+        """
+        self.folder_idx = dict()
+
+        qry = "SELECT id, parent_id FROM folder"
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(qry)
+
+        for row in cursor:
+            self.folder_idx[row[0]] = row[1]
+
+        cursor.close()
+        conn.close()
+        
+    def _populate_root_folder_index(self):
+        """
+        Populates the self.root_folder_idx attribute with a dictionary where the index is
+        folder ID and value is root folder ID the ones in gear.ini[folders]
+        """
+        if len(self.folder_idx):
+           return False
+
+        qry = "SELECT id, parent_id FROM folder"
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(qry)
+
+        for row in cursor:
+            # if the parent_id is empty, we don't need to store it because it's a top-level node
+            if row[1]:
+                self.root_folder_idx[row[0]] = self._get_root_folder_id(row[1])
+
+        cursor.close()
+        conn.close()
 
     def _row_to_layout_object(self, row):
         """
@@ -1113,6 +1178,18 @@ class LayoutCollection:
         cursor.execute(qry, (user.id,))
 
         for row in cursor:
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[6]:
+                layout_root_node = self._get_root_folder_id(row[6])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_user_master_id']):
+                    folder_id = row[6]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_user_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_user_master_id'])
+
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1120,7 +1197,7 @@ class LayoutCollection:
                 user_id=row[3],
                 share_id=row[4],            
                 is_domain=row[5],
-                folder_id = row[6] if row[6] else int(this.servercfg['folders']['profile_user_master_id']),
+                folder_id=folder_id,
                 folder_parent_id=row[7],
                 folder_label=row[8]
             )
@@ -1132,13 +1209,19 @@ class LayoutCollection:
         conn.close()
         return self.layouts
 
-    def get_by_users_groups(self, user=None):
+    def get_by_users_groups(self, user=None, append=True):
         """
         Queries the DB to get all the groups of which the passed user is a member, then
         gets all layouts in those groups.
+
+        If the append argument is set to False, the class' layouts attribute will be
+        cleared before these are aded.
         """
         if not isinstance(user, User):
             raise Exception("LayoutCollection.get_by_users_groups() requires an instance of User to be passed.")
+
+        if append == False:
+            self.layouts = list()
 
         conn = Connection()
         cursor = conn.get_cursor()
@@ -1162,6 +1245,18 @@ class LayoutCollection:
         cursor.execute(qry, (user.id,))
         
         for row in cursor:
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[6]:
+                layout_root_node = self._get_root_folder_id(row[6])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_group_master_id']):
+                    folder_id = row[6]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_group_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_group_master_id'])
+            
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1169,10 +1264,11 @@ class LayoutCollection:
                 user_id=row[3],
                 share_id=row[4],            
                 is_domain=row[5],
-                folder_id = row[6] if row[6] else int(this.servercfg['folders']['profile_group_master_id']),
+                folder_id=folder_id,
                 folder_parent_id=row[7],
                 folder_label=row[8]
             )
+            layout.folder_root_id=layout_root_node
 
             layout.dataset_count = row[9]
             
@@ -1204,6 +1300,18 @@ class LayoutCollection:
         cursor.execute(qry)
         
         for row in cursor:
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[6]:
+                layout_root_node = self._get_root_folder_id(row[6])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_domain_master_id']):
+                    folder_id = row[6]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_domain_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_domain_master_id'])
+            
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1211,7 +1319,7 @@ class LayoutCollection:
                 user_id=row[3],
                 share_id=row[4],            
                 is_domain=row[5],
-                folder_id = row[6] if row[6] else int(this.servercfg['folders']['profile_domain_master_id']),
+                folder_id=folder_id,
                 folder_parent_id=row[7],
                 folder_label=row[8]
             )
