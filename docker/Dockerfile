@@ -139,7 +139,7 @@ COPY ./wsgi.conf /etc/apache2/mods-available/wsgi.conf
 COPY ./wsgi.load /etc/apache2/mods-available/wsgi.load
 COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
 COPY ./umgear.conf /etc/apache2/sites-available/umgear.conf
-COPY ./php.ini /etc/php/7.2/apache2/php.ini
+COPY ./php.ini /etc/php/8.1/apache2/php.ini
 RUN a2dissite 000-default.conf
 RUN a2ensite umgear.conf
 RUN a2enmod rewrite cgi wsgi proxy
