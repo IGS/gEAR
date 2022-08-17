@@ -85,6 +85,9 @@ def main():
                'folders': [],
                'selected': None }
 
+    # Everyone can see public ones
+    result['public_layouts'] = geardb.LayoutCollection().get_public()
+    
     if not no_domain:
         result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
