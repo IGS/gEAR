@@ -338,7 +338,7 @@ class DatasetPanel extends Dataset {
                 });
             } else if (display.plot_type === "svg") {
                 const target = `modal-display-${display.id}`;
-                const d = new SVGDisplay(display, null, null, target);
+                const d = new SVGDisplay(display, null, target);
                 d.get_data(gene_symbol).then(({ data }) => {
                     d.draw_chart(data);
                 });

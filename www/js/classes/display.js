@@ -1185,7 +1185,9 @@ class SVGDisplay extends Display {
         }
         this.hide_loading();
         this.show();
-        if (!this.target.includes('modal')) this.draw_legend(data, zoomed);
+        if (!this.target.includes('modal')) {
+            this.draw_legend(data, zoomed);
+        }
 
         return true;
     }
