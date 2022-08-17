@@ -307,6 +307,7 @@ CREATE TABLE layout (
        label                    VARCHAR(255),
        is_current               TINYINT(1) DEFAULT 0,
        is_domain                TINYINT(1) DEFAULT 0,
+       is_public                TINYINT(1) DEFAULT 0,
        share_id                 VARCHAR(24),
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
