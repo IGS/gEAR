@@ -21,7 +21,7 @@ GREY = 'rgb(128, 128, 128)'
 
 # This just verifies the HTML tags are identical.  With Plotly and Select2, IDs are randomized.
 # I find that occasionally attributes and HTML tag order is randomized too, so it may be good to set this to 0 for a dry-run
-VISUAL_LEVEL = 0
+VISUAL_LEVEL = 1
 
 @dataclass(frozen=True)
 class MultigenePage:
@@ -99,9 +99,9 @@ class MultigenePage:
             self.click_by_select2_text(sb, cluster_dropdown, cat)
         return select2_filter_condition # return element "id"
 
-    def plot_creation(self, sb, sleep=5):
+    def plot_creation(self, sb, wait=5):
         sb.click("#create_plot")
-        sb.sleep(sleep)
+        sb.sleep(wait)
 
     def plot_visual_regression(self, sb, img_name, level=3, deferred=False):
         """
@@ -181,12 +181,14 @@ class MultigenePage:
     def sortable_primary_order(self):
         pass
 
-    def save_new_display(self):
-        pass
+    def save_new_display(self, sb, name):
+        sb.click("#save_display_modal")
+        sb.type("{}_{}".format(name, self.display_to_save))
+        # Default display already checked
+        sb.click("#save_display_btn")
 
     def save_new_genecart(self):
         pass
-
 
 class MultigeneTests(BaseCase):
 
@@ -246,11 +248,14 @@ class MultigeneTests(BaseCase):
     def test_plot_dotplot(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Dotplot")
         self.assert_true(select2_elt.text == "Dotplot", "Dotplot plot type should be selected")
         # Test no genes entered
         mg.plot_creation(self)
+        import sys
+        print(" -- PLOT CREATION 1", file=sys.stderr)
 
         # Now put in genes
         select2_gene_box = mg.enter_genes(self)
@@ -261,12 +266,17 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "dotplot_no_opts", VISUAL_LEVEL, True)
+        #mg.save_new_display(self, "dotplot_no_opts")
+        #self.assert_element("#saved_plot_confirmation")
+        #self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # ---
         self.process_deferred_asserts()
 
     def test_plot_heatmap(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Heatmap")
         self.assert_true(select2_elt.text == "Heatmap", "Heatmap plot type should be selected")
@@ -286,6 +296,10 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "heatmap_no_opts", VISUAL_LEVEL, True)
+        # mg.save_new_display(self, "heatmap_no_opts")
+        # self.assert_element("#saved_plot_confirmation")
+        # self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # Flip axes
         self.click("#flip_axes")
         mg.plot_creation(self)
@@ -331,6 +345,7 @@ class MultigeneTests(BaseCase):
     def test_plot_matrixplot(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Heatmap")
         self.assert_true(select2_elt.text == "Heatmap", "Heatmap plot type should be selected")
@@ -349,6 +364,10 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "heatmap_matrixplot", VISUAL_LEVEL, True)
+        # mg.save_new_display(self, "heatmap_matrixplot")
+        # self.assert_element("#saved_plot_confirmation")
+        # self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # Flip axes
         self.click("#flip_axes")
         mg.plot_creation(self)
@@ -393,6 +412,7 @@ class MultigeneTests(BaseCase):
     def test_plot_quadrant(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Quadrant")
         self.assert_true(select2_elt.text == "Quadrant", "Quadrant plot type should be selected")
@@ -403,6 +423,10 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "quadrant_no_opts", VISUAL_LEVEL, True)
+        # mg.save_new_display(self, "quadrant_no_opts")
+        # self.assert_element("#saved_plot_confirmation")
+        # self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # Instead of checking for the presence of grey points, let's check the legend instead.  This should save time
         traces = self.find_visible_elements(".traces text")
         grey_found = False
@@ -443,7 +467,7 @@ class MultigeneTests(BaseCase):
         # Change DE algorithm
         select2_elt = mg.select_de_algo(self, "Wilcoxon rank-sum test")
         self.assert_true(select2_elt.text == "Wilcoxon rank-sum test", "Wilcoxon rank-sum test should be selected")
-        mg.plot_creation(self, sleep=10)
+        mg.plot_creation(self, wait=10)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "quadrant_de_algo", VISUAL_LEVEL, True)
         select2_elt = mg.select_de_algo(self, "Welch's t-test")
@@ -454,6 +478,7 @@ class MultigeneTests(BaseCase):
     def test_plot_violin(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Violin")
         self.assert_true(select2_elt.text == "Violin", "Violin plot type should be selected")
@@ -468,6 +493,10 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "violin_no_opts", VISUAL_LEVEL, True)
+        # mg.save_new_display(self, "violin_no_opts")
+        # self.assert_element("#saved_plot_confirmation")
+        # self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # Add jitter
         self.click("#violin_add_points")
         mg.plot_creation(self)
@@ -484,6 +513,7 @@ class MultigeneTests(BaseCase):
     def test_plot_stacked_violin(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Violin")
         self.assert_true(select2_elt.text == "Violin", "Violin plot type should be selected")
@@ -499,6 +529,10 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "stacked_violin", VISUAL_LEVEL, True)
+        # mg.save_new_display(self, "stacked_violin")
+        # self.assert_element("#saved_plot_confirmation")
+        # self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # Add jitter
         self.click("#violin_add_points")
         mg.plot_creation(self)
@@ -515,6 +549,7 @@ class MultigeneTests(BaseCase):
     def test_plot_volcano(self):
         mg = MultigenePage()
         mg.nav_to_url(self)
+        mg.login(self)  # Need to login to save displays
         mg.select_dataset(self)
         select2_elt = mg.select_plot_type(self, "Volcano")
         self.assert_true(select2_elt.text == "Volcano", "Volcano plot type should be selected")
@@ -525,6 +560,10 @@ class MultigeneTests(BaseCase):
         mg.plot_creation(self)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "volcano_no_opts", VISUAL_LEVEL, True)
+        # mg.save_new_display(self, "volcano_no_opts")
+        # self.assert_element("#saved_plot_confirmation")
+        # self.click("#save_display_btn ~ [data-dismiss='modal']")    # click on close button
+
         # Disable annotation of nonsignificant genes
         self.click("#annot_nonsig")
         mg.plot_creation(self)
@@ -540,7 +579,7 @@ class MultigeneTests(BaseCase):
         # Change DE algorithm
         select2_elt = mg.select_de_algo(self, "Wilcoxon rank-sum test")
         self.assert_true(select2_elt.text == "Wilcoxon rank-sum test", "Wilcoxon rank-sum test should be selected")
-        mg.plot_creation(self, sleep=10)
+        mg.plot_creation(self, wait=10)
         self.deferred_assert_element(".plotly")
         mg.plot_visual_regression(self, "volcano_de_algo", VISUAL_LEVEL, True)
         select2_elt = mg.select_de_algo(self, "Welch's t-test")
