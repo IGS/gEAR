@@ -288,7 +288,7 @@ class ProfileTree extends Tree {
     }
 
     addNode(item, default_folder) {
-        item.tree_id = item.value;
+        item.tree_id = default_folder + "__" + item.value;
         
         // Modifies the ID to prevent duplicates. We don't use the ID attribute
         //  directly in the link anyway.
@@ -374,6 +374,9 @@ class ProfileTree extends Tree {
         for (const item of this.sharedProfiles) {
             this.addNode(item, 'shared_node');
         };
+
+        //console.log("Tree data");
+        //console.log(this.treeData);
 
         return this.treeData;
     }
