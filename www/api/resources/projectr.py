@@ -222,6 +222,11 @@ class ProjectR(Resource):
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=False)
 
+        # If dataset genes have duplicated index names, we need to rename them to avoid errors
+        # in collecting rownames in projectR (which gives invalid output)
+        # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
+        adata.var_names_make_unique()
+
         # Ensure target dataset has genes as rows
         target_df = adata.to_df().transpose()
         loading_df = None

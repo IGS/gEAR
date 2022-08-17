@@ -82,8 +82,8 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
 
         # Assign Rownames to each matrix
-        target_r_matrix.rownames = ri.StrSexpVector(target_df.index)    # low-level equivalent to ro.StrVector
-        loading_r_matrix.rownames = ri.StrSexpVector(loading_df.index)
+        target_r_matrix.rownames = ro.StrVector(target_df.index)    # low-level equivalent to ro.StrVector
+        loading_r_matrix.rownames = ro.StrVector(loading_df.index)
 
         # Modify the R-style matrix to be a prcomp object if necessary
         loading_r_object = loading_r_matrix
