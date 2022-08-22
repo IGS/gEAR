@@ -3608,7 +3608,7 @@ window.onload=() => {
         // If CURRENT_USER is defined at this point, add information as placeholder test
         if (CURRENT_USER) {
           this.$store.commit("set_user", CURRENT_USER);
-          this.$store.commit("colorblind_mode", CURRENT_USER.colorblind_mode);
+          this.$store.commit("set_colorblind_mode", CURRENT_USER.colorblind_mode);
         }
       });
     },
