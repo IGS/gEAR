@@ -572,7 +572,8 @@ async function load_all_gene_carts() {
                                         text: item.label,
                                         folder_id: item.folder_id,
                                         folder_label: item.folder_label,
-                                        folder_parent_id: item.folder_parent_id
+                                        folder_parent_id: item.folder_parent_id,
+                                        share_id: item.share_id
                                         });
                 });
             }
@@ -676,7 +677,7 @@ async function load_pattern_tree() {
             console.error(err);
         });
 
-    //projection_source_tree.addGeneCartTreeData(gene_cart_tree);
+    projection_source_tree.addGeneCartTreeData(gene_cart_tree);
 
     // If projection info was in URL, one of the above should have the JSTree element returned
     projection_source_tree.generateTree();

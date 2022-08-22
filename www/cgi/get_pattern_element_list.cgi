@@ -17,6 +17,14 @@ def main():
 
     result = []
 
+    print('Content-Type: application/json\n\n')
+
+    # Handle unweighted genecarts which are not saved to tabfile.
+    if not "cart." in source_id:
+        result.append({"label":"unweighted"})
+        print(json.dumps(result))
+        return
+
     # TODO: Consider loading from h5ad instead of tab if it exists
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
 
@@ -32,7 +40,6 @@ def main():
         # we only care about the first line
         break
 
-    print('Content-Type: application/json\n\n')
     print(json.dumps(result))
 
 if __name__ == '__main__':

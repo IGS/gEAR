@@ -153,11 +153,7 @@ def get_dataset_by_title(title=None, include_shape=None):
         return dataset
     elif found == 0:
         return None
-    else:
-        raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
-
-    return dataset
-
+    raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
 
 def get_dataset_collection(ids=None):
     return 1
@@ -188,13 +184,13 @@ def get_dataset_id_from_share_id(share_id):
 
     for row in cursor:
         dataset_id = row[0]
-    
+
     cursor.close()
     conn.close()
 
     return dataset_id
 
-    
+
 def get_gene_by_id(gene_id):
     """
     Given a gene_id passed this returns a Gene object with all attributes populated. Returns
@@ -236,7 +232,32 @@ def get_gene_cart_by_id(gc_id):
            WHERE id = %s
     """
     cursor.execute(qry, (gc_id,))
-    gene = None
+    gc = None
+
+    for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
+        gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
+                      share_id=share_id, is_public=is_public, date_added=date_added)
+        break
+
+    cursor.close()
+    conn.close()
+    return gc
+
+def get_gene_cart_by_share_id(share_id):
+    """
+    Given a gene_cart_id passed this returns a GeneCart object with all attributes populated. Returns
+    None if no cart is found with that ID.
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+          SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+            FROM gene_cart
+           WHERE share_id = %s
+    """
+    cursor.execute(qry, (share_id,))
+    gc = None
 
     for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
         gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,

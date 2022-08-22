@@ -229,7 +229,6 @@ class MultigeneDashData(Resource):
 
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
-            #var = adata.var.drop_duplicates(subset=['gene_symbol'])
             gene_filter, success, message = mg.create_dataframe_gene_mask(adata.var, gene_symbols)
         except PlotError as pe:
             return {

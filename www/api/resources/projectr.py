@@ -237,11 +237,37 @@ class ProjectR(Resource):
         file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(genecart_id))
         try:
             loading_df = pd.read_csv(file_path, sep="\t")
+
         except FileNotFoundError:
-            return {
-                'success': -1
-                , 'message': "Could not find pattern file {}".format(file_path)
-            }
+            if "cart." in genecart_id:
+                # This was a weighted cart, so this should have been in a tabfile
+                return {
+                    'success': -1
+                    , 'message': "Could not find pattern file {}".format(file_path)
+                }
+
+            # Unweighted carts get a "1" weight for each gene
+            gc = geardb.get_gene_cart_by_share_id(genecart_id)
+            if not gc:
+                return {
+                    'success': -1
+                    , 'message': "Could not find gene cart"
+                }
+
+            if not len(gc.genes):
+                return {
+                    'success': -1
+                    , 'message': "No genes found within this gene cart"
+                }
+
+            # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
+            gene_collection = geardb.GeneCollection()
+            gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
+
+            loading_data = []
+            for gene in gene_collection.genes:
+                loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
+            loading_df = pd.DataFrame(loading_data)
 
         # Store gene symbol series before dropping later
         #gene_syms_series = loading_df[1]
@@ -251,7 +277,10 @@ class ProjectR(Resource):
 
         # Drop the gene symbol column
         loading_df = loading_df.drop(loading_df.columns[1], axis=1)
+
         loading_df.set_index('dataRowNames', inplace=True)
+        # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
+        loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
         num_target_genes = target_df.shape[0]
         num_loading_genes = loading_df.shape[0]
