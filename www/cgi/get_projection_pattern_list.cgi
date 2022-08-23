@@ -3,6 +3,8 @@
 """
 Used by projection.html, this script gets a list of the available analysis pattern files.
 Returns as a list
+
+NOTE: this script is out-of-date
 """
 
 import cgi, json

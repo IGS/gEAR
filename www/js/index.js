@@ -45,7 +45,7 @@ $(document).on("handle_page_loading", () => {
 
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
-    scope = "permalink";
+    let scope = "permalink";
 
     if (dataset_id) {
         //hide site_into and display the permalink message
@@ -613,86 +613,77 @@ async function load_all_gene_carts() {
     }
 }
 
-async function load_pattern_carts(cart_share_id) {
+async function load_pattern_carts() {
     let permalink_cart_id = null
     let permalink_cart_label = null
 
+    const cart_share_id = getUrlParameter('projection_source');
+
     if (!session_id) {
-        console.info("User is not logged in. Weighted gene carts not loaded.");
-        return [permalink_cart_id, permalink_cart_label];
+        console.info("User is not logged in. Patterns not loaded.");
+        projection_source_tree.generateTree();
+        return;
     }
 
     await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-        data: { 'session_id': session_id, "cart_type": "weighted-list" },
+        data: { 'session_id': session_id, "group_by_type":true, 'share_id': cart_share_id},
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
-        const carts = {};
 
+        const gctypes = ["unweighted-list", "weighted-list"];
         const cart_types = ['domain', 'user', 'group', 'shared', 'public'];
 
-        for (const ctype of cart_types) {
-            carts[ctype] = [];
-            if (data[`${ctype}_carts`].length > 0) {
-                $.each(data[`${ctype}_carts`], (_i, item) => {
-                    const share_id = `cart.${item.share_id}`; // normalizing name for easy filepath retrieval
+        for (const gctype of gctypes) {
+            const carts = {};
+            for (const ctype of cart_types) {
+                carts[ctype] = [];
+                if (data[gctype][`${ctype}_carts`].length > 0) {
+                    $.each(data[gctype][`${ctype}_carts`], (_i, item) => {
 
-                    // If cart permalink was passed in, retrieve gene_cart_id for future use.
-                    if (cart_share_id && share_id == cart_share_id) {
-                        permalink_cart_id = share_id;
-                        permalink_cart_label = item.label;
-                    }
+                        // If cart permalink was passed in, retrieve gene_cart_id for future use.
+                        if (cart_share_id && item.share_id == cart_share_id) {
+                            permalink_cart_id = item.share_id;
+                            permalink_cart_label = item.label;
+                        }
 
 
-                    carts[ctype].push({value: share_id,    // Use share ID as it is used in the cart file's basename
-                                        text: item.label,
-                                        folder_id: item.folder_id,
-                                        folder_label: item.folder_label,
-                                        folder_parent_id: item.folder_parent_id,
-                                        db_value: item.id   // Return db ID to compare with unweighted genecart item value
-                                        });
-                });
+                        carts[ctype].push({value: item.share_id,    // Use share ID as it is used in the cart file's basename
+                                            text: item.label,
+                                            folder_id: item.folder_id,
+                                            folder_label: item.folder_label,
+                                            folder_parent_id: item.folder_parent_id,
+                                            gctype
+                                            });
+                    });
+                }
             }
-        }
 
-        // Tree is generated in `load_pattern_tree`
-        projection_source_tree.weighted.domainGeneCarts = carts.domain;
-        projection_source_tree.weighted.userGeneCarts = carts.user;
-        projection_source_tree.weighted.groupGeneCarts = carts.group;
-        projection_source_tree.weighted.sharedGeneCarts = carts.shared;
-        projection_source_tree.weighted.publicGeneCarts = carts.public;
+            projection_source_tree[gctype].domainGeneCarts = carts.domain;
+            projection_source_tree[gctype].userGeneCarts = carts.user;
+            projection_source_tree[gctype].groupGeneCarts = carts.group;
+            projection_source_tree[gctype].sharedGeneCarts = carts.shared;
+            projection_source_tree[gctype].publicGeneCarts = carts.public;
+        }
 
     })
     .fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Weighted gene carts not sucessfully retrieved.");
     });
-    return [permalink_cart_id, permalink_cart_label];
-}
-
-async function load_pattern_tree() {
-    const projection_id = getUrlParameter('projection_source');
-    const values = await load_pattern_carts(projection_id)
-        .catch((err) => {
-            console.error(err);
-        });
-
-    projection_source_tree.addGeneCartTreeData(gene_cart_tree);
 
     // If projection info was in URL, one of the above should have the JSTree element returned
     projection_source_tree.generateTree();
 
     // If a permalink was provided, set the value in the tree and search bar
-    // TODO: Figure out how to get this from weighted or unweighted cart
-    if (values[0]) {
-        $("#projection_source").text(values[1]);
-        $("#projection_source").val(values[0]);
+    if (permalink_cart_id) {
+        $("#projection_source").text(permalink_cart_label);
+        $("#projection_source").val(permalink_cart_id);
         // At this point, the tree is generated but loading data attributes to the storedValElt does not occur until a node is selected.
         // So we need to manually set the data attribute for the first-pass.
         const tree_leaf = projection_source_tree.treeData.find(e => e.id === $("#projection_source").val());
-        $("#projection_source").data("scope", tree_leaf.scope);
+        $("#projection_source").data("gctype", tree_leaf.gctype);
         $("#projection_source").trigger('change');
-        return;
     }
 }
 
@@ -701,8 +692,7 @@ async function load_all_trees(){
     // Update dataset and genecart trees in parallel
     // Works if they were not populated or previously populated
     try {
-        await Promise.allSettled([load_layouts(), load_all_gene_carts()]);
-        await load_pattern_tree();  // Will load unweighted gene carts too.
+        await Promise.allSettled([load_layouts(), load_all_gene_carts(), load_pattern_carts()]);
     } catch (err) {
         console.error(err)
     }
@@ -987,7 +977,7 @@ $("#projection_search_form").submit((event) => {
     // Run ProjectR for the chosen pattern
     if (projection_source) {
         dataset_collection_panel.load_frames({dataset_id, multigene, projection});
-        const scope = $("#projection_source").data('scope');
+        const gctype = $("#projection_source").data('gctype');
 
         search_results = selected_projections;
 
@@ -1005,8 +995,8 @@ $("#projection_search_form").submit((event) => {
         //const promise_limit = 8;
         //const run_async_projection = asyncLimit(run_projection, promise_limit);
         dataset_collection_panel.datasets.map((dataset) => {
-            run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
-            //run_async_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
+            run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
+            //run_async_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
 
         });
         return false;  // keeps the page from not refreshing
@@ -1019,14 +1009,14 @@ $("#projection_search_form").submit((event) => {
 })
 
 $("#projection_source").on('change', (_event) => {
-    scope = $("#projection_source").data('scope');
+    const gctype = $("#projection_source").data("gctype");
     $.ajax({
         type: "POST",
         url: "./cgi/get_pattern_element_list.cgi",
         async: false,   // No clue why this works but async/wait does not.. maybe it's the onchange event?
         data: {
             'source_id': $('#projection_source').val(),
-            'scope': scope
+            'scope': gctype
         },
         dataType: "json"
     }).done((data) => {
@@ -1152,9 +1142,9 @@ $('.js-gene-cart').change( function() {
     }
 });
 
-async function run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing) {
+async function run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing) {
     try {
-        await dataset.run_projectR(projection_source, is_pca, scope);
+        await dataset.run_projectR(projection_source, is_pca, gctype);
         if (dataset.projection_id) {
             if (multigene) {
                 // 'entries' is array of gene_symbols
@@ -1274,13 +1264,13 @@ function update_datasetframes_projections() {
         return;
     }
 
-    const scope = $("#projection_source").data('scope');
+    const gctype = $("#projection_source").data('gctype');
     const first_thing = $('#search_results a.list-group-item').first();
     select_search_result(first_thing, draw_display=false);
 
     // Run ProjectR for the chosen pattern
     dataset_collection_panel.datasets.map((dataset) => {
-        run_projection(dataset, projection_source, is_pca, scope, selected_projections, first_thing);
+        run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
     });
 }
 

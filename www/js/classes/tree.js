@@ -220,14 +220,14 @@ class ProjectionSourceTree extends Tree {
         unweightedDomainGeneCarts, unweightedGroupGeneCarts, unweightedUserGeneCarts, unweightedSharedGeneCarts, unweightedPublicGeneCarts) {
         super(args);
 
-        this.weighted = {
+        this["weighted-list"] = {
             domainGeneCarts: (weightedDomainGeneCarts) ? weightedDomainGeneCarts : []
             , groupGeneCarts: (weightedGroupGeneCarts) ? weightedGroupGeneCarts : []
             , userGeneCarts: (weightedUserGeneCarts) ? weightedUserGeneCarts : []
             , sharedGeneCarts: (weightedSharedGeneCarts) ? weightedSharedGeneCarts : []
             , publicGeneCarts: (weightedPublicGeneCarts) ? weightedPublicGeneCarts : []
         };
-        this.unweighted = {
+        this["unweighted-list"] = {
             domainGeneCarts: (unweightedDomainGeneCarts) ? unweightedDomainGeneCarts : []
             , groupGeneCarts: (unweightedGroupGeneCarts) ? unweightedGroupGeneCarts : []
             , userGeneCarts: (unweightedUserGeneCarts) ? unweightedUserGeneCarts : []
@@ -241,116 +241,97 @@ class ProjectionSourceTree extends Tree {
         'w_domain_node': true, 'w_user_node': true, 'w_group_node': true, 'w_shared_node': true, 'w_public_node': true};
     leafIcon = 'fa-shopping-cart';
 
-    addGeneCartTreeData(geneCartTree) {
-        // Merge unweighted gene cart properties into this object's properties
-        // If genecart is a weighted gene cart, do not add (this would cause duplicated tree node ids)
-
-        const domainValues = this.weighted.domainGeneCarts.map(gc => gc.db_value);
-        const groupValues = this.weighted.groupGeneCarts.map(gc => gc.db_value);
-        const userValues = this.weighted.userGeneCarts.map(gc => gc.db_value);
-        const sharedValues = this.weighted.sharedGeneCarts.map(gc => gc.db_value);
-        const publicValues = this.weighted.publicGeneCarts.map(gc => gc.db_value);
-
-        const domainGeneCarts = geneCartTree.domainGeneCarts.filter(gc => !domainValues.includes(gc.value));
-        const groupGeneCarts = geneCartTree.groupGeneCarts.filter(gc => !groupValues.includes(gc.value));
-        const userGeneCarts = geneCartTree.userGeneCarts.filter(gc => !userValues.includes(gc.value));
-        const sharedGeneCarts = geneCartTree.sharedGeneCarts.filter(gc => !sharedValues.includes(gc.value));
-        const publicGeneCarts = geneCartTree.publicGeneCarts.filter(gc => !publicValues.includes(gc.value));
-
-        // Uses 'deepCopy' from common.js
-        this.unweighted.domainGeneCarts = deepCopy(domainGeneCarts);
-        this.unweighted.groupGeneCarts = deepCopy(groupGeneCarts);
-        this.unweighted.userGeneCarts = deepCopy(userGeneCarts);
-        this.unweighted.sharedGeneCarts = deepCopy(sharedGeneCarts);
-        this.unweighted.publicGeneCarts = deepCopy(publicGeneCarts);
-
-        this.unweighted.domainGeneCarts.forEach(gc => {gc.value = gc.share_id});
-        this.unweighted.groupGeneCarts.forEach(gc => {gc.value = gc.share_id});
-        this.unweighted.userGeneCarts.forEach(gc => {gc.value = gc.share_id});
-        this.unweighted.sharedGeneCarts.forEach(gc => {gc.value = gc.share_id});
-        this.unweighted.publicGeneCarts.forEach(gc => {gc.value = gc.share_id});
-    }
-
     getTotalWeightedCarts() {
         // get the total number of weighted gene carts
-        return Object.keys(this.weighted).reduce((acc, curr) => acc + this.weighted[curr].length, 0);
+        return Object.keys(this["weighted-list"]).reduce((acc, curr) => acc + this["weighted-list"][curr].length, 0);
     }
 
     getTotalUnweightedCarts() {
         // get the total number of unweighted gene carts
-        return Object.keys(this.unweighted).reduce((acc, curr) => acc + this.unweighted[curr].length, 0);
+        return Object.keys(this["unweighted-list"]).reduce((acc, curr) => acc + this["unweighted-list"][curr].length, 0);
     }
 
     generateTreeData() {
         // Create JSON tree structure for the data
         const treeData = [
             {'id':'unweighted_genes_node', 'parent':'#', 'text':`Unweighted Genes (${this.getTotalUnweightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
-            {'id':'uw_domain_node', 'parent':'unweighted_genes_node', 'text':`Highlighted gene carts (${this.unweighted.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'uw_user_node', 'parent':'unweighted_genes_node', 'text':`Your gene carts (${this.unweighted.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'uw_group_node', 'parent':'unweighted_genes_node', 'text':`Group gene carts (${this.unweighted.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'uw_shared_node', 'parent':'unweighted_genes_node', 'text':`Gene carts shared with you (${this.unweighted.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'uw_public_node', 'parent':'unweighted_genes_node', 'text':`Public carts from other users (${this.unweighted.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_domain_node', 'parent':'unweighted_genes_node', 'text':`Highlighted gene carts (${this["unweighted-list"].domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_user_node', 'parent':'unweighted_genes_node', 'text':`Your gene carts (${this["unweighted-list"].userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_group_node', 'parent':'unweighted_genes_node', 'text':`Group gene carts (${this["unweighted-list"].groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_shared_node', 'parent':'unweighted_genes_node', 'text':`Gene carts shared with you (${this["unweighted-list"].sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'uw_public_node', 'parent':'unweighted_genes_node', 'text':`Public carts from other users (${this["unweighted-list"].publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
             {'id':'weighted_genes_node', 'parent':'#', 'text':`Weighted Genes (${this.getTotalWeightedCarts()})`, 'type':'default', 'a_attr':{'class':'jstree-ocl'}},
-            {'id':'w_domain_node', 'parent':'weighted_genes_node', 'text':`Highlighted gene carts (${this.weighted.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_user_node', 'parent':'weighted_genes_node', 'text':`Your gene carts (${this.weighted.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_group_node', 'parent':'weighted_genes_node', 'text':`Group gene carts (${this.weighted.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this.weighted.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this.weighted.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-
-            /*
-            {'id':'w_domain_node', 'parent':'#', 'text':`Highlighted Patterns (${this.weighted.domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_user_node', 'parent':'#', 'text':`Your Patterns (${this.weighted.userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_group_node', 'parent':'#', 'text':`Group Patterns (${this.weighted.groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_shared_node', 'parent':'#', 'text':`Patterns shared with you (${this.weighted.sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'w_public_node', 'parent':'#', 'text':`Public Patterns from other users (${this.weighted.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            */
+            {'id':'w_domain_node', 'parent':'weighted_genes_node', 'text':`Highlighted gene carts (${this["weighted-list"].domainGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_user_node', 'parent':'weighted_genes_node', 'text':`Your gene carts (${this["weighted-list"].userGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_group_node', 'parent':'weighted_genes_node', 'text':`Group gene carts (${this["weighted-list"].groupGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_shared_node', 'parent':'weighted_genes_node', 'text':`Gene carts shared with you (${this["weighted-list"].sharedGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
+            {'id':'w_public_node', 'parent':'weighted_genes_node', 'text':`Public carts from other users (${this["weighted-list"].publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
-        // ? Currently item.value for weighted gene carts is the gene cart share ID,
+        // ? Currently item.value is the gene cart share ID,
         // ? but for unweighted gene carts it is the db ID.
         // ? Is it worth refactoring so that the item.value is the db ID for both types?
         // ? If so, then item.value will need to ensure that no duplicates occur.
         // ? Could make use of "data" attribute in the tree node to store the original value and cart share ID.
 
-        $.each(this.weighted.domainGeneCarts, (_i, item) => {
-            this.addNestedNode(treeData, item, 'w_domain_node');
-            //this.addNode(treeData, item.value, 'w_domain_node', item.text, this.nodeType)
+        $.each(this["weighted-list"].domainGeneCarts, (_i, item) => {
+            this.addNestedNode(treeData, item, 'w_domain_node', {
+                'gctype': item.gctype,
+            });
         });
 
-        $.each(this.weighted.userGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'w_user_node', item.text, this.nodeType)
+        $.each(this["weighted-list"].userGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'w_user_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.weighted.groupGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'w_group_node', item.text, this.nodeType)
+        $.each(this["weighted-list"].groupGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'w_group_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.weighted.sharedGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'w_shared_node', item.text, this.nodeType)
+        $.each(this["weighted-list"].sharedGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'w_shared_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.weighted.publicGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'w_public_node', item.text, this.nodeType)
+        $.each(this["weighted-list"].publicGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'w_public_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.unweighted.domainGeneCarts, (_i, item) => {
-            this.addNestedNode(treeData, item, 'uw_domain_node');
+        $.each(this["unweighted-list"].domainGeneCarts, (_i, item) => {
+            this.addNestedNode(treeData, item, 'uw_domain_node', {
+                'gctype': item.gctype,
+            });
         });
 
-        $.each(this.unweighted.userGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'uw_user_node', item.text, this.nodeType)
+        $.each(this["unweighted-list"].userGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'uw_user_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.unweighted.groupGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'uw_group_node', item.text, this.nodeType)
+        $.each(this["unweighted-list"].groupGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'uw_group_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.unweighted.sharedGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'uw_shared_node', item.text, this.nodeType)
+        $.each(this["unweighted-list"].sharedGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'uw_shared_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
-        $.each(this.unweighted.publicGeneCarts, (_i, item) => {
-            this.addNode(treeData, item.value, 'uw_public_node', item.text, this.nodeType)
+        $.each(this["unweighted-list"].publicGeneCarts, (_i, item) => {
+            this.addNode(treeData, item.value, 'uw_public_node', item.text, this.nodeType, {
+                'gctype': item.gctype,
+            })
         });
 
         this.treeData = treeData;

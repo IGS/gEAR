@@ -602,7 +602,7 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source, is_pca, scope) {
+    async run_projectR(projection_source, is_pca, gctype) {
         const dataset_id = this.id;
         const payload = {
             genecart_id: projection_source,
@@ -627,7 +627,7 @@ class DatasetPanel extends Dataset {
             throw(e.message);
         }
 
-        payload.scope = scope;
+        payload.scope = gctype;  // genecart type
 
         let message = "There was an error projecting patterns onto this dataset.";
         try {

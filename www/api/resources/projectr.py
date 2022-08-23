@@ -1,7 +1,7 @@
 from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
-import json, uuid
+import json, uuid, sys
 import geardb
 import gear.rfuncs as rfx
 from gear.rfuncs import RError
@@ -18,10 +18,10 @@ PROJECTIONS_JSON_BASENAME = "projections.json"
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
 
 {
-  <cart.abc123>: [
+  <abc123>: [
     configuration options dict * N configs
     ],
-  <cart.def456: [
+  <def456: [
     configuration_options dict * N configs
     ]
 }
@@ -42,6 +42,7 @@ Total number of projections in whole by_genecart directory = total number in by_
 
 parser = reqparse.RequestParser(bundle_errors=True)
 parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required', type=str, required=True)
+parser.add_argument('scope', type=str, required=False)
 parser.add_argument('is_pca', help="'is_pca' needs to be a boolean", type=bool,  required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
 parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used at the moment
@@ -122,11 +123,22 @@ class ProjectROutputFile(Resource):
         projections_dict = json.load(open(dataset_projection_json_file))
 
         # If the pattern was not projected onto this dataset, initialize a list of configs
-        if not genecart_id in projections_dict:
+        # "cart.{projection_id}" added for backwards compatability
+        if not (genecart_id in projections_dict and "cart.{}".format(genecart_id) in projections_dict):
             # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
             return {
                 "projection_id": None
             }
+
+        # If legacy version exists, copy to current format.
+        if not genecart_id in projections_dict and "cart.{}".format(genecart_id) in projections_dict:
+            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
+            projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
+            projections_dict.pop("cart.{}".format(genecart_id), None)
+            # move legacy genecart projection stuff to new version
+            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
+            old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
+            old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
         for config in projections_dict[genecart_id]:
             if int(is_pca) == config['is_pca']:
@@ -158,6 +170,7 @@ class ProjectR(Resource):
         genecart_id = args['genecart_id']
         is_pca = args['is_pca']
         output_id = args['projection_id']
+        scope = args['scope']
 
         projection_id = output_id if output_id else uuid.uuid4()
         dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
@@ -229,23 +242,12 @@ class ProjectR(Resource):
 
         # Ensure target dataset has genes as rows
         target_df = adata.to_df().transpose()
-        loading_df = None
 
         # Row: Genes
         # Col: Pattern weights
-        # TODO: prioritize reading from h5ad file.
-        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(genecart_id))
-        try:
-            loading_df = pd.read_csv(file_path, sep="\t")
+        loading_df = None
 
-        except FileNotFoundError:
-            if "cart." in genecart_id:
-                # This was a weighted cart, so this should have been in a tabfile
-                return {
-                    'success': -1
-                    , 'message': "Could not find pattern file {}".format(file_path)
-                }
-
+        if scope == "unweighted-list":
             # Unweighted carts get a "1" weight for each gene
             gc = geardb.get_gene_cart_by_share_id(genecart_id)
             if not gc:
@@ -268,6 +270,17 @@ class ProjectR(Resource):
             for gene in gene_collection.genes:
                 loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
             loading_df = pd.DataFrame(loading_data)
+        else:
+            # weighted carts reside in tab files
+            # TODO: prioritize reading from h5ad file.
+            file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
+            try:
+                loading_df = pd.read_csv(file_path, sep="\t")
+            except FileNotFoundError:
+                return {
+                    'success': -1
+                    , 'message': "Could not find pattern file {}".format(file_path)
+                }
 
         # Store gene symbol series before dropping later
         #gene_syms_series = loading_df[1]

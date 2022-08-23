@@ -14,19 +14,19 @@ CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 def main():
     form = cgi.FieldStorage()
     source_id = form.getvalue('source_id')  # Root of the file name (minus extension)
-
+    scope = form.getvalue("scope", None)
     result = []
 
     print('Content-Type: application/json\n\n')
 
     # Handle unweighted genecarts which are not saved to tabfile.
-    if not "cart." in source_id:
+    if scope == "unweighted-list":
         result.append({"label":"unweighted"})
         print(json.dumps(result))
         return
 
     # TODO: Consider loading from h5ad instead of tab if it exists
-    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format(source_id))
+    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + source_id))
 
     for line in open(file_path):
         line = line.rstrip()
