@@ -409,9 +409,6 @@ function load_layouts() {
         data: { 'session_id': session_id, 'layout_share_id': layout_share_id },
         dataType: 'json',
         success(data, textStatus, jqXHR) {
-            console.log("data returned");
-            console.log(data);
-            
             /*
               Priority of displayed profile:
                 0.  Passed layout ID via layout_id URL parameter
@@ -453,8 +450,6 @@ function load_layouts() {
             profile_tree.publicProfiles = layouts.public;
             profile_tree.folders = data['folders'];
             profile_tree.generateTree();
-            console.log("Profile tree:");
-            console.log(profile_tree.treeData);
             
             selected_profile_tree.domainProfiles = layouts.domain;
             selected_profile_tree.userProfiles = layouts.user;
