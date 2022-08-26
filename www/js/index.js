@@ -433,9 +433,11 @@ async function load_layouts() {
             1.  Cookie value
             2.  User's DB-saved value (when they go to a machine, and there's no cookie)
             3.  Admin's active domain
-            */
+        */
         const layouts = {};
-        const layout_types = ['domain', 'user', 'group', 'shared']
+        let active_layout_id = null;
+        let active_layout_label = null;
+        const layout_types = ['domain', 'user', 'group', 'shared', 'public']
 
         for (const ltype of layout_types) {
             layouts[ltype] = [];
@@ -462,10 +464,17 @@ async function load_layouts() {
         profile_tree.userProfiles = layouts.user;
         profile_tree.groupProfiles = layouts.group;
         profile_tree.sharedProfiles = layouts.shared;
+        profile_tree.publicProfiles = layouts.public;
+        profile_tree.folders = data['folders'];
+        //profile_tree.generateTree();
+        
         selected_profile_tree.domainProfiles = layouts.domain;
         selected_profile_tree.userProfiles = layouts.user;
         selected_profile_tree.groupProfiles = layouts.group;
         selected_profile_tree.sharedProfiles = layouts.shared;
+        selected_profile_tree.publicProfiles = layouts.public;
+        selected_profile_tree.folders = data['folders'];
+        //selected_profile_tree.generateTree();
 
         // pass through again and look for one set by a cookie
         if (active_layout_id == null) {
@@ -508,14 +517,13 @@ async function load_layouts() {
         }
 
         dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
-
+        //d.resolve();
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });
 
     profile_tree.generateTree();
     selected_profile_tree.generateTree();
-
 }
 
 async function load_gene_carts() {

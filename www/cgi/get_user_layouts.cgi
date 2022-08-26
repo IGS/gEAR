@@ -25,7 +25,33 @@ Returns {'user_layouts': [
          'shared_layouts': [
                         {'id': 1212, 'label': 'Layout 7', ... }
                        ],
+         # key: id, value = folder name
+         'folder_names': {},
+         # key: id, value = parent_folder_id
+         'folder_parents': {}
 }
+
+Folder support
+
+- Highlighted profiles
+  - Those where gEAR admins have set layout.is_domain = 1
+  - Can have nested folders, admin access only
+- Your profiles
+  - Those uploaded by the user
+  - Can have nested folders, owner access only
+- Group profiles
+  - Any user can create a group and assign users/layouts to it
+  - Can have nested folders, group owner can create
+- Profiles shared with you
+  - Those with entries in dataset_shares or passed via the URL
+  - Folders allowed, but current user only
+- Other public profiles
+  - All other profiles where the user has set layout.is_public=1
+  - Can have folders but only admins can create them
+
+All profiles and folders should be nested within these 5 top-level options. 
+
+# show all profiles and their labels within a folder
 """
 
 import cgi, json
@@ -34,6 +60,8 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
+from gear.serverconfig import ServerConfig
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -44,37 +72,42 @@ def main():
     layout_share_id = form.getvalue('layout_share_id')
     user = geardb.get_user_from_session_id(session_id)
 
-    layout_ids_found = set()
+    folder_ids_found = set()
     
     if no_domain:
         no_domain = int(no_domain)
 
     result = { 'user_layouts': [],
                'domain_layouts': [],
-               'group_layouts':[],
-               'shared_layouts':[],
+               'group_layouts': [],
+               'shared_layouts': [],
+               'public_layouts': [],
+               'folders': [],
                'selected': None }
 
+    # Everyone can see public ones
+    result['public_layouts'] = geardb.LayoutCollection().get_public()
+    
     if not no_domain:
-        result['domain_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_domains())
+        result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
     if user:
-        result['user_layouts'] = filter_any_previous(layout_ids_found,
-                                                     geardb.LayoutCollection().get_by_user(user))
-        result['group_layouts'] = filter_any_previous(layout_ids_found,
-                                                      geardb.LayoutCollection().get_by_users_groups(user))
+        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
+        result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
 
     if layout_share_id:
-        result['shared_layouts'] = filter_any_previous(layout_ids_found,
-                                                       geardb.LayoutCollection().get_by_share_id(layout_share_id))
+        pass
+        #result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
 
-    ## Selected priority:
+    ## Selected priority (and indexes folder IDs):
     ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
-    for ltype in ['user', 'domain', 'group', 'shared']:
+    for ltype in ['user', 'domain', 'group', 'shared', 'public']:
         for l in result[ltype + '_layouts']:
+            if l.folder_id:
+                folder_ids_found.add(l.folder_id)
+            
             if l.share_id == layout_share_id:
                 result['selected'] = l.id
                 break
@@ -91,21 +124,12 @@ def main():
                 result['selected'] = l.id
                 break
 
+    result['folders'] = geardb.FolderCollection()
+    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found,
+                                                                 folder_type='profile')
+
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
-
-
-def filter_any_previous(ids, new_layouts):
-    layouts = []
-
-    for layout in new_layouts:
-        if layout.id not in ids:
-            layouts.append(layout)
-            ids.add(layout.id)
-
-    layouts.sort(key=lambda l: l.label.upper())
-            
-    return layouts
 
 if __name__ == '__main__':
     main()

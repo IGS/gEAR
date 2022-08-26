@@ -272,93 +272,112 @@ class ProfileTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles) {
+    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles, publicProfiles) {
         super(args);
         this.domainProfiles = (domainProfiles) ? domainProfiles : [];
         this.userProfiles = (userProfiles) ? userProfiles : [];
         this.groupProfiles = (groupProfiles) ? groupProfiles : [];
         this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
+        this.publicProfiles = (publicProfiles) ? publicProfiles : [];
+        this.profileIDs = {};
+        this.treeKeys = {};
+        this.treeData = [];
+
+        // This is needed so we can add folders with labels to the tree
+        this.folders = [];
     }
 
-    addNode(treeData, itemText, itemValue, itemShareID, parentID, nodeType) {
-        let nodeClass ='';
-
-        if (nodeType == 'default') {
-            nodeClass = 'jstree-ocl';
-        } else if (nodeType == 'profile') {
-            nodeClass = 'py-0'
+    addNode(item, default_folder) {
+        item.tree_id = default_folder + "__" + item.value;
+        
+        // Modifies the ID to prevent duplicates. We don't use the ID attribute
+        //  directly in the link anyway.
+        while (this.profileIDs.hasOwnProperty(item.tree_id)) {
+            // Add a dash to the exiting ID
+            item.tree_id = item.tree_id + '-';
         }
 
-        treeData.push({
-                'id': itemValue,
-                'parent': parentID,
-                'text': itemText,
-                'type': nodeType,
+        if (item.folder_id == null) {
+            item.folder_id = default_folder;
+        }
+
+        let nodeData = {
+                'id': item.tree_id,
+                'parent': item.folder_id,
+                'text': item.text,
+                'type': 'profile',
                 'a_attr': {
-                    'class': nodeClass,
+                    'class': 'py-0',
                 },
-                'profile_label': itemText,
-                'profile_id': itemValue,
-                'profile_share_id': itemShareID
-        });
+                'profile_label': item.text,
+                'profile_id': item.value,
+                'profile_share_id': item.share_id
+        };
+
+        this.profileIDs[item.tree_id] = true;
+        this.treeData.push(nodeData);
+    }
+
+    addFolder(folder) {
+        // We skip folder ID 0, since it handled as id:domain_node already
+        if (folder.id == 0) {
+            return false;
+        }
+        
+        if (folder.parent_id == null) {
+            folder.parent_id = '#';
+        }
+        
+        let nodeData = {
+                'id': folder.id,
+                'parent': folder.parent_id,
+                'text': folder.label,
+                'type': 'default',
+                'a_attr': {
+                    'class': 'jstree-ocl',
+                },
+                'profile_label': null,
+                'profile_id': null,
+                'profile_share_id': null
+        };
+
+        this.treeData.push(nodeData);
     }
 
     generateTreeData() {
         // Create JSON tree structure for the data
-        const treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
-        const treeData = [
-            {'id':'domain_node', 'parent':'#', 'text':`Highlighted profiles (${this.domainProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'user_node', 'parent':'#', 'text':`Your profiles (${this.userProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'group_node', 'parent':'#', 'text':`Group profiles (${this.groupProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-            {'id':'shared_node', 'parent':'#', 'text':`Profiles shared with you (${this.sharedProfiles.length})`, 'a_attr': {'class':'jstree-ocl'}},
-        ];
+        this.treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
+        this.treeData = [];
 
-        // user_profiles/domain_profiles properties - value, text, share_id
-
-        // Load profiles into the tree data property
-        $.each(this.domainProfiles, (_i, item) => {
-            this.addNode(treeData, item.text, item.value, item.share_id, 'domain_node', 'profile');
+        // Add all the folders first
+        $.each(this.folders, (_i, item) => {
+            this.addFolder(item);
         });
 
-        $.each(this.userProfiles, (_i, item) => {
-            this.addNode(treeData, item.text, item.value, item.share_id, 'user_node', 'profile');
-        });
+        // Sort and add profiles into the tree data property
+        this.domainProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.domainProfiles) {
+            this.addNode(item, 'domain_node');
+        };
 
-        $.each(this.groupProfiles, (_i, item) => {
-            // TODO: All this parent/grandparent logic should just go into addNode
-            // If there's a parent make sure it's added, doesn't currently handle grandparents
-            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
-                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
-                treeKeys[item.folder_parent_id] = true;
-            }
+        this.userProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.userProfiles) {
+            this.addNode(item, 'user_node');
+        };
 
-            // Now do the same for the containing folder itself
-            if (item.folder_id) {
-                item.folder_id = 'folder-' + item.folder_id;
+        this.groupProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.groupProfiles) {
+            this.addNode(item, 'group_node');
+        };
 
-                if (item.folder_parent_id) {
-                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
-                } else {
-                    item.folder_parent_id = 'group_node';
-                }
+        this.sharedProfiles.sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
+        for (const item of this.sharedProfiles) {
+            this.addNode(item, 'shared_node');
+        };
 
-                if (! treeKeys.hasOwnProperty(item.folder_id)) {
-                    this.addNode(treeData, item.folder_label, item.folder_id, null, item.folder_parent_id, 'default');
-                    treeKeys[item.folder_id] = true;
-                }
+        //console.log("Tree data");
+        //console.log(this.treeData);
 
-                this.addNode(treeData, item.text, item.value, item.share_id, item.folder_id, 'profile');
-            } else {
-                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
-                this.addNode(treeData, item.text, item.value, item.share_id, 'group_node', 'profile');
-            }
-        });
-
-        $.each(this.sharedProfiles, (_i, item) => {
-            this.addNode(treeData, item.text, item.value, item.share_id, 'shared_node', 'profile');
-        });
-
-        this.treeData = treeData;
         return this.treeData;
     }
 
@@ -420,7 +439,7 @@ class ProfileTree extends Tree {
             // but this should be set to assist with other pages.
             const selectedNode = data.instance.get_node(layoutId);
             $(self.storedValElt).text(selectedNode.text);
-            $(self.storedValElt).val(layoutId);
+            $(self.storedValElt).val(selectedNode.original.profile_id);
             $(self.storedValElt).data("profile-id", selectedNode.original.profile_id);
             $(self.storedValElt).data("profile-label", selectedNode.original.profile_label);
             $(self.storedValElt).data("profile-share-id", selectedNode.original.profile_share_id);
