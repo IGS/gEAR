@@ -20,7 +20,6 @@ let projection = false;
 
 const annotation_panel = new FunctionalAnnotationPanel();
 const dataset_collection_panel = new DatasetCollectionPanel();
-const { controller } = dataset_collection_panel;
 
 /*
 Tree properties for constructor:
@@ -1023,6 +1022,14 @@ $("#projection_source").on('change', (_event) => {
         const pattern_elements_tmpl = $.templates("#pattern_elements_tmpl");
         const pattern_elements_html = pattern_elements_tmpl.render(data);
         $("#projection_pattern_elements").html(pattern_elements_html);
+
+        // If only one pattern, disable multi-pattern
+        $("#multi_pattern").prop( "disabled", false )
+        if (!data.length) {
+            $("#single_pattern").click();
+            $("#multi_pattern").prop( "disabled", true )
+        }
+
         // Only show if multigene is enabled. All projections are used in single gene search.
         if (multigene) {
             $("#projection_pattern_elements_c").show();
