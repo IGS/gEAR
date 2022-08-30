@@ -17,6 +17,9 @@ import gear.db
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 
+from gear.serverconfig import ServerConfig
+this.servercfg = ServerConfig().parse()
+
 # This is where things specific to dynamic analyses will be stored, such as intermediate
 #  H5AD files, images, etc.
 this.analysis_base_dir = '/tmp'
@@ -857,12 +860,13 @@ class OrganismCollection:
 class Layout:
     def __init__(self, id=None, user_id=None, is_domain=None, label=None,
                  is_current=None, share_id=None, members=None, folder_id=None,
-                 folder_parent_id=None, folder_label=None):
+                 folder_parent_id=None, folder_label=None, is_public=None):
         self.id = id
         self.user_id = user_id
         self.label = label
         self.is_current = is_current
         self.is_domain = is_domain
+        self.is_public = is_public
         self.share_id = share_id
 
         # The are derived, populated by LayoutCollection methods
@@ -1097,6 +1101,7 @@ class LayoutCollection:
     def get_by_share_id(self, share_id=None):
         """
         Gets the layout from the passed share_id, if any.
+        TODO: f.parent_id, f.label can be removed from all these get_by* methods
         """
         if not share_id:
             return self.layouts
@@ -1105,7 +1110,8 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -1114,7 +1120,7 @@ class LayoutCollection:
                WHERE l.share_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
 
@@ -1137,7 +1143,8 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -1146,7 +1153,7 @@ class LayoutCollection:
                WHERE l.user_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
@@ -1158,19 +1165,26 @@ class LayoutCollection:
         conn.close()
         return self.layouts
 
-    def get_by_users_groups(self, user=None):
+    def get_by_users_groups(self, user=None, append=True):
         """
         Queries the DB to get all the groups of which the passed user is a member, then
         gets all layouts in those groups.
+
+        If the append argument is set to False, the class' layouts attribute will be
+        cleared before these are aded.
         """
         if not isinstance(user, User):
             raise Exception("LayoutCollection.get_by_users_groups() requires an instance of User to be passed.")
+
+        if append == False:
+            self.layouts = list()
 
         conn = Connection()
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
                      JOIN guser u ON u.id=ugm.user_id
@@ -1183,7 +1197,7 @@ class LayoutCollection:
                WHERE u.id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
@@ -1203,7 +1217,8 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -1355,6 +1370,8 @@ class Dataset:
             )
 
             self.displays.append(display)
+
+        return self.displays
 
         cursor.close()
         conn.close()

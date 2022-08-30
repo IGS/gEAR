@@ -74,8 +74,9 @@ class Tree {
         this.addNode(treeData, item.value, item.folder_id , item.text, this.nodeType, {...kwargs});
     }
 
+
     // Add a node to the tree. Edits "treeData" inplace.
-    addNode(treeData, id, parentID, text, nodeType, kwargs) {
+    addNode(treeData, id, parentID, text, nodeType, folderId, kwargs) {
 
         // Class is dependent on if node will be a leaf or branch ("default" types)
         const nodeClass = nodeType == 'default' ? 'jstree-ocl' : 'py-0';
@@ -421,7 +422,7 @@ class ProfileTree extends Tree {
      */
     constructor({
         ...args
-    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles) {
+    }={}, domainProfiles, userProfiles, groupProfiles, sharedProfiles, publicProfiles) {
         super(args);
         this.domainProfiles = (domainProfiles) ? domainProfiles : [];
         this.userProfiles = (userProfiles) ? userProfiles : [];
@@ -429,9 +430,28 @@ class ProfileTree extends Tree {
         this.sharedProfiles = (sharedProfiles) ? sharedProfiles : [];
     }
 
-    nodeType = 'profile';
-    treeKeys = {'domain_node': true, 'user_node': true, 'group_node': true, 'shared_node': true};
-    leafIcon = "fa-th-large";
+    addNode(treeData, itemText, itemValue, itemShareID, parentID, nodeType) {
+        let nodeClass ='';
+
+        if (nodeType == 'default') {
+            nodeClass = 'jstree-ocl';
+        } else if (nodeType == 'profile') {
+            nodeClass = 'py-0'
+        }
+
+        treeData.push({
+                'id': itemValue,
+                'parent': parentID,
+                'text': itemText,
+                'type': nodeType,
+                'a_attr': {
+                    'class': nodeClass,
+                },
+                'profile_label': itemText,
+                'profile_id': itemValue,
+                'profile_share_id': itemShareID
+        });
+    }
 
     generateTreeData() {
         // Create JSON tree structure for the data
@@ -462,29 +482,118 @@ class ProfileTree extends Tree {
         });
 
         $.each(this.groupProfiles, (_i, item) => {
-            this.addNestedNode(treeData, item, "group_node", {
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            });
+            // TODO: All this parent/grandparent logic should just go into addNode
+            // If there's a parent make sure it's added, doesn't currently handle grandparents
+            if (item.folder_parent_id && ! treeKeys.hasOwnProperty(item.folder_parent_id)) {
+                this.addNode(treeData, item.folder_label, item.folder_parent_id, null, null, 'default');
+                treeKeys[item.folder_parent_id] = true;
+            }
 
+            // Now do the same for the containing folder itself
+            if (item.folder_id) {
+                item.folder_id = 'folder-' + item.folder_id;
+
+                if (item.folder_parent_id) {
+                    //item.folder_parent_id = 'folder-' + item.folder_parent_id;
+                } else {
+                    item.folder_parent_id = 'group_node';
+                }
+
+                if (! treeKeys.hasOwnProperty(item.folder_id)) {
+                    this.addNode(treeData, item.folder_label, item.folder_id, null, item.folder_parent_id, 'default');
+                    treeKeys[item.folder_id] = true;
+                }
+
+                this.addNode(treeData, item.text, item.value, item.share_id, item.folder_id, 'profile');
+            } else {
+                // Profile isn't in any kind of folder, so just attach it to the top-level node of this type
+                this.addNode(treeData, item.text, item.value, item.share_id, 'group_node', 'profile');
+            }
         });
 
         $.each(this.sharedProfiles, (_i, item) => {
-            this.addNode(treeData, item.value, "shared_node", item.text, this.nodeType, {
-                'profile_label': item.text,
-                'profile_id': item.value,
-                'profile_share_id': item.share_id
-            })
+            this.addNode(treeData, item.text, item.value, item.share_id, 'shared_node', 'profile');
         });
 
-        this.treeData = treeData;
         return this.treeData;
     }
 
-    generateTree() { super.generateTree(); }
+    generateTree() {
 
-    registerEvents() { super.registerEvents(); }
+        this.generateTreeData();
+
+        // Update existing tree or generate new tree if it doesn't exist
+        if (this.tree) {
+            this.updateTreeData()
+        } else {
+            // Instantiate the tree
+            $(this.treeDiv).jstree({
+                'core':{
+                    'data':this.treeData,
+                },
+                'plugins': ["search", "types", "wholerow"],
+                'search': {
+                    "show_only_matches": true
+                },
+                'types': {
+                    'default': {
+                        'icon': 'fa fa-folder-o'
+                    },
+                    'profile': {
+                        'icon': 'fa fa-th-large',
+                        'valid_children':[]
+                    }
+                }
+            })
+            this.setTree();
+        }
+
+        // NOTE: Using DOM tree traversal to get to the dropdown-toggle feels hacky
+        this.dropdownElt = $(this.treeDiv).closest('.dropdown');
+        // Get "toggle" for the dropdown tree. Should only be a single element, but "first()" is there for sanity's sake
+        this.dropdownToggleElt = $(this.dropdownElt).children('.dropdown-toggle').first();
+        // This element will store the text, value, and data properties of the selected node
+        this.storedValElt = (this.storedValElt) ? this.storedValElt : this.dropdownToggleElt;
+        this.register_events();
+    }
+
+    // Register various ProfileTree events as object properties are updated.
+    register_events() {
+        const self = this;
+        this.register_search();
+
+        // Get layout from the selected node and close dropdown
+        $(this.treeDiv).on('select_node.jstree', (_e, data) => {
+
+            // Though you can select multiple nodes in the tree, let's only select the first
+            const layoutId = data.selected[0];  // Returns node 'id' property
+            if (data.node.type === "default") {
+                // Do not toggle if user is navigating a branch node
+                // NOTE: If tree is inside a <form>, which cannot be nested inside another <form>, this could toggle closed anyways due to the conflict.
+                return;
+            }
+            // The dropdown toggle text/val change already happens in DatasetCollectionPanel->set_layouts() for the index page,
+            // but this should be set to assist with other pages.
+            const selectedNode = data.instance.get_node(layoutId);
+            $(self.storedValElt).text(selectedNode.text);
+            $(self.storedValElt).val(layoutId);
+            $(self.storedValElt).data("profile-id", selectedNode.original.profile_id);
+            $(self.storedValElt).data("profile-label", selectedNode.original.profile_label);
+            $(self.storedValElt).data("profile-share-id", selectedNode.original.profile_share_id);
+            $(self.dropdownToggleElt).dropdown('toggle');  // Close dropdown
+            $(self.storedValElt).trigger('change');   // Force the change event to fire, triggering downstream things
+
+        }).jstree(true);
+    }
+
+    loadFromDB() {
+        //pass
+    }
+
+    saveToDB() {
+        //pass
+    }
+
 }
 
 /**
