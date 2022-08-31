@@ -582,5 +582,9 @@ function asyncLimit (fn, n) {
 }
 
 function deepCopy(obj) {
+    // Return a deepCopy of the object if it is defined.
+    if (obj == undefined) {
+        return obj;
+    }
     return JSON.parse(JSON.stringify(obj));
 }

@@ -425,8 +425,6 @@ function validate_permalink(scope) {
 
 async function load_layouts() {
     const layout_share_id = getUrlParameter('layout_id');
-    let active_layout_id = null;
-    let active_layout_label = null;
 
     // Temporary hack for Heller lab
     if (layout_share_id == '8d38b600' || layout_share_id == 'afd2eb77') {
@@ -470,6 +468,7 @@ async function load_layouts() {
                     layout_id = item.share_id;
                 }
             });
+
         }
 
         // Generate the tree structure for the layouts
@@ -477,14 +476,16 @@ async function load_layouts() {
         profile_tree.userProfiles = layouts.user;
         profile_tree.groupProfiles = layouts.group;
         profile_tree.sharedProfiles = layouts.shared;
-        profile_tree.folders = data['folders'];
+        profile_tree.publicProfiles = layouts.public;
+        profile_tree.folders = data.folders;
 
         // NOTE: Need to deep copy the carts so the same node is not referenced in multiple trees.
         selected_profile_tree.domainProfiles = deepCopy(layouts.domain);
         selected_profile_tree.userProfiles = deepCopy(layouts.user);
         selected_profile_tree.groupProfiles = deepCopy(layouts.group);
         selected_profile_tree.sharedProfiles = deepCopy(layouts.shared);
-        selected_profile_tree.folders = deepCopy(data['folders']);
+        selected_profile_tree.publicProfiles = deepCopy(layouts.public);
+        selected_profile_tree.folders = deepCopy(data.folders);
 
         // pass through again and look for one set by a cookie
         if (active_layout_id == null) {
@@ -527,7 +528,6 @@ async function load_layouts() {
         }
 
         dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
-        //d.resolve();
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });
@@ -587,12 +587,15 @@ async function load_all_gene_carts() {
         gene_cart_tree.groupGeneCarts = carts.group;
         gene_cart_tree.sharedGeneCarts = carts.shared;
         gene_cart_tree.publicGeneCarts = carts.public;
+        gene_cart_tree.folders = data.folders;
+
         // NOTE: Need to deep copy the carts so the same node is not referenced in multiple trees.
         selected_gene_cart_tree.domainGeneCarts = deepCopy(carts.domain);
         selected_gene_cart_tree.userGeneCarts = deepCopy(carts.user);
         selected_gene_cart_tree.groupGeneCarts = deepCopy(carts.group);
         selected_gene_cart_tree.sharedGeneCarts = deepCopy(carts.shared);
         selected_gene_cart_tree.publicGeneCarts = deepCopy(carts.public);
+        selected_gene_cart_tree.folders = deepCopy(data.folders);
 
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
@@ -600,6 +603,7 @@ async function load_all_gene_carts() {
     if (! carts_found ) {
         $("#selected_gene_cart_c").prop("disabled", true);
     }
+
     gene_cart_tree.generateTree();
     selected_gene_cart_tree.generateTree();
 
@@ -668,6 +672,7 @@ async function load_pattern_carts() {
             projection_source_tree[gctype].groupGeneCarts = carts.group;
             projection_source_tree[gctype].sharedGeneCarts = carts.shared;
             projection_source_tree[gctype].publicGeneCarts = carts.public;
+            projection_source_tree[gctype].folders = data.folders;
         }
 
     })
