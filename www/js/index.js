@@ -587,7 +587,7 @@ async function load_all_gene_carts() {
         gene_cart_tree.groupGeneCarts = carts.group;
         gene_cart_tree.sharedGeneCarts = carts.shared;
         gene_cart_tree.publicGeneCarts = carts.public;
-        gene_cart_tree.folders = data.folders;
+        gene_cart_tree.folders = data.folders || [];
 
         // NOTE: Need to deep copy the carts so the same node is not referenced in multiple trees.
         selected_gene_cart_tree.domainGeneCarts = deepCopy(carts.domain);
@@ -595,7 +595,7 @@ async function load_all_gene_carts() {
         selected_gene_cart_tree.groupGeneCarts = deepCopy(carts.group);
         selected_gene_cart_tree.sharedGeneCarts = deepCopy(carts.shared);
         selected_gene_cart_tree.publicGeneCarts = deepCopy(carts.public);
-        selected_gene_cart_tree.folders = deepCopy(data.folders);
+        selected_gene_cart_tree.folders = deepCopy(data.folders) || [];
 
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Gene carts not sucessfully loaded.");
@@ -672,7 +672,7 @@ async function load_pattern_carts() {
             projection_source_tree[gctype].groupGeneCarts = carts.group;
             projection_source_tree[gctype].sharedGeneCarts = carts.shared;
             projection_source_tree[gctype].publicGeneCarts = carts.public;
-            projection_source_tree[gctype].folders = data.folders;
+            projection_source_tree[gctype].folders = data.folders || [];
         }
 
     })

@@ -56,11 +56,7 @@ class Tree {
     }
 
     // Add a node to the tree. Edits "treeData" inplace.
-    addNode(treeData, usedIDs, id, parentID, text, defaultNodeType, kwargs) {
-        // if kwargs weren't passed, instantiate an object (to pass original id)
-        if (! kwargs) {
-            kwargs = {}
-        }
+    addNode(treeData, usedIDs, id, parentID, text, defaultNodeType, kwargs={}) {
 
         if (defaultNodeType !== "default") {
             kwargs["orig_id"] = id; // Keep original ID in case value needs to be passed downstream
@@ -228,7 +224,7 @@ class ProjectionSourceTree extends Tree {
             , groupGeneCarts: weightedGroupGeneCarts || []
             , userGeneCarts: weightedUserGeneCarts || []
             , sharedGeneCarts: weightedSharedGeneCarts || []
-            , publicGeneCarts:  weightedPublicGeneCarts || []
+            , publicGeneCarts: weightedPublicGeneCarts || []
         };
         this["unweighted-list"] = {
             domainGeneCarts: unweightedDomainGeneCarts || []
@@ -236,11 +232,10 @@ class ProjectionSourceTree extends Tree {
             , userGeneCarts: unweightedUserGeneCarts || []
             , sharedGeneCarts: unweightedSharedGeneCarts|| []
             , publicGeneCarts: unweightedPublicGeneCarts || []
-        }
+        };
         // This is needed so we can add folders with labels to the tree
         this["weighted-list"].folders = [];
         this["unweighted-list"].folders = [];
-
     }
 
     nodeType = "genecart";
@@ -291,7 +286,7 @@ class ProjectionSourceTree extends Tree {
         });*/
 
         // Sort the cart contents alphabetically
-        ["domainGeneCarts", "userGeneCarts", "groupGeneCarts", "sharedPGeneCarts", "publicGeneCarts"].forEach(e => {
+        ["domainGeneCarts", "userGeneCarts", "groupGeneCarts", "sharedGeneCarts", "publicGeneCarts"].forEach(e => {
             this["weighted-list"][e].sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
             this["unweighted-list"][e].sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);
         })
@@ -382,7 +377,7 @@ class GeneCartTree extends Tree {
     }={}, domainGeneCarts, groupGeneCarts, userGeneCarts, sharedGeneCarts, publicGeneCarts) {
         super(args);
         this.domainGeneCarts = domainGeneCarts || [];
-        this.userGeneCarts = userGeneCarts || [] ;
+        this.userGeneCarts = userGeneCarts || [];
         this.groupGeneCarts = groupGeneCarts || [];
         this.sharedGeneCarts = sharedGeneCarts || [] ;
         this.publicGeneCarts = publicGeneCarts || [] ;
