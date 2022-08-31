@@ -180,7 +180,7 @@ class Tree {
             const selectedNode = data.instance.get_node(selectedID);
             $(this.storedValElt).text(selectedNode.text);
 
-            const val = dataKeyAsVal ? selectedNode.original[dataKeyAsVal] : selectedNode.original("orig_id");
+            const val = dataKeyAsVal ? selectedNode.original[dataKeyAsVal] : selectedNode.original["orig_id"];
             $(this.storedValElt).val(val);
 
             // If data attributes were passed into the node, store them in this element for easy retrieval
