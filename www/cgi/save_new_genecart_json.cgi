@@ -75,7 +75,11 @@ def main():
             print(str(e))
             sys.exit(1)
 
-    gc.save()
+    try:
+        gc.save()
+    except Exception as e:
+        print(str(e))
+        sys.exit(1)
 
     result = { 'id': gc.id }
     print(json.dumps(result))

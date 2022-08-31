@@ -818,14 +818,15 @@ function save_weighted_gene_cart() {
 			foldchange_label = foldchange_label;
 	}
 
+	const weight_labels = [foldchange_label];
+
 	const gc = new WeightedGeneCart({
 		session_id: CURRENT_USER.session_id,
 		label: $("#weighted_gene_cart_name").val(),
 		gctype: 'weighted-list',
 		organism_id: $("#dataset_id").data('organism-id'),
 		is_public: 0
-	}, weight_labels=[foldchange_label]
-	);
+	}, weight_labels);
 
 
 	plot_data.gene_ids.forEach((gene_id, i) => {
@@ -842,11 +843,12 @@ function save_weighted_gene_cart() {
 				foldchange = foldchange;
 		}
 
+		const weights = [foldchange];
+
 		const gene = new WeightedGene({
 			id: gene_id,
 			gene_symbol: plot_data.symbols[i]
-		}, weights=[foldchange]
-		);
+		}, weights);
 		gc.add_gene(gene);
 	});
 

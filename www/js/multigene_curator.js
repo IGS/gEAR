@@ -16,7 +16,7 @@ let sortCategories = {"primary": null, "secondary": null}; // Control sorting or
 let genesFilter = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
-
+let plotData = null;    // Plotly "data" JSON
 let selectedGenes = null;  // Genes selected in a plot (e.g. volcano with lasso tool)
 
 let datasetId = null;
@@ -225,6 +225,8 @@ function drawChart (data, datasetId) {
 
     Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, plotlyConfig);
     Plotly.relayout(targetDiv, updateLayout)
+
+    plotData = plotlyJson.data;
 
     // Show any warnings from the API call
     if (message && success === 2) {
@@ -855,11 +857,12 @@ function saveGeneCart () {
     gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 }
 
-/*
 function saveWeightedGeneCart() {
 	// must have access to USER_SESSION_ID
-	foldchangeLabel = "FC"
-	switch ($('input[name=foldchange_to_save]:checked').val()) {
+	let foldchangeLabel = "FC"
+	const foldchange_to_save = Number($('input[name=foldchange_to_save]:checked').val());
+
+	switch (foldchange_to_save) {
 		case "log2":
 			foldchangeLabel = "Log2FC";
 			break;
@@ -870,41 +873,46 @@ function saveWeightedGeneCart() {
 			foldchangeLabel = foldchangeLabel;
 	}
 
+    const weight_labels = [foldchangeLabel];
+
 	const gc = new WeightedGeneCart({
 		session_id
 		, label: $("#weighted_gene_cart_name").val()
 		, gctype: 'weighted-list'
-		, organism_id: $("#dataset_id").data('organism-id')
+		, organism_id: $("#dataset").data('organism-id')
 		, is_public: 0
-	}, weight_labels=[foldchangeLabel]
-	);
+	}, weight_labels);
 
-    data.points.forEach((pt) => {
-		foldchange = pt.data.x[pt.pointNumber].toFixed(1)
-		switch ($('input[name=foldchange_to_save]:checked').val()) {
-			case "log2":
-				foldchange = Math.log2(foldchange);
-				break;
-			case "log10":
-				foldchange = Math.log10(foldchange);
-				break;
-			default: // 'raw'
-				foldchange = foldchange;
-		}
+    // Volcano and Quadrant plots have multiple traces of genes, broken into groups.
+    // Loop through these to get the info we need.
+    plotData.forEach((trace) => {
+        for (const pt in trace.x) {
 
-		const gene = new WeightedGene({
-			//id: pt.data.text[pt.pointNumber], //ENSEMBL ID
-            id: pt.data.gene_id[pt.pointNumber], // ! same issue as saveGeneCart selection
-			gene_symbol: pt.data.text[pt.pointNumber]
-		}, weights=[foldchange]
-		);
-		gc.add_gene(gene);
+            // TODO: Handle quadrant plot situation
+            let foldchange = trace.x[pt].toFixed(1)
+            switch (foldchange_to_save) {
+                case "log2":
+                    foldchange = Math.log2(foldchange);
+                    break;
+                case "log10":
+                    foldchange = Math.log10(foldchange);
+                    break;
+                default: // 'raw'
+                    foldchange = foldchange;
+            }
+            const weights = [foldchange];
 
+            const gene = new WeightedGene({
+                //id: pt.data.text[pt.pointNumber], //ENSEMBL ID
+                id: trace.text[pt], // ! same issue as saveGeneCart selection
+                gene_symbol: trace.text[pt]
+            }, weights);
+            gc.add_gene(gene);
+        }
     });
 
-	gc.save(update_ui_after_weighted_gene_cart_save_success, update_ui_after_weighted_gene_cart_save_failure);
+	gc.save(updateUIAfterWeightedGeneCartSaveSuccess, updateUIAfterWeightedGeneCartSaveFailure);
 }
-*/
 
 function updateUIAfterGeneCartSaveSuccess(gc) {
 	$("#saved_gene_cart_info_c > h3").html(`Cart: ${gc.label}`);
@@ -1136,7 +1144,6 @@ $("#save_gene_cart").on("click", () => {
     $("#save_gene_cart").prop('disabled', false);
 });
 
-/*
 $("#weighted_gene_cart_name").on("input", function () {
     if ($(this).val() == "") {
         $("#save_weighted_gene_cart").prop("disabled", true);
@@ -1152,7 +1159,6 @@ $("#save_weighted_gene_cart").on("click", () => {
         alert("You must be signed in to do that.");
     }
 });
-*/
 
 $("#download_plot").on("click", () => {
     Plotly.downloadImage(
@@ -1567,11 +1573,11 @@ $(document).on('click', '#create_plot', async () => {
     if (["quadrant", "volcano"].includes(plotType)) {
         $('#dataset_plot').removeClass("col").addClass("col-9");
         $('#genes_list_bar').show();
-        //$('#save_weighted_gene_cart_btn').show();
+        $('#save_weighted_gene_cart_btn').show();
     } else {
         $('#dataset_plot').addClass("col").removeClass("col-9");
         $('#genes_list_bar').hide();
-        //$('#save_weighted_gene_cart_btn').hide();
+        $('#save_weighted_gene_cart_btn').hide();
     }
 
     // Draw the updated chart
@@ -1780,11 +1786,11 @@ $(document).on('click', '.js-load-display', async function () {
     if (["quadrant", "volcano"].includes(display.plot_type)) {
         $('#dataset_plot').removeClass("col").addClass("col-10");
         $('#genes_list_bar').show();
-        //$('#save_weighted_gene_cart_btn').show();
+        $('#save_weighted_gene_cart_btn').show();
     } else {
         $('#dataset_plot').addClass("col").removeClass("col-10");
         $('#genes_list_bar').hide();
-        //$('#save_weighted_gene_cart_btn').hide();
+        $('#save_weighted_gene_cart_btn').hide();
     }
     await draw(datasetId, plotConfig);
     $('#plot_spinner').hide();
