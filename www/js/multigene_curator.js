@@ -859,6 +859,8 @@ function saveGeneCart () {
 
 function saveWeightedGeneCart() {
 	// must have access to USER_SESSION_ID
+    const plotType = plotConfig.plot_type;
+
 	let foldchangeLabel = "FC"
 	const foldchange_to_save = Number($('input[name=foldchange_to_save]:checked').val());
 
@@ -873,7 +875,21 @@ function saveWeightedGeneCart() {
 			foldchangeLabel = foldchangeLabel;
 	}
 
-    const weight_labels = [foldchangeLabel];
+    let weight_labels = [foldchangeLabel];
+
+
+    if (plotType === "quadrant") {
+        const query1 = plotConfig.compare1_condition.split(';-;')[1];
+        const query2 = plotConfig.compare2_condition.split(';-;')[1];
+        const ref = plotConfig.ref_condition.split(';-;')[1];
+        const xLabel = `${query1}-vs-${ref}`;
+        const yLabel = `${query2}-vs-${ref}`;
+
+        const fcl1 = `${xLabel}-${foldchangeLabel}`
+        const fcl2 = `${yLabel}-${foldchangeLabel}`
+
+        weight_labels = [fcl1, fcl2];
+    }
 
 	const gc = new WeightedGeneCart({
 		session_id
@@ -889,7 +905,8 @@ function saveWeightedGeneCart() {
         for (const pt in trace.x) {
 
             // TODO: Handle quadrant plot situation
-            let foldchange = trace.x[pt].toFixed(1)
+            let foldchange = trace.x[pt].toFixed(1);
+
             switch (foldchange_to_save) {
                 case "log2":
                     foldchange = Math.log2(foldchange);
@@ -902,9 +919,25 @@ function saveWeightedGeneCart() {
             }
             const weights = [foldchange];
 
+            // If quadrant plot was specified, there are fold changes in x and y axis
+            if (plotType === "quadrant") {
+                let foldchange2 = trace.y[pt].toFixed(1);
+                switch (foldchange_to_save) {
+                    case "log2":
+                        foldchange2 = Math.log2(foldchange2);
+                        break;
+                    case "log10":
+                        foldchange2 = Math.log10(foldchange2);
+                        break;
+                    default: // 'raw'
+                        foldchange2 = foldchange2;
+                }
+                weights.push(foldchange2);
+            }
+
             const gene = new WeightedGene({
                 //id: pt.data.text[pt.pointNumber], //ENSEMBL ID
-                id: trace.text[pt], // ! same issue as saveGeneCart selection
+                id: trace.text[pt], // ! Need to figure out how to get Ensembl ID for this
                 gene_symbol: trace.text[pt]
             }, weights);
             gc.add_gene(gene);
