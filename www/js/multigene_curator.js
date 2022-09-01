@@ -248,6 +248,7 @@ function drawChart (data, datasetId) {
         data.points.forEach((pt) => {
             selectedGenes.push({
                 gene_symbol: pt.data.text[pt.pointNumber],
+                ensembl_id: pt.data.customdata[pt.pointNumber], // Ensembl ID stored in "customdata" property
                 x: pt.data.x[pt.pointNumber].toFixed(1),
                 y: plotConfig.plot_type === "volcano" ? invertLogFunction(-pt.data.y[pt.pointNumber]).toExponential(2) : pt.data.y[pt.pointNumber].toFixed(2),
             });
@@ -848,7 +849,7 @@ function saveGeneCart () {
 
     selectedGenes.forEach((sg) => {
         const gene = new Gene({
-            id: sg.gene_id, // TODO: prop never defined... could make = gene_symbol
+            id: sg.ensembl_id, // Ensembl ID stored in "customdata" property
             gene_symbol: sg.gene_symbol,
         });
         gc.add_gene(gene);
@@ -936,8 +937,7 @@ function saveWeightedGeneCart() {
             }
 
             const gene = new WeightedGene({
-                //id: pt.data.text[pt.pointNumber], //ENSEMBL ID
-                id: trace.text[pt], // ! Need to figure out how to get Ensembl ID for this
+                id: trace.customdata[pt], // Ensembl ID stored in "customdata" property
                 gene_symbol: trace.text[pt]
             }, weights);
             gc.add_gene(gene);

@@ -500,6 +500,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
                 x=trace["df"]["s1_c_log2FC"]
                 , y=trace["df"]["s2_c_log2FC"]
                 , name="{}:{}".format(trace["name"], str(len(trace["df"].index)))
+                , customdata=trace["df"]["ensm_id"] # Add ensembl ids
                 , text=trace["df"]["gene_symbol"]
                 , mode="markers"
                 , marker=dict(
@@ -557,6 +558,7 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
     # Build the data for the final dataframe
     df_data = {
         "gene_symbol" : df1["gene"].tolist()
+        ,"ensm_id" : de_selected1.var.index
         , "s1_c_log2FC" : df1["log2fc"]
         , "s2_c_log2FC" : df2["log2fc"]
         , "s1_c_qval" : df1["qval"]
@@ -870,6 +872,8 @@ def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pv
     # y = log2 p-value
     # x = raw fold-change (effect size)
 
+    # NOTE: We cannot pass "customdata" to the function, so we must modify the trace afterwards.
+
     return dashbio.VolcanoPlot(
         dataframe=df
         , title="Differences in {} vs {}".format(query, ref)
@@ -877,7 +881,7 @@ def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pv
         , effect_size="logfoldchanges"
         , effect_size_line=logfc_bounds
         , effect_size_line_color="black"
-        , gene="gene_symbol"
+        , gene="ensm_id"    # Will change to 'gene_symbol' in modification step later
         , genomewideline_value= -np.log10(pval_threshold)
         , genomewideline_color="black"
         , highlight_color="black"
@@ -885,7 +889,6 @@ def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pv
         , snp=None
         , xlabel="log2FC"
         , ylabel="-log10(adjusted-P)" if use_adj_pvals else "-log10(P)"
-
     )
 
 def curate_volcano_datapoint_text(data):
@@ -893,7 +896,7 @@ def curate_volcano_datapoint_text(data):
     # Get rid of hover "GENE: " label.
     data['text'] = [text.split(' ')[-1] for text in data['text']]   # gene symbol
 
-def modify_volcano_plot(fig, query, ref, downcolor=None, upcolor=None):
+def modify_volcano_plot(fig, query, ref, ensm2genesymbol, downcolor=None, upcolor=None):
     """Adjust figure data to show up- and down-regulated data differently.  Edits figure in-place."""
     nonsig_data = []
     sig_data = []
@@ -905,6 +908,9 @@ def modify_volcano_plot(fig, query, ref, downcolor=None, upcolor=None):
     fig.data = nonsig_data
 
     fig.data[0]["name"] = "Nonsignificant Genes"
+    fig.data[0]["customdata"] = fig.data[0]["text"] # Ensembl ID to "customdata" and gene symbols to "text" properties
+    gene_symbol_list = [ensm2genesymbol[t] for t in fig.data[0]["text"]]
+    fig.data[0]["text"] = gene_symbol_list
 
     downcolor = downcolor or "#636EFA"
     upcolor = upcolor or "#EF553B"
@@ -914,7 +920,8 @@ def modify_volcano_plot(fig, query, ref, downcolor=None, upcolor=None):
         if data["name"] and data["name"] == "Point(s) of interest":
             downregulated = {
                 "name": "Upregulated in {}".format(ref)
-                , "text":[]
+                , "text":[] # gene_symbol
+                , "customdata":[]   # ensembl id
                 , "x":[]
                 , "y":[]
                 , "marker":{"color":downcolor}
@@ -923,6 +930,7 @@ def modify_volcano_plot(fig, query, ref, downcolor=None, upcolor=None):
             upregulated = {
                 "name": "Upregulated in {}".format(query)
                 , "text":[]
+                , "customdata":[]
                 , "x":[]
                 , "y":[]
                 , "marker":{"color":upcolor}
@@ -931,19 +939,21 @@ def modify_volcano_plot(fig, query, ref, downcolor=None, upcolor=None):
                 if data['x'][i] > 0:
                     upregulated['x'].append(data['x'][i])
                     upregulated['y'].append(data['y'][i])
-                    upregulated['text'].append(data['text'][i])
+                    upregulated['text'].append(ensm2genesymbol[data['text'][i]])
+                    upregulated['customdata'].append(data['text'][i])
 
                 else:
                     downregulated['x'].append(data['x'][i])
                     downregulated['y'].append(data['y'][i])
-                    downregulated['text'].append(data['text'][i])
-
+                    downregulated['text'].append(ensm2genesymbol[data['text'][i]])
+                    downregulated['customdata'].append(data['text'][i])
 
             for dataset in [upregulated, downregulated]:
                 trace = go.Scattergl(
                     x=dataset['x']
                     , y=dataset['y']
                     , text=dataset['text']
+                    , customdata=dataset['customdata']
                     , marker=dataset["marker"]
                     , mode="markers"
                     , name=dataset["name"]

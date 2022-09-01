@@ -329,6 +329,9 @@ class MultigeneDashData(Resource):
                     'message': str(pe),
                 }
 
+            # Build a dictionary to easily move gene_syms to "text" property and ensembl ids to "customdata" property
+            ensm2genesymbol = pd.Series(df["gene_symbol"].values, index=df["ensm_id"]).to_dict()
+
             # Volcano plot expects specific parameter names (unless we wish to change the options)
             fig = mg.create_volcano_plot(df
                 , query_val
@@ -345,7 +348,7 @@ class MultigeneDashData(Resource):
                 downcolor = "rgb(254, 232, 56)"
                 upcolor = "rgb(0, 34, 78)"
 
-            mg.modify_volcano_plot(fig, query_val, ref_val, downcolor, upcolor)
+            mg.modify_volcano_plot(fig, query_val, ref_val, ensm2genesymbol, downcolor, upcolor)
 
             if gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
@@ -620,7 +623,6 @@ class MultigeneDashData(Resource):
                     }
                 )
             )
-
 
         # Pop any default height and widths being added
         fig["layout"].pop("height", None)
