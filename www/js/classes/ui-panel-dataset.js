@@ -43,6 +43,7 @@ class DatasetPanel extends Dataset {
         //this.links = args.links;
         //this.linksfoo = "foo";
         this.controller = controller;   // AbortController
+        this.projectR_info = null;
     }
 
     // Call API to return observation information on this dataset
@@ -125,7 +126,10 @@ class DatasetPanel extends Dataset {
         // We first draw with the display then zoom in, so whenever
         // gene search is updated, the other displays behind the zoomed
         // is updated too.
-        display.draw(gene_symbol);
+        await display.draw(gene_symbol);
+        // If projectR information is present, show the info hoverbar
+        display.show_info(this.projectR_info);
+
         if (zoom) display.zoom_in();
     }
 
@@ -154,13 +158,17 @@ class DatasetPanel extends Dataset {
         // gene search is updated, the other displays behind the zoomed
         // is updated too.
         if (this.has_h5ad) {
-            display.draw_mg(gene_symbols);
+            await display.draw_mg(gene_symbols);
+            // If projectR information is present, show the info hoverbar
+            display.show_info(this.projectR_info);
         } else {
             this.show_error(
                 "This dataset type does not currently support curated multigene displays."
             );
         }
         if (zoom) display.zoom_in();
+
+
     }
 
     // Draw single-gene plots
@@ -520,6 +528,8 @@ class DatasetPanel extends Dataset {
     show_hover_bar(msg, args) {
         const { context, icon, hover_msg } = args;
 
+        if (! msg) {return}
+
         const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
         const hover_id = `dataset_${this.primary_key}_hover_${context}`
         let hover_selector = $(`#${hover_id}`);
@@ -556,13 +566,18 @@ class DatasetPanel extends Dataset {
         });
     }
 
-    show_loading({warning=null, info=null}={}) {
+    show_loading({scope=null, msg=null}={}) {
         $(`#${this.primary_key}_dataset_status_c h2`).text("Loading...");
-        if (warning) {
-            this.show_warning(warning);
+
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Method_definitions
+        const scope2function = {
+            warning() {this.show_warning(msg)}
+            , info() {this.show_info(msg)}
+            , error() {this.show_error(msg)}
         }
-        else if (info) {
-            this.show_info(info);
+
+        if (scope && scope2function.hasOwnProperty(scope)) {
+            scope2function[scope];
         }
 
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
@@ -618,7 +633,8 @@ class DatasetPanel extends Dataset {
             // If file was not found, put some loading text in the plot
             if (! response.data.projection_id) {
                 this.show_loading({
-                    info:"Plot generation may take a few minutes as projections need to be generated beforehand."
+                    scope:"info"
+                    , msg:"Plot generation may take a few minutes as projections need to be generated beforehand."
                 });
             }
             payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
@@ -639,7 +655,8 @@ class DatasetPanel extends Dataset {
                 throw message; // will be caught below
             }
             this.projection_id = data.projection_id;
-            this.show_info(message)
+            this.projectR_info = message;
+            this.show_info(this.projectR_info)
         } catch (e) {
             if (e.name == "CanceledError") {
                 console.info("Canceled previous projectR request.");
