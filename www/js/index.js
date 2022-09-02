@@ -689,7 +689,7 @@ async function load_pattern_carts() {
         $("#projection_source").val(permalink_cart_id);
         // At this point, the tree is generated but loading data attributes to the storedValElt does not occur until a node is selected.
         // So we need to manually set the data attribute for the first-pass.
-        const tree_leaf = projection_source_tree.treeData.find(e => e.id === $("#projection_source").val());
+        const tree_leaf = projection_source_tree.treeData.find(e => e.id === `genecart__${$("#projection_source").val()}`);
         $("#projection_source").data("gctype", tree_leaf.gctype);
         $("#projection_source").trigger('change');
     }
