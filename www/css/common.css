@@ -205,3 +205,8 @@ div.jstree {
     overflow-y: auto;
     overflow-x: hidden;
 }
+
+/* Help button on all pages */
+#general_help {
+    margin-right: 40px; /* match padding of navbar header */
+}

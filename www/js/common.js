@@ -465,6 +465,29 @@ $(document).on('click', 'button.click-once', function(e) {
     $(this).attr("disabled", true);
 });
 
+// If a "help" button is clicked, navigate to the manual
+$("#general_help").click( (e) => {
+    let anchor;
+    let manual_url = "/manual.html"
+
+    if (document.URL.includes("upload_dataset.html")) {anchor="uploading"}
+    if (document.URL.includes("analyze_dataset.html")) {anchor="workbench"}
+    if (document.URL.includes("upload_epigenetic_data.html")) {anchor="epiviz"}
+    if (document.URL.includes("dataset_curator.html")) {anchor="curation"}
+    if (document.URL.includes("dataset_explorer.html")) {anchor="profiles"}
+    //if (document.URL.includes("gene_cart_manager.html")) {}
+    if (document.URL.includes("compare_datasets.html")) {anchor="compare"}
+    if (document.URL.includes("multigene_curator.html")) {anchor="mg-curation"}
+    if (document.URL.includes("epiviz_panel_designer.html")) {anchor="epiviz"}
+
+    if (anchor) {
+        manual_url += `?doc=${anchor}`
+    }
+
+    window.open(manual_url);
+    return false;
+});
+
 // This function takes the contents of an HTML table and formats it as a tab
 //  delimited string with rows and then offers it as a file download, with
 //  excel file extension.
