@@ -10,12 +10,17 @@
   <div id='login_controls' class="navbar-collapse collapse justify-content-stretch">
     <ul class="navbar-nav ml-auto">
       <li class="nav-item">
-        <a id="manual_link" href="./manual.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Manual">
+        <a id="loggedout_video_link" class="js-video-link" href="./manual.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Video Walkthrough">
+          <span class="fa fa-youtube"></span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a id="loggedout_user_guide_link" class="js-user-guide-link" href="./manual.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="User Guide">
           <span class="fa fa-book"></span>
         </a>
       </li>
       <li class="nav-item">
-        <a id="comment_link" href="./contact.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Contact Us">
+        <a id="loggedout_comment_link" class="js-comment-link" href="./contact.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Contact Us">
           <span class="fa fa-comment"></span>
         </a>
       </li>
@@ -32,14 +37,18 @@
   <div id='loggedin_controls' class="navbar-collapse collapse justify-content-stretch" style="display:none !important;">
     <ul class="navbar-nav ml-auto">
       <li class="nav-item">
-        <a id="manual_link" href="./manual.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Go to manual">
-          <span class="fa fa-book"> Manual</span>
+        <a id="loggedin_video_link" class="js-video-link" href="./manual.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Watch a video tutorial for using this page">
+          <span class="fa fa-youtube"> <span class="nav-item-title">Video Walkthrough</span></span>
         </a>
       </li>
       <li class="nav-item">
-        <a id="comment_link" href="./contact.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Ask us questions or give some feedback">
-          <span class="fa fa-comment"> Contact</span>
-          <span id="new_msg_count_c" class="badge"></span>
+        <a id="loggedin_user_guide_link" class="js-user-guide-link" href="./manual.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Help instructions for this page">
+          <span class="fa fa-book"> <span class="nav-item-title">User Guide</span></span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a id="loggedin_comment_link" class="js-comment-link" href="./contact.html" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Ask us questions or give some feedback">
+          <span class="fa fa-comment"> <span class="nav-item-title">Contact</span></span>
         </a>
       </li>
     </ul>
