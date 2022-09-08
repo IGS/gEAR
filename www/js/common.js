@@ -24,6 +24,10 @@ $(document).ready(() => {
         // Now that the navigation bar is loaded, we can check if the user is logged in
         // and by extension, handle the login UI updates
         check_for_login();
+
+        if (! show_video_link()) {
+            $(".js-video-link").hide();
+        }
     });
 
     $.ajax({
@@ -302,7 +306,7 @@ function handle_login_ui_updates() {
         }
 
         if (document.URL.includes("manual.html")) {
-            $('a#manual_link').parent().addClass('active');
+            $('a#user_guide_link').parent().addClass('active');
 
         } else if (document.URL.includes("contact.html")) {
             $('a#comment_link').parent().addClass('active');
@@ -350,7 +354,7 @@ function handle_login_ui_updates() {
         load_preliminary_data();
 
     } else if (document.URL.includes("manual.html")) {
-        $('a#manual_link').parent().addClass('active');
+        $('a#user_guide_link').parent().addClass('active');
 
     }
 
@@ -465,10 +469,42 @@ $(document).on('click', 'button.click-once', function(e) {
     $(this).attr("disabled", true);
 });
 
-// If a "help" button is clicked, navigate to the manual
-$("#general_help").click( (e) => {
+// If a video link is clicked, open the Youtube video in a new window
+$(document).on("click", ".js-video-link", (e) => {
+
+    if (document.URL.includes("dataset_explorer.html")) {
+        window.open("https://youtu.be/jZVCF2Yqm4M");
+    }
+
+    if (document.URL.includes("compare_datasets.html")) {
+        window.open("https://youtu.be/msmppWq6XrQ");
+    }
+
+    if ((document.URL.includes("index.html")) || (['/', 'index.html'].includes(location.pathname))) {
+        window.open("https://youtu.be/sr_kvm7W4OE");
+    }
+
+    return false;
+});
+
+// If user is on one of these pages, show the video walkthrough link.  Else hide it (since we do not have a video for it).
+function show_video_link() {
+    if ((document.URL.includes("dataset_explorer.html"))
+        || (document.URL.includes("compare_datasets.html"))
+        || (document.URL.includes("index.html"))
+        || (['/', 'index.html'].includes(location.pathname))) {
+            return true;
+        }
+
+    return false;
+}
+
+// If user guide link is clicked, navigate to manual page and potentially to the anchor
+$(document).on("click", ".js-user-guide-link", (e) => {
     let anchor;
     let manual_url = "/manual.html"
+
+    console.log(document.URL);
 
     if (document.URL.includes("upload_dataset.html")) {anchor="uploading"}
     if (document.URL.includes("analyze_dataset.html")) {anchor="workbench"}
