@@ -217,12 +217,73 @@ class Display {
     /**
      * Show warning overlay above plot
      */
-    show_warning(msg) { return }
+    show_warning(msg, selector) {
+        if (!msg) { return }
+
+        let dataset_selector = $(`#${selector}`);
+        if (selector.includes("_svg")) {
+            dataset_selector = $(`#${selector}_cc`);
+        }
+        // overrideing nowrap from "badge" CSS default style
+        const warning_template = `
+        <div class='dataset-warning badge badge-warning' style="white-space:normal;" id='${selector}_warning'>
+            <i class='fa fa-2x fa-exclamation-triangle'></i>
+            <span id="${selector}_msg"></span>
+        </div>`;
+
+        // Add warning above the chart
+        // NOTE: must add to DOM before making selector variables
+        dataset_selector.prepend(warning_template);
+
+        const warning_selector = $(`#${selector}_warning`);
+        const msg_selector = $(`#${selector}_msg`);
+
+        // Add some CSS to warning to keep at top of container and not push display down
+        warning_selector.css('position', 'absolute').css('z-index', '2');
+
+        // Add hover events (via jQuery)
+        warning_selector.mouseover(() => {
+            msg_selector.html(msg);
+        });
+        warning_selector.mouseout(() => {
+            msg_selector.text("");
+        });
+    }
 
     /**
      * Show info overlay above plot
      */
-     show_info(msg) { return }
+    show_info(msg, selector) {
+        if (!msg) { return }
+        let dataset_selector = $(`#${selector}`);
+        if (selector.includes("_svg")) {
+            dataset_selector = $(`#${selector}_cc`);
+        }
+        // overrideing nowrap from "badge" CSS default style
+        const info_template = `
+        <div class='dataset-info badge badge-info' style="white-space:normal;" id='${selector}_info'>
+            <i class='fa fa-2x fa-info-circle'></i>
+            <span id="${selector}_msg"></span>
+        </div>`;
+
+        // Add warning above the chart
+        // NOTE: must add to DOM before making selector variables
+        dataset_selector.prepend(info_template);
+
+        const info_selector = $(`#${selector}_info`);
+        const msg_selector = $(`#${selector}_msg`);
+
+        // Add some CSS to warning to keep at top of container and not push display down
+        info_selector.css('position', 'absolute').css('z-index', '2');
+
+        // Add hover events (via jQuery)
+        info_selector.mouseover(() => {
+            msg_selector.html(msg);
+        });
+        info_selector.mouseout(() => {
+            msg_selector.text("");
+        });
+    }
 
     /**
      * Show the plot container.
@@ -587,63 +648,13 @@ class PlotlyDisplay extends Display {
      * Display warning above the plot
      */
     show_warning(msg) {
-        if (!msg) { return }
-
-        const hover_msg = " Hover to see warning.";
-
-        const dataset_selector = $(`#dataset_${this.primary_key}_h5ad`);
-        const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_h5ad_warning'>
-            <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(warning_template);
-
-        const warning_selector = $(`#dataset_${this.primary_key}_h5ad_warning`);
-        const msg_selector = $(`#dataset_${this.primary_key}_h5ad_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        warning_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        warning_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        warning_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_h5ad`;
+        super.show_warning(msg, selector);
     }
 
     show_info(msg) {
-        if (!msg) { return }
-        const hover_msg = " Hover to see special information.";
-        const dataset_selector = $(`#dataset_${this.primary_key}_h5ad`);
-        const info_template = `
-        <div class='dataset-info bg-info' id='dataset_${this.primary_key}_h5ad_info'>
-            <i class='fa fa-exclamation-circle'></i>
-            <span id="dataset_${this.primary_key}_h5ad_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(info_template);
-
-        const info_selector = $(`#dataset_${this.primary_key}_h5ad_info`);
-        const msg_selector = $(`#dataset_${this.primary_key}_h5ad_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        info_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        info_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        info_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_h5ad`;
+        super.show_info(msg, selector);
     }
 
 }
@@ -877,65 +888,14 @@ class MultigeneDisplay extends Display {
      * Display warning above the plot
      */
     show_warning(msg) {
-        if (!msg) { return }
-
-        const hover_msg = " Hover to see warning.";
-
-        const dataset_selector = $(`#dataset_${this.primary_key}_mg`);
-        const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_mg_warning'>
-            <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_mg_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(warning_template);
-
-        const warning_selector = $(`#dataset_${this.primary_key}_mg_warning`);
-        const msg_selector = $(`#dataset_${this.primary_key}_mg_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        warning_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        warning_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        warning_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_mg`;
+        super.show_warning(msg, selector);
     }
 
     show_info(msg) {
-        if (!msg) { return }
-        const hover_msg = " Hover to see special information.";
-        const dataset_selector = $(`#dataset_${this.primary_key}_mg`);
-        const info_template = `
-        <div class='dataset-info bg-info' id='dataset_${this.primary_key}_mg_info'>
-            <i class='fa fa-exclamation-circle'></i>
-            <span id="dataset_${this.primary_key}_mg_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(info_template);
-
-        const info_selector = $(`#dataset_${this.primary_key}_mg_info`);
-        const msg_selector = $(`#dataset_${this.primary_key}_mg_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        info_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        info_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        info_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_mg`;
+        super.show_info(msg, selector);
     }
-
 }
 
 /**
@@ -1435,63 +1395,13 @@ class SVGDisplay extends Display {
      * Display warning above the plot
      */
     show_warning(msg) {
-        if (!msg) { return }
-
-        const hover_msg = " Hover to see warning.";
-
-        const dataset_selector = $(`#dataset_${this.primary_key}_svg_cc`);
-        const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_svg_warning'>
-            <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_svg_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning below the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.append(warning_template);
-
-        const warning_selector = $(`#dataset_${this.primary_key}_svg_warning`);
-        const msg_selector = $(`#dataset_${this.primary_key}_svg_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        warning_selector.css('position', 'absolute').css('bottom', '0').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        warning_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        warning_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_svg`;
+        super.show_warning(msg, selector);
     }
 
     show_info(msg) {
-        if (!msg) { return }
-        const hover_msg = " Hover to see special information.";
-        const dataset_selector = $(`#dataset_${this.primary_key}_svg_cc`);
-        const info_template = `
-        <div class='dataset-info bg-info' id='dataset_${this.primary_key}_svg_info'>
-            <i class='fa fa-exclamation-circle'></i>
-            <span id="dataset_${this.primary_key}_svg_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(info_template);
-
-        const info_selector = $(`#dataset_${this.primary_key}_svg_info`);
-        const msg_selector = $(`#dataset_${this.primary_key}_svg_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        info_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        info_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        info_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_svg`;
+        super.show_info(msg, selector);
     }
 }
 
@@ -1614,63 +1524,13 @@ class TsneDisplay extends Display {
      * Display warning above the plot
      */
     show_warning(msg) {
-        if (!msg) { return }
-
-        const hover_msg = " Hover to see warning.";
-
-        const dataset_selector = $(`#dataset_${this.primary_key}_tsne`);
-        const warning_template = `
-        <div class='dataset-warning bg-warning' id='dataset_${this.primary_key}_tsne_warning'>
-            <i class='fa fa-exclamation-triangle'></i>
-            <span id="dataset_${this.primary_key}_tsne_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(warning_template);
-
-        const warning_selector = $(`#dataset_${this.primary_key}_tsne_warning`);
-        const msg_selector = $(`#dataset_${this.primary_key}_tsne_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        warning_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        warning_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        warning_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_tsne`;
+        super.show_warning(msg, selector);
     }
 
     show_info(msg) {
-        if (!msg) { return }
-        const hover_msg = " Hover to see special information.";
-        const dataset_selector = $(`#dataset_${this.primary_key}_tsne`);
-        const info_template = `
-        <div class='dataset-info bg-info' id='dataset_${this.primary_key}_tsne_info'>
-            <i class='fa fa-exclamation-circle'></i>
-            <span id="dataset_${this.primary_key}_tsne_msg">${hover_msg}</span>
-        </div>`;
-
-        // Add warning above the chart
-        // NOTE: must add to DOM before making selector variables
-        dataset_selector.prepend(info_template);
-
-        const info_selector = $(`#dataset_${this.primary_key}_tsne_info`);
-        const msg_selector = $(`#dataset_${this.primary_key}_tsne_msg`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        info_selector.css('position', 'absolute').css('z-index', '2');
-
-        // Add hover events (via jQuery)
-        info_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        info_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
+        const selector = `dataset_${this.primary_key}_tsne`;
+        super.show_info(msg, selector);
     }
 }
 

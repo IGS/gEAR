@@ -506,79 +506,9 @@ class DatasetPanel extends Dataset {
         $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
 
-    show_warning(msg) {
-        const args = {
-            "context": "warning"
-            , "icon": "fa-exclamation-triangle"
-            , "hover_msg": "Hover to see special warning"
-        }
-
-        this.show_hover_bar(msg, args);
-    }
-
-    show_info(msg) {
-        const args = {
-            "context": "info"   // be careful that id does not overlap "infobox" id.  Added "hover" in name to avoid conflict
-            , "icon": "fa-exclamation-circle"
-            , "hover_msg": "Hover to see special information"
-        }
-        this.show_hover_bar(msg, args);
-    }
-
-    show_hover_bar(msg, args) {
-        const { context, icon, hover_msg } = args;
-
-        if (! msg) {return}
-
-        const dataset_selector = $(`#${this.primary_key}_dataset_status_c div`);
-        const hover_id = `dataset_${this.primary_key}_hover_${context}`
-        let hover_selector = $(`#${hover_id}`);
-
-        const template = `
-        <div class='dataset-${context} bg-${context} px-1' id='${hover_id}'>
-            <i class='fa ${icon} e'></i>
-            <span id="dataset_${this.primary_key}_msg">${hover_msg}</span>
-        </div>`;
-
-        // If template already exists, replace it
-        if (hover_selector.length > 0) {
-            hover_selector.replaceWith(template);
-        } else {
-            // Add template above the dataset status panel.  It will disappear when the plot is generated.
-            // NOTE: must add to DOM before making selector variables
-            dataset_selector.prepend(template);
-        }
-
-        const msg_selector = $(`#dataset_${this.primary_key}_msg`);
-
-        // refresh hover selector since element has been added to DOM
-        hover_selector = $(`#${hover_id}`);
-
-        // Add some CSS to warning to keep at top of container and not push display down
-        hover_selector.css('position', 'absolute').css('z-index', '2').css('color', 'black');
-
-        // Add hover events (via jQuery)
-        hover_selector.mouseover(() => {
-            msg_selector.html(msg);
-        });
-        hover_selector.mouseout(() => {
-            msg_selector.text(hover_msg);
-        });
-    }
-
-    show_loading({scope=null, msg=null}={}) {
-        $(`#${this.primary_key}_dataset_status_c h2`).text("Loading...");
-
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Method_definitions
-        const scope2function = {
-            warning() {this.show_warning(msg)}
-            , info() {this.show_info(msg)}
-            , error() {this.show_error(msg)}
-        }
-
-        if (scope && scope2function.hasOwnProperty(scope)) {
-            scope2function[scope];
-        }
+    show_loading(msg=null) {
+        if (!msg) {msg = "Loading..."}
+        $(`#${this.primary_key}_dataset_status_c h2`).text(msg);
 
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
 
@@ -632,10 +562,7 @@ class DatasetPanel extends Dataset {
             const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
             // If file was not found, put some loading text in the plot
             if (! response.data.projection_id) {
-                this.show_loading({
-                    scope:"info"
-                    , msg:"Plot generation may take a few minutes as projections need to be generated beforehand."
-                });
+                this.show_loading("Plot generation may take a few minutes as projections need to be generated beforehand.");
             }
             payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
         } catch (e) {
@@ -656,7 +583,7 @@ class DatasetPanel extends Dataset {
             }
             this.projection_id = data.projection_id;
             this.projectR_info = message;
-            this.show_info(this.projectR_info)
+            this.show_loading(this.projectR_info)
         } catch (e) {
             if (e.name == "CanceledError") {
                 console.info("Canceled previous projectR request.");
