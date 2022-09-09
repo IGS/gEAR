@@ -124,14 +124,15 @@ class ProjectROutputFile(Resource):
 
         # If the pattern was not projected onto this dataset, initialize a list of configs
         # "cart.{projection_id}" added for backwards compatability
-        if not (genecart_id in projections_dict and "cart.{}".format(genecart_id) in projections_dict):
+        if not (genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict):
             # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
+
             return {
                 "projection_id": None
             }
 
         # If legacy version exists, copy to current format.
-        if not genecart_id in projections_dict and "cart.{}".format(genecart_id) in projections_dict:
+        if not genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict:
             print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
             projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
             projections_dict.pop("cart.{}".format(genecart_id), None)
