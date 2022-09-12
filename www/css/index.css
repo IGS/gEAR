@@ -519,5 +519,9 @@ li.scope_choice:hover {
 
 #projection_pattern_select_all:hover,#projection_pattern_deselect_all:hover {
   background-color: var(--main-section-launcher-bg-color-active);
-  color: white
+  color: white;
+}
+
+#projectr_paper_link {
+  color: white;
 }
