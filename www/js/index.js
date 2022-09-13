@@ -723,7 +723,6 @@ async function load_all_trees(){
         .catch((err) => {
             console.error(err)
         });
-    console.info("Trees loaded");
 
     // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
     $(document).trigger("handle_page_loading");
