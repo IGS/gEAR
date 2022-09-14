@@ -43,6 +43,8 @@ $(document).on("handle_page_loading", () => {
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
+    load_annotation_organism_list();
+
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
     scope = "permalink";
@@ -285,12 +287,28 @@ function get_index_info() {
         type: 'GET',
         dataType: 'json',
         success(data) {
-
             $('#stats_dataset_count').text(data.dataset_count);
             $('#stats_user_count').text(data.user_count);
         },
         error(jqXHR, _textStatus, errorThrown) {
             display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
+        }
+    });
+};
+
+function load_annotation_organism_list() {
+    $.ajax({
+        url : './cgi/get_organism_list.cgi',
+        type: "GET",
+        data : {},
+        dataType:"json",
+        success: function(data, textStatus, jqXHR) {
+            var ListTmpl = $.templates("#organism_list_tmpl");
+            var ListHtml = ListTmpl.render(data['organisms']);
+            $(".organism_icon_c").append(ListHtml);
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
         }
     });
 };
