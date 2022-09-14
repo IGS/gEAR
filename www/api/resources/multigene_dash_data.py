@@ -138,6 +138,8 @@ class MultigeneDashData(Resource):
         cluster_genes = req.get('cluster_genes', False)
         flip_axes = req.get('flip_axes', False)
         distance_metric = req.get('distance_metric', "euclidean")
+        hide_obs_labels = req.get('hide_obs_labels', False)
+        hide_gene_labels = req.get('hide_gene_labels', False)
         # Quadrant plot options
         compare_group1 = req.get("compare1_condition", None)
         compare_group2 = req.get("compare2_condition", None)
@@ -492,6 +494,8 @@ class MultigeneDashData(Resource):
                 , distance_metric
                 , colorscale
                 , reverse_colorscale
+                , hide_obs_labels
+                , hide_gene_labels
                 )
 
             # Need the obs metadata again for mapping clusterbars to indexes
