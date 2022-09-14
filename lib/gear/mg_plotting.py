@@ -280,7 +280,7 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
     return [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
 
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
-                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False):
+                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -300,7 +300,7 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     if is_log10:
         values = df.loc[rows].values
 
-    hidden_labels = None
+    hidden_labels = set_hidden_labels(hide_obs_labels, hide_gene_labels, flip_axes)
 
     cluster, col_dist, row_dist = determine_axes_cluster_information(cluster_obs, cluster_genes, flip_axes, distance_metric)
 
@@ -375,6 +375,16 @@ def create_clustergram_observation_labels(df, fig, colname="composite_index", fl
     obs_axis = "yaxis11" if flip_axes else "xaxis11"
     obs_order = fig.layout[obs_axis]["ticktext"]    # Gets order of composite index observations
     return df.reindex(obs_order)[colname].tolist()  # reindex based on the observation order, and return the labels
+
+def set_hidden_labels(hide_obs, hide_genes, flip_axes):
+    hidden_labels = []
+    if hide_obs:
+        hidden_labels.append("row" if flip_axes else "col")
+    if hide_genes:
+        hidden_labels.append("col" if flip_axes else "row")
+    if not len(hidden_labels):
+        hidden_labels = None
+    return hidden_labels
 
 ### Quadrant fxns
 

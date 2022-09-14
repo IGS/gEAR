@@ -741,6 +741,8 @@ function loadDisplayConfigHtml (plotConfig) {
         $('#cluster_obs').prop('checked', plotConfig.cluster_obs);
         $('#cluster_genes').prop('checked', plotConfig.cluster_obs);
         $('#flip_axes').prop('checked', plotConfig.flip_axes);
+        $('#hide_obs_labels').prop('checked', plotConfig.hide_obs_labels);
+        $('#hide_gene_labels').prop('checked', plotConfig.hide_gene_labels);
         $('#distance_select').val(plotConfig.distance_metric);
         $('#distance_select').trigger('change');
         break;
@@ -1496,6 +1498,8 @@ $(document).on('click', '#create_plot', async () => {
         plotConfig.cluster_obs = $('#cluster_obs').is(':checked');
         plotConfig.cluster_genes = $('#cluster_genes').is(':checked');
         plotConfig.flip_axes = $('#flip_axes').is(':checked');
+        plotConfig.hide_obs_labels = $('#hide_obs_labels').is(':checked');
+        plotConfig.hide_gene_labels = $('#hide_gene_labels').is(':checked');
         plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
         break;
     case 'mg_violin':

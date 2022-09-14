@@ -685,6 +685,8 @@ class MultigeneDisplay extends Display {
             cluster_obs,
             cluster_genes,
             flip_axes,
+            hide_obs_labels,
+            hide_gene_labels,
             distance_metric,
             adj_pvals,
             annotate_nonsignificant,
@@ -718,6 +720,8 @@ class MultigeneDisplay extends Display {
         this.cluster_obs = cluster_obs;
         this.cluster_genes = cluster_genes;
         this.flip_axes = flip_axes;
+        this.hide_obs_labels = hide_obs_labels;
+        this.hide_gene_labels = hide_gene_labels;
         this.distance_metric = distance_metric;
         this.adj_pvals = adj_pvals;
         this.annot_nonsig = annotate_nonsignificant;
@@ -773,6 +777,8 @@ class MultigeneDisplay extends Display {
             cluster_obs: this.cluster_obs,
             cluster_genes: this.cluster_genes,
             flip_axes: this.flip_axes,
+            hide_obs_labels: this.hide_obs_labels,
+            hide_gene_labels: this.hide_gene_labels,
             distance_metric: this.distance_metric,
             adj_pvals: this.adj_pvals,
             annotate_nonsignificant: this.annot_nonsig,
