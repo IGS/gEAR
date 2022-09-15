@@ -66,6 +66,8 @@ INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (6, 'Rat', 'Rattus', 'norvegicus', NULL, 10116);
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (7, 'Marmoset', 'Callithrix', 'jacchus', 'jacchus', 9483);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (8, 'Roundworm', 'Caenorhabditis', 'elegans', 'WBcel235', 6239);
 
 CREATE TABLE gene (
        id               INT PRIMARY KEY AUTO_INCREMENT,
