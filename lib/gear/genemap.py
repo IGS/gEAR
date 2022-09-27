@@ -19,9 +19,10 @@ class GeneMap:
 
     The inputs to be mapped can take a few forms:
 
-      - A GeneCart object
-      - A Dataset object
-      - A single gene symbol string
+      - GeneCart object
+      - Dataset object
+      - AnnData object
+      - Single gene symbol string
 
     In each case, the source organism and dest organism IDs and annotation sources
     must also be defined.
@@ -30,16 +31,19 @@ class GeneMap:
 
        gm = GeneMap(source_org_id=1, dest_org_id=1, source_annot_type='ensembl', dest_annot_type='ensembl')
 
+       # GeneCart support
        gc = GeneCart(...)
        filtered_gc = gm.map(gc)
 
-    or:
-
+       # Dataset support
        ds = Dataset(...)
        filtered_ds = gm.map(ds)
 
-    or:
+       # AnnData object support
+       ad = AnnData(...)
+       filtered_ad = gm.map(ad)
 
+       # Simple string support
        mapped_gene = gm.map("Pou4f3")
 
     Any unmapped genes are simply excluded from the returned data structure, or "None" is
