@@ -119,7 +119,7 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
         # If number of groups is less than num_cols, they can just be put on a single line
         if num_chunks == 0:
-           return (new_handles, new_labels)
+            return (new_handles, new_labels)
 
         # Split into relatively equal chumks.
         handles_sublists = np.array_split(np.array(new_handles), num_chunks)

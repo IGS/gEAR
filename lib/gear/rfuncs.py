@@ -55,8 +55,12 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
     # The number of R sessions appears to be limited to the number of threads apache allocates to the Flask API
     # If this number of sessions exceeds number of threads, a RNotReady error will be thrown for each subsequent session
     import rpy2.rinterface as ri
-    ri.initr_simple()
-    sleep(3)    # Give enough time for the R session to start
+    sleep(2)    # Give enough time for the R session to start
+    try:
+        ri.initr_simple()
+    except:
+        raise RError("Could not initialize R session to run projectR.")
+    sleep(2)    # Give enough time for the R session to start
 
     # NOTE: Importing robjects inside of function so the Flask-RESTful API does not initialize R at the beginning of every API call
     #import rpy2.robjects as ro

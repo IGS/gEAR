@@ -1,7 +1,9 @@
 from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
-import json, uuid, sys
+import json, hashlib, uuid, sys, fcntl
+from os import getpid
+from time import sleep
 import geardb
 import gear.rfuncs as rfx
 from gear.rfuncs import RError
@@ -12,7 +14,10 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
+ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 PROJECTIONS_JSON_BASENAME = "projections.json"
+
+ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -58,6 +63,18 @@ def build_projection_json_path(dir_id, scope):
     """Build the path to the projections json for a given dataset or genecart directory. Returns a Path object."""
     return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME)
 
+def create_lock_file(filepath):
+    """Create an exclusive lock file for the given filepath.  Return the file descriptor."""
+    fd = open(filepath, "w+")
+    fd.write("{}\n".format(getpid()))
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    return fd
+
+def remove_lock_file(fd):
+    """Release the lock file."""
+    #fcntl.flock(fd, fcntl.LOCK_UN)
+    fd.close()
+
 def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
@@ -84,7 +101,14 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-
+def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
+    """Remap the passed-in Dataframe to have gene indexes from the orthologous mapping file."""
+    # Read HDF5 file using Pandas read_hdf
+    orthomap_df = pd.read_hdf(orthomap_file)
+    # Index -> gs1 / id2 / gs2
+    orthomap_dict = orthomap_df.to_dict()["id2"]
+    # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
+    return orig_df.rename(index=orthomap_dict)
 
 class ProjectROutputFile(Resource):
     """
@@ -173,7 +197,12 @@ class ProjectR(Resource):
         output_id = args['projection_id']
         scope = args['scope']
 
-        projection_id = output_id if output_id else uuid.uuid4()
+        uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, is_pca)
+        md5 = hashlib.md5()
+        md5.update(uuid_str.encode("utf-8"))
+        new_uuid = uuid.UUID(md5.hexdigest())
+
+        projection_id = output_id if output_id else new_uuid
         dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
@@ -182,7 +211,7 @@ class ProjectR(Resource):
 
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
         if Path(dataset_projection_csv).is_file():
-            print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv))
+            print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv), file=sys.stderr)
 
             # Projection already exists, so we can just return info we want to return in a message
             projections_dict = json.load(open(dataset_projection_json_file))
@@ -211,17 +240,12 @@ class ProjectR(Resource):
         """
         Steps
 
-        1. Load matrix from DataMTX.tab or Anndata.X.  The observations and genes are largely stripped away
-        2. Load ROWmeta DIMRED tab file for a dataset/analysis combo. (pattern file). For weighted gene carts, the format is the same.
-        3. Ensure both data matrix and pattern file are transformed so that genes are indexes
-        4. Run projectR to get projectionPatterns matrix, which lists relative weights in the matrix dataset.
-            * Rows are patterns, Cols are data observations
-            * We need to figure out how to re-assign the patterns
-        5. Get observation data (COLmeta or Anndata.obs) and split on a conditon or combination of them.
-            * One thing is to transpose projectR output,
-        6. Extract input pattern row (as index) from projectionPattern
+        1. Load AnnData object and transform into a dataframe of genes x observations
+        2. Load pattern file (gene cart) of genes x patterns. For unweighted gene carts, all weights are 1
+        3. Run projectR to get projectionPatterns matrix, which lists relative weights in the matrix dataset.
+            * Output - Rows are patterns, Cols are data observations
 
-        Only step 4 needs to be in R, and we use rpy2 to call that.
+        Only step 3 needs to be in R, and we use rpy2 to call that.
         """
 
         # NOTE Currently no analyses are supported yet.
@@ -248,21 +272,34 @@ class ProjectR(Resource):
         # Col: Pattern weights
         loading_df = None
 
+        # Get the organism ID associated with the dataset.
+        ds = geardb.get_dataset_by_id(dataset_id)
+        try:
+            dataset_organism_id = ds.organism_id
+        except:
+            message = "Dataset was not found in the database. Please contact a gEAR admin."
+            return {"success": -1, "message": message}
+
+        # Get unique identifier of first gene from target dataset
+        #first_dataset_gene = target_df.index[0]
+
+        # Unweighted carts get a "1" weight for each gene
+        gc = geardb.get_gene_cart_by_share_id(genecart_id)
+        if not gc:
+            return {
+                'success': -1
+                , 'message': "Could not find gene cart in database"
+            }
+
+        if not len(gc.genes):
+            return {
+                'success': -1
+                , 'message': "No genes found within this gene cart"
+            }
+
+        genecart_organism_id = gc.organism_id
+
         if scope == "unweighted-list":
-            # Unweighted carts get a "1" weight for each gene
-            gc = geardb.get_gene_cart_by_share_id(genecart_id)
-            if not gc:
-                return {
-                    'success': -1
-                    , 'message': "Could not find gene cart"
-                }
-
-            if not len(gc.genes):
-                return {
-                    'success': -1
-                    , 'message': "No genes found within this gene cart"
-                }
-
             # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
             gene_collection = geardb.GeneCollection()
             gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
@@ -283,9 +320,6 @@ class ProjectR(Resource):
                     , 'message': "Could not find pattern file {}".format(file_path)
                 }
 
-        # Store gene symbol series before dropping later
-        #gene_syms_series = loading_df[1]
-
         # Assumes first column is unique identifiers. Standardize on a common index name
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
 
@@ -296,22 +330,21 @@ class ProjectR(Resource):
         # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
         loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
+        # Get unique identifier of first gene from loading genecart
+        #first_loading_gene = loading_df.index[0]
+
+        # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
+        if not genecart_organism_id == dataset_organism_id:
+            orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(genecart_organism_id, dataset_organism_id, ANNOTATION_TYPE)
+            orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
+            loading_df = remap_df_genes(loading_df, orthomap_file)
+
         num_target_genes = target_df.shape[0]
         num_loading_genes = loading_df.shape[0]
 
         # Perform overlap to see if there are overlaps between genes from both dataframes
         index_intersection = target_df.index.intersection(loading_df.index)
         intersection_size = index_intersection.size
-
-        # If no overlap on the genecart unique identifiers, try to overlap on the dropped gene symbols column
-        #if index_intersection.empty:
-        #    series_intersection = target_df.index.intersection(gene_syms_series)
-        #    intersection_size = series_intersection.size
-
-        # If gene symbols overlap, replace loading_df index with gene_syms_series
-        #if intersection_size:
-        #    pass
-
 
         if intersection_size == 0:
             message = "No common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(num_target_genes, num_loading_genes)
@@ -325,24 +358,43 @@ class ProjectR(Resource):
 
         message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
-        """
-        # NOTE: This is not needed for now, but may happen later
-        # Perform a mapping of the dataset genes to the loading file genes
-        # 1. Get dataset db entry using dataset_id, including the organism ID
-        # 2. For every gene in the loading file, determine if they overlap with the dataset adata.var.index
-        # 3. If they do not, then perform a db search for each gene in the loading file to get an Ensembl ID for the common organism
-        # 4. Re-map the genes in the loading file to the Ensembl IDs
-        ds = geardb.get_dataset_by_id(dataset_id)
+        # Create lock file if it does not exist
+        lockfile = str(dataset_projection_csv) + ".lock"
+        if Path(lockfile).exists():
+            print("INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(projection_id), file=sys.stderr)
+            # If it does exist, print message that another process is running this command
+            # and wait for lock to be removed, then return info that is normally returned after projectR is run
+            while True:
+                sleep(1)
+                if not Path(lockfile).exists():
+                    return {
+                        "success": 2
+                        , "message": message
+                        , "projection_id": projection_id
+                        , "num_common_genes": intersection_size
+                        , "num_genecart_genes": num_loading_genes
+                        , "num_dataset_genes": num_target_genes
+                    }
+
         try:
-            organism_id = ds.organism_id
-        except:
-            message = "Dataset was not found in the database. Please contact a gEAR admin."
-            return {"success": -1, "message": message}
-        """
+            lock_fh = create_lock_file(lockfile)
+        except IOError:
+            # This should ideally never be encountered as the previous code should handle existing locked files
+            message = "Could not create lock file for this projectR run."
+            return {
+                'success': -1
+                , 'message': message
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
 
         try:
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
         except RError as re:
+            # Remove file lock
+            remove_lock_file(lock_fh)
+            Path(lockfile).unlink()
             return {
                 'success': -1
                 , 'message': str(re)
@@ -380,6 +432,10 @@ class ProjectR(Resource):
             , "num_dataset_genes": num_target_genes
         })
         write_to_json(genecart_projections_dict, genecart_projection_json_file)
+
+        # Remove file lock
+        remove_lock_file(lock_fh)
+        Path(lockfile).unlink()
 
         return {
             "success": success
