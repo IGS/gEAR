@@ -54,30 +54,31 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
     # rpy2.robjects also calls initr() under-the-hood when imported but subsequent calls are ignored
     # The number of R sessions appears to be limited to the number of threads apache allocates to the Flask API
     # If this number of sessions exceeds number of threads, a RNotReady error will be thrown for each subsequent session
-    import rpy2.rinterface as ri
-    sleep(2)    # Give enough time for the R session to start
-    try:
-        ri.initr_simple()
-    except:
-        raise RError("Could not initialize R session to run projectR.")
-    sleep(2)    # Give enough time for the R session to start
-
-    # NOTE: Importing robjects inside of function so the Flask-RESTful API does not initialize R at the beginning of every API call
-    #import rpy2.robjects as ro
-
-    from rpy2.robjects import pandas2ri, default_converter
-    from rpy2.robjects.packages import importr
-    from rpy2.robjects.conversion import localconverter, py2rpy, rpy2py
+    #try:
+    ri.initr_simple()
+    #except Exception as e:
+    #    print("ERROR: {}".format(str(e)), file=sys.stderr)
+    #    ri.endr(1)  # Exit with fatal state
+    #    raise RError("Could not initialize R session to run projectR.")
+    #sleep(5)    # Give enough time for the R session to start
 
     # R does not play nice with multithreading so a lock is necessary to prevent interruptions
     with openrlib.rlock:
         if target_df.empty:
-            ri.endr(1)  # Exit with fatal state
+            #ri.endr(1)  # Exit with fatal state
             raise RError("Target (dataset) dataframe is empty.")
 
         if loading_df.empty:
-            ri.endr(1)  # Exit with fatal state
+            #ri.endr(1)  # Exit with fatal state
             raise RError("Loading (pattern) dataframe is empty.")
+
+        # NOTE: Importing robjects inside of function so the Flask-RESTful API does not initialize R at the beginning of every API call
+        #import rpy2.robjects as ro
+        from rpy2.robjects import pandas2ri, default_converter
+        from rpy2.robjects.packages import importr
+        from rpy2.robjects.conversion import localconverter, py2rpy, rpy2py
+
+        #from rpy2.robjects.conversion import localconverter, py2rpy, rpy2py
 
         # Convert from pandas dataframe to R data.frame
         with localconverter(default_converter + pandas2ri.converter):
@@ -100,19 +101,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
             if not loading_r_object:
                 ri.endr(1)  # Exit with fatal state
                 raise RError("Could not convert loading matrix to R prcomp object.")
-
-        # Test if "loading" R matrix (post-adjustment) is empty
-        # TODO: Seems when this is enabled I get an "embedded R is not ready to use" error
-        """
-        r_all = ri.baseenv["all"]
-        r_isna = ri.baseenv["is.na"]
-        if r_all(r_isna(target_r_matrix)):
-            ri.endr(1)  # Exit with fatal state
-            raise RError("Target (dataset) R-matrix is empty.")
-        if r_all(r_isna(loading_r_object)):
-            ri.endr(1)  # Exit with fatal state
-            raise RError("Loading (pattern) R-matrix is empty.")
-        """
 
         # Run project R command.  Get projectionPatterns matrix
         try:

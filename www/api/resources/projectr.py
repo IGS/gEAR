@@ -104,7 +104,11 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
 def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
     """Remap the passed-in Dataframe to have gene indexes from the orthologous mapping file."""
     # Read HDF5 file using Pandas read_hdf
-    orthomap_df = pd.read_hdf(orthomap_file)
+    try:
+        orthomap_df = pd.read_hdf(orthomap_file)
+    except Exception as e:
+        print(str(e), file=sys.stderr)
+        raise
     # Index -> gs1 / id2 / gs2
     orthomap_dict = orthomap_df.to_dict()["id2"]
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
@@ -337,7 +341,17 @@ class ProjectR(Resource):
         if not genecart_organism_id == dataset_organism_id:
             orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(genecart_organism_id, dataset_organism_id, ANNOTATION_TYPE)
             orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
-            loading_df = remap_df_genes(loading_df, orthomap_file)
+            try:
+                loading_df = remap_df_genes(loading_df, orthomap_file)
+            except:
+                message = "Could not remap pattern genes to ortholog equivalent"
+                return {
+                    "success": -1
+                    , "message": message
+                    , "num_common_genes": intersection_size
+                    , "num_genecart_genes": num_loading_genes
+                    , "num_dataset_genes": num_target_genes
+                }
 
         num_target_genes = target_df.shape[0]
         num_loading_genes = loading_df.shape[0]
@@ -398,6 +412,17 @@ class ProjectR(Resource):
             return {
                 'success': -1
                 , 'message': str(re)
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
+        except Exception as e:
+            # Remove file lock
+            remove_lock_file(lock_fh)
+            Path(lockfile).unlink()
+            return {
+                'success': -1
+                , 'message': str(e)
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
