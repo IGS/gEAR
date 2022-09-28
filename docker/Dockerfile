@@ -39,6 +39,7 @@ RUN apt-get -qq update \
   libblas-dev \
   liblapack-dev \
   libxml2-dev \
+  libhdf5-serial-dev \
   cmake \
   curl \
   wget \
