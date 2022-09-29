@@ -9,6 +9,7 @@ import gear.rfuncs as rfx
 from gear.rfuncs import RError
 
 import pandas as pd
+import atexit
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -70,10 +71,11 @@ def create_lock_file(filepath):
     fcntl.flock(fd, fcntl.LOCK_EX)
     return fd
 
-def remove_lock_file(fd):
+def remove_lock_file(fd, filepath):
     """Release the lock file."""
     #fcntl.flock(fd, fcntl.LOCK_UN)
     fd.close()
+    Path(filepath).unlink()
 
 def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
@@ -344,13 +346,10 @@ class ProjectR(Resource):
             try:
                 loading_df = remap_df_genes(loading_df, orthomap_file)
             except:
-                message = "Could not remap pattern genes to ortholog equivalent"
+                message = "Could not remap pattern genes to ortholog equivalent in the dataset"
                 return {
                     "success": -1
                     , "message": message
-                    , "num_common_genes": intersection_size
-                    , "num_genecart_genes": num_loading_genes
-                    , "num_dataset_genes": num_target_genes
                 }
 
         num_target_genes = target_df.shape[0]
@@ -392,6 +391,8 @@ class ProjectR(Resource):
 
         try:
             lock_fh = create_lock_file(lockfile)
+            # NOTE: Will not trigger if process crashes or is forcibly killed off.
+            atexit.register(remove_lock_file, lock_fh, lockfile)
         except IOError:
             # This should ideally never be encountered as the previous code should handle existing locked files
             message = "Could not create lock file for this projectR run."
@@ -407,8 +408,7 @@ class ProjectR(Resource):
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
         except RError as re:
             # Remove file lock
-            remove_lock_file(lock_fh)
-            Path(lockfile).unlink()
+            remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
                 , 'message': str(re)
@@ -418,8 +418,7 @@ class ProjectR(Resource):
             }
         except Exception as e:
             # Remove file lock
-            remove_lock_file(lock_fh)
-            Path(lockfile).unlink()
+            remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
                 , 'message': str(e)
@@ -459,8 +458,7 @@ class ProjectR(Resource):
         write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
         # Remove file lock
-        remove_lock_file(lock_fh)
-        Path(lockfile).unlink()
+        remove_lock_file(lock_fh, lockfile)
 
         return {
             "success": success
@@ -470,5 +468,3 @@ class ProjectR(Resource):
             , "num_genecart_genes": num_loading_genes
             , "num_dataset_genes": num_target_genes
         }
-
-
