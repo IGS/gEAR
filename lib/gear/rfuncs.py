@@ -78,7 +78,9 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
 
         # Assign Rownames to each matrix
-        target_r_matrix.rownames = ri.ListSexpVector(target_df.index)    # low-level equivalent to ro.StrVector
+        # I don't know why but using ro.StrVector makes rpy2py fail where the output df is an incompatible class
+        # Guessing that there are some non-strings mixed into the indexes
+        target_r_matrix.rownames = ri.ListSexpVector(target_df.index)
         loading_r_matrix.rownames = ri.ListSexpVector(loading_df.index)
 
         # Modify the R-style matrix to be a prcomp object if necessary
