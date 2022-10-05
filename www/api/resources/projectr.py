@@ -412,16 +412,6 @@ class ProjectR(Resource):
 
         try:
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
-        except RError as re:
-            # Remove file lock
-            remove_lock_file(lock_fh, lockfile)
-            return {
-                'success': -1
-                , 'message': str(re)
-                , "num_common_genes": intersection_size
-                , "num_genecart_genes": num_loading_genes
-                , "num_dataset_genes": num_target_genes
-            }
         except Exception as e:
             # Remove file lock
             remove_lock_file(lock_fh, lockfile)
