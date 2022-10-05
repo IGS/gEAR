@@ -4,13 +4,13 @@ rfuncs.py - Miscellaneous R-style functions called through rpy2
 """
 
 import sys  # for print debugging
-import traceback    # for debugging
+#import traceback    # for debugging
 import gc   # garbage collection
 
 import rpy2.rinterface as ri    # Since the low-level interface does not auto-intialize R, we can add globally.
 from rpy2.rinterface_lib import openrlib
 
-from time import sleep
+#from time import sleep
 
 class RError(Exception):
     """Error based on issues that would manifest in any particular R-language call."""
@@ -77,8 +77,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         from rpy2.robjects import pandas2ri, default_converter
         from rpy2.robjects.packages import importr
         from rpy2.robjects.conversion import localconverter, py2rpy, rpy2py
-
-        #from rpy2.robjects.conversion import localconverter, py2rpy, rpy2py
 
         # Convert from pandas dataframe to R data.frame
         with localconverter(default_converter + pandas2ri.converter):
