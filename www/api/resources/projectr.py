@@ -371,6 +371,7 @@ class ProjectR(Resource):
 
         message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
+        """
         # Create lock file if it does not exist
         lockfile = str(dataset_projection_csv) + ".lock"
         if Path(lockfile).exists():
@@ -403,12 +404,13 @@ class ProjectR(Resource):
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
+        """
 
         try:
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
         except RError as re:
             # Remove file lock
-            remove_lock_file(lock_fh, lockfile)
+            #remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
                 , 'message': str(re)
@@ -418,7 +420,7 @@ class ProjectR(Resource):
             }
         except Exception as e:
             # Remove file lock
-            remove_lock_file(lock_fh, lockfile)
+            #remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
                 , 'message': str(e)
@@ -458,7 +460,7 @@ class ProjectR(Resource):
         write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
         # Remove file lock
-        remove_lock_file(lock_fh, lockfile)
+        #remove_lock_file(lock_fh, lockfile)
 
         return {
             "success": success
