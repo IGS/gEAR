@@ -371,29 +371,34 @@ class ProjectR(Resource):
 
         message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
-        """
         # Create lock file if it does not exist
         lockfile = str(dataset_projection_csv) + ".lock"
         if Path(lockfile).exists():
             print("INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(projection_id), file=sys.stderr)
-            # If it does exist, print message that another process is running this command
-            # and wait for lock to be removed, then return info that is normally returned after projectR is run
-            while True:
-                sleep(1)
-                if not Path(lockfile).exists():
-                    return {
-                        "success": 2
-                        , "message": message
-                        , "projection_id": projection_id
-                        , "num_common_genes": intersection_size
-                        , "num_genecart_genes": num_loading_genes
-                        , "num_dataset_genes": num_target_genes
-                    }
+            try:
+                # Test to see if the exclusive lock has expired
+                lock_fh = create_lock_file(lockfile)
+                print("INFO: Lock for {} seems to be stale".format(projection_id), file=sys.stderr)
+                remove_lock_file(lock_fh, lockfile)
+            except:
+                print("INFO: Lock for {} seems to be valid.".format(projection_id), file=sys.stderr)
+                # If lock belongs to a valid run, wait for lock to be removed,
+                # then return info that is normally returned after projectR is run
+                while True:
+                    sleep(1)
+                    if not Path(lockfile).exists():
+                        return {
+                            "success": 2
+                            , "message": message
+                            , "projection_id": projection_id
+                            , "num_common_genes": intersection_size
+                            , "num_genecart_genes": num_loading_genes
+                            , "num_dataset_genes": num_target_genes
+                        }
 
         try:
             lock_fh = create_lock_file(lockfile)
             # NOTE: Will not trigger if process crashes or is forcibly killed off.
-            atexit.register(remove_lock_file, lock_fh, lockfile)
         except IOError:
             # This should ideally never be encountered as the previous code should handle existing locked files
             message = "Could not create lock file for this projectR run."
@@ -404,13 +409,12 @@ class ProjectR(Resource):
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
-        """
 
         try:
             projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
         except RError as re:
             # Remove file lock
-            #remove_lock_file(lock_fh, lockfile)
+            remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
                 , 'message': str(re)
@@ -420,7 +424,7 @@ class ProjectR(Resource):
             }
         except Exception as e:
             # Remove file lock
-            #remove_lock_file(lock_fh, lockfile)
+            remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
                 , 'message': str(e)
@@ -460,7 +464,7 @@ class ProjectR(Resource):
         write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
         # Remove file lock
-        #remove_lock_file(lock_fh, lockfile)
+        remove_lock_file(lock_fh, lockfile)
 
         return {
             "success": success
