@@ -6,7 +6,7 @@ other isolated python environment?  You could, but for a committed
 webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
 
-    $ sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
+    $ sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev r-base
     $ sudo apt install libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
 
     $ export PYTHONV=3.10.4
