@@ -7,7 +7,7 @@ This document is intended to capture all the customizations to the apache2 confi
     $ sudo a2enmod rewrite
     $ sudo a2enmod cgi
 
-    $ sudo apt install libapache2-mod-wsgi apache2-dev
+    $ sudo apt install libapache2-mod-wsgi-py3 apache2-dev
     $ sudo a2enmod wsgi
     $ sudo a2enmod proxy
     $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork && sudo a2enmod php8.1
@@ -152,6 +152,18 @@ Add the line `WSGIPythonHome "/opt/Python-3.10.4"` into the IfModule block.
 Then, finally restart apache again.
 
       $ sudo service apache2 restart
+
+## Optional configurations
+
+I don't like the new private tmp directories employed lately, as they don't servive service restarts
+and we make use of the tmp area while the users are building pipelines.  Turn this off by editing
+the following file:
+
+### /etc/systemd/system/multi-user.target.wants/apache2.service
+
+And then setting this line:
+
+    PrivateTmp=false
 
 
 ## Common errors

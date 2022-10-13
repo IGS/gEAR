@@ -64,6 +64,7 @@ def main():
     # doing it like this puts the labels in the legend
     if len(group_labels) > 0:
         adata.rename_categories('louvain', group_labels)
+        adata.obs['louvain'] = adata.obs['louvain'].astype(str)
         adata.write(dest_datafile_path)
 
         if plot_tsne == 1:

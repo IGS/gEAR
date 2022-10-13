@@ -17,6 +17,9 @@ import gear.db
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 
+from gear.serverconfig import ServerConfig
+this.servercfg = ServerConfig().parse()
+
 # This is where things specific to dynamic analyses will be stored, such as intermediate
 #  H5AD files, images, etc.
 this.analysis_base_dir = '/tmp'
@@ -174,6 +177,27 @@ def get_dataset_count():
         conn.close()
         return c[0]
 
+def get_dataset_id_from_share_id(share_id):
+    """
+    Given a share_id passed this returns a numeric dataset.id if a corresponding one
+    is found. Otherwise, None is returned
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+    dataset_id = None
+
+    qry = "SELECT id FROM dataset WHERE share_id = %s"
+    cursor.execute(qry, (share_id,))
+
+    for row in cursor:
+        dataset_id = row[0]
+    
+    cursor.close()
+    conn.close()
+
+    return dataset_id
+
+    
 def get_gene_by_id(gene_id):
     """
     Given a gene_id passed this returns a Gene object with all attributes populated. Returns
@@ -815,12 +839,13 @@ class OrganismCollection:
 class Layout:
     def __init__(self, id=None, user_id=None, is_domain=None, label=None,
                  is_current=None, share_id=None, members=None, folder_id=None,
-                 folder_parent_id=None, folder_label=None):
+                 folder_parent_id=None, folder_label=None, is_public=None):
         self.id = id
         self.user_id = user_id
         self.label = label
         self.is_current = is_current
         self.is_domain = is_domain
+        self.is_public = is_public
         self.share_id = share_id
 
         # The are derived, populated by LayoutCollection methods
@@ -1024,8 +1049,19 @@ class Layout:
 
 @dataclass
 class LayoutCollection:
+    # keep an index of folder IDs and their parent-most root IDs (tree walk needed here)
+    root_folder_idx: dict = field(default_factory=dict, repr=False)
+
+    # a simple index of folders and their parent IDs (this is a simple db query)
+    folder_idx: dict = field(default_factory=dict, repr=False)
+    
     layouts: List[Layout] = field(default_factory=list)
 
+    def __post_init__(self):
+        if len(self.folder_idx) == 0:
+            self._populate_folder_index()
+            self._populate_root_folder_index()
+    
     def __repr__(self):
         return json.dumps(self.__dict__)
 
@@ -1033,28 +1069,64 @@ class LayoutCollection:
         # Called when json modules attempts to serialize
         return self.__dict__
 
-    def _row_to_layout_object(self, row):
+    def _get_root_folder_id(self, folder_id):
         """
-        Utility function so we don't have to repeat the SQL->Python object conversion
+        Recursive function to drive to the parent-most folder ID of
+        any folder in the tree.
+
+        Assumes self.folder_idx and self.root_folder_idx have been populated
         """
-        layout = Layout(
-            id=row[0],
-            label=row[1],
-            is_current=row[2],
-            user_id=row[3],
-            share_id=row[4],            
-            is_domain=row[5],
-            folder_id=row[6],
-            folder_parent_id=row[7],
-            folder_label=row[8]
-        )
+
+        # if the entry in folder_idx has a value, it's not a root node, so recurse.
+        if self.folder_idx[folder_id]:
+            return self._get_root_folder_id(self.folder_idx[folder_id])
+        else:
+            # else this is a root node
+            return folder_id
+
+    def _populate_folder_index(self):
+        """
+        Populates the self.folder_idx attribute with a dictionary where the index is
+        folder ID and value is that folder's parent ID.
+        """
+        self.folder_idx = dict()
+
+        qry = "SELECT id, parent_id FROM folder"
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(qry)
+
+        for row in cursor:
+            self.folder_idx[row[0]] = row[1]
+
+        cursor.close()
+        conn.close()
         
-        layout.dataset_count = row[9]
-        return layout
+    def _populate_root_folder_index(self):
+        """
+        Populates the self.root_folder_idx attribute with a dictionary where the index is
+        folder ID and value is root folder ID the ones in gear.ini[folders]
+        """
+        if len(self.folder_idx):
+           return False
+
+        qry = "SELECT id, parent_id FROM folder"
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(qry)
+
+        for row in cursor:
+            # if the parent_id is empty, we don't need to store it because it's a top-level node
+            if row[1]:
+                self.root_folder_idx[row[0]] = self._get_root_folder_id(row[1])
+
+        cursor.close()
+        conn.close()
 
     def get_by_share_id(self, share_id=None):
         """
         Gets the layout from the passed share_id, if any.
+        TODO: f.parent_id, f.label can be removed from all these get_by* methods
         """
         if not share_id:
             return self.layouts
@@ -1063,7 +1135,8 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -1072,12 +1145,37 @@ class LayoutCollection:
                WHERE l.share_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
 
         for row in cursor:
-            layout = self._row_to_layout_object(row)
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[7]:
+                layout_root_node = self._get_root_folder_id(row[7])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_shared_master_id']):
+                    folder_id = row[7]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_shared_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_shared_master_id'])
+
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                is_public=row[6],
+                folder_id=folder_id,
+                folder_parent_id=row[8],
+                folder_label=row[9]
+            )
+
+            layout.dataset_count = row[10]
             self.layouts.append(layout)
 
         cursor.close()
@@ -1095,7 +1193,8 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -1104,31 +1203,63 @@ class LayoutCollection:
                WHERE l.user_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
         for row in cursor:
-            layout = self._row_to_layout_object(row)
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[7]:
+                layout_root_node = self._get_root_folder_id(row[7])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_user_master_id']):
+                    folder_id = row[7]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_user_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_user_master_id'])
+
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                is_public=row[6],
+                folder_id=folder_id,
+                folder_parent_id=row[8],
+                folder_label=row[9]
+            )
+
+            layout.dataset_count = row[10]
             self.layouts.append(layout)
 
         cursor.close()
         conn.close()
         return self.layouts
 
-    def get_by_users_groups(self, user=None):
+    def get_by_users_groups(self, user=None, append=True):
         """
         Queries the DB to get all the groups of which the passed user is a member, then
         gets all layouts in those groups.
+
+        If the append argument is set to False, the class' layouts attribute will be
+        cleared before these are aded.
         """
         if not isinstance(user, User):
             raise Exception("LayoutCollection.get_by_users_groups() requires an instance of User to be passed.")
+
+        if append == False:
+            self.layouts = list()
 
         conn = Connection()
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
                      JOIN guser u ON u.id=ugm.user_id
@@ -1141,12 +1272,39 @@ class LayoutCollection:
                WHERE u.id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """ 
         cursor.execute(qry, (user.id,))
         
         for row in cursor:
-            layout = self._row_to_layout_object(row)
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[7]:
+                layout_root_node = self._get_root_folder_id(row[7])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_group_master_id']):
+                    folder_id = row[7]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_group_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_group_master_id'])
+            
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                is_public=row[6],
+                folder_id=folder_id,
+                folder_parent_id=row[8],
+                folder_label=row[9]
+            )
+            
+            layout.folder_root_id=layout_root_node
+            layout.dataset_count = row[10]
+            
             self.layouts.append(layout)
 
         cursor.close()
@@ -1161,7 +1319,8 @@ class LayoutCollection:
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
                      LEFT JOIN dataset d on lm.dataset_id=d.id
@@ -1170,17 +1329,233 @@ class LayoutCollection:
                WHERE l.is_domain = 1
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, f.id, f.parent_id, f.label
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
         
         for row in cursor:
-            layout = self._row_to_layout_object(row)
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[7]:
+                layout_root_node = self._get_root_folder_id(row[7])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_domain_master_id']):
+                    folder_id = row[7]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_domain_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_domain_master_id'])
+            
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                is_public=row[6],
+                folder_id=folder_id,
+                folder_parent_id=row[8],
+                folder_label=row[9]
+            )
+
+            layout.dataset_count = row[10]
             self.layouts.append(layout)
 
         cursor.close()
         conn.close()
         return self.layouts
+
+    def get_public(self):
+        """
+        Queries the DB to get all the site domain layouts.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
+                     f.id, f.parent_id, f.label, count(lm.id)
+                FROM layout l
+                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
+                     LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN folder_member fm ON fm.item_id=l.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE l.is_public = 1
+                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
+                 AND d.marked_for_removal = 0
+            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
+        """
+        cursor.execute(qry)
+        
+        for row in cursor:
+            # This layout could appear in multiple places in thet tree, within folders. If foldered,
+            #  make sure it's a folder in this root node.  Else set into the root node.
+            if row[7]:
+                layout_root_node = self._get_root_folder_id(row[7])
+
+                if layout_root_node == int(this.servercfg['folders']['profile_public_master_id']):
+                    folder_id = row[7]
+                else:
+                    folder_id = int(this.servercfg['folders']['profile_public_master_id'])
+            else:
+                folder_id = int(this.servercfg['folders']['profile_public_master_id'])
+            
+            layout = Layout(
+                id=row[0],
+                label=row[1],
+                is_current=row[2],
+                user_id=row[3],
+                share_id=row[4],            
+                is_domain=row[5],
+                is_public=row[6],
+                folder_id=folder_id,
+                folder_parent_id=row[8],
+                folder_label=row[9]
+            )
+
+            layout.dataset_count = row[10]
+            self.layouts.append(layout)
+
+        cursor.close()
+        conn.close()
+        return self.layouts
+
+
+@dataclass
+class Folder:
+    id: int = None
+    parent_id: int = None
+    label: str = None
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        return self.__dict__
+
+@dataclass
+class FolderCollection:
+    folders: List[Folder] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def get_by_folder_ids(self, ids=None):
+        """
+        Populates the self.folders attribute with the passed list of 
+        folder IDs. Resets self.folders on each execution.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+        self.folders = list()
+
+        ## Sanitize the IDs
+        cleaned = [ str(x) for x in ids if isinstance(x, int) ]
+
+        qry = """
+              SELECT id, parent_id, label
+                FROM folder
+               WHERE id in ({0})
+        """.format(",".join(cleaned))
+        
+        cursor.execute(qry)
+
+        for row in cursor:
+            folder = Folder(row)
+            self.folders.append(folder)
+        
+        cursor.close()
+        conn.close()
+        return self.folders
+
+    def get_root_folders(self, folder_type=None):
+        """
+        Returns a list of Folder elements for the root folders.
+
+        These should all map to entries within gear.ini -> [folders]
+
+        folder_type should be either 'cart' or 'profile'
+        """
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = "SELECT id, label FROM folder WHERE parent_id IS NULL";
+        cursor.execute(qry)
+
+        # Create an index of all the root folders.  Still need to filter/map
+        # them based on their type
+        rfs = dict()
+        for row in cursor:
+            rfs[row['id']] = row['label']
+
+        for scope in ['domain', 'user', 'group', 'shared', 'public']:
+            config_key = "{0}_{1}_master_id".format(folder_type, scope)
+            folder_id = int(this.servercfg['folders'][config_key])
+            
+            if folder_id in rfs:
+                folder = Folder(id=folder_id,
+                                parent_id=None,
+                                label=rfs[folder_id])
+                self.folders.append(folder)
+
+        cursor.close()
+        conn.close()
+        return self.folders
+
+    def get_tree_by_folder_ids(self, ids=None, folder_type=None):
+        """
+        Similar to get_by_folder_ids() but this gets the entire tree for any folder IDs
+        passed. Higher query cost than just running get_by_folder_ids(). 
+
+        Also always returns the root folders, even if they're empty.
+
+        This link looked like a good solution to handle within the database directly but 
+        couldn't get it to work across MySQL/MariaDB and versions.  Too delicate:
+
+        https://stackoverflow.com/a/60019201/1368079
+        """
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+        self.get_root_folders(folder_type=folder_type)
+        all_ids = list()
+
+        # Remember the root folders so we don't duplicate them
+        for folder in self.folders:
+            all_ids.append(folder.id)
+
+        new_ids_found = ids
+
+        while len(new_ids_found) > 0:
+            cleaned = [ str(x) for x in new_ids_found if isinstance(x, int) ]
+            
+            qry = """
+                  SELECT id, parent_id, label
+                    FROM folder
+                   WHERE id in ({0})
+            """.format(",".join(cleaned))
+
+            cursor.execute(qry)
+            new_ids_found = list()
+
+            for row in cursor:
+                folder = Folder(id=row['id'], parent_id=row['parent_id'], label=row['label'])
+
+                if folder.id not in all_ids:
+                    all_ids.append(folder.id)
+                    self.folders.append(folder)
+
+                if folder.parent_id and folder.parent_id not in all_ids:
+                    new_ids_found.append(folder.parent_id)
+
+        cursor.close()
+        conn.close()
+        return self.folders
+    
     
 @dataclass
 class DatasetLink:
@@ -1561,10 +1936,17 @@ class DatasetCollection:
                 else:
                     tag_list = row[16].replace(',', ', ')
 
+                # valid pubmed IDs are numeric
+                m = re.match("\d+", str(row[3]))
+                if m:
+                    pubmed_id = row[3]
+                else:
+                    pubmed_id = None
+
                 dataset = Dataset(id=row[0],
                                   title=row[1],
                                   organism_id=row[19],
-                                  pubmed_id=row[3],
+                                  pubmed_id=pubmed_id,
                                   geo_id=row[4],
                                   is_public=row[5],
                                   ldesc=row[6],
@@ -1599,6 +1981,9 @@ class DatasetCollection:
                 dataset.dataset_id = dataset.id
                 dataset.user_id = dataset.owner_id
                 dataset.math_format = dataset.math_default
+                # plot_default needs to be removed everywhere
+                # load_status needs to be removed everywhere
+                # schematic_image ?
 
                 if get_links:
                     dataset.get_links()

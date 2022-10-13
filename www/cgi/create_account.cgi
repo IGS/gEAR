@@ -33,6 +33,7 @@ def main():
     institution = form.getvalue('inputInstitution')
     user_email = form.getvalue('inputEmail')
     user_pass = form.getvalue('inputPassword')
+    colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
     get_updates = form.getvalue('getUpdates')
     remember_me = form.getvalue('rememberMe')
     result = {'session_id': 0, 'long_session': 0}
@@ -45,9 +46,11 @@ def main():
     if remember_me == 'yes':
         result['long_session'] = 1
 
+    colorblind_mode = 1 if colorblind_mode == 'yes' else 0
+
     add_user_sql = """
-       INSERT INTO guser (user_name, email, institution, pass, updates_wanted, help_id)
-       VALUES (%s, %s, %s, %s, %s, %s)
+       INSERT INTO guser (user_name, email, institution, pass, colorblind_mode, updates_wanted, help_id)
+       VALUES (%s, %s, %s, %s, %s, %s, %s)
     """
 
     add_session_sql = """
@@ -60,7 +63,7 @@ def main():
     else:
         encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
         help_id = str(uuid.uuid4())
-        cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, get_updates, help_id))
+        cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, colorblind_mode, get_updates, help_id))
         user_id = cursor.lastrowid
         session_id = str(uuid.uuid4())
         result['session_id'] = session_id

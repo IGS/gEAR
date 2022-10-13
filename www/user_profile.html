@@ -92,6 +92,14 @@
                         </div>
                         <div class="form-check form-group form-row">
                             <div class="offset-2">
+                            <input class="form-check-input" type="checkbox" id="colorblind_mode" name="colorblind_mode">
+                            <label class="form-check-label" for="colorblind_mode">
+                            Check box to view all plots using a colorscheme suitable for those with color-vision deficiencies.
+                            </label>
+                            </div>
+                        </div>
+                        <div class="form-check form-group form-row">
+                            <div class="offset-2">
                             <input id="wantUpdates" name="wantUpdates" type="checkbox" class="form-check-input" />
                             <label class="form-check-label" for="wantUpdates">Check box if you want to receive periodic news and updates about gEAR</label>
                             </div>
@@ -132,16 +140,5 @@
         <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
         <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
         <script>document.write('<script src="js/user_profile.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-        <!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-        <script>
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-
-          gtag('config', 'UA-59916932-1');
-        </script>
-
     </body>
 </html>

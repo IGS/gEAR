@@ -63,13 +63,13 @@
         </div>
         <div id='main_row' class="row">
           <div id="sidebar" class="col-2">
-            <div class="control_block">
-              <div class="form-group dropdown" id="dataset_c">
-                <div id="pre_dataset_spinner" style="display:none;">
-                  <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-                  <span>Loading datasets...</span>
-                </div>
-                <div id="dataset_id" value="" data-title="Click to change" class="form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
+            <div class="control_block form-group">
+              <div id="pre_dataset_spinner" style="display:none;">
+                <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+                <span>Loading datasets...</span>
+              </div>
+              <div class="form-control form-control-sm dropdown" id="dataset_c">
+                <div id="dataset_id" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
                 <div class="dropdown-menu" aria-labelledby="dataset_id">
                   <form class="px-4 py-3" onsubmit="return false;">
                     <div class="input-group input-group-sm mb-3">
@@ -946,16 +946,5 @@
     <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/analyze_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'UA-59916932-1');
-    </script>
-
   </body>
 </html>

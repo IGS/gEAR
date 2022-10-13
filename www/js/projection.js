@@ -1,10 +1,8 @@
+// ! This code was for early prototyping and is no longer used
+
 let SELECTED_PATTERN_LABEL = null;
 
 window.onload=() => {
-    // check if the user is already logged in
-    check_for_login();
-    session_id = Cookies.get('gear_session_id');
-
     $("#projection_source").on('change', () => {
         $('#projectr_intro').hide();
         source = $('#projection_source').val();

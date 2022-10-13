@@ -26,10 +26,7 @@ function disable_submit() {
 }
 
 window.onload=function() {
-    // check if the user is already logged in
-    check_for_login();
-
-    // Set the curator link href for when the user gets that far
+   // Set the curator link href for when the user gets that far
     var home_url = `./index.html`;
     var epiviz_panel_designer_url = `./epiviz_panel_designer.html`;
     $("#goHome").click(function() {
@@ -98,14 +95,14 @@ $("#upload_more").click(function(e){
             </div> \
         </div> \
     '
-    
+
     var newInput = $(newFileContainer);
     // var removeBtn = '';
     // var removeButton = $(removeBtn);
     addTo.after(newInput);
     // addTo.after(removeButton);
     $("#file" + filecount).attr('data-source',addTo.attr('data-source'));
-    $("#count").val(filecount);  
+    $("#count").val(filecount);
 
         // update this to remove the selected elemn not the last one
         $('.remove-me').click(function(e){
@@ -154,7 +151,7 @@ function add_file_handler (fcount) {
                 $('#file' + fcount + '_processing_status').html("File Upload Error");
                 // $('#file' + fcount + '_processing').find(".upload_spinner").hide();
                 $('#file' + fcount).addClass("alert alert-danger")
-    
+
                 var msg = "Unable to upload file " + data.files[0]["name"] + "to the server. Please try uploading the file again.";
                 alert_user(msg);
             } else {
@@ -234,7 +231,7 @@ $("#submit").click(function(e) {
         files[dataset_uid] = {};
         files[dataset_uid]["dataset_uid"] = dataset_uid;
         files[dataset_uid]["share_uid"] = share_uid;
-        
+
         // can be file or url but not both!
         var is_url = false;
         if (files_done[file_input.parent().find(".custom-file-label").html()]) {
@@ -265,7 +262,7 @@ $("#submit").click(function(e) {
                     } else {
                         var msg = "An upload error has occurred. Please try again.";
                         alert_user(msg);
-        
+
                         //reset submit button area
                         $("#submit").text("Submit");
                         $("#submit").attr("disabled", false);
@@ -275,7 +272,7 @@ $("#submit").click(function(e) {
                     console.log('jqXHR: ', jqXHR);
                     console.log('textStatus: ', textStatus);
                     console.log('errorThrown: ', errorThrown);
-        
+
                     var msg = "Unable to finish dataset upload. Please try again.";
                     alert_user(msg);
                 }
@@ -338,7 +335,7 @@ $("#submit_trackhub").click(function(e) {
                 // now add these files to the db;
                 data.data.forEach(function(dfile) {
                     console.log(dfile);
-                    
+
                     $("#trackhub_status").append("<p> Adding File " + dfile.name + ", URL: " + dfile.datasourceId + "</p>")
 
                     var dataset_uid = guid('long');
@@ -353,7 +350,7 @@ $("#submit_trackhub").click(function(e) {
                     files[dataset_uid]["file_title"] = dfile.name;
                     files[dataset_uid]["file_access"] = "1";
                     files[dataset_uid]["session_id"] = CURRENT_USER.session_id;
-                    
+
                     // very redundant, refactor & add method to send load requests between this and #submit!
                     $.ajax({
                         url: './cgi/load_dataset_epiviz.cgi',
@@ -370,7 +367,7 @@ $("#submit_trackhub").click(function(e) {
                             } else {
                                 var msg = "An upload error has occurred. Please try again.";
                                 alert_user(msg);
-                
+
                                 //reset submit button area
                                 $("#submit_trackhub").text("Submit");
                                 $("#submit_trackhub").attr("disabled", false);
@@ -380,7 +377,7 @@ $("#submit_trackhub").click(function(e) {
                             console.log('jqXHR: ', jqXHR);
                             console.log('textStatus: ', textStatus);
                             console.log('errorThrown: ', errorThrown);
-                
+
                             var msg = "Unable to finish dataset upload. Please try again.";
                             alert_user(msg);
                         }

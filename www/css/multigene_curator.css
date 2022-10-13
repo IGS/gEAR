@@ -63,3 +63,7 @@ label.control-label {
     z-index: 1;
     background-color: white;    /* To avoid text overlap with scrolling table */
 }
+
+#select2-colorscale_select-results {
+    max-height: 300px;  /* Personal preference.  Felt the default box height was too short for this selection. */
+}

@@ -5,6 +5,7 @@ CREATE TABLE guser (
        email          VARCHAR(255),
        institution    VARCHAR(255),
        pass           VARCHAR(50),
+       colorblind_mode TINYINT(1) DEFAULT 0,
        updates_wanted TINYINT(1),
        is_admin       TINYINT(1) DEFAULT 0,
        help_id        VARCHAR(50),
@@ -65,6 +66,8 @@ INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (6, 'Rat', 'Rattus', 'norvegicus', NULL, 10116);
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (7, 'Marmoset', 'Callithrix', 'jacchus', 'jacchus', 9483);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (8, 'Roundworm', 'Caenorhabditis', 'elegans', 'WBcel235', 6239);
 
 CREATE TABLE gene (
        id               INT PRIMARY KEY AUTO_INCREMENT,
@@ -81,6 +84,7 @@ CREATE TABLE gene (
        biotype          VARCHAR(100),
        INDEX            org_idx (organism_id),
        INDEX            org_sym (organism_id, gene_symbol),
+       INDEX            gene_sym (gene_symbol),
        FOREIGN KEY (organism_id) REFERENCES organism(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
@@ -280,6 +284,18 @@ CREATE TABLE folder (
        FOREIGN KEY (parent_id) REFERENCES folder(id) ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
+# The label for this one is not actually displayed.  It is set in tree.js
+INSERT INTO folder (id, parent_id, label) VALUES (101, NULL, 'Highlighted profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (102, NULL, 'Your profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (103, NULL, 'Group profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (104, NULL, 'Profiles shared with you');
+INSERT INTO folder (id, parent_id, label) VALUES (105, NULL, 'Other public profiles');
+INSERT INTO folder (id, parent_id, label) VALUES (106, NULL, 'Highlighted gene carts');
+INSERT INTO folder (id, parent_id, label) VALUES (107, NULL, 'Your gene carts');
+INSERT INTO folder (id, parent_id, label) VALUES (108, NULL, 'Group gene carts');
+INSERT INTO folder (id, parent_id, label) VALUES (109, NULL, 'Gene carts shared with you');
+INSERT INTO folder (id, parent_id, label) VALUES (110, NULL, 'Other public carts');
+
 CREATE TABLE folder_member (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        folder_id                INT NOT NULL,
@@ -295,6 +311,7 @@ CREATE TABLE layout (
        label                    VARCHAR(255),
        is_current               TINYINT(1) DEFAULT 0,
        is_domain                TINYINT(1) DEFAULT 0,
+       is_public                TINYINT(1) DEFAULT 0,
        share_id                 VARCHAR(24),
        FOREIGN KEY (user_id)
           REFERENCES guser(id)

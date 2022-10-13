@@ -1,10 +1,16 @@
+import copy
+import json
+import numbers
+import os
+import re
+import sys
+
+import geardb
+import pandas as pd
+import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
-import pandas as pd
-import copy, json, os, re
-import geardb
-import numbers
-from gear.plotting import generate_plot, get_config, plotly_color_map, PlotError
+from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
@@ -116,7 +122,8 @@ class PlotlyData(Resource):
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
-        projection_csv = req.get('projection_csv', None)  # As CSV path
+        projection_id = req.get('projection_id', None)    # projection id of csv output
+        colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.
@@ -198,7 +205,8 @@ class PlotlyData(Resource):
             except:
                 pass
 
-        if projection_csv:
+        if projection_id:
+            projection_csv = "{}.csv".format(projection_id)
             try:
                 adata = create_projection_adata(adata, projection_csv)
             except PlotError as pe:
@@ -259,6 +267,26 @@ class PlotlyData(Resource):
                     df[x_axis] = selected.obsm["X_pca"].transpose()[X]
                     df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
 
+        if color_map and color_name:
+            # Validate if all color map keys are in the dataframe columns
+            # Ran into an issue where the color map keys were truncated compared to the dataframe column values
+            col_values = set(df[color_name].unique())
+            diff = col_values.difference(color_map.keys())
+            if diff:
+                message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
+                message += "Will set color map key values to the unique values in the dataframe column."
+                print(message, file=sys.stderr)
+                # Sort both the colormap and dataframe column alphabetically
+                sorted_column_values = sorted(col_values)
+                updated_color_map = {}
+                # Replace all the colormap values with the dataframe column values
+                # There is a good chance that the dataframe column values will be in the same order as the colormap values
+                for idx, val in enumerate(sorted(color_map.keys())):
+                    col_val = sorted_column_values[idx]
+                    updated_color_map[col_val] = color_map[val]
+
+                color_map = updated_color_map
+
         if color_name and not (color_map or palette):
             # For numerical color dimensions, we want to use
             # one of plotly's baked in scales.
@@ -286,6 +314,26 @@ class PlotlyData(Resource):
                         color_hex = df[color_code].unique().tolist()
                         if re.search(COLOR_HEX_PTRN, color_hex[0]):
                             color_map = {name[0]:name[1] for name, group in grouped}
+
+        # Save original passed-in colormap or palette, so that it is not written by the colorblind version
+        chosen_color_map = color_map if color_map else None
+        chosen_palette = palette if palette else None
+
+        # NOTE: If no color_name category, just leave color as "purple"
+        # Using the reversed cividis scale so that higher expression values are darker
+        if colorblind_mode:
+            # Discrete scales = Viridis
+            # Continuous scales = Reversed Cividis
+            if palette:
+                palette = "cividis_r"
+            elif color_map:
+                if isinstance(color_map, list):
+                    color_map = pxc.get_colorscale("cividis_r")
+                elif isinstance(color_map, dict):
+                    num_entries = len(color_map)
+                    viridis_colors =  pxc.get_colorscale("viridis")
+                    sampled_colors = pxc.sample_colorscale(viridis_colors, num_entries)
+                    color_map = {key: value for key, value in zip(color_map.keys(), sampled_colors)}
 
         if 'replicate' in df and plot_type == 'scatter':
             df = df.drop(['replicate'], axis=1)
@@ -392,9 +440,8 @@ class PlotlyData(Resource):
             "facet_row": facet_row,
             "facet_col": facet_col,
             # only send back colormap for categorical color dimension
-            "plot_colors": color_map if isinstance(color_map, dict) else None,
-            "plot_palette": palette,
+            "plot_colors": chosen_color_map if isinstance(chosen_color_map, dict) else None,
+            "plot_palette": chosen_palette,
             "reverse_palette":reverse_palette,
-            "plot_config": get_config(),
             "plot_order": order_res,
         }

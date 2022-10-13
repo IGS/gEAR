@@ -1,13 +1,12 @@
+# Purely kept so we can debug with sys.stderr
+from itertools import cycle
+
+import plotly.express as px
+import plotly.graph_objects as go
+from matplotlib.pyplot import plot
 from plotly import exceptions
 from plotly.colors import unlabel_rgb
 from plotly.subplots import make_subplots
-import plotly.express as px
-import plotly.graph_objects as go
-
-from itertools import cycle
-
-# Purely kept so we can debug with sys.stderr
-import sys
 
 px.defaults.template = "none"
 blank_template = go.layout.Template()
@@ -123,7 +122,6 @@ def _adjust_colorscale(plotting_args, colormap=None, palette=None):
         if palette:
             plotting_args["color_continuous_scale"] = palette
 
-    # There is no palette option for discrete mapping
     return plotting_args
 
 def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=None ):
@@ -492,7 +490,6 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
             # use dataframe instead
             special_func(**new_plotting_args, row=1, col=1)
 
-
         #TODO: Since graph_object plots don't need 'category_orders' decide if we can drop passing that to the px functions
         fig.update_layout(template=blank_template)
         # Only tick labels from the first axis should be shown
@@ -607,47 +604,6 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         _add_kwargs_info_to_yaxes(fig, kwargs["yaxes"])
 
     return fig
-
-
-def get_config():
-    """Get config for Plotly chart."""
-    return dict(
-        showLink=False,
-        displaylogo=False,
-        responsive=False,
-        modebar = dict(orientation="v"), # Make Plotly controls flush with right of plot
-        modeBarButtonsToRemove=[
-            "zoom2d",
-            "pan2d",
-            #"select2d",
-            #"lasso2d",
-            "zoomIn2d",
-            "zoomOut2d",
-            "autoScale2d",
-            # "resetScale2d",
-            "hoverClosestCartesian",
-            "hoverCompareCartesian",
-            "zoom3d",
-            "pan3d",
-            "resetCameraDefault3d",
-            "resetCameraLastSave3d",
-            "hoverClosest3d",
-            "orbitRotation",
-            "tableRotation",
-            "zoomInGeo",
-            "zoomOutGeo",
-            "resetGeo",
-            "hoverClosestGeo",
-            # "toImage",
-            "sendDataToCloud",
-            "hoverClosestGl2d",
-            "hoverClosestPie",
-            "toggleHover",
-            "resetViews",
-            "toggleSpikelines",
-            "resetViewMapbox"
-        ]
- )
 
 def plotly_color_map(names):
     """

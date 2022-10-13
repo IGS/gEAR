@@ -51,7 +51,7 @@
   <body>
     <div id="body_c">
       <div id="navigation_bar">
-         <!-- content here inserted via JQuery -->
+      <!-- content here inserted via JQuery -->
       </div> <!-- end navigation_bar -->
 
       <div id="login_checking">
@@ -104,9 +104,9 @@
           </div>  <!-- end dataset_c -->
         </fieldset>
 
-        <div class="alert alert-danger" role="alert" id="no_observations_error" style="display:none;">There are no categorical observations found for this dataset.</div
+        <div class="alert alert-danger" role="alert" id="no_observations_error" style="display:none;">There are no categorical observations found for this dataset.</div>
 
-        <!-- Plot type selection-->
+        <!-- Plot type selection -->
         <fieldset class="form-group" id="plot_type_container">
           <legend for="plot_type_select">Step 2: Plot type selection</legend>
           <div id="post_dataset_spinner" style="display:none;">
@@ -163,6 +163,11 @@
             <button type='button' class="close col-1" id="gene_cart_clear" aria-label="Clear gene cart selection"> Clear</button>
           </div>  <!-- end gene_cart_container -->
           <div class="alert alert-warning" role="alert" id='genes_not_found' style="display:none;"></div>
+          <div id="gene_sort_container" style="display:none;">
+            <small id="gene_sort_help" class="form-text text-muted">Click to sort genes in the order you wish them to appear in the plot.</small>
+            <button type="button" class="btn btn-outline-purple" data-toggle="modal" data-target="#gene_sort_modal">Choose Sort Order</button>
+          </div>
+
         </fieldset>
 
         <fieldset id="options_container" style="display:none;">
@@ -206,6 +211,7 @@
                   Center the mean expression values around zero.
                 </label>
               </div>
+              <small id="center_around_zero_help" class="form-text text-muted">Choosing a diverging colorscale is recommended when enabling this option, and a sequential colorscale when disabling this option.</small>
             </div>
             <div class="form-group" id="cluster_obs_checkbox_container">
               <div class="form-check">
@@ -226,6 +232,9 @@
                   Perform hierarchical clustering of genes.
                 </label>
               </div>
+              <small class="form-text text-muted">
+                NOTE: Disables sorting by genes
+              </small>
             </div>
             <div class="form-group" id="flip_axes_checkbox_container">
               <div class="form-check" aria-describedby="flip_axes_help">
@@ -235,6 +244,22 @@
                 </label>
               </div>
               <small id="flip_axes_help" class="form-text text-muted">Genes as columns, observations as rows.</small>
+            </div>
+            <div class="form-group" id="hide_obs_labels_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="hide_obs_labels">
+                <label class="form-check-label" for="hide_obs_labels">
+                  Hide observation labels in axis
+                </label>
+              </div>
+            </div>
+            <div class="form-group" id="hide_gene_labels_checkbox_container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="hide_gene_labels">
+                <label class="form-check-label" for="hide_gene_labels">
+                  Hide gene labels in axis
+                </label>
+              </div>
             </div>
           </fieldset>
           <fieldset id="quadrant_options_container" style="display:none;">
@@ -362,12 +387,25 @@
             </select>
           </div>
 
-          <div>
+          <div class="form-group">
             <label class="form-check-label" for="plot_title">Adjust plot title</label>
             <small id="plot_title_help" class="form-text text-muted">If left blank, plot will have a default title or no title.</small>
             <input class="form-control col-6" id="plot_title" placeholder="Enter name of title.">
           </div>
-        </fieldset> <!-- end options -->
+
+          <div class="form-group" id="colorscale_container">
+            <label class="form-check-label" for="colorscale_select">Select colorscale for plot</label>
+            <small id="colorscale_help" class="form-text text-muted">Select the colorscale used in this plot. Leaving unselected will use a default colorscale particular to the plot type.</small>
+            <select class="form-control" id="colorscale_select" aria-describedby="colorscale_help"></select>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="reverse_colorscale">
+              <label class="form-check-label" for="reverse_colorscale">
+                Reverse colorscale used in plot.
+              </label>
+            </div>
+          </div>
+        </fieldset>
+        <!-- end options -->
 
         <!-- Action buttons-->
         <div id="action_buttons" class="my-3">
@@ -524,6 +562,26 @@
         </div>
       </div>
     </div>  <!-- end download_plot_modal -->
+
+    <div class="modal fade" id="gene_sort_modal" tabindex="-1" role="dialog" aria-labelledby="gene_sort_label" aria-hidden="true">
+      <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="gene_sort_label">Choose gene sort order</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <small class="form-text text-muted">Changes will automatically be applied.</small>
+            <ul id="gene_sortable" class="list-group"></ul>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>  <!-- end gene_sort_modal -->
     <!-- end modals-->
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">
@@ -594,7 +652,7 @@
       </div>
     </script>
 
-    <script id="obs_sortable_tmpl" type="text/x-jsrender">
+    <script id="sortable_tmpl" type="text/x-jsrender">
       {{for sortData}}
       <li class="ui-state-default list-group-item p-1" value="{{:#data}}"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>{{:#data}}</li>
       {{/for}}
@@ -645,6 +703,16 @@
         {{/props}}
       </optgroup>
       {{/props}}
+    </script>
+
+    <script id="select_colorscale_tmpl" type="text/x-jsrender">
+      <option></option>
+      <optgroup label="{{:label}}">
+        {{for options}}
+          {{!-- key is list index, prop is the value --}}
+          <option value="{{:value}}">{{:text}}</option>
+        {{/for}}
+      </optgroup>
     </script>
 
     <script id="dataset_plot_tmpl" type="text/x-jsrender">
@@ -744,16 +812,5 @@
     <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/multigene_curator.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'UA-59916932-1');
-    </script>
-
   </body>
 </html>

@@ -35,13 +35,12 @@ class DatasetCollectionPanel {
 
         // we have to do this because 'this' gets scoped out within the AJAX call
         const dsc_panel = this;
-
         $.ajax({
             url: "./cgi/get_dataset_list.cgi",
             type: "POST",
             async: false, // Adding so datasets are updated before the set_layout() AJAX call happens
             data: {
-                session_id: session_id,
+                session_id,
                 permalink_share_id: dataset_id,
                 exclude_pending: 1,
                 default_domain: this.layout_label,
@@ -52,7 +51,8 @@ class DatasetCollectionPanel {
                 $.each(data["datasets"], (_i, ds) => {
                     // Choose single-gene or multigene grid-width
                     const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
-                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection);
+
+                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.controller);
 
                     if (dsp.load_status == "completed") {
                         // reformat the date
@@ -74,7 +74,6 @@ class DatasetCollectionPanel {
                     const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
                     const permalinkViewHtml = permalinkViewTmpl.render(data["datasets"]);
                     $("#permalink_info").html(permalinkViewHtml);
-                    const listViewTmpl = $.templates("#tmpl_datasetbox");
                     dsc_panel.datasets.forEach((ds) => (ds.zoomed = true));
                 }
                 const listViewTmpl = $.templates("#tmpl_datasetbox");
@@ -90,9 +89,21 @@ class DatasetCollectionPanel {
     reset() {
         this.datasets = [];
         $("#dataset_grid").empty();
+        this.reset_abort_controller();
     }
 
-    async set_layout(
+    reset_abort_controller() {
+        if (this.controller) {
+            this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        }
+        this.controller = new AbortController(); // Create new controller for new set of frames
+
+        for (const dataset of this.datasets) {
+            dataset.controller = this.controller;
+        }
+    }
+
+    set_layout(
         layout_id,
         layout_label,
         do_load_frames,
@@ -102,7 +113,6 @@ class DatasetCollectionPanel {
         /*
               Updates this object, the user's stored cookie, and the database and UI labels
             */
-        const d = new $.Deferred();
 
         Cookies.set("gear_default_domain", layout_label);
 
@@ -128,50 +138,44 @@ class DatasetCollectionPanel {
             $.ajax({
                 url: "./cgi/set_primary_layout.cgi",
                 type: "post",
-                data: { session_id: CURRENT_USER.session_id, layout_id: layout_id },
-                success(data) {
-                    if (data.success == 1) {
-                        //Was a search already performed?
-                        if ($("#search_gene_symbol").val()) {
-                            // User has already searched, automatically update datasets and gene searches
-                            update_datasetframes_generesults();
-                        }
-                    } else {
-                        $(".alert-container")
-                            .html(
-                                '<div class="alert alert-danger alert-dismissible" role="alert">' +
-                                '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                                '<p class="alert-message"><strong>Oops! </strong> ' +
-                                data.error +
-                                "</p></div>"
-                            )
-                            .show();
+                data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
+            }).done((data) => {
+                if (data.success == 1) {
+                    //Was a search already performed?
+                    if ($("#search_gene_symbol").val()) {
+                        // User has already searched, automatically update datasets and gene searches
+                        update_datasetframes_generesults();
                     }
-                    d.resolve();
-                },
+                } else {
+                    $(".alert-container")
+                        .html(
+                            '<div class="alert alert-danger alert-dismissible" role="alert">' +
+                            '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                            '<p class="alert-message"><strong>Oops! </strong> ' +
+                            data.error +
+                            "</p></div>"
+                        )
+                        .show();
+                }
+            }).fail((jqXHR, _textStatus, errorThrown) => {
+                display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
-        } else {
-            d.resolve();
         }
-
-        return d.promise();
     }
 
     // Single-gene displays
     update_by_search_result(entry) {
+        this.reset_abort_controller();
+
         for (const dataset of this.datasets) {
-            if (dataset.projection_csv) {
-                // Working with projection patterns... need the projectR csv output in order to plot.
-                // TODO: Technically, if I can keep "entry" consistent b/t gene and projection mode, I can deal with this logic in the "draw" method
-                dataset.draw({ gene_symbol: entry });
-            } else if (
+            if (
                 typeof entry !== "undefined" &&
                 dataset.organism_id in entry.by_organism
             ) {
                 // If working with actual genes, ensure dataset and entry's organisms match for annotation purposes.
                 const gene = JSON.parse(entry.by_organism[dataset.organism_id][0]);
                 const gene_symbol = gene.gene_symbol;
-                dataset.draw({ gene_symbol: gene_symbol });
+                dataset.draw({ gene_symbol });
             } else {
                 if (dataset.display) dataset.display.clear_display();
                 dataset.show_no_match();
@@ -180,9 +184,12 @@ class DatasetCollectionPanel {
     }
 
     // Multigene displays
+    // Only executes in "gene" mode
     update_by_all_results(entries) {
+        this.reset_abort_controller();
+
         for (const dataset of this.datasets) {
-            if (typeof entries !== "undefined" || dataset.projection_csv) {
+            if (typeof entries !== "undefined") {
                 // TODO: Do something with "by_organism" like single-gene "update_by_search_result"
                 // 'entries' is array of gene_symbols
                 dataset.draw_mg({ gene_symbols: entries });
@@ -191,10 +198,5 @@ class DatasetCollectionPanel {
                 dataset.show_no_match();
             }
         }
-    }
-
-    // Run projectR on all datasets in this profile
-    async run_projectR_on_all_datasets(projection_source) {
-        return await Promise.all(this.datasets.map(ds => ds.run_projectR(projection_source)));
     }
 }

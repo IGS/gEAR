@@ -56,7 +56,6 @@ $(document).ready(function() {
 
 function get_dataset_notes(dataset_id, scope) {
     //scope = 'sidepanel' || 'popout'
-    var session_id = Cookies.get('gear_session_id');
     $.ajax({
         url: './cgi/get_dataset_notes.cgi',
         type: 'POST',
@@ -394,7 +393,6 @@ $(document).on('click', 'button#save_new_note, button.btn_save_edit_note', funct
     }
 
     // Collect note information
-    var session_id = Cookies.get('gear_session_id');
     var note_id = '';
     var text = '';
     var ldesc = '';
@@ -470,7 +468,6 @@ $(document).on('click', 'button#save_new_note, button.btn_save_edit_note', funct
 $(document).on('click', '.btn_remove_note', function(e) {
     var note_id = $(e.target).attr('data-note-id');
     var scope = 'remove';
-    var session_id = Cookies.get('gear_session_id');
 
     $.ajax({
         url: './cgi/apply_note_changes.cgi',

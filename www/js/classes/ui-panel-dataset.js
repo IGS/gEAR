@@ -22,7 +22,9 @@ class DatasetPanel extends Dataset {
         { grid_position, ...args },
         grid_width,
         multigene = false,
-        projection = false
+        projection = false,
+        colorblind_mode = false,
+        controller = null,
     ) {
         super(args);
         this.grid_position = grid_position;
@@ -37,28 +39,23 @@ class DatasetPanel extends Dataset {
         const single_or_multi = this.multigene ? "multi" : "single";
         const genes_or_projection = this.projection ? "projection" : "genes";
         this.primary_key = `${this.id}_${this.grid_position}_${genes_or_projection}_${single_or_multi}`;
-        this.projection_csv = null;
+        this.projection_id = null;
+        this.h5ad_info = null;
         //this.links = args.links;
         //this.linksfoo = "foo";
-
-        this.fetch_h5ad_info({ dataset_id: this.id, analysis: undefined }).then(
-            (data) => {
-                this.h5ad_info = data;
-            }
-        );
+        this.controller = controller;   // AbortController
     }
 
     // Call API to return observation information on this dataset
-    fetch_h5ad_info (payload) {
-        const { dataset_id, analysis } = payload;
+    fetch_h5ad_info (dataset_id, analysis) {
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         const base = `./api/h5ad/${dataset_id}`;
         const query = analysis ? `?analysis=${analysis.id}` : '';
-        return $.ajax({
-            url: `${base}${query}`,
-            dataType: 'json',
-            type: "GET",
-            async: false
-        });
+        return axios.get(`${base}${query}`, other_opts);
     }
 
     get_dataset_displays(user_id, dataset_id) {
@@ -106,29 +103,23 @@ class DatasetPanel extends Dataset {
         }
 
         data.primary_key = this.primary_key;
+        data.controller = this.controller;
+        data.projection_id = this.projection_id;
+        data.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         let display;
         if (
-            data.plot_type === "bar" ||
-            data.plot_type === "scatter" ||
-            data.plot_type === "violin" ||
-            data.plot_type === "line" ||
-            data.plot_type === "contour" ||
-            data.plot_type === "tsne_dynamic" || // legacy
-            data.plot_type === "tsne/umap_dynamic"
+            ["bar", "scatter", "violin", "line", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(data.plot_type)
         ) {
-            display = new PlotlyDisplay(data, this.projection_csv);
+            display = new PlotlyDisplay(data);
         } else if (data.plot_type === "svg") {
-            display = new SVGDisplay(data, this.grid_width, this.projection_csv);
+            display = new SVGDisplay(data, this.grid_width);
         } else if (
-            data.plot_type === "tsne" ||
-            data.plot_type === "tsne_static" ||
-            data.plot_type === "umap_static" ||
-            data.plot_type === "pca_static"
+            ["tsne", "tsne_static", "umap_static", "pca_static"].includes(data.plot_type)
         ) {
-            display = new TsneDisplay(data, gene_symbol, this.projection_csv);
+            display = new TsneDisplay(data, gene_symbol);
         } else if (data.plot_type === "epiviz") {
-            display = new EpiVizDisplay(data, gene_symbol, this.projection_csv);
+            display = new EpiVizDisplay(data, gene_symbol);
         }
         this.display = display;
 
@@ -148,16 +139,15 @@ class DatasetPanel extends Dataset {
         }
 
         data.primary_key = this.primary_key;
+        data.controller = this.controller;
+        data.projection_id = this.projection_id;
+        data.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         let display;
         if (
-            data.plot_type === "dotplot" ||
-            data.plot_type === "heatmap" ||
-            data.plot_type === "quadrant" ||
-            data.plot_type === "mg_violin" ||
-            data.plot_type === "volcano"
+            ["dotplot", "heatmap", "quadrant", "mg_violin", "volcano"].includes(data.plot_type)
         ) {
-            display = new MultigeneDisplay(data, gene_symbols, this.projection_csv);
+            display = new MultigeneDisplay(data, gene_symbols);
         }
         this.display = display;
 
@@ -245,6 +235,19 @@ class DatasetPanel extends Dataset {
         }
 
         // All multigene plot types require a categorical observation to plot from. So there would be no curations for these datasets anyways.
+        if (! this.h5ad_info) {
+            try {
+                const res = await this.fetch_h5ad_info(this.id, undefined )
+                this.h5ad_info = res.data;
+            } catch (err) {
+                if (err.name == "CanceledError") {
+                    console.info("Canceled fetching h5ad info for previous request");
+                    return;
+                }
+                this.show_error("Could not retrieve observation info for this dataset.");
+                return;
+            }
+        }
         if (!Object.keys(this.h5ad_info.obs_levels).length) {
             this.show_error(
                 "This dataset does not have any categorical observations to plot from."
@@ -314,23 +317,20 @@ class DatasetPanel extends Dataset {
             typeof display.plotly_config == "string"
                 ? JSON.parse(display.plotly_config)
                 : display.plotly_config;
-        const gene_symbol = config.gene_symbol;
+        const { gene_symbol } = config;
+
+        display.controller = this.controller;
+        display.colorblind_mode = CURRENT_USER.colorblind_mode;
 
         if (gene_symbol) {
             if (
-                display.plot_type === "violin" ||
-                display.plot_type === "bar" ||
-                display.plot_type === "line" ||
-                display.plot_type === "scatter" ||
-                display.plot_type === "contour" ||
-                display.plot_type === "tsne_dynamic" || // legacy
-                display.plot_type === "tsne/umap_dynamic"
+                ["violin", "bar", "line", "scatter", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(display.plot_type)
             ) {
                 const d = new PlotlyDisplay(display);
                 d.get_data(gene_symbol).then(({ data }) => {
-                    const { plot_json, plot_config } = data;
+                    const { plot_json } = data;
                     Plotly.toImage(
-                        { ...plot_json, plot_config },
+                        { ...plot_json, ...{static_plot:true} },
                         { height: 500, width: 500 }
                     ).then((url) => {
                         $(`#modal-display-img-${display.id}`).attr("src", url);
@@ -338,7 +338,7 @@ class DatasetPanel extends Dataset {
                 });
             } else if (display.plot_type === "svg") {
                 const target = `modal-display-${display.id}`;
-                const d = new SVGDisplay(display, null, null, target);
+                const d = new SVGDisplay(display, null, target);
                 d.get_data(gene_symbol).then(({ data }) => {
                     d.draw_chart(data);
                 });
@@ -362,14 +362,18 @@ class DatasetPanel extends Dataset {
             typeof display.plotly_config === "string"
                 ? JSON.parse(display.plotly_config)
                 : display.plotly_config;
-        const gene_symbols = config.gene_symbols;
+        const { gene_symbols } = config;
+
+        display.controller = this.controller;
+        display.colorblind_mode = CURRENT_USER.colorblind_mode;
+
         // Draw preview image
         if (gene_symbols) {
             const d = new MultigeneDisplay(display, gene_symbols);
             d.get_data(gene_symbols).then(({ data }) => {
-                const { plot_json, plot_config } = data;
+                const { plot_json } = data;
                 Plotly.toImage(
-                    { ...plot_json, plot_config },
+                    { ...plot_json, ...{static_plot:true} },
                     { height: 500, width: 500 }
                 ).then((url) => {
                     $(`#modal-display-img-${display.id}`).attr("src", url);
@@ -520,25 +524,51 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source) {
+    async run_projectR(projection_source, is_pca, scope) {
         const dataset_id = this.id;
         const payload = {
-            scope: "repository",
-            input_value: projection_source,
+            genecart_id: projection_source,
+            is_pca,
         };
+        const other_opts = {}
+        if (this.controller) {
+            other_opts.signal = this.controller.signal;
+        }
+
         try {
-            const { data } = await axios.post(`/api/projectr/${dataset_id}`, {
-                ...payload,
-            });
-            if (data.success < 1 && this.display) {
-                this.show_error(data.message);
+            const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
+            // If file was not found, put some loading text in the plot
+            if (! response.data.projection_id) {
+                this.show_loading({
+                    info:"Plot generation may take a few minutes as projections need to be generated beforehand."
+                });
+            }
+            payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
+        } catch (e) {
+            this.show_error(e.message);
+            throw(e.message);
+        }
+
+        payload.scope = scope;
+
+        let message = "There was an error projecting patterns onto this dataset.";
+        try {
+            const { data } = await axios.post(`/api/projectr/${dataset_id}`, payload, other_opts);
+            if (data.message) {
+                message = data.message;
+            }
+            if (data.success < 1) {
+                throw message; // will be caught below
+            }
+            this.projection_id = data.projection_id;
+            this.show_info(message)
+        } catch (e) {
+            if (e.name == "CanceledError") {
+                console.info("Canceled previous projectR request.");
                 return;
             }
-            this.projection_csv = data.csv_file;
-        } catch (e) {
-            const message = "There was an error in making this projection.";
-            const success = -1;
             this.show_error(message);
+            throw message
         }
     }
 }

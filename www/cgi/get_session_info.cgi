@@ -31,7 +31,7 @@ def main():
     result = {'email':None, 'name':None, 'success':0}
 
     session_qry = """
-       SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.updates_wanted
+       SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.colorblind_mode, u.updates_wanted
          FROM guser u
               JOIN user_session us ON u.id=us.user_id
         WHERE us.session_id = %s
@@ -44,7 +44,8 @@ def main():
         , 'is_admin':row[2]
         , 'id':row[3]
         , 'institution':row[4]
-        , 'updates_wanted':row[5]
+        , 'colorblind_mode': row[5]
+        , 'updates_wanted':row[6]
         , 'success':1
         }
         break

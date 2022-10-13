@@ -55,10 +55,6 @@ const log10_transformed_datasets = [
 const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
 
 window.onload = () => {
-	// check if the user is already logged in
-	check_for_login();
-	session_id = Cookies.get("gear_session_id");
-
 	$(".btn-apply-filter").on("click", () => {
 		$(".initial_instructions").hide();
 		$("#myChart").html("");
@@ -216,43 +212,43 @@ function load_comparison_graph() {
 	$("#genes_not_found").empty().hide();
 
 	$.ajax({
-	url: "./cgi/get_dataset_comparison.cgi",
-	type: "POST",
-	data: {
-		dataset_id,
-		condition_x: condition_x_string,
-		condition_y: condition_y_string,
-		fold_change_cutoff: $("#fold_change_cutoff").val(),
-		std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
-		log_transformation: $("#log_base").val(),
-		statistical_test: $("#statistical_test").val(),
-	},
-	dataType: "json",
-	success(data, textStatus, jqXHR) {
-		if (data.success == 1) {
-		$("#fold_change_std_dev").html(data.fold_change_std_dev);
-		plot_data = data;
-		plot_data_to_graph(data);
-		} else {
-		// Handle graphing failures
-		$("#plot_loading").hide();
-		$("#ticket_dataset_id").text(dataset_id);
-		$("#ticket_dataset_text").text(dataset_text);
-		$("#ticket_datasetx_condition").text(condition_x_string);
-		$("#ticket_datasety_condition").text(condition_y_string);
-		$("#ticket_error_msg").html(data.error);
-		$("#error_loading_c").show();
-		}
-	},
-	error(jqXHR, textStatus, errorThrown) {
-		// Handle graphing failures
-		$("#plot_loading").hide();
-		$("#ticket_dataset_id").text(dataset_id);
-		$("#ticket_dataset_text").text(dataset_text);
-		$("#ticket_datasetx_condition").text(condition_x_string);
-		$("#ticket_datasety_condition").text(condition_y_string);
-		$("#error_loading_c").show();
-	},
+		url: "./cgi/get_dataset_comparison.cgi",
+		type: "POST",
+		data: {
+			dataset_id,
+			condition_x: condition_x_string,
+			condition_y: condition_y_string,
+			fold_change_cutoff: $("#fold_change_cutoff").val(),
+			std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
+			log_transformation: $("#log_base").val(),
+			statistical_test: $("#statistical_test").val(),
+		},
+		dataType: "json",
+		success(data, textStatus, jqXHR) {
+			if (data.success == 1) {
+			$("#fold_change_std_dev").html(data.fold_change_std_dev);
+			plot_data = data;
+			plot_data_to_graph(data);
+				return;
+			}
+			// Handle graphing failures
+			$("#plot_loading").hide();
+			$("#ticket_dataset_id").text(dataset_id);
+			$("#ticket_dataset_text").text(dataset_text);
+			$("#ticket_datasetx_condition").text(condition_x_string);
+			$("#ticket_datasety_condition").text(condition_y_string);
+			$("#ticket_error_msg").html(data.error);
+			$("#error_loading_c").show();
+		},
+		error(jqXHR, textStatus, errorThrown) {
+			// Handle graphing failures
+			$("#plot_loading").hide();
+			$("#ticket_dataset_id").text(dataset_id);
+			$("#ticket_dataset_text").text(dataset_text);
+			$("#ticket_datasetx_condition").text(condition_x_string);
+			$("#ticket_datasety_condition").text(condition_y_string);
+			$("#error_loading_c").show();
+		},
 	});
 }
 
@@ -365,7 +361,7 @@ $(document).on('change', '.js-cat-check', function (e) {
 $(document).on('click', '.js-cat-collapse', function (e) {
 	// If category was clicked, then toggle collapsable element
 	// Controlling via JS instead of "data-target" since we may need to escape CSS selectors
-	const id = this.id;
+	const { id } = this;
 	const category = id.replace('_collapse', '');
 	const escapedCategory = $.escapeSelector(category);
 	const category_collaspable = $(`#${escapedCategory}_body`);
@@ -391,8 +387,7 @@ $(document).on('change', '.js-group-check', function(e) {
 	// If there is a combination of checked/unchecked the "each" loop breaks early
 	let all = true;
 	$(category_collaspable).find('input[type="checkbox"]').each(function(){
-		const return_value = all = ($(this).prop("checked") === checked);
-		return return_value;
+		return all = ($(this).prop("checked") === checked);
 	});
 
 	if (all) {
@@ -443,6 +438,8 @@ function stringify_all_conditions(condition) {
 	}
 	return sanitized_condition;
 }
+
+$(document).on("build_jstrees", () => populate_dataset_selection_controls());
 
 async function populate_dataset_selection_controls() {
 	const dataset_id = getUrlParameter("dataset_id");
@@ -591,6 +588,9 @@ function plot_data_to_graph(data) {
 		}
 		}
 
+		pass_color = CURRENT_USER.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		fail_color = CURRENT_USER.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+
 		plotdata = $("input[name='stat_action']:checked").val() == "colorize" ? [
 		{
 			id: passing.id,
@@ -603,7 +603,7 @@ function plot_data_to_graph(data) {
 			type: "scatter",
 			text: passing.labels,
 			marker: {
-			color: "#FF0000",
+			color: pass_color,
 			size: 4,
 			},
 		},
@@ -618,7 +618,7 @@ function plot_data_to_graph(data) {
 			type: "scatter",
 			text: failing.labels,
 			marker: {
-			color: "#A1A1A1",
+			color: fail_color,
 			size: 4,
 			},
 		},
@@ -657,6 +657,8 @@ function plot_data_to_graph(data) {
 		modebar: {orientation: "v"}
 	};
 
+	annotation_color = CURRENT_USER.colorblind_mode ? 'rgb(125, 124, 118)' : "crimson";
+
 	// Take genes to search for and highlight their datapoint in the plot
 	const genes_not_found = [];
 	if ($('#highlighted_genes').val()) {
@@ -676,10 +678,10 @@ function plot_data_to_graph(data) {
 				y: plotdata[i].y[j],
 				text:plotdata[i].id[j],
 				font: {
-					color: "crimson",
+					color: annotation_color,
 				},
 				showarrow: true,
-				arrowcolor: "crimson",
+				arrowcolor: annotation_color,
 
 				});
 				found = true;
