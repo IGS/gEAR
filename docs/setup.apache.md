@@ -1,8 +1,8 @@
-## Apache configuration notes for gEAR instances
+# Apache configuration notes for gEAR instances
 
 This document is intended to capture all the customizations to the apache2 config files needed for a gEAR instance to operate properly.  The paths given are those for a standard Ubuntu installation, but adjust as needed for another platform.
 
-### Enabling mod-rewrite, CGI, PHP and WSGI
+## Enabling mod-rewrite, CGI, PHP and WSGI
 
     $ sudo a2enmod rewrite
     $ sudo a2enmod cgi
@@ -11,8 +11,8 @@ This document is intended to capture all the customizations to the apache2 confi
     $ sudo a2enmod wsgi
     $ sudo a2enmod proxy
     $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork && sudo a2enmod php8.1
-    
-### PHP (used by uploader)
+
+## PHP (used by uploader)
 
     $ sudo apt install php
 
@@ -27,9 +27,15 @@ Modifications to make:
     post_max_size = 3000M
     upload_max_filesize = 3000M
 
+### Note about Ubuntu 22.04 Jammy
 
+If upgrading from 20.04 to 22.04, then a couple extra steps need to be taken as the former PHP (7.4) is not available in the newer OS version, which has PHP 8.1
 
-### /etc/apache2/apache2.conf
+sudo a2enmod php8.1
+sudo a2dismod php7.4
+sudo systemctl apache restart
+
+## /etc/apache2/apache2.conf
 
 Aside from the default things, these sections are important
 
@@ -60,7 +66,7 @@ Aside from the default things, these sections are important
     WSGIPythonHome "/opt/Python-3.10.4"
     LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
 
-### /etc/apache2/sites-available/000-default.conf
+## /etc/apache2/sites-available/000-default.conf
 
 Assuming you have SSL setup (below) you want to make sure apache redirects http traffic
 to https, so you need to add this line to the <VirtualHost *:80> block, adjusted for your
@@ -68,7 +74,7 @@ domain, of course:
 
     Redirect permanent / https://umgear.org/
 
-### Disable apache's PrivateTmp
+## Disable apache's PrivateTmp
 
 gEAR lets users write datafiles such as analyses in an area under /tmp until they want to
 save, when they are moved to a directory within the application.  If Apache has PrivateTmp
@@ -90,7 +96,7 @@ You need to turn it off.  On Ubuntu 20, you can find the setting in this file:
 
 Set it to false, then restart apache.
 
-### Victor's SSL instructions
+## Victor's SSL instructions
 
     $ sudo a2enmod ssl
     $ sudo service apache2 restart
@@ -104,14 +110,14 @@ Used a2ensite to enable the umgear-ssl site.
      $ sudo a2ensite
      $ sudo service apache2 restart
 
-#### Custom config needed for Flask API
+### Custom config needed for Flask API
 
 Resources:
 - https://pypi.org/project/mod_wsgi/
 - http://flask.pocoo.org/docs/1.0/deploying/mod_wsgi/
 - https://www.digitalocean.com/community/tutorials/how-to-deploy-a-flask-application-on-an-ubuntu-vps
 
-### /etc/apache2/sites-available/umgear-ssl.conf
+## /etc/apache2/sites-available/umgear-ssl.conf
 
 This needs to be tailored for each machine's resources to match the processors (cores) present
 and number of threads within each process.  If not running under SSL, this goes in 000-default.conf
@@ -139,13 +145,13 @@ There's a lot in here, but the CGI-related addition is:
             </IfVersion>
     </Directory>
 
-### /etc/apache2/mods-available/wsgi.load
+## /etc/apache2/mods-available/wsgi.load
 
-## The version numbers here need to coincide with the python version installed
+### The version numbers here need to coincide with the python version installed
 
 LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
 
-### /etc/apache2/mods-enabled/wsgi.conf
+## /etc/apache2/mods-enabled/wsgi.conf
 
 Add the line `WSGIPythonHome "/opt/Python-3.10.4"` into the IfModule block.
 
