@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import sys
 
 class GeneMap:
@@ -52,10 +53,45 @@ class GeneMap:
     """
     def __init__(self, source_org_id=None, source_annot_type=None,
                  dest_org_id=None, dest_annot_type=None):
-        self.source_org_id = source_org_id
-        self.source_annot_type = source_annot_type
-        self.dest_org_id=dest_org_id
-        self.dest_annot_type=dest_annot_type
+
+        if source_org_id:
+            self.source_org_id = source_org_id
+        else:
+            raise Exception("source_org_id is a required argument when creating a GeneMap")
+
+        if source_annot_type:
+            self.source_annot_type = source_annot_type
+        else:
+            raise Exception("source_annot_type is a required argument when creating a GeneMap")
+
+        if dest_org_id:
+            self.dest_org_id=dest_org_id
+        else:
+            raise Exception("dest_org_id is a required argument when creating a GeneMap")
+
+        if dest_annot_type:
+            self.dest_annot_type=dest_annot_type
+        else:
+            raise Exception("dest_annot_type is a required argument when creating a GeneMap")
+
+        
 
     def map(self, item):
-        pass
+        # Detect which type of thing is being passed
+        if isinstance(item, str):
+            return 'Atoh1a'
+        
+        else:
+            raise Exception("Error: unsupported object type ({0}) passed to map function".format(item_type))
+
+
+"""
+def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
+    # Remap the passed-in Dataframe to have gene indexes from the orthologous mapping file.
+    # Read HDF5 file using Pandas read_hdf
+    orthomap_df = pd.read_hdf(orthomap_file)
+    # Index -> gs1 / id2 / gs2
+    orthomap_dict = orthomap_df.to_dict()["id2"]
+    # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
+    return orig_df.rename(index=orthomap_dict)
+"""
