@@ -35,6 +35,7 @@ fixed paths have worked fine for decades.
       dash-bio==1.0.2 \
       Flask==2.1.0 \
       Flask-RESTful==0.3.9 \
+      gunicorn \
       h5py==3.6.0 \
       itsdangerous==2.1.2 \
       jupyter==1.0.0 \
@@ -53,6 +54,7 @@ fixed paths have worked fine for decades.
       python-dotenv==0.20.0 \
       requests==2.27.1 \
       rpy2==3.5.4 \
+      sanic \
       scanpy==1.8.2 \
       scanpy[louvain]==1.8.2 \
       scikit-learn==1.0.2 \
