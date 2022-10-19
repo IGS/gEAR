@@ -566,7 +566,11 @@
                     <div class="organism_icon_c"></div>
                     <script id="organism_list_tmpl" type="text/x-jsrender">
                       <button id="annot_organism_{{:id}}" class="icon-organism" data-organism-id="{{:id}}" data-toggle="tooltip" data-placement="top" title="{{:label}}">
+                        {{if has_icon}}
                         <img src="./img/icons/org-{{:id}}-light-64.svg" alt="{{:label}}" />
+                        {{else}}
+                        {{:label}}
+                        {{/if}}
                       </button>
                     </script>
                   </div>
