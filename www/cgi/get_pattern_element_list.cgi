@@ -1,11 +1,14 @@
 #!/opt/bin/python3
 
 """
+For a given weighted or unweighted genecart, return the pattern labels.
 
+If genecart is weighted, return the top 10 up- and down-regulated genes for each pattern
 """
 
 import cgi
 import json
+import pandas as pd
 from pathlib import Path
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
@@ -28,17 +31,14 @@ def main():
     # TODO: Consider loading from h5ad instead of tab if it exists
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + source_id))
 
-    for line in open(file_path):
-        line = line.rstrip()
-        # on the first line, the file should be all pattern names after the first column
-        cols = line.split("\t")
+    df = pd.read_csv(file_path, sep="\t")
 
-        # Col 0 is uniq ID, col 1 is gene symbol.
-        for col in cols[2:]:
-            result.append({'label': col})
+    # Col 0 is uniq ID, col 1 is gene symbol (but the column name may vary).
+    for col in df.columns[2:]:
+        up_genes = df.nlargest(n=10, columns=[col]).iloc[:, 1].tolist()
+        down_genes = df.nsmallest(n=10, columns=[col]).iloc[:, 1].tolist()
 
-        # we only care about the first line
-        break
+        result.append({'label': col, "top10_up":",".join(up_genes), "top10_down":",".join(down_genes)})
 
     print(json.dumps(result))
 

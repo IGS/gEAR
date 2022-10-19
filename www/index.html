@@ -487,7 +487,7 @@
                 </script>
                 <script id="pattern_elements_tmpl" type="text/x-jsrender">
                   <div class="form-check">
-                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}">
+                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}" data-top-up="{{:top10_up}}" data-top-down="{{:top10_down}}">
                     <label class="form-check-label">{{:label}}</label>
                   </div>
                 </script>
@@ -594,6 +594,20 @@
               <p>
                 Functional annotation information is not available for multigene searches and for projection patterns.
               </p>
+            </div>
+            <div id="highly_expressed_genes_card" class="card bg-light mb-3" style="display:none;">
+              <h5 class="card-header"></h5>  <!-- filled in with JS -->
+              <div class="card-body">
+                <div id="top_up_genes">
+                  <h5 class="card-title">Top upregulated genes</h5>
+                  <p class="card-text mb-2"></p>  <!-- filled in with JS -->
+                </div>
+                <div id="top_down_genes">
+                  <h5 class="card-title">Top downregulated genes</h5>
+                  <p class="card-text"></p>  <!-- filled in with JS -->
+                </div>
+              </div>
+
             </div>
             <div id="links_out_c" class="row search_result_c">
               <div class="col-12">

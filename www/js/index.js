@@ -777,7 +777,19 @@ function select_search_result(elm, draw_display=true) {
     $('.list-group-item-active').removeClass('list-group-item-active');
     $(elm).addClass('list-group-item-active');
 
-    if (! projection) {
+    if (projection) {
+        if (! multigene) {
+            // Get to top up- and down-regulated genes for each pattern if they exist.
+            const top_up = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-up') || "NA";
+            const top_down = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-down') || "NA";
+
+            $("#highly_expressed_genes_card .card-header").text(`Pattern ${gene_sym}`);
+            $("#highly_expressed_genes_card #top_up_genes .card-text").text(top_up);
+            $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
+            $("#highly_expressed_genes_card").show();
+            $('#functional_not_supported_alert').hide();    // Hide functional support panel to clean up some screen real estate
+        }
+    } else {
         // Functional panel is shown via gene_search_form submit event
         annotation_panel.annotation = search_results[gene_sym];
         annotation_panel.autoselect_organism();
@@ -1363,12 +1375,14 @@ function hide_functional_panel() {
     $('#functional_not_supported_alert').show();
     $('#gene_details_c').hide();
     $('#links_out_c').hide();
+    $('#highly_expressed_genes_card').hide();
 }
 
 function show_functional_panel() {
     $('#functional_not_supported_alert').hide();
     $('#gene_details_c').show();
     $('#links_out_c').show();
+    $('#highly_expressed_genes_card').hide();
 }
 
 // Events to select and deselect all projection pattern checkboxes
