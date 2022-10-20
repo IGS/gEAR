@@ -721,6 +721,13 @@ $(document).on('click', '#doc-link-choices li', function(){
     window.location.replace(`./manual.html?doc=${$(this).data('doc-link')}`);
 });
 
+// Sort numerically in situations where a alphabetical string is followed by a number
+// i.e. PC1, PC2, etc.
+// NOTE: Ignores the leading string altogether, so this still applies even if that is not consistent.
+const customNumericSort = function (a, b) {
+    return (Number(a.match(/(\d+)$/g)[0]) - Number((b.match(/(\d+)$/g)[0])));
+}
+
 function populate_search_result_list(data) {
     // so we can display in sorted order.  javascript sucks like that.
     sorted_gene_syms = [];
@@ -732,6 +739,10 @@ function populate_search_result_list(data) {
     }
 
     sorted_gene_syms.sort();
+    if (projection) {
+        // Source - https://stackoverflow.com/a/29180576
+        sorted_gene_syms.sort(customNumericSort);
+    }
     sorted_gene_syms_len = sorted_gene_syms.length
 
     const items = [];
@@ -780,14 +791,16 @@ function select_search_result(elm, draw_display=true) {
     if (projection) {
         if (! multigene) {
             // Get to top up- and down-regulated genes for each pattern if they exist.
-            const top_up = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-up') || "NA";
-            const top_down = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-down') || "NA";
+            const top_up = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-up') || undefined;
+            const top_down = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-down') || undefined;
 
-            $("#highly_expressed_genes_card .card-header").text(`Pattern ${gene_sym}`);
-            $("#highly_expressed_genes_card #top_up_genes .card-text").text(top_up);
-            $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
-            $("#highly_expressed_genes_card").show();
-            $('#functional_not_supported_alert').hide();    // Hide functional support panel to clean up some screen real estate
+            if (! (top_up === undefined)) {
+                $("#highly_expressed_genes_card .card-header").text(`Pattern ${gene_sym}`);
+                $("#highly_expressed_genes_card #top_up_genes .card-text").text(top_up);
+                $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
+                $("#highly_expressed_genes_card").show();
+                $('#functional_not_supported_alert').hide();    // Hide functional support panel to clean up some screen real estate
+            }
         }
     } else {
         // Functional panel is shown via gene_search_form submit event
@@ -1060,6 +1073,35 @@ $("#projection_source").on('change', (_event) => {
     });
 });
 
+$("#highly_expressed_genes_card .card-footer button").on("click", (_event) => {
+    const pattern_id = $(SELECTED_GENE).data("gene_symbol");
+
+    $.ajax({
+        type: "POST",
+        url: "./cgi/get_pattern_weighted_genes.cgi",
+        async: false,   // No clue why this works but async/wait does not.. maybe it's the onchange event?
+        data: {
+            'source_id': $('#projection_source').val(),
+            pattern_id
+        },
+        dataType: "json"
+    }).done((data) => {
+        let html_stream = "<table>";
+        // Gather genes and weights and show in new page
+        for (const row of data) {
+            html_stream += `<tr><td>${row["gene"]}</td><td>${row["weight"]}</td></tr>`;
+        }
+        html_stream += "</table>"
+        const tab = window.open('about:blank', '_blank');
+        tab.document.write(html_stream);
+        tab.document.close();
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, `Error getting gene weights for pattern ${pattern_id} from source.`);
+    });
+
+})
+
 // controls to enable user scrolling of results with mouse arrow
 scrolling_results = false
 
@@ -1073,18 +1115,36 @@ $(document).keydown((event) => {
         // this makes sure the browser doesn't scroll the window
         event.preventDefault();
 
+        const draw = projection ? false : true;
+
         switch (event.keyCode) {
             // up key
             case 38:
             if (AT_FIRST_MATCH_RECORD == false) {
-                select_search_result($(SELECTED_GENE).prev())
+                const new_gene = $(SELECTED_GENE).prev();
+                // For projections, we do not want to go through checks where the organism_id is checked
+                // (since there isn't one).  So we draw the display and select the search result independently
+                if (!draw) {
+                    dataset_collection_panel.datasets.forEach((dataset) => {
+                        dataset.draw({gene_symbol: $(new_gene).data("gene_symbol")});
+                    });
+                }
+
+                select_search_result($(SELECTED_GENE).prev(), draw_display=draw);
             }
             break;
 
             // down key
             case 40:
             if (AT_LAST_MATCH_RECORD == false) {
-                select_search_result($(SELECTED_GENE).next())
+                const new_gene = $(SELECTED_GENE).next();
+                if (!draw) {
+                    dataset_collection_panel.datasets.forEach((dataset) => {
+                        dataset.draw({gene_symbol: $(new_gene).data("gene_symbol")});
+                    });
+                }
+
+                select_search_result($(SELECTED_GENE).next(), draw_display=draw);
             }
             break;
         }

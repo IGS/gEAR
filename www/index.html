@@ -487,7 +487,7 @@
                 </script>
                 <script id="pattern_elements_tmpl" type="text/x-jsrender">
                   <div class="form-check">
-                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}" data-top-up="{{:top10_up}}" data-top-down="{{:top10_down}}">
+                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}" data-top-up="{{:top_up}}" data-top-down="{{:top_down}}">
                     <label class="form-check-label">{{:label}}</label>
                   </div>
                 </script>
@@ -597,15 +597,18 @@
             </div>
             <div id="highly_expressed_genes_card" class="card bg-light mb-3" style="display:none;">
               <h5 class="card-header"></h5>  <!-- filled in with JS -->
-              <div class="card-body">
-                <div id="top_up_genes">
+              <div class="card-body row">
+                <div id="top_up_genes" class="col-6">
                   <h5 class="card-title">Top upregulated genes</h5>
                   <p class="card-text mb-2"></p>  <!-- filled in with JS -->
                 </div>
-                <div id="top_down_genes">
+                <div id="top_down_genes" class="col-6">
                   <h5 class="card-title">Top downregulated genes</h5>
                   <p class="card-text"></p>  <!-- filled in with JS -->
                 </div>
+              </div>
+              <div class="card-footer">
+                <button class="btn btn-sm btn-outline-dark">View all genes with weights</button>
               </div>
 
             </div>

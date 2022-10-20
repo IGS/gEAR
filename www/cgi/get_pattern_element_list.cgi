@@ -35,10 +35,10 @@ def main():
 
     # Col 0 is uniq ID, col 1 is gene symbol (but the column name may vary).
     for col in df.columns[2:]:
-        up_genes = df.nlargest(n=10, columns=[col]).iloc[:, 1].tolist()
-        down_genes = df.nsmallest(n=10, columns=[col]).iloc[:, 1].tolist()
+        up_genes = df.nlargest(n=5, columns=[col]).iloc[:, 1].tolist()
+        down_genes = df.nsmallest(n=5, columns=[col]).iloc[:, 1].tolist()
 
-        result.append({'label': col, "top10_up":",".join(up_genes), "top10_down":",".join(down_genes)})
+        result.append({'label': col, "top_up":",".join(up_genes), "top_down":",".join(down_genes)})
 
     print(json.dumps(result))
 
