@@ -2,14 +2,13 @@ from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, hashlib, uuid, sys, fcntl
+import pandas as pd
+import requests
+
 from os import getpid
 from time import sleep
-import geardb
-import gear.rfuncs as rfx
-from gear.rfuncs import RError
 
-import pandas as pd
-import atexit
+import geardb
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -263,6 +262,7 @@ class ProjectR(Resource):
                 , 'message': str(e)
             }
 
+
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=False)
 
@@ -410,18 +410,25 @@ class ProjectR(Resource):
                 , "num_dataset_genes": num_target_genes
             }
 
-        try:
-            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
-        except Exception as e:
+
+        projectr_payload = {
+            "target": json.loads(target_df.to_json())
+            , "loading": json.loads(loading_df.to_json())
+            , "is_pca": is_pca
+        }
+
+        response = requests.post(url="TEST", data=projectr_payload, headers=['content_type': 'application.json'])
+        if response.raise_for_status():
             # Remove file lock
             remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
-                , 'message': str(e)
+                , 'message': "Could not run projectR command. Job returned a status code of {}".format(response.status_code)
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
+        projection_patterns_df = pd.read_json(json.dumps(response.json))
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)

@@ -53,17 +53,6 @@ RUN apt-get -qq update \
   python3-tk \
   openssh-server \
   llvm \
-  # Required for R
-	gfortran \
-  libbz2-dev \
-	libcurl4-openssl-dev \
-	liblzma-dev \
-	libpcre3 \
-	libpcre3-dev \
-  # Required for rpy2
-  r-base-dev \
-  r-base \
-  libgomp1 \
   # Apache2 and PHP
   libapache2-mod-wsgi-py3 \
   apache2-dev \
