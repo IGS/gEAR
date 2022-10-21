@@ -5,6 +5,9 @@ import json, hashlib, uuid, sys, fcntl
 import pandas as pd
 import requests
 
+import google.auth.transport.requests
+import google.oauth2.id_token
+
 from os import getpid
 from time import sleep
 
@@ -114,6 +117,29 @@ def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
     orthomap_dict = orthomap_df.to_dict()["id2"]
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return orig_df.rename(index=orthomap_dict)
+
+def make_post_request(payload):
+    """
+    makes a POST request to the specified HTTP endpoint
+    by authenticating with the ID token obtained from the google-auth client library
+    using the specified audience value.
+    """
+
+    # Cloud Run uses your service's hostname as the `audience` value
+    # audience = 'https://my-cloud-run-service.run.app/'
+    # For Cloud Run, `endpoint` is the URL (hostname + path) receiving the request
+    # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
+
+    endpoint="TEST"
+    audience="TEST2"
+
+    auth_req = google.auth.transport.requests.Request()
+    id_token = google.oauth2.id_token.fetch_id_token(auth_req, audience)
+
+    headers = {"Authorization": f"Bearer {id_token}"
+            , "content_type": "application.json"}
+
+    return requests.post(url=endpoint, data=payload, headers=headers)
 
 class ProjectROutputFile(Resource):
     """
@@ -417,7 +443,7 @@ class ProjectR(Resource):
             , "is_pca": is_pca
         }
 
-        response = requests.post(url="TEST", data=projectr_payload, headers=['content_type': 'application.json'])
+        response = make_post_request(projectr_payload)
         if response.raise_for_status():
             # Remove file lock
             remove_lock_file(lock_fh, lockfile)

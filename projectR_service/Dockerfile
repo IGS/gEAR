@@ -15,26 +15,21 @@ RUN apt-get -qq update \
     && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
     # Required for R
 	gfortran \
-    libbz2-dev \
-	libcurl4-openssl-dev \
-	liblzma-dev \
-	libpcre3 \
-	libpcre3-dev \
     # Required for rpy2
     r-base-dev \
     r-base \
-    libgomp1 \
     # Cleanup
     && apt -qq clean autoclean \
     && apt -qq autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Install production dependencies.
-RUN pip install --no-cache-dir -r requirements.txt
-
 # ProjectR install.  Must be done before rpy2 is installed
+# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
 COPY ./install_bioc.sh /tmp/.
 RUN /tmp/install_bioc.sh
+
+# Install production dependencies.
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
