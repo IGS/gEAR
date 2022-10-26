@@ -5,6 +5,10 @@ rfuncs.py - Miscellaneous R-style functions called through rpy2
 
 import sys  # for print debugging
 #import traceback    # for debugging
+import pandas as pd
+
+from more_itertools import sliced
+CHUNK_SIZE = 5000   # According to Carlo's estimate, this would be about 10-11 Gb memory
 
 import rpy2.rinterface as ri    # Since the low-level interface does not auto-intialize R, we can add globally.
 from rpy2.rinterface_lib import openrlib
@@ -55,7 +59,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
     # The number of R sessions appears to be limited to the number of threads apache allocates to the Flask API
     # If this number of sessions exceeds number of threads, a RNotReady error will be thrown for each subsequent session
 
-
     from rpy2.robjects import pandas2ri, default_converter
     from rpy2.robjects.packages import importr
     from rpy2.robjects.conversion import localconverter
@@ -68,45 +71,55 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         if loading_df.empty:
             raise RError("Loading (pattern) dataframe is empty.")
 
-        # Convert from pandas dataframe to R data.frame
-        with localconverter(default_converter + pandas2ri.converter):
-            target_r_df = ro.conversion.py2rpy(target_df)
-            loading_r_df = ro.conversion.py2rpy(loading_df)
+        # Chuck the target dataframe by sample columns
+        index_slices = sliced(range(len(target_df.columns)), CHUNK_SIZE)
+        output_df_slices = []
 
-        # data.frame to matrix (projectR has no data.frame signature)
-        target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
-        loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
+        for index_slice in index_slices:
+            chunk_df = target_df.iloc[:,index_slice]
 
-        # Assign Rownames to each matrix
-        # I don't know why but using ro.StrVector makes rpy2py fail where the output df is an incompatible class
-        # Guessing that there are some non-strings mixed into the indexes
-        target_r_matrix.rownames = ri.ListSexpVector(target_df.index)
-        loading_r_matrix.rownames = ri.ListSexpVector(loading_df.index)
+            # Convert from pandas dataframe to R data.frame
+            with localconverter(default_converter + pandas2ri.converter):
+                target_r_df = ro.conversion.py2rpy(chunk_df)
+                loading_r_df = ro.conversion.py2rpy(loading_df)
 
-        # Modify the R-style matrix to be a prcomp object if necessary
-        loading_r_object = loading_r_matrix
+            # data.frame to matrix (projectR has no data.frame signature)
+            target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
+            loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
 
-        if is_pca:
-            loading_r_object = convert_r_matrix_to_r_prcomp(loading_r_matrix)
-            if not loading_r_object:
-                raise RError("Could not convert loading matrix to R prcomp object.")
+            # Assign Rownames to each matrix
+            # I don't know why but using ro.StrVector makes rpy2py fail where the output df is an incompatible class
+            # Guessing that there are some non-strings mixed into the indexes
+            target_r_matrix.rownames = ri.ListSexpVector(target_df.index)
+            loading_r_matrix.rownames = ri.ListSexpVector(loading_df.index)
 
-        # Run project R command.  Get projectionPatterns matrix
-        try:
-            projectR = importr('projectR')
-            projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_object, full=False)
-        except Exception as e:
-            print("ERROR: {}".format(str(e)), file=sys.stderr)
-            #print(traceback.print_exc(), file=sys.stderr)
-            raise RError("Error: Could not run projectR command.")
+            # Modify the R-style matrix to be a prcomp object if necessary
+            loading_r_object = loading_r_matrix
 
-        # matrix back to data.frame
-        projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)
+            if is_pca:
+                loading_r_object = convert_r_matrix_to_r_prcomp(loading_r_matrix)
+                if not loading_r_object:
+                    raise RError("Could not convert loading matrix to R prcomp object.")
 
-        # Convert from R data.frame to pandas dataframe
-        with localconverter(default_converter + pandas2ri.converter):
-            projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
+            # Run project R command.  Get projectionPatterns matrix
+            # Rows - patterns, Cols - samples
+            try:
+                projectR = importr('projectR')
+                projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_object, full=False)
+            except Exception as e:
+                print("ERROR: {}".format(str(e)), file=sys.stderr)
+                #print(traceback.print_exc(), file=sys.stderr)
+                raise RError("Error: Could not run projectR command.")
 
-        return projection_patterns_df
+            # matrix back to data.frame
+            projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)
+
+            # Convert from R data.frame to pandas dataframe
+            with localconverter(default_converter + pandas2ri.converter):
+                projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
+
+            output_df_slices.append(projection_patterns_df)
+
+        return pd.concat(output_df_slices, axis="columns")
 
 

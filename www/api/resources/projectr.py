@@ -249,7 +249,7 @@ class ProjectR(Resource):
         1. Load AnnData object and transform into a dataframe of genes x observations
         2. Load pattern file (gene cart) of genes x patterns. For unweighted gene carts, all weights are 1
         3. Run projectR to get projectionPatterns matrix, which lists relative weights in the matrix dataset.
-            * Output - Rows are patterns, Cols are data observations
+            * Output - Rows are patterns, Cols are data observations (before transposing)
 
         Only step 3 needs to be in R, and we use rpy2 to call that.
         """
