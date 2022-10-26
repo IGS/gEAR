@@ -130,8 +130,8 @@ def make_post_request(payload):
     # For Cloud Run, `endpoint` is the URL (hostname + path) receiving the request
     # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
 
-    endpoint="TEST"
-    audience="TEST2"
+    endpoint="https://projectr-service-ruvt5l3uva-uc.a.run.app/"
+    audience="https://projectr-service-ruvt5l3uva-uc.a.run.app"
 
     auth_req = google.auth.transport.requests.Request()
     id_token = google.oauth2.id_token.fetch_id_token(auth_req, audience)

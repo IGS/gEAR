@@ -19,7 +19,7 @@ def decode_dataframe():
 def encode_dataframe():
     pass
 
-@app.method("/", methods=["POST"])
+@app.route("/", methods=["POST"])
 def index():
 
     target = request.form['target']
