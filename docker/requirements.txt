@@ -1,5 +1,6 @@
 numpy==1.21.5
-numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
+numexpr==2.8.1
+louvain==0.7.1
 scanpy[louvain]==1.7.2  # uses louvain 0.7.1
 pandas==1.4.1
 numba==0.55.1
@@ -27,7 +28,5 @@ openpyxl==3.0.10
 #h5py==2.10.0    # Installed through scanpy but that version breaks things
 h5py==3.6.0
 tables==3.7.0    # Read hdf5 files into pandas
-google-auth # For authorized HTTP requests for Cloud Run (to be removed later)
-google-oauth2-tool  # For authorized HTTP requests for Cloud Run (to be removed later)
 #diffxpy==0.7.4
 #selenium   # Browser testing

@@ -79,10 +79,6 @@ RUN wget $CMAKE_URL \
   && make install \
   && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
 
-# ProjectR install.  Must be done before rpy2 is installed
-COPY ./install_bioc.sh /tmp/.
-RUN /tmp/install_bioc.sh
-
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
 WORKDIR /tmp
@@ -115,7 +111,6 @@ RUN ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
   && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@0464d2ab1faa0947d90e29f93018ec678e050585 \
   && apt-get -qq update \
-  #&& apt-get -qq install -y --no-install-recommends libapache2-mod-wsgi \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Scikit-learn lib -> https://stackoverflow.com/a/70016416

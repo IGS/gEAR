@@ -24,7 +24,10 @@ COPY ./install_bioc.sh /tmp/.
 RUN /tmp/install_bioc.sh
 
 # Install production dependencies.
-RUN pip install --no-cache-dir -r requirements.txt
+COPY ./requirements.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
 
 # Copy local code to the container image.
 ENV APP_HOME /app

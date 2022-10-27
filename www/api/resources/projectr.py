@@ -5,13 +5,15 @@ import json, hashlib, uuid, sys, fcntl
 import pandas as pd
 import requests
 
-import google.auth.transport.requests
-import google.oauth2.id_token
-
 from os import getpid
 from time import sleep
 
 import geardb
+
+# https://stackoverflow.com/a/35904211/1368079
+this = sys.modules[__name__]
+from gear.serverconfig import ServerConfig
+this.servercfg = ServerConfig().parse()
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -120,9 +122,7 @@ def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
 
 def make_post_request(payload):
     """
-    makes a POST request to the specified HTTP endpoint
-    by authenticating with the ID token obtained from the google-auth client library
-    using the specified audience value.
+    makes an non-authorized POST request to the specified HTTP endpoint
     """
 
     # Cloud Run uses your service's hostname as the `audience` value
@@ -130,16 +130,16 @@ def make_post_request(payload):
     # For Cloud Run, `endpoint` is the URL (hostname + path) receiving the request
     # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
 
-    endpoint="https://projectr-service-ruvt5l3uva-uc.a.run.app/"
-    audience="https://projectr-service-ruvt5l3uva-uc.a.run.app"
+    audience=this.servercfg['projectR_service']['hostname']
+    endpoint="{}/".format(audience)
+    headers = {"content_type": "application/json"}
 
-    auth_req = google.auth.transport.requests.Request()
-    id_token = google.oauth2.id_token.fetch_id_token(auth_req, audience)
+    # TODO: explore async chunked requests
+    # https://stackoverflow.com/a/54677708
 
-    headers = {"Authorization": f"Bearer {id_token}"
-            , "content_type": "application.json"}
+    print("INFO: Sending POST...", file=sys.stderr)
 
-    return requests.post(url=endpoint, data=payload, headers=headers)
+    return requests.post(url=endpoint, json=payload, headers=headers)
 
 class ProjectROutputFile(Resource):
     """
@@ -212,8 +212,7 @@ class ProjectROutputFile(Resource):
 
 class ProjectR(Resource):
     """
-    ProjectR Container
-
+    Formats inputs to prep for projectR API call running on Google Cloud Run
     """
 
     def post(self, dataset_id):
@@ -359,8 +358,6 @@ class ProjectR(Resource):
         loading_df = loading_df.drop(loading_df.columns[1], axis=1)
 
         loading_df.set_index('dataRowNames', inplace=True)
-        # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
-        loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
         # Get unique identifier of first gene from loading genecart
         #first_loading_gene = loading_df.index[0]
@@ -377,6 +374,9 @@ class ProjectR(Resource):
                     "success": -1
                     , "message": message
                 }
+
+        # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
+        loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
         num_target_genes = target_df.shape[0]
         num_loading_genes = loading_df.shape[0]
@@ -436,10 +436,9 @@ class ProjectR(Resource):
                 , "num_dataset_genes": num_target_genes
             }
 
-
         projectr_payload = {
-            "target": json.loads(target_df.to_json())
-            , "loading": json.loads(loading_df.to_json())
+            "target": target_df.to_json()
+            , "loadings": loading_df.to_json()
             , "is_pca": is_pca
         }
 
@@ -454,7 +453,7 @@ class ProjectR(Resource):
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
-        projection_patterns_df = pd.read_json(json.dumps(response.json))
+        projection_patterns_df = pd.read_json(json.dumps(response.json()))
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)

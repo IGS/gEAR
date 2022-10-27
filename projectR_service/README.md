@@ -26,9 +26,17 @@ Navigate to https://console.cloud.google.com/run?enableapi=true&_ga=2.240046915.
 4. For Ingress, leave as "Allow all traffic"
 5. For Authentication, select "Allow unauthorized invocations". Since the gEAR API is part of a public codebase, we do not want to expose authentication credentials, so it is necessary to set it up so anything can call this service.  This should only be the projectR API call though, in reality.
   a. Currently this can only be changed if the person setting up the service has permissions to change IAM policy.
-  b. I currently do not so I am leaving as is and providing auth credentials to test locally.
-6. Click "Container, Connections, Security" dropdown
-7. Change memory to 32Gb.  Unfortunately this means we need to set 8 CPUs as well. Mostly projectR runs should never hit 32Gb but we have had some larger runs that would.
+6. Click "Container, Connections, Security" dropdown.  Each of those are their own separate tab
+7. Change memory to 16Gb.  Unfortunately this means we need to set 4 CPUs as well. Most projectR runs should never hit 16Gb due to chunking the file, but it's possible.
 8. Set the request timeout to 1200 seconds. The longest request I've seen so far was about 17-18 minutes, but that is more the rarity than the norm.  Most should only take a 1-3 minutes.
 9. Set concurrency to 1. This is because of the odd projectR job that takes a huge amount of memory and we do not wish to have jobs collide on the same instance.
-10. Ready to go, click "Create"
+10. Click "Security" tab and change the Service account to "gear" instead of the default Compute Engine one.
+11. Ready to go, click "Create"
+
+## Getting the service URL
+
+After the projectR service is created, you will be redirected to a dashboard with various tabs both for the service and the current revision. Beside the "projectR_service" name above the tabs, there is a URL that can be copied.  Paste this URL in the gear.ini file under the "projectR_service" section under the "hostname" param.
+
+## Deploying a revised service
+
+You can use Docker to build and push revised images up to the Artifact Registry. In the "projectr-service" dashboard in Cloud Run, there is a button near the top called "Edit and Deploy New Revision" that will let you take deploy the latest image for the service. All of the previous set configurations are saved, but editable if you want, and there is an extra checkbox to reroute all traffic to this new revision after launching.  You do not need to change your URL for the API endpoint in the gear.ini file. The previous versions of the service will still show in the dashboard and can be deleted if you want.

@@ -1,4 +1,4 @@
-import json, os
+import json, os, sys
 import pandas as pd
 from flask import Flask, request
 
@@ -6,25 +6,12 @@ from rfuncs import run_projectR_cmd
 
 app = Flask(__name__)
 
-"""
-@app.route("/")
-def hello_world():
-    name = os.environ.get("NAME", "World")
-    return "Hello {}!".format(name)
-"""
-
-def decode_dataframe():
-    pass
-
-def encode_dataframe():
-    pass
-
 @app.route("/", methods=["POST"])
 def index():
-
-    target = request.form['target']
-    loadings = request.form['loadings']
-    is_pca = request.form['is_pca']
+    req_json = request.get_json()
+    target = req_json['target']
+    loadings = req_json['loadings']
+    is_pca = req_json['is_pca']
 
     target_df = pd.read_json(target)
     loading_df = pd.read_json(loadings)
