@@ -3,10 +3,11 @@ from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, hashlib, uuid, sys, fcntl
 import pandas as pd
-import requests
+import asyncio
 
 from os import getpid
 from time import sleep
+from more_itertools import sliced
 
 import geardb
 
@@ -23,6 +24,8 @@ ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 PROJECTIONS_JSON_BASENAME = "projections.json"
 
 ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
+
+CHUNK_SIZE = 7000   # According to Carlo's estimate, this would use about 10-11 Gb memory
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -120,7 +123,7 @@ def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return orig_df.rename(index=orthomap_dict)
 
-def make_post_request(payload):
+async def make_post_request(payload):
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -130,16 +133,15 @@ def make_post_request(payload):
     # For Cloud Run, `endpoint` is the URL (hostname + path) receiving the request
     # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
 
+    import aiohttp
     audience=this.servercfg['projectR_service']['hostname']
     endpoint="{}/".format(audience)
     headers = {"content_type": "application/json"}
 
-    # TODO: explore async chunked requests
-    # https://stackoverflow.com/a/54677708
-
-    print("INFO: Sending POST...", file=sys.stderr)
-
-    return requests.post(url=endpoint, json=payload, headers=headers)
+    # https://docs.aiohttp.org/en/stable/client_reference.html
+    async with aiohttp.ClientSession() as client:
+        async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+            return await response.json()
 
 class ProjectROutputFile(Resource):
     """
@@ -208,7 +210,6 @@ class ProjectROutputFile(Resource):
         return {
             "projection_id": None
         }
-
 
 class ProjectR(Resource):
     """
@@ -397,6 +398,10 @@ class ProjectR(Resource):
 
         message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
+        # Reduce the size of both dataframes before POSTing
+        target_df = target_df.loc[index_intersection]
+        loading_df = loading_df.loc[index_intersection]
+
         # Create lock file if it does not exist
         lockfile = str(dataset_projection_csv) + ".lock"
         if Path(lockfile).exists():
@@ -436,24 +441,53 @@ class ProjectR(Resource):
                 , "num_dataset_genes": num_target_genes
             }
 
-        projectr_payload = {
-            "target": target_df.to_json()
-            , "loadings": loading_df.to_json()
-            , "is_pca": is_pca
-        }
 
-        response = make_post_request(projectr_payload)
-        if response.raise_for_status():
-            # Remove file lock
+        # Chunk dataset by samples/cells and make asynchronous POST request
+        # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
+
+        index_slices = sliced(range(len(target_df.columns)), CHUNK_SIZE)
+        chunked_dfs = []
+
+        for idx, index_slice in enumerate(index_slices):
+            chunked_dfs.append(target_df.iloc[:,index_slice])
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
+            # The stuff in the dict is the payload for each request.
+            res_jsons = loop.run_until_complete(
+                asyncio.gather(*[make_post_request({
+                    "target": chunk_df.to_json(orient="split")
+                    , "loadings": loading_df.to_json(orient="split")
+                    , "is_pca": is_pca
+                    , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+                    , "dataset_id":dataset_id
+                    }) for chunk_df in chunked_dfs]
+                )
+            )
+        except Exception as e:
+            # Raises as soon as one "gather" task has an exception
             remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
-                , 'message': "Could not run projectR command. Job returned a status code of {}".format(response.status_code)
+                , 'message': "Could not run projectR command."
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
-        projection_patterns_df = pd.read_json(json.dumps(response.json()))
+        finally:
+            loop.close()
+
+        # Concatenate the dataframes back together again
+        res_dfs_list = [pd.read_json(json.dumps(res_json)) for res_json in res_jsons]
+        projection_patterns_df = pd.concat(res_dfs_list)
+
+        # Re-stitch the chunked output dataframe.
+        # Pop first chunk to initialize the dataframe, and then add the other chunks in order
+        #projection_patterns_df = output_df_slices.pop(0)
+        #for idx, val in enumerate(output_df_slices.keys(), start=1):
+        #    projection_patterns_df = pd.concat(output_df_slices[idx])
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)

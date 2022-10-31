@@ -28,5 +28,7 @@ openpyxl==3.0.10
 #h5py==2.10.0    # Installed through scanpy but that version breaks things
 h5py==3.6.0
 tables==3.7.0    # Read hdf5 files into pandas
+more_itertools==9.0.0
+aiohttp
 #diffxpy==0.7.4
 #selenium   # Browser testing
