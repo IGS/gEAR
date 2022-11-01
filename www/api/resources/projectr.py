@@ -25,7 +25,9 @@ PROJECTIONS_JSON_BASENAME = "projections.json"
 
 ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
 
-CHUNK_SIZE = 7000   # According to Carlo's estimate, this would use about 10-11 Gb memory
+# limit of asynchronous tasks that can happen at a time
+# I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
+SEMAPHORE_LIMIT = 50
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -123,7 +125,16 @@ def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return orig_df.rename(index=orthomap_dict)
 
-async def make_post_request(payload):
+def calculate_chunk_size(num_genes, num_samples):
+    """
+    Calculate number of chunks to divide all samples into.
+    """
+    TOTAL_DATA_LIMIT = 1e6
+    total_data = num_genes * num_samples
+    total_data_chunks = total_data / TOTAL_DATA_LIMIT
+    return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
+
+async def make_post_request(payload, sem):
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -139,8 +150,9 @@ async def make_post_request(payload):
     headers = {"content_type": "application/json"}
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
+    # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
     async with aiohttp.ClientSession() as client:
-        async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+        async with sem, client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
             return await response.json()
 
 class ProjectROutputFile(Resource):
@@ -441,17 +453,21 @@ class ProjectR(Resource):
                 , "num_dataset_genes": num_target_genes
             }
 
+        # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
+        chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
+
+        print("TARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(target_df.shape, chunk_size), file=sys.stderr)
 
         # Chunk dataset by samples/cells and make asynchronous POST request
         # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
-
-        index_slices = sliced(range(len(target_df.columns)), CHUNK_SIZE)
+        index_slices = sliced(range(len(target_df.columns)), chunk_size)
         chunked_dfs = []
 
         for idx, index_slice in enumerate(index_slices):
             chunked_dfs.append(target_df.iloc[:,index_slice])
 
         loop = asyncio.new_event_loop()
+        sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
         asyncio.set_event_loop(loop)
         try:
             # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
@@ -463,10 +479,11 @@ class ProjectR(Resource):
                     , "is_pca": is_pca
                     , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                     , "dataset_id":dataset_id
-                    }) for chunk_df in chunked_dfs]
+                    }, sem) for chunk_df in chunked_dfs]
                 )
             )
         except Exception as e:
+            print(str(e), file=sys.stderr)
             # Raises as soon as one "gather" task has an exception
             remove_lock_file(lock_fh, lockfile)
             return {
