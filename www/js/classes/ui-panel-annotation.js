@@ -138,17 +138,29 @@ class FunctionalAnnotationPanel {
         */
         $('.icon-organism').prop('disabled', true);
 
+        const icon_buttons = document.querySelectorAll('.icon-organism');
+        for (const btn_el of icon_buttons) {
+            btn_el.setAttribute('title', btn_el.dataset.label + " - Not found in this collection of datasets");        
+
+            let icon_image = btn_el.querySelector('img');
+            if (icon_image) {
+                icon_image.setAttribute("src", "./img/icons/org-" + icon_image.parentElement.dataset.organismId + "-outline-64.svg");
+            }
+        }
+
         for (var i = 1; i <= this.max_organism_id; i++) {
+            // reset any custom labels
+            let org_btn = document.querySelector("button#annot_organism_" + i);
+            
             if (typeof this.annotation !== 'undefined' && this.organism_ids_present.has(i)) {
                 document.querySelector('#annot_organism_' + i).disabled = false;
+                org_btn.setAttribute('title', org_btn.dataset.label);
 
                 if (organism_id == i) {
                     $('#annot_organism_' + i + ' img').prop('src', './img/icons/org-' + i + '-dark-64.svg');
                 } else {
                     $('#annot_organism_' + i + ' img').prop('src', './img/icons/org-' + i + '-light-64.svg');
                 }
-            } else {
-                $('#annot_organism_' + i + ' img').prop('src', './img/icons/org-' + i + '-outline-64.svg');
             }
         }
     }
