@@ -78,7 +78,6 @@ $(document).on("handle_page_loading", () => {
 
     gene_cart_id = getUrlParameter('gene_cart_share_id');
     if (gene_cart_id) {
-        console.info(`Gene cart share ID found: ${gene_cart_id}`);
         $('#intro_search_icon').trigger('click');
     }
 
