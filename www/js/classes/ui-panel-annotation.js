@@ -14,9 +14,19 @@
 class FunctionalAnnotationPanel {
     constructor({annotation} = {}) {
         this.annotation = annotation;
-        this.max_organism_id = 6;
+        this.max_organism_id = 0;
+        this.organism_ids_present = new Set();
+        this.active_organism_id = null;
 
-        $("button.icon-organism").click(function(e) {
+        for (const dsp of dataset_collection_panel.datasets) {
+            this.organism_ids_present.add(dsp.organism_id);
+
+            if (dsp.organism_id > this.max_organism_id) {
+                this.max_organism_id = dsp.organism_id;
+            }
+        }
+        
+        $(document).on('click', 'button.icon-organism', function(e) {
             annotation_panel.set_active_organism($(this).data('organism-id'));
         });
     }
@@ -71,33 +81,18 @@ class FunctionalAnnotationPanel {
 
           Returns the ID of the selected organism.
          */
-        this.reset();
-
-        // Build lookup of organisms present
-        let organism_ids_present = new Set();
-        for (const dsp of dataset_collection_panel.datasets) {
-            organism_ids_present.add(dsp.organism_id);
-        }
-        
-        let organism_id = 1;
-        let first_id = null;
-        
-        while (organism_id <= this.max_organism_id) {
+        this.organism_ids_present.forEach(org_id => {
             if (typeof this.annotation !== 'undefined' && 
-                typeof this.annotation['by_organism'][organism_id] !== 'undefined' &&
-                organism_ids_present.has(organism_id)) {
-                if (first_id == null) {
-                    first_id = organism_id;
-                    this.set_active_organism(organism_id);
+                typeof this.annotation['by_organism'][org_id] !== 'undefined' &&
+                this.organism_ids_present.has(org_id)) {
+
+                if (! this.active_organism_id) {
+                    this.set_active_organism(org_id);
                 }
-            } else {
-                $('#annot_organism_' + organism_id).prop('disabled', true);
             }
-
-            organism_id += 1;
-        }
-
-        return first_id;
+        });
+        
+        return null;
     }
 
     remove_annotation_attributes() {
@@ -111,7 +106,6 @@ class FunctionalAnnotationPanel {
         $('#annot-ensembl_id a').attr('href', '#');
         $('#annot-ensembl_release').text('');
         $('#selected_gene_symbol').text('');
-
         $('#go_term_count').text('');
         $('#annot-go_terms').html('');
         $('#annot-aliases').html('');
@@ -122,7 +116,8 @@ class FunctionalAnnotationPanel {
         /*
           Resets/clears the annotation panel
          */
-        this.set_active_organism_button();
+        //this.set_active_organism_button();
+        this.remove_annotation_attributes();
     }
 
     set_active_organism(organism_id) {
@@ -131,6 +126,7 @@ class FunctionalAnnotationPanel {
           both the button array and annotation fields
         */
         this.remove_annotation_attributes();
+        this.active_organism_id = organism_id;
         this.set_active_organism_button(organism_id);
         var ad = JSON.parse(this.annotation['by_organism'][organism_id][0]);
         this.update_annotation_attributes(ad);
@@ -139,20 +135,20 @@ class FunctionalAnnotationPanel {
     set_active_organism_button(organism_id) {
         /*
           Controls the panel of organism buttons and which is the selected one.
-         */
-        for (var i = 1; i <= this.max_organism_id; i++) {
-            if (typeof this.annotation !== 'undefined' &&
-                typeof this.annotation['by_organism'][i] !== 'undefined') {
-                $('#annot_organism_' + i).prop('disabled', false);
+        */
+        $('.icon-organism').prop('disabled', true);
 
-                if (organism_id !== null && organism_id == i) {
+        for (var i = 1; i <= this.max_organism_id; i++) {
+            if (typeof this.annotation !== 'undefined' && this.organism_ids_present.has(i)) {
+                document.querySelector('#annot_organism_' + i).disabled = false;
+
+                if (organism_id == i) {
                     $('#annot_organism_' + i + ' img').prop('src', './img/icons/org-' + i + '-dark-64.svg');
                 } else {
                     $('#annot_organism_' + i + ' img').prop('src', './img/icons/org-' + i + '-light-64.svg');
                 }
             } else {
                 $('#annot_organism_' + i + ' img').prop('src', './img/icons/org-' + i + '-outline-64.svg');
-                $('#annot_organism_' + i).prop('disabled', true);
             }
         }
     }
@@ -176,10 +172,6 @@ class FunctionalAnnotationPanel {
         var go_tmpl = $.templates("#tmpl_go_terms");
         var go_html = go_tmpl.render(ad.go_terms);
         $('#annot-go_terms').html(go_html);
-
-        //if (SITE_PREFS['links_out']['DVD']) {
-        //    this.add_custom_external_link(ad, 'DVD')
-        //}
 
         var links_tmpl = $.templates("#tmpl_external_links");
         var links_html = links_tmpl.render(ad.dbxrefs);
