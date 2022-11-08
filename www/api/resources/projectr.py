@@ -456,7 +456,7 @@ class ProjectR(Resource):
         # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
         chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
 
-        print("TARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(target_df.shape, chunk_size), file=sys.stderr)
+        print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
 
         # Chunk dataset by samples/cells and make asynchronous POST request
         # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
@@ -500,14 +500,15 @@ class ProjectR(Resource):
         res_dfs_list = [pd.read_json(json.dumps(res_json)) for res_json in res_jsons]
         projection_patterns_df = pd.concat(res_dfs_list)
 
-        # Re-stitch the chunked output dataframe.
-        # Pop first chunk to initialize the dataframe, and then add the other chunks in order
-        #projection_patterns_df = output_df_slices.pop(0)
-        #for idx, val in enumerate(output_df_slices.keys(), start=1):
-        #    projection_patterns_df = pd.concat(output_df_slices[idx])
+        # There is a good chance the samples are now out of order, which will break
+        # the copying of the dataset observation metadata when this output is converted
+        # to an AnnData object. So reorder back to dataset sample order.
+        projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
+
+
         projection_patterns_df.to_csv(dataset_projection_csv)
 
         # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse)

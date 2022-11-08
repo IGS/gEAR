@@ -75,6 +75,11 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
         if not loading_r_object:
             raise RError("Could not convert loading matrix to R prcomp object.")
 
+    # The NMF projectR method signature is based on the LinearEmbeddedMatrix class,
+    # Which has a featureLoadings property. That matrix is loaded and the default
+    # projectR signature is returned and used. So we can just pass the matrix as-is.
+    # https://rdrr.io/bioc/SingleCellExperiment/man/LinearEmbeddingMatrix.html
+
     # Run project R command.  Get projectionPatterns matrix
     try:
         projectR = importr('projectR')
