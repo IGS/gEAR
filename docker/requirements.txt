@@ -1,5 +1,6 @@
 numpy==1.21.5
 numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
+louvain==0.7.1
 scanpy[louvain]==1.7.2  # uses louvain 0.7.1
 pandas==1.4.1
 numba==0.55.1
