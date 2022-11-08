@@ -5,7 +5,7 @@
 """
 
 import cgi, json
-import os, sys, re
+import os, sys
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -53,7 +53,9 @@ def main():
 
     # Compute tSNE and plot
     if compute_louvain == 'true':
-        # this used to have a recompute_graph option. I'm not tracking its removal
+        # SAdkins note - Occasionally I run out of memory computing this step on Docker,
+        # especially if I want to do downstream stuff.
+        # If this happens, set 'flavor="igraph"' which uses a different package.
         sc.tl.louvain(adata, resolution=resolution)
         adata.write(dest_datafile_path)
 
@@ -64,6 +66,7 @@ def main():
     # doing it like this puts the labels in the legend
     if len(group_labels) > 0:
         adata.rename_categories('louvain', group_labels)
+        adata.obs['louvain'] = adata.obs['louvain'].astype(str)
         adata.write(dest_datafile_path)
 
         if plot_tsne == 1:

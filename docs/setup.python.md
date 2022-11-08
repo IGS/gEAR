@@ -30,17 +30,20 @@ fixed paths have worked fine for decades.
 
     $ ./pip3 install \
       anndata==0.7.8 \
+      aiohttp \
       biocode==0.10.0 \
       biopython==1.79 \
       dash-bio==1.0.2 \
       Flask==2.1.0 \
       Flask-RESTful==0.3.9 \
+      gunicorn \
       h5py==3.6.0 \
       itsdangerous==2.1.2 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
       llvmlite==0.38.0 \
       mod-wsgi==4.9.0 \
+      more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
       numba==0.55.1 \
       numexpr==2.8.1 \
@@ -53,14 +56,14 @@ fixed paths have worked fine for decades.
       python-dotenv==0.20.0 \
       requests==2.27.1 \
       rpy2==3.5.1 \
+      sanic \
       scanpy==1.8.2 \
       scanpy[louvain]==1.8.2 \
       scikit-learn==1.0.2 \
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
+      tables==3.7.0 \
       xlrd==1.2.0
-
-SAdkins note - Installing dash-bio (0.6.1) on the devel server by itself upgraded plotly to 5.3.1.  So we need to install dash==1.2.1 and plotly==4.14.3 if they are not this.
 
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/

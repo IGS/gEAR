@@ -22,11 +22,13 @@ wget https://www.alliancegenome.org/api/geneMap/ensembl?species=7955 -O id.map.7
 
 Output file convention:
 
-orthomap.{qry_taxon_id}.{qry_source}.{qry_release}__{tgt_taxon_id}.{tgt_source}.{tgt_release}.hdf5
+orthomap.{qry_organism_id}.{qry_source}.{qry_release}__{tgt_organism_id}.{tgt_source}.{tgt_release}.hdf5
 
 Example:
 
-orthomap.10090.ensembl.93__7955.ensembl.95.hdf5
+orthomap.1.ensembl.93__2.ensembl.95.hdf5
+
+The organism_id is from the gEAR MySQL table organism_id
 
 Output format:
 
@@ -52,7 +54,13 @@ def main():
     args = parser.parse_args()
 
     # Only those taxon IDs here will be included
-    taxon_ids = [7955, 9606, 10090, 10116]
+    # taxon_id -> organism_id
+    taxon_ids = {7955: 3,
+                 9606: 2,
+                 10090: 1,
+                 10116: 6,
+                 6239: 8
+    }
 
     # load each of the annotations
     refannot = dict()
@@ -94,7 +102,8 @@ def main():
                     print("WARN: feature ({0}) found in ortholog mapping but has no entry in taxon ({1}) reference file".format(g1_id, tx1))
                     continue
 
-            h5_file_path = os.path.abspath("{0}/orthomap.{1}.ensembl__{2}.ensembl.h5ad".format(args.output_directory, tx1, tx2))
+            h5_file_path = os.path.abspath("{0}/orthomap.{1}.ensembl__{2}.ensembl.h5ad".format(
+                args.output_directory, taxon_ids[tx1], taxon_ids[tx2]))
             df = pd.DataFrame(annot, index=identifiers)
             df.to_hdf(os.path.basename(h5_file_path), os.path.dirname(h5_file_path))
     
