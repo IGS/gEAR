@@ -37,7 +37,7 @@ def main():
         gpos = len(layout.members) + 1
 
         if user.id == layout.user_id:
-            lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4, mg_grid_width=4)
+            lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4, mg_grid_width=12)
             layout.add_member(lm)
             result['success'] = 1
         else:
