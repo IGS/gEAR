@@ -2,8 +2,8 @@
 # Dockerfile to build gEAR web application
 ############################################################
 
-FROM ubuntu:impish
-# ubuntu 21.10
+FROM ubuntu:jammy
+# ubuntu 22.04
 
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
@@ -39,6 +39,7 @@ RUN apt-get -qq update \
   libblas-dev \
   liblapack-dev \
   libxml2-dev \
+  libhdf5-serial-dev \
   cmake \
   curl \
   wget \
@@ -51,7 +52,7 @@ RUN apt-get -qq update \
   python3-dev \
   python3-tk \
   openssh-server \
-  llvm-9* \
+  llvm \
   # Required for R
 	gfortran \
   libbz2-dev \
@@ -69,6 +70,7 @@ RUN apt-get -qq update \
   apache2 \
   php \
   libapache2-mod-php \
+  php-gd \
   # Cleanup
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
@@ -82,13 +84,12 @@ ENV LLVM_CONFIG=/usr/bin/llvm-config-9
 # So need to build from source instead
 
 WORKDIR /tmp
-
-# ProjectR install.  Must be done before rpy2 is installed
-#COPY ./install_bioc.sh /tmp/.
-#RUN /tmp/install_bioc.sh
-
-RUN echo "install.packages(c(\"BiocManager\"), repos=\"http://lib.stat.cmu.edu/R/CRAN/\")" | R --save --restore || exit 1
-RUN echo "BiocManager::install(c(\"projectR\"), ask=FALSE)" | R --save --restore || exit 1
+RUN wget $CMAKE_URL \
+  && tar -xzf v${CMAKE_VERSION}.tar.gz \
+  && cd CMake-${CMAKE_VERSION} \
+  && ./bootstrap \
+  && make install \
+  && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
 
 # ProjectR install.  Must be done before rpy2 is installed
 COPY ./install_bioc.sh /tmp/.
@@ -130,7 +131,7 @@ RUN ./pip3 install --upgrade pip \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 
 # Scikit-learn lib -> https://stackoverflow.com/a/70016416
-ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libgomp.so.1:/opt/Python-3.9.9/lib/python3.9/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
+#ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libgomp.so.1:/opt/Python-${PYTHON_VERSION}/lib/python3.10/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
 ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
 
 # Apache things
@@ -140,7 +141,7 @@ COPY ./wsgi.conf /etc/apache2/mods-available/wsgi.conf
 COPY ./wsgi.load /etc/apache2/mods-available/wsgi.load
 COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
 COPY ./umgear.conf /etc/apache2/sites-available/umgear.conf
-COPY ./php.ini /etc/php/7.2/apache2/php.ini
+COPY ./php.ini /etc/php/8.1/apache2/php.ini
 RUN a2dissite 000-default.conf
 RUN a2ensite umgear.conf
 RUN a2enmod rewrite cgi wsgi proxy

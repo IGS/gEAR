@@ -21,7 +21,7 @@ $(function () {
     dataType: "json",
     maxFileSize: FILE_UPLOAD_LIMIT,
     done(_e, data) {
-      console.error("file successfully uploaded");
+      console.info("file successfully uploaded");
       screenshot = null;
       if (data.result.files.length == 0) {
         console.error("File Upload Error");
