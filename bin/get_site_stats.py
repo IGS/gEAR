@@ -185,7 +185,7 @@ def get_h5ad_count():
             # "Get the count of explicitly-stored values (nonzeros)"
             sp_arr = csr_matrix(obs_matrix)
             this_count = sp_arr.nnz
-            h5ad_expression_count += sp_arr.nnz
+            h5ad_expression_count += this_count
 
             print("\tAdding {0} expression points for a total of: {1}".format(this_count, h5ad_expression_count))
             
