@@ -14,6 +14,7 @@ class DatasetCollectionPanel {
         this.datasets = datasets;
         this.layout_id = layout_id;
         this.layout_label = layout_label;
+        this.search_performed = false;
 
         if (!this.datasets) {
             this.datasets = new Array();
@@ -142,7 +143,7 @@ class DatasetCollectionPanel {
             }).done((data) => {
                 if (data.success == 1) {
                     //Was a search already performed?
-                    if ($("#search_gene_symbol").val()) {
+                    if (this.search_performed) {
                         // User has already searched, automatically update datasets and gene searches
                         update_datasetframes_generesults();
                     }

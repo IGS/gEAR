@@ -18,7 +18,7 @@ let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
 let projection = false;
 
-const annotation_panel = new FunctionalAnnotationPanel();
+let annotation_panel = null;
 const dataset_collection_panel = new DatasetCollectionPanel();
 const { controller } = dataset_collection_panel;
 
@@ -78,7 +78,6 @@ $(document).on("handle_page_loading", () => {
 
     gene_cart_id = getUrlParameter('gene_cart_share_id');
     if (gene_cart_id) {
-        console.info(`Gene cart share ID found: ${gene_cart_id}`);
         $('#intro_search_icon').trigger('click');
     }
 
@@ -103,8 +102,6 @@ $(document).on("handle_page_loading", () => {
     const permalinked_gene_symbol = getUrlParameter('gene_symbol');
     if (permalinked_gene_symbol) {
         $("#search_gene_symbol_intro").val(permalinked_gene_symbol);
-
-        console.info(`Permalinked gene symbols found: ${permalinked_gene_symbol}`);
         $('#intro_search_icon').trigger('click');
     } else if (dataset_id) {
         $('#permalink_intro_c').show();
@@ -140,7 +137,6 @@ $(document).on("handle_page_loading", () => {
         // Correct tab is active
         $("#projection_tab").click();
         projection = true;
-        console.info(`Projection ID found: ${permalinked_projection_id}`);
         $('#intro_search_icon').trigger('click');
     }
 
@@ -306,6 +302,8 @@ function load_annotation_organism_list() {
             var ListTmpl = $.templates("#organism_list_tmpl");
             var ListHtml = ListTmpl.render(data['organisms']);
             $(".organism_icon_c").append(ListHtml);
+
+            annotation_panel = new FunctionalAnnotationPanel();
         },
         error: function (jqXHR, textStatus, errorThrown) {
             display_error_bar(jqXHR.status + ' ' + errorThrown.name);
@@ -800,9 +798,10 @@ function populate_search_result_list(data) {
 var lastCall = 0;
 function select_search_result(elm) {
     //TODO Prevents this function from being double-called by #gene_search_form.submit()
+    // This might be replaced by my addition of DatasetCollectionPanel.search_performed attribute
     const callTime = new Date().getTime();
     if (callTime - lastCall <= 500) {
-      return false;
+        return false;
     }
     lastCall = callTime;
 
@@ -971,6 +970,7 @@ $("#gene_search_form").submit((event) => {
                     // auto-select the first match.  first <a class="list-group-item"
                     const first_thing = $('#search_results a.list-group-item').first();
                     select_search_result(first_thing);
+                    dataset_collection_panel.search_performed = true;
                 }
             });
 
