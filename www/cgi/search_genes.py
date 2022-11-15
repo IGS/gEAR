@@ -31,7 +31,7 @@ def main():
     #cached_mirna_family_gene_ids = get_mirna_family_gene_ids(cursor)
 
     gene_c = geardb.GeneCollection()
-    gene_c.get_by_gene_symbol(gene_symbol=search_gene_symbol, exact=exact_match)
+    gene_c.get_by_gene_symbol(gene_symbol=search_gene_symbol, exact=exact_match, search_aliases=True)
 
     result = { 'genes': gene_c.genes }
 
@@ -51,6 +51,9 @@ def main():
 
         if gene_sym not in syms:
             syms[gene_sym] = {'by_organism': dict()}
+
+        if hasattr(gene, 'alias'):
+            syms[gene_sym]['alias'] = gene.alias
 
         if gene.organism_id not in syms[gene_sym]['by_organism']:
             syms[gene_sym]['by_organism'][gene.organism_id] = list()

@@ -2289,7 +2289,7 @@ class GeneCollection:
     def add_gene(self, gene):
         self.genes.append(gene)
 
-    def get_by_gene_symbol(self, gene_symbol=None, exact=None):
+    def get_by_gene_symbol(self, gene_symbol=None, exact=None, search_aliases=False):
         """
         Searches the database by gene symbol and populates the GeneCollection.genes attribute.
 
@@ -2305,32 +2305,46 @@ class GeneCollection:
 
         gene_symbols = gene_symbol.split(' ')
 
-        for gene_symbol in gene_symbols:
-            if len(gene_symbol) == 0:
+        for gene_symbol_searched in gene_symbols:
+            if len(gene_symbol_searched) == 0:
                 continue
 
             # this comes from javascript as a string true/false
             if exact in [True, 'true', 1, "1"]:
-                qry = """
-                  SELECT id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,
-                         molecule, start, stop, gene_symbol, product, biotype
-                    FROM gene
-                   WHERE gene_symbol = %s
-                  ORDER BY gene_symbol, organism_id, ensembl_release DESC
-                """
-                cursor.execute(qry, (gene_symbol,))
+                qry_args = [gene_symbol_searched]
+                
+                if search_aliases:
+                    qry = """
+                      SELECT g.id, g.ensembl_id, g.ensembl_version, g.ensembl_release, g.genbank_acc, g.organism_id,
+                             g.molecule, g.start, g.stop, g.gene_symbol, g.product, g.biotype, gs.label
+                        FROM gene g
+                             LEFT JOIN gene_symbol gs ON gs.gene_id=g.id
+                       WHERE g.gene_symbol = %s or gs.label = %s
+                      ORDER BY g.gene_symbol, g.organism_id, g.ensembl_release DESC
+                    """
+                    qry_args.append(gene_symbol_searched)
+                else:
+                    qry = """
+                      SELECT g.id, g.ensembl_id, g.ensembl_version, g.ensembl_release, g.genbank_acc, g.organism_id,
+                             g.molecule, g.start, g.stop, g.gene_symbol, g.product, g.biotype, NULL
+                        FROM gene g
+                       WHERE g.gene_symbol = %s
+                      ORDER BY g.gene_symbol, g.organism_id, g.ensembl_release DESC
+                    """
+                
+                cursor.execute(qry, qry_args)
             else:
                 qry = """
                   SELECT id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,
-                         molecule, start, stop, gene_symbol, product, biotype
+                         molecule, start, stop, gene_symbol, product, biotype, NULL
                     FROM gene
                    WHERE gene_symbol LIKE %s
                   ORDER BY gene_symbol, organism_id, ensembl_release DESC
                 """
-                cursor.execute(qry, ('%' + gene_symbol + '%',))
+                cursor.execute(qry, ('%' + gene_symbol_searched + '%',))
 
             for (id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,
-                 molecule, start, stop, gene_symbol, product, biotype) in cursor:
+                 molecule, start, stop, gene_symbol, product, biotype, gene_symbol_alias) in cursor:
 
                 lc_gene_symbol = gene_symbol.lower()
 
@@ -2349,6 +2363,9 @@ class GeneCollection:
                             stop=stop, gene_symbol=gene_symbol, product=product,
                             biotype=biotype)
 
+                if gene_symbol_alias and gene_symbol_searched == gene_symbol_alias:
+                    gene.alias = gene_symbol_alias
+                    
                 self.add_gene(gene)
 
         cursor.close()

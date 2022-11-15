@@ -778,6 +778,11 @@ function populate_search_result_list(data) {
         // Build search result html
         let gene_result_html = `<a class="list-group-item" data-gene_symbol="${gene_symbol}" href="#">${gene_symbol}`;
 
+        if (data[gene_symbol]['alias']) {
+            gene_result_html += ' (' + data[gene_symbol]['alias'] + ')';
+        }
+
+
         gene_result_html += '</a>';
         items.push(gene_result_html);
     }
