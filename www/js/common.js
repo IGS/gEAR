@@ -62,8 +62,9 @@ $(document).ready(() => {
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
 
-        let page_name = location.pathname;
-        if (page_name == "/") {
+        let page_name = location.pathname.replace(/^\//, '');
+         
+        if (page_name == "") {
             page_name = 'index.html';
         }
 
