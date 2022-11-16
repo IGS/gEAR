@@ -9,8 +9,10 @@ Shaun Adkins - sadkins@som.umaryland.edu
 DATASET_PREVIEWS_DIR = "/var/www/img/dataset_previews"
 
 import os, json, requests, sys
+import base64
 
 import plotly.graph_objects as go
+import cairosvg
 
 lib_path = os.path.abspath(os.path.join('..', 'lib'))
 sys.path.append(lib_path)
@@ -64,9 +66,18 @@ def make_static_plotly_graph(filename, config, url):
     fig.write_image(filename)
     return True
 
-def make_static_svg(filename, config, url):
-    return False
-    requests.post("http://127.0.0.1/api/plot/{}/svg?gene={}".format(dataset_id, config["gene_symbol"]))
+def make_static_svg(filename, dataset_id):
+    """Create (or overwrite) a static svg PNG image using the existing config."""
+
+    svg_filepath = "../datasets_uploaded/{}.svg".format(dataset_id)
+
+    cairosvg.svg2png(url=svg_filepath, write_to=filename)
+
+    try:
+        os.chmod(filename, 0o666)
+    except Exception as e:
+        print("Could not chmod {} for reason: {}".format(filename, str(e)), file=sys.stderr)
+    return True
 
 def make_static_tsne_graph(filename, config, url):
     """Create (or overwrite) a static tsne PNG image using the existing config."""
@@ -83,7 +94,6 @@ def make_static_tsne_graph(filename, config, url):
     if "success" in decoded_result and decoded_result["success"] < 0:
         return False
 
-    import base64
     img_data = base64.urlsafe_b64decode(decoded_result["image"])
     with open(filename, "wb") as fh:
         fh.write(img_data)
@@ -120,7 +130,6 @@ def main():
             try:
                 # Plotly
                 if props["plot_type"] in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
-                    url += "/"
                     success = make_static_plotly_graph(filename, config, url)
                 elif props["plot_type"] in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
                     url += "/mg_dash"
@@ -133,7 +142,7 @@ def main():
                 # SVG (todo later)
                 elif props["plot_type"] in ["svg"]:
                     url += "/svg"
-                    success = make_static_svg(filename, config, url)
+                    success = make_static_svg(filename, dataset_id)
                 # Epiviz (todo later)
                 elif props["plot_type"] in ["epiviz"]:
                     url += "/epiviz"
