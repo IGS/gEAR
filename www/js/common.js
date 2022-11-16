@@ -508,8 +508,6 @@ $(document).on("click", ".js-user-guide-link", (e) => {
     let anchor;
     let manual_url = "/manual.html"
 
-    console.log(document.URL);
-
     if (document.URL.includes("upload_dataset.html")) {anchor="uploading"}
     if (document.URL.includes("analyze_dataset.html")) {anchor="workbench"}
     if (document.URL.includes("upload_epigenetic_data.html")) {anchor="epiviz"}
@@ -535,15 +533,13 @@ $(document).on("click", ".js-user-guide-link", (e) => {
 function download_table_as_excel(table_id, filename) {
     table_str = '';
 
-    $(`#${table_id} thead tr th`).each(function() {
-        console.info(`Adding a header row of table ${table_id}`);
-        table_str += `${$(this).text()}\t`;
+    $('#' + table_id + ' thead tr th').each(function() {
+        table_str += $(this).text() + "\t";
     });
     table_str = `${table_str.trim()}\n`;
 
-    $(`#${table_id} tbody tr`).each(function() {
-        console.info(`Adding a body row of table ${table_id}`);
-        const rows = $(this).find('td');
+    $('#' + table_id + ' tbody tr').each(function() {
+        var rows = $(this).find('td');
 
         rows.each(function() {
             table_str += `${$(this).text()}\t`;

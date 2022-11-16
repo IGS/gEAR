@@ -59,6 +59,7 @@ RUN apt-get -qq update \
   apache2 \
   php \
   libapache2-mod-php \
+  php-gd \
   # Cleanup
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \

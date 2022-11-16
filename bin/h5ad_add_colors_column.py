@@ -27,7 +27,7 @@ def main():
     adata.write(args.output_file)
 
 def choose_color(row):
-
+    pass
 
 
 if __name__ == '__main__':

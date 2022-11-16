@@ -96,8 +96,7 @@ def main():
         result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
 
     if layout_share_id:
-        pass
-        #result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
 
     ## Selected priority (and indexes folder IDs):
     ## - A passed share ID
