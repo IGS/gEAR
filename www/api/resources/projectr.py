@@ -2,14 +2,19 @@ from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, hashlib, uuid, sys, fcntl
+import pandas as pd
+import asyncio
+
 from os import getpid
 from time import sleep
-import geardb
-import gear.rfuncs as rfx
-from gear.rfuncs import RError
+from more_itertools import sliced
 
-import pandas as pd
-import atexit
+import geardb
+
+# https://stackoverflow.com/a/35904211/1368079
+this = sys.modules[__name__]
+from gear.serverconfig import ServerConfig
+this.servercfg = ServerConfig().parse()
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -19,6 +24,10 @@ ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 PROJECTIONS_JSON_BASENAME = "projections.json"
 
 ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
+
+# limit of asynchronous tasks that can happen at a time
+# I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
+SEMAPHORE_LIMIT = 50
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -116,6 +125,36 @@ def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return orig_df.rename(index=orthomap_dict)
 
+def calculate_chunk_size(num_genes, num_samples):
+    """
+    Calculate number of chunks to divide all samples into.
+    """
+    TOTAL_DATA_LIMIT = 1e6
+    total_data = num_genes * num_samples
+    total_data_chunks = total_data / TOTAL_DATA_LIMIT
+    return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
+
+async def make_post_request(payload, sem):
+    """
+    makes an non-authorized POST request to the specified HTTP endpoint
+    """
+
+    # Cloud Run uses your service's hostname as the `audience` value
+    # audience = 'https://my-cloud-run-service.run.app/'
+    # For Cloud Run, `endpoint` is the URL (hostname + path) receiving the request
+    # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
+
+    import aiohttp
+    audience=this.servercfg['projectR_service']['hostname']
+    endpoint="{}/".format(audience)
+    headers = {"content_type": "application/json"}
+
+    # https://docs.aiohttp.org/en/stable/client_reference.html
+    # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
+    async with aiohttp.ClientSession() as client:
+        async with sem, client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+            return await response.json()
+
 class ProjectROutputFile(Resource):
     """
     Get or create path to output file. Will mkdir if the directory does not currently exist.
@@ -184,11 +223,9 @@ class ProjectROutputFile(Resource):
             "projection_id": None
         }
 
-
 class ProjectR(Resource):
     """
-    ProjectR Container
-
+    Formats inputs to prep for projectR API call running on Google Cloud Run
     """
 
     def post(self, dataset_id):
@@ -263,6 +300,7 @@ class ProjectR(Resource):
                 , 'message': str(e)
             }
 
+
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=False)
 
@@ -333,8 +371,6 @@ class ProjectR(Resource):
         loading_df = loading_df.drop(loading_df.columns[1], axis=1)
 
         loading_df.set_index('dataRowNames', inplace=True)
-        # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
-        loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
         # Get unique identifier of first gene from loading genecart
         #first_loading_gene = loading_df.index[0]
@@ -351,6 +387,9 @@ class ProjectR(Resource):
                     "success": -1
                     , "message": message
                 }
+
+        # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
+        loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
         num_target_genes = target_df.shape[0]
         num_loading_genes = loading_df.shape[0]
@@ -370,6 +409,10 @@ class ProjectR(Resource):
             }
 
         message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
+
+        # Reduce the size of both dataframes before POSTing
+        target_df = target_df.loc[index_intersection]
+        loading_df = loading_df.loc[index_intersection]
 
         # Create lock file if it does not exist
         lockfile = str(dataset_projection_csv) + ".lock"
@@ -410,21 +453,62 @@ class ProjectR(Resource):
                 , "num_dataset_genes": num_target_genes
             }
 
+        # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
+        chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
+
+        print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
+
+        # Chunk dataset by samples/cells and make asynchronous POST request
+        # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
+        index_slices = sliced(range(len(target_df.columns)), chunk_size)
+        chunked_dfs = []
+
+        for idx, index_slice in enumerate(index_slices):
+            chunked_dfs.append(target_df.iloc[:,index_slice])
+
+        loop = asyncio.new_event_loop()
+        sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
+        asyncio.set_event_loop(loop)
         try:
-            projection_patterns_df = rfx.run_projectR_cmd(target_df, loading_df, is_pca).transpose()
+            # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
+            # The stuff in the dict is the payload for each request.
+            res_jsons = loop.run_until_complete(
+                asyncio.gather(*[make_post_request({
+                    "target": chunk_df.to_json(orient="split")
+                    , "loadings": loading_df.to_json(orient="split")
+                    , "is_pca": is_pca
+                    , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+                    , "dataset_id":dataset_id
+                    }, sem) for chunk_df in chunked_dfs]
+                )
+            )
         except Exception as e:
-            # Remove file lock
+            print(str(e), file=sys.stderr)
+            # Raises as soon as one "gather" task has an exception
             remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
-                , 'message': str(e)
+                , 'message': "Could not run projectR command."
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
+        finally:
+            loop.close()
+
+        # Concatenate the dataframes back together again
+        res_dfs_list = [pd.read_json(json.dumps(res_json)) for res_json in res_jsons]
+        projection_patterns_df = pd.concat(res_dfs_list)
+
+        # There is a good chance the samples are now out of order, which will break
+        # the copying of the dataset observation metadata when this output is converted
+        # to an AnnData object. So reorder back to dataset sample order.
+        projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
+
+
         projection_patterns_df.to_csv(dataset_projection_csv)
 
         # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse)

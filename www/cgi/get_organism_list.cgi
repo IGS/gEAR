@@ -7,12 +7,13 @@ Data structure returned:
 
 {
    organisms: [
-    {
-      dataset_id: "dataset12.corrected",
-      title: "Cell-specific RNASeq in the ear",
-      ldesc: "Super amazing illustration of cell-specific coloring of the ear cells.",
-      access: "Private"
-    }
+      {"id": 5, 
+       "label": "Chicken", 
+       "genus": "Gallus", 
+       "species": "gallus",  
+       "strain": null, 
+       "taxon_id": 9031
+      }, ...
    ]
 }
 

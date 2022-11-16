@@ -1,5 +1,6 @@
 numpy==1.21.5
-numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
+numexpr==2.8.1
+louvain==0.7.1
 scanpy[louvain]==1.7.2  # uses louvain 0.7.1
 pandas==1.4.1
 numba==0.55.1
@@ -26,9 +27,8 @@ anndata==0.7.8
 openpyxl==3.0.10
 #h5py==2.10.0    # Installed through scanpy but that version breaks things
 h5py==3.6.0
-rpy2==3.5.4 # Did not work with R 3.6.3, works with R 4.2.0
 tables==3.7.0    # Read hdf5 files into pandas
 more_itertools==9.0.0
+aiohttp
 #diffxpy==0.7.4
 #selenium   # Browser testing
-#needle # Visual regression testing
