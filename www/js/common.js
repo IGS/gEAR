@@ -65,6 +65,13 @@ $(document).ready(() => {
 
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
+
+        let page_name = location.pathname.replace(/^\//, '');
+
+        if (page_name == "") {
+            page_name = 'index.html';
+        }
+
         const head = document.getElementsByTagName('head')[0];
         const body = document.getElementsByTagName('body')[0];
 
@@ -79,14 +86,6 @@ $(document).ready(() => {
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
-
-
-        let page_name = location.pathname;
-        if (page_name == "/") {
-            page_name = 'index.html';
-        }
-
-
 
         // Load plugins, if any
         for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {

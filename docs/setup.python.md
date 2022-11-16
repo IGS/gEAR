@@ -63,7 +63,8 @@ fixed paths have worked fine for decades.
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
       tables==3.7.0 \
-      xlrd==1.2.0
+      xlrd==1.2.0 \
+      cairosvg==2.5.2
 
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
