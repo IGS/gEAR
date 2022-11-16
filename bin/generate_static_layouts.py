@@ -43,18 +43,12 @@ def get_all_displays(cursor):
 
     return displays
 
-def make_static_plotly_graph(dataset_id, filename, config):
+def make_static_plotly_graph(filename, config, url):
     """Create a static plotly PNG image using the existing config."""
     # WARNING: Disabling SSL verification in the POST call
-    result = requests.post("https://localhost/api/plot/{}".format(dataset_id), json=config, verify=False)
-
-
     # Throw error if things went awry (check apache ssl_error logs)
-    try:
-        result.raise_for_status()
-    except:
-        print("Error with plotting dataset {}".format(dataset_id))
-        return False
+    result = requests.post(url, json=config, verify=False)
+    result.raise_for_status()
 
     decoded_result = result.json()
 
@@ -65,19 +59,36 @@ def make_static_plotly_graph(dataset_id, filename, config):
     #plot_config = result["plot_config"]
     plot_json = decoded_result["plot_json"]
 
-
     fig = go.Figure(data=plot_json["data"], layout=plot_json["layout"])
 
     fig.write_image(filename)
     return True
 
-def make_static_svg_graph(dataset_id, filename, config):
+def make_static_svg(filename, config, url):
     return False
     requests.post("http://127.0.0.1/api/plot/{}/svg?gene={}".format(dataset_id, config["gene_symbol"]))
 
-def make_static_tsne_graph(dataset_id, filename, config):
-    return False
-    requests.post("http://127.0.0.1/api/plot/{}/tsne".format(dataset_id), config)
+def make_static_tsne_graph(filename, config, url):
+    """Create (or overwrite) a static tsne PNG image using the existing config."""
+
+    # WARNING: Disabling SSL verification in the POST call
+    result = requests.post(url, json=config, verify=False)
+    result.raise_for_status()
+
+    decoded_result = result.json()
+
+    # If plotly API threw an error, report as failed
+    if not "success" in decoded_result:
+        return False
+    if "success" in decoded_result and decoded_result["success"] < 0:
+        return False
+
+    import base64
+    img_data = base64.urlsafe_b64decode(decoded_result["image"])
+    with open(filename, "wb") as fh:
+        fh.write(img_data)
+
+    return True
 
 def main():
 
@@ -105,25 +116,33 @@ def main():
                 print("Overwriting file {}".format(filename))
 
             success = False
-
-            # Plotly
-            if props["plot_type"] in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
-                success = make_static_plotly_graph(dataset_id, filename, config)
-            # tSNE (todo later)
-            elif props["plot_type"] in ["tsne_static", "umap_static", "pca_static", "tsne"]:
-                success = make_static_tsne_graph(dataset_id, filename, config)
-            # SVG (todo later)
-            elif props["plot_type"] in ["svg"]:
-                success = make_static_svg_graph(dataset_id, filename, config)
-            # Epiviz (todo later)
-            elif props["plot_type"] in ["epiviz"]:
-                pass
-            # Multigene plots
-            elif props["plot_type"] in ["heatmap", "mg_violin", "volcano", "dotplot", "quadrant"]:
-                gene = "multi"
-                success = make_static_plotly_graph(dataset_id, filename, config)
-            else:
-                print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))
+            url = "https://localhost/api/plot/{}".format(dataset_id)
+            try:
+                # Plotly
+                if props["plot_type"] in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+                    url += "/"
+                    success = make_static_plotly_graph(filename, config, url)
+                elif props["plot_type"] in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
+                    url += "/mg_dash"
+                    gene = "multi"
+                    success = make_static_plotly_graph(filename, config, url)
+                # tSNE (todo later)
+                elif props["plot_type"] in ["tsne_static", "umap_static", "pca_static", "tsne"]:
+                    url += "/tsne"
+                    success = make_static_tsne_graph(filename, config, url)
+                # SVG (todo later)
+                elif props["plot_type"] in ["svg"]:
+                    url += "/svg"
+                    success = make_static_svg(filename, config, url)
+                # Epiviz (todo later)
+                elif props["plot_type"] in ["epiviz"]:
+                    url += "/epiviz"
+                    pass
+                else:
+                    print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))
+            except Exception as e:
+                print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
+                print(str(e), file=sys.stderr)
 
             if not success:
                 print("Could not create static image for display id {}".format(display_id))

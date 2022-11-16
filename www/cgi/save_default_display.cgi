@@ -46,6 +46,9 @@ def attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene):
             pass
 
         os.symlink(filename, symlink_path)
+    else:
+        print("Will not create 'default static image' symlink for display id {}. " \
+            "Most likely the user requesting to make the display default is not the dataset owner".format(display_id), file=sys.stderr)
 
 
 def main():
