@@ -156,7 +156,7 @@ $(document).on("handle_page_loading", () => {
     // If MG search icon is clicked, toggle parameters
     $('.js-multigene').click(() => {
         multigene = !multigene;
-        set_multigene_plots(!multigene);
+        set_multigene_plots(multigene);
     });
 
     // If multi-pattern set, toggle multigene
