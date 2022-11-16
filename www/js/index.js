@@ -789,7 +789,7 @@ function populate_search_result_list(data) {
 }
 
 var lastCall = 0;
-function select_search_result(elm) {
+function select_search_result(elm, draw_display=true) {
     //TODO Prevents this function from being double-called by #gene_search_form.submit()
     // This might be replaced by my addition of DatasetCollectionPanel.search_performed attribute
     const callTime = new Date().getTime();
