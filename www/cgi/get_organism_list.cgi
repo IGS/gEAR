@@ -12,7 +12,8 @@ Data structure returned:
        "genus": "Gallus", 
        "species": "gallus",  
        "strain": null, 
-       "taxon_id": 9031
+       "taxon_id": 9031,
+       "has_icon": 1
       }, ...
    ]
 }
@@ -36,6 +37,15 @@ def main():
 
     org_collection = geardb.OrganismCollection()
     result['organisms'] = org_collection.get_all()
+
+    for org in result['organisms']:
+        icon_dir = os.path.join(lib_path, '..', 'www', 'img', 'icons')
+        icon_path = os.path.join(icon_dir, "org-{0}-dark-64.svg".format(org.id))
+
+        if os.path.exists(icon_path):
+            org.has_icon = 1
+        else:
+            org.has_icon = 0
    
     cursor.close()
     cnx.close()
