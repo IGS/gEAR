@@ -23,17 +23,23 @@ def index():
     target_df = pd.read_json(target, orient="split")
     loading_df = pd.read_json(loadings, orient="split")
 
-
     if target_df.empty:
         raise RError("Target (dataset) dataframe is empty.")
 
     if loading_df.empty:
         raise RError("Loading (pattern) dataframe is empty.")
 
-    projection_patterns_df = run_projectR_cmd(target_df, loading_df, is_pca).transpose()
+    # https://github.com/IGS/gEAR/issues/442#issuecomment-1317239909
+    # Basically this is a stopgap until projectR has an option to remove
+    # centering around zero for PCA loadings.  Chunking the data breaks
+    # the output due to the centering around zero step.
+    if is_pca:
+        tp_target_df = target_df.transpose()
+        projection_patterns_df = tp_target_df.dot(loading_df)
+        return json.loads(projection_patterns_df.to_json())
 
+    projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
     return json.loads(projection_patterns_df.to_json())
-
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

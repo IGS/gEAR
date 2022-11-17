@@ -36,16 +36,7 @@ def convert_r_matrix_to_r_df(mtx):
     r_df = ro.r["as.data.frame"]
     return r_df(mtx)
 
-def convert_r_matrix_to_r_prcomp(mtx):
-    """
-    Convert R-style matrix to R-style prcomp object
-    """
-    # mtx is a matrix of numbers with PCs in columns
-    prcomp_obj = ListVector({"rotation": mtx})
-    prcomp_obj.rclass = "prcomp"    # Convert to prcomp-class object
-    return prcomp_obj
-
-def run_projectR_cmd(target_df, loading_df, is_pca=False):
+def run_projectR_cmd(target_df, loading_df):
     """
     Convert input Pandas dataframes to R matrix.
     Pass the inputs into the projectR function written in R.
@@ -67,14 +58,6 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
     target_r_matrix.rownames = StrVector(target_df.index)
     loading_r_matrix.rownames = StrVector(loading_df.index)
 
-    # Modify the R-style matrix to be a prcomp object if necessary
-    loading_r_object = loading_r_matrix
-
-    if is_pca:
-        loading_r_object = convert_r_matrix_to_r_prcomp(loading_r_matrix)
-        if not loading_r_object:
-            raise RError("Could not convert loading matrix to R prcomp object.")
-
     # The NMF projectR method signature is based on the LinearEmbeddedMatrix class,
     # Which has a featureLoadings property. That matrix is loaded and the default
     # projectR signature is returned and used. So we can just pass the matrix as-is.
@@ -83,7 +66,7 @@ def run_projectR_cmd(target_df, loading_df, is_pca=False):
     # Run project R command.  Get projectionPatterns matrix
     try:
         projectR = importr('projectR')
-        projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_object, full=False)
+        projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
     except Exception as e:
         print("ERROR: {}".format(str(e)), file=sys.stderr)
         #print(traceback.print_exc(), file=sys.stderr)
