@@ -69,7 +69,7 @@ def make_static_plotly_graph(filename, config, url):
 def make_static_svg(filename, dataset_id):
     """Create (or overwrite) a static svg PNG image using the existing config."""
 
-    svg_filepath = "../datasets_uploaded/{}.svg".format(dataset_id)
+    svg_filepath = "{}/../../datasets_uploaded/{}.svg".format(DATASET_PREVIEWS_DIR, dataset_id)
 
     cairosvg.svg2png(url=svg_filepath, write_to=filename)
 
@@ -129,22 +129,22 @@ def main():
             url = "https://localhost/api/plot/{}".format(dataset_id)
             try:
                 # Plotly
-                if props["plot_type"] in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+                if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
                     success = make_static_plotly_graph(filename, config, url)
-                elif props["plot_type"] in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
+                elif props["plot_type"].lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
                     url += "/mg_dash"
                     gene = "multi"
                     success = make_static_plotly_graph(filename, config, url)
                 # tSNE (todo later)
-                elif props["plot_type"] in ["tsne_static", "umap_static", "pca_static", "tsne"]:
+                elif props["plot_type"].lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
                     url += "/tsne"
                     success = make_static_tsne_graph(filename, config, url)
                 # SVG (todo later)
-                elif props["plot_type"] in ["svg"]:
+                elif props["plot_type"].lower() in ["svg"]:
                     url += "/svg"
                     success = make_static_svg(filename, dataset_id)
                 # Epiviz (todo later)
-                elif props["plot_type"] in ["epiviz"]:
+                elif props["plot_type"].lower() in ["epiviz"]:
                     url += "/epiviz"
                     pass
                 else:

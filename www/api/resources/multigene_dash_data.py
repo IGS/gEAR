@@ -266,26 +266,6 @@ class MultigeneDashData(Resource):
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
-        # Make a composite index of all categorical types
-        selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
-        selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
-        columns.append("composite_index")
-
-        # Filter dataframe on the chosen observation filters
-        if filters:
-            # Create a special composite index for the specified filters
-            selected.obs['filters_composite'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
-            selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
-            columns.append("filters_composite")
-            unique_composite_indexes = selected.obs["filters_composite"].unique()
-
-            # Only want to keep indexes that match chosen filters
-            # However if no filters were chosen, just use everything
-            filtered_composite_indexes = mg.create_filtered_composite_indexes(filters, unique_composite_indexes.tolist())
-            if filtered_composite_indexes:
-                condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
-                selected = selected[condition_filter, :]
-
         # Reorder the categorical values in the observation dataframe
         if sort_order:
             # Ensure selected primary and secondary columns are in the correct order
@@ -294,12 +274,15 @@ class MultigeneDashData(Resource):
                 sort_fields.append(primary_col)
             if secondary_col and secondary_col != primary_col:
                 sort_fields.append(secondary_col)
+
+            """
             # Add the rest of the sort order observation keys if any others exist.
             # Currently this should only consist of the primary and secondary columns, but may be extended in the future.
             obs_keys = sort_order.keys()
             for key in obs_keys:
                 if key not in sort_fields:
                     sort_fields.append(key)
+            """
 
             # Now reorder the dataframe
             for key in sort_fields:
@@ -312,6 +295,32 @@ class MultigeneDashData(Resource):
                     selected.obs[key] = reordered_col
                 except:
                     pass
+
+        # Make a composite index of all categorical types
+        selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+        selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
+        columns.append("composite_index")
+
+        # Filter dataframe on the chosen observation filters
+        if filters:
+            # reorder filter key the same order as sort_order if key exists
+            # Mostly for fixing the order of the heatmap clusterbars
+            for field in filters.keys():
+                if sort_order and field in sort_order:
+                    filters[field] = sort_order[field]
+
+            # Create a special composite index for the specified filters
+            selected.obs['filters_composite'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
+            selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
+            columns.append("filters_composite")
+            unique_composite_indexes = selected.obs["filters_composite"].unique()
+
+            # Only want to keep indexes that match chosen filters
+            # However if no filters were chosen, just use everything
+            filtered_composite_indexes = mg.create_filtered_composite_indexes(filters, unique_composite_indexes.tolist())
+            if filtered_composite_indexes:
+                condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
+                selected = selected[condition_filter, :]
 
         var_index = selected.var.index.name
 
@@ -478,6 +487,12 @@ class MultigeneDashData(Resource):
             if not matrixplot:
                 df = df.drop(columns=groupby_index)
 
+            # Sort based on the specified sort order
+            sortby_fields = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                sortby_fields.append(secondary_col)
+            df = df.sort_values(by=sortby_fields)
+
             # Drop the obs metadata now that the dataframe is sorted
             # They cannot be in there when the clustergram is made
             # But save it to add back in later
@@ -541,7 +556,12 @@ class MultigeneDashData(Resource):
             df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
             df["gene_symbol"] = df["gene_symbol"].cat.reorder_categories(
                         normalized_genes_list, ordered=True)
-            df = df.sort_values(by=["gene_symbol"])
+
+            # This is a bit redundant for regular violin plots, which sort correctly without sorting by the "groupby_fields"
+            # But the stacked violin plot does not respect the sorted order of the categories after melting, so we need to sort again
+            sortby_fields = ["gene_symbol"]
+            sortby_fields.extend(groupby_filters)
+            df = df.sort_values(by=sortby_fields)
 
             violin_func = mg.create_stacked_violin_plot if stacked_violin else mg.create_violin_plot
 

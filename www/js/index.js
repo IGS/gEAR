@@ -39,6 +39,8 @@ const search_result_postselection_functions = [];
 
 $(document).on("handle_page_loading", () => {
 
+
+
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
@@ -306,6 +308,9 @@ function get_index_info() {
     }).done((data) => {
         $('#stats_dataset_count').text(data.dataset_count);
         $('#stats_user_count').text(data.user_count);
+        if (!data.projectr_enabled) {
+            $('.tool-launcher[data-tool-name="projection"').hide()
+        }
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
     });
