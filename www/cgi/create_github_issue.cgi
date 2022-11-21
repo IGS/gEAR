@@ -50,7 +50,7 @@ def main():
         src = f"../{SCREENSHOT_DIR}/files/{screenshot}"
         dst = f"../{SCREENSHOT_DIR}/{new_basename}" # Synlink is up a directory
         os.symlink(src, dst)
-        screenshot_url = "{}/{}".format(SCREENSHOT_URL, new_basename)
+        screenshot_url = "{}/{}".format(ip_address, new_basename)
 
     # Get IP address of the server hosting this CGI script (to determine gEAR flavor)
     hostname = socket.gethostname()
@@ -62,7 +62,8 @@ def main():
            f"**Server IP:** {ip_address}\n\n"
            f"**Msg:** {comment}\n\n"
            f"**Tags:** {tag.split(', ')}\n\n"
-           f"**Screenshot:** {screenshot_url}")
+           f"**Screenshot:** {screenshot_url}\n\n"
+           "NOTE: Screenshot uses an internal IP address")
 
     # Headers data (i.e. authentication)
     headers = { "Authorization": "token {}".format(GITHUB_ACCESS_TOKEN) }
