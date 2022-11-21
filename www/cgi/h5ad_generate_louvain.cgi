@@ -56,7 +56,7 @@ def main():
         # SAdkins note - Occasionally I run out of memory computing this step on Docker,
         # especially if I want to do downstream stuff.
         # If this happens, set 'flavor="igraph"' which uses a different package.
-        sc.tl.louvain(adata, resolution=resolution, flavor="igraph")
+        sc.tl.louvain(adata, resolution=resolution)
         adata.write(dest_datafile_path)
 
     ## I don't see how to get the save options to specify a directory
