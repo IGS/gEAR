@@ -423,15 +423,15 @@
                       <button id='btn_download_marker_genes' class='pull-right shown_later'>Download</button>
                     </h4>
 
-                    <div id='marker_genes_table_c' class='pre-scrollable'>
-                      <table id="marker_genes_table">
+                    <div id='marker_genes_table_c' class='pre-scrollable table-responsive'>
+                      <table id="marker_genes_table" class="table table-bordered table-hover table-sm">
                         <thead>
                           <tr class="empty_on_change"></tr>
                         </thead>
                         <tbody class="empty_on_change"></tbody>
                       </table>
                       <script id="marker_genes_table_head_tmpl" type="text/x-jsrender">
-                        <th>{{:label}}</th>
+                        <th scope="col">{{:label}}</th>
                       </script>
                       <script id="marker_genes_table_body_tmpl" type="text/x-jsrender">
                         <tr>
@@ -506,18 +506,20 @@
                             <p class="js-next-step" style="display:none;"> Please click on the "Find marker genes" toggle to proceed.</p>
                           </div>
                           <div id="group_labels_c" class="shown_later">
-                            <table id="marker_genes_group_labels">
+                            <table id="marker_genes_group_labels" class="table table-bordered table-hover table-sm">
                               <thead>
                                 <tr>
-                                  <th>Group</th>
-                                  <th>Markers</th>
-                                  <th>New label</th>
+                                  <th scope="col">Group</th>
+                                  <th scope="col">Num Cells</th>
+                                  <th scope="col">Markers</th>
+                                  <th scope="col">New label</th>
                                 </tr>
                               </thead>
                               <tbody class="empty_on_change"></tbody>
                               <script id="marker_genes_group_labels_tmpl" type="text/x-jsrender">
                                 <tr>
                                   <td>{{:group_label}}</td>
+                                  <td>{{:num_cells}}</td>
                                   <td>{{:genes}}</td>
                                   <td class="group_user_label"><input type="text" name="group_labels[]" placeholder="label" value="{{:new_group_label}}"/></td>
                                 </tr>
