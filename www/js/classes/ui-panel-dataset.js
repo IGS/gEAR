@@ -507,7 +507,7 @@ class DatasetPanel extends Dataset {
     }
 
     show_loading(msg=null) {
-        if (!msg) {msg = "Loading..."}
+        if (!msg) {msg = "Loading display.."}
         $(`#${this.primary_key}_dataset_status_c h2`).text(msg);
 
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();

@@ -269,7 +269,7 @@ class ProjectR(Resource):
                     break
 
             if common_genes:
-                message = "Found {} common genes between the target dataset and the pattern file.".format(common_genes)
+                message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
 
             return {
                 "success": success
