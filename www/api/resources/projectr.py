@@ -497,7 +497,7 @@ class ProjectR(Resource):
             loop.close()
 
         # Concatenate the dataframes back together again
-        res_dfs_list = [pd.read_json(json.dumps(res_json)) for res_json in res_jsons]
+        res_dfs_list = [pd.read_json(json.dumps(res_json), orient="split") for res_json in res_jsons]
         projection_patterns_df = pd.concat(res_dfs_list)
 
         # There is a good chance the samples are now out of order, which will break
@@ -507,7 +507,6 @@ class ProjectR(Resource):
 
         # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
         projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
-
 
         projection_patterns_df.to_csv(dataset_projection_csv)
 

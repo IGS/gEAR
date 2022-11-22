@@ -36,10 +36,10 @@ def index():
     if is_pca:
         tp_target_df = target_df.transpose()
         projection_patterns_df = tp_target_df.dot(loading_df)
-        return json.loads(projection_patterns_df.to_json())
+        return json.loads(projection_patterns_df.to_json(orient="split"))
 
     projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
-    return json.loads(projection_patterns_df.to_json())
+    return json.loads(projection_patterns_df.to_json(orient="split"))
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
