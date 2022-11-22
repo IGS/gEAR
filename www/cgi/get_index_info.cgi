@@ -37,7 +37,9 @@ def main():
     result['dataset_count'] = geardb.get_dataset_count()
     result['user_count'] = geardb.get_user_count()
 
-    if this.servercfg['projectR_service']['enabled'] == 1:
+    print(this.servercfg['projectR_service']['enabled'] , file=sys.stderr)
+
+    if this.servercfg['projectR_service']['enabled'].startswith("1"):
         result["projectr_enabled"] = 1
 
     print('Content-Type: application/json\n\n')
