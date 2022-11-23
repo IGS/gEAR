@@ -93,7 +93,7 @@ class DatasetCollectionPanel {
     }
 
     reset_abort_controller() {
-        if (this.controller) {
+        if (this.controller && !this.performing_projection) {
             this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
         }
         this.controller = new AbortController(); // Create new controller for new set of frames

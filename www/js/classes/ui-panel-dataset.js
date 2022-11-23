@@ -43,6 +43,7 @@ class DatasetPanel extends Dataset {
         //this.links = args.links;
         //this.linksfoo = "foo";
         this.controller = controller;   // AbortController
+        this.performing_projection = false;
         this.projectR_info = null;
     }
 
@@ -525,7 +526,7 @@ class DatasetPanel extends Dataset {
     }
 
     show_no_match() {
-        $(`#${this.primary_key}_dataset_status_c h2`).text("Gene not found");
+        $(`#${this.primary_key}_dataset_status_c h2`).text(this.projection_id ? "Projection not run yet on dataset" : "Gene not found");
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
         $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
@@ -573,6 +574,7 @@ class DatasetPanel extends Dataset {
         payload.scope = gctype;  // genecart type
 
         let message = "There was an error projecting patterns onto this dataset.";
+        this.performing_projection = true;
         try {
             const { data } = await axios.post(`/api/projectr/${dataset_id}`, payload, other_opts);
             if (data.message) {
@@ -591,6 +593,8 @@ class DatasetPanel extends Dataset {
             }
             this.show_error(message);
             throw message
+        } finally {
+            this.performing_projection = false;
         }
     }
 }

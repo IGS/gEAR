@@ -38,9 +38,6 @@ const projection_source_tree = new ProjectionSourceTree({treeDiv: '#projection_s
 const search_result_postselection_functions = [];
 
 $(document).on("handle_page_loading", () => {
-
-
-
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
@@ -1046,14 +1043,8 @@ $("#projection_search_form").submit((event) => {
         set_scrollbar_props();
 
         dataset_collection_panel.reset_abort_controller();
-
-        // SAdkins - Leaving this code in here, but I don't think it works any better than just a standard async/await call with memory management
-        //const promise_limit = 8;
-        //const run_async_projection = asyncLimit(run_projection, promise_limit);
         dataset_collection_panel.datasets.map((dataset) => {
             run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
-            //run_async_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
-
         });
         return false;  // keeps the page from not refreshing
     }
@@ -1065,6 +1056,9 @@ $("#projection_search_form").submit((event) => {
 })
 
 $("#projection_source").on('change', (_event) => {
+    // Hide previous genecart pattern list of results
+    $('#search_results_scrollbox').hide();
+
     const gctype = $("#projection_source").data("gctype");
     $.ajax({
         type: "POST",

@@ -370,6 +370,9 @@ class PlotlyData(Resource):
             if y_axis == "raw_value":
                 y_title = "expression of {}".format(gene_symbol)
 
+                if projection_id:
+                    y_title = "contribution to {}".format(gene_symbol)
+
         if plot_type == "contour" and not z_axis:
             z_axis = "raw_value"
         elif not plot_type == "contour":
@@ -417,7 +420,9 @@ class PlotlyData(Resource):
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
         # Modify y-title so that gene display results plot is not misleading
-        if "expression of {}".format(gene_symbol) in y_title:
+        # This only affects JSON return value, not the plot itself
+        if "expression of {}".format(gene_symbol) in y_title \
+            or "contribution to {}".format(gene_symbol) in y_title:
             y_title = None
 
         return {

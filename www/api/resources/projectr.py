@@ -488,7 +488,7 @@ class ProjectR(Resource):
             remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
-                , 'message': "Could not run projectR command."
+                , 'message': "Something went wrong.  Could not create projection."
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
