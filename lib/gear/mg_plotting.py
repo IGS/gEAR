@@ -139,6 +139,8 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     return fig
 
 ### Heatmap fxns
+#from memory_profiler import profile
+#fp=open('/tmp/memory_profiler.log','w+')
 
 def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels=None, is_log10=False, flip_axes=False) -> None:
     """Add column traces for each filtered group.  Edits figure in-place."""
@@ -279,6 +281,7 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
         return [[ groups_and_colors[key]["groups"].index(cgm["group"])] for cgm in val ]
     return [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
 
+#@profile(stream=fp)
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
                        , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""

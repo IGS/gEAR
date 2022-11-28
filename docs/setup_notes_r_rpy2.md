@@ -21,4 +21,6 @@ Then run `sudo ldconfig` to cache the shared libraries.  You can confirm shared 
 
 ## Installing rpy2
 
-`<python\_bin>/pip3 install rpy2`
+`<python\_bin>/pip3 install rpy2==3.5.1`
+
+Later versions seem to have an error that is not an issue with this version

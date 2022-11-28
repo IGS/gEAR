@@ -86,16 +86,23 @@ def create_colorscale_with_zero_gray(colorscale):
     newcolors[0, :] = gray
     return mcolors.ListedColormap(newcolors)
 
-def create_projection_adata(dataset_adata, dataset_id, projection_csv):
+def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
+    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+    if projection_adata_path.is_file():
+        return sc.read_h5ad(projection_adata_path, backed=True)
+
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
-        projection_adata = sc.read_csv("/{}/by_dataset/{}/{}".format(PROJECTIONS_BASE_DIR, dataset_id, projection_csv))
+        projection_adata = sc.read_csv(projection_csv_path)
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
-
     projection_adata.obs = dataset_adata.obs
     projection_adata.var["gene_symbol"] = projection_adata.var_names
+    # Associate with a filename to ensure AnnData is read in "backed" mode
+    projection_adata.filename = projection_adata_path
     return projection_adata
 
 def get_colorblind_scale(n_colors):
@@ -189,9 +196,8 @@ class TSNEData(Resource):
         adata = ana.get_adata(backed=True)
 
         if projection_id:
-            projection_csv = "{}.csv".format(projection_id)
             try:
-                adata = create_projection_adata(adata, dataset_id, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_id)
             except PlotError as pe:
                 return {
                     'success': -1,
