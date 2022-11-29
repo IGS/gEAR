@@ -92,7 +92,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     if projection_adata_path.is_file():
-        return sc.read_h5ad(projection_adata_path, backed=True)
+        return sc.read_h5ad(projection_adata_path, backed="r")
 
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
