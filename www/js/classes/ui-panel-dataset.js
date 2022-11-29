@@ -567,8 +567,12 @@ class DatasetPanel extends Dataset {
             }
             payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
         } catch (e) {
+            if (e.name == "CanceledError") {
+                console.info("display draw canceled for previous request");
+                return;
+            }
             this.show_error(e.message);
-            throw(e.message);
+            throw e.message;
         }
 
         payload.scope = gctype;  // genecart type
