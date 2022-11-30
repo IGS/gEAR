@@ -488,7 +488,7 @@ class ProjectR(Resource):
             remove_lock_file(lock_fh, lockfile)
             return {
                 'success': -1
-                , 'message': "Something went wrong.  Could not create projection."
+                , 'message': "Something went wrong with the projection-creating step."
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
@@ -497,7 +497,7 @@ class ProjectR(Resource):
             loop.close()
 
         # Concatenate the dataframes back together again
-        res_dfs_list = [pd.read_json(json.dumps(res_json), orient="split") for res_json in res_jsons]
+        res_dfs_list = [pd.read_json(res_json, orient="split") for res_json in res_jsons]
         projection_patterns_df = pd.concat(res_dfs_list)
 
         # There is a good chance the samples are now out of order, which will break
@@ -515,7 +515,7 @@ class ProjectR(Resource):
         try:
             genecart_projection_csv.symlink_to(dataset_projection_csv)
         except FileExistsError:
-            pass
+            print("Symlink already exists for {}".format(dataset_projection_csv), file=sys.stderr)
 
         # Add new configuration to the list for this dictionary key
         dataset_projections_dict = json.load(open(dataset_projection_json_file))
