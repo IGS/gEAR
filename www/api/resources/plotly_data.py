@@ -36,6 +36,9 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
+    # Close dataset adata so that we do not have a stale opened object
+    if dataset_adata.isbacked:
+        dataset_adata.file.close()
     projection_adata.var["gene_symbol"] = projection_adata.var_names
     # Associate with a filename to ensure AnnData is read in "backed" mode
     projection_adata.filename = projection_adata_path
