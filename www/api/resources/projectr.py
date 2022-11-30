@@ -512,7 +512,10 @@ class ProjectR(Resource):
 
         # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse)
         # NOTE: In the Docker instance, symlink reflects path to the mounted volume, not the local path
-        genecart_projection_csv.symlink_to(dataset_projection_csv)
+        try:
+            genecart_projection_csv.symlink_to(dataset_projection_csv)
+        except FileExistsError:
+            pass
 
         # Add new configuration to the list for this dictionary key
         dataset_projections_dict = json.load(open(dataset_projection_json_file))

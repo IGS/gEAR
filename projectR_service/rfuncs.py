@@ -68,9 +68,7 @@ def run_projectR_cmd(target_df, loading_df):
         projectR = importr('projectR')
         projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
     except Exception as e:
-        print("ERROR: {}".format(str(e)), file=sys.stderr)
-        #print(traceback.print_exc(), file=sys.stderr)
-        raise RError("Error: Could not run projectR command.")
+        raise RError("Error: Could not run projectR command.\nReason: {}".format(str(e)))
 
     # matrix back to data.frame
     projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)

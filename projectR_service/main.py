@@ -6,6 +6,11 @@ from rfuncs import run_projectR_cmd, RError
 
 app = Flask(__name__)
 
+def do_pca_projection(target_df, loading_df):
+    """Perform projection of PCA loadings."""
+    tp_target_df = target_df.transpose()
+    return tp_target_df.dot(loading_df)
+
 @app.route("/", methods=["POST"])
 def index():
     req_json = request.get_json()
@@ -29,16 +34,20 @@ def index():
     if loading_df.empty:
         raise RError("Loading (pattern) dataframe is empty.")
 
+    print("TARGET_DF SHAPE - {}".format(target_df), file=sys.stderr)
+    print("LOADING_DF SHAPE - {}".format(loading_df), file=sys.stderr)
+
     # https://github.com/IGS/gEAR/issues/442#issuecomment-1317239909
     # Basically this is a stopgap until projectR has an option to remove
     # centering around zero for PCA loadings.  Chunking the data breaks
     # the output due to the centering around zero step.
-    if is_pca:
-        tp_target_df = target_df.transpose()
-        projection_patterns_df = tp_target_df.dot(loading_df)
-        return json.loads(projection_patterns_df.to_json(orient="split"))
+    try:
+        if is_pca:
+            return json.loads(do_pca_projection(target_df,loading_df).to_json(orient="split"))
+        projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+    except Exception as e:
+        raise RError(str(e))
 
-    projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
     return json.loads(projection_patterns_df.to_json(orient="split"))
 
 if __name__ == "__main__":
