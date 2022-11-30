@@ -17,6 +17,7 @@ from flask_restful import Resource
 from matplotlib import cm
 
 sc.settings.set_figure_params(dpi=100)
+sc.settings.verbosity = 0
 
 PLOT_TYPE_TO_BASIS = {
     "tsne_static": "tsne",
