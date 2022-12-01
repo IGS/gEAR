@@ -3,7 +3,6 @@ from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, hashlib, uuid, sys, fcntl
 import pandas as pd
-import asyncio, aiohttp
 
 from os import getpid
 from time import sleep
@@ -134,24 +133,25 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
-async def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id):
+def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id):
+    import asyncio, aiohttp
     loop = asyncio.new_event_loop()
     sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
     asyncio.set_event_loop(loop)
+    client = aiohttp.ClientSession()
     try:
-        with aiohttp.ClientSession() as client:
-            # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
-            # The stuff in the dict is the payload for each request.
-            res_jsons = loop.run_until_complete(
-                asyncio.gather(*[make_post_request({
-                    "target": chunk_df.to_json(orient="split")
-                    , "loadings": loading_df.to_json(orient="split")
-                    , "is_pca": is_pca
-                    , "genecart_id":genecart_id # This helps in identifying which combinations are going through
-                    , "dataset_id":dataset_id
-                    }, client, sem) for chunk_df in chunked_dfs]
-                )
+        # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
+        # The stuff in the dict is the payload for each request.
+        res_jsons = loop.run_until_complete(
+            asyncio.gather(*[make_post_request({
+                "target": chunk_df.to_json(orient="split")
+                , "loadings": loading_df.to_json(orient="split")
+                , "is_pca": is_pca
+                , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+                , "dataset_id":dataset_id
+                }, client, sem) for chunk_df in chunked_dfs]
             )
+        )
         return res_jsons
     except Exception as e:
         raise Exception(str(e))
@@ -159,6 +159,7 @@ async def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, data
         # Wait 250 ms for the underlying SSL connections to close
         loop.run_until_complete(asyncio.sleep(0.250))
         loop.close()
+        client.close()
 
 async def make_post_request(payload, client, sem):
     """
