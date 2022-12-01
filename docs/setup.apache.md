@@ -159,6 +159,23 @@ Then, finally restart apache again.
 
       $ sudo service apache2 restart
 
+## /etc/apache2/mods-available/mpm_prefork.conf
+
+The "MaxRequestWorkers" needs to be increased in order to accommodate processing of simulaneous datasets in larger profiles. This is particularly applicable with prepping and chunking inputs for sending to the projectR Google Cloud Run service. The default setting is 150 but I bumped it up to 500 without issues. If running projectR locally, this does not need to be adjusted.
+
+I used the following URL for assistance in setting the conf:
+https://www.liquidweb.com/kb/apache-performance-tuning-mpm-directives/#prefork
+
+### Settings
+
+```text
+StartServers             100
+MinSpareServers          100
+MaxSpareServers          200
+MaxRequestWorkers         500
+MaxConnectionsPerChild   0
+```
+
 ## Optional configurations
 
 I don't like the new private tmp directories employed lately, as they don't servive service restarts

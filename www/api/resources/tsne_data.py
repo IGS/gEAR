@@ -427,7 +427,8 @@ class TSNEData(Resource):
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
         io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
-        plt.close() # Prevent zombie plots, which can cause issues
+        plt.clf()   # Clear current fig
+        plt.close()  # Prevent zombie plots, which can cause issues
 
         return {
             "success": success,

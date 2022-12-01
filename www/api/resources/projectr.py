@@ -302,7 +302,7 @@ class ProjectR(Resource):
 
 
         # Using adata with "backed" mode does not work with volcano plot
-        adata = ana.get_adata(backed=False)
+        adata = ana.get_adata(backed=True)
 
         # If dataset genes have duplicated index names, we need to rename them to avoid errors
         # in collecting rownames in projectR (which gives invalid output)
@@ -311,6 +311,9 @@ class ProjectR(Resource):
 
         # Ensure target dataset has genes as rows
         target_df = adata.to_df().transpose()
+
+        # Close dataset adata so that we do not have a stale opened object
+        adata.file.close()
 
         # Row: Genes
         # Col: Pattern weights
