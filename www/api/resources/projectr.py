@@ -157,9 +157,9 @@ def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id
         raise Exception(str(e))
     finally:
         # Wait 250 ms for the underlying SSL connections to close
+        client.close()
         loop.run_until_complete(asyncio.sleep(0.250))
         loop.close()
-        client.close()
 
 async def make_post_request(payload, client, sem):
     """

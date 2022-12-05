@@ -31,7 +31,6 @@ import scanpy as sc
 from matplotlib import cm
 
 from memory_profiler import profile
-#fp = open("/home/sadkins/projection_tsne_memory_profile.log", "w+")
 
 sc.settings.set_figure_params(dpi=100)
 sc.settings.verbosity = 0
@@ -43,7 +42,7 @@ from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
 dataset_id = "8dbfdcd7-a826-4658-e73a-bf85fabe7d6b"
-genecart_id = "a79189c08"
+genecart_id = "79189c08"
 is_pca = False
 output_id = None
 scope = "weighted-list"
@@ -218,9 +217,9 @@ def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id
         raise Exception(str(e))
     finally:
         # Wait 250 ms for the underlying SSL connections to close
+        client.close()
         loop.run_until_complete(asyncio.sleep(0.250))
         loop.close()
-        client.close()
 
 async def make_post_request(payload, client, sem):
     """
@@ -334,7 +333,6 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
-#@profile(stream=fp)
 @profile
 def run_projection_prestep():
     # Create the directory if it doesn't exist
@@ -395,7 +393,6 @@ def run_projection_prestep():
         "projection_id": None
     }
 
-#@profile(stream=fp)
 @profile
 def run_projection():
     success = 1
@@ -699,7 +696,6 @@ def run_projection():
         , "num_dataset_genes": num_target_genes
     }
 
-#@profile(stream=fp)
 @profile
 def run_tsne():
     if not gene_symbol or not dataset_id:
@@ -958,8 +954,14 @@ if __name__ == "__main__":
     print("running prestep")
     run_projection_prestep()
     print("running projection")
-    run_projection()
+    res = run_projection()
+    if res.get("success", 0) == 0:
+        print(res.get("message", "No error message"))
+        sys.exit(1)
     print("running tSNE")
     run_tsne()
+    if res.get("success", 0) == 0:
+        print(res.get("message", "No error message"))
+        sys.exit(1)
     print("Successful run")
     sys.exit(0)
