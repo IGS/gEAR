@@ -20,7 +20,10 @@ import re
 from math import ceil
 from pathlib import Path
 
+lib_path = os.path.abspath(os.path.join('..', 'lib'))
+sys.path.append(lib_path)
 import geardb
+
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
