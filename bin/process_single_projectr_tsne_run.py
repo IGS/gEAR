@@ -336,6 +336,67 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
 #@profile(stream=fp)
 @profile
+def run_projection_prestep():
+    # Create the directory if it doesn't exist
+    # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
+    dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
+    if not dataset_projection_json_file.parent.is_dir():
+        dataset_projection_json_file.parent.mkdir(parents=True, exist_ok=True)
+
+    genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
+    if not genecart_projection_json_file.parent.is_dir():
+        genecart_projection_json_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create the genecart projection json file if it doesn't exist
+    # We will use the dataset json file as a check if a projection already exists though
+    if not genecart_projection_json_file.is_file():
+        genecart_projection_json_file.touch(exist_ok=True)
+        write_to_json({}, genecart_projection_json_file) # create empty json file
+
+    # If the dataset json file exists, we can read it and get the output file path
+    if not dataset_projection_json_file.is_file():
+        dataset_projection_json_file.touch(exist_ok=True)
+        write_to_json({}, dataset_projection_json_file) # create empty json file
+        return {
+            "projection_id": None
+        }
+
+    projections_dict = json.load(open(dataset_projection_json_file))
+
+    # If the pattern was not projected onto this dataset, initialize a list of configs
+    # "cart.{projection_id}" added for backwards compatability
+    if not (genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict):
+        # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
+
+        return {
+            "projection_id": None
+        }
+
+    # If legacy version exists, copy to current format.
+    if not genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict:
+        print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
+        projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
+        projections_dict.pop("cart.{}".format(genecart_id), None)
+        # move legacy genecart projection stuff to new version
+        print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
+        old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
+        old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
+
+    for config in projections_dict[genecart_id]:
+        if int(is_pca) == config['is_pca']:
+            projection_id = config['uuid']
+            dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+            return {
+                "projection_id": projection_id  if Path(dataset_projection_csv).is_file() else None
+            }
+
+    # If we get here, we didn't find a file for this config
+    return {
+        "projection_id": None
+    }
+
+#@profile(stream=fp)
+@profile
 def run_projection():
     success = 1
     message = ""
@@ -894,6 +955,7 @@ def run_tsne():
     }
 
 if __name__ == "__main__":
+    run_projection_prestep()
     run_projection()
     run_tsne()
     sys.exit(0)
