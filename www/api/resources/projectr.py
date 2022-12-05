@@ -3,6 +3,7 @@ from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, hashlib, uuid, sys, fcntl
 import pandas as pd
+import asyncio
 
 from os import getpid
 from time import sleep
@@ -133,35 +134,34 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
-def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id):
-    import asyncio, aiohttp
-    loop = asyncio.new_event_loop()
-    sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
-    asyncio.set_event_loop(loop)
-    client = aiohttp.ClientSession()
-    try:
+def chunk_dataframe(df, chunk_size):
+    # Chunk dataset by samples/cells and make asynchronous POST request
+    # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
+    index_slices = sliced(range(len(df.columns)), chunk_size)
+    chunked_dfs = []
+
+    for idx, index_slice in enumerate(index_slices):
+        chunked_dfs.append(df.iloc[:,index_slice])
+    return chunked_dfs
+
+async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
+    """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
+    # Code influenced by https://stackoverflow.com/a/68288374
+    import aiohttp
+    chunked_dfs = chunk_dataframe(target_df, chunk_size)
+
+    async with aiohttp.ClientSession(loop=loop) as client:
         # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
         # The stuff in the dict is the payload for each request.
-        res_jsons = loop.run_until_complete(
-            asyncio.gather(*[make_post_request({
-                "target": chunk_df.to_json(orient="split")
-                , "loadings": loading_df.to_json(orient="split")
-                , "is_pca": is_pca
-                , "genecart_id":genecart_id # This helps in identifying which combinations are going through
-                , "dataset_id":dataset_id
-                }, client, sem) for chunk_df in chunked_dfs]
-            )
-        )
-        return res_jsons
-    except Exception as e:
-        raise Exception(str(e))
-    finally:
-        # Wait 250 ms for the underlying SSL connections to close
-        client.close()
-        loop.run_until_complete(asyncio.sleep(0.250))
-        loop.close()
+        return await asyncio.gather(*[fetch_one(client, sem, {
+            "target": chunk_df.to_json(orient="split")
+            , "loadings": loading_df.to_json(orient="split")
+            , "is_pca": is_pca
+            , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+            , "dataset_id":dataset_id
+            }) for chunk_df in chunked_dfs])
 
-async def make_post_request(payload, client, sem):
+async def fetch_one(client, sem, payload):
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -486,16 +486,14 @@ class ProjectR(Resource):
 
         print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
 
-        # Chunk dataset by samples/cells and make asynchronous POST request
-        # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
-        index_slices = sliced(range(len(target_df.columns)), chunk_size)
-        chunked_dfs = []
-
-        for idx, index_slice in enumerate(index_slices):
-            chunked_dfs.append(target_df.iloc[:,index_slice])
+        loop = asyncio.new_event_loop()
+        sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
+        asyncio.set_event_loop(loop)
 
         try:
-            res_jsons = make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id)
+            res_jsons = loop.run_until_complete(
+                fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size)
+            )
         except Exception as e:
             print(str(e), file=sys.stderr)
             # Raises as soon as one "gather" task has an exception
@@ -507,6 +505,10 @@ class ProjectR(Resource):
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
+        finally:
+            # Wait 250 ms for the underlying SSL connections to close
+            loop.run_until_complete(asyncio.sleep(0.250))
+            loop.close()
 
         # Concatenate the dataframes back together again
         res_dfs_list = [pd.read_json(res_json, orient="split") for res_json in res_jsons]

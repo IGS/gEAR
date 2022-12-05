@@ -13,6 +13,9 @@ from os import getpid
 from time import sleep
 from more_itertools import sliced
 
+import asyncio
+
+
 import base64
 import io
 import os
@@ -41,30 +44,41 @@ this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
-dataset_id = "8dbfdcd7-a826-4658-e73a-bf85fabe7d6b"
-genecart_id = "79189c08"
-is_pca = False
+dataset_id = "1b12dde9-1762-7564-8fbd-1b07b750505f"
+genecart_id = "0a0216f1"
+is_pca = True
+session_id = 'ee95e48d-c512-4083-bf05-ca9f65e2c12a'
+analysis_owner_id = "662"
+gene_symbol = "PC1"
+plot_type = "tsne_static"
+x_axis = "tSNE_1"
+y_axis = "tSNE_2"
+colorize_by = "cell_type"
+
+#dataset_id = "8dbfdcd7-a826-4658-e73a-bf85fabe7d6b"
+#genecart_id = "79189c08"
+#is_pca = False
+#session_id = '5c3898f5-85ea-4fdc-b97a-496a93d489d6'
+#analysis_owner_id = "483"
+#gene_symbol = "p1"
+#plot_type = "umap_static"
+#x_axis = "UMAP_0"
+#y_axis = "UMAP_1"
+#colorize_by = "cell.type"
+
+
 output_id = None
 scope = "weighted-list"
-
-session_id = '5c3898f5-85ea-4fdc-b97a-496a93d489d6'
 user = geardb.get_user_from_session_id(session_id)
 analysis = None
-analysis_owner_id = "483"
 colorblind_mode = False
-colorize_by = "cell.type"
 colors = {}
-gene_symbol = "p1"
 horizontal_legend = False
 max_columns = None
 order = {}
 plot_by_group = None
-plot_type = "umap_static"
 projection_id = None
 skip_gene_plot = None
-timestamp = 1670252418394
-x_axis = "UMAP_0"
-y_axis = "UMAP_1"
 
 ONE_LEVEL_UP = 1
 abs_path_git = Path(__file__).resolve().parents[ONE_LEVEL_UP] # git root
@@ -193,35 +207,34 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
-def make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id):
-    import asyncio, aiohttp
-    loop = asyncio.new_event_loop()
-    sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
-    asyncio.set_event_loop(loop)
-    client = aiohttp.ClientSession()
-    try:
+def chunk_dataframe(df, chunk_size):
+    # Chunk dataset by samples/cells and make asynchronous POST request
+    # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
+    index_slices = sliced(range(len(df.columns)), chunk_size)
+    chunked_dfs = []
+
+    for idx, index_slice in enumerate(index_slices):
+        chunked_dfs.append(df.iloc[:,index_slice])
+    return chunked_dfs
+
+async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
+    """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
+    # Code influenced by https://stackoverflow.com/a/68288374
+    import aiohttp
+    chunked_dfs = chunk_dataframe(target_df, chunk_size)
+
+    async with aiohttp.ClientSession(loop=loop) as client:
         # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
         # The stuff in the dict is the payload for each request.
-        res_jsons = loop.run_until_complete(
-            asyncio.gather(*[make_post_request({
-                "target": chunk_df.to_json(orient="split")
-                , "loadings": loading_df.to_json(orient="split")
-                , "is_pca": is_pca
-                , "genecart_id":genecart_id # This helps in identifying which combinations are going through
-                , "dataset_id":dataset_id
-                }, client, sem) for chunk_df in chunked_dfs]
-            )
-        )
-        return res_jsons
-    except Exception as e:
-        raise Exception(str(e))
-    finally:
-        # Wait 250 ms for the underlying SSL connections to close
-        client.close()
-        loop.run_until_complete(asyncio.sleep(0.250))
-        loop.close()
+        return await asyncio.gather(*[fetch_one(client, sem, {
+            "target": chunk_df.to_json(orient="split")
+            , "loadings": loading_df.to_json(orient="split")
+            , "is_pca": is_pca
+            , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+            , "dataset_id":dataset_id
+            }) for chunk_df in chunked_dfs])
 
-async def make_post_request(payload, client, sem):
+async def fetch_one(client, sem, payload):
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -333,7 +346,6 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
-@profile
 def run_projection_prestep():
     # Create the directory if it doesn't exist
     # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
@@ -403,6 +415,7 @@ def run_projection():
     md5.update(uuid_str.encode("utf-8"))
     new_uuid = uuid.UUID(md5.hexdigest())
 
+    global projection_id
     projection_id = output_id if output_id else new_uuid
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
     dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
@@ -619,16 +632,14 @@ def run_projection():
 
     print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
 
-    # Chunk dataset by samples/cells and make asynchronous POST request
-    # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
-    index_slices = sliced(range(len(target_df.columns)), chunk_size)
-    chunked_dfs = []
-
-    for idx, index_slice in enumerate(index_slices):
-        chunked_dfs.append(target_df.iloc[:,index_slice])
+    loop = asyncio.new_event_loop()
+    sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
+    asyncio.set_event_loop(loop)
 
     try:
-        res_jsons = make_async_requests(chunked_dfs, loading_df, is_pca, genecart_id, dataset_id)
+        res_jsons = loop.run_until_complete(
+            fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size)
+        )
     except Exception as e:
         print(str(e), file=sys.stderr)
         # Raises as soon as one "gather" task has an exception
@@ -640,6 +651,10 @@ def run_projection():
             , "num_genecart_genes": num_loading_genes
             , "num_dataset_genes": num_target_genes
         }
+    finally:
+        # Wait 250 ms for the underlying SSL connections to close
+        loop.run_until_complete(asyncio.sleep(0.250))
+        loop.close()
 
     # Concatenate the dataframes back together again
     res_dfs_list = [pd.read_json(res_json, orient="split") for res_json in res_jsons]
@@ -696,7 +711,6 @@ def run_projection():
         , "num_dataset_genes": num_target_genes
     }
 
-@profile
 def run_tsne():
     if not gene_symbol or not dataset_id:
         return {
@@ -714,6 +728,7 @@ def run_tsne():
 
     adata = ana.get_adata(backed=True)
 
+    global projection_id
     if projection_id:
         try:
             adata = create_projection_adata(adata, dataset_id, projection_id)
@@ -759,6 +774,7 @@ def run_tsne():
 
     # Reorder the categorical values in the observation dataframe
     # Currently in UI only "plot_by_group" has reordering capabilities
+    global order
     if order:
         order = order
         obs_keys = order.keys()
@@ -801,6 +817,7 @@ def run_tsne():
 
     # NOTE: This may change in the future if users want plots by group w/o the colorize_by plot added
     if plot_by_group:
+        global skip_gene_plot
         skip_gene_plot = None
 
     # Reverse cividis so "light" is at 0 and 'dark' is at incresing expression
@@ -951,17 +968,17 @@ def run_tsne():
     }
 
 if __name__ == "__main__":
-    print("running prestep")
+    print("running prestep", file=sys.stderr)
     run_projection_prestep()
-    print("running projection")
+    print("running projection", file=sys.stderr)
     res = run_projection()
     if res.get("success", 0) == 0:
         print(res.get("message", "No error message"))
         sys.exit(1)
-    print("running tSNE")
+    print("running tSNE", file=sys.stderr)
     run_tsne()
     if res.get("success", 0) == 0:
         print(res.get("message", "No error message"))
         sys.exit(1)
-    print("Successful run")
+    print("Successful run", file=sys.stderr)
     sys.exit(0)
