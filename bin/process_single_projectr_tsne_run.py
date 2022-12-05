@@ -28,7 +28,7 @@ import scanpy as sc
 from matplotlib import cm
 
 from memory_profiler import profile
-fp = open("/home/sadkins/projection_tsne_memory_profile.log", "w+")
+#fp = open("/home/sadkins/projection_tsne_memory_profile.log", "w+")
 
 sc.settings.set_figure_params(dpi=100)
 sc.settings.verbosity = 0
@@ -64,8 +64,9 @@ timestamp = 1670252418394
 x_axis = "UMAP_0"
 y_axis = "UMAP_1"
 
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+ONE_LEVEL_UP = 1
+abs_path_git = Path(__file__).resolve().parents[ONE_LEVEL_UP] # git root
+abs_path_www = abs_path_git.joinpath("www")
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
 ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
@@ -330,7 +331,8 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
-@profile(stream=fp)
+#@profile(stream=fp)
+@profile
 def run_projection():
     success = 1
     message = ""
@@ -633,7 +635,8 @@ def run_projection():
         , "num_dataset_genes": num_target_genes
     }
 
-@profile(stream=fp)
+#@profile(stream=fp)
+@profile
 def run_tsne():
     if not gene_symbol or not dataset_id:
         return {
