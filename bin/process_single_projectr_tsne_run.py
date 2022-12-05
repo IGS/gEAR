@@ -955,7 +955,11 @@ def run_tsne():
     }
 
 if __name__ == "__main__":
+    print("running prestep")
     run_projection_prestep()
+    print("running projection")
     run_projection()
+    print("running tSNE")
     run_tsne()
+    print("Successful run")
     sys.exit(0)
