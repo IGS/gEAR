@@ -93,6 +93,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     if projection_adata_path.is_file():
+        #os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'   # see https://github.com/h5py/h5py/issues/1722
         return sc.read_h5ad(projection_adata_path, backed="r")
 
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
@@ -421,6 +422,10 @@ class TSNEData(Resource):
                         f2.get_legend().remove()  # Remove legend added by scanpy
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False)
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
 
         io_pic = io.BytesIO()
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too

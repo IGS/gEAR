@@ -28,6 +28,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     if projection_adata_path.is_file():
+        #os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'   # see https://github.com/h5py/h5py/issues/1722
         return sc.read_h5ad(projection_adata_path, backed="r")
 
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
@@ -281,6 +282,10 @@ class PlotlyData(Resource):
                 if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
                     df[x_axis] = selected.obsm["X_pca"].transpose()[X]
                     df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
 
         if color_map and color_name:
             # Validate if all color map keys are in the dataframe columns
