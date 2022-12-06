@@ -5,6 +5,7 @@ import os
 import re
 from math import ceil
 from pathlib import Path
+from time import sleep
 
 import geardb
 import matplotlib.colors as mcolors
@@ -431,6 +432,7 @@ class TSNEData(Resource):
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
         io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
+        sleep(2)    # Give enough time for the IOStream to save (had white plots in the past)
         plt.clf()   # Clear current fig
         plt.close()  # Prevent zombie plots, which can cause issues
 
