@@ -133,7 +133,8 @@ $(document).on("handle_page_loading", () => {
         $("#search_gene_symbol_intro").val(selected_projections_string);
         // Check boxes for the elements that were found in the URL
         selected_projections_string.split(',').forEach((pattern) => {
-            $(`.js-projection-pattern-elts-check[data-label="${pattern}"]`).prop('checked', true);
+            const escaped_pattern = $.escapeSelector(pattern);
+            $(`.js-projection-pattern-elts-check[data-label="${escaped_pattern}"]`).prop('checked', true);
         });
     }
 
@@ -810,8 +811,9 @@ function select_search_result(elm, draw_display=true) {
     if (projection) {
         if (! multigene) {
             // Get to top up- and down-regulated genes for each pattern if they exist.
-            const top_up = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-up') || undefined;
-            const top_down = $(`.js-projection-pattern-elts-check[data-label=${gene_sym}]`).data('top-down') || undefined;
+            const escaped_gene_sym = $.escapeSelector(gene_sym);
+            const top_up = $(`.js-projection-pattern-elts-check[data-label=${escaped_gene_sym}]`).data('top-up') || undefined;
+            const top_down = $(`.js-projection-pattern-elts-check[data-label=${escaped_gene_sym}]`).data('top-down') || undefined;
 
             if (! (top_up === undefined)) {
                 $("#highly_expressed_genes_card .card-header").text(`Pattern ${gene_sym}`);
