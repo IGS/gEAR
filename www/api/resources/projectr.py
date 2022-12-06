@@ -148,20 +148,24 @@ async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, datas
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
     # Code influenced by https://stackoverflow.com/a/68288374
     import aiohttp
-    chunked_dfs = chunk_dataframe(target_df, chunk_size)
+    projection_patterns_df = pd.DataFrame(columns=loading_df.columns, dtype="float32")
+    async with aiohttp.ClientSession(loop=loop) as client, sem:
+        results = []
+        coros = [fetch_one(client, {
+                "target": chunk_df.to_json(orient="split")
+                , "loadings": loading_df.to_json(orient="split")
+                , "is_pca": is_pca
+                , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+                , "dataset_id":dataset_id
+                }) for chunk_df in chunk_dataframe(target_df, chunk_size)]
+        for c in asyncio.as_completed(coros):
+            # Concatenate the dataframes back together again
+            res_json = await c
+            res_df = pd.read_json(res_json, orient="split", dtype="float32")
+            projection_patterns_df = pd.concat([projection_patterns_df, res_df])
+        return projection_patterns_df
 
-    async with aiohttp.ClientSession(loop=loop) as client:
-        # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
-        # The stuff in the dict is the payload for each request.
-        return await asyncio.gather(*[fetch_one(client, sem, {
-            "target": chunk_df.to_json(orient="split")
-            , "loadings": loading_df.to_json(orient="split")
-            , "is_pca": is_pca
-            , "genecart_id":genecart_id # This helps in identifying which combinations are going through
-            , "dataset_id":dataset_id
-            }) for chunk_df in chunked_dfs])
-
-async def fetch_one(client, sem, payload):
+async def fetch_one(client, payload):
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -177,7 +181,7 @@ async def fetch_one(client, sem, payload):
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
-    async with sem, client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+    async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
         return await response.json()
 
 class ProjectROutputFile(Resource):
@@ -491,9 +495,10 @@ class ProjectR(Resource):
         asyncio.set_event_loop(loop)
 
         try:
-            res_jsons = loop.run_until_complete(
-                fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size)
-            )
+            projection_patterns_df = loop.run_until_complete(fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
+
+            # Wait 250 ms for the underlying SSL connections to close
+            loop.run_until_complete(asyncio.sleep(0.250))
         except Exception as e:
             print(str(e), file=sys.stderr)
             # Raises as soon as one "gather" task has an exception
@@ -506,13 +511,8 @@ class ProjectR(Resource):
                 , "num_dataset_genes": num_target_genes
             }
         finally:
-            # Wait 250 ms for the underlying SSL connections to close
-            loop.run_until_complete(asyncio.sleep(0.250))
+            loop.stop() # prevent "Task was destroyed but it is pending!" messages
             loop.close()
-
-        # Concatenate the dataframes back together again
-        res_dfs_list = [pd.read_json(res_json, orient="split") for res_json in res_jsons]
-        projection_patterns_df = pd.concat(res_dfs_list)
 
         # There is a good chance the samples are now out of order, which will break
         # the copying of the dataset observation metadata when this output is converted
