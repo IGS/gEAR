@@ -26,10 +26,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # ? Does it make sense to put this in the geardb/Analysis class?
     import scanpy as sc
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-    if projection_adata_path.is_file():
-        return sc.read_h5ad(projection_adata_path, backed="r")
-
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
@@ -40,9 +36,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     if dataset_adata.isbacked:
         dataset_adata.file.close()
     projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    #projection_adata.filename = projection_adata_path
-    #projection_adata.filemode = "r"
     return projection_adata
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
