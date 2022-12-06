@@ -42,6 +42,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.var["gene_symbol"] = projection_adata.var_names
     # Associate with a filename to ensure AnnData is read in "backed" mode
     projection_adata.filename = projection_adata_path
+    projection_adata.filemode = "r"
     return projection_adata
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
