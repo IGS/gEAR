@@ -852,6 +852,7 @@ $('#search_results').on("click", "a", function(e) {
         draw=false;
 
         dataset_collection_panel.datasets.forEach((dataset) => {
+            if (dataset.projection_id)
             dataset.draw({gene_symbol: $(this).data("gene_symbol")});
         });
     }
