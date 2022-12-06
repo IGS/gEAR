@@ -526,7 +526,7 @@ class DatasetPanel extends Dataset {
     }
 
     show_no_match() {
-        $(`#${this.primary_key}_dataset_status_c h2`).text(this.projection_id ? "Projection not run yet on dataset" : "Gene not found");
+        $(`#${this.primary_key}_dataset_status_c h2`).text(this.projection ? "Projection not run yet on dataset" : "Gene not found");
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
         $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
