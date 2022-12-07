@@ -207,34 +207,57 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
+def create_unweighted_loading_df(gc):
+    # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
+    gene_collection = geardb.GeneCollection()
+    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
+
+    loading_data = []
+    for gene in gene_collection.genes:
+        loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
+    return pd.DataFrame(loading_data)
+
+def create_weighted_loading_df(genecart_id):
+    # TODO: prioritize reading from h5ad file.
+    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
+    try:
+        return pd.read_csv(file_path, sep="\t")
+    except FileNotFoundError:
+        raise FileNotFoundError("Could not find pattern file {}".format(file_path))
+
 def chunk_dataframe(df, chunk_size):
-    # Chunk dataset by samples/cells and make asynchronous POST request
+    # Chunk dataset by samples/cells (cols). Is a generator function
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
-    chunked_dfs = []
-
     for idx, index_slice in enumerate(index_slices):
-        chunked_dfs.append(df.iloc[:,index_slice])
-    return chunked_dfs
+        yield df.iloc[:,index_slice]
 
+@profile
 async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
-    # Code influenced by https://stackoverflow.com/a/68288374
+    # Code influenced by https://stackoverflow.com/a/68288374 and https://superfastpython.com/asyncio-as_completed/
     import aiohttp
-    chunked_dfs = chunk_dataframe(target_df, chunk_size)
+    projection_patterns_df = pd.DataFrame(columns=loading_df.columns, dtype="float32")
+    async with aiohttp.ClientSession(loop=loop) as client, sem:
+        # Create coroutines to be executed.
+        # Wrap in "asyncio.create_task" to run concurrently.
+        coros = [asyncio.create_task(fetch_one(client, {
+                "target": chunk_df.to_json(orient="split")
+                , "loadings": loading_df.to_json(orient="split")
+                , "is_pca": is_pca
+                , "genecart_id":genecart_id # This helps in identifying which combinations are going through
+                , "dataset_id":dataset_id
+                })) for chunk_df in chunk_dataframe(target_df, chunk_size)]
+        # This loop processes results as they come in.
+        # asyncio.as_completed creates a generator from the coroutines/tasks
+        for coro in asyncio.as_completed(coros):
+            # Concatenate the dataframes back together again
+            res_json = await coro
+            res_df = pd.read_json(res_json, orient="split", dtype="float32")
+            projection_patterns_df = pd.concat([projection_patterns_df, res_df])
+        return projection_patterns_df
 
-    async with aiohttp.ClientSession(loop=loop) as client:
-        # reminder that the asterisk allows for passing a variable-length list as argument (where 'gather' takes an iterable)
-        # The stuff in the dict is the payload for each request.
-        return await asyncio.gather(*[fetch_one(client, sem, {
-            "target": chunk_df.to_json(orient="split")
-            , "loadings": loading_df.to_json(orient="split")
-            , "is_pca": is_pca
-            , "genecart_id":genecart_id # This helps in identifying which combinations are going through
-            , "dataset_id":dataset_id
-            }) for chunk_df in chunked_dfs])
-
-async def fetch_one(client, sem, payload):
+async def fetch_one(client, payload):
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -250,7 +273,7 @@ async def fetch_one(client, sem, payload):
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
-    async with sem, client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+    async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
         return await response.json()
 
 def calculate_figure_height(num_plots):
@@ -284,6 +307,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     if projection_adata_path.is_file():
+        os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'   # see https://github.com/h5py/h5py/issues/1722
         return sc.read_h5ad(projection_adata_path, backed="r")
 
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
@@ -298,7 +322,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.var["gene_symbol"] = projection_adata.var_names
     # Associate with a filename to ensure AnnData is read in "backed" mode
     projection_adata.filename = projection_adata_path
-
     return projection_adata
 
 def get_colorblind_scale(n_colors):
@@ -462,34 +485,6 @@ def run_projection():
     Only step 3 needs to be in R, and we use rpy2 to call that.
     """
 
-    # NOTE Currently no analyses are supported yet.
-    try:
-        ana = get_analysis(None, dataset_id, session_id, None)
-    except Exception as e:
-        return {
-            'success': -1
-            , 'message': str(e)
-        }
-
-
-    # Using adata with "backed" mode does not work with volcano plot
-    adata = ana.get_adata(backed=True)
-
-    # If dataset genes have duplicated index names, we need to rename them to avoid errors
-    # in collecting rownames in projectR (which gives invalid output)
-    # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    adata.var_names_make_unique()
-
-    # Ensure target dataset has genes as rows
-    target_df = adata.to_df().transpose()
-
-    # Close dataset adata so that we do not have a stale opened object
-    adata.file.close()
-
-    # Row: Genes
-    # Col: Pattern weights
-    loading_df = None
-
     # Get the organism ID associated with the dataset.
     ds = geardb.get_dataset_by_id(dataset_id)
     try:
@@ -497,9 +492,6 @@ def run_projection():
     except:
         message = "Dataset was not found in the database. Please contact a gEAR admin."
         return {"success": -1, "message": message}
-
-    # Get unique identifier of first gene from target dataset
-    #first_dataset_gene = target_df.index[0]
 
     # Unweighted carts get a "1" weight for each gene
     gc = geardb.get_gene_cart_by_share_id(genecart_id)
@@ -517,26 +509,16 @@ def run_projection():
 
     genecart_organism_id = gc.organism_id
 
-    if scope == "unweighted-list":
-        # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
-        gene_collection = geardb.GeneCollection()
-        gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
-
-        loading_data = []
-        for gene in gene_collection.genes:
-            loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
-        loading_df = pd.DataFrame(loading_data)
-    else:
-        # weighted carts reside in tab files
-        # TODO: prioritize reading from h5ad file.
-        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
-        try:
-            loading_df = pd.read_csv(file_path, sep="\t")
-        except FileNotFoundError:
-            return {
-                'success': -1
-                , 'message': "Could not find pattern file {}".format(file_path)
-            }
+    # Row: Genes
+    # Col: Pattern weights
+    try:
+        loading_df = create_unweighted_loading_df(gc) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
+    except Exception as e:
+        print(str(e), file=sys.stderr)
+        return {
+            'success': -1
+            , 'message': str(e)
+        }
 
     # Assumes first column is unique identifiers. Standardize on a common index name
     loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
@@ -545,9 +527,6 @@ def run_projection():
     loading_df = loading_df.drop(loading_df.columns[1], axis=1)
 
     loading_df.set_index('dataRowNames', inplace=True)
-
-    # Get unique identifier of first gene from loading genecart
-    #first_loading_gene = loading_df.index[0]
 
     # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
     if not genecart_organism_id == dataset_organism_id:
@@ -565,11 +544,29 @@ def run_projection():
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
-    num_target_genes = target_df.shape[0]
+    # NOTE Currently no analyses are supported yet.
+    try:
+        ana = get_analysis(None, dataset_id, session_id, None)
+    except Exception as e:
+        print(str(e), file=sys.stderr)
+        return {
+            'success': -1
+            , 'message': str(e)
+        }
+
+    # Using adata with "backed" mode does not work with volcano plot
+    adata = ana.get_adata(backed=True)
+
+    # If dataset genes have duplicated index names, we need to rename them to avoid errors
+    # in collecting rownames in projectR (which gives invalid output)
+    # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
+    adata.var_names_make_unique()
+
+    num_target_genes = adata.shape[1]
     num_loading_genes = loading_df.shape[0]
 
     # Perform overlap to see if there are overlaps between genes from both dataframes
-    index_intersection = target_df.index.intersection(loading_df.index)
+    index_intersection = adata.var.index.intersection(loading_df.index)
     intersection_size = index_intersection.size
 
     if intersection_size == 0:
@@ -585,8 +582,15 @@ def run_projection():
     message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
     # Reduce the size of both dataframes before POSTing
-    target_df = target_df.loc[index_intersection]
+    adata = adata[:,index_intersection]
     loading_df = loading_df.loc[index_intersection]
+
+    # Ensure target dataset has genes as rows
+    # ! The to_df() seems to be a memory_chokepoint, doubling the memory used by the adata object
+    target_df = adata.to_df().transpose()
+
+    # Close dataset adata so that we do not have a stale opened object
+    adata.file.close()
 
     # Create lock file if it does not exist
     lockfile = str(dataset_projection_csv) + ".lock"
@@ -637,9 +641,10 @@ def run_projection():
     asyncio.set_event_loop(loop)
 
     try:
-        res_jsons = loop.run_until_complete(
-            fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size)
-        )
+        projection_patterns_df = loop.run_until_complete(fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
+
+        # Wait 250 ms for the underlying SSL connections to close
+        loop.run_until_complete(asyncio.sleep(0.250))
     except Exception as e:
         print(str(e), file=sys.stderr)
         # Raises as soon as one "gather" task has an exception
@@ -652,13 +657,8 @@ def run_projection():
             , "num_dataset_genes": num_target_genes
         }
     finally:
-        # Wait 250 ms for the underlying SSL connections to close
-        loop.run_until_complete(asyncio.sleep(0.250))
+        loop.stop() # prevent "Task was destroyed but it is pending!" messages
         loop.close()
-
-    # Concatenate the dataframes back together again
-    res_dfs_list = [pd.read_json(res_json, orient="split") for res_json in res_jsons]
-    projection_patterns_df = pd.concat(res_dfs_list)
 
     # There is a good chance the samples are now out of order, which will break
     # the copying of the dataset observation metadata when this output is converted

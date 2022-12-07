@@ -134,15 +134,30 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
+def create_unweighted_loading_df(gc):
+    # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
+    gene_collection = geardb.GeneCollection()
+    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
+
+    loading_data = []
+    for gene in gene_collection.genes:
+        loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
+    return pd.DataFrame(loading_data)
+
+def create_weighted_loading_df(genecart_id):
+    # TODO: prioritize reading from h5ad file.
+    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
+    try:
+        return pd.read_csv(file_path, sep="\t")
+    except FileNotFoundError:
+        raise FileNotFoundError("Could not find pattern file {}".format(file_path))
+
 def chunk_dataframe(df, chunk_size):
-    # Chunk dataset by samples/cells and make asynchronous POST request
+    # Chunk dataset by samples/cells (cols). Is a generator function
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
-    chunked_dfs = []
-
     for idx, index_slice in enumerate(index_slices):
-        chunked_dfs.append(df.iloc[:,index_slice])
-    return chunked_dfs
+        yield df.iloc[:,index_slice]
 
 async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
@@ -150,7 +165,8 @@ async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, datas
     import aiohttp
     projection_patterns_df = pd.DataFrame(columns=loading_df.columns, dtype="float32")
     async with aiohttp.ClientSession(loop=loop) as client, sem:
-        results = []
+        # Create coroutines to be executed.
+        # Wrap in "asyncio.create_task" to run concurrently.
         coros = [fetch_one(client, {
                 "target": chunk_df.to_json(orient="split")
                 , "loadings": loading_df.to_json(orient="split")
@@ -158,9 +174,11 @@ async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, datas
                 , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                 , "dataset_id":dataset_id
                 }) for chunk_df in chunk_dataframe(target_df, chunk_size)]
-        for c in asyncio.as_completed(coros):
+        # This loop processes results as they come in.
+        # asyncio.as_completed creates a generator from the coroutines/tasks
+        for coro in asyncio.as_completed(coros):
             # Concatenate the dataframes back together again
-            res_json = await c
+            res_json = await coro
             res_df = pd.read_json(res_json, orient="split", dtype="float32")
             projection_patterns_df = pd.concat([projection_patterns_df, res_df])
         return projection_patterns_df
@@ -320,34 +338,6 @@ class ProjectR(Resource):
         Only step 3 needs to be in R, and we use rpy2 to call that.
         """
 
-        # NOTE Currently no analyses are supported yet.
-        try:
-            ana = get_analysis(None, dataset_id, session_id, None)
-        except Exception as e:
-            return {
-                'success': -1
-                , 'message': str(e)
-            }
-
-
-        # Using adata with "backed" mode does not work with volcano plot
-        adata = ana.get_adata(backed=True)
-
-        # If dataset genes have duplicated index names, we need to rename them to avoid errors
-        # in collecting rownames in projectR (which gives invalid output)
-        # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-        adata.var_names_make_unique()
-
-        # Ensure target dataset has genes as rows
-        target_df = adata.to_df().transpose()
-
-        # Close dataset adata so that we do not have a stale opened object
-        adata.file.close()
-
-        # Row: Genes
-        # Col: Pattern weights
-        loading_df = None
-
         # Get the organism ID associated with the dataset.
         ds = geardb.get_dataset_by_id(dataset_id)
         try:
@@ -375,26 +365,16 @@ class ProjectR(Resource):
 
         genecart_organism_id = gc.organism_id
 
-        if scope == "unweighted-list":
-            # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
-            gene_collection = geardb.GeneCollection()
-            gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
-
-            loading_data = []
-            for gene in gene_collection.genes:
-                loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
-            loading_df = pd.DataFrame(loading_data)
-        else:
-            # weighted carts reside in tab files
-            # TODO: prioritize reading from h5ad file.
-            file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
-            try:
-                loading_df = pd.read_csv(file_path, sep="\t")
-            except FileNotFoundError:
-                return {
-                    'success': -1
-                    , 'message': "Could not find pattern file {}".format(file_path)
-                }
+        # Row: Genes
+        # Col: Pattern weights
+        try:
+            loading_df = create_unweighted_loading_df(gc) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            return {
+                'success': -1
+                , 'message': str(e)
+            }
 
         # Assumes first column is unique identifiers. Standardize on a common index name
         loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
@@ -403,9 +383,6 @@ class ProjectR(Resource):
         loading_df = loading_df.drop(loading_df.columns[1], axis=1)
 
         loading_df.set_index('dataRowNames', inplace=True)
-
-        # Get unique identifier of first gene from loading genecart
-        #first_loading_gene = loading_df.index[0]
 
         # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
         if not genecart_organism_id == dataset_organism_id:
@@ -423,11 +400,29 @@ class ProjectR(Resource):
         # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
         loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
-        num_target_genes = target_df.shape[0]
+        # NOTE Currently no analyses are supported yet.
+        try:
+            ana = get_analysis(None, dataset_id, session_id, None)
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            return {
+                'success': -1
+                , 'message': str(e)
+            }
+
+        # Using adata with "backed" mode does not work with volcano plot
+        adata = ana.get_adata(backed=True)
+
+        # If dataset genes have duplicated index names, we need to rename them to avoid errors
+        # in collecting rownames in projectR (which gives invalid output)
+        # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
+        adata.var_names_make_unique()
+
+        num_target_genes = adata.shape[1]
         num_loading_genes = loading_df.shape[0]
 
         # Perform overlap to see if there are overlaps between genes from both dataframes
-        index_intersection = target_df.index.intersection(loading_df.index)
+        index_intersection = adata.var.index.intersection(loading_df.index)
         intersection_size = index_intersection.size
 
         if intersection_size == 0:
@@ -443,8 +438,15 @@ class ProjectR(Resource):
         message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
 
         # Reduce the size of both dataframes before POSTing
-        target_df = target_df.loc[index_intersection]
+        adata = adata[:,index_intersection]
         loading_df = loading_df.loc[index_intersection]
+
+        # Ensure target dataset has genes as rows
+        # ! The to_df() seems to be a memory_chokepoint, doubling the memory used by the adata object
+        target_df = adata.to_df().transpose()
+
+        # Close dataset adata so that we do not have a stale opened object
+        adata.file.close()
 
         # Create lock file if it does not exist
         lockfile = str(dataset_projection_csv) + ".lock"
