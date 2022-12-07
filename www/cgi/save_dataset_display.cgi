@@ -58,27 +58,14 @@ def make_static_tsne_graph(filename, config, url):
 
     return True
 
-def make_static_svg(filename, config, url):
+def make_static_svg(filename, dataset_id):
     """Create (or overwrite) a static svg PNG image using the existing config."""
-    pass
 
-    # WARNING: Disabling SSL verification in the POST call
-    result = requests.post(url, json=config, verify=False)
-    result.raise_for_status()
+    svg_filepath = "../datasets_uploaded/{}.svg".format(dataset_id)
 
-    decoded_result = result.json()
+    import cairosvg
+    cairosvg.svg2png(url=svg_filepath, write_to=filename)
 
-    # If plotly API threw an error, report as failed
-    if not "success" in decoded_result:
-        return False
-    if "success" in decoded_result and decoded_result["success"] < 0:
-        return False
-
-    plot_json = decoded_result["plot_json"]
-
-    # We know the figure is valid, so skip potential illegal property issues.
-    fig = go.Figure(data=plot_json["data"], layout=plot_json["layout"], skip_invalid=True)
-    fig.write_image(filename)
     try:
         os.chmod(filename, 0o666)
     except Exception as e:
@@ -160,19 +147,18 @@ def main():
     success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
     try:
-        if plot_type in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
-            url += "/"
+        if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
             success = make_static_plotly_graph(filename, config, url)
-        elif plot_type in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
+        elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
             url += "/mg_dash"
             success = make_static_plotly_graph(filename, config, url)
-        elif plot_type in ["tsne_static", "umap_static", "pca_static", "tsne"]:
+        elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
             url += "/tsne"
             success = make_static_tsne_graph(filename, config, url)
-        elif plot_type in ["svg"]:
+        elif plot_type.lower() in ["svg"]:
             url += "/svg"
-            success = make_static_svg(filename, config, url)
-        elif plot_type in ["epiviz"]:
+            success = make_static_svg(filename, dataset_id)
+        elif plot_type.lower() in ["epiviz"]:
             url += "/epiviz"
             pass
         else:
