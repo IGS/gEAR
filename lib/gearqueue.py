@@ -33,7 +33,7 @@ class Connection:
         if this.queue_connection is None:
             this.queue_connection = gear.queue.RabbitMQQueue().connect(publisher_or_consumer=publisher_or_consumer)
 
-    def publish(self, queue_name=None, message=None):
+    def publish(self, queue_name=None, message=None, reply_to=None, correlation_id=None):
         '''
         Submits a job to queue.
 
@@ -53,6 +53,8 @@ class Connection:
                     'dataset_uid': '35f5b227-59e9-75bb-dd41-f26fff691506',
                     'share_uid': '6c7e7775'
                     }
+        reply_to = name of callback queue to send response to
+        correlation_id = identifier to gave message
         '''
         if queue_name is None:
             raise Exception("Error: Cannot publish. No queue_name given.")
@@ -69,7 +71,12 @@ class Connection:
                             body=json.dumps(message),
                             properties=pika.BasicProperties(
                                 delivery_mode = 2 # make message persistent
+                                , content_type="application/json"
+                                , reply_to=reply_to # Callback queue
+                                , correlation_id=correlation_id
                             ))
+
+        this.queue_connection.process_data_events(time_limit=None)
 
         channel.close()
 
@@ -89,20 +96,25 @@ class Connection:
         return channel
 
 
-    def consume(self, callback=None, queue_name=None, channel=None):
+    def consume(self, queue_name=None, on_message_callback=None, channel=None):
         '''
         With a consumer connection and channel, retrieves 1 job from a named queue and
         processes it.
 
         Arguments:
         ----------
-        callback = Function used to process job.
-                Example: See function 'callback' in www/cgi/load_dataset_queue_consumer.cgi
         queue_name = Name of the queue to get job from.
                 Example: 'load_dataset'
+        on_message_callback =
+            The function to call when consuming with the signature on_message_callback(channel, method, properties, body), where
+                channel: pika.channel.Channel
+                method: pika.spec.Basic.Deliver
+                properties: pika.spec.BasicProperties
+                body: bytes
         channel = Consumer channel opened from Connection.get_consumer_channel()
+
         '''
-        if callback is None:
+        if on_message_callback is None:
             raise Exception("Error: Cannot consume. No callback function given.")
         if channel is None:
             raise Exception("Error: Cannot consume. No channel given.")
@@ -113,11 +125,12 @@ class Connection:
 
         #Declare queue to use
         channel.queue_declare(queue=queue_name, durable=True)
-        channel.basic_qos(prefetch_count=1)
+        channel.basic_qos(prefetch_count=1) # balances worker load
 
         # Initiate callback
-        channel.basic_consume(callback,
-                              queue=queue_name)
+        channel.basic_consume(queue=queue_name
+                            , on_message_callback=on_message_callback
+                            )
 
         return self
 
