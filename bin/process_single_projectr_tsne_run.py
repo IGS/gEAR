@@ -206,6 +206,12 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
+def concat_fetch_results_to_dataframe(res_jsons):
+    # Concatenate the dataframes back together again
+    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
+    projection_patterns_df = pd.concat(res_dfs)
+    return projection_patterns_df
+
 def create_new_uuid(dataset_id, genecart_id, is_pca):
     import hashlib, uuid
     uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, is_pca)
@@ -237,14 +243,12 @@ def chunk_dataframe(df, chunk_size):
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:,index_slice]
 
-@profile
 async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
     # Code influenced by https://stackoverflow.com/a/68288374 and https://superfastpython.com/asyncio-as_completed/
     import aiohttp
     sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
     async with aiohttp.ClientSession(loop=loop) as client, sem:
-        res_dfs = []
         # Create coroutines to be executed.
         # Wrap in "asyncio.create_task" to run concurrently.
         coros = [asyncio.create_task(fetch_one(client, {
@@ -256,11 +260,7 @@ async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id
                 })) for chunk_df in chunk_dataframe(target_df, chunk_size)]
         # This loop processes results as they come in.
         # asyncio.as_completed creates a generator from the coroutines/tasks
-        for coro in asyncio.as_completed(coros):
-            # Concatenate the dataframes back together again
-            res_json = await coro
-            res_dfs.append(pd.read_json(res_json, orient="split", dtype="float32"))
-        return res_dfs
+        return [await coro for coro in asyncio.as_completed(coros)]
 
 async def fetch_one(client, payload):
     """
@@ -279,7 +279,7 @@ async def fetch_one(client, payload):
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
-        await response.json()
+        return await response.json()
 
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
@@ -633,8 +633,7 @@ def run_projection():
     asyncio.set_event_loop(loop)
 
     try:
-        res_dfs = loop.run_until_complete(fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
-        projection_patterns_df = pd.concat(res_dfs)
+        results = loop.run_until_complete(fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
     except Exception as e:
         print(str(e), file=sys.stderr)
         # Raises as soon as one "gather" task has an exception
@@ -651,6 +650,8 @@ def run_projection():
         loop.run_until_complete(asyncio.sleep(0.250))
         loop.stop() # prevent "Task was destroyed but it is pending!" messages
         loop.close()
+
+    projection_patterns_df = concat_fetch_results_to_dataframe(results)
 
     # There is a good chance the samples are now out of order, which will break
     # the copying of the dataset observation metadata when this output is converted
