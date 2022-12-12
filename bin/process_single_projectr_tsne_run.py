@@ -6,7 +6,7 @@ This script is to process a single projectR-to-tsne plot run in order to do some
 Shaun Adkins
 """
 
-import json, hashlib, uuid, sys, fcntl
+import json, sys, fcntl
 import pandas as pd
 
 from os import getpid
@@ -67,7 +67,6 @@ colorize_by = "cell_type"
 #colorize_by = "cell.type"
 
 
-output_id = None
 scope = "weighted-list"
 user = geardb.get_user_from_session_id(session_id)
 analysis = None
@@ -207,6 +206,13 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
+def create_new_uuid(dataset_id, genecart_id, is_pca):
+    import hashlib, uuid
+    uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, is_pca)
+    md5 = hashlib.md5()
+    md5.update(uuid_str.encode("utf-8"))
+    return uuid.UUID(md5.hexdigest())
+
 def create_unweighted_loading_df(gc):
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
@@ -218,7 +224,6 @@ def create_unweighted_loading_df(gc):
     return pd.DataFrame(loading_data)
 
 def create_weighted_loading_df(genecart_id):
-    # TODO: prioritize reading from h5ad file.
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
     try:
         return pd.read_csv(file_path, sep="\t")
@@ -233,12 +238,13 @@ def chunk_dataframe(df, chunk_size):
         yield df.iloc[:,index_slice]
 
 @profile
-async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
+async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
     # Code influenced by https://stackoverflow.com/a/68288374 and https://superfastpython.com/asyncio-as_completed/
     import aiohttp
-    projection_patterns_df = pd.DataFrame(columns=loading_df.columns, dtype="float32")
+    sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
     async with aiohttp.ClientSession(loop=loop) as client, sem:
+        res_dfs = []
         # Create coroutines to be executed.
         # Wrap in "asyncio.create_task" to run concurrently.
         coros = [asyncio.create_task(fetch_one(client, {
@@ -253,9 +259,8 @@ async def fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, datas
         for coro in asyncio.as_completed(coros):
             # Concatenate the dataframes back together again
             res_json = await coro
-            res_df = pd.read_json(res_json, orient="split", dtype="float32")
-            projection_patterns_df = pd.concat([projection_patterns_df, res_df])
-        return projection_patterns_df
+            res_dfs.append(pd.read_json(res_json, orient="split", dtype="float32"))
+        return res_dfs
 
 async def fetch_one(client, payload):
     """
@@ -274,7 +279,7 @@ async def fetch_one(client, payload):
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
-        return await response.json()
+        await response.json()
 
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
@@ -433,18 +438,10 @@ def run_projection():
     success = 1
     message = ""
 
-    uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, is_pca)
-    md5 = hashlib.md5()
-    md5.update(uuid_str.encode("utf-8"))
-    new_uuid = uuid.UUID(md5.hexdigest())
-
     global projection_id
-    projection_id = output_id if output_id else new_uuid
+    projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, is_pca)
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
     dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
-
-    genecart_projection_csv = build_projection_csv_path(genecart_id, projection_id, "genecart")
-    genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
 
     # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
     if Path(dataset_projection_csv).is_file():
@@ -485,14 +482,6 @@ def run_projection():
     Only step 3 needs to be in R, and we use rpy2 to call that.
     """
 
-    # Get the organism ID associated with the dataset.
-    ds = geardb.get_dataset_by_id(dataset_id)
-    try:
-        dataset_organism_id = ds.organism_id
-    except:
-        message = "Dataset was not found in the database. Please contact a gEAR admin."
-        return {"success": -1, "message": message}
-
     # Unweighted carts get a "1" weight for each gene
     gc = geardb.get_gene_cart_by_share_id(genecart_id)
     if not gc:
@@ -506,8 +495,6 @@ def run_projection():
             'success': -1
             , 'message': "No genes found within this gene cart"
         }
-
-    genecart_organism_id = gc.organism_id
 
     # Row: Genes
     # Col: Pattern weights
@@ -524,22 +511,28 @@ def run_projection():
     loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
 
     # Drop the gene symbol column
-    loading_df = loading_df.drop(loading_df.columns[1], axis=1)
+    loading_df.drop(loading_df.columns[1], axis=1, inplace=True)
 
     loading_df.set_index('dataRowNames', inplace=True)
 
     # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
-    if not genecart_organism_id == dataset_organism_id:
-        orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(genecart_organism_id, dataset_organism_id, ANNOTATION_TYPE)
-        orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
-        try:
-            loading_df = remap_df_genes(loading_df, orthomap_file)
-        except:
-            message = "Could not remap pattern genes to ortholog equivalent in the dataset"
-            return {
-                "success": -1
-                , "message": message
-            }
+    try:
+        # Get the organism ID associated with the dataset.
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not gc.organism_id == ds.organism_id:
+            orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(gc.organism_id, ds.organism_id, ANNOTATION_TYPE)
+            orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
+            try:
+                loading_df = remap_df_genes(loading_df, orthomap_file)
+            except:
+                message = "Could not remap pattern genes to ortholog equivalent in the dataset"
+                return {
+                    "success": -1
+                    , "message": message
+                }
+    except:
+        message = "Dataset was not found in the database. Please contact a gEAR admin."
+        return {"success": -1, "message": message}
 
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
@@ -637,14 +630,11 @@ def run_projection():
     print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
 
     loop = asyncio.new_event_loop()
-    sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
     asyncio.set_event_loop(loop)
 
     try:
-        projection_patterns_df = loop.run_until_complete(fetch_all(loop, sem, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
-
-        # Wait 250 ms for the underlying SSL connections to close
-        loop.run_until_complete(asyncio.sleep(0.250))
+        res_dfs = loop.run_until_complete(fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
+        projection_patterns_df = pd.concat(res_dfs)
     except Exception as e:
         print(str(e), file=sys.stderr)
         # Raises as soon as one "gather" task has an exception
@@ -657,6 +647,8 @@ def run_projection():
             , "num_dataset_genes": num_target_genes
         }
     finally:
+        # Wait 250 ms for the underlying SSL connections to close
+        loop.run_until_complete(asyncio.sleep(0.250))
         loop.stop() # prevent "Task was destroyed but it is pending!" messages
         loop.close()
 
@@ -670,13 +662,6 @@ def run_projection():
 
     projection_patterns_df.to_csv(dataset_projection_csv)
 
-    # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse)
-    # NOTE: In the Docker instance, symlink reflects path to the mounted volume, not the local path
-    try:
-        genecart_projection_csv.symlink_to(dataset_projection_csv)
-    except FileExistsError:
-        print("Symlink already exists for {}".format(dataset_projection_csv), file=sys.stderr)
-
     # Add new configuration to the list for this dictionary key
     dataset_projections_dict = json.load(open(dataset_projection_json_file))
     dataset_projections_dict.setdefault(genecart_id, []).append({
@@ -689,6 +674,16 @@ def run_projection():
     write_to_json(dataset_projections_dict, dataset_projection_json_file)
 
     # Do the same for the genecart version
+    genecart_projection_csv = build_projection_csv_path(genecart_id, projection_id, "genecart")
+    genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
+
+    # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse)
+    # NOTE: In the Docker instance, symlink reflects path to the mounted volume, not the local path
+    try:
+        genecart_projection_csv.symlink_to(dataset_projection_csv)
+    except FileExistsError:
+        print("Symlink already exists for {}".format(dataset_projection_csv), file=sys.stderr)
+
     genecart_projections_dict = json.load(open(genecart_projection_json_file))
     genecart_projections_dict.setdefault(dataset_id, []).append({
         "uuid": projection_id
@@ -958,7 +953,7 @@ def run_tsne():
     io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
     io_fig.savefig(io_pic, format='png', bbox_inches="tight")
     io_pic.seek(0)
-    plt.clf()   # Clear current fig
+    plt.clf()
     plt.close()  # Prevent zombie plots, which can cause issues
 
     return {
@@ -967,7 +962,7 @@ def run_tsne():
         "image": base64.b64encode(io_pic.read()).decode("utf-8")
     }
 
-if __name__ == "__main__":
+def main():
     print("running prestep", file=sys.stderr)
     run_projection_prestep()
     print("running projection", file=sys.stderr)
@@ -975,10 +970,13 @@ if __name__ == "__main__":
     if res.get("success", 0) == 0:
         print(res.get("message", "No error message"))
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
     print("running tSNE", file=sys.stderr)
-    run_tsne()
-    if res.get("success", 0) == 0:
-        print(res.get("message", "No error message"))
+    res2 = run_tsne()
+    if res2.get("success", 0) == 0:
+        print(res2.get("message", "No error message"))
         sys.exit(1)
     print("Successful run", file=sys.stderr)
     sys.exit(0)
