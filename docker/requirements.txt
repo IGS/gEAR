@@ -29,5 +29,6 @@ h5py==3.6.0
 tables==3.7.0    # Read hdf5 files into pandas
 aiohttp
 cairosvg==2.5.2
+pika==1.3.1
 #diffxpy==0.7.4
 #selenium   # Browser testing

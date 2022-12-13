@@ -9,7 +9,7 @@ from os import getpid
 from time import sleep
 from more_itertools import sliced
 
-import geardb
+import geardb, gearqueue
 
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
@@ -134,6 +134,12 @@ def calculate_chunk_size(num_genes, num_samples):
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
+def concat_fetch_results_to_dataframe(res_jsons):
+    # Concatenate the dataframes back together again
+    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
+    projection_patterns_df = pd.concat(res_dfs)
+    return projection_patterns_df
+
 def create_new_uuid(dataset_id, genecart_id, is_pca):
     import hashlib, uuid
     uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, is_pca)
@@ -183,11 +189,7 @@ async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id
                 })) for chunk_df in chunk_dataframe(target_df, chunk_size)]
         # This loop processes results as they come in.
         # asyncio.as_completed creates a generator from the coroutines/tasks
-        for coro in asyncio.as_completed(coros):
-            # Concatenate the dataframes back together again
-            res_json = await coro
-            res_dfs.append(pd.read_json(res_json, orient="split", dtype="float32"))
-        return res_dfs
+        return [await coro for coro in asyncio.as_completed(coros)]
 
 async def fetch_one(client, payload):
     """
@@ -208,7 +210,7 @@ async def fetch_one(client, payload):
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
         return await response.json()
 
-def prep_projectr(dataset_id, genecart_id, projection_id, session_id, scope, is_pca):
+def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca):
     success = 1
     message = ""
 
@@ -408,8 +410,7 @@ def prep_projectr(dataset_id, genecart_id, projection_id, session_id, scope, is_
     asyncio.set_event_loop(loop)
 
     try:
-        res_dfs = loop.run_until_complete(fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
-        projection_patterns_df = pd.concat(res_dfs)
+        results = loop.run_until_complete(fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
     except Exception as e:
         print(str(e), file=sys.stderr)
         # Raises as soon as one "gather" task has an exception
@@ -426,6 +427,8 @@ def prep_projectr(dataset_id, genecart_id, projection_id, session_id, scope, is_
         loop.run_until_complete(asyncio.sleep(0.250))
         loop.stop() # prevent "Task was destroyed but it is pending!" messages
         loop.close()
+
+    projection_patterns_df = concat_fetch_results_to_dataframe(results)
 
     # There is a good chance the samples are now out of order, which will break
     # the copying of the dataset observation metadata when this output is converted
@@ -565,8 +568,59 @@ class ProjectR(Resource):
 
         # Moving all the code to a function so that we could use Pub/Sub or another subsciption queue to run it
         # and stagger runs to ensure memory is not an issue on the server.
-        if this.servercfg['projectR_service']['queueing_enabled'].startswith("1"):
-            return prep_projectr(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+        if this.servercfg['projectR_service']['queue_enabled'].startswith("1"):
+            #return prep_projectr(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+            host = this.servercfg['projectR_service']['queue_host']
+            try:
+                # Connect as a blocking RabbitMQ publisher
+                connection = gearqueue.Connection(host=host, publisher_or_consumer="publisher")
+            except Exception as e:
+                    return {
+                        'success': -1
+                    , 'message': str(e)
+                    }
+            task_finished = False
+            response = {}
+            def _on_response(channel, method_frame, properties, body):
+                global task_finished
+                global response
+                task_finished = True
+                response = json.loads(body)
+                print("[x] - Received response for dataset {} and genecart {}".format(payload["dataset_id"], payload["genecart_id"]), file=sys.stderr)
 
+            with connection:
+                # Create a "reply-to" consumer
+                # see https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
+                try:
+                    connection.replyto_consume(
+                        on_message_callback=_on_response
+                    )
+                except Exception as e:
+                    return {
+                        'success': -1
+                    , 'message': str(e)
+                    }
+
+                # Create the publisher
+                payload = args
+                payload["dataset_id"] = dataset_id
+                payload["session_id"] = session_id
+
+                try:
+                    connection.publish(
+                        queue_name="projectr"
+                        , reply_to=connection.callback_queue    # this is created during replyto_consume
+                        , message=payload   # method dumps JSON
+                    )
+                    print("[x] Requesting for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
+                except Exception as e:
+                    return {
+                        'success': -1
+                    , 'message': str(e)
+                    }
+                # Wait for callback to finish, then return the response
+                while not task_finished:
+                    pass
+                return response
         else:
-            return prep_projectr(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)

@@ -5,11 +5,8 @@ import pika
 
 import gear.queue
 
-# https://stackoverflow.com/a/35904211/1368079
-this = sys.modules[__name__]
-this.queue_connection = None
-this.queue_channel = None
-
+# SAdkins - Originally this module created module global variables for the connection and a single channel
+# However, this conection was being shared among each of the Flask API requests, so if one threw an error, they all did
 
 class Connection:
     '''
@@ -21,7 +18,7 @@ class Connection:
         www/cgi/load_dataset_queue_consumer.cgi
     '''
 
-    def __init__(self, publisher_or_consumer=None):
+    def __init__(self, host="localhost", publisher_or_consumer=None):
         '''
         Establish a connection to RabbitMQ queue as a queue publisher or consumer
 
@@ -30,10 +27,21 @@ class Connection:
         publisher_or_consumer = publisher - to publish (submit) jobs to queue
                                 consumer - to consume (process) job from queue
         '''
-        if this.queue_connection is None:
-            this.queue_connection = gear.queue.RabbitMQQueue().connect(publisher_or_consumer=publisher_or_consumer)
+        try:
+            self.connection = gear.queue.RabbitMQQueue().connect(host, publisher_or_consumer=publisher_or_consumer)
+        except:
+            raise
 
-    def publish(self, queue_name=None, message=None, reply_to=None, correlation_id=None):
+        self.channel = self.connection.channel()
+        self.callback_queue = None  # Queue to consume reply-to messages
+
+    # properties to make this a context manager
+    def __enter__(self):
+        return "entered!"
+    def __exit__(self, exc_type, exc_value, traceback):
+        print("exited!")
+
+    def publish(self, queue_name=None, message=None, **kwargs):
         '''
         Submits a job to queue.
 
@@ -53,50 +61,37 @@ class Connection:
                     'dataset_uid': '35f5b227-59e9-75bb-dd41-f26fff691506',
                     'share_uid': '6c7e7775'
                     }
-        reply_to = name of callback queue to send response to
-        correlation_id = identifier to gave message
+        kwargs - keys to pass to pike.BasicProperties
         '''
         if queue_name is None:
             raise Exception("Error: Cannot publish. No queue_name given.")
         if message is None:
             raise Exception("Error: Cannot publish. No message given.")
 
-        channel = this.queue_connection.channel()
-        #Declare queue to use
-        channel.queue_declare(queue=queue_name, durable=True)
+        # Declare queue to use
+        self.channel.queue_declare(queue=queue_name, durable=True)
+
+        # Enabled delivery confirmations. This is REQUIRED.
+        self.channel.confirm_delivery()
 
         # Send message (dataset ids) to job queue
-        channel.basic_publish(exchange='',
-                            routing_key=queue_name,
-                            body=json.dumps(message),
-                            properties=pika.BasicProperties(
-                                delivery_mode = 2 # make message persistent
-                                , content_type="application/json"
-                                , reply_to=reply_to # Callback queue
-                                , correlation_id=correlation_id
-                            ))
+        try:
+            self.channel.basic_publish(exchange='',
+                                routing_key=queue_name,
+                                body=json.dumps(message),
+                                mandatory=True,
+                                properties=pika.BasicProperties(
+                                    delivery_mode = 2 # make message persistent
+                                    , content_type="application/json"
+                                    , **kwargs
+                                ))
+        except pika.exceptions.UnroutableError:
+            print('Message was returned')
+            raise
 
-        this.queue_connection.process_data_events(time_limit=None)
+        self.connection.process_data_events(time_limit=None)
 
-        channel.close()
-
-
-    def get_consumer_channel(self):
-        '''
-        Returns a RabbitMQ connection channel.
-
-        This way methods consume and continue_consuming can run on the same channel.
-        '''
-        channel = None
-        if this.queue_channel is None:
-            channel = this.queue_connection.channel()
-        else:
-            channel = this.queue_channel
-
-        return channel
-
-
-    def consume(self, queue_name=None, on_message_callback=None, channel=None):
+    def consume(self, queue_name=None, on_message_callback=None, num_messages=1, auto_ack=False, skip_queue_declare=False):
         '''
         With a consumer connection and channel, retrieves 1 job from a named queue and
         processes it.
@@ -107,34 +102,50 @@ class Connection:
                 Example: 'load_dataset'
         on_message_callback =
             The function to call when consuming with the signature on_message_callback(channel, method, properties, body), where
-                channel: pika.channel.Channel
+                channel: pika.channel.Channel (this channel)
                 method: pika.spec.Basic.Deliver
                 properties: pika.spec.BasicProperties
                 body: bytes
-        channel = Consumer channel opened from Connection.get_consumer_channel()
+        num_messages = Number of simultaneous unacknowledged messages to received at once
+        auto_ack = auto-acknowledge the reply
+        skip_queue_declare = if True, skip because the queue was already declared
 
         '''
         if on_message_callback is None:
             raise Exception("Error: Cannot consume. No callback function given.")
-        if channel is None:
-            raise Exception("Error: Cannot consume. No channel given.")
         if queue_name is None:
             raise Exception("Error: Cannot consume. No queue_name given.")
 
-        this.queue_connection.process_data_events(time_limit=0)
-
         #Declare queue to use
-        channel.queue_declare(queue=queue_name, durable=True)
-        channel.basic_qos(prefetch_count=1) # balances worker load
+        if not skip_queue_declare:
+            self.channel.queue_declare(queue=queue_name, durable=True)
+        self.channel.basic_qos(prefetch_count=num_messages) # balances worker load
 
         # Initiate callback
-        channel.basic_consume(queue=queue_name
+        self.channel.basic_consume(queue=queue_name
                             , on_message_callback=on_message_callback
+                            , auto_ack=auto_ack
                             )
+
+        self.connection.process_data_events(time_limit=0)
 
         return self
 
-    def continue_consuming(self, channel=None):
+    def replyto_consume(self, on_message_callback):
+
+        #Declare queue to use. Leaving name blank auto-generates name
+        result = self.channel.queue_declare(queue="", exclusive=True)
+        self.callback_queue = result.method.queue
+        self.consume(
+            queue_name=self.callback_queue
+            , on_message_callback=on_message_callback
+            , auto_ack=True
+            , skip_queue_declare=True
+            )
+
+        return self
+
+    def continue_consuming(self, queue_name=None):
         '''
         Continues to consume jobs as they appear on queue.
 
@@ -145,18 +156,19 @@ class Connection:
 
         Argument:
         ---------
-        channel = Consumer channel opened from Connection.get_consumer_channel()
+        queue_name = name of queue to write logs to.
         '''
-        if channel is None:
-            raise Exception("Error: Cannot continue consuming. No channel given.")
+
+        stream = sys.stderr
+        if queue_name:
+            stream = '/var/log/gEAR_queue/{}.log'.format(queue_name)
+            print("Queue {} ready".format(queue_name), file=open(stream, 'a'))
 
         try:
-            print("{0}\tWaiting for messages. To exit press CTRL+C".format( str(datetime.now()) ), file=open('/var/log/gEAR_queue/load_dataset.log', 'a'))
-            channel.start_consuming()
+            print("{0}\tWaiting for messages. To exit press CTRL+C".format( str(datetime.now()) ), file=open(stream, 'a'))
+            self.channel.start_consuming()
         except pika.exceptions.ConnectionClosed:
-            print("{0}\tConnection to queue lost. Restarting consumer...".format( str(datetime.now()) ), file=open('/var/log/gEAR_queue/load_dataset.log', 'a'))
-            os.system('./cgi/load_dataset_queue_consumer.cgi')
-
+            print("{0}\tConnection to queue lost. Restarting consumer...".format( str(datetime.now()) ), file=open(stream, 'a'))
         return self
 
 
@@ -164,4 +176,4 @@ class Connection:
         '''
         Closes queue connection
         '''
-        this.queue_connection.close()
+        self.connection.close()
