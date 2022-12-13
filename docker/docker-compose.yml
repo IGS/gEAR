@@ -32,3 +32,12 @@ services:
     volumes:
       - ..:/opt/gEAR/
 
+  queue:
+    image: rabbitmq:3.11.4
+    networks:
+      - gear
+    ports:
+      - "5672:5672"
+    restart: always
+
+# TODO: Make a consumer
