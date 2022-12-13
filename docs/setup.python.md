@@ -64,7 +64,8 @@ fixed paths have worked fine for decades.
       SQLAlchemy==1.4.32 \
       tables==3.7.0 \
       xlrd==1.2.0 \
-      cairosvg==2.5.2
+      cairosvg==2.5.2 \
+      pika==1.3.1
 
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/

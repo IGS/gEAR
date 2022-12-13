@@ -48,3 +48,9 @@ Test installation worked by checking `which rabbitmq-server`
 ## Using the messaging broker
 
 There is a module at `<root>/lib/gearqueue.py` that contains a class to connect to the RabbitMQ messaging broker. This script uses a python module called "pika" under the hood.
+
+## Running a particular consumer
+
+First, make sure a directory is present under /var/log/gEAR_queue (you may have to create this as root). If you are not going to run the consumer listener as root, ensure the user has the same group-write privileges as the directory.
+
+The consumer files are stored at `<root>/listeners/<files>`.  Let it run in the background (preferably with `nohup`)

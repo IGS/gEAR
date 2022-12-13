@@ -134,7 +134,7 @@ class Connection:
     def replyto_consume(self, on_message_callback):
 
         #Declare queue to use. Leaving name blank auto-generates name
-        result = self.channel.queue_declare(queue="", exclusive=True)
+        result = self.channel.queue_declare(queue="", durable=True, exclusive=True)
         self.callback_queue = result.method.queue
         self.consume(
             queue_name=self.callback_queue

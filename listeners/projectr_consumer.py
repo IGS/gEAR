@@ -37,8 +37,10 @@ def _on_request(channel, method_frame, properties, body):
     is_pca = deserialized_body["is_pca"]
 
     print("[x] - Received request for dataset {} and genecart {}".format(dataset_id, genecart_id), file=open(stream, "a"))
-    output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
-
+    try:
+        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+    except:
+        raise
 
     # Send the output back to the Flask API call
     try:
