@@ -572,8 +572,16 @@ class ProjectR(Resource):
         if this.servercfg['projectR_service']['queue_enabled'].startswith("1"):
             import gearqueue
             host = this.servercfg['projectR_service']['queue_host']
+            try:
+                # Connect as a blocking RabbitMQ publisher
+                connection = gearqueue.Connection(host=host, publisher_or_consumer="publisher")
+            except Exception as e:
+                return {
+                    'success': -1
+                , 'message': str(e)
+                }
             # Connect as a blocking RabbitMQ publisher
-            with gearqueue.Connection(host=host, publisher_or_consumer="publisher") as connection:
+            with connection:
                 task_finished = False
                 response = {}
                 def _on_response(channel, method_frame, properties, body):
