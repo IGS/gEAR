@@ -117,7 +117,7 @@ class Connection:
 
         #Declare queue to use
         if not skip_queue_declare:
-            self.channel.queue_declare(queue=queue_name, auto_delete=True, durable=True)
+            self.channel.queue_declare(queue=queue_name, durable=True)
         self.channel.basic_qos(prefetch_count=num_messages) # balances worker load
 
         # Initiate callback
