@@ -128,8 +128,7 @@ COPY ./umgear.conf /etc/apache2/sites-available/umgear.conf
 COPY ./php.ini /etc/php/8.1/apache2/php.ini
 RUN a2dissite 000-default.conf
 RUN a2ensite umgear.conf
-RUN a2dismod mpm_prefork
-RUN a2enmod rewrite cgi wsgi proxy mpm_event
+RUN a2enmod rewrite cgi wsgi proxy
 EXPOSE 80
 
 CMD /usr/sbin/apachectl -D FOREGROUND
