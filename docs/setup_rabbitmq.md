@@ -53,4 +53,10 @@ There is a module at `<root>/lib/gearqueue.py` that contains a class to connect 
 
 First, make sure a directory is present under /var/log/gEAR_queue (you may have to create this as root). If you are not going to run the consumer listener as root, ensure the user has the same group-write privileges as the directory.
 
-The consumer files are stored at `<root>/listeners/<files>`.  Let it run in the background (preferably with `nohup`)
+The consumer scripts are stored at `<root>/listeners/<files>`.  Let it run in the background (preferably with `nohup`)
+
+Executing a script multiple times will spawn off more workers.
+
+## Purging a queue
+
+Occasionally you may need to purge a queue, so that zombie jobs will not run and clog up the queue before the newer, actual jobs need to run.  To purge, run `sudo rabbitmqctl purge_queue <queue_name>`

@@ -32,13 +32,14 @@ class Connection:
         except:
             raise
 
-        self.channel = self.connection.channel()
-
     # properties to make this a context manager
     def __enter__(self):
         return "entered!"
     def __exit__(self, exc_type, exc_value, traceback):
         print("exited!")
+
+    def new_channel(self):
+        self.channel = self.connection.channel()
 
     def publish(self, queue_name=None, message=None, **kwargs):
         '''
@@ -68,7 +69,7 @@ class Connection:
             raise Exception("Error: Cannot publish. No message given.")
 
         # Declare queue to use
-        self.channel.queue_declare(queue=queue_name, durable=True)
+        self.channel.queue_declare(queue=queue_name, auto_delete=True, durable=True)
 
         # Enabled delivery confirmations. This is REQUIRED.
         self.channel.confirm_delivery()
@@ -79,8 +80,8 @@ class Connection:
                                 routing_key=queue_name,
                                 body=json.dumps(message),
                                 properties=pika.BasicProperties(
-                                    #delivery_mode = 2 # make message persistent (disk instead of memory)
-                                    content_type="application/json"
+                                    delivery_mode = 2 # make message persistent (disk instead of memory)
+                                    , content_type="application/json"
                                     , **kwargs
                                 ))
         except pika.exceptions.UnroutableError:
@@ -116,7 +117,7 @@ class Connection:
 
         #Declare queue to use
         if not skip_queue_declare:
-            self.channel.queue_declare(queue=queue_name, durable=True)
+            self.channel.queue_declare(queue=queue_name, auto_delete=True, durable=True)
         self.channel.basic_qos(prefetch_count=num_messages) # balances worker load
 
         # Initiate callback

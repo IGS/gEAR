@@ -46,7 +46,7 @@ def _on_request(channel, method_frame, properties, body):
                 exchange=""
                 , routing_key=properties.reply_to
                 , body=json.dumps(output_payload)
-                , properties=pika.BasicProperties(content_type="application/json")
+                , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
                 )
         print("[x] - Publishing response for dataset {} and genecart {}".format(dataset_id, genecart_id), file=open(stream, "a"))
         channel.basic_ack(delivery_tag=method_frame.delivery_tag)
@@ -61,6 +61,7 @@ except:
     raise
 
 with connection:
+    connection.new_channel()
     # create the consumer.
     connection.consume(
         queue_name=queue_name
