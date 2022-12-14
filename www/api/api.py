@@ -8,12 +8,6 @@ abs_path_lib = abs_path_gear.joinpath('lib')
 # abs_path_lib is a Path object so we need to convert to string
 sys.path.insert(0, str(abs_path_lib))
 
-# Parse gEAR config
-# https://stackoverflow.com/a/35904211/1368079
-this = sys.modules[__name__]
-from gear.serverconfig import ServerConfig
-this.servercfg = ServerConfig().parse()
-
 # Prevent matplotlib backend rendering errors
 # when imporing scanpy in resource modules
 import matplotlib
@@ -45,7 +39,7 @@ api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
-api.add_resource(ProjectR, '/projectr/<dataset_id')
+api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
