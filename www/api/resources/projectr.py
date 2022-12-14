@@ -573,7 +573,7 @@ class ProjectR(Resource):
             import gearqueue
             host = this.servercfg['projectR_service']['queue_host']
             # Connect as a blocking RabbitMQ publisher
-            with gearqueue.Connection(host=host) as connection:
+            with gearqueue.Connection(host=host, publisher_or_consumer="publisher") as connection:
                 task_finished = False
                 response = {}
                 def _on_response(channel, method_frame, properties, body):
