@@ -558,10 +558,6 @@ class ProjectR(Resource):
     Formats inputs to prep for projectR API call running on Google Cloud Run
     """
 
-    def __init__(self, **kwargs):
-        # gearqueue.Connection
-        self.connection = kwargs['queue_connection']
-
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         args = run_projectr_parser.parse_args()
@@ -571,52 +567,56 @@ class ProjectR(Resource):
         projection_id = args['projection_id']
         scope = args['scope']
 
-        # Moving all the code to a function so that we could use Pub/Sub or another subsciption queue to run it
-        # and stagger runs to ensure memory is not an issue on the server.
-        if self.connection:
-            self.connection.new_channel()
-            task_finished = False
-            response = {}
-            def _on_response(channel, method_frame, properties, body):
-                nonlocal task_finished
-                nonlocal response
-                task_finished = True
-                response = json.loads(body)
-                print("[x] - Received response for dataset {} and genecart {}".format(payload["dataset_id"], payload["genecart_id"]), file=sys.stderr)
+        # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
+        # Channels will be spawned during each task.
+        if this.servercfg['projectR_service']['queue_enabled'].startswith("1"):
+            import gearqueue
+            host = this.servercfg['projectR_service']['queue_host']
+            # Connect as a blocking RabbitMQ publisher
+            with gearqueue.Connection(host=host) as connection:
+                connection.new_channel()
+                task_finished = False
+                response = {}
+                def _on_response(channel, method_frame, properties, body):
+                    nonlocal task_finished
+                    nonlocal response
+                    task_finished = True
+                    response = json.loads(body)
+                    print("[x] - Received response for dataset {} and genecart {}".format(payload["dataset_id"], payload["genecart_id"]), file=sys.stderr)
 
-            # Create a "reply-to" consumer
-            # see https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
-            try:
-                self.connection.replyto_consume(
-                    on_message_callback=_on_response
-                )
-            except Exception as e:
-                return {
-                    'success': -1
-                , 'message': str(e)
-                }
+                # Create a "reply-to" consumer
+                # see https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
+                try:
+                    connection.replyto_consume(
+                        on_message_callback=_on_response
+                    )
+                except Exception as e:
+                    return {
+                        'success': -1
+                    , 'message': str(e)
+                    }
 
-            # Create the publisher
-            payload = args
-            payload["dataset_id"] = dataset_id
-            payload["session_id"] = session_id
+                # Create the publisher
+                payload = args
+                payload["dataset_id"] = dataset_id
+                payload["session_id"] = session_id
 
-            try:
-                self.connection.publish(
-                    queue_name="projectr"
-                    , reply_to="amq.rabbitmq.reply-to"
-                    , message=payload   # method dumps JSON
-                )
-                print("[x] Requesting for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
-            except Exception as e:
-                return {
-                    'success': -1
-                , 'message': str(e)
-                }
-            # Wait for callback to finish, then return the response
-            while not task_finished:
-                pass
-            print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
-            return response
+                try:
+                    connection.publish(
+                        queue_name="projectr"
+                        , reply_to="amq.rabbitmq.reply-to"
+                        , message=payload   # method dumps JSON
+                    )
+                    print("[x] Requesting for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
+                except Exception as e:
+                    return {
+                        'success': -1
+                    , 'message': str(e)
+                    }
+                # Wait for callback to finish, then return the response
+                while not task_finished:
+                    pass
+                print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
+                return response
         else:
             return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)

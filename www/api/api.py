@@ -38,19 +38,6 @@ from resources.projectr import ProjectR, ProjectROutputFile
 
 app = Flask(__name__)
 api = Api(app)
-
-# Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
-# Channels will be spawned during each task.
-if this.servercfg['projectR_service']['queue_enabled'].startswith("1"):
-    import gearqueue
-    connection = None
-    host = this.servercfg['projectR_service']['queue_host']
-    try:
-        # Connect as a blocking RabbitMQ publisher
-        connection = gearqueue.Connection(host=host, publisher_or_consumer="publisher")
-    except Exception as e:
-        print("Could not create a RabbitMQ connection. Disabling queueing service", file=sys.stderr)
-
 # Add API endpoints to resources
 
 api.add_resource(PlotlyData, '/plot/<dataset_id>') # May want to add /plotly to this endpoint for consistency
@@ -58,7 +45,7 @@ api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
-api.add_resource(ProjectR, '/projectr/<dataset_id>', resource_class_kwargs=dict(queue_connection=connection))
+api.add_resource(ProjectR, '/projectr/<dataset_id')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
