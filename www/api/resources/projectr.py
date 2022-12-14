@@ -582,8 +582,8 @@ class ProjectR(Resource):
             task_finished = False
             response = {}
             def _on_response(channel, method_frame, properties, body):
-                global task_finished
-                global response
+                nonlocal task_finished
+                nonlocal response
                 task_finished = True
                 response = json.loads(body)
                 print("[x] - Received response for dataset {} and genecart {}".format(payload["dataset_id"], payload["genecart_id"]), file=sys.stderr)
@@ -609,7 +609,7 @@ class ProjectR(Resource):
                 try:
                     connection.publish(
                         queue_name="projectr"
-                        , reply_to=connection.callback_queue    # this is created during replyto_consume
+                        , reply_to="amq.rabbitmq.reply-to"
                         , message=payload   # method dumps JSON
                     )
                     print("[x] Requesting for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
@@ -621,6 +621,7 @@ class ProjectR(Resource):
                 # Wait for callback to finish, then return the response
                 while not task_finished:
                     pass
+                print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
                 return response
         else:
             return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)

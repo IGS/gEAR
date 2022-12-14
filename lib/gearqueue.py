@@ -33,7 +33,6 @@ class Connection:
             raise
 
         self.channel = self.connection.channel()
-        self.callback_queue = None  # Queue to consume reply-to messages
 
     # properties to make this a context manager
     def __enter__(self):
@@ -79,10 +78,9 @@ class Connection:
             self.channel.basic_publish(exchange='',
                                 routing_key=queue_name,
                                 body=json.dumps(message),
-                                mandatory=True,
                                 properties=pika.BasicProperties(
-                                    delivery_mode = 2 # make message persistent
-                                    , content_type="application/json"
+                                    #delivery_mode = 2 # make message persistent (disk instead of memory)
+                                    content_type="application/json"
                                     , **kwargs
                                 ))
         except pika.exceptions.UnroutableError:
@@ -127,17 +125,17 @@ class Connection:
                             , auto_ack=auto_ack
                             )
 
-        self.connection.process_data_events(time_limit=0)
+        #self.connection.process_data_events(time_limit=0)
 
         return self
 
     def replyto_consume(self, on_message_callback):
+        # Sets up a direct RPC (request/reply) consumer
+        # See https://www.rabbitmq.com/direct-reply-to.html
+        # See https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
 
-        #Declare queue to use. Leaving name blank auto-generates name
-        result = self.channel.queue_declare(queue="", durable=True, exclusive=True)
-        self.callback_queue = result.method.queue
         self.consume(
-            queue_name=self.callback_queue
+            queue_name="amq.rabbitmq.reply-to"
             , on_message_callback=on_message_callback
             , auto_ack=True
             , skip_queue_declare=True

@@ -37,14 +37,17 @@ def _on_request(channel, method_frame, properties, body):
     is_pca = deserialized_body["is_pca"]
 
     print("[x] - Received request for dataset {} and genecart {}".format(dataset_id, genecart_id), file=open(stream, "a"))
-    try:
-        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
-    except:
-        raise
+    output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
 
     # Send the output back to the Flask API call
     try:
-        channel.basic_publish(exchange="", routing_key=properties.reply_to, body=json.dumps(output_payload))
+        import pika
+        channel.basic_publish(
+                exchange=""
+                , routing_key=properties.reply_to
+                , body=json.dumps(output_payload)
+                , properties=pika.BasicProperties(content_type="application/json")
+                )
         print("[x] - Publishing response for dataset {} and genecart {}".format(dataset_id, genecart_id), file=open(stream, "a"))
         channel.basic_ack(delivery_tag=method_frame.delivery_tag)
     except Exception as e:
