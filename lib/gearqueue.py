@@ -69,7 +69,7 @@ class Connection:
             raise Exception("Error: Cannot publish. No message given.")
 
         # Declare queue to use
-        self.channel.queue_declare(queue=queue_name, auto_delete=True, durable=True)
+        self.channel.queue_declare(queue=queue_name, durable=True)
 
         # Enabled delivery confirmations. This is REQUIRED.
         self.channel.confirm_delivery()
