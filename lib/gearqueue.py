@@ -31,15 +31,14 @@ class Connection:
             self.connection = gear.queue.RabbitMQQueue().connect(host, publisher_or_consumer=publisher_or_consumer)
         except:
             raise
+        self.channel = self.connection.channel()
+
 
     # properties to make this a context manager
     def __enter__(self):
-        return "entered!"
+        return "entered MQ connection!"
     def __exit__(self, exc_type, exc_value, traceback):
-        print("exited!")
-
-    def new_channel(self):
-        self.channel = self.connection.channel()
+        print("exited MQ connection!", file=sys.stderr)
 
     def publish(self, queue_name=None, message=None, **kwargs):
         '''

@@ -55,13 +55,8 @@ def _on_request(channel, method_frame, properties, body):
         print(str(e), file=open(stream, "a"))
 
 host = this.servercfg['projectR_service']['queue_host']
-try:
-    connection = gearqueue.Connection(host=host, publisher_or_consumer="consumer")
-except:
-    raise
 
-with connection:
-    connection.new_channel()
+with gearqueue.Connection(host=host, publisher_or_consumer="consumer") as connection:
     # create the consumer.
     connection.consume(
         queue_name=queue_name
