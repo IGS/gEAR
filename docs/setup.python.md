@@ -52,6 +52,7 @@ fixed paths have worked fine for decades.
       openpyxl==3.0.10 \
       pandas==1.4.1 \
       Pillow==9.0.1 \
+      pika==1.3.1 \
       plotly==5.6.0 \
       python-dotenv==0.20.0 \
       requests==2.27.1 \
@@ -64,8 +65,7 @@ fixed paths have worked fine for decades.
       SQLAlchemy==1.4.32 \
       tables==3.7.0 \
       xlrd==1.2.0 \
-      cairosvg==2.5.2 \
-      pika==1.3.1
+      cairosvg==2.5.2
 
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
