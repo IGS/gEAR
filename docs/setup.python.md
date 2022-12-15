@@ -33,6 +33,7 @@ fixed paths have worked fine for decades.
       aiohttp \
       biocode==0.10.0 \
       biopython==1.79 \
+      cairosvg==2.5.2 \
       dash-bio==1.0.2 \
       Flask==2.1.0 \
       Flask-RESTful==0.3.9 \
@@ -64,9 +65,7 @@ fixed paths have worked fine for decades.
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
       tables==3.7.0 \
-      xlrd==1.2.0 \
-      cairosvg==2.5.2
-
+      xlrd==1.2.0
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 

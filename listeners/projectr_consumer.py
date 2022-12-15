@@ -21,6 +21,7 @@ from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
 queue_name = "projectr"
+os.makedirs("/var/log/gEAR_queue", exist_ok=True)
 stream = '/var/log/gEAR_queue/{}.log'.format(queue_name)
 
 # Structure influenced by https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example

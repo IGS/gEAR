@@ -38,6 +38,7 @@ RUN apt-get -qq update \
   zlib1g-dev \
   libblas-dev \
   liblapack-dev \
+  libcairo2-dev \
   libxml2-dev \
   libhdf5-serial-dev \
   cmake \

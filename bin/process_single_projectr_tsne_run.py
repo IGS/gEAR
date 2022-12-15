@@ -6,6 +6,8 @@ This script is to process a single projectR-to-tsne plot run in order to do some
 Shaun Adkins
 """
 
+from filprofiler.api import profile
+
 import json, sys, fcntl
 import pandas as pd
 
@@ -14,7 +16,6 @@ from time import sleep
 from more_itertools import sliced
 
 import asyncio
-
 
 import base64
 import io
@@ -33,8 +34,6 @@ import numpy as np
 import scanpy as sc
 from matplotlib import cm
 
-from memory_profiler import profile
-
 sc.settings.set_figure_params(dpi=100)
 sc.settings.verbosity = 0
 sc.settings.figdir = '/tmp/'
@@ -44,7 +43,18 @@ this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
-dataset_id = "1b12dde9-1762-7564-8fbd-1b07b750505f"
+dataset_ids = [
+    "1b12dde9-1762-7564-8fbd-1b07b750505f"
+    , "a2dd9f06-5223-0779-8dfc-8dce7a3897e1"
+    , "f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f"
+    , "e34fa5c6-1083-cacb-eedf-23f59f2e005f"
+    , "320ca057-0119-4f32-8397-7761ea084ed1"
+    , "df726e89-b7ac-d798-83bf-2bd69d7f3b52"
+    , "bad48d04-db27-26bc-2324-e88506f751fd"
+    , "e78db16a-3927-348c-f5aa-4256330a7dff"
+]
+dataset_ids = ["1b12dde9-1762-7564-8fbd-1b07b750505f"]
+
 genecart_id = "0a0216f1"
 is_pca = True
 session_id = 'ee95e48d-c512-4083-bf05-ca9f65e2c12a'
@@ -55,7 +65,7 @@ x_axis = "tSNE_1"
 y_axis = "tSNE_2"
 colorize_by = "cell_type"
 
-#dataset_id = "8dbfdcd7-a826-4658-e73a-bf85fabe7d6b"
+#dataset_ids = ["8dbfdcd7-a826-4658-e73a-bf85fabe7d6b"]
 #genecart_id = "79189c08"
 #is_pca = False
 #session_id = '5c3898f5-85ea-4fdc-b97a-496a93d489d6'
@@ -251,9 +261,10 @@ async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id
     async with aiohttp.ClientSession(loop=loop) as client, sem:
         # Create coroutines to be executed.
         # Wrap in "asyncio.create_task" to run concurrently.
+        loadings_json = loading_df.to_json(orient="split")
         coros = [asyncio.create_task(fetch_one(client, {
                 "target": chunk_df.to_json(orient="split")
-                , "loadings": loading_df.to_json(orient="split")
+                , "loadings": loadings_json
                 , "is_pca": is_pca
                 , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                 , "dataset_id":dataset_id
@@ -374,7 +385,7 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
-def run_projection_prestep():
+def run_projection_prestep(dataset_id=None):
     # Create the directory if it doesn't exist
     # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
     dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
@@ -399,7 +410,8 @@ def run_projection_prestep():
             "projection_id": None
         }
 
-    projections_dict = json.load(open(dataset_projection_json_file))
+    with open(dataset_projection_json_file) as projection_fh:
+        projections_dict = json.load(projection_fh)
 
     # If the pattern was not projected onto this dataset, initialize a list of configs
     # "cart.{projection_id}" added for backwards compatability
@@ -433,8 +445,7 @@ def run_projection_prestep():
         "projection_id": None
     }
 
-@profile
-def run_projection():
+def run_projection(dataset_id=None):
     success = 1
     message = ""
 
@@ -448,7 +459,8 @@ def run_projection():
         print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv), file=sys.stderr)
 
         # Projection already exists, so we can just return info we want to return in a message
-        projections_dict = json.load(open(dataset_projection_json_file))
+        with open(dataset_projection_json_file) as projection_fh:
+            projections_dict = json.load(projection_fh)
         common_genes = None
         genecart_genes = None
         dataset_genes = None
@@ -664,7 +676,8 @@ def run_projection():
     projection_patterns_df.to_csv(dataset_projection_csv)
 
     # Add new configuration to the list for this dictionary key
-    dataset_projections_dict = json.load(open(dataset_projection_json_file))
+    with open(dataset_projection_json_file) as projection_fh:
+        dataset_projections_dict = json.load(projection_fh)
     dataset_projections_dict.setdefault(genecart_id, []).append({
         "uuid": projection_id
         , "is_pca": int(is_pca)
@@ -685,7 +698,8 @@ def run_projection():
     except FileExistsError:
         print("Symlink already exists for {}".format(dataset_projection_csv), file=sys.stderr)
 
-    genecart_projections_dict = json.load(open(genecart_projection_json_file))
+    with open(genecart_projection_json_file) as projection_fh:
+        genecart_projections_dict = json.load(projection_fh)
     genecart_projections_dict.setdefault(dataset_id, []).append({
         "uuid": projection_id
         , "is_pca": int(is_pca)
@@ -971,9 +985,6 @@ def main():
     if res.get("success", 0) == 0:
         print(res.get("message", "No error message"))
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()
     print("running tSNE", file=sys.stderr)
     res2 = run_tsne()
     if res2.get("success", 0) == 0:
@@ -981,3 +992,14 @@ if __name__ == "__main__":
         sys.exit(1)
     print("Successful run", file=sys.stderr)
     sys.exit(0)
+
+def run_multi_datasets():
+    for dataset_id in dataset_ids:
+        run_projection_prestep(dataset_id)
+        res = run_projection(dataset_id)
+        print(res)
+
+if __name__ == "__main__":
+    #main()
+    profile(lambda: run_multi_datasets(), path="/opt/gEAR/fil-results_single_new")
+    #profile(lambda: run_multi_datasets(), path="/opt/gEAR/fil-results_multi")

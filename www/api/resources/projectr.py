@@ -181,9 +181,10 @@ async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id
         res_dfs = []
         # Create coroutines to be executed.
         # Wrap in "asyncio.create_task" to run concurrently.
+        loadings_json = loading_df.to_json(orient="split")
         coros = [asyncio.create_task(fetch_one(client, {
                 "target": chunk_df.to_json(orient="split")
-                , "loadings": loading_df.to_json(orient="split")
+                , "loadings": loadings_json
                 , "is_pca": is_pca
                 , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                 , "dataset_id":dataset_id
@@ -224,7 +225,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv), file=sys.stderr)
 
         # Projection already exists, so we can just return info we want to return in a message
-        projections_dict = json.load(open(dataset_projection_json_file))
+        with open(dataset_projection_json_file) as projection_fh:
+            projections_dict = json.load(projection_fh)
         common_genes = None
         genecart_genes = None
         dataset_genes = None
@@ -442,7 +444,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     projection_patterns_df.to_csv(dataset_projection_csv)
 
     # Add new configuration to the list for this dictionary key
-    dataset_projections_dict = json.load(open(dataset_projection_json_file))
+    with open(dataset_projection_json_file) as projection_fh:
+            dataset_projections_dict = json.load(projection_fh)
     dataset_projections_dict.setdefault(genecart_id, []).append({
         "uuid": projection_id
         , "is_pca": int(is_pca)
@@ -463,7 +466,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     except FileExistsError:
         print("Symlink already exists for {}".format(dataset_projection_csv), file=sys.stderr)
 
-    genecart_projections_dict = json.load(open(genecart_projection_json_file))
+    with open(genecart_projection_json_file) as projection_fh:
+        genecart_projections_dict = json.load(projection_fh)
     genecart_projections_dict.setdefault(dataset_id, []).append({
         "uuid": projection_id
         , "is_pca": int(is_pca)
@@ -519,7 +523,8 @@ class ProjectROutputFile(Resource):
                 "projection_id": None
             }
 
-        projections_dict = json.load(open(dataset_projection_json_file))
+        with open(dataset_projection_json_file) as projection_fh:
+            projections_dict = json.load(projection_fh)
 
         # If the pattern was not projected onto this dataset, initialize a list of configs
         # "cart.{projection_id}" added for backwards compatability
