@@ -94,8 +94,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     if projection_adata_path.is_file():
-        #os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'   # see https://github.com/h5py/h5py/issues/1722
-        return sc.read_h5ad(projection_adata_path, backed="r")
+        return sc.read_h5ad(projection_adata_path)#, backed="r")
 
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
@@ -432,8 +431,6 @@ class TSNEData(Resource):
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
         io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
-        #sleep(2)    # Give enough time for the IOStream to save (had white plots in the past)
-        plt.close()  # Prevent zombie plots, which can cause issues
 
         return {
             "success": success,

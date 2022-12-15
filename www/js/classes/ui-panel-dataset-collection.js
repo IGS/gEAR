@@ -140,6 +140,7 @@ class DatasetCollectionPanel {
                 data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
             }).done((data) => {
                 if (data.success == 1) {
+                    // TODO: if user changed genecart or gene lists, update search results
                     if (projection) {
                         update_datasetframes_projections();
                         return;
