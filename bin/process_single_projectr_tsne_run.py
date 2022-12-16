@@ -218,7 +218,7 @@ def calculate_chunk_size(num_genes, num_samples):
 
 def concat_fetch_results_to_dataframe(res_jsons):
     # Concatenate the dataframes back together again
-    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
+    res_dfs = (pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons)
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
@@ -234,9 +234,7 @@ def create_unweighted_loading_df(gc):
     gene_collection = geardb.GeneCollection()
     gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
 
-    loading_data = []
-    for gene in gene_collection.genes:
-        loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
+    loading_data = ({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1} for gene in gene_collection.genes)
     return pd.DataFrame(loading_data)
 
 def create_weighted_loading_df(genecart_id):

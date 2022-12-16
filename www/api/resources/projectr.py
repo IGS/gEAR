@@ -138,7 +138,7 @@ def calculate_chunk_size(num_genes, num_samples):
 
 def concat_fetch_results_to_dataframe(res_jsons):
     # Concatenate the dataframes back together again
-    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
+    res_dfs = (pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons)
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
@@ -154,9 +154,7 @@ def create_unweighted_loading_df(gc):
     gene_collection = geardb.GeneCollection()
     gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
 
-    loading_data = []
-    for gene in gene_collection.genes:
-        loading_data.append({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1})
+    loading_data = ({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1} for gene in gene_collection.genes)
     return pd.DataFrame(loading_data)
 
 def create_weighted_loading_df(genecart_id):
@@ -432,34 +430,60 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    if this.servercfg['projectR_service']['enabled'].startswith("1"):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            results = loop.run_until_complete(fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            # Raises as soon as one "gather" task has an exception
+            remove_lock_file(lock_fh, lockfile)
+            return {
+                'success': -1
+                , 'message': "Something went wrong with the projection-creating step."
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
+        finally:
+            # Wait 250 ms for the underlying SSL connections to close
+            loop.run_until_complete(asyncio.sleep(0.250))
+            loop.stop() # prevent "Task was destroyed but it is pending!" messages
+            loop.close()
 
-    try:
-        results = loop.run_until_complete(fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
-    except Exception as e:
-        print(str(e), file=sys.stderr)
-        # Raises as soon as one "gather" task has an exception
-        remove_lock_file(lock_fh, lockfile)
-        return {
-            'success': -1
-            , 'message': "Something went wrong with the projection-creating step."
-            , "num_common_genes": intersection_size
-            , "num_genecart_genes": num_loading_genes
-            , "num_dataset_genes": num_target_genes
-        }
-    finally:
-        # Wait 250 ms for the underlying SSL connections to close
-        loop.run_until_complete(asyncio.sleep(0.250))
-        loop.stop() # prevent "Task was destroyed but it is pending!" messages
-        loop.close()
+        projection_patterns_df = concat_fetch_results_to_dataframe(results)
 
-    projection_patterns_df = concat_fetch_results_to_dataframe(results)
+        # There is a good chance the samples are now out of order, which will break
+        # the copying of the dataset observation metadata when this output is converted
+        # to an AnnData object. So reorder back to dataset sample order.
+        projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
+    else:
+        # If not using the cloud run service, do this on the server
+        abs_path_gear = Path(__file__).resolve().parents[3]
+        service_path = abs_path_gear.joinpath('services')
+        # abs_path_lib is a Path object so we need to convert to string
+        sys.path.insert(0, str(service_path))
+        from projectr.main import do_pca_projection
+        from projectr.rfuncs import run_projectR_cmd
 
-    # There is a good chance the samples are now out of order, which will break
-    # the copying of the dataset observation metadata when this output is converted
-    # to an AnnData object. So reorder back to dataset sample order.
-    projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
+        # https://github.com/IGS/gEAR/issues/442#issuecomment-1317239909
+        # Basically this is a stopgap until projectR has an option to remove
+        # centering around zero for PCA loadings.  Chunking the data breaks
+        # the output due to the centering around zero step.
+        try:
+            if is_pca:
+                projection_patterns_df = do_pca_projection(target_df,loading_df)
+            else:
+                projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+        except Exception as e:
+            return {
+                'success': -1
+                , 'message': "Something went wrong with the projection-creating step."
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
