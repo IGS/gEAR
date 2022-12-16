@@ -3,7 +3,8 @@ from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, sys, fcntl
 import pandas as pd
-import asyncio
+import asyncio, aiohttp
+
 
 from os import getpid
 from time import sleep
@@ -172,26 +173,47 @@ def chunk_dataframe(df, chunk_size):
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:,index_slice]
 
-async def fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
+def limited_as_completed(coros, limit):
+    """A version of asyncio.as_completed that takes a generator of coroutines instead of a list."""
+    # Source: https://www.artificialworlds.net/blog/2017/05/31/python-3-large-numbers-of-tasks-with-limited-concurrency/
+    # Uses far less memory than the list version (asyncio.as_completed)
+    from itertools import islice
+    futures = [
+        asyncio.ensure_future(c)
+        for c in islice(coros, 0, limit)
+    ]
+    async def first_to_finish():
+        while True:
+            await asyncio.sleep(0)
+            for f in futures:
+                if f.done():
+                    futures.remove(f)
+                    try:
+                        newf = next(coros)
+                        futures.append(
+                            asyncio.ensure_future(newf))
+                    except StopIteration as e:
+                        pass
+                    return f.result()
+    while len(futures) > 0:
+        yield first_to_finish()
+
+async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
-    # Code influenced by https://stackoverflow.com/a/68288374 and https://superfastpython.com/asyncio-as_completed/
-    import aiohttp
-    sem = asyncio.Semaphore(SEMAPHORE_LIMIT) # limit simultaneous tasks so the gEAR server CPU isn't overloaded
-    async with aiohttp.ClientSession(loop=loop) as client, sem:
-        res_dfs = []
+
+    async with aiohttp.ClientSession() as client:
         # Create coroutines to be executed.
-        # Wrap in "asyncio.create_task" to run concurrently.
         loadings_json = loading_df.to_json(orient="split")
-        coros = [asyncio.create_task(fetch_one(client, {
+        coros = (fetch_one(client, {
                 "target": chunk_df.to_json(orient="split")
                 , "loadings": loadings_json
                 , "is_pca": is_pca
                 , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                 , "dataset_id":dataset_id
-                })) for chunk_df in chunk_dataframe(target_df, chunk_size)]
+                }) for chunk_df in chunk_dataframe(target_df, chunk_size))
+
         # This loop processes results as they come in.
-        # asyncio.as_completed creates a generator from the coroutines/tasks
-        return [await coro for coro in asyncio.as_completed(coros)]
+        return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
 
 async def fetch_one(client, payload):
     """
@@ -413,7 +435,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     asyncio.set_event_loop(loop)
 
     try:
-        results = loop.run_until_complete(fetch_all(loop, target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
+        results = loop.run_until_complete(fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
     except Exception as e:
         print(str(e), file=sys.stderr)
         # Raises as soon as one "gather" task has an exception
