@@ -259,24 +259,25 @@ def limited_as_completed(coros, limit):
     # Source: https://www.artificialworlds.net/blog/2017/05/31/python-3-large-numbers-of-tasks-with-limited-concurrency/
     # Uses far less memory than the list version (asyncio.as_completed)
     from itertools import islice
-    futures = [
+    futures = {
         asyncio.ensure_future(c)
         for c in islice(coros, 0, limit)
-    ]
+    }
     async def first_to_finish():
-        while True:
-            await asyncio.sleep(0)
-            for f in futures:
-                if f.done():
-                    futures.remove(f)
-                    try:
-                        newf = next(coros)
-                        futures.append(
-                            asyncio.ensure_future(newf))
-                    except StopIteration as e:
-                        pass
-                    return f.result()
-    while len(futures) > 0:
+        nonlocal futures
+        # Suggested by commenter "ruslan" in the URL. Using "while True" can be CPU-intensive
+        done, futures = await asyncio.wait(futures, return_when=asyncio.FIRST_COMPLETED)
+        # then re-fill the set of futures from the coros iterable
+        try:
+            newf = next(coros)
+            futures.add(
+                asyncio.ensure_future(newf))
+        except StopIteration as e:
+            pass
+        # Pass the new done results back
+        return done.pop().result()
+
+    while futures:
         yield first_to_finish()
 
 async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
@@ -284,7 +285,6 @@ async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chun
 
     async with aiohttp.ClientSession() as client:
         # Create coroutines to be executed.
-        # Wrap in "asyncio.create_task" to run concurrently.
         loadings_json = loading_df.to_json(orient="split")
         coros = (fetch_one(client, {
                 "target": chunk_df.to_json(orient="split")
