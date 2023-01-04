@@ -37,23 +37,24 @@ def _on_request(channel, method_frame, properties, body):
     scope = deserialized_body["scope"]
     is_pca = deserialized_body["is_pca"]
 
-    print("[x] - Received request for dataset {} and genecart {}".format(dataset_id, genecart_id), file=open(stream, "a"))
-    output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+    with open(stream, "a") as fh:
+        print("[x] - Received request for dataset {} and genecart {}".format(dataset_id, genecart_id), file=fh)
+        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
 
-    # Send the output back to the Flask API call
-    try:
-        import pika
-        channel.basic_publish(
-                exchange=""
-                , routing_key=properties.reply_to
-                , body=json.dumps(output_payload)
-                , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
-                )
-        print("[x] - Publishing response for dataset {} and genecart {}".format(dataset_id, genecart_id), file=open(stream, "a"))
-        channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-    except Exception as e:
-        print("Could not deliver response back to client", file=open(stream, "a"))
-        print(str(e), file=open(stream, "a"))
+        # Send the output back to the Flask API call
+        try:
+            import pika
+            channel.basic_publish(
+                    exchange=""
+                    , routing_key=properties.reply_to
+                    , body=json.dumps(output_payload)
+                    , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
+                    )
+            print("[x] - Publishing response for dataset {} and genecart {}".format(dataset_id, genecart_id), file=fh)
+            channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+        except Exception as e:
+            print("Could not deliver response back to client", file=fh)
+            print(str(e), file=fh)
 
 host = this.servercfg['projectR_service']['queue_host']
 

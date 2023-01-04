@@ -158,15 +158,16 @@ class Connection:
         '''
 
         stream = sys.stderr
-        if queue_name:
-            stream = '/var/log/gEAR_queue/{}.log'.format(queue_name)
-            print("Queue {} ready".format(queue_name), file=open(stream, 'a'))
+        with open(stream, "a") as fh:
+            if queue_name:
+                stream = '/var/log/gEAR_queue/{}.log'.format(queue_name)
+                print("Queue {} ready".format(queue_name), file=fh)
 
-        try:
-            print("{0}\tWaiting for messages. To exit press CTRL+C".format( str(datetime.now()) ), file=open(stream, 'a'))
-            self.channel.start_consuming()
-        except pika.exceptions.ConnectionClosed:
-            print("{0}\tConnection to queue lost. Restarting consumer...".format( str(datetime.now()) ), file=open(stream, 'a'))
+            try:
+                print("{0}\tWaiting for messages. To exit press CTRL+C".format( str(datetime.now()) ), file=fh)
+                self.channel.start_consuming()
+            except pika.exceptions.ConnectionClosed:
+                print("{0}\tConnection to queue lost. Restarting consumer...".format( str(datetime.now()) ), file=fh)
         return self
 
 
