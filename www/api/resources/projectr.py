@@ -138,7 +138,7 @@ def calculate_chunk_size(num_genes, num_samples):
 
 def concat_fetch_results_to_dataframe(res_jsons):
     # Concatenate the dataframes back together again
-    res_dfs = (pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons)
+    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
@@ -453,6 +453,15 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             loop.close()
 
         projection_patterns_df = concat_fetch_results_to_dataframe(results)
+
+        if len(projection_patterns_df.index) != len(adata.obs.index):
+            return {
+                'success': -1
+                , 'message': "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
 
         # There is a good chance the samples are now out of order, which will break
         # the copying of the dataset observation metadata when this output is converted

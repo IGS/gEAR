@@ -36,9 +36,12 @@ class Connection:
 
     # properties to make this a context manager
     def __enter__(self):
-        return "entered MQ connection!"
+        #return "entered MQ connection!"
+        pass
+
     def __exit__(self, exc_type, exc_value, traceback):
-        print("exited MQ connection!", file=sys.stderr)
+        #print("exited MQ connection!", file=sys.stderr)
+        pass
 
     def publish(self, queue_name=None, message=None, **kwargs):
         '''

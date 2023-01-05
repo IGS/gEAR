@@ -23,8 +23,9 @@ this.servercfg = ServerConfig().parse()
 queue_name = "projectr"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)
 stream = '/var/log/gEAR_queue/{}.log'.format(queue_name)
+pid = os.getpid()
 
-# Structure influenced by https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
+# Structure influenced by https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?direct-reply-to-example
 # and https://www.rabbitmq.com/tutorials/tutorial-six-python.html
 
 def _on_request(channel, method_frame, properties, body):
@@ -38,7 +39,7 @@ def _on_request(channel, method_frame, properties, body):
     is_pca = deserialized_body["is_pca"]
 
     with open(stream, "a") as fh:
-        print("[x] - Received request for dataset {} and genecart {}".format(dataset_id, genecart_id), file=fh)
+        print("{} - [x] - Received request for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), file=fh)
         output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
 
         # Send the output back to the Flask API call
@@ -50,11 +51,11 @@ def _on_request(channel, method_frame, properties, body):
                     , body=json.dumps(output_payload)
                     , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
                     )
-            print("[x] - Publishing response for dataset {} and genecart {}".format(dataset_id, genecart_id), file=fh)
-            channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+            print("{} - [x] - Publishing response for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), file=fh)
+            channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
-            print("Could not deliver response back to client", file=fh)
-            print(str(e), file=fh)
+            print("{} - Could not deliver response back to client".format(pid), file=fh)
+            print("{} - {}".format(pid, str(e)), file=fh)
 
 host = this.servercfg['projectR_service']['queue_host']
 

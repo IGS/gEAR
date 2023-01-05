@@ -218,7 +218,7 @@ def calculate_chunk_size(num_genes, num_samples):
 
 def concat_fetch_results_to_dataframe(res_jsons):
     # Concatenate the dataframes back together again
-    res_dfs = (pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons)
+    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
