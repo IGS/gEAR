@@ -60,7 +60,9 @@ fixed paths have worked fine for decades.
       scikit-learn==1.0.2 \
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
-      xlrd==1.2.0
+      xlrd==1.2.0 \
+      cairosvg==2.5.2
+
 
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/

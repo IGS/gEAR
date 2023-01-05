@@ -62,8 +62,9 @@ $(document).ready(() => {
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
 
-        let page_name = location.pathname;
-        if (page_name == "/") {
+        let page_name = location.pathname.replace(/^\//, '');
+         
+        if (page_name == "") {
             page_name = 'index.html';
         }
 
@@ -504,8 +505,6 @@ $(document).on("click", ".js-user-guide-link", (e) => {
     let anchor;
     let manual_url = "/manual.html"
 
-    console.log(document.URL);
-
     if (document.URL.includes("upload_dataset.html")) {anchor="uploading"}
     if (document.URL.includes("analyze_dataset.html")) {anchor="workbench"}
     if (document.URL.includes("upload_epigenetic_data.html")) {anchor="epiviz"}
@@ -532,13 +531,11 @@ function download_table_as_excel(table_id, filename) {
     table_str = '';
 
     $('#' + table_id + ' thead tr th').each(function() {
-        console.info("Adding a header row of table " + table_id);
         table_str += $(this).text() + "\t";
     });
     table_str = table_str.trim() + "\n";
 
     $('#' + table_id + ' tbody tr').each(function() {
-        console.info("Adding a body row of table " + table_id);
         var rows = $(this).find('td');
 
         rows.each(function() {

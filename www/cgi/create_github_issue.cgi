@@ -42,6 +42,17 @@ def main():
     if not tag:
         tag = ''
 
+    # Get IP address of the server hosting this CGI script (to determine gEAR flavor)
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+
+    # TODO: this should probably go in the config file.
+    # Also this assumes all screenshots comes from production
+    if "nemo" in hostname:
+        SCREENSHOT_URL = "https://nemoanalytics.org/{}".format(SCREENSHOT_DIR)
+    elif "gcid" in hostname:
+        SCREENSHOT_URL = "https://gcid.umgear.org/{}".format(SCREENSHOT_DIR)
+
     # If screenshot was provided, get URL and eventually assign to body
     screenshot_url = "None"
     if screenshot and not screenshot == "null":
@@ -52,17 +63,14 @@ def main():
         os.symlink(src, dst)
         screenshot_url = "{}/{}".format(SCREENSHOT_URL, new_basename)
 
-    # Get IP address of the server hosting this CGI script (to determine gEAR flavor)
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-
     # In an effort to not blow up the "tags" field in github, I will just indicate the tags in the body of the Github issue
     body = (f"**From:** {firstname} {lastname}\n\n"
            f"**Email:** {email}\n\n"
            f"**Server IP:** {ip_address}\n\n"
            f"**Msg:** {comment}\n\n"
            f"**Tags:** {tag.split(', ')}\n\n"
-           f"**Screenshot:** {screenshot_url}")
+           f"**Screenshot:** {screenshot_url}"
+           )
 
     # Headers data (i.e. authentication)
     headers = { "Authorization": "token {}".format(GITHUB_ACCESS_TOKEN) }

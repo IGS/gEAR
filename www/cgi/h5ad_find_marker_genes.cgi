@@ -156,7 +156,9 @@ def main():
         if not isinstance(gs, str):
             gs = adata.raw.var.loc[example_gene_str].get('gene_symbol')
 
-        group_labels.append({'group_label':col_label, 'genes': gs})
+        num_cells = adata.obs[adata.obs[cluster_method] == col_label][cluster_method].count()
+
+        group_labels.append({'group_label':col_label, 'num_cells':num_cells, 'genes': gs})
         col_idx += 1
 
     result = {'success': 1, 'table': tbl_json, 'group_labels': group_labels, 'cluster_label': cluster_method}
