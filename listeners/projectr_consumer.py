@@ -5,6 +5,7 @@ projectr_consumer.py - RabbitMQ messaging consumer
 """
 
 import os, sys, json
+import gc
 
 lib_path = os.path.abspath(os.path.join('..', 'lib'))
 sys.path.append(lib_path)
@@ -56,6 +57,8 @@ def _on_request(channel, method_frame, properties, body):
         except Exception as e:
             print("{} - Could not deliver response back to client".format(pid), file=fh)
             print("{} - {}".format(pid, str(e)), file=fh)
+        finally:
+            gc.collect()
 
 host = this.servercfg['projectR_service']['queue_host']
 
