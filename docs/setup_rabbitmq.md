@@ -60,3 +60,7 @@ Executing a script multiple times will spawn off more workers.
 ## Purging a queue
 
 Occasionally you may need to purge a queue, so that zombie jobs will not run and clog up the queue before the newer, actual jobs need to run.  To purge, run `sudo rabbitmqctl purge_queue <queue_name>`
+
+## Making changes to the code
+
+In most cases, the executing code is located in the callback function.  If this code is changed, the consumer daemon must be re-deployed.
