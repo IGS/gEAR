@@ -4,7 +4,7 @@ from pathlib import Path
 import json, sys, fcntl
 import pandas as pd
 import asyncio, aiohttp
-
+import gc
 
 from os import getpid
 from time import sleep
@@ -148,10 +148,10 @@ def create_new_uuid(dataset_id, genecart_id, is_pca):
     md5.update(uuid_str.encode("utf-8"))
     return uuid.UUID(md5.hexdigest())
 
-def create_unweighted_loading_df(gc):
+def create_unweighted_loading_df(genecart):
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
-    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(gc.genes), exact=True)
+    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(genecart.genes), exact=True)
 
     loading_data = ({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1} for gene in gene_collection.genes)
     return pd.DataFrame(loading_data)
@@ -303,14 +303,14 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     #first_dataset_gene = target_df.index[0]
 
     # Unweighted carts get a "1" weight for each gene
-    gc = geardb.get_gene_cart_by_share_id(genecart_id)
-    if not gc:
+    genecart = geardb.get_gene_cart_by_share_id(genecart_id)
+    if not genecart:
         return {
             'success': -1
             , 'message': "Could not find gene cart in database"
         }
 
-    if not len(gc.genes):
+    if not len(genecart.genes):
         return {
             'success': -1
             , 'message': "No genes found within this gene cart"
@@ -339,8 +339,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     try:
         # Get the organism ID associated with the dataset.
         ds = geardb.get_dataset_by_id(dataset_id)
-        if not gc.organism_id == ds.organism_id:
-            orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(gc.organism_id, ds.organism_id, ANNOTATION_TYPE)
+        if not genecart.organism_id == ds.organism_id:
+            orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
             orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
             try:
                 loading_df = remap_df_genes(loading_df, orthomap_file)
@@ -474,6 +474,9 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
         projection_patterns_df = concat_fetch_results_to_dataframe(results)
 
+        del results
+        gc.collect()    # trying to clear memory
+
         if len(projection_patterns_df.index) != len(adata.obs.index):
             return {
                 'success': -1
@@ -518,6 +521,9 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
 
     projection_patterns_df.to_csv(dataset_projection_csv)
+
+    del projection_patterns_df
+    gc.collect()    # trying to clear memory
 
     # Add new configuration to the list for this dictionary key
     with open(dataset_projection_json_file) as projection_fh:
