@@ -219,6 +219,8 @@ class MultigeneDashData(Resource):
         if projection_id:
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_id)
+                # For plots where var.index is used, we need to assign that a name (currently empty)
+                adata.var.index = adata.var.index.rename("index")
             except PlotError as pe:
                 return {
                     'success': -1,
