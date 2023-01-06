@@ -228,10 +228,6 @@ async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chun
                 }) for chunk_df in chunk_dataframe(target_df, chunk_size))
 
         # This loop processes results as they come in.
-        # asyncio.as_completed creates a generator from the coroutines/tasks
-        return [await coro for coro in asyncio.as_completed(coros)]
-
-        # This loop processes results as they come in.
         return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
 
 async def fetch_one(client, payload):
