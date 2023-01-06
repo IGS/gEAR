@@ -2,7 +2,7 @@
 
 """
 Given an h5ad file with only gene symbols, find best matching ensembl release, then
-collect ensembl ids for the corresponding gene symbol. 
+collect ensembl ids for the corresponding gene symbol.
 
 Fake ensembl IDs will be created for those genes whose gene symbols don't map to
 a known ensembl ID.
@@ -100,13 +100,13 @@ def main():
     print(f"Matches for release: {best_count}")
     print(f"Original # Genes: {n_genes}")
     print(f"Genes lost: {n_genes - best_count}\n")
-    
+
     # Now we have our best release and ensembl ids for those gene symbols,
 
     # Get separate adata for those where the gene symbols were mapped and where they weren't
     genes_present_filter = adata.var.index.isin(best_df.index)
     adata_present = adata[:, genes_present_filter]
-    adata_unmapped = adata[:, ~genes_present_filter]
+    adata_not_present = adata[:, ~genes_present_filter]
 
     # If the data already had a 'gene symbol' let's rename it
     if 'gene_symbol' in best_df.columns:
@@ -133,30 +133,38 @@ def main():
     print(adata_with_ensembl_ids.var.head())
 
     ## Now combine the unmapped dataframe with this one, first making the needed edits
-    if 'gene_symbol' in adata_unmapped.var.columns:
-        adata_unmapped.var = adata_unmapped.var.rename(columns={"gene_symbol": "gene_symbol_original"})
+    if 'gene_symbol' in adata_not_present.var.columns:
+        adata_not_present.var = adata_not_present.var.rename(columns={"gene_symbol": "gene_symbol_original"})
 
-    print("]nVAR of adata_unmapped\n")
-    print(adata_unmapped.var_names)
+    print("]nVAR of adata_not_present\n")
+    print(adata_not_present.var.head())
 
-    adata_unmapped_var = adata_unmapped.var.reset_index()
-    adata_unmapped_var = adata_unmapped_var.set_index(args.id_prefix + adata_unmapped.var.index.astype(str))
-    adata_unmapped_var = adata_unmapped_var.rename(columns={
-        adata_unmapped_var.columns[0]: "ensembl_id",
-        "genes": "gene_symbol"
-    })
+    #adata_unmapped_var = adata_unmapped.var.reset_index()
+    #adata_unmapped_var = adata_unmapped_var.set_index(args.id_prefix + adata_unmapped.var.index.astype(str))
+    #adata_unmapped_var = adata_unmapped_var.rename(columns={
+    #    adata_unmapped_var.columns[0]: "ensembl_id",
+    #    "genes": "gene_symbol"
+    #})
+
+    # Splitting code over multiple lines requires a "\" at the end.
+    adata_unmapped_var = adata_not_present.var.reset_index() \
+        .rename(columns={"index":"gene_symbol"}) \
+        .set_index(args.id_prefix + adata_not_present.var.index.astype(str))
 
     print("]nVAR of adata_unmapped_var\n")
-    print(adata_unmapped_var.head(5))
-    
+    print(adata_unmapped_var.head())
+
     adata_unmapped = ad.AnnData(
-        X=adata_unmapped.X,
-        obs=adata_unmapped.obs,
+        X=adata_not_present.X,
+        obs=adata_not_present.obs,
         var=adata_unmapped_var
     )
 
-    adata = adata_with_ensembl_ids.concatenate(adata_unmapped2)
-    
+    print("ADATA_UNMAPPED\n")
+    print(adata_unmapped)
+
+    adata = adata_with_ensembl_ids.concatenate(adata_unmapped)
+
     print('VAR\n')
     print(adata.var.head())
     print("OBS\n")
