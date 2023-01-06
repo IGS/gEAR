@@ -41,7 +41,7 @@ def _on_request(channel, method_frame, properties, body):
 
     with open(stream, "a") as fh:
         print("{} - [x] - Received request for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), file=fh)
-        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca, fh)
 
         # Send the output back to the Flask API call
         try:

@@ -120,7 +120,6 @@ def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
     try:
         orthomap_df = pd.read_hdf(orthomap_file)
     except Exception as e:
-        print(str(e), file=sys.stderr)
         raise
     # Index -> gs1 / id2 / gs2
     orthomap_dict = orthomap_df.to_dict()["id2"]
@@ -176,13 +175,30 @@ def limited_as_completed(coros, limit):
     # Source: https://www.artificialworlds.net/blog/2017/05/31/python-3-large-numbers-of-tasks-with-limited-concurrency/
     # Uses far less memory than the list version (asyncio.as_completed)
     from itertools import islice
-    futures = {
+
+    futures = [
         asyncio.ensure_future(c)
         for c in islice(coros, 0, limit)
-    }
+        ]
+
     async def first_to_finish():
+        while True:
+            await asyncio.sleep(0)
+            for f in futures:
+                if f.done():
+                    futures.remove(f)
+                    try:
+                        newf = next(coros)
+                        futures.append(
+                            asyncio.ensure_future(newf))
+                    except StopIteration as e:
+                        pass
+                    return f.result()
+
+    async def first_to_finish_nonworking():
         nonlocal futures
         # Suggested by commenter "ruslan" in the URL. Using "while True" can be CPU-intensive
+        # EDIT: not using this for the time being, as some chunks are dropped
         done, futures = await asyncio.wait(futures, return_when=asyncio.FIRST_COMPLETED)
         # then re-fill the set of futures from the coros iterable
         try:
@@ -212,6 +228,10 @@ async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chun
                 }) for chunk_df in chunk_dataframe(target_df, chunk_size))
 
         # This loop processes results as they come in.
+        # asyncio.as_completed creates a generator from the coroutines/tasks
+        return [await coro for coro in asyncio.as_completed(coros)]
+
+        # This loop processes results as they come in.
         return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
 
 async def fetch_one(client, payload):
@@ -233,9 +253,12 @@ async def fetch_one(client, payload):
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
         return await response.json()
 
-def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca):
+def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca, fh):
     success = 1
     message = ""
+
+    if not fh:
+        fh=sys.stderr
 
     projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, is_pca)
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
@@ -243,7 +266,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
     if Path(dataset_projection_csv).is_file():
-        print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv), file=sys.stderr)
+        print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv), file=fh)
 
         # Projection already exists, so we can just return info we want to return in a message
         with open(dataset_projection_json_file) as projection_fh:
@@ -302,7 +325,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     try:
         loading_df = create_unweighted_loading_df(gc) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
     except Exception as e:
-        print(str(e), file=sys.stderr)
+        print(str(e), file=fh)
         return {
             'success': -1
             , 'message': str(e)
@@ -325,7 +348,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
             try:
                 loading_df = remap_df_genes(loading_df, orthomap_file)
-            except:
+            except Exception as e:
+                print(str(e), file=fh)
                 message = "Could not remap pattern genes to ortholog equivalent in the dataset"
                 return {
                     "success": -1
@@ -342,7 +366,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     try:
         ana = get_analysis(None, dataset_id, session_id, None)
     except Exception as e:
-        print(str(e), file=sys.stderr)
+        print(str(e), file=fh)
         return {
             'success': -1
             , 'message': str(e)
@@ -389,14 +413,14 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Create lock file if it does not exist
     lockfile = str(dataset_projection_csv) + ".lock"
     if Path(lockfile).exists():
-        print("INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(projection_id), file=sys.stderr)
+        print("INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(projection_id), file=fh)
         try:
             # Test to see if the exclusive lock has expired
             lock_fh = create_lock_file(lockfile)
-            print("INFO: Lock for {} seems to be stale".format(projection_id), file=sys.stderr)
+            print("INFO: Lock for {} seems to be stale".format(projection_id), file=fh)
             remove_lock_file(lock_fh, lockfile)
         except:
-            print("INFO: Lock for {} seems to be valid.".format(projection_id), file=sys.stderr)
+            print("INFO: Lock for {} seems to be valid.".format(projection_id), file=fh)
             # If lock belongs to a valid run, wait for lock to be removed,
             # then return info that is normally returned after projectR is run
             while True:
@@ -428,7 +452,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
     chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
 
-    print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=sys.stderr)
+    print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=fh)
 
     if this.servercfg['projectR_service']['enabled'].startswith("1"):
         loop = asyncio.new_event_loop()
@@ -436,7 +460,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         try:
             results = loop.run_until_complete(fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
         except Exception as e:
-            print(str(e), file=sys.stderr)
+            print(str(e), file=fh)
             # Raises as soon as one "gather" task has an exception
             remove_lock_file(lock_fh, lockfile)
             return {
@@ -520,7 +544,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     try:
         genecart_projection_csv.symlink_to(dataset_projection_csv)
     except FileExistsError:
-        print("Symlink already exists for {}".format(dataset_projection_csv), file=sys.stderr)
+        print("Symlink already exists for {}".format(dataset_projection_csv), file=fh)
 
     with open(genecart_projection_json_file) as projection_fh:
         genecart_projections_dict = json.load(projection_fh)
@@ -593,11 +617,11 @@ class ProjectROutputFile(Resource):
 
         # If legacy version exists, copy to current format.
         if not genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict:
-            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
+            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=fh)
             projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
             projections_dict.pop("cart.{}".format(genecart_id), None)
             # move legacy genecart projection stuff to new version
-            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
+            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=fh)
             old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
             old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
@@ -687,4 +711,4 @@ class ProjectR(Resource):
                 print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
                 return response
         else:
-            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca)
+            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca, sys.stderr)
