@@ -121,6 +121,9 @@ def main():
         .set_index('ensembl_id')
     )
 
+    print("ENSEMBL_ID_VAR")
+    print(ensembl_id_var)
+
     # Currently creating a new AnnData object because of
     # trouble getting adata.var = merged_var to persist
     adata_with_ensembl_ids = ad.AnnData(
@@ -134,7 +137,10 @@ def main():
 
     # Splitting code over multiple lines requires a "\" at the end.
     adata_unmapped_var = adata_not_present.var.reset_index() \
-        .rename(columns={"index":"gene_symbol"}) \
+        .rename(columns={ \
+                    #adata_not_present.var.index: "ensembl_id",
+                    "genes": "gene_symbol" \
+                    }) \
         .set_index(args.id_prefix + adata_not_present.var.index.astype(str))
 
     adata_unmapped = ad.AnnData(
@@ -142,8 +148,15 @@ def main():
         obs=adata_not_present.obs,
         var=adata_unmapped_var
     )
+    adata_unmapped.var.index.name = "ensembl_id"
 
-    adata = adata_with_ensembl_ids.concatenate(adata_unmapped)
+    print("ADATA UNMAPPED.VAR")
+    print(adata_unmapped.var)
+
+    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer")
+
+    print("ADATA CONCAT")
+    print(adata)
 
     print('VAR\n')
     print(adata.var.head())
