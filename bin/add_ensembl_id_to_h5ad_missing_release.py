@@ -42,8 +42,7 @@ def main():
     adata = sc.read(args.input_file)
     (_, n_genes) = adata.shape
 
-    #ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
-    ensembl_releases = [84, 85]
+    ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -129,39 +128,20 @@ def main():
         obs=adata_present.obs,
         var=ensembl_id_var)
 
-    print('\nVAR with ensembl ids\n')
-    print(adata_with_ensembl_ids.var.head())
-
     ## Now combine the unmapped dataframe with this one, first making the needed edits
     if 'gene_symbol' in adata_not_present.var.columns:
         adata_not_present.var = adata_not_present.var.rename(columns={"gene_symbol": "gene_symbol_original"})
-
-    print("]nVAR of adata_not_present\n")
-    print(adata_not_present.var.head())
-
-    #adata_unmapped_var = adata_unmapped.var.reset_index()
-    #adata_unmapped_var = adata_unmapped_var.set_index(args.id_prefix + adata_unmapped.var.index.astype(str))
-    #adata_unmapped_var = adata_unmapped_var.rename(columns={
-    #    adata_unmapped_var.columns[0]: "ensembl_id",
-    #    "genes": "gene_symbol"
-    #})
 
     # Splitting code over multiple lines requires a "\" at the end.
     adata_unmapped_var = adata_not_present.var.reset_index() \
         .rename(columns={"index":"gene_symbol"}) \
         .set_index(args.id_prefix + adata_not_present.var.index.astype(str))
 
-    print("]nVAR of adata_unmapped_var\n")
-    print(adata_unmapped_var.head())
-
     adata_unmapped = ad.AnnData(
         X=adata_not_present.X,
         obs=adata_not_present.obs,
         var=adata_unmapped_var
     )
-
-    print("ADATA_UNMAPPED\n")
-    print(adata_unmapped)
 
     adata = adata_with_ensembl_ids.concatenate(adata_unmapped)
 
