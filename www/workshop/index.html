@@ -24,6 +24,7 @@
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="../css/common.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="../css/workshop.' + (new Date()).getTime() + '.css" />');</script>
 
         <script src="../js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
     </head>
@@ -43,115 +44,53 @@
         </div>
       </div>
       <div id='main_row' class="row">
-        <div id="sidebar" class="col-2">
+        <div id="viewport" class="col-9">
+          <h1>Workshops at ARO 2023</h1>
+          <div id='conference_banner'>
+            <img class="img-fluid" src="/workshop/aro_2023_banner.png" alt="ARO 2023 site banner" />
+          </div>
+          <div id='schedule_c' class="container">
+            <div class="row">
+              <div class="col-6">
+                <h2>Workshop schedule</h2>
+                <h3>Saturday 4:15pm - 5:30</h3>
+                <div class="workshop_c">
+                  <div class="row">
+                    <div class="col-4 text-center">
+                      <img class="img-fluid session_image" src="/workshop/thumbnail_session_intro.png" alt="Intro workshop thumbnail" />
+                      <ul class="session_actions">
+                        <li>
+                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip" data-placement="top" title="Click to join this session">
+                            Register
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                    <div class="col-8">
+                      <h4>Introduction</h4>
+                      <p>
+                        This will be a walk-through of the basic features of the portal, giving the background
+                        needed for the more tool-specific sessions. Topics include account creation, basic gene
+                        expression searches, data sharing, site navigation and overall feature discussion. We
+                        will also overview some of the new features of gEAR and point users to online webinars
+                        where they can learn more about them.
+                      </p>
+                    </div>
+                  </div>
+                </div><!-- end workshop_c -->
+                
+              </div>
+              <div class="col-6">
 
-        </div> <!-- end #sidebar -->
-
-        <div id="viewport" class="col-10">
-          <h1>EARssentials 2022</h1>
-          <h2>Downloadable presentations</h2>
-          <ul>
-            <li><a href="https://umgear.org/workshop/earssentials_2022_lecture.pdf">Presentation slides</a></li>
-            <li><a href="https://umgear.org/workshop/earssentials_2022_handout.pdf">Handout/exercises</a></li>
-          </ul>
-          <hr style="margin-top: 100px;"/>
-          <p>Previous workshops</p>
-          <hr style="margin-bottom: 50px;"/>
-          <h1>Molecular Biology of Hearing and Deafness</h1>
-          <h2>Presentation (to follow along)</h2>
-          <ul>
-            <li><a href="https://docs.google.com/presentation/d/1kHanRI7ik-60ntel4Udgyd2hWccdF_Q50NUa1MwXdX8/edit?usp=sharing">View/download presentation</a></li>
-          </ul>
-          <h2>Demo dataset downloads</h2>
-          <ul>
-            <li><a href="https://umgear.org/workshop/mbhd_demo_bulk.tar.gz">Data matrix</a></li>
-            <li><a href="https://umgear.org/workshop/mbhd_demo_bulk.xlsx">Metadata file</a></li>
-          </ul>
-<<<<<<< HEAD
-          <h2>Scavenger hunt</h2>
-          <ul>
-            <li><a href="./MBHD_2022_gEAR_Scavenger_Hunt.docx"><strong>Download challenge questions</strong></a></li>
-            <li>First three submitters to get all questions correct win</li>
-            <li>Prizes
-              <ul>
-                <li>1st - $75 Amazon gift card</li>
-                <li>2nd - $50 Amazon gift card</li>
-                <li>3rd - $25 Amazon gift card</li>
-              </ul>
-            </li>
-            <li>Winners will be notified by Monday, May 30</li>
-            <li>E-mail your submissions to gearportal.igs@gmail.com</li>
-            <li>Solutions (Link not yet available - will be posted in the evening on May 27th</li>
-            
-          </ul>
-          <hr style="margin-top: 100px;"/>
-          <p>Previous workshops</p>
-          <hr style="margin-bottom: 50px;"/>
-          <h1>ARO 2022</h1>)
-=======
-          <hr />
-          <h1>ARO 2022</h1>
->>>>>>> d39dd5104800e53e7a2921986f86dd8b9161ba61
-          <h2>Useful workshop links</h2>
-          <ul>
-            <li><a href="https://docs.google.com/spreadsheets/d/1FgcwKZxc9En2uzl_rymfwmowe2FuVV7r2GW2lnIVnhE/edit?usp=sharing">Workshop sign-in</a></li>
-            <li><a href="https://easyretro.io/publicboard/YRqL6M2JyldoRnjoRyEIGNs8z0x2/cb6f3fa9-02e0-4d40-9f9b-9db912dc1655">Easy retro link</a></li>
-            <!--
-            <li><a href="https://docs.google.com/document/d/1CsSpNDDA3i3Rykg5RWwUqNhaBLwGQ5_6gHmR_EIlptE/edit?usp=sharing">Attendee feedback form</a></li>
-            -->
-          </ul>
-          <hr />
-          <h2>gEAR Basics - Friday, Feb 11, 2022 - 11am EST</h2>
-          <p>Breakout rooms: (choose 2 out of 4)</p>
-          <ul>
-            <li><a href="https://docs.google.com/presentation/d/1PECRzYvkcpp-fOqsFRt2zK767PMvZs93/edit?usp=sharing&ouid=101883820133011497593&rtpof=true&sd=true">Searching for single and multiple genes using gEAR</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1aIkgkNmYOtwIlRt7gNgBL9L1oIeeCspuCGRs5j8pdRM/edit?usp=sharing">The gEAR Dataset Explorer</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1IOXbmHVCyuK-WWsfJrbt_c2yqxGTwv7U/edit?usp=sharing&ouid=101883820133011497593&rtpof=true&sd=true">The gEAR Compare Tool</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1JLUuaDTmvCgZ2uylwrA0o9T6-e0fU_vW/edit?usp=sharing&ouid=101883820133011497593&rtpof=true&sd=true">The gEAR scRNA-seq workbench</a></li>
-          </ul>
-          <hr />
-          <h2>gEAR Advanced - Friday, Feb 11, 2022 - 2pm EST</h2>
-          <p>Breakout rooms: (choose 3 out of 4)</p>
-          <ul>
-            <li><a href="https://docs.google.com/presentation/d/1jfGOe7fPTIVu275crq7h-XsnLmT3ybOEl35XlMXjdWY/edit?usp=sharing">Curating datasets - for visualization of one gene at a time</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1Lno5IxC64e2QuLMN1xeNXxHHpjSeTwCO/edit?usp=sharing&ouid=101883820133011497593&rtpof=true&sd=true">Curating datasets - for multi-gene visualization (e.g., heat maps, volcano plots, violin plots etc)</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1Iw_gmWd0hzefiK2Nt0A-oWaeak4TGR7y/edit?usp=sharing&ouid=101883820133011497593&rtpof=true&sd=true">Visualizing Epigenetic data using the gEAR (the Epiviz tool)</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1fmSNuWueOiwWnXS0juKhUJdJb9wX8xpd/edit?usp=sharing&ouid=101883820133011497593&rtpof=true&sd=true">Data upload to gEAR</a></li>
-          </ul>
-          <hr />
-          <hr />
-          <h1>ARO 2021</h1>
-          <h2>Useful workshop links</h2>
-          <ul>
-            <li><a href="https://sites.google.com/view/gear-navigator">Demo dataset navigator</a></li>
-            <li><a href="https://docs.google.com/document/d/1CsSpNDDA3i3Rykg5RWwUqNhaBLwGQ5_6gHmR_EIlptE/edit?usp=sharing">Attendee feedback form</a></li>
-          </ul>
-          <h3>Breakout room 1 - Basic gEAR skills - (Joshua Orvis & Kathleen Gwilliam)</h3>
-          <ul>
-            <li><a href="https://youtu.be/K8F2lcbQoqw">Video recording</a></li>
-            <li><a href="https://docs.google.com/presentation/d/16EwxaScejwm729OKpKoTN1LCzR10HwEeWmjvetwJjLM/edit?usp=sharing">Presentation slides</a></li>
-          </ul>
-          <h3>Breakout room 2 - Analysis 101 - (Ronna Hertzano & Erika Lipford)</h3>
-          <ul>
-            <li><a href="https://youtu.be/hlXSWnrh7Jw">Video recording</a></li>
-            <li><a href="https://docs.google.com/document/d/1kal70FFuJKHOR8mAHp8iLRtevC49xLeF3-k-OlNSzL4/edit?usp=sharing">Handout</a></li>
-            <li><a href="https://docs.google.com/presentation/d/1xzetiOGFWg1YeTrxbYQR8bOzlavu2fF7y9SFG3TODXs/edit?usp=sharing">Presentation slides</a></li>
-          </ul>
-          <h3>Breakout room 3 - Analysis 201 - de novo analysis of single data - (Kevin Rose & Benjamin Shuster)</h3>
-          <ul>
-            <li><a href="https://youtu.be/9NaP6ZrYJ1A">Video recording</a></li>
-            <li><a href="/workshop/aro_gear_workshop_breakout3.docx">Workshop steps</a></li>
-          </ul>
-          <h3>Breakout room 4 - Dataset upload and curation - (Yang Song & Elena Chrysostomou)</h3>
-          <ul>
-            <li><a href="https://youtu.be/a7gxnww6pxo">Video recording</a></li>
-            <li><a href="https://drive.google.com/drive/folders/1qrvgAw2XCXbuPeP34E8DgtdnBeBsyYWq?usp=sharing">Demo files</a></li>
-          </ul>
-          <h3>Breakout room 5 - Epiviz - (Jayaram Kancherla)</h3>
-          <ul>
-            <li><a href="https://docs.google.com/presentation/d/1sp10Ra6kADnMWeLyNvX99vllG8Sisfq5bFNreoT3Wp4/edit#slide=id.g89e68974c2_0_0">Presentation slides</a></li>
-          </ul>
+              </div>
+            </div>
+          </div>
+         
         </div> <!-- end #viewport -->
+        <div id="sidebar" class="col-3">
+          <p>Visit our helpdesk at the meeting for personalized assistance or to learn more about gEAR!</p>
+          <p><strong>Location:</strong> Helpdesk and all sessions are located in Biscayne 1
+        </div> <!-- end #sidebar -->
       </div><!-- end #main_row -->
     </div> <!-- end #main_content -->
 
