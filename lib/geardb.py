@@ -1302,7 +1302,7 @@ class LayoutCollection:
                 folder_label=row[9]
             )
             
-            layout.folder_root_id=layout_root_node
+            layout.folder_root_id=folder_id
             layout.dataset_count = row[10]
             
             self.layouts.append(layout)
