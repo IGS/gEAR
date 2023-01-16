@@ -4,6 +4,10 @@ div#sidebar {
 div#conference_banner {
     margin-bottom: 50px;
 }
+/* provides separation without hr when there are two workshops back to back on the same day */
+div.first_of_two {
+    margin-bottom: 20px;
+}
 div.schedule_column_2 {
     border-left: 1px solid rgb(150,150,150);
 }

@@ -275,6 +275,29 @@ CREATE TABLE dataset_shares (
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
+CREATE TABLE event (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      label                     VARCHAR(255) NOT NULL,
+      max_attendees             INT NOT NULL,
+      date_added                DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Introduction I', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Explore and analyze basics', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Explore and customize I', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Explore and customize II', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Introduction redo', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Analyze scRNA-seq data', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Transfer learning', 75);
+INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Data upload', 75);
+
+CREATE TABLE event_registration (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      user_id                   INT NOT NULL,
+      date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE
+);
+
 # Recursive organizational table allowing item types (like gene carts
 #  or profiles) to be grouped into 'folders'
 CREATE TABLE folder (
