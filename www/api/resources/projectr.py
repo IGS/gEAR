@@ -319,7 +319,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Row: Genes
     # Col: Pattern weights
     try:
-        loading_df = create_unweighted_loading_df(gc) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
+        loading_df = create_unweighted_loading_df(genecart.genes) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
     except Exception as e:
         print(str(e), file=fh)
         return {
@@ -669,6 +669,7 @@ class ProjectR(Resource):
                 }
             # Connect as a blocking RabbitMQ publisher
             with connection:
+                connection.open_channel()
                 task_finished = False
                 response = {}
                 def _on_response(channel, method_frame, properties, body):
