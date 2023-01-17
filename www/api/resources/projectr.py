@@ -319,7 +319,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Row: Genes
     # Col: Pattern weights
     try:
-        loading_df = create_unweighted_loading_df(genecart.genes) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
+        loading_df = create_unweighted_loading_df(genecart) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
     except Exception as e:
         print(str(e), file=fh)
         return {
