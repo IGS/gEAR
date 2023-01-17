@@ -4,6 +4,10 @@
 #  for development.  You still need to migrate files like the H5AD file on your
 #  own.
 
+# This cnf file looks like this:
+#[mysqldump]
+#user=root
+#password=whatever
 ACCOUNT_INFO_FILE=$HOME/.my.cnf
 
 # they needed to pass a dataset ID
