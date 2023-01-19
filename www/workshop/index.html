@@ -43,6 +43,7 @@
 	      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
         </div>
       </div>
+
       <div id='main_row' class="row">
         <div id="viewport" class="col-9">
           <h1>Workshops at ARO 2023</h1>
@@ -51,13 +52,81 @@
           </div>
           <div id='schedule_c' class="container">
             <div class="row">
+              <div class="col-12">
+                <h2>Workshop schedule</h2>
+
+                <h3>Saturday, February 11th</h3>
+
+                <div class="workshop_c">
+                  <div class="row">
+                    <div class="col-3 text-center">
+                      <img class="img-fluid session_image" src="/workshop/thumbnail_session_intro.png" alt="Intro workshop thumbnail" />
+                    </div>
+                    <div class="col-9">
+                      <h4>4:15pm - Introduction (30 min)</h4>
+                      <p>
+                        This will be a walk-through of the basic features of the portal, giving the background
+                        needed for the more tool-specific sessions. Topics include account creation, basic gene
+                        expression searches, data sharing, site navigation and overall feature discussion. We
+                        will also overview some of the new features of gEAR and point users to online webinars
+                        where they can learn more about them.
+                      </p>
+                      <ul class="session_actions">
+                        <li>
+                          <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
+                                  title="Click to remove yourself from this session">
+                            Unregister
+                          </button>
+                          <span class="registration_note">You are currently registered for this section</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div><!-- end workshop_c -->
+
+                <hr />
+
+                <div class="workshop_c">
+                  <div class="row">
+                    <div class="col-3 text-center">
+                      <img class="img-fluid session_image" src="/workshop/thumbnail_comparison_tool.png"
+                           alt="Explore and Analyze thumbnail" />
+                    </div>
+                    <div class="col-9">
+                      <h4>4:45pm - Explore and Analyze Basics: Creating gene carts and dataset comparisons (45 min)</h4>
+                      <p>
+                        Learn how to create collections of genes (carts) which can be used with many tools on the
+                        portal. Then, see how the dataset comparison tool is used to visualize differences in
+                        expression between two conditions of the same dataset, with statistical tests. 
+                      </p>
+                      <ul class="session_actions">
+                        <li>
+                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip"
+                                  data-placement="top" title="Click to join this session">
+                            Register
+                          </button>
+                          <span class="registration_note">12 / 50 seats remaining</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div><!-- end workshop_c -->
+
+                <hr />
+                
+              </div>
+            </div>
+
+            <br /><br />
+            
+            <div class="row">
               <div class="col-6">
                 <h2>Workshop schedule</h2>
                 
                 <h3>Saturday 4:15pm - 5:30</h3>
-                <div class="workshop_c">
+                <div class="workshop_c first_of_two">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_session_intro.png" alt="Intro workshop thumbnail" />
                       <ul class="session_actions">
                         <li>
@@ -68,7 +137,7 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Introduction (30 min)</h4>
                       <p>
                         This will be a walk-through of the basic features of the portal, giving the background
@@ -83,7 +152,7 @@
 
                 <div class="workshop_c">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_comparison_tool.png"
                            alt="Explore and Analyze thumbnail" />
                       <ul class="session_actions">
@@ -95,13 +164,12 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Explore and Analyze Basics: Creating gene carts and dataset comparisons (45 min)</h4>
                       <p>
                         Learn how to create collections of genes (carts) which can be used with many tools on the
                         portal. Then, see how the dataset comparison tool is used to visualize differences in
-                        expression between two conditions of the same dataset, with statistical tests. This
-                        workshop includes a hands-on component, bring your laptop along. 
+                        expression between two conditions of the same dataset, with statistical tests. 
                       </p>
                     </div>
                   </div>
@@ -112,7 +180,7 @@
                 <h3>Sunday 1:00pm - 1:45pm</h3>
                 <div class="workshop_c">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_displays.png"
                            alt="Explore and customize I thumbnail" />
                       <ul class="session_actions">
@@ -124,12 +192,12 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Explore and Customize I: Creating visualizations (45 min)</h4>
                       <p>
                         Visualization of datasets within the gEAR Portal is extremely customizable. In this session,
                         learn how to create multiple displays from your data including line/bar charts, heatmaps,
-                        violin plots, etc. This workshop includes a hands-on component, bring your laptop along. 
+                        violin plots, etc. 
                       </p>
                     </div>
                   </div>
@@ -140,7 +208,7 @@
                 <h3>Monday 1:00pm - 1:45pm</h3>
                 <div class="workshop_c">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_dataset_explorer.png"
                            alt="Explore and customize II thumbnail" />
                       <ul class="session_actions">
@@ -152,13 +220,12 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Explore and Customize II: Customizing dataset collection (45 min)</h4>
                       <p>
                         A primary feature of the portal is visualizing expression from multiple datasets
                         side-by-side. This workshop teaches you how to find datasets in the gEAR and group them
-                        into your own collections, viewing them together on the search pages. This workshop
-                        includes a hands-on component, bring your laptop along. 
+                        into your own collections, viewing them together on the search pages. 
                       </p>
                     </div>
                   </div>
@@ -167,9 +234,9 @@
               </div>
               <div class="col-6 schedule_column_2">
                 <h3>Monday 4:15pm - 5:45pm</h3>
-                <div class="workshop_c">
+                <div class="workshop_c first_of_two">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_dataset_explorer.png"
                            alt="Introduction thumbnail" />
                       <ul class="session_actions">
@@ -181,7 +248,7 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Introduction (30 min)</h4>
                       <p>
                         This will be a walk-through of the basic features of the portal, giving the background
@@ -196,7 +263,7 @@
 
                 <div class="workshop_c">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_sc_workbench.png"
                            alt="scRNA workbench thumbnail" />
                       <ul class="session_actions">
@@ -208,12 +275,11 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Analyze scRNA-seq data: The single-cell workbench (45 min)</h4>
                       <p>
                         Learn how to use the workbench without any programming experience, walking through
-                        all the steps of a scRNA pipeline using a point and click interface. This workshop
-                        includes a hands-on component, bring your laptop along. 
+                        all the steps of a scRNA pipeline using a point and click interface. 
                       </p>
                     </div>
                   </div>
@@ -222,9 +288,9 @@
                 <hr />
 
                 <h3>Tuesday 4:15pm - 5:45pm</h3>
-                <div class="workshop_c">
+                <div class="workshop_c first_of_two">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_projection.png"
                            alt="Transfer learning thumbnail" />
                       <ul class="session_actions">
@@ -236,13 +302,12 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Analysis, advanced: Transfer learning (ProjectR) (45 min)</h4>
                       <p>
                         Transfer learning is a technique used to apply patterns or features learned from one
                         dataset to another. Discover intersecting molecular dynamics across the various studies,
-                        samples, and cells - without requiring programming skills. This workshop includes a
-                        hands-on component, bring your laptop along.
+                        samples, and cells - without requiring programming skills. 
                       </p>
                     </div>
                   </div>
@@ -250,7 +315,7 @@
 
                 <div class="workshop_c">
                   <div class="row">
-                    <div class="col-4 text-center">
+                    <div class="col-5 text-center">
                       <img class="img-fluid session_image" src="/workshop/thumbnail_uploading.png"
                            alt="Transfer learning thumbnail" />
                       <ul class="session_actions">
@@ -262,13 +327,12 @@
                         </li>
                       </ul>
                     </div>
-                    <div class="col-8">
+                    <div class="col-7">
                       <h4>Data upload (45 min)</h4>
                       <p>
                         Users can upload their own datasets to the gEAR and view/analyze them privately, share
                         with others specifically, or make them public entirely. Here we cover the required
-                        input formats and steps for uploading. This workshop includes a hands-on component, b
-                        ring your laptop along.
+                        input formats and steps for uploading. 
                       </p>
                     </div>
                   </div>
