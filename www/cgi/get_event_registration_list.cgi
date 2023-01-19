@@ -11,7 +11,6 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
 
-    sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print("{}")
 

@@ -21,6 +21,10 @@ img.session_image {
     border: 1px solid rgb(150,150,150);
     margin-left: 10px;
 }
+span.registration_note {
+    padding-left: 15px;
+    font-size: 80%;
+}
 ul.session_actions {
     margin: 15px 0 0 10px;
     padding: 0;
