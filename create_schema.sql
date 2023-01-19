@@ -279,6 +279,7 @@ CREATE TABLE event (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
       label                     VARCHAR(255) NOT NULL,
       max_attendees             INT NOT NULL,
+      waitlist_size             INT NOT NULL DEFAULT 0,
       date_added                DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
