@@ -71,13 +71,31 @@
                         will also overview some of the new features of gEAR and point users to online webinars
                         where they can learn more about them.
                       </p>
-                      <ul class="session_actions">
-                        <li>
+                      <ul class="session_actions" id="session_1">
+                        <li class="register">
+                          <button type="button" class="btn btn-sm btn-success" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="1" title="Register with one click!">Register</button>
+                          <span class="registration_note">N / N seats available. Click to register!</span>
+                        </li>
+                        <li class="register_wait">
+                          <button type="button" class="btn btn-sm btn-primary" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="1" title="Add yourself to the waitlist">Register (waitlist)</button>
+                          <span class="registration_note">N / N waitlist spots available. Click to register!</span>
+                        </li>
+                        <li class="unregister">
                           <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
-                                  title="Click to remove yourself from this session">
-                            Unregister
-                          </button>
-                          <span class="registration_note">You are currently registered for this section</span>
+                                  data-event-id="1" title="Click to remove yourself from this session">Unregister</button>
+                          <span class="registration_note">You are currently registered for this section.</span>
+                        </li>
+                        <li class="unregister_wait">
+                          <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="1" title="Click to remove yourself from the waitlist">Unregister from waitlist</button>
+                          <span class="registration_note">You are currently on the waitlist.</span>
+                        </li>
+                        <li class="event_full">
+                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip" data-placement="top"
+                                  title="Add yourself to the waitlist" disabled>Workshop full</button>
+                          <span class="registration_note">All seats taken, waitlist full</span>
                         </li>
                       </ul>
                     </div>
