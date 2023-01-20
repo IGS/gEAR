@@ -283,14 +283,14 @@ CREATE TABLE event (
       date_added                DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Introduction I', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Explore and analyze basics', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Explore and customize I', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Explore and customize II', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Introduction redo', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Analyze scRNA-seq data', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Transfer learning', 75);
-INSERT INTO event (label, max_attendees) VALUES ('ARO 2023 - Data upload', 75);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Introduction I', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Explore and analyze basics', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Explore and customize I', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Explore and customize II', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Introduction redo', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Analyze scRNA-seq data', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Transfer learning', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Data upload', 50, 10);
 
 CREATE TABLE event_registration (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
