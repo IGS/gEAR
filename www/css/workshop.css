@@ -4,10 +4,6 @@ div#sidebar {
 div#conference_banner {
     margin-bottom: 50px;
 }
-/* provides separation without hr when there are two workshops back to back on the same day */
-div.first_of_two {
-    margin-bottom: 20px;
-}
 div.schedule_column_2 {
     border-left: 1px solid rgb(150,150,150);
 }
@@ -16,6 +12,10 @@ h2 {
     color: black;
     font-weight: bold;
     margin: 0 0 20px 0;
+}
+h3.workshop_day {
+    font-weight: bold;
+    
 }
 img.session_image {
     border: 1px solid rgb(150,150,150);
