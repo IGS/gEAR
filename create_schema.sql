@@ -298,7 +298,7 @@ CREATE TABLE event_registration (
       user_id                   INT NOT NULL,
       date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
-      FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE,
+      FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 );
 
 # Recursive organizational table allowing item types (like gene carts
