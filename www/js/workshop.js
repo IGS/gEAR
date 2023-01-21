@@ -24,24 +24,34 @@ window.onload=function() {
                 let event = data[event_id];
 
                 $("#session_" + event_id + "_attendees").html(event['attendees']);
+                $("#session_" + event_id + "_seats_left").html(event['max_attendees'] - event['attendees']);
                 $("#session_" + event_id + "_max_attendees").text(event['max_attendees']);
                 $("#session_" + event_id + "_waitlist_current").html(event['attendees'] - event['max_attendees']);
                 $("#session_" + event_id + "_waitlist_size").html(event['waitlist_size']);
-                
-                if (event['attendees'] < event['max_attendees']) {
-                    // user can register for a seat
-                    $("ul#session_" + event_id + " li.register").show();
-                    
-                } else if (event['attendees'] < (event['max_attendees'] + event['waitlist_size'])) {
-                    // user can be added to waitlist
-                    $("ul#session_" + event_id + " li.register_wait").show();
 
-                } else if (event['attendees'] >= (event['max_attendees'] + event['waitlist_size'])) {
-                    // event is full
-                    $("ul#session_" + event_id + " li.event_full").show();
-                    
+                if (event['user_attending'] == 1) {
+                    $("ul#session_" + event_id + " li.unregister").show();
+                        
+                } else if (event['user_waitlisted'] == 1) {
+                    $("ul#session_" + event_id + " li.unregister_wait").show();
+
                 } else {
-                    console.log("Unhandled event: " + event_id);
+                    console.log("User not attending event:" + event_id);
+                    if (event['attendees'] < event['max_attendees']) {
+                        // user can register for a seat
+                        $("ul#session_" + event_id + " li.register").show();
+                        
+                    } else if (event['attendees'] < (event['max_attendees'] + event['waitlist_size'])) {
+                        // user can be added to waitlist
+                        $("ul#session_" + event_id + " li.register_wait").show();
+
+                    } else if (event['attendees'] >= (event['max_attendees'] + event['waitlist_size'])) {
+                        // event is full
+                        $("ul#session_" + event_id + " li.event_full").show();
+                        
+                    } else {
+                        console.log("Unhandled event: " + event_id);
+                    }
                 }
             }
         },
@@ -131,7 +141,16 @@ window.onload=function() {
                         $("ul#session_" + event_id + " li").hide();
 
                         // show register or register_waitlist depending on seats available
-                        $("ul#session_" + event_id + " li.register").show();
+                        let event = data['event'];
+                        if (data['current_count'] < event['max_attendees']) {
+                            $("#session_" + event_id + "_seats_left").html(event['max_attendees'] - data['current_count']);
+                            $("ul#session_" + event_id + " li.register").show();
+                        } else if (data['current_count'] < (event['max_attendees'] + event['waitlist_size'])) {
+                            $("#session_" + event_id + "_waitlist_current").html(data['current_count'] - event['max_attendees']);
+                            $("ul#session_" + event_id + " li.register_wait").show();
+                        } else {
+                            $("ul#session_" + event_id + " li.event_full").show();
+                        }
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown) {

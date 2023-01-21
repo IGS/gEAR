@@ -39,14 +39,15 @@ def main():
     for row in cursor:
         registered_user_id = row[2]
         event = events[row[0]]
+        event['attendees'] += 1
 
         ## is it the current user?
         if registered_user_id == user.id:
             # else are we already over max & waitlist
             if event['attendees'] >= event['max_attendees']:
                 event['user_waitlisted'] = 1
-
-        event['attendees'] += 1
+            else:
+                event['user_attending'] = 1
 
     print(json.dumps(events))
 

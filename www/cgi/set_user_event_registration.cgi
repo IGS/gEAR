@@ -28,17 +28,21 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
 
+    event = get_event_info(cursor, event_id)
+
     if registration_status == 1:
         qry = "INSERT INTO event_registration (event_id, user_id) VALUES (%s, %s)"
         cursor.execute(qry, (event_id, user.id))
         cnx.commit()
-        print(json.dumps({'success': 1, 'msg': 'You have successfully registered'}))
+        print(json.dumps({'success': 1, 'current_count': get_current_count(cursor, event_id),
+                          'event': event, 'msg': 'You have successfully registered'}))
     
     elif registration_status == 0:
         qry = "DELETE FROM event_registration WHERE event_id = %s AND user_id = %s"
         cursor.execute(qry, (event_id, user.id))
         cnx.commit()
-        print(json.dumps({'success': 1, 'msg': 'You have successfully unregistered'}))
+        print(json.dumps({'success': 1, 'current_count': get_current_count(cursor, event_id),
+                          'event': event, 'msg': 'You have successfully unregistered'}))
     
     else:
         print(json.dumps({'success': 0, 'msg': 'Unrecognized registration status'}))
@@ -48,7 +52,15 @@ def main():
     cnx.close()
 
 def get_current_count(cursor, event_id):
-    qry = "SELECT "
+    qry = """
+          SELECT COUNT(er.id)
+            FROM event_registration er
+           WHERE er.event_id = %s
+    """
+    cursor.execute(qry, (event_id,))
+
+    for row in cursor:
+        return row[0]
 
 def get_event_info(cursor, event_id):
     qry = "SELECT label, max_attendees, waitlist_size FROM event WHERE id = %s"
@@ -58,8 +70,8 @@ def get_event_info(cursor, event_id):
         return {'attendees': 0,
                 'user_attending': 0,
                 'user_waitlisted': 0,
-                'max_attendees': row[2],
-                'waitlist_size': row[3]}
+                'max_attendees': row[1],
+                'waitlist_size': row[2]}
 
     
 if __name__ == '__main__':
