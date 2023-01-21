@@ -25,7 +25,7 @@ def main():
     events = get_event_info(cursor, min_event_id, max_event_id)
 
     qry = """
-          SELECT er.id, u.id
+          SELECT e.id, er.id, u.id
             FROM event e
                  JOIN event_registration er ON er.event_id=e.id
                  JOIN guser u on er.user_id=u.id
@@ -37,7 +37,7 @@ def main():
     cursor.execute(qry, qry_args)
 
     for row in cursor:
-        registered_user_id = row[1]
+        registered_user_id = row[2]
         event = events[row[0]]
 
         ## is it the current user?

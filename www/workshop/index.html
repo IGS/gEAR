@@ -75,12 +75,12 @@
                         <li class="register">
                           <button type="button" class="btn btn-sm btn-success" data-toggle="tooltip" data-placement="top"
                                   data-event-id="1" title="Register with one click!">Register</button>
-                          <span class="registration_note">N / N seats available. Click to register!</span>
+                          <span class="registration_note"><span id="session_1_attendees"></span> / <span id="session_1_max_attendees"></span> seats available. Click to register!</span>
                         </li>
                         <li class="register_wait">
                           <button type="button" class="btn btn-sm btn-primary" data-toggle="tooltip" data-placement="top"
                                   data-event-id="1" title="Add yourself to the waitlist">Register (waitlist)</button>
-                          <span class="registration_note">N / N waitlist spots available. Click to register!</span>
+                          <span class="registration_note"><span id="session_1_waitlist_current"></span> / <span id="session_1_waitlist_size"></span> waitlist spots available. Click to register!</span>
                         </li>
                         <li class="unregister">
                           <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
@@ -117,14 +117,31 @@
                         portal. Then, see how the dataset comparison tool is used to visualize differences in
                         expression between two conditions of the same dataset, with statistical tests. 
                       </p>
-                      <ul class="session_actions">
-                        <li>
-                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip"
-                                  data-placement="top" title="Click to join this session">
-                            Register
-                          </button>
-                          <span class="registration_note">12 / 50 seats remaining</span>
+                      <ul class="session_actions" id="session_2">
+                        <li class="register">
+                          <button type="button" class="btn btn-sm btn-success" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="2" title="Register with one click!">Register</button>
+                          <span class="registration_note"><span id="session_2_attendees"></span> / <span id="session_2_max_attendees"></span> seats available. Click to register!</span>
                         </li>
+                        <li class="register_wait">
+                          <button type="button" class="btn btn-sm btn-primary" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="2" title="Add yourself to the waitlist">Register (waitlist)</button>
+                          <span class="registration_note"><span id="session_2_waitlist_current"></span> / <span id="session_2_waitlist_size"></span> waitlist spots available. Click to register!</span>
+                        </li>
+                        <li class="unregister">
+                          <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="2" title="Click to remove yourself from this session">Unregister</button>
+                          <span class="registration_note">You are currently registered for this section.</span>
+                        </li>
+                        <li class="unregister_wait">
+                          <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="2" title="Click to remove yourself from the waitlist">Unregister from waitlist</button>
+                          <span class="registration_note">You are currently on the waitlist.</span>
+                        </li>
+                        <li class="event_full">
+                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip" data-placement="top"
+                                  title="Add yourself to the waitlist" disabled>Workshop full</button>
+                          <span class="registration_note">All seats taken, waitlist full</span>
                       </ul>
                     </div>
                   </div>
@@ -147,12 +164,31 @@
                         learn how to create multiple displays from your data including line/bar charts, heatmaps,
                         violin plots, etc. 
                       </p>
-                      <ul class="session_actions">
-                        <li>
-                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip"
-                                  data-placement="top" title="Click to join this session">
-                            Register
-                          </button>
+                      <ul class="session_actions" id="session_3">
+                        <li class="register">
+                          <button type="button" class="btn btn-sm btn-success" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="3" title="Register with one click!">Register</button>
+                          <span class="registration_note"><span id="session_3_attendees"></span> / <span id="session_3_max_attendees"></span> seats available. Click to register!</span>
+                        </li>
+                        <li class="register_wait">
+                          <button type="button" class="btn btn-sm btn-primary" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="3" title="Add yourself to the waitlist">Register (waitlist)</button>
+                          <span class="registration_note"><span id="session_3_waitlist_current"></span> / <span id="session_3_waitlist_size"></span> waitlist spots available. Click to register!</span>
+                        </li>
+                        <li class="unregister">
+                          <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="3" title="Click to remove yourself from this session">Unregister</button>
+                          <span class="registration_note">You are currently registered for this section.</span>
+                        </li>
+                        <li class="unregister_wait">
+                          <button type="button" class="btn btn-sm btn-danger" data-toggle="tooltip" data-placement="top"
+                                  data-event-id="3" title="Click to remove yourself from the waitlist">Unregister from waitlist</button>
+                          <span class="registration_note">You are currently on the waitlist.</span>
+                        </li>
+                        <li class="event_full">
+                          <button type="button" class="btn btn-sm btn-secondary" data-toggle="tooltip" data-placement="top"
+                                  title="Add yourself to the waitlist" disabled>Workshop full</button>
+                          <span class="registration_note">All seats taken, waitlist full</span>
                         </li>
                       </ul>
                     </div>

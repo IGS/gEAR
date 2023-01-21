@@ -19,6 +19,31 @@ window.onload=function() {
             // Loop through the events on the page and update status of each
             console.log("Data:");
             console.log(data);
+
+            for (let event_id in data) {
+                let event = data[event_id];
+
+                $("#session_" + event_id + "_attendees").html(event['attendees']);
+                $("#session_" + event_id + "_max_attendees").text(event['max_attendees']);
+                $("#session_" + event_id + "_waitlist_current").html(event['attendees'] - event['max_attendees']);
+                $("#session_" + event_id + "_waitlist_size").html(event['waitlist_size']);
+                
+                if (event['attendees'] < event['max_attendees']) {
+                    // user can register for a seat
+                    $("ul#session_" + event_id + " li.register").show();
+                    
+                } else if (event['attendees'] < (event['max_attendees'] + event['waitlist_size'])) {
+                    // user can be added to waitlist
+                    $("ul#session_" + event_id + " li.register_wait").show();
+
+                } else if (event['attendees'] >= (event['max_attendees'] + event['waitlist_size'])) {
+                    // event is full
+                    $("ul#session_" + event_id + " li.event_full").show();
+                    
+                } else {
+                    console.log("Unhandled event: " + event_id);
+                }
+            }
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.log('textStatus= ', textStatus);
@@ -65,7 +90,30 @@ window.onload=function() {
             });
 
         } else if (button_type == 'register_wait') {
-
+            $.ajax({
+                url : './cgi/set_user_event_registration.cgi',
+                type: "POST",
+                data : { 'session_id': session_id,
+                         'event_id': event_id,
+                         'registration_status': 1
+                       },
+                dataType:"json",
+                success: function(data, textStatus, jqXHR) {
+                    if (data.success == 0) {
+                        display_error_bar(data.msg);
+                    } else {
+                        // show only the unregister button now
+                        $("ul#session_" + event_id + " li").hide();
+                        $("ul#session_" + event_id + " li.unregister_wait").show();
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log('textStatus= ', textStatus);
+                    console.log('errorThrown= ', errorThrown);
+                    display_error_bar(jqXHR.status + ' ' + errorThrown.name);
+                }
+            });
+            
         } else if (button_type == 'unregister' || button_type == 'unregister_wait') {
             $.ajax({
                 url : './cgi/set_user_event_registration.cgi',
