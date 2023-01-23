@@ -103,10 +103,6 @@ div.form-group-sm {
 div#group_labels_c table {
     font-size: 80%;
 }
-div#group_labels_c table td {
-    border: 1px solid black;
-    padding: 0 3px 0 3px;
-}
 div.infoblock {
     border: 1px solid #2F0F3E;
     border-radius: 3px;
@@ -166,10 +162,6 @@ div#marker_genes_table_c table {
 }
 div#marker_genes_table_c table th {
     text-align: center;
-}
-div#marker_genes_table_c table td {
-    border: 1px solid black;
-    padding: 0 3px 0 3px;
 }
 div#marker_genes_table_c table td.highlighted {
     background-color: #A089A5;
