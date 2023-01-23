@@ -17,12 +17,25 @@ def get_connection(host="localhost", heartbeat_time=None, socket_time=None):
         print("Failed to connect to RabbitMQ:\n{0}".format(str(err)), file=sys.stderr)
         raise
 
+def get_async_connection(host="localhost", heartbeat_time=None, socket_time=None):
+    """Create and return an asynchronous connection."""
+    try:
+        connection = pika.SelectConnection(
+                            pika.ConnectionParameters(host=host,
+                                heartbeat=heartbeat_time,
+                                socket_timeout=socket_time)
+                            )
+        return connection
+
+    except Exception as err:
+        print("Failed to connect to RabbitMQ:\n{0}".format(str(err)), file=sys.stderr)
+        raise
 
 class RabbitMQQueue:
     def __init__(self):
         connection = None
 
-    def connect(self, host="localhost", publisher_or_consumer=None):
+    def connect(self, host="localhost", publisher_or_consumer=None, async_connection=False):
         '''
         Connect to RabbitMQ. Can connect as a publisher or consumer.
         Each connects with a different heartbeat interval and socket time.
@@ -50,5 +63,8 @@ class RabbitMQQueue:
             heartbeat_time = 21600
             socket_time = 21600
 
-        connection = get_connection(host, heartbeat_time=heartbeat_time, socket_time=socket_time)
-        return connection
+        if async_connection:
+            return get_async_connection(host, heartbeat_time=heartbeat_time, socket_time=socket_time)
+        return get_connection(host, heartbeat_time=heartbeat_time, socket_time=socket_time)
+
+
