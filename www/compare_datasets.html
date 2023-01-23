@@ -94,7 +94,6 @@
               <input class="form-control form-control-sm" id="y_label" placeholder="Name of y-axis label">
             </div>
             <hr />
-            <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
           </div>  <!-- end filter_block -->
 
           <div id="chart_settings">
@@ -110,6 +109,9 @@
             <div class="form-group-sm">
               <label for="fold_change_cutoff" class="control-label mb-0 mt-2">Adjust fold change cutoff (>= N)</label>
               <input id="fold_change_cutoff" class="form-control form-control-sm" value="2.0"/>
+              <ul>
+                <li>Current Fold change std dev: <span id='fold_change_std_dev'></span></li>
+              </ul>
             </div>
             <div class="form-group-sm">
               <label for="std_dev_num_cutoff" class="control-label mb-0 mt-2">Adjust standard deviation</label>
@@ -143,17 +145,30 @@
                 <label class="custom-control-label" id="stat_action_filter_label" for="stat_action_filter">Filter</label>
               </div>
             </div>
-            <h3>Highlight genes</h3>
-            <div class="form-group-sm">
-              <input id="highlighted_genes" class="form-control form-control-sm" type="text" placeholder="comma-separated genes"/>
-            </div>
             <div class="form-group-sm">
               <hr />
-              <button id='btn_apply_dataset_changes2' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
+              <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
             </div>
-            <ul>
-              <li>Fold change std dev: <span id='fold_change_std_dev'></span></li>
-            </ul>
+
+          </div>
+          <h3>Highlight genes</h3>
+          <div class="form-group-sm">
+            <input id="highlighted_genes" class="form-control form-control-sm" type="text" placeholder="comma-separated genes"/>
+          </div>
+          <div id="gene_cart_c" class="form-group dropdown">
+            <h4>or load from genecart</h4>
+            <div id="loaded_gene_cart" value="" data-title="Click to change" class="form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
+            <div class="dropdown-menu" aria-labelledby="loaded_gene_cart">
+              <form class="px-4 py-3" onsubmit="return false;">
+                <div class="input-group input-group-sm mb-3">
+                  <div class="input-group-prepend">
+                    <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                  </div>
+                  <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
+                </div>
+                <div id="gene_cart_tree"></div>
+              </form>
+            </div>
           </div>
         </div> <!-- end #sidebar -->
 

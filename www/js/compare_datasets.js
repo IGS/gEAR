@@ -53,6 +53,7 @@ const log10_transformed_datasets = [
 // TODO: Have mechanism to convert non-categorical column to categorical if it was erroneously added as numerical
 
 const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
+const gene_cart_tree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
 
 window.onload = () => {
 	$(".btn-apply-filter").on("click", () => {
@@ -120,7 +121,7 @@ window.onload = () => {
 	// Create an observer instance linked to the callback function
 	const observer = new MutationObserver(function(mutationList, observer) {
 		if (target_node) {
-			populate_dataset_selection_controls();
+			load_all_trees();
 			this.disconnect();  // Don't need to reload once the trees are updated
 		}
 	});
@@ -129,6 +130,42 @@ window.onload = () => {
 	observer.observe(target_node || safer_node , { attributes: true });
 
 };
+
+// Load user's gene carts
+$('#loaded_gene_cart').change(function () {
+    const gene_cart_id = $(this).val();
+    const params = { session_id, gene_cart_id };
+    const d = new $.Deferred(); // Causes editable to wait until results are returned
+
+    if (typeof session_id !== 'undefined') {
+        // Get the gene cart members and populate the gene symbol search bar
+        $.ajax({
+            url: './cgi/get_gene_cart_members.cgi',
+            async: false,
+            type: 'post',
+            data: params,
+            success: function (data, newValue, oldValue) {
+                if (data.success === 1) {
+                    const gene_symbols_array = []
+                    // format gene symbols into search string
+                    $.each(data.gene_symbols, function (i, item) {
+                        gene_symbols_array.push(item.label);
+                    });
+                    //deduplicate gene cart
+                    const dedup_gene_symbols_array = [...new Set(gene_symbols_array)]
+
+                    gene_symbols = dedup_gene_symbols_array.join(' ')
+                    $('#highlighted_genes').val(gene_symbols);
+                }
+                d.resolve();
+            }
+        });
+    } else {
+        d.resolve();
+    }
+    return d.promise();
+});
+
 
 function download_selected_genes() {
 	// Builds a file in memory for the user to download.  Completely client-side.
@@ -439,7 +476,21 @@ function stringify_all_conditions(condition) {
 	return sanitized_condition;
 }
 
-$(document).on("build_jstrees", () => populate_dataset_selection_controls());
+$(document).on("build_jstrees", async () => await load_all_trees());
+
+// If user changes, update genecart/profile trees
+async function load_all_trees(){
+    // Update dataset and genecart trees in parallel
+    // Works if they were not populated or previously populated
+    await Promise.allSettled([populate_dataset_selection_controls(), load_gene_carts()])//, load_pattern_tree()])
+        .catch((err) => {
+            console.error(err)
+        });
+
+    // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
+    $(document).trigger("handle_page_loading");
+
+}
 
 async function populate_dataset_selection_controls() {
 	const dataset_id = getUrlParameter("dataset_id");
@@ -511,6 +562,52 @@ async function populate_dataset_selection_controls() {
 		},
 	});
 	$('#pre_dataset_spinner').hide();
+}
+
+// Load all saved gene carts for the current user
+async function load_gene_carts () {
+    if (!session_id) {
+        // User is not logged in. Hide gene carts container
+        $('#gene_cart_container').hide();
+        return;
+    }
+    await $.ajax({
+        url: './cgi/get_user_gene_carts.cgi',
+        type: 'post',
+        data: { session_id },
+        dataType: 'json'
+    }).done((data) => {
+        const carts = {};
+        const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
+        let cartsFound = false;
+
+        for (const ctype of cartTypes) {
+            carts[ctype] = [];
+
+            if (data[`${ctype}_carts`].length > 0) {
+                cartsFound = true;
+
+                //User has some profiles
+                $.each(data[`${ctype}_carts`], (_i, item) => {
+                    carts[ctype].push({value: item.id, text: item.label });
+                });
+            }
+        }
+
+        gene_cart_tree.domainGeneCarts = carts.domain;
+        gene_cart_tree.userGeneCarts = carts.user;
+        gene_cart_tree.groupGeneCarts = carts.group;
+        gene_cart_tree.sharedGeneCarts = carts.shared;
+        gene_cart_tree.publicGeneCarts = carts.public;
+        gene_cart_tree.generateTree();
+
+        if (cartsFound ) {
+            $('#gene_cart_container').show();
+        }
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        console.error(`Error getting session info: ${textStatus}`);
+    });
 }
 
 function plot_data_to_graph(data) {
