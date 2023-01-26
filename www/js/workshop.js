@@ -17,9 +17,6 @@ window.onload=function() {
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
             // Loop through the events on the page and update status of each
-            console.log("Data:");
-            console.log(data);
-
             for (let event_id in data) {
                 let event = data[event_id];
 
@@ -36,7 +33,6 @@ window.onload=function() {
                     $("ul#session_" + event_id + " li.unregister_wait").show();
 
                 } else {
-                    console.log("User not attending event:" + event_id);
                     if (event['attendees'] < event['max_attendees']) {
                         // user can register for a seat
                         $("ul#session_" + event_id + " li.register").show();

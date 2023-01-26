@@ -4,8 +4,14 @@ div#sidebar {
 div#conference_banner {
     margin-bottom: 50px;
 }
+div#sidebar h3 {
+    color: black;
+}
 div.schedule_column_2 {
     border-left: 1px solid rgb(150,150,150);
+}
+div.tutorial_video_link_c img {
+    border: 1px solid black;
 }
 h2 {
     font-size: 140%;
@@ -15,7 +21,9 @@ h2 {
 }
 h3.workshop_day {
     font-weight: bold;
-    
+}
+h3.tutorial_video_links {
+    margin-top: 50px;
 }
 img.session_image {
     border: 1px solid rgb(150,150,150);
