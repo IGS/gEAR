@@ -29,6 +29,12 @@ img.session_image {
     border: 1px solid rgb(150,150,150);
     margin-left: 10px;
 }
+p.account_needed_message {
+    display:none;
+}
+p.account_needed_message a {
+    text-decoration: underline;
+}
 span.registration_note {
     padding-left: 15px;
     font-size: 80%;

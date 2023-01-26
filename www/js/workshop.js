@@ -6,6 +6,10 @@ window.onload=function() {
         $('[data-toggle="tooltip"]').tooltip()
     })
 
+    if (! session_id) {
+        $("p.account_needed_message").show();
+    }
+
     // Load any events for which the user is already registered
     $.ajax({
         url : './cgi/get_event_registration_list.cgi',
