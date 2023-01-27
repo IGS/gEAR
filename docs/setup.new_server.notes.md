@@ -41,7 +41,13 @@ Follow instructions in our setup.mysql.md document
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-sudo apt install r-base
+`sudo apt install r-base`
+
+### RabbitMQ
+
+Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
+
+Follow instructions in setup_rabbit_mq.md document
 
 ### Python
 
