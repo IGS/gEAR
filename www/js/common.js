@@ -253,8 +253,12 @@ $('#navigation_bar').on('click', '#btn_sign_in', (e) => {
             session_id = Cookies.get('gear_session_id');
             Cookies.set('gear_default_domain', CURRENT_USER.profile);
 
+            console.log(document.URL);
+
             // do we process the current page or reload?
-            if (document.URL.includes("dataset_explorer.html")) {
+            if (document.URL.includes("dataset_explorer.html") ||
+                document.URL.includes("workshop")
+               ) {
                 location.reload();
             } else {
                 handle_login_ui_updates();
