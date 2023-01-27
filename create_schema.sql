@@ -277,6 +277,32 @@ CREATE TABLE dataset_shares (
           ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
+CREATE TABLE event (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      label                     VARCHAR(255) NOT NULL,
+      max_attendees             INT NOT NULL,
+      waitlist_size             INT NOT NULL DEFAULT 0,
+      date_added                DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Introduction I', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Explore and analyze basics', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Explore and customize I', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Explore and customize II', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Introduction redo', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Analyze scRNA-seq data', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Transfer learning', 50, 10);
+INSERT INTO event (label, max_attendees, waitlist_size) VALUES ('ARO 2023 - Data upload', 50, 10);
+
+CREATE TABLE event_registration (
+      id                        INT PRIMARY KEY AUTO_INCREMENT,
+      event_id                  INT NOT NULL,
+      user_id                   INT NOT NULL,
+      date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
+      FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
+);
+
 # Recursive organizational table allowing item types (like gene carts
 #  or profiles) to be grouped into 'folders'
 CREATE TABLE folder (

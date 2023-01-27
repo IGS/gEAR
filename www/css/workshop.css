@@ -1,0 +1,35 @@
+div#sidebar {
+    border-left: 1px solid rgb(150,150,150);
+}
+div#conference_banner {
+    margin-bottom: 50px;
+}
+div.schedule_column_2 {
+    border-left: 1px solid rgb(150,150,150);
+}
+h2 {
+    font-size: 140%;
+    color: black;
+    font-weight: bold;
+    margin: 0 0 20px 0;
+}
+h3.workshop_day {
+    font-weight: bold;
+    
+}
+img.session_image {
+    border: 1px solid rgb(150,150,150);
+    margin-left: 10px;
+}
+span.registration_note {
+    padding-left: 15px;
+    font-size: 80%;
+}
+ul.session_actions {
+    margin: 15px 0 0 10px;
+    padding: 0;
+    list-style: none;
+}
+ul.session_actions li {
+    display: none;
+}

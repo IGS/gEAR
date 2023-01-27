@@ -4,6 +4,13 @@
 Given an h5ad file with only gene symbols, find best matching ensembl release, then
 collect ensembl ids for the corresponding gene symbol.
 
+This version is a little different because it relies on file manipulation and the following directories
+to exist in the cwd for it to work:
+
+$ mkdir mapped unmapped merged
+
+Kept failing to maintain the var dataframe when using pandas/scanpy, so this method was created.
+
 Fake ensembl IDs will be created for those genes whose gene symbols don't map to
 a known ensembl ID.
 """
@@ -17,6 +24,7 @@ import json
 import mysql.connector
 import sys
 import os
+import shutil
 
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
@@ -42,8 +50,9 @@ def main():
     adata = sc.read(args.input_file)
     (_, n_genes) = adata.shape
 
-    ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
-
+    #ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    ensembl_releases = [84, 85]
+    
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
 
@@ -153,19 +162,57 @@ def main():
     print("ADATA UNMAPPED.VAR")
     print(adata_unmapped.var)
 
-    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer")
+    ## write the mapped to a set of files
+    adata_with_ensembl_ids.transpose().write_csvs('mapped', sep="\t", skip_data=False)
+    adata_unmapped.transpose().write_csvs('unmapped', sep="\t", skip_data=False)
 
-    print("ADATA CONCAT")
-    print(adata)
+    shutil.copyfile('mapped/obs.csv', 'merged/obs.tab')
 
-    print('VAR\n')
-    print(adata.var.head())
-    print("OBS\n")
-    print(adata.obs.head())
+    # place the var and X and then add to each
+    shutil.copyfile('mapped/var.csv', 'merged/var.tab')
+    shutil.copyfile('mapped/X.csv', 'merged/X.tab')
+
+    # place the mapped file and then
+    append_file('unmapped/obs.csv', 'merged/obs.tab', True)
+    append_file('unmapped/X.csv', 'merged/X.tab', False)
+
+    # parse the text files for a new adata (the transposition switches what we'd call var and obs)
+    adata = sc.read('merged/X.tab', sep='\t', cache=False).transpose()
+    obs = pd.read_table('merged/var.tab', sep='\t', index_col=0, header=0)
+    var = pd.read_table('merged/obs.tab', sep='\t', index_col=0, header=0)
+
+    for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
+        if str_type in obs.columns:
+            obs[str_type] = pd.Categorical(obs[str_type])
+
+    for num_type in ['replicate', 'time_point_order']:
+        if num_type in obs.columns:
+            obs[num_type] = pd.to_numeric(obs[num_type])
+
+    # Assign genes and observations to AnnData object
+    adata.var = var
+    adata.obs = obs
+
     if not args.read_only:
         adata.write(args.output_file)
     print('############################################################')
 
+
+def append_file(src, dest, skip_header):
+    ofh = open(dest, 'a')
+
+    line_num = 0
+
+    for line in open(src):
+        if skip_header:
+            if line_num > 0:
+                ofh.write(line)
+
+            line_num += 1
+        else:
+            ofh.write(line)
+
+    ofh.close()
 
 if __name__ == '__main__':
     main()

@@ -193,6 +193,19 @@ And then setting this line:
 
     PrivateTmp=false
 
+## Automatic service restarts
+
+If you don't want the apache service to flounder in cases where the threads die (such as from OOM killer, then modify:
+
+    /etc/systemd/system/multi-user.target.wants/apache2.service
+
+and change
+
+    Restart=on-abort
+
+to:
+
+    Restart=always
 
 ## Common errors
 
