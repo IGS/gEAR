@@ -49,11 +49,18 @@ Test installation worked by checking `which rabbitmq-server`
 
 There is a module at `<root>/lib/gearqueue.py` that contains a class to connect to the RabbitMQ messaging broker. This script uses a python module called "pika" under the hood.
 
+## Creating a log file to view RabbitMQ logs
+
+As root, I would create a file in `/var/log/gEAR_queue` named `<service>.log` where `<service>` is the name of the RabbitMQ consumer service (i.e. projectr). The `/var/log/gEAR_queue` directory is owned by root:adm with 750 permissions and the service log file within should be 644 permissions.
+
 ## Running a particular consumer
 
 First, make sure a directory is present under /var/log/gEAR_queue (you may have to create this as root). If you are not going to run the consumer listener as root, ensure the user has the same group-write privileges as the directory.
 
 The consumer scripts are stored at `<root>/listeners/<files>`.  Let it run in the background (preferably with `nohup`)
+
+Example script, run by root:
+`sudo nohup /opt/bin/python3 ./listeners/projectr_consumer.py >>/var/log/gEAR_queue/projectr.log 1>/dev/null 2>>/var/log/gEAR_queue/projectr.log`
 
 Executing a script multiple times will spawn off more workers.
 
