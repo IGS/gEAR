@@ -412,6 +412,7 @@
           <button type="button" class="btn btn-outline-purple" id="reset_opts" style="display:none;">Reset Options</button>
           <button type="button" class="btn btn-purple" id="create_plot" style="display:none;">Create Plot</button>
           <aside id="post_plot_options" class="float-right" style="display:none;">
+            <button id="save_weighted_gene_cart_btn" type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_weighted_gene_cart_modal">Save Weighted Gene Cart</button>
             <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#save_display_modal">Save New Display</button>
             <button type="button" class="btn btn-purple" data-toggle="modal" data-target="#download_plot_modal">Download Image</button>
           </aside>
@@ -501,6 +502,7 @@
         </div>
       </div>
     </div>  <!-- end load plots modal-->
+
     <!-- Save display modal -->
     <div class="modal fade" id="save_display_modal" tabindex="-1" role="dialog" aria-labelledby="save_display_label" aria-hidden="true">
       <div class="modal-dialog modal-sm" role="document">
@@ -582,6 +584,58 @@
         </div>
       </div>
     </div>  <!-- end gene_sort_modal -->
+
+    <!-- Save weighted gene cart modal -->
+    <div class="modal fade" id="save_weighted_gene_cart_modal" tabindex="-1" role="dialog" aria-labelledby="save_weighted_gene_cart_label" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="save_weighted_gene_cart_label">Save Weighted Gene Cart</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p id="weighted_gene_cart_modal_desc">This function saves all genes and their foldchange value into a weighted cart. This cart can be used elsewhere for projecting patterns learned from the source dataset onto a target dataset.</p>
+            <div class="form-group form-group-sm form-row">
+              <label for="weighted_gene_cart_name col-1" class="control-label">Cart name to create:</label>
+              <input class="form-control mb-1 mx-2 col-3" type="text" value="" id="weighted_gene_cart_name" />
+            </div>
+            <div class="form-group form-group-sm form-row">
+              <div class="col-6">
+                <label for="weighted_gene_cart_name" class="control-label">Fold-change:</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-raw" value="raw" checked>
+                  <label class="form-check-label" for="log-raw">Raw</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-2" value="log2">
+                  <label class="form-check-label" for="log-2">Log2</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-10" value="log10">
+                  <label class="form-check-label" for="log-10">Log10</label>
+                </div>
+              </div>
+            </div>
+            <div id='saved_weighted_gene_cart_info_c' class="form-group form-group-sm" style="display:none;">
+              <p class="status form-row"></p>
+              <div class="alert alert-danger alert-dismissible" role="alert">
+                <p class="message"></p>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-purple" id="save_weighted_gene_cart">Save new gene cart</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- end modals-->
 
     <script id="gene_dropdown_tmpl" type="text/x-jsrender">

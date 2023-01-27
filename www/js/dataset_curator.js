@@ -118,10 +118,10 @@ window.onload=() => {
       ]),
       is_loading() {
         return (this.preconfigured && this.display_tsne_is_loading == true) ||
-        this.tsne_is_loading ? true : false;
+        this.tsne_is_loading;
       },
       plot_params_ready() {
-        return this.config.x_axis && this.config.y_axis ? true : false;
+        return this.config.x_axis && this.config.y_axis;
       },
     },
     created() {
@@ -466,7 +466,11 @@ window.onload=() => {
           } else {
             const curator_conf = post_plotly_config.curator;
             const plot_config = this.get_plotly_updates(curator_conf, this.plot_type, "config");
-            Plotly.newPlot(this.$refs.chart, plot_json.data, plot_json.layout, plot_config);          }
+            Plotly.newPlot(this.$refs.chart, plot_json.data, plot_json.layout, plot_config);
+            // Update plot with custom plot config stuff stored in plot_display_config.js
+            const update_layout = this.get_plotly_updates(curator_conf, this.plot_type, "layout")
+            Plotly.relayout(this.$refs.chart, update_layout)
+          }
         }
         this.loading = false;
       },

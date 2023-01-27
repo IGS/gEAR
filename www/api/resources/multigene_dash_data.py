@@ -1,5 +1,6 @@
 import json
-import os, sys
+import os
+from pathlib import Path
 
 import gear.mg_plotting as mg
 import geardb
@@ -32,7 +33,7 @@ LOG10_TRANSFORMED_DATASETS = [
 , "f1ce4e63-3577-8020-8307-e88f1fb98953"
 , "2f79f784-f7f7-7dc3-9b3e-4c87a4346d91"
 , "c32835d3-cac4-bb0e-a90a-0b41dec6617a"
-#, "fbe1296e-572c-d388-b9d1-6e2a6bf10b0a"
+, "48bab518-439e-4a17-b868-6b225abf2c73"    # Carlo dataset
 , "1b12dde9-1762-7564-8fbd-1b07b750505f"
 , "a2dd9f06-5223-0779-8dfc-8dce7a3897e1"
 , "f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f"
@@ -52,6 +53,10 @@ LOG10_TRANSFORMED_DATASETS = [
 , "173ab634-a2b1-87bc-f1ef-d288de0bcd1a"    # ""
 , "80eadbe6-49ac-8eaf-f2fb-e07706cf117b"    # HRP dataset
 ]
+
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 def order_by_time_point(obs_df):
     """Order observations by time point column if it exists."""
@@ -90,17 +95,29 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-def create_projection_adata(dataset_adata, projection_csv):
+def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
-    try:
-        import scanpy as sc
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
-    except:
-        raise PlotError("Could not create projection AnnData object from CSV.")
+    import scanpy as sc
+    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+    if projection_adata_path.is_file():
+        return sc.read_h5ad(projection_adata_path)  #, backed="r")
 
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
+    try:
+        projection_adata = sc.read_csv(projection_csv_path)
+    except Exception as e:
+        import sys
+        print(str(e), file=sys.stderr)
+        raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
+    # Close dataset adata so that we do not have a stale opened object
+    if dataset_adata.isbacked:
+        dataset_adata.file.close()
     projection_adata.var["gene_symbol"] = projection_adata.var_names
+    # Associate with a filename to ensure AnnData is read in "backed" mode
+    projection_adata.filename = projection_adata_path
     return projection_adata
 
 class MultigeneDashData(Resource):
@@ -191,17 +208,19 @@ class MultigeneDashData(Resource):
             }
 
         # Ensure datasets are not doubly log-transformed
+        # In the case of projection inputs, we don't want to log-transform either
         is_log10 = False
-        if dataset_id in LOG10_TRANSFORMED_DATASETS:
+        if dataset_id in LOG10_TRANSFORMED_DATASETS or projection_id:
             is_log10 = True
 
         success = 1
         message = ""
 
         if projection_id:
-            projection_csv = "{}.csv".format(projection_id)
             try:
-                adata = create_projection_adata(adata, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_id)
+                # For plots where var.index is used, we need to assign that a name (currently empty)
+                adata.var.index = adata.var.index.rename("index")
             except PlotError as pe:
                 return {
                     'success': -1,
@@ -217,7 +236,6 @@ class MultigeneDashData(Resource):
 
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
-
             if not gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
                 raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
 
@@ -226,7 +244,6 @@ class MultigeneDashData(Resource):
 
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
-            #var = adata.var.drop_duplicates(subset=['gene_symbol'])
             gene_filter, success, message = mg.create_dataframe_gene_mask(adata.var, gene_symbols)
         except PlotError as pe:
             return {
@@ -336,6 +353,9 @@ class MultigeneDashData(Resource):
                     'message': str(pe),
                 }
 
+            # Build a dictionary to easily move gene_syms to "text" property and ensembl ids to "customdata" property
+            ensm2genesymbol = pd.Series(df["gene_symbol"].values, index=df["ensm_id"]).to_dict()
+
             # Volcano plot expects specific parameter names (unless we wish to change the options)
             fig = mg.create_volcano_plot(df
                 , query_val
@@ -352,7 +372,7 @@ class MultigeneDashData(Resource):
                 downcolor = "rgb(254, 232, 56)"
                 upcolor = "rgb(0, 34, 78)"
 
-            mg.modify_volcano_plot(fig, query_val, ref_val, downcolor, upcolor)
+            mg.modify_volcano_plot(fig, query_val, ref_val, ensm2genesymbol, downcolor, upcolor)
 
             if gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
@@ -586,6 +606,10 @@ class MultigeneDashData(Resource):
                 'message': "Plot type {} is not a valid multi-gene plot option".format(plot_type)
             }
 
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
+
         # If figure is actualy a JSON error message, send that instead
         if "success" in fig and fig["success"] == -1:
             return fig
@@ -618,6 +642,29 @@ class MultigeneDashData(Resource):
                 }
             )
 
+        # Change plot elements to indicuate projections instead of genes
+        if projection_id:
+            fig.update_layout(
+                legend_title_text=fig.layout.legend.title.text.replace("gene", "projection").replace("Gene", "Projection") if fig.layout.legend.title.text else None
+                , title_text=fig.layout.title.text.replace("gene", "projection").replace("Gene", "Projection") if fig.layout.title.text else None
+            )
+            fig.for_each_xaxis(
+                lambda a: a.update(
+                    title={
+                        "text": a.title.text.replace("gene", "projection").replace("Gene", "Projection") if a.title.text else None
+
+                    }
+                )
+            )
+            fig.for_each_yaxis(
+                lambda a: a.update(
+                    title={
+                        "text": a.title.text.replace("gene", "projection").replace("Gene", "Projection") if a.title.text else None
+
+                    }
+                )
+            )
+
         # Pop any default height and widths being added
         fig["layout"].pop("height", None)
         fig["layout"].pop("width", None)
@@ -631,15 +678,3 @@ class MultigeneDashData(Resource):
             , 'gene_symbols': gene_symbols
             , 'plot_json': json.loads(plot_json)
         }
-
-class PaletteData(Resource):
-    def get(self):
-        colorscale = request.args.get('colorscale', None)
-
-        if not colorscale:
-            raise Exception("No colorscale provided")
-
-        try:
-            return mg.get_colorscale(colorscale)
-        except Exception as e:
-            raise Exception(str(e))

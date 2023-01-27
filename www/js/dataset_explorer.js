@@ -210,7 +210,6 @@ $(document).on('click', '#cancel_layout_add', function() {
 
 $(document).on('click', '.confirm_layout_add', function() {
     $('#btn_add_layout').popover('hide');
-
     $.ajax({
         url : './cgi/add_layout.cgi',
         type: "POST",
@@ -248,7 +247,6 @@ $(document).on('click', '#cancel_dataset_delete', function() {
 
 $(document).on('click', '.confirm_dataset_delete', function() {
     $('.delete_dataset').popover('hide');
-
 
     $.ajax({
         url : './cgi/remove_dataset.cgi',
@@ -565,7 +563,6 @@ $("#btn_view_layout_datasets").click(function(e) {
 });
 
 function add_to_profile(dataset_id) {
-
     $.ajax({
         url : './cgi/add_dataset_to_layout.cgi',
         type: "POST",

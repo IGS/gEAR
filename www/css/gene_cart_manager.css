@@ -15,7 +15,7 @@ div#add_cart_controls_c {
 div#controls {
     border-right: 1px solid rgb(220,220,220);
     /* 111px is height of footer, 130 is the expanded profile mgmt box*/
-    height: calc(85vh - 112px + 260px); 
+    height: calc(85vh - 112px + 260px);
 }
 div#controls_ownership {
     margin-top: 20px;
@@ -52,7 +52,7 @@ div#initial_instructions_body {
 div#initial_instructions_bar:hover,
 div#initial_instructions_closer:hover {
     cursor:pointer;
-    
+
 }
 div#login_checking,
 div#login_warning {
@@ -117,7 +117,7 @@ ul.controls_filter_options {
 ul.controls_filter_options li {
     padding: 1px 0 1px 5px;
     /* need to set an invisible border so clicking
-       doesn't make elements jiggle when the 
+       doesn't make elements jiggle when the
        border appears on the selected version */
     border: 1px solid white;
 }
@@ -140,4 +140,18 @@ ul.gene_list li {
     padding: 3px 5px;
     margin-right: 7px;
     border-radius: 5px;
+}
+
+.btn-outline-purple{
+    color: #562a6f !important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #562a6f;
+}
+
+.btn-outline-purple:hover {
+    color: white !important;
+    background-color: #401362;
+    background-image: none;
+    border-color: #401362;
 }

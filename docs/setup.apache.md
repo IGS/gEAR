@@ -11,8 +11,7 @@ This document is intended to capture all the customizations to the apache2 confi
     $ sudo a2enmod wsgi
     $ sudo a2enmod proxy
     $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork && sudo a2enmod php8.1
-
-## PHP (used by uploader)
+### PHP (used by uploader)
 
     $ sudo apt install php
 
@@ -158,6 +157,29 @@ Add the line `WSGIPythonHome "/opt/Python-3.10.4"` into the IfModule block.
 Then, finally restart apache again.
 
       $ sudo service apache2 restart
+
+## /etc/apache2/mods-available/mpm_prefork.conf
+
+The "MaxRequestWorkers" needs to be increased in order to accommodate processing of simulaneous datasets in larger profiles. This is particularly applicable with prepping and chunking inputs for sending to the projectR Google Cloud Run service. The default setting is 150, but there is a certain balance to be found. Using 250 or 500 MaxRequestWorkers is fine, but more workers means more memory-usage (which may not be freed up if there is a memory leak). If running projectR locally, this does not need to be adjusted.
+
+I used the following URL for assistance in setting the conf:
+https://www.liquidweb.com/kb/apache-performance-tuning-mpm-directives/#eventworker
+
+Modern apache documentation suggests using mpm_event over mpm_prefork as it is more memory-efficient and faster.
+
+### Settings
+
+```text
+<IfModule mpm_event_module>
+        StartServers                     4
+        MinSpareThreads          25
+        MaxSpareThreads          75
+        ThreadLimit                      64
+        ThreadsPerChild         40
+        MaxRequestWorkers        160
+        MaxConnectionsPerChild   0
+</IfModule>
+```
 
 ## Optional configurations
 

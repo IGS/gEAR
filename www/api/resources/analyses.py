@@ -1,8 +1,5 @@
 from flask import request
 from flask_restful import Resource
-import scanpy as sc
-import os
-import sys
 import geardb
 
 def tsne_or_umap_present(ana):
@@ -15,7 +12,7 @@ class Analyses(Resource):
     def get(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
-        dataset = geardb.get_dataset_by_id(dataset_id)
+        #dataset = geardb.get_dataset_by_id(dataset_id) # Not used
 
         acollection = geardb.AnalysisCollection()
 

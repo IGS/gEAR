@@ -146,20 +146,20 @@
                     </div>
 
                     <div class="input-group-append">
-                      <div id="exact_match_icon" class="js-exact-match input-group-text" >
-                        <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
+                      <div id="exact_match_icon" class="js-exact-match input-group-text" data-toggle="tooltip" data-placement="top" title="Exact match (currently on)." >
+                        <img src="img/arrow_target_selected.png" alt="Exact match" />
                       </div>
                     </div>
 
                     <div class="input-group-append">
-                      <div id="multigene_search_icon" class="js-multigene input-group-text" >
-                        <img src="img/icons/single-dna.svg" alt="Single/multi-gene toggle" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></img>
+                      <div id="multigene_search_icon" class="js-multigene input-group-text"  data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays.">
+                        <img src="img/icons/single-dna.svg" alt="Single/multi-gene toggle" aria-hidden="true"></img>
                       </div>
                     </div>
 
                     <div class="input-group-append">
-                      <div id="intro_search_icon" class="js-search input-group-text" >
-                        <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
+                      <div id="intro_search_icon" class="js-search input-group-text"  data-toggle="tooltip" data-placement="top" title="Search">
+                        <img src="img/search_icon.png" alt="Search" />
                       </div>
                     </div>
                   </div>
@@ -241,7 +241,15 @@
                     <div class="col-8 tool_launcher_c my-auto">
                       <span>Create multigene displays</span>
                     </div>
-                  </div> <!-- end subrow -->
+                  </div>
+                  <div class="row tool-launcher" data-tool-name="projection" style="display:none;">
+                    <div class="col-4 tool_launcher_c pr-0">
+                      <img class="img-fluid" src="./img/example_tsne.png" />
+                    </div>
+                    <div class="col-8 tool_launcher_c my-auto">
+                      <span>Transfer learning of datasets</span>
+                    </div>
+                  </div><!-- end subrow -->
                   <div id="uploader_header_c" class="row">
                     <div class="col-12">
                       <h3><img src="./img/icons/upload_purple.png" /> Dataset uploader</h3>
@@ -356,12 +364,6 @@
       </div>
         <div class="row">
           <div id="leftbar_main" class="col-2">
-            <!--
-            <div class="tab" role="tablist">
-              <button class="active" id="gene_tab" onclick="show_gene()">Gene</button>
-              <button id="projection_tab" onclick="show_projection()">Projection</button>
-            </div>
-            -->
 
             <div id="search_container">
               <form id="gene_search_form"></form>
@@ -392,20 +394,20 @@
                       </div> <!-- selected_gene_cart_c -->
 
                       <div class="input-group-append">
-                        <div id="exact_match_input" class="js-exact-match input-group-text" >
-                          <img src="img/arrow_target_unselected.png" alt="Exact match" data-toggle="tooltip" data-placement="top" title="Exact match (currently off)." />
+                        <div id="exact_match_input" class="js-exact-match input-group-text"  data-toggle="tooltip" data-placement="top" title="Exact match (currently on).">
+                          <img src="img/arrow_target_selected.png" alt="Exact match" />
                         </div>
                       </div>
 
                       <div class="input-group-append">
-                        <div id="multigene_plots_input" class="js-multigene input-group-text" >
-                          <img src="img/icons/single-dna.svg" alt="Single/multi-gene toggle" aria-hidden="true" data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays."></img>
+                        <div id="multigene_plots_input" class="js-multigene input-group-text"  data-toggle="tooltip" data-placement="top" title="Single-gene displays enabled. Click to search for multigene displays.">
+                          <img src="img/icons/single-dna.svg" alt="Single/multi-gene toggle" aria-hidden="true"></img>
                         </div>
                       </div>
 
                       <div class="input-group-append">
-                        <div id="submit_search" class="js-search input-group-text">
-                          <img src="img/search_icon.png" alt="Search" data-toggle="tooltip" data-placement="top" title="Search" />
+                        <div id="submit_search" class="js-search input-group-text" data-toggle="tooltip" data-placement="top" title="Search">
+                          <img src="img/search_icon.png" alt="Search" />
                         </div>
                       </div>
                     </div> <!-- .form-row -->
@@ -414,25 +416,45 @@
                 <small id="selected_gene_cart_div" style="visibility:hidden;" class="js-gene-cart-div"><strong>Gene Cart: </strong><span id="selected_gene_cart"  class="js-gene-cart"></span></small>
               </div> <!-- gene search div -->
 
-              <!--
               <form id="projection_search_form"></form>
               <div id="projection_search_div">
-                <h3>Search Projections</h3>
-                <div class="row form-group form-group-sm">
-                  <div id="set_of_patterns_c" class="col-12">
-                    <label for="set_of_patterns" class="control-label">Set of patterns</label>
-                    <select id="set_of_patterns" class="form-control form-control-sm"></select>
+                <div id="projection_source_container" class="form-group">
+                  <a id="projectr_paper_link" class="js-search btn btn-secondary btn-sm" role="button" href="https://academic.oup.com/bioinformatics/article/36/11/3592/5804979" target="_blank"><i class="fa fa-lg fa-info-circle"></i> Read the ProjectR paper</a>
+                  <h3 id="projection_source_label">Select Pattern Source</h3>
+                  <div id="projection_source_c" class="dropdown">
+                    <div id="projection_source" value="" data-title="Click to change" class="js-pattern form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
+                    <div class="dropdown-menu" aria-labelledby="projection_source">
+                      <form class="px-4 py-3" onsubmit="return false;">
+                        <div class="input-group input-group-sm mb-3">
+                          <div class="input-group-prepend">
+                            <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                          </div>
+                          <input type="text" class="form-control" id="projection_source_tree_q" placeholder="Type to search for patterns or weighted gene carts">
+                        </div>
+                        <div id="projection_source_tree"></div>
+                      </form>
+                    </div>
                   </div>
                 </div>
 
-                <fieldset id="projection_pattern_elements_c" style="display:none;">
-                  <h3>Choose a pattern</h3>
-                  <div class="row form-group form-group-sm">
-                    <div id="projection_pattern_elements" class="col-12"></div>
+                <div id="projection_algorithm_c" class="form-group form-group-sm"  data-toggle="tooltip" data-placement="right" title="Choose which projection algorithm to use">
+                  <h3>Select Algorithm</h3>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="projection_algo" id="pca_algo" value="pca" checked>
+                    <label class="form-check-label" for="pca_algo">
+                      Principal Component Analysis (PCA)
+                    </label>
                   </div>
-                </fieldset>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="nmf">
+                    <label class="form-check-label" for="nmf_algo">
+                      Non-Negative Matrix factorization (NMF)
+                    </label>
+                  </div>
+                </div>
 
-                <fieldset id="projection_display_mode_c" class="form-group form-group-sm">
+                <div id="projection_display_mode_c" class="form-group form-group-sm">
+                  <h3>Select Display Mode</h3>
                   <div class="form-check">
                     <input class="form-check-input" type="radio" name="projection_display_mode" id="single_pattern" value="single" checked>
                     <label class="form-check-label" for="single_pattern">
@@ -445,21 +467,34 @@
                       Multi-pattern display
                     </label>
                   </div>
-                </fieldset>
+                </div>
+
+                <div id="projection_pattern_elements_c" style="display:none;" class="form-group form-group-sm">
+                  <h3>Select Patterns to Plot</h3>
+                  <div class="form-group form-group-sm form-row">
+                    <div class="col-6">
+                      <a id="projection_pattern_select_all" class="btn btn-sm btn-link" role="button">Select all</a>
+                    </div>
+                    <div class="col-6">
+                      <a id="projection_pattern_deselect_all" class="btn btn-sm btn-link" role="button">Deselect all</a>
+                    </div>
+                  </div>
+                  <div id="projection_pattern_elements"></div>
+                </div>
 
                 <script id="pattern_list_tmpl" type="text/x-jsrender">
                   <option value="{{:id}}">{{:title}}</option>
                 </script>
                 <script id="pattern_elements_tmpl" type="text/x-jsrender">
                   <div class="form-check">
-                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}">{{:label}}
+                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}" data-top-up="{{:top_up}}" data-top-down="{{:top_down}}">
+                    <label class="form-check-label">{{:label}}</label>
                   </div>
                 </script>
               </div>
-              -->
 
               <div id="selected_profile_container" class="form-group">
-                <label id="selected_profile_label" class="mb-0">Select Profile</label>
+                <h3 id="selected_profile_label">Select Profile</h3>
                 <div id="selected_profile_c" class="dropdown">
                   <div id="selected_profile" value="" data-title="Click to change" class="js-profile form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
                   <div class="dropdown-menu" aria-labelledby="selected_profile">
@@ -475,11 +510,9 @@
                   </div>
                 </div> <!-- end selected_profile_c -->
               </div>
-              <!--
-              <div id="submit_search_projection" class="js-search form-group form-group-sm">
-                <button type="submit" class="btn btn-secondary btn-sm">Search projections</button>
+              <div class="form-group form-group-sm">
+                <button id="submit_search_projection" class="js-search btn btn-secondary btn-sm">Search projections</button>
               </div>
-              -->
             </div><!-- end #search_container -->
 
             <div id="search_results_c" class="item search_result_c search_result_c_DISABLED" style="height:calc(90vh - 240px);">
@@ -530,13 +563,21 @@
               <div id="permalink_info" class="container"></div>
               <div class="container">
                 <div class="alert alert-info" role="alert">
-                  <h3>Cannot display plots since no genes were searched</h3>
-                  <p>
-                    To view the datasets for this profile, first search for a gene or list of genes in the panel
-                    to the left.
-                    <br><br>
-                    Here are some examples: "atoh1" or "atoh1 gfi1 pou4f3 lfng"
-                  </p>
+                  <div id="gene_permalink_info">
+                    <h3>Cannot display plots since no genes were searched</h3>
+                    <p>
+                      To view the datasets for this profile, first search for a gene or list of genes in the panel
+                      to the left.
+                      <br><br>
+                      Here are some examples: "atoh1" or "atoh1 gfi1 pou4f3 lfng"
+                    </p>
+                  </div>
+                  <div id="projection_permalink_info">
+                    <h3>Cannot display plots since no projecton patterns were selected</h3>
+                    <p>
+                      To view the datasets for this profile, first select one or more projection patterns in the "Select Pattern Source" panel on the left
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -553,6 +594,23 @@
               <p>
                 Functional annotation information is not available for multigene searches and for projection patterns.
               </p>
+            </div>
+            <div id="highly_expressed_genes_card" class="card bg-light mb-3" style="display:none;">
+              <h5 class="card-header"></h5>  <!-- filled in with JS -->
+              <div class="card-body row">
+                <div id="top_up_genes" class="col-6">
+                  <h5 class="card-title">Strongest positive contributors</h5>
+                  <p class="card-text mb-2"></p>  <!-- filled in with JS -->
+                </div>
+                <div id="top_down_genes" class="col-6">
+                  <h5 class="card-title">Strongest negative contributors</h5>
+                  <p class="card-text"></p>  <!-- filled in with JS -->
+                </div>
+              </div>
+              <div class="card-footer">
+                <button class="btn btn-sm btn-outline-dark">View all genes with weights</button>
+              </div>
+
             </div>
             <div id="links_out_c" class="row search_result_c">
               <div class="col-12">
@@ -799,7 +857,7 @@
           </div>
         </div>
       </script>
-      <!-- script#tmpl_infobox -->
+      <!-- script#tmpl_displays_box -->
       <script id="tmpl_tooltip" type="text/x-jsrender">
         <div class=''>
           <h4 class='text-muted'>{{:tissue}}</h4>

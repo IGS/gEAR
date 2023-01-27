@@ -13,6 +13,7 @@ www/include/manual/upload_dataset.html~
 www/js/dataset_curator.vue3.js
 www/js/dataset_manager.js
 www/tests/test_dataset_curator_plotly.py
-www/contact_screenshots/files/*
-www/uploads/files/*
 www/datasets_epigenetic/uploads/files/*
+www/.DS_Store
+www/.cache
+.DS_Store

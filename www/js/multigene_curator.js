@@ -16,8 +16,7 @@ let sortCategories = {"primary": null, "secondary": null}; // Control sorting or
 let genesFilter = [];
 
 let plotConfig = {};  // Plot config that is passed to API or stored in DB
-const paletteInformation = {};    // Store information about the colorscales
-
+let plotData = null;    // Plotly "data" JSON
 let selectedGenes = null;  // Genes selected in a plot (e.g. volcano with lasso tool)
 
 let datasetId = null;
@@ -40,62 +39,6 @@ const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container"];
 const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#obs_secondary_container", '#colorscale_container'];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 
-// color palettes
-// Obtained from https://plotly.com/python/builtin-colorscales/
-// and https://plotly.com/python/discrete-color/
-const availablePalettes = [
-    {
-        label: "Qualitative Scales",
-        continuous: false,
-        options: [
-            // These need to be kept up-to-date with the "color_swatch_map" in lib/mg_plotting.py
-            { value: "alphabet", text: "Alphabet (26 colors)" },
-            { value: "bold", text: "Bold (11 colors)" },
-            { value: "d3", text: "D3 (10 colors)" },
-            { value: "dark24", text: "Dark (24 colors)" },
-            { value: "light24", text: "Light (24 colors)" },
-            { value: "safe", text: "Safe (11 colors)" },
-            { value: "vivid", text: "Vivid (11 colors)" },
-        ]
-    },
-    {
-        label: "Sequential Scales",
-        continuous: true,
-        options: [
-            { value: "greys", text: "Greys" },
-            { value: "blues", text: "Blues" },
-            { value: "purp", text: "Purples" }, // Cannot use in dotplot
-            { value: "reds", text: "Reds" },
-            { value: "bluered", text: "Blue-Red" },
-            { value: "dense", text: "Dense" },
-            { value: "electric", text: "Electric" },
-            { value: "ylgnbu", text: "Yellow-Green-Blue" },
-            { value: "ylorrd", text: "Yellow-Orange-Red" },
-        ],
-    },
-    {
-        label: "Diverging Scales",
-        continuous: true,
-        options: [
-            { value: "earth", text: "Earth" },
-            { value: "piyg", text: "Pink-Green" },
-            { value: "prgn", text: "Purple-Green" },
-            { value: "rdbu", text: "Red-Blue" },
-            { value: "rdylbu", text: "Red-Yellow-Blue" },
-        ],
-    },
-    {
-        label: "Color Vision Accessibility Scales",
-        continuous: true,
-        options: [
-            { value: "cividis", text: "Cividis" },
-            { value: "inferno", text: "Inferno" },
-            { value: "viridis", text: "Viridis" },
-        ]
-    },
-];
-const discretePalettes = ["alphabet", "vivid", "light24", "dark24"];
-
 window.onload = () => {
     // Hide further configs until a dataset is chosen.
     // Changing the dataset will start triggering these to show
@@ -108,8 +51,6 @@ window.onload = () => {
         width: '25%',
         minimumResultsForSearch: -1
     });
-
-    getColorscaleData();
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -136,9 +77,10 @@ window.onload = () => {
 async function getData (datasetId, payload) {
     payload.colorblind_mode = CURRENT_USER.colorblind_mode;
     try {
-        return await axios.post(`/api/plot/${datasetId}/mg_dash`, {
-            ...payload,
+        const {data} =  await axios.post(`/api/plot/${datasetId}/mg_dash`, {
+            ...payload
         })
+        return {data}
     } catch (e) {
 
         const message = "There was an error in making this plot. Please contact the gEAR team using the 'Contact' button at the top of the page and provide as much information as possible.";
@@ -284,6 +226,7 @@ function drawChart (data, datasetId) {
     Plotly.newPlot(targetDiv, plotlyJson.data, plotlyJson.layout, plotlyConfig);
     Plotly.relayout(targetDiv, updateLayout)
 
+    plotData = plotlyJson.data;
 
     // Show any warnings from the API call
     if (message && success === 2) {
@@ -305,6 +248,7 @@ function drawChart (data, datasetId) {
         data.points.forEach((pt) => {
             selectedGenes.push({
                 gene_symbol: pt.data.text[pt.pointNumber],
+                ensembl_id: pt.data.customdata[pt.pointNumber], // Ensembl ID stored in "customdata" property
                 x: pt.data.x[pt.pointNumber].toFixed(1),
                 y: plotConfig.plot_type === "volcano" ? invertLogFunction(-pt.data.y[pt.pointNumber]).toExponential(2) : pt.data.y[pt.pointNumber].toFixed(2),
             });
@@ -634,24 +578,6 @@ function createVolcanoDropdowns (obsLevels) {
 
 }
 
-// Call the API to get colorscale data
-async function getColorscaleData () {
-    // I don't like using an API call on this but some of these colorscales are plotly-specific
-    // and I could not find a way to get them from Plotly.js
-    for (const types in availablePalettes) {
-        const palettes = availablePalettes[types].options;
-        for (const palette in palettes) {
-            const { value } = palettes[palette];
-            try {
-                const {data} = await axios.get(`/api/mg_palette?colorscale=${value}`);
-                paletteInformation[value] = data;
-            } catch (e) {
-                console.error(`Could not load colorscale data for '${value}': ${e}`);
-            };
-        }
-    };
-}
-
 // Load colorscale select2 object and populate with data
 function loadColorscaleSelect (isContinuous=false) {
 
@@ -716,7 +642,7 @@ function createCanvasScale(data, elem) {
     const ctx = elem.getContext("2d");  // canvas element
     // Add the colors to the scale
     const { length } = data;
-    const width = elemWidth/length;   // 100 is length of canvas
+    const width = elemWidth/length;   // 150 is length of canvas
     for (const color of data) {
         ctx.fillStyle = color[1];
         // The length/length+1 is to account for the fact that the last color has a value of 1.0
@@ -916,7 +842,7 @@ async function loadGeneCarts () {
 function saveGeneCart () {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id
+        session_id
         , label: $("#gene_cart_name").val()
         , gctype: "unweighted-list"
         , organism_id:  $("#dataset").data('organism-id')
@@ -925,13 +851,102 @@ function saveGeneCart () {
 
     selectedGenes.forEach((sg) => {
         const gene = new Gene({
-            id: sg.gene_id, // TODO: prop never defined... could make = gene_symbol
+            id: sg.ensembl_id, // Ensembl ID stored in "customdata" property
             gene_symbol: sg.gene_symbol,
         });
         gc.add_gene(gene);
     });
 
     gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+function saveWeightedGeneCart() {
+	// must have access to USER_SESSION_ID
+    const plotType = plotConfig.plot_type;
+
+	let foldchangeLabel = "FC"
+	const foldchange_to_save = Number($('input[name=foldchange_to_save]:checked').val());
+
+	switch (foldchange_to_save) {
+		case "log2":
+			foldchangeLabel = "Log2FC";
+			break;
+		case "log10":
+			foldchangeLabel = "Log10FC";
+			break;
+		default: // 'raw'
+			foldchangeLabel = foldchangeLabel;
+	}
+
+    let weight_labels = [foldchangeLabel];
+
+
+    if (plotType === "quadrant") {
+        const query1 = plotConfig.compare1_condition.split(';-;')[1];
+        const query2 = plotConfig.compare2_condition.split(';-;')[1];
+        const ref = plotConfig.ref_condition.split(';-;')[1];
+        const xLabel = `${query1}-vs-${ref}`;
+        const yLabel = `${query2}-vs-${ref}`;
+
+        const fcl1 = `${xLabel}-${foldchangeLabel}`
+        const fcl2 = `${yLabel}-${foldchangeLabel}`
+
+        weight_labels = [fcl1, fcl2];
+    }
+
+	const gc = new WeightedGeneCart({
+		session_id
+		, label: $("#weighted_gene_cart_name").val()
+		, gctype: 'weighted-list'
+		, organism_id: $("#dataset").data('organism-id')
+		, is_public: 0
+	}, weight_labels);
+
+    // Volcano and Quadrant plots have multiple traces of genes, broken into groups.
+    // Loop through these to get the info we need.
+    plotData.forEach((trace) => {
+        for (const pt in trace.x) {
+
+            // TODO: Handle quadrant plot situation
+            let foldchange = trace.x[pt].toFixed(1);
+
+            switch (foldchange_to_save) {
+                case "log2":
+                    foldchange = Math.log2(foldchange);
+                    break;
+                case "log10":
+                    foldchange = Math.log10(foldchange);
+                    break;
+                default: // 'raw'
+                    foldchange = foldchange;
+            }
+            const weights = [foldchange];
+
+            // If quadrant plot was specified, there are fold changes in x and y axis
+            if (plotType === "quadrant") {
+                let foldchange2 = trace.y[pt].toFixed(1);
+                switch (foldchange_to_save) {
+                    case "log2":
+                        foldchange2 = Math.log2(foldchange2);
+                        break;
+                    case "log10":
+                        foldchange2 = Math.log10(foldchange2);
+                        break;
+                    default: // 'raw'
+                        foldchange2 = foldchange2;
+                }
+                weights.push(foldchange2);
+            }
+
+            const gene = new WeightedGene({
+                id: trace.customdata[pt], // Ensembl ID stored in "customdata" property
+                gene_symbol: trace.text[pt]
+            }, weights);
+            gc.add_gene(gene);
+        }
+    });
+
+	gc.save(updateUIAfterWeightedGeneCartSaveSuccess, updateUIAfterWeightedGeneCartSaveFailure);
 }
 
 function updateUIAfterGeneCartSaveSuccess(gc) {
@@ -945,6 +960,22 @@ function updateUIAfterGeneCartSaveFailure(gc) {
     $('#saved_gene_cart_info_c > h3').text('Issue with saving gene cart.');
     $('#saved_gene_cart_info_c > h3').addClass('text-danger');
     $('#saved_gene_cart_info_c').show();
+}
+
+function updateUIAfterWeightedGeneCartSaveSuccess(gc) {
+	$("#saved_weighted_gene_cart_info_c > .status").html(`Cart "${gc.label}" successfully saved.`);
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-danger").addClass("text-success");
+	$("#saved_weighted_gene_cart_info_c").show();
+	$("#saved_weighted_gene_cart_info_c > .alert").hide();
+}
+
+function updateUIAfterWeightedGeneCartSaveFailure(gc, message) {
+	$("#saved_weighted_gene_cart_info_c > .status").html("There was an issue saving the weighted gene cart.");
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-success").addClass("text-danger");
+	$("#saved_weighted_gene_cart_info_c > .alert").show();
+	$("#saved_weighted_gene_cart_info_c > .message").html(message);
+	$("#saved_weighted_gene_cart_info_c").show();
+	$("#save_weighted_gene_cart").prop("disabled", false);
 }
 
 function fetchDatasetInfo (datasetId) {
@@ -1146,6 +1177,22 @@ $("#save_gene_cart").on("click", () => {
         window.alert("You must be signed in to do that.");
     }
     $("#save_gene_cart").prop('disabled', false);
+});
+
+$("#weighted_gene_cart_name").on("input", function () {
+    if ($(this).val() == "") {
+        $("#save_weighted_gene_cart").prop("disabled", true);
+    } else {
+        $("#save_weighted_gene_cart").prop("disabled", false);
+    }
+});
+$("#save_weighted_gene_cart").on("click", () => {
+    $("#save_weighted_gene_cart").prop("disabled", true);
+    if (CURRENT_USER) {
+        saveWeightedGeneCart();
+    } else {
+        alert("You must be signed in to do that.");
+    }
 });
 
 $("#download_plot").on("click", () => {
@@ -1563,9 +1610,11 @@ $(document).on('click', '#create_plot', async () => {
     if (["quadrant", "volcano"].includes(plotType)) {
         $('#dataset_plot').removeClass("col").addClass("col-9");
         $('#genes_list_bar').show();
+        $('#save_weighted_gene_cart_btn').show();
     } else {
         $('#dataset_plot').addClass("col").removeClass("col-9");
         $('#genes_list_bar').hide();
+        $('#save_weighted_gene_cart_btn').hide();
     }
 
     // Draw the updated chart
@@ -1774,9 +1823,11 @@ $(document).on('click', '.js-load-display', async function () {
     if (["quadrant", "volcano"].includes(display.plot_type)) {
         $('#dataset_plot').removeClass("col").addClass("col-10");
         $('#genes_list_bar').show();
+        $('#save_weighted_gene_cart_btn').show();
     } else {
         $('#dataset_plot').addClass("col").removeClass("col-10");
         $('#genes_list_bar').hide();
+        $('#save_weighted_gene_cart_btn').hide();
     }
     await draw(datasetId, plotConfig);
     $('#plot_spinner').hide();

@@ -156,11 +156,7 @@ def get_dataset_by_title(title=None, include_shape=None):
         return dataset
     elif found == 0:
         return None
-    else:
-        raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
-
-    return dataset
-
+    raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
 
 def get_dataset_collection(ids=None):
     return 1
@@ -191,13 +187,13 @@ def get_dataset_id_from_share_id(share_id):
 
     for row in cursor:
         dataset_id = row[0]
-    
+
     cursor.close()
     conn.close()
 
     return dataset_id
 
-    
+
 def get_gene_by_id(gene_id):
     """
     Given a gene_id passed this returns a Gene object with all attributes populated. Returns
@@ -239,7 +235,32 @@ def get_gene_cart_by_id(gc_id):
            WHERE id = %s
     """
     cursor.execute(qry, (gc_id,))
-    gene = None
+    gc = None
+
+    for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
+        gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
+                      share_id=share_id, is_public=is_public, date_added=date_added)
+        break
+
+    cursor.close()
+    conn.close()
+    return gc
+
+def get_gene_cart_by_share_id(share_id):
+    """
+    Given a gene_cart_id passed this returns a GeneCart object with all attributes populated. Returns
+    None if no cart is found with that ID.
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+          SELECT id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added
+            FROM gene_cart
+           WHERE share_id = %s
+    """
+    cursor.execute(qry, (share_id,))
+    gc = None
 
     for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
         gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
@@ -1054,14 +1075,14 @@ class LayoutCollection:
 
     # a simple index of folders and their parent IDs (this is a simple db query)
     folder_idx: dict = field(default_factory=dict, repr=False)
-    
+
     layouts: List[Layout] = field(default_factory=list)
 
     def __post_init__(self):
         if len(self.folder_idx) == 0:
             self._populate_folder_index()
             self._populate_root_folder_index()
-    
+
     def __repr__(self):
         return json.dumps(self.__dict__)
 
@@ -1073,7 +1094,6 @@ class LayoutCollection:
         """
         Recursive function to drive to the parent-most folder ID of
         any folder in the tree.
-
         Assumes self.folder_idx and self.root_folder_idx have been populated
         """
 
@@ -1101,14 +1121,14 @@ class LayoutCollection:
 
         cursor.close()
         conn.close()
-        
+
     def _populate_root_folder_index(self):
         """
         Populates the self.root_folder_idx attribute with a dictionary where the index is
         folder ID and value is root folder ID the ones in gear.ini[folders]
         """
         if len(self.folder_idx):
-           return False
+            return False
 
         qry = "SELECT id, parent_id FROM folder"
         conn = Connection()
@@ -1167,7 +1187,7 @@ class LayoutCollection:
                 label=row[1],
                 is_current=row[2],
                 user_id=row[3],
-                share_id=row[4],            
+                share_id=row[4],
                 is_domain=row[5],
                 is_public=row[6],
                 folder_id=folder_id,
@@ -1225,7 +1245,7 @@ class LayoutCollection:
                 label=row[1],
                 is_current=row[2],
                 user_id=row[3],
-                share_id=row[4],            
+                share_id=row[4],
                 is_domain=row[5],
                 is_public=row[6],
                 folder_id=folder_id,
@@ -1244,7 +1264,6 @@ class LayoutCollection:
         """
         Queries the DB to get all the groups of which the passed user is a member, then
         gets all layouts in those groups.
-
         If the append argument is set to False, the class' layouts attribute will be
         cleared before these are aded.
         """
@@ -1273,9 +1292,9 @@ class LayoutCollection:
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
                  AND d.marked_for_removal = 0
               GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
-        """ 
+        """
         cursor.execute(qry, (user.id,))
-        
+
         for row in cursor:
             # This layout could appear in multiple places in thet tree, within folders. If foldered,
             #  make sure it's a folder in this root node.  Else set into the root node.
@@ -1288,23 +1307,23 @@ class LayoutCollection:
                     folder_id = int(this.servercfg['folders']['profile_group_master_id'])
             else:
                 folder_id = int(this.servercfg['folders']['profile_group_master_id'])
-            
+
             layout = Layout(
                 id=row[0],
                 label=row[1],
                 is_current=row[2],
                 user_id=row[3],
-                share_id=row[4],            
+                share_id=row[4],
                 is_domain=row[5],
                 is_public=row[6],
                 folder_id=folder_id,
                 folder_parent_id=row[8],
                 folder_label=row[9]
             )
-            
+
             layout.folder_root_id=folder_id
             layout.dataset_count = row[10]
-            
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1332,7 +1351,7 @@ class LayoutCollection:
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
-        
+
         for row in cursor:
             # This layout could appear in multiple places in thet tree, within folders. If foldered,
             #  make sure it's a folder in this root node.  Else set into the root node.
@@ -1345,13 +1364,13 @@ class LayoutCollection:
                     folder_id = int(this.servercfg['folders']['profile_domain_master_id'])
             else:
                 folder_id = int(this.servercfg['folders']['profile_domain_master_id'])
-            
+
             layout = Layout(
                 id=row[0],
                 label=row[1],
                 is_current=row[2],
                 user_id=row[3],
-                share_id=row[4],            
+                share_id=row[4],
                 is_domain=row[5],
                 is_public=row[6],
                 folder_id=folder_id,
@@ -1387,7 +1406,7 @@ class LayoutCollection:
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
-        
+
         for row in cursor:
             # This layout could appear in multiple places in thet tree, within folders. If foldered,
             #  make sure it's a folder in this root node.  Else set into the root node.
@@ -1400,13 +1419,13 @@ class LayoutCollection:
                     folder_id = int(this.servercfg['folders']['profile_public_master_id'])
             else:
                 folder_id = int(this.servercfg['folders']['profile_public_master_id'])
-            
+
             layout = Layout(
                 id=row[0],
                 label=row[1],
                 is_current=row[2],
                 user_id=row[3],
-                share_id=row[4],            
+                share_id=row[4],
                 is_domain=row[5],
                 is_public=row[6],
                 folder_id=folder_id,
@@ -1420,7 +1439,6 @@ class LayoutCollection:
         cursor.close()
         conn.close()
         return self.layouts
-
 
 @dataclass
 class Folder:
@@ -1447,7 +1465,7 @@ class FolderCollection:
 
     def get_by_folder_ids(self, ids=None):
         """
-        Populates the self.folders attribute with the passed list of 
+        Populates the self.folders attribute with the passed list of
         folder IDs. Resets self.folders on each execution.
         """
         conn = Connection()
@@ -1462,13 +1480,13 @@ class FolderCollection:
                 FROM folder
                WHERE id in ({0})
         """.format(",".join(cleaned))
-        
+
         cursor.execute(qry)
 
         for row in cursor:
             folder = Folder(row)
             self.folders.append(folder)
-        
+
         cursor.close()
         conn.close()
         return self.folders
@@ -1476,9 +1494,7 @@ class FolderCollection:
     def get_root_folders(self, folder_type=None):
         """
         Returns a list of Folder elements for the root folders.
-
         These should all map to entries within gear.ini -> [folders]
-
         folder_type should be either 'cart' or 'profile'
         """
         conn = Connection()
@@ -1496,7 +1512,7 @@ class FolderCollection:
         for scope in ['domain', 'user', 'group', 'shared', 'public']:
             config_key = "{0}_{1}_master_id".format(folder_type, scope)
             folder_id = int(this.servercfg['folders'][config_key])
-            
+
             if folder_id in rfs:
                 folder = Folder(id=folder_id,
                                 parent_id=None,
@@ -1510,13 +1526,10 @@ class FolderCollection:
     def get_tree_by_folder_ids(self, ids=None, folder_type=None):
         """
         Similar to get_by_folder_ids() but this gets the entire tree for any folder IDs
-        passed. Higher query cost than just running get_by_folder_ids(). 
-
+        passed. Higher query cost than just running get_by_folder_ids().
         Also always returns the root folders, even if they're empty.
-
-        This link looked like a good solution to handle within the database directly but 
+        This link looked like a good solution to handle within the database directly but
         couldn't get it to work across MySQL/MariaDB and versions.  Too delicate:
-
         https://stackoverflow.com/a/60019201/1368079
         """
         conn = Connection()
@@ -1532,7 +1545,7 @@ class FolderCollection:
 
         while len(new_ids_found) > 0:
             cleaned = [ str(x) for x in new_ids_found if isinstance(x, int) ]
-            
+
             qry = """
                   SELECT id, parent_id, label
                     FROM folder
@@ -1555,8 +1568,7 @@ class FolderCollection:
         cursor.close()
         conn.close()
         return self.folders
-    
-    
+
 @dataclass
 class DatasetLink:
     id: int = None
@@ -1600,7 +1612,7 @@ class DatasetDisplay:
             cursor = conn.get_cursor()
 
             sql = """
-                  UPDATE dataset_display 
+                  UPDATE dataset_display
                      SET dataset_id = %s,
                          user_id = %s,
                          label = %s,
@@ -1616,7 +1628,7 @@ class DatasetDisplay:
             conn.commit()
             cursor.close()
             conn.close()
-    
+
 @dataclass
 class Dataset:
     id: str
@@ -1663,14 +1675,14 @@ class Dataset:
 
     def get_displays(self):
         """
-        Populates the dataset displays attribute, a list of DatasetDisplay objects 
+        Populates the dataset displays attribute, a list of DatasetDisplay objects
         related to this dataset.
         """
         conn = Connection()
         cursor = conn.get_cursor()
 
         qry = """
-              SELECT id, user_id, label, plot_type, plotly_config 
+              SELECT id, user_id, label, plot_type, plotly_config
                 FROM dataset_display
                WHERE dataset_id = %s
         """
@@ -1693,6 +1705,8 @@ class Dataset:
 
         cursor.close()
         conn.close()
+
+        return self.displays
 
     def get_file_path(self, session_id=None):
         """
@@ -2561,8 +2575,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
                 FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
@@ -2588,8 +2602,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
                 FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
@@ -2615,10 +2629,10 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
-                FROM gene_cart gc 
+                FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.user_id = %s
@@ -2645,8 +2659,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, 
-                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc,
+                     gc.share_id, gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id,
                      f.parent_id, f.label as folder_label
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
@@ -2655,7 +2669,7 @@ class GeneCartCollection:
                      JOIN gene_cart gc ON gcgm.gene_cart_id=gc.id
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
-               WHERE u.id = %s 
+               WHERE u.id = %s
                  AND (fm.item_type = 'genecart' or fm.item_type is NULL)
             ORDER BY gc.label
         """
@@ -2674,8 +2688,8 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
                 FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
@@ -2699,10 +2713,10 @@ class GeneCartCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id, 
-                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id, 
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
                      f.label as folder_label
-                FROM gene_cart gc 
+                FROM gene_cart gc
                      LEFT JOIN folder_member fm ON fm.item_id=gc.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE gc.is_public = 1

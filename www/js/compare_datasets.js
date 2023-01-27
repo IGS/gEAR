@@ -29,7 +29,7 @@ const log10_transformed_datasets = [
 , "f1ce4e63-3577-8020-8307-e88f1fb98953"
 , "2f79f784-f7f7-7dc3-9b3e-4c87a4346d91"
 , "c32835d3-cac4-bb0e-a90a-0b41dec6617a"
-//, "fbe1296e-572c-d388-b9d1-6e2a6bf10b0a"
+, '48bab518-439e-4a17-b868-6b225abf2c73'
 , "1b12dde9-1762-7564-8fbd-1b07b750505f"
 , "a2dd9f06-5223-0779-8dfc-8dce7a3897e1"
 , "f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f"
@@ -88,15 +88,31 @@ window.onload = () => {
 			alert("You must be signed in to do that.");
 		}
 	});
+
+	$("#weighted_gene_cart_name").on("input", function () {
+		if ($(this).val() == "") {
+			$("#save_weighted_gene_cart").prop("disabled", true);
+		} else {
+			$("#save_weighted_gene_cart").prop("disabled", false);
+		}
+	});
+	$("#save_weighted_gene_cart").on("click", () => {
+		$("#save_weighted_gene_cart").prop("disabled", true);
+		if (CURRENT_USER) {
+			save_weighted_gene_cart();
+		} else {
+			alert("You must be signed in to do that.");
+		}
+	});
 	/***** end gene cart stuff *****/
 
 	$("#dataset_id").on("change", () => {
 		populate_condition_selection_control();
 		// Change the default if the dataset is already log10 transformed
 		if (log10_transformed_datasets.includes($('#dataset_id').val())) {
-		$('#log_base').val('10');
+			$('#log_base').val('10');
 		} else {
-		$('#log_base').val('2');
+			$('#log_base').val('2');
 		}
 	});
 
@@ -140,12 +156,14 @@ function download_selected_genes() {
 
 	let file_contents =
 		$("#log_base").val() == "raw"
-		? "gene_symbol\tp-value\tfold change\t"
+		? "gene_symbol\tp-value\traw fold change\t"
 		+ x_label + "\t"
 		+ y_label + "\n"
-		: "gene_symbol\tp-value\tfold change\t"
+		: "gene_symbol\tp-value\traw fold change\t"
 		+ x_label + " (log" + $("#log_base").val() +")\t"
 		+ y_label + " (log" + $("#log_base").val() +")\n";
+
+
 
 	selected_data.points.forEach((pt) => {
 		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
@@ -210,6 +228,8 @@ function load_comparison_graph() {
 	$("#ticket_error_msg").empty();
 	$("#error_loading_c").hide();
 	$("#genes_not_found").empty().hide();
+	$("#gene_list_c").hide();
+	$('#weighted_gene_cart_c').hide();
 
 	$.ajax({
 		url: "./cgi/get_dataset_comparison.cgi",
@@ -223,32 +243,30 @@ function load_comparison_graph() {
 			log_transformation: $("#log_base").val(),
 			statistical_test: $("#statistical_test").val(),
 		},
-		dataType: "json",
-		success(data, textStatus, jqXHR) {
-			if (data.success == 1) {
+		dataType: "json"
+	}).done((data) => {
+		if (data.success == 1) {
 			$("#fold_change_std_dev").html(data.fold_change_std_dev);
 			plot_data = data;
 			plot_data_to_graph(data);
-				return;
-			}
-			// Handle graphing failures
-			$("#plot_loading").hide();
-			$("#ticket_dataset_id").text(dataset_id);
-			$("#ticket_dataset_text").text(dataset_text);
-			$("#ticket_datasetx_condition").text(condition_x_string);
-			$("#ticket_datasety_condition").text(condition_y_string);
-			$("#ticket_error_msg").html(data.error);
-			$("#error_loading_c").show();
-		},
-		error(jqXHR, textStatus, errorThrown) {
-			// Handle graphing failures
-			$("#plot_loading").hide();
-			$("#ticket_dataset_id").text(dataset_id);
-			$("#ticket_dataset_text").text(dataset_text);
-			$("#ticket_datasetx_condition").text(condition_x_string);
-			$("#ticket_datasety_condition").text(condition_y_string);
-			$("#error_loading_c").show();
-		},
+			return;
+		}
+		// Handle graphing failures
+		$("#plot_loading").hide();
+		$("#ticket_dataset_id").text(dataset_id);
+		$("#ticket_dataset_text").text(dataset_text);
+		$("#ticket_datasetx_condition").text(condition_x_string);
+		$("#ticket_datasety_condition").text(condition_y_string);
+		$("#ticket_error_msg").html(data.error);
+		$("#error_loading_c").show();
+	}).fail((data) => {
+		// Handle graphing failures
+		$("#plot_loading").hide();
+		$("#ticket_dataset_id").text(dataset_id);
+		$("#ticket_dataset_text").text(dataset_text);
+		$("#ticket_datasetx_condition").text(condition_x_string);
+		$("#ticket_datasety_condition").text(condition_y_string);
+		$("#error_loading_c").show();
 	});
 }
 
@@ -514,7 +532,6 @@ async function populate_dataset_selection_controls() {
 }
 
 function plot_data_to_graph(data) {
-	$("#tbl_selected_genes").hide();
 	$("#selection_methods_c").show();
 
 	const point_labels = [];
@@ -700,6 +717,7 @@ function plot_data_to_graph(data) {
 	Plotly.newPlot(graphDiv, plotdata, layout, { showLink: false });
 	$("#selected_label").hide();
 	$("#controls_label").show();
+	$('#weighted_gene_cart_c').show();
 
 	// If searched-for genes were not found, display under plot
 	if (genes_not_found.length) {
@@ -749,9 +767,9 @@ function plot_data_to_graph(data) {
 		}
 
 		// toggle visibilities
-		$(".selection_instructions").hide();
+		$("#selection_methods_c").hide();
 		$("#saved_gene_cart_info_c").hide();
-		$("#tbl_selected_genes").show();
+		$("#gene_list_c").show();
 
 		$("#controls_label").hide();
 		$("#selected_label").show();
@@ -784,9 +802,63 @@ function save_gene_cart() {
 	gc.save(update_ui_after_gene_cart_save_success, update_ui_after_gene_cart_save_failure);
 }
 
+function save_weighted_gene_cart() {
+	// must have access to USER_SESSION_ID
+	let foldchange_label = "FC"
+
+	const foldchange_to_save = Number($('input[name=foldchange_to_save]:checked').val());
+
+	switch (foldchange_to_save) {
+		case 2:
+			foldchange_label = "Log2FC";
+			break;
+		case 10:
+			foldchange_label = "Log10FC";
+			break;
+		default: // 'raw'
+			foldchange_label = foldchange_label;
+	}
+
+	const weight_labels = [foldchange_label];
+
+	const gc = new WeightedGeneCart({
+		session_id: CURRENT_USER.session_id,
+		label: $("#weighted_gene_cart_name").val(),
+		gctype: 'weighted-list',
+		organism_id: $("#dataset_id").data('organism-id'),
+		is_public: 0
+	}, weight_labels);
+
+
+	plot_data.gene_ids.forEach((gene_id, i) => {
+		let foldchange = plot_data.fold_changes[i]	// currently "raw" values
+
+		switch (foldchange_to_save) {
+			case 2:
+				foldchange = Math.log2(foldchange);
+				break;
+			case 10:
+				foldchange = Math.log10(foldchange);
+				break;
+			default: // 'raw'
+				foldchange = foldchange;
+		}
+
+		const weights = [foldchange];
+
+		const gene = new WeightedGene({
+			id: gene_id,
+			gene_symbol: plot_data.symbols[i]
+		}, weights);
+		gc.add_gene(gene);
+	});
+
+	gc.save(update_ui_after_weighted_gene_cart_save_success, update_ui_after_weighted_gene_cart_save_failure);
+}
+
 // Sort selected gene table (using already generated table data)
 // Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
-	function sortTable(n) {
+function sortTable(n) {
 	let table;
 	let rows;
 	let switching;
@@ -866,8 +938,25 @@ function update_ui_after_gene_cart_save_success(gc) {
 	$("#saved_gene_cart_info_c").show();
 }
 
-function update_ui_after_gene_cart_save_failure(gc) {
+function update_ui_after_gene_cart_save_failure(gc, message) {
 	$("#create_gene_cart_dialog").hide("fade");
-	$("#saved_gene_cart_info_c > h3").html("There was an issue saving the gene cart.");
+	$("#saved_gene_cart_info_c > h3").html(`There was an issue saving the gene cart. ${message}`);
 	$("#saved_gene_cart_info_c").show();
+	$("#save_gene_cart").prop("disabled", false);
+}
+
+function update_ui_after_weighted_gene_cart_save_success(gc) {
+	$("#saved_weighted_gene_cart_info_c > .status").html(`Cart "${gc.label}" successfully saved.`);
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-danger").addClass("text-success");
+	$("#saved_weighted_gene_cart_info_c").show();
+	$("#saved_weighted_gene_cart_info_c > .alert").hide();
+}
+
+function update_ui_after_weighted_gene_cart_save_failure(gc, message) {
+	$("#saved_weighted_gene_cart_info_c > .status").html("There was an issue saving the weighted gene cart.");
+	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-success").addClass("text-danger");
+	$("#saved_weighted_gene_cart_info_c > .alert").show();
+	$("#saved_weighted_gene_cart_info_c > .message").html(message);
+	$("#saved_weighted_gene_cart_info_c").show();
+	$("#save_weighted_gene_cart").prop("disabled", false);
 }

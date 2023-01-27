@@ -28,6 +28,15 @@ body {
     /* leaves room for footer*/
     margin-bottom: 200px;
 }
+
+/*
+SAdkins - would like to add this one day (for people who need to tab) but focus does not go away after clicking button
+Would need to write JS to remove focus after a click event.
+button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px lightskyblue;
+}*/
+
 div.clear_hack {
     clear: both;
 }
@@ -211,3 +220,13 @@ div.jstree {
     overflow-y: auto;
     overflow-x: hidden;
 }
+
+/* Hover area created for plotly plots */
+.hoverarea {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    text-align: right;
+    padding: 10px;
+    /*background-color: var(--main-section-launcher-bg-color-inactive);*/
+  }

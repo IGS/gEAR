@@ -4,28 +4,44 @@ import numbers
 import os
 import re
 import sys
+from pathlib import Path
 
 import geardb
 import pandas as pd
 import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
+
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
-def create_projection_adata(dataset_adata, projection_csv):
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
+
+def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
+    import scanpy as sc
+    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+    if projection_adata_path.is_file():
+        return sc.read_h5ad(projection_adata_path)  # , backed="r")
+
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
-        import scanpy as sc
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
+        projection_adata = sc.read_csv(projection_csv_path)
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
-
     projection_adata.obs = dataset_adata.obs
+    # Close dataset adata so that we do not have a stale opened object
+    if dataset_adata.isbacked:
+        dataset_adata.file.close()
     projection_adata.var["gene_symbol"] = projection_adata.var_names
+    # Associate with a filename to ensure AnnData is read in "backed" mode
+    projection_adata.filename = projection_adata_path
     return projection_adata
 
 def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
@@ -206,9 +222,8 @@ class PlotlyData(Resource):
                 pass
 
         if projection_id:
-            projection_csv = "{}.csv".format(projection_id)
             try:
-                adata = create_projection_adata(adata, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_id)
             except PlotError as pe:
                 return {
                     'success': -1,
@@ -266,6 +281,10 @@ class PlotlyData(Resource):
                 if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
                     df[x_axis] = selected.obsm["X_pca"].transpose()[X]
                     df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
 
         if color_map and color_name:
             # Validate if all color map keys are in the dataframe columns
@@ -411,7 +430,9 @@ class PlotlyData(Resource):
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
         # Modify y-title so that gene display results plot is not misleading
-        if "expression of {}".format(gene_symbol) in y_title:
+        # This only affects JSON return value, not the plot itself
+        if "expression of {}".format(gene_symbol) in y_title \
+            or "contribution to {}".format(gene_symbol) in y_title:
             y_title = None
 
         return {

@@ -653,8 +653,22 @@
                               </div>
                             </form>
                             <hr class="separator">
+                            <div id="weighted_gene_cart_g" class="shown_later">
+                              <div class="form-group form-group-sm">
+                                <label for="weighted_gene_cart_name" class="col-form-label">Cart name to create
+                                  <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right" data-html="true"
+                                  title="Enter name to save the PCs from every gene as a weighted gene cart. This can be used in plotting projections into curated displays from other datasets."></span>
+                                </label>
+                                <input type="text" value="" id="weighted_gene_cart_name" />
+                              </div>
+                              <button id="save_weighted_gene_cart" class="btn btn-sm btn-purple">Save PCs as a Pattern Signature</button>
+                              <div id='saved_weighted_gene_cart_info_c' style="display:none;">
+                                <p></p>
+                              </div>
+                            </div>
+                            <hr class="separator">
                             <p class="js-next-step" style="display:none;"> Please click on the "tSNE / UMAP" toggle to proceed.</p>
-                          </div> <!-- end #pca_missing_gene_c -->
+                          </div>
                         </div>
                         <div class="col-sm-8 col-md-8 col-lg-8">
                           <div class="container-fluid">
@@ -945,6 +959,8 @@
     <script>document.write('<script src="js/classes/ui-panel-dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/analysis.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/genecart.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/analyze_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>

@@ -1,13 +1,5 @@
 from flask import request
 from flask_restful import Resource
-import pandas as pd
-import scanpy as sc
-import json
-import os
-import sys
-import copy
-import geardb
-
 
 class EpivizData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -33,6 +25,9 @@ class EpivizData(Resource):
         session_id = request.cookies.get('gear_session_id')
         gene_symbol = request.args.get('gene')
         genome = request.args.get('genome')
+
+        # Import here so that Flask-RESTful does not import it with every API call.
+        import pandas as pd
 
         # TODO: may be loading all genomes before hand is faster ?
         # also needs a fallback is the gene name cannot be found

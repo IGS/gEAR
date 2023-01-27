@@ -1,11 +1,12 @@
 # Include our lib directory on system path
 # so we have access to modules
 from pathlib import Path
-import sys, os
+import sys
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
-abs_path_lib = os.path.join(str(abs_path_gear), 'lib')
-sys.path.insert(0, abs_path_lib)
+abs_path_lib = abs_path_gear.joinpath('lib')
+# abs_path_lib is a Path object so we need to convert to string
+sys.path.insert(0, str(abs_path_lib))
 
 # Prevent matplotlib backend rendering errors
 # when imporing scanpy in resource modules
@@ -13,11 +14,11 @@ import matplotlib
 matplotlib.use('Agg')
 
 from flask import Flask
-from flask_restful import Resource, Api
+from flask_restful import Api
 
 # Import resources
 from resources.plotly_data import PlotlyData
-from resources.multigene_dash_data import MultigeneDashData, PaletteData
+from resources.multigene_dash_data import MultigeneDashData
 from resources.h5ad import H5ad
 from resources.svg_data import SvgData
 from resources.top_pca_genes import TopPCAGenes
@@ -27,20 +28,19 @@ from resources.dataset_display import DatasetDisplay
 from resources.gene_symbols import GeneSymbols
 from resources.tsne_data import TSNEData
 from resources.epiviz_data import EpivizData
-from resources.projectr import ProjectR
+from resources.projectr import ProjectR, ProjectROutputFile
 
 app = Flask(__name__)
 api = Api(app)
-
 # Add API endpoints to resources
 
 api.add_resource(PlotlyData, '/plot/<dataset_id>') # May want to add /plotly to this endpoint for consistency
 api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
-api.add_resource(PaletteData, '/mg_palette')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
 api.add_resource(ProjectR, '/projectr/<dataset_id>')
+api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')

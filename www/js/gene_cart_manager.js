@@ -3,7 +3,11 @@ const animation_time = 200;
 let gc_id_to_delete = null;
 let add_form_is_open = false;
 
-window.onload=function() {
+window.onload= () => {
+
+    // Initialize Bootstrap popovers
+    $('#cart_upload_reqs').popover({html:true});
+
     $("#search_clear").click(function(){
         $("#search_terms").val('');
         submit_search();
@@ -254,9 +258,9 @@ $(document).on('click', '.edit_gc_save', function() {
 
 $(document).on('click', '.download_gc', function() {
     /*
-      Reformats the <ul> containing the gene symbols into a text file with one gene
-      per row.
-     */
+        Reformats the <ul> containing the gene symbols into a text file with one gene
+        per row.
+    */
     var gc_id = $(this).data('gc-id');
     var file_contents = '';
 
@@ -306,14 +310,12 @@ $(document).on('click', '.gc_weighted_gene_list_toggle', function() {
         type: "POST",
         data : {'share_id': share_id},
         dataType:"json",
-        success: function(data, textStatus, jqXHR) {
-            process_weighted_gc_list(gc_id, data['preview_json']);
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-	        console.log('textStatus= ', textStatus);
-	        console.log('errorThrown= ', errorThrown);
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-        }
+    }).done(function(data, textStatus, jqXHR) {
+        process_weighted_gc_list(gc_id, data['preview_json']);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log('textStatus= ', textStatus);
+        console.log('errorThrown= ', errorThrown);
+        display_error_bar(jqXHR.status + ' ' + errorThrown.name);
     }); //end ajax
 });
 
@@ -401,7 +403,7 @@ $("#btn_new_cart_cancel").click(function(e) {
     $("#new_cart_pasted_genes_c").hide();
 });
 
-$('#new_cart_data').on('submit', function(e) {
+$('#new_cart_data').on('submit', function() {
     // disable button and show indicator that it's loading
     $("#btn_new_cart_save").hide();
     $("#btn_new_cart_saving").show();
@@ -412,19 +414,19 @@ $('#new_cart_data').on('submit', function(e) {
         $("#btn_new_cart_save").show();
         $("#btn_new_cart_saving").hide();
         return false;
-    } else {
-        $("#new_cart_label").removeClass("input-validation-error");
     }
 
-    var is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
+    $("#new_cart_label").removeClass("input-validation-error");
 
-    var formData = new FormData($(this)[0]);
+    const is_public = ($("#new_cart_is_public").prop('checked') ? 1 : 0);
+
+    const formData = new FormData($(this)[0]);
     formData.append('is_public', is_public);
     formData.append('session_id', session_id);
 
     // https://stackoverflow.com/questions/45594504/upload-file-and-json-data-in-the-same-post-request-using-jquery-ajax
-    var gc = new GeneCart();
-    gc.add_cart_to_db_from_form(gene_cart_saved, formData);
+    const gc = new GeneCart();
+    gc.add_cart_to_db_from_form(formData, gene_cart_saved, gene_cart_failure);
 
     return false;
 });
@@ -437,10 +439,10 @@ $("#btn_new_cart_save").click(function(e) {
 function build_filter_string(group_name, att_name, crit) {
     // Builds a comma-separated search string based on the selected options
     //  in one of the filter option blocks
-    if ($("#" + group_name + " ul li.selected").not(".all_selector").length) {
-        var dbvals = [];
+    if ($(`#${group_name} ul li.selected`).not(".all_selector").length) {
+        const dbvals = [];
 
-        $("#" + group_name + " ul li.selected").not(".all_selector").each(function() {
+        $(`#${group_name} ul li.selected`).not(".all_selector").each(function() {
             dbvals.push($(this).data('dbval'));
         });
 
@@ -450,7 +452,7 @@ function build_filter_string(group_name, att_name, crit) {
 
 function display_error_bar(msg) {
     $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-      '<button type="button" class="close close-alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+      '<button type="button" class="close close-alert" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
       '<p class="alert-message">' +
       '<strong>Fail. </strong> Sorry, something went wrong.  Please contact us with this message if you need help.' +
       '</p>' +
@@ -458,10 +460,16 @@ function display_error_bar(msg) {
       '</div>').show();
 }
 
-function gene_cart_saved() {
+function gene_cart_saved(gc) {
     $("#btn_create_cart_toggle").trigger('click');
     submit_search();
     reset_add_form();
+}
+
+function gene_cart_failure(gc, message) {
+    display_error_bar(`Gene cart creation failed: ${message}`);
+    $("#btn_new_cart_save").show();
+    $("#btn_new_cart_saving").hide();
 }
 
 function load_preliminary_data() {
@@ -478,19 +486,17 @@ function load_organism_list() {
         url : './cgi/get_organism_list.cgi',
         type: "GET",
         data : {},
-        dataType:"json",
-        success: function(data, textStatus, jqXHR) {
-            var ListTmpl = $.templates("#organism_list_tmpl");
-            var ListHtml = ListTmpl.render(data['organisms']);
-            $("#organism_choices").append(ListHtml);
+        dataType:"json"
+    }).done((data) => {
+        const ListTmpl = $.templates("#organism_list_tmpl");
+        const ListHtml = ListTmpl.render(data.organisms);
+        $("#organism_choices").append(ListHtml);
 
-            var selectTmpl = $.templates("#organism_select_tmpl");
-            var selectHtml = selectTmpl.render(data['organisms']);
-            $("#new_cart_organism_id").append(selectHtml);
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            display_error_bar(jqXHR.status + ' ' + errorThrown.name);
-        }
+        const selectTmpl = $.templates("#organism_select_tmpl");
+        const selectHtml = selectTmpl.render(data.organisms);
+        $("#new_cart_organism_id").append(selectHtml);
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
     });
 }
 

@@ -11,6 +11,11 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+# https://stackoverflow.com/a/35904211/1368079
+this = sys.modules[__name__]
+from gear.serverconfig import ServerConfig
+this.servercfg = ServerConfig().parse()
+
 NUM_NEWEST_DATASETS_TO_SHOW = 3
 
 def main():
@@ -19,7 +24,8 @@ def main():
         'success': 1,
         'dataset_count': 0,
         'user_count': 0,
-        'newest_public_datasets': None
+        'newest_public_datasets': None,
+        "projectr_enabled":0
     }
 
     cnx = geardb.Connection()
@@ -30,7 +36,10 @@ def main():
 
     result['dataset_count'] = geardb.get_dataset_count()
     result['user_count'] = geardb.get_user_count()
-    
+
+    if this.servercfg['projectR_service']['enabled'].startswith("1"):
+        result["projectr_enabled"] = 1
+
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
 

@@ -1,7 +1,6 @@
 from flask import request
 from flask_restful import Resource
-import scanpy as sc
-import os, sys
+import os
 import geardb
 
 class TopPCAGenes(Resource):
@@ -42,9 +41,11 @@ class TopPCAGenes(Resource):
         if not os.path.exists(dest_directory):
             os.makedirs(dest_directory)
 
+        import scanpy as sc
+
         adata = sc.read_h5ad(source_datafile_path)
         sc.settings.figdir = dest_directory + "/figures"
-        
+
         #print("DEBUG: Writing file to path: {0}".format(dest_datafile_path), file=sys.stderr)
 
         adata.var = adata.var.reset_index().set_index('gene_symbol')

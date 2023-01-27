@@ -2,11 +2,11 @@
 
 """
 
-Many datasets exist in the system already with columnar elements which 
+Many datasets exist in the system already with columnar elements which
 make up a user-generated analysis, such as dimensionality reduction (tSNE)
 and clustering.
 
-This script reads these and transforms them into a structure within HDF5 
+This script reads these and transforms them into a structure within HDF5
 which mimics what scanpy produces.  This allows them to be used throughout
 the rest of the interface.
 
@@ -44,6 +44,7 @@ VALID_NAME_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined',
                     # These are all carlo's custom ones.  Need to resolve this a different way later
                     ['PC1%var6.14', 'PC2%var1.79']
 ]
+VALID_CLUSTER_COLUMN_NAMES = ["cluster", "cell_type"]
 
 def main():
     dataset_ids = get_dataset_ids()
@@ -69,7 +70,7 @@ def main():
         analysis_json["label"] = "Primary analysis"
         analysis_json["dataset_id"] = dataset_id
         analysis_json["dataset"]["id"] = dataset_id
-            
+
         ana = geardb.Analysis(dataset_id=dataset_id, type='primary')
         adata = ana.get_adata(backed=True)
 
@@ -83,7 +84,7 @@ def main():
                 print("\tAdding tSNE analysis")
                 add_tsne_analysis(adata)
                 changes_made = True
-        
+
         clustering_detected = detect_clustering(adata)
         if clustering_detected:
             analysis_json['louvain']['calculated'] = True
@@ -103,8 +104,8 @@ def main():
                         json.dump(analysis_json, outfile, indent=3)
             except:
                 print("ERROR: Unable to save write result files back out", file=sys.stderr)
-            
-            
+
+
 def add_clustering_analysis(adata):
     cols = adata.obs.columns.tolist()
 
@@ -113,15 +114,15 @@ def add_clustering_analysis(adata):
             user_defined_cluster_names = adata.obs[vname].astype('category')
             adata.obs['louvain'] = user_defined_cluster_names
             return
-            
+
 def add_tsne_analysis(adata):
     cols = adata.obs.columns.tolist()
 
-    for pair in VALID_TSNE_PAIRS:
+    for pair in VALID_NAME_PAIRS:
         if pair[0] in cols and pair[1] in cols:
             adata.obsm['X_tsne'] = adata.obs[[pair[0], pair[1]]].values
             return
-        
+
 def get_dataset_ids():
     ids = []
     for filename in os.listdir(DATASET_BASE_DIR):
@@ -151,7 +152,7 @@ def detect_tsne(adata):
     """
     cols = adata.obs.columns.tolist()
 
-    for pair in VALID_TSNE_PAIRS:
+    for pair in VALID_NAME_PAIRS:
         if pair[0] in cols and pair[1] in cols:
             return True
 
@@ -167,7 +168,7 @@ def has_louvain(adata):
 def has_tsne(adata):
     try:
         if type(adata.obsm['X_tsne']):
-            return True    
+            return True
     except:
         pass
 

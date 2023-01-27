@@ -59,28 +59,58 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('share_id')
+    filter_cart_type = form.getvalue('cart_type', None)
+    group_by_type = form.getvalue("group_by_type", False)
     current_user = geardb.get_user_from_session_id(session_id)
-    current_user_id = current_user.id
+    if not current_user:
+        raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'shared_carts':[], 'user_carts':[] }
- 
+
     # Track the cart IDs already stored so we don't duplicate
     cart_ids_found = set()
 
-    if current_user_id is None:
-        raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
-    else:
-        domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
-        user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
-        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
-        shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
-        public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
+    domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
+    user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
+    group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
+    shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
+    public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
 
-        result = { 'domain_carts':domain_carts,
-                   'group_carts':group_carts,
-                   'public_carts':public_carts,
-                   'shared_carts':shared_carts,
-                   'user_carts':user_carts }
+    if group_by_type and not group_by_type == "false":
+        # Group all cart results by their cart type and return
+        all_carts = domain_carts + user_carts + group_carts + shared_carts + public_carts
+        gctypes = {cart.gctype for cart in all_carts}
+        result = dict()
+        for cart_type in gctypes:
+            subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
+            subset_user_carts = filter_by_cart_type(user_carts, cart_type)
+            subset_group_carts = filter_by_cart_type(group_carts, cart_type)
+            subset_shared_carts = filter_by_cart_type(shared_carts, cart_type)
+            subset_public_carts = filter_by_cart_type(public_carts, cart_type)
+
+            result[cart_type] = { 'domain_carts':subset_domain_carts,
+                'group_carts':subset_group_carts,
+                'public_carts':subset_public_carts,
+                'shared_carts':subset_shared_carts,
+                'user_carts':subset_user_carts }
+
+        # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
+        print(json.dumps(result, default=lambda o: o.__dict__))
+        sys.exit(0)
+
+    if filter_cart_type:
+        domain_carts = filter_by_cart_type(domain_carts, filter_cart_type)
+        user_carts = filter_by_cart_type(user_carts, filter_cart_type)
+        group_carts = filter_by_cart_type(group_carts, filter_cart_type)
+        shared_carts = filter_by_cart_type(shared_carts, filter_cart_type)
+        public_carts = filter_by_cart_type(public_carts, filter_cart_type)
+
+
+    result = { 'domain_carts':domain_carts,
+                'group_carts':group_carts,
+                'public_carts':public_carts,
+                'shared_carts':shared_carts,
+                'user_carts':user_carts }
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))
@@ -96,7 +126,22 @@ def filter_any_previous(ids, new_carts):
     return carts
     # fails to return rows when I try to sort.
     #return carts.sort(key=lambda a: a.__dict__['label'].lower())
-    
+
+def filter_by_cart_type(carts, cart_type):
+    """ Filters a list of carts by cart_type
+
+    Args:
+        carts (List[GeneCart]): A list of GeneCart objects
+        cart_type (str): A string representing the cart type
+
+    Returns:
+        A list of GeneCart objects
+    """
+    if cart_type:
+        return [cart for cart in carts if cart.gctype == cart_type]
+    else:
+        return carts
+
 if __name__ == '__main__':
     main()
 

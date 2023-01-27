@@ -1,6 +1,5 @@
 from flask import request
 from flask_restful import Resource
-import scanpy as sc
 import os
 import geardb
 
@@ -20,6 +19,9 @@ class GeneSymbols(Resource):
         analysis_id = request.args.get('analysis')
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
+
+        # Import here so that Flask-RESTful does not import it with every API call.
+        import scanpy as sc
 
         if analysis_id:
             ana = geardb.Analysis(

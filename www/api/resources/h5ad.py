@@ -1,6 +1,5 @@
 from flask import request
 from flask_restful import Resource
-import scanpy as sc
 import os
 import geardb
 
@@ -17,6 +16,8 @@ class H5ad(Resource):
         args = request.args
         analysis_id = args.get('analysis_id')
         session_id = request.cookies.get('gear_session_id')
+
+        import scanpy as sc
 
         if analysis_id:
             # session_id = request.cookies.get('gear_session_id')

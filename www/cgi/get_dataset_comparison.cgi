@@ -234,24 +234,16 @@ def main():
         filtered_y = list()
 
     # Is there a transformation to apply?
+    log_base = None
     if log_transformation == "2":
-        for (e1_raw, e2_raw) in result['values']:
-            transformed_e1 = get_log2(e1_raw)
-            transformed_e2 = get_log2(e2_raw)
-
-            if transformed_e1 is not None and transformed_e2 is not None:
-                filtered_x.append(transformed_e1)
-                filtered_y.append(transformed_e2)
-                filtered_values.append([transformed_e1,transformed_e2])
-
-        result['values'] = filtered_values
-        result['x'] = filtered_x
-        result['y'] = filtered_y
-
+        log_base = 2
     elif log_transformation == "10":
+        log_base = 10
+
+    if log_base:
         for (e1_raw, e2_raw) in result['values']:
-            transformed_e1 = get_log10(e1_raw)
-            transformed_e2 = get_log10(e2_raw)
+            transformed_e1 = get_log(e1_raw, log_base)
+            transformed_e2 = get_log(e2_raw, log_base)
 
             if transformed_e1 is not None and transformed_e2 is not None:
                 filtered_x.append(transformed_e1)
@@ -288,31 +280,19 @@ def fold_change(x, y):
     if x >= y:
         if y == 0:
             return x
-        else:
-            return x / y
-    else:
-        if x == 0:
-            return y
-        else:
-            return y / x
+        return x / y
+    if x == 0:
+        return y
+    return y / x
 
-def get_log10(val):
+def get_log(val, base):
     if val == 0:
         return 0
-    else:
-        try:
-            return math.log10(val)
-        except ValueError:
-            return None
+    try:
+        return math.log(val, base)
+    except ValueError:
+        return None
 
-def get_log2(val):
-    if val == 0:
-        return 0
-    else:
-        try:
-            return math.log2(val)
-        except ValueError:
-            return None
 
 def intersection(lst1, lst2):
     """Intersection of two lists."""
