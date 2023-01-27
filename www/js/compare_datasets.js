@@ -228,6 +228,8 @@ function load_comparison_graph() {
 	$("#ticket_error_msg").empty();
 	$("#error_loading_c").hide();
 	$("#genes_not_found").empty().hide();
+	$("#gene_list_c").hide();
+	$('#weighted_gene_cart_c').hide();
 
 	$.ajax({
 		url: "./cgi/get_dataset_comparison.cgi",
@@ -530,7 +532,6 @@ async function populate_dataset_selection_controls() {
 }
 
 function plot_data_to_graph(data) {
-	$("#tbl_selected_genes").hide();
 	$("#selection_methods_c").show();
 
 	const point_labels = [];
@@ -766,9 +767,9 @@ function plot_data_to_graph(data) {
 		}
 
 		// toggle visibilities
-		$(".selection_instructions").hide();
+		$("#selection_methods_c").hide();
 		$("#saved_gene_cart_info_c").hide();
-		$("#tbl_selected_genes").show();
+		$("#gene_list_c").show();
 
 		$("#controls_label").hide();
 		$("#selected_label").show();
