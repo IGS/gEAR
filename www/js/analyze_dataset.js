@@ -263,8 +263,12 @@ window.onload=() => {
     });
 
     $("#marker_genes_table").click(function(e) {
-        const clicked_cell = $(e.target).closest("td");
-        const goi = clicked_cell.text().trim();
+        let clicked_cell = $(e.target).closest("td");
+        const goi = clicked_cell.text().trim(); // goi = genes of interest
+
+        if ($(e.target).hasClass("js-col-idx")) {
+            clicked_cell = $(e.target).closest("th");
+        }
 
         // If row index was clicked, operate on whole row. Otherwise, just on individual cells.
         if (clicked_cell.hasClass('js-row-idx')) {
@@ -272,6 +276,7 @@ window.onload=() => {
             // note - jQuery map, not array.prototype map
             const gois = row_cells.map((i, el) => el.innerText.trim()).get();
             if (clicked_cell.hasClass('highlighted')) {
+                // unhighlight all cells in row
                 row_cells.removeClass("highlighted");
                 clicked_cell.removeClass("highlighted");
                 gois.forEach(el => {
@@ -280,6 +285,28 @@ window.onload=() => {
                 });
             } else {
                 row_cells.addClass("highlighted");
+                clicked_cell.addClass("highlighted");
+                gois.forEach(el => {
+                    clicked_marker_genes.add(el);
+                    current_analysis.add_gene_of_interest(el);
+                });
+            }
+        } else if (clicked_cell.hasClass("js-col-idx")){
+            // get nth element in each row +1 (for the row idx)
+            const clicked_header_idx = clicked_cell.index()+1;
+            const col_cells = $('table tr td:nth-child(' + clicked_header_idx + ')');
+            // note - jQuery map, not array.prototype map
+            const gois = col_cells.map((i, el) => el.innerText.trim()).get();
+            if (clicked_cell.hasClass('highlighted')) {
+                // unhighlight all cells in row
+                col_cells.removeClass("highlighted");
+                clicked_cell.removeClass("highlighted");
+                gois.forEach(el => {
+                    clicked_marker_genes.delete(el);
+                    current_analysis.remove_gene_of_interest(el);
+                });
+            } else {
+                col_cells.addClass("highlighted");
                 clicked_cell.addClass("highlighted");
                 gois.forEach(el => {
                     clicked_marker_genes.add(el);
