@@ -44,6 +44,9 @@ ul.session_actions {
     padding: 0;
     list-style: none;
 }
+ul.demo_files {
+    list-style: none;
+}
 ul.session_actions li {
     display: none;
 }
