@@ -185,7 +185,7 @@ def _determine_annotation_shift(ds):
         longest_entry = len(max(ds_list, key = len))
         return -(longest_entry * 3 + 30)
     else:
-        return -50
+        return -30
 
 def _invalid_plot_type(plot_type):
     """Check for invalid plot types."""
@@ -226,29 +226,36 @@ def _truncate_ticktext(group_list):
 def _update_axis_titles(fig, df, x, y, facet_col=None, facet_row=None, x_title=None, y_title=None):
     """Update axis titles.  Edits "fig" inplace."""
 
-    # Annotation defaults based on https://community.plotly.com/t/subplots-how-to-add-master-axis-titles/13927/6
-    # NOTE: I've come to the conclusion that a one-size-fits-all solution is not possible for all graphs
+    # Modeling after https://github.com/plotly/plotly.py/blob/92ce5bce770dc5390bda0f44a9b6b033d4f2c39e/packages/python/plotly/plotly/_subplots.py#L1110
+    # with exception for facet_col title yshift
     if facet_col:
+        # replace x-axis
         fig.update_xaxes(title=None)
         fig.add_annotation(
             x=0.5,
-            y=-0,
+            y=0,
             yshift=_determine_annotation_shift(df[x]),
-            #yshift=-30,
+            font=dict(size=16),
             showarrow=False,
             text=x_title,
             name="x-title",
             xref="paper",
             yref="paper",
+            xanchor="center",
             yanchor="top",
         )
+        # update y-axis font to match facet title font
+        fig.update_yaxes(title_font=dict(size=16))
 
     if facet_row:
+        # replace y-axis
         fig.update_yaxes(title=None)
         fig.add_annotation(
             x=0,
             xshift=-40,
             y=0.5,
+            yshift=0,
+            font=dict(size=16),
             showarrow=False,
             text=y_title,
             textangle=-90,
@@ -256,7 +263,11 @@ def _update_axis_titles(fig, df, x, y, facet_col=None, facet_row=None, x_title=N
             xref="paper",
             yref="paper",
             xanchor="right",
+            yanchor="middle",
         )
+        # update x-axis font to match facet title font
+        fig.update_xaxes(title_font=dict(size=16))
+
 
 def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     """Updates specific to certain plot types.  Updates 'fig' inplace."""
@@ -314,6 +325,10 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     kwargs["traces"].setdefault("marker", {})           # If markers does not exist within
     kwargs["traces"]["marker"].setdefault("size", 3)    # If size does not exist within
 
+
+    # These labels allows use to override these labels used for axis titles, etc.
+    labels_dict = {x:x_title, y:y_title, "color_name":""}
+
     # Collect all args in a dictionary for easy passing to plotting function
     plotting_args={"x":x
         , "y":y
@@ -321,7 +336,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         , "facet_col":facet_col
         , "color":color_name
         , "category_orders": category_orders if category_orders else {}
-        , "labels": {x:x_title, y:y_title, color_name:""}
+        , "labels":labels_dict
         , "hover_name": text_name if text_name else y
         }
 
@@ -405,6 +420,8 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                 , cols=num_cols
                 , row_titles=facet_row_groups if facet_row else None
                 , column_titles=facet_col_groups if facet_col else None
+                , x_title=x_title if x_title else None
+                , y_title=y_title if y_title else None
                 )
 
         # Because of the reliance on the premade figure, this cannot go at the top of the page
@@ -497,13 +514,9 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
             fig.update_xaxes(showticklabels=False)
             max_x = "xaxis{}".format(num_rows if num_rows > 1 else "")
             fig['layout'][max_x]['showticklabels'] = True
-        else:
-            fig['layout']['xaxis']['title']['text'] = x_title
         if facet_col:
             fig.update_yaxes(showticklabels=False)
             fig['layout']['yaxis']['showticklabels'] = True
-        else:
-            fig['layout']['yaxis']['title']['text'] = y_title
 
         # Order the columns
         if x in category_orders:
@@ -566,7 +579,10 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     # Plottype-specific tweaks
     _update_by_plot_type(fig, plot_type, force_overlay, jitter)
 
-    _update_axis_titles(fig, df, x, y, facet_col, facet_row, x_title, y_title)
+    if not plot_type in ["violin"]:
+        # Axis titles are added correctly in violin plots due to the explicit make_subplots call.
+        # However it is added per facet for the other plot types
+        _update_axis_titles(fig, df, x, y, facet_col, facet_row, x_title, y_title)
 
     # Add vertical lines
     [_add_vertical_lines(fig, vl) for vl in vlines]

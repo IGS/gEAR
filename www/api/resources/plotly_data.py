@@ -431,8 +431,7 @@ class PlotlyData(Resource):
 
         # Modify y-title so that gene display results plot is not misleading
         # This only affects JSON return value, not the plot itself
-        if "expression of {}".format(gene_symbol) in y_title \
-            or "contribution to {}".format(gene_symbol) in y_title:
+        if "expression of {}".format(gene_symbol) in y_title:
             y_title = None
 
         return {
