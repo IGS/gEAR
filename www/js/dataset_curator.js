@@ -21,10 +21,8 @@ window.onload=() => {
     template: `
       <b-row v-if='title' class='justify-content-md-center id="dataset-title"'>
         <div class="mt-5 col-12">
-        <!--
-          <h2 class='font-weight-light'>You are curating <span class='font-weight-bold'>{{ title }}</span></h2>
+          <h2 class='font-weight-light'>Dataset: <span class='font-weight-bold'>{{ title }}</span></h2>
           <hr />
-          -->
         </div>
       </b-row>
     `,
@@ -1806,7 +1804,7 @@ window.onload=() => {
             v-if="is_there_data_to_save && is_gene_available && Object.entries(this.config.colors).length !== 0"
           ></display-colors>
         </transition>
-        <transition name="fade" mode="out-in">
+        <transition name="fade" mode="out-in" v-if="['scatter', 'tsne_dynamic', 'tsne/umap_dynamic'].includes(this.plot_type)">
           <display-palettes
             v-if="is_there_data_to_save && is_gene_available && this.config.color_name !== (null || undefined) && Object.entries(this.config.colors).length === 0"
           ></display-palettes>
@@ -1831,7 +1829,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["config"]),
+      ...Vuex.mapState(["config", "plot_type"]),
       is_there_data_to_save() {
         return (
           "x_axis" in this.config &&
@@ -2778,12 +2776,9 @@ window.onload=() => {
       </b-container>
     `,
     components: {
-      plotlyDisplay,
       plotlyChart,
       svgChart,
       tsneChart,
-      svgDisplay,
-      tsneDisplay,
       configurationPanel,
     },
     computed: {
@@ -2826,6 +2821,13 @@ window.onload=() => {
     template: `
       <b-container v-if='!loading' fluid id="dataset-display">
         <b-row>
+        <!--
+        <b-col cols='2'>
+          <choose-display-type></choose-display-type>
+        </b-col>
+        </b-row>
+        -->
+        <b-row>
           <b-col cols='2'>
             <plotly-display v-if="is_type_plotly" :display_id='display_id'></plotly-display>
             <svg-display v-else-if='is_type_svg' :display_id="display_id"></svg-display>
@@ -2854,9 +2856,13 @@ window.onload=() => {
     `,
     props: ["display_id"],
     components: {
-      newDisplay,
       plotlyDisplay,
+      svgDisplay,
       tsneDisplay,
+      plotlyChart,
+      svgChart,
+      tsneChart,
+      chooseDisplayType,
     },
     data() {
       return {
@@ -3020,7 +3026,7 @@ window.onload=() => {
         // reset config, as different display types
         // has different configs
         state.config = {
-          gene_symbol: "",
+          gene_symbol: "",  // Commenting out since switching plot types should not affect the gene symbol.
           analysis: state.config.analysis,
           colors: null,
         };
