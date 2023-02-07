@@ -38,11 +38,11 @@ def _on_request(channel, method_frame, properties, body):
     projection_id = deserialized_body["projection_id"]
     session_id = deserialized_body["session_id"]
     scope = deserialized_body["scope"]
-    is_pca = deserialized_body["is_pca"]
+    algorithm = deserialized_body["algorithm"]
 
     with open(stream, "a") as fh:
         print("{} - [x] - Received request for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), flush=True, file=fh)
-        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca, fh)
+        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh)
 
         # Send the output back to the Flask API call
         try:

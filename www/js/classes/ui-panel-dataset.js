@@ -548,11 +548,11 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source, is_pca, gctype) {
+    async run_projectR(projection_source, algorithm, gctype) {
         const dataset_id = this.id;
         const payload = {
             genecart_id: projection_source,
-            is_pca,
+            algorithm,
         };
         const other_opts = {}
         if (this.controller) {

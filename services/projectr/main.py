@@ -1,10 +1,16 @@
-import json, os, sys
+import os, sys
 import pandas as pd
 from flask import Flask, abort, jsonify, request
 
-from rfuncs import run_projectR_cmd, RError
-
 app = Flask(__name__)
+
+### Each projection needs to return samples as rows, pattern weights as columns.
+
+def do_binary_projection(target_df, loading_df):
+    """Perform projection based on the number of genes that were expressed in the cell or observation."""
+    # Only applies with unweighted gene carts.
+    tp_target_series = target_df.astype(bool).sum(axis=0).transpose()
+    return pd.DataFrame(data=tp_target_series, columns=loading_df.columns, index=tp_target_series.index)
 
 def do_pca_projection(target_df, loading_df):
     """Perform projection of PCA loadings."""
@@ -16,7 +22,7 @@ def index():
     req_json = request.get_json()
     target = req_json['target']
     loadings = req_json['loadings']
-    is_pca = req_json['is_pca']
+    algorithm = req_json['algorithm']
     genecart_id = req_json["genecart_id"]
     dataset_id = req_json["dataset_id"]
 
@@ -42,8 +48,12 @@ def index():
     # centering around zero for PCA loadings.  Chunking the data breaks
     # the output due to the centering around zero step.
     try:
-        if is_pca:
+        if algorithm == "pca":
             return jsonify(do_pca_projection(target_df,loading_df).to_json(orient="split"))
+        elif algorithm == "binary":
+            return jsonify(do_binary_projection(target_df, loading_df).to_json(orient="split"))
+
+        from rfuncs import run_projectR_cmd
         projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
     except Exception as e:
         abort(500, description=str(e))
