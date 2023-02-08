@@ -2820,8 +2820,8 @@ window.onload=() => {
   const datasetDisplay = Vue.component("dataset-display", {
     template: `
       <b-container v-if='!loading' fluid id="dataset-display">
-        <b-row>
         <!--
+        <b-row>
         <b-col cols='2'>
           <choose-display-type></choose-display-type>
         </b-col>
