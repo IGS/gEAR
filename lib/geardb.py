@@ -2303,7 +2303,7 @@ class GeneCollection:
     def add_gene(self, gene):
         self.genes.append(gene)
 
-    def get_by_gene_symbol(self, gene_symbol=None, exact=None):
+    def get_by_gene_symbol(self, gene_symbol=None, exact=None, organism_id=None):
         """
         Searches the database by gene symbol and populates the GeneCollection.genes attribute.
 
@@ -2323,24 +2323,28 @@ class GeneCollection:
             if len(gene_symbol) == 0:
                 continue
 
+            org_addendum = ""
+            if organism_id:
+                org_addendum = "AND organism_id = {} ".format(organism_id)
+
             # this comes from javascript as a string true/false
             if exact in [True, 'true', 1, "1"]:
                 qry = """
                   SELECT id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,
                          molecule, start, stop, gene_symbol, product, biotype
                     FROM gene
-                   WHERE gene_symbol = %s
+                   WHERE gene_symbol = %s {}
                   ORDER BY gene_symbol, organism_id, ensembl_release DESC
-                """
+                """.format(org_addendum)
                 cursor.execute(qry, (gene_symbol,))
             else:
                 qry = """
                   SELECT id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,
                          molecule, start, stop, gene_symbol, product, biotype
                     FROM gene
-                   WHERE gene_symbol LIKE %s
+                   WHERE gene_symbol LIKE %s {}
                   ORDER BY gene_symbol, organism_id, ensembl_release DESC
-                """
+                """.format(org_addendum)
                 cursor.execute(qry, ('%' + gene_symbol + '%',))
 
             for (id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,

@@ -1001,7 +1001,6 @@ $("#projection_search_form").submit((event) => {
     }
 
     const projection_algorithm = $('[name="projection_algo"]:checked').val();
-    const is_pca = projection_algorithm == 'pca';
 
     // Get selected projections and add as state
     const selected_projections = [];
@@ -1047,7 +1046,7 @@ $("#projection_search_form").submit((event) => {
 
         dataset_collection_panel.reset_abort_controller();
         dataset_collection_panel.datasets.map((dataset) => {
-            run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
+            run_projection(dataset, projection_source, projection_algorithm, gctype, selected_projections, first_thing);
         });
         return false;  // keeps the page from not refreshing
     }
@@ -1063,6 +1062,14 @@ $("#projection_source").on('change', (_event) => {
     $('#search_results_scrollbox').hide();
 
     const gctype = $("#projection_source").data("gctype");
+
+    $("#binary_algo_form_check").hide();
+    $('#multi_pattern').show();
+    if (gctype === "unweighted-list") {
+        $("#binary_algo_form_check").show();
+        $('#multi_pattern').hide();
+    }
+
     $.ajax({
         type: "POST",
         url: "./cgi/get_pattern_element_list.cgi",
@@ -1250,9 +1257,9 @@ $('.js-gene-cart').change( function() {
     }
 });
 
-async function run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing) {
+async function run_projection(dataset, projection_source, projection_algorithm, gctype, selected_projections, first_thing) {
     try {
-        await dataset.run_projectR(projection_source, is_pca, gctype);
+        await dataset.run_projectR(projection_source, projection_algorithm, gctype);
         if (dataset.projection_id) {
             if (multigene) {
                 // 'entries' is array of gene_symbols
@@ -1356,8 +1363,6 @@ function set_scrollbar_props() {
 
 function update_datasetframes_projections() {
 
-    const is_pca = $('[name="projection_algo"]').filter(':checked').val() == 'pca';
-
     // Get selected projections and add as state
     const selected_projections = [];
     $('.js-projection-pattern-elts-check:checked').each(function() {
@@ -1376,9 +1381,11 @@ function update_datasetframes_projections() {
     const first_thing = $('#search_results a.list-group-item').first();
     select_search_result(first_thing, draw_display=false);
 
+    const projection_algorithm = $('[name="projection_algo"]:checked').val();
+
     // Run ProjectR for the chosen pattern
     dataset_collection_panel.datasets.map((dataset) => {
-        run_projection(dataset, projection_source, is_pca, gctype, selected_projections, first_thing);
+        run_projection(dataset, projection_source, projection_algorithm, gctype, selected_projections, first_thing);
     });
 }
 

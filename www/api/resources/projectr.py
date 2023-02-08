@@ -60,7 +60,7 @@ Total number of projections in whole by_genecart directory = total number in by_
 parser = reqparse.RequestParser(bundle_errors=True)
 parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required', type=str, required=True)
 parser.add_argument('scope', type=str, required=False)
-parser.add_argument('is_pca', help="'is_pca' needs to be a boolean", type=bool,  required=False)
+parser.add_argument('algorithm', help="An algorithm needs to be provided", type=str,  required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
 parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used at the moment
 
@@ -141,9 +141,9 @@ def concat_fetch_results_to_dataframe(res_jsons):
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
-def create_new_uuid(dataset_id, genecart_id, is_pca):
+def create_new_uuid(dataset_id, genecart_id, algorithm):
     import hashlib, uuid
-    uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, is_pca)
+    uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, algorithm)
     md5 = hashlib.md5()
     md5.update(uuid_str.encode("utf-8"))
     return uuid.UUID(md5.hexdigest())
@@ -151,7 +151,9 @@ def create_new_uuid(dataset_id, genecart_id, is_pca):
 def create_unweighted_loading_df(genecart):
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
-    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(genecart.genes), exact=True)
+    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(genecart.genes), exact=True, organism_id=genecart.organism_id)
+
+    #TODO: Need to filter by organism
 
     loading_data = ({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1} for gene in gene_collection.genes)
     return pd.DataFrame(loading_data)
@@ -213,7 +215,7 @@ def limited_as_completed(coros, limit):
     while futures:
         yield first_to_finish()
 
-async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size):
+async def fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
 
     async with aiohttp.ClientSession() as client:
@@ -222,7 +224,7 @@ async def fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chun
         coros = (fetch_one(client, {
                 "target": chunk_df.to_json(orient="split")
                 , "loadings": loadings_json
-                , "is_pca": is_pca
+                , "algorithm": algorithm
                 , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                 , "dataset_id":dataset_id
                 }) for chunk_df in chunk_dataframe(target_df, chunk_size))
@@ -249,14 +251,14 @@ async def fetch_one(client, payload):
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
         return await response.json()
 
-def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca, fh):
+def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh):
     success = 1
     message = ""
 
     if not fh:
         fh=sys.stderr
 
-    projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, is_pca)
+    projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, algorithm)
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
     dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
@@ -271,7 +273,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         genecart_genes = None
         dataset_genes = None
         for config in projections_dict[genecart_id]:
-            if int(is_pca) == config['is_pca']:
+            # Handle legacy algorithm
+            if "is_pca" in config:
+                config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+
+            if algorithm == config["algorithm"]:
                 common_genes = config.get('num_common_genes', None)
                 genecart_genes = config.get('num_genecart_genes', -1)
                 dataset_genes = config.get('num_dataset_genes', -1)
@@ -450,11 +456,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=fh)
 
-    if this.servercfg['projectR_service']['enabled'].startswith("1"):
+    if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            results = loop.run_until_complete(fetch_all(target_df, loading_df, is_pca, genecart_id, dataset_id, chunk_size))
+            results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size))
         except Exception as e:
             print(str(e), file=fh)
             # Raises as soon as one "gather" task has an exception
@@ -478,6 +484,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         gc.collect()    # trying to clear memory
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
+            print(str(e), file=sys.stderr)
             return {
                 'success': -1
                 , 'message': "Not all chunked sample rows were returned by projectR.  Cannot proceed."
@@ -496,19 +503,23 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         service_path = abs_path_gear.joinpath('services')
         # abs_path_lib is a Path object so we need to convert to string
         sys.path.insert(0, str(service_path))
-        from projectr.main import do_pca_projection
-        from projectr.rfuncs import run_projectR_cmd
 
         # https://github.com/IGS/gEAR/issues/442#issuecomment-1317239909
         # Basically this is a stopgap until projectR has an option to remove
         # centering around zero for PCA loadings.  Chunking the data breaks
         # the output due to the centering around zero step.
         try:
-            if is_pca:
+            if algorithm == "pca":
+                from projectr.main import do_pca_projection
                 projection_patterns_df = do_pca_projection(target_df,loading_df)
+            elif algorithm == "binary":
+                from projectr.main import do_binary_projection
+                projection_patterns_df = do_binary_projection(target_df,loading_df)
             else:
+                from projectr.rfuncs import run_projectR_cmd
                 projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
         except Exception as e:
+            print(str(e), file=sys.stderr)
             return {
                 'success': -1
                 , 'message': "Something went wrong with the projection-creating step."
@@ -530,7 +541,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             dataset_projections_dict = json.load(projection_fh)
     dataset_projections_dict.setdefault(genecart_id, []).append({
         "uuid": projection_id
-        , "is_pca": int(is_pca)
+        , "algorithm": algorithm
         , "num_common_genes": intersection_size
         , "num_genecart_genes": num_loading_genes
         , "num_dataset_genes": num_target_genes
@@ -552,7 +563,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         genecart_projections_dict = json.load(projection_fh)
     genecart_projections_dict.setdefault(dataset_id, []).append({
         "uuid": projection_id
-        , "is_pca": int(is_pca)
+        , "algorithm": algorithm
         , "num_common_genes": intersection_size
         , "num_genecart_genes": num_loading_genes
         , "num_dataset_genes": num_target_genes
@@ -579,7 +590,7 @@ class ProjectROutputFile(Resource):
     def post(self, dataset_id):
         args = parser.parse_args()
         genecart_id = args['genecart_id']
-        is_pca = args['is_pca']
+        algorithm = args['algorithm']
 
         # Create the directory if it doesn't exist
         # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
@@ -628,7 +639,11 @@ class ProjectROutputFile(Resource):
             old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
         for config in projections_dict[genecart_id]:
-            if int(is_pca) == config['is_pca']:
+            # Handle legacy algorithm
+            if "is_pca" in config:
+                config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+
+            if algorithm == config["algorithm"]:
                 projection_id = config['uuid']
                 dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
                 return {
@@ -650,7 +665,7 @@ class ProjectR(Resource):
         args = run_projectr_parser.parse_args()
 
         genecart_id = args['genecart_id']
-        is_pca = args['is_pca']
+        algorithm = args['algorithm']
         projection_id = args['projection_id']
         scope = args['scope']
 
@@ -714,4 +729,4 @@ class ProjectR(Resource):
                 print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
                 return response
         else:
-            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, is_pca, sys.stderr)
+            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, sys.stderr)
