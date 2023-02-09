@@ -150,7 +150,7 @@ $(document).on("handle_page_loading", () => {
     // If exact match icon is clicked, toggle parameters
     $('.js-exact-match').click(() => {
         exact_match = !exact_match;
-        set_exact_match(!exact_match);
+        set_exact_match(exact_match);
     });
 
     // If MG search icon is clicked, toggle parameters
