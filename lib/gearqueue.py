@@ -402,6 +402,19 @@ class AsyncConnection(Connection):
                 self.on_cancelok, userdata=self._consumer_tag)
             self.channel.basic_cancel(self._consumer_tag, cb)
 
+    def on_cancelok(self, _unused_frame, userdata):
+        """This method is invoked by pika when RabbitMQ acknowledges the
+        cancellation of a consumer. At this point we will close the channel.
+        This will invoke the on_channel_closed method once the channel has been
+        closed, which will in-turn close the connection.
+        :param pika.frame.Method _unused_frame: The Basic.CancelOk frame
+        :param str|unicode userdata: Extra user data (consumer tag)
+        """
+        self._consuming = False
+        print("{} - RabbitMQ acknowledged the cancellation of the consumer: {}".format(self.pid, userdata), flush=True, file=self.log_fh)
+        print("{} - Closing channel".format(self.pid), flush=True, file=self.log_fh)
+        self._channel.close()
+
     def run(self):
         """Run the example consumer by connecting to RabbitMQ and then
         starting the IOLoop to block and allow the SelectConnection to operate.
