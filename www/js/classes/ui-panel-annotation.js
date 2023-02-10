@@ -121,6 +121,8 @@ class FunctionalAnnotationPanel {
     }
 
     set_active_organism(organism_id) {
+        console.log("Setting active organism (" + organism_id + ") with these data:");
+        console.log(this.annotation);
         /*
           Updates the annotation panel based on selected organism.  This does 
           both the button array and annotation fields

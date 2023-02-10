@@ -73,6 +73,7 @@ function deafness_plugin_gene_change() {
     }
 
     $('button.icon-deafness-gene').each(function() {
+        console.log("Setting title = " + $(this).attr("data-title"));
         $(this).popover("dispose").popover({    
             content : $(this).attr("data-popover"),
             placement : 'auto',
