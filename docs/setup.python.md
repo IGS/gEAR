@@ -29,6 +29,7 @@ fixed paths have worked fine for decades.
     $ ./pip3 install --upgrade pip
 
     $ ./pip3 install \
+      aiohttp==3.8.3 \
       anndata==0.7.8 \
       aiohttp \
       biocode==0.10.0 \
