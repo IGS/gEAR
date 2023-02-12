@@ -2319,13 +2319,13 @@ class GeneCollection:
 
         gene_symbols = gene_symbol.split(' ')
 
+        org_addendum = ""
+        if organism_id:
+            org_addendum = "AND organism_id = {} ".format(organism_id)
+
         for gene_symbol in gene_symbols:
             if len(gene_symbol) == 0:
                 continue
-
-            org_addendum = ""
-            if organism_id:
-                org_addendum = "AND organism_id = {} ".format(organism_id)
 
             # this comes from javascript as a string true/false
             if exact in [True, 'true', 1, "1"]:
