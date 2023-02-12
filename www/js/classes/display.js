@@ -120,7 +120,6 @@ class Display {
                 console.info("display draw canceled for previous request");
                 return;
             }
-            console.error(e);
             this.show_error(message);
             return;
         }
@@ -175,7 +174,6 @@ class Display {
                 console.info("display multigene draw canceled for previous request");
                 return;
             }
-            console.error(e);
             this.show_error(message);
             return;
         }
