@@ -1483,6 +1483,7 @@ $(document).on("click", "#projection_pattern_deselect_all", () => {
 // SAdkins - 5/6/22 - Moved these functions to top level so they are loaded quicker, so triggers work without needing a timeout period before.
 $('#intro_search_form').on('submit', (e) => {
     // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
+    e.preventDefault();    // Prevents "enter" from being used as a submit trigger
     $('#intro_content').hide();
 
     $("#leftbar_main").show();
