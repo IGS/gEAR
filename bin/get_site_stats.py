@@ -123,7 +123,7 @@ def get_fp_gene_searches(base_dir):
             if file_is_compressed:
                 line = line.decode()
 
-            m = re.search('search_genes.py', line)
+            m = re.search('search_genes.cgi', line)
             if m:
                 gene_search_count += 1
 

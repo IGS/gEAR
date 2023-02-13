@@ -93,7 +93,7 @@ $(document).on("handle_page_loading", () => {
 
     if (multigene) {
         exact_match = multigene;
-        set_exact_match(exact_match, false);  // Multigene searches are exact.  This should speed up search_genes.py
+        set_exact_match(exact_match, false);  // Multigene searches are exact.  This should speed up search_genes.cgi
     }
 
     // If gene symbols were provided (via either URL param method), click search button.
@@ -219,7 +219,7 @@ $(document).on("handle_page_loading", () => {
             if (projection) {
                 // Get selected projections and add as state
                 $('.js-projection-pattern-elts-check:checked').each(function() {
-                    // Needs to be Object so it can be the same structure as "search_genes.py" so it fits nicesly in populate_search_result_list()
+                    // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
                     const label = $(this).data('label');
                     selected_projections[label] = label;
                 });
@@ -254,8 +254,8 @@ $(document).on("handle_page_loading", () => {
                 $('#multigene_search_indicator').hide();
             }
 
-            // Adjust num_genes badge (this does not use the result from search_genes.py so that may mismatch if "exact" is not chosen)
-            // TODO: Actually run search_genes.py to get annotation information
+            // Adjust num_genes badge (this does not use the result from search_genes.cgi so that may mismatch if "exact" is not chosen)
+            // TODO: Actually run search_genes.cgi to get annotation information
             $('#search_result_count').text(projection ? Object.keys(selected_projections).length : uniq_gene_symbols.length);
         }
     });
@@ -939,13 +939,14 @@ $("#gene_search_form").submit((event) => {
     dataset_collection_panel.load_frames({dataset_id, multigene});
 
     // Add Exact Match param
-    formData.push({"name": "exact_match", "value" :Number(exact_match)});
+    formData.push({"name": "exact_match", "value": Number(exact_match)});
 
     $.ajax({
-        url : './cgi/search_genes.py',
+        url : './cgi/search_genes.cgi',
         type: "POST",
         data : formData,
-        dataType:"json",
+        dataType:"json"
+        
     }).done((data) => {
         // reset search_results
         search_results = data;
@@ -982,7 +983,8 @@ $("#gene_search_form").submit((event) => {
 
         } else {
             // Some other error occurred
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Could not successfully search for genes in database.");
+            console.log(jqXHR.responseText);
+            display_error_bar(`${jqXHR.status} ${errorThrown.name} (${textStatus})`, "Could not successfully search for genes in database.");
         }
     }).always(() => {
         $('#searching_indicator_c').hide();
@@ -1022,7 +1024,7 @@ $("#projection_search_form").submit((event) => {
     // Get selected projections and add as state
     const selected_projections = [];
     $('.js-projection-pattern-elts-check:checked').each(function() {
-        // Needs to be Object so it can be the same structure as "search_genes.py" so it fits nicesly in populate_search_result_list()
+        // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
         const label = $(this).data('label');
         selected_projections[label] = label;
     });
@@ -1053,7 +1055,7 @@ $("#projection_search_form").submit((event) => {
 
         search_results = selected_projections;
 
-        // Implementing search_genes.py results without the CGI execution
+        // Implementing search_genes.cgi results without the CGI execution
         populate_search_result_list(selected_projections);
         $('#intro_content').hide('fade', {}, 400);
         // auto-select the first match.  first <a class="list-group-item"
@@ -1383,7 +1385,7 @@ function update_datasetframes_projections() {
     // Get selected projections and add as state
     const selected_projections = [];
     $('.js-projection-pattern-elts-check:checked').each(function() {
-        // Needs to be Object so it can be the same structure as "search_genes.py" so it fits nicesly in populate_search_result_list()
+        // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
         const label = $(this).data('label');
         selected_projections[label] = label;
     });
