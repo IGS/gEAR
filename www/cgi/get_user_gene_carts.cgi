@@ -78,8 +78,8 @@ def main():
 
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
-        all_carts = domain_carts + user_carts + group_carts + shared_carts + public_carts
-        gctypes = {cart.gctype for cart in all_carts}
+        gctypes = ["unweighted-list", "weighted-list"]
+        gctypes_result = dict()
         for cart_type in gctypes:
             subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
             subset_user_carts = filter_by_cart_type(user_carts, cart_type)
@@ -87,14 +87,14 @@ def main():
             subset_shared_carts = filter_by_cart_type(shared_carts, cart_type)
             subset_public_carts = filter_by_cart_type(public_carts, cart_type)
 
-            result[cart_type] = { 'domain_carts':subset_domain_carts,
+            gctypes_result[cart_type] = { 'domain_carts':subset_domain_carts,
                 'group_carts':subset_group_carts,
                 'public_carts':subset_public_carts,
                 'shared_carts':subset_shared_carts,
                 'user_carts':subset_user_carts }
 
         # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
-        print(json.dumps(result, default=lambda o: o.__dict__))
+        print(json.dumps(gctypes_result, default=lambda o: o.__dict__))
         sys.exit(0)
 
     if filter_cart_type:
