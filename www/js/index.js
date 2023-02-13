@@ -723,7 +723,6 @@ async function load_all_trees(){
     } catch (err) {
         console.error(err)
     }
-    console.info("Trees loaded");
 
     // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
     $(document).trigger("handle_page_loading");
@@ -934,7 +933,7 @@ $("#gene_search_form").submit((event) => {
     formData.push({"name": "exact_match", "value" :Number(exact_match)});
 
     $.ajax({
-        url : './cgi/search_genes.py',
+        url : './cgi/search_genes.cgi',
         type: "POST",
         data : formData,
         dataType:"json",
