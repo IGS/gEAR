@@ -29,6 +29,9 @@ div#controls_profile h4 {
     padding-bottom: 3px;
     border-bottom: 2px solid rgb(220,220,220);
 }
+div.editable-version textarea {
+    width: 100%;
+}
 div#gc_count_label_c span {
     font-size: 120%;
     font-weight: bold;

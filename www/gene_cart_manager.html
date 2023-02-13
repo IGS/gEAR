@@ -302,7 +302,7 @@
                         </div>
                       </div>
                        <div class="col-sm-1">
-                         <!--<span class="gc-expander pull-right" data-gc-id="{{:id}}"><i class="fa fa-expand"></i></span>-->
+                         <span class="gc-expander pull-right" data-gc-id="{{:id}}"><i class="fa fa-expand"></i></span>
                        </div>
                      </div>
                      <div class="row no-gutters">
@@ -384,8 +384,26 @@
                               {{/for}}
                               </ul>
                            {{/if}}
+                           </div>
+                       </div> <!-- end .row -->
+                       <hr class="expandable-view expanded-view-hidden" />
+                       <div class="row expandable-view expanded-view-hidden">
+                          <div class="col-sm-1">
+
+                          </div>
+                          <div class="col-sm-11 is-editable">
+                             <h5>Long description</h5>
+                             {{if ldesc}}
+                             <div id="result_gc_id_{{:id}}_display_ldesc">{{:ldesc}}</div>
+                             {{else}}
+                             <p>No description entered</p>
+                             {{/if}}
+                          </div>
+                          <div class="col-sm-11 editable-version">
+                             <h5>Long description</h5>
+                             <textarea id="result_gc_id_{{:id}}_editable_ldesc" rows="4" data-original-val="{{:ldesc}}">{{:ldesc}}</textarea>
+                          </div>
                        </div>
-                     </div> <!-- end .row -->
                    </div>
                    <hr class="gc_list_element_divider" />
                  </div> <!-- end .gc_list_element_c -->

@@ -50,6 +50,21 @@ window.onload= () => {
         }
     });
 
+    $(document).on('click', 'span.gc-expander', function() {
+        var gc_id = $(this).data('gc-id');
+        var selector_base = "#result_gc_id_" + gc_id;
+
+        if ($(selector_base + " .expandable-view").hasClass('expanded-view-hidden')) {
+            $(selector_base + " .expandable-view").removeClass('expanded-view-hidden');
+            $(selector_base + " .gc-expander i").removeClass('fa-expand');
+            $(selector_base + " .gc-expander i").addClass('fa-compress');
+        } else {
+            $(selector_base + " .expandable-view").addClass('expanded-view-hidden');
+            $(selector_base + " .gc-expander i").removeClass('fa-compress');
+            $(selector_base + " .gc-expander i").addClass('fa-expand');
+        }
+    });
+    
     $(document).on('click', 'button.edit_gc', function() {
         var gc_id = $(this).data('gc-id');
         var selector_base = "#result_gc_id_" + gc_id;
@@ -84,6 +99,32 @@ window.onload= () => {
         window.location = "./p?c=" + $(this).val();
     });
 
+    $("#btn_list_view_compact").click(function(e) {
+        $("#btn_arrangement_view").removeClass('active');
+        $("#btn_list_view_compact").addClass('active');
+        $("#btn_list_view_expanded").removeClass('active');
+
+        $("#gc_list_c").show();
+
+        // find all elements with class 'expandable-view' and make sure they also have 'expanded-view-hidden'
+        $(".expandable-view").each(function() {
+            $(this).addClass("expanded-view-hidden");
+        });
+    });
+
+    $("#btn_list_view_expanded").click(function(e) {
+        $("#btn_arrangement_view").removeClass('active');
+        $("#btn_list_view_compact").removeClass('active');
+        $("#btn_list_view_expanded").addClass('active');
+
+        $("#gc_list_c").show();
+
+        // find all elements with class 'expandable-view' and make sure they also have 'expanded-view-hidden'
+        $(".expandable-view").each(function() {
+            $(this).removeClass("expanded-view-hidden");
+        });
+    });    
+    
     // Generic function to handle all collapsable menus
     // h.expandable_control is clicked and looks for plus/minus icons as siblings
     // and an .expandable_target as a direct child
