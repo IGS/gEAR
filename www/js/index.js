@@ -886,6 +886,15 @@ $('#search_gene_symbol').popover({
 });
 
 $("#gene_search_form").submit((event) => {
+    // ! Needs to be in 'submit' event to ensure "Enter" triggera are handled correctly as well
+    // Reset some stuff before submission, so it does not show while AJAX stuff is happening
+    $('#search_results').empty();
+    $('#search_result_count').empty();
+    $('#searching_indicator_c').show();
+
+    // Scope selection
+    $('#toggle_options').show();
+
     $("#viewport_intro").hide();
     $("#viewport_main").show();
     show_gene_search_view();
@@ -984,6 +993,15 @@ $("#gene_search_form").submit((event) => {
 });
 
 $("#projection_search_form").submit((event) => {
+    // ! Needs to be in 'submit' event to ensure "Enter" triggera are handled correctly as well
+    // Reset some stuff before submission, so it does not show while AJAX stuff is happening
+    $('#search_results').empty();
+    $('#search_result_count').empty();
+    $('#searching_indicator_c').hide(); // Showing patterns in the search list is super-fast, so no need to show loading indicator
+
+    // Scope selection
+    $('#toggle_options').hide();  // Not sure if this is relevant for projections
+
     $("#viewport_intro").hide();
     $("#viewport_main").show();
     show_projection_search_view();
@@ -1506,25 +1524,10 @@ $('#intro_search_icon').click((e) => {
 
 // Search from results page is clicked
 $('#submit_search').click((e) => {
-    // Reset some stuff before submission, so it does not show while AJAX stuff is happening
-    $('#search_results').empty();
-    $('#search_result_count').empty();
-    $('#searching_indicator_c').show();
-
-    // Scope selection
-    $('#toggle_options').show();
-
     $('#gene_search_form').submit();
 })
 
 // Display curations using projections instead of genes
 $('#submit_search_projection').click((e) => {
-    // Reset some stuff before submission, so it does not show while AJAX stuff is happening
-    $('#search_results').empty();
-    $('#search_result_count').empty();
-    $('#searching_indicator_c').hide(); // Showing patterns in the search list is super-fast, so no need to show loading indicator
-
-    // Scope selection
-    $('#toggle_options').hide();  // Not sure if this is relevant for projections
     $('#projection_search_form').submit();
 })
