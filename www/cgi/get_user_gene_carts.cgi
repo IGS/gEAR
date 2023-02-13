@@ -80,7 +80,6 @@ def main():
         # Group all cart results by their cart type and return
         all_carts = domain_carts + user_carts + group_carts + shared_carts + public_carts
         gctypes = {cart.gctype for cart in all_carts}
-        result = dict()
         for cart_type in gctypes:
             subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
             subset_user_carts = filter_by_cart_type(user_carts, cart_type)
