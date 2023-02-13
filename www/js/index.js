@@ -933,7 +933,7 @@ $("#gene_search_form").submit((event) => {
     formData.push({"name": "exact_match", "value" :Number(exact_match)});
 
     $.ajax({
-        url : './cgi/search_genes.cgi',
+        url : './cgi/search_genes.py',
         type: "POST",
         data : formData,
         dataType:"json",
