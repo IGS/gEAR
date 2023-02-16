@@ -501,10 +501,11 @@ class MultigeneDashData(Resource):
                 df = df.drop(columns=groupby_index)
 
             # Sort based on the specified sort order
-            sortby_fields = [primary_col]
-            if secondary_col and not primary_col == secondary_col:
-                sortby_fields.append(secondary_col)
-            df = df.sort_values(by=sortby_fields)
+            if primary_col:
+                sortby_fields = [primary_col]
+                if secondary_col and not primary_col == secondary_col:
+                    sortby_fields.append(secondary_col)
+                df = df.sort_values(by=sortby_fields)
 
             # Drop the obs metadata now that the dataframe is sorted
             # They cannot be in there when the clustergram is made
