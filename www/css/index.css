@@ -396,6 +396,7 @@ p#intro_selected_profile_warning {
     padding-top: 10px;
 }
 span.citation_authors,
+span.citation_code_and_license,
 span.citation_pub,
 span.citation_pmid {
     font-size: 90%;
