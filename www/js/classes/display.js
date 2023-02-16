@@ -77,7 +77,7 @@ class Display {
      */
     async draw(gene_symbol) {
         this.gene_symbol = gene_symbol;
-        let message = "There was an error drawing the plot.";
+        let message = "Resources are busy. Please try again in a few seconds.";
 
         try {
             const { data } = await this.get_data(gene_symbol);
@@ -131,7 +131,7 @@ class Display {
      */
     async draw_mg(gene_symbols) {
         this.gene_symbols = gene_symbols;
-        let message = "There was an error drawing the plot.";
+        let message = "Resources are busy. Please try again in a few seconds.";
 
         try {
             const { data } = await this.get_data(gene_symbols);
