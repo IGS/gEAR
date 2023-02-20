@@ -217,6 +217,7 @@ $(document).on("handle_page_loading", () => {
 
             // Update search history depending on parameters involved.
             if (projection) {
+                // TODO: Look into adding update_dataframes_projections in here instead of set_layout. This should help deduplicate some of the code.
                 // Get selected projections and add as state
                 $('.js-projection-pattern-elts-check:checked').each(function() {
                     // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
@@ -238,7 +239,7 @@ $(document).on("handle_page_loading", () => {
             }
 
             $("#too_many_genes_warning").hide();
-            $('#search_result_count').text('');
+            $('#search_result_count').empty();
             if (multigene) {
                 // MG enabled
                 $('#search_results_scrollbox').hide();
@@ -946,7 +947,6 @@ $("#gene_search_form").submit((event) => {
         type: "POST",
         data : formData,
         dataType:"json"
-        
     }).done((data) => {
         // reset search_results
         search_results = data;
@@ -1045,11 +1045,11 @@ $("#projection_search_form").submit((event) => {
     const projection_source = $("#projection_source").val() ? $("#projection_source").val() : null;
     projection = true;
 
-    // Add the patterns source to the history.
-    add_state_history(selected_projections_string, projection_source, projection_algorithm);
-
     // Run ProjectR for the chosen pattern
     if (projection_source) {
+        // Add the patterns source to the history.
+        add_state_history(selected_projections_string, projection_source, projection_algorithm);
+
         dataset_collection_panel.load_frames({dataset_id, multigene, projection});
         const gctype = $("#projection_source").data('gctype');
 
@@ -1079,6 +1079,7 @@ $("#projection_search_form").submit((event) => {
 $("#projection_source").on('change', (_event) => {
     // Hide previous genecart pattern list of results
     $('#search_results_scrollbox').hide();
+    $('#search_result_count').empty();
 
     const gctype = $("#projection_source").data("gctype");
 
@@ -1088,6 +1089,10 @@ $("#projection_source").on('change', (_event) => {
         $("#binary_algo_form_check").show();
         $('#multi_pattern').hide();
     }
+
+    // Empty these since the old pattern vals may not be relevent to the current pattern.
+    $('#search_results').empty();
+    $("#search_gene_symbol").empty();
 
     $.ajax({
         type: "POST",
@@ -1381,6 +1386,18 @@ function set_scrollbar_props() {
 }
 
 function update_datasetframes_projections() {
+    // TODO: Refactor this to not repeat so much of the projection search submit event
+
+    // Assumes that projection source is still present.
+    const projection_source = $("#projection_source").val();
+    if (!projection_source) {
+        return;
+    }
+
+    if (!multigene) {
+        // If single gene, select all genes
+        $(`.js-projection-pattern-elts-check`).prop('checked', true);
+    }
 
     // Get selected projections and add as state
     const selected_projections = [];
@@ -1390,11 +1407,8 @@ function update_datasetframes_projections() {
         selected_projections[label] = label;
     });
 
-    // Assumes that projection source is still present.
-    const projection_source = $("#projection_source").val();
-    if (!projection_source) {
-        return;
-    }
+    // Implementing search_genes.cgi results without the CGI execution
+    populate_search_result_list(selected_projections);
 
     const gctype = $("#projection_source").data('gctype');
     const first_thing = $('#search_results a.list-group-item').first();
