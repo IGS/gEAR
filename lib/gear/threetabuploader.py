@@ -10,7 +10,7 @@ from gear.datasetuploader import FileType
 
 class ThreeTabUploader(FileType):
     """
-    Called by datasetuploader.py (factory) when excel file is going uploaded
+    Called by datasetuploader.py (factory) when tarball containing three tab-delimited files is going uploaded
 
     Standardized names for different files:
         'expression.tab' - contains the expression values matrix.
