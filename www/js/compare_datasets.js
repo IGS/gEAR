@@ -251,13 +251,13 @@ function load_comparison_graph() {
 			plot_data_to_graph(data);
 			return;
 		}
-		handle_get_comparison_error();
+		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
 	}).fail((data) => {
-		handle_get_comparison_error();
+		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
 	});
 }
 
-function handle_get_comparison_error() {
+function handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string) {
 	// Handle graphing failures
 	$("#plot_loading").hide();
 	$("#ticket_dataset_id").text(dataset_id);
