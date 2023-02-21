@@ -748,8 +748,7 @@ const customNumericSort = function (a, b) {
 }
 
 function populate_search_result_list(data) {
-    $('#search_results').empty();
-    $('#search_result_count').empty();
+    clear_search_result_info();
     // so we can display in sorted order.  javascript sucks like that.
     sorted_gene_syms = [];
 
@@ -891,8 +890,7 @@ $('#search_gene_symbol').popover({
 $("#gene_search_form").submit((event) => {
     // ! Needs to be in 'submit' event to ensure "Enter" triggera are handled correctly as well
     // Reset some stuff before submission, so it does not show while AJAX stuff is happening
-    $('#search_results').empty();
-    $('#search_result_count').empty();
+    clear_search_result_info();
     $('#searching_indicator_c').show();
 
     // Scope selection
@@ -999,8 +997,7 @@ $("#gene_search_form").submit((event) => {
 $("#projection_search_form").submit((event) => {
     // ! Needs to be in 'submit' event to ensure "Enter" triggera are handled correctly as well
     // Reset some stuff before submission, so it does not show while AJAX stuff is happening
-    $('#search_results').empty();
-    $('#search_result_count').empty();
+    clear_search_result_info();
     $('#searching_indicator_c').hide(); // Showing patterns in the search list is super-fast, so no need to show loading indicator
 
     // Scope selection
@@ -1081,9 +1078,8 @@ $("#projection_search_form").submit((event) => {
 $("#projection_source").on('change', (_event) => {
     // Hide previous genecart pattern list of results
     $('#search_results_scrollbox').hide();
-    $('#search_result_count').empty();
     // Empty these since the old pattern vals may not be relevent to the current pattern.
-    $('#search_results').empty();
+    clear_search_result_info();
     $("#search_gene_symbol").empty();
 
     const gctype = $("#projection_source").data("gctype");
@@ -1504,6 +1500,11 @@ function show_functional_panel() {
     $('#gene_details_c').show();
     $('#links_out_c').show();
     $('#highly_expressed_genes_card').hide();
+}
+
+function clear_search_result_info() {
+    $('#search_results').empty();
+    $('#search_result_count').empty();
 }
 
 // Events to select and deselect all projection pattern checkboxes
