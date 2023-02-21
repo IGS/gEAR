@@ -71,7 +71,7 @@ To run in a localhost environment (to test on Docker images), pass in `--data=lo
 
 If a test fails, the default tracebacks can be pretty long, so you can also pass in `tb=short`, `tb=line`, or `tb=no` to shorten the traceback or remove it entirely. Adding the option `-rA` will print a summary table of passes and fails by test.  You can also pass in `--demo` which runs the test at a slower rate, and gives visual indicators on which elements are being interacted with (i.e. clicks).
 
-** RECOMMENDED ** Adding `--headless` runs the tests with a headless browser, which can be good if you are running tests on a server, or while you are doing work (when the browser will pop up in front of the window you are working in).
+**RECOMMENDED** Adding `--headless` runs the tests with a headless browser, which can be good if you are running tests on a server, or while you are doing work (when the browser will pop up in front of the window you are working in).
 
 Reference: https://seleniumbase.io/help_docs/customizing_test_runs/#seleniumbase-methods-api-reference
 

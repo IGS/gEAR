@@ -19,6 +19,7 @@ class DatasetCollectionPanel {
         if (!this.datasets) {
             this.datasets = new Array();
         }
+
     }
 
     load_frames({
@@ -47,43 +48,41 @@ class DatasetCollectionPanel {
                 default_domain: this.layout_label,
                 layout_id: dsc_panel.layout_id,
             },
-            dataType: "json",
-            success(data) {
-                $.each(data["datasets"], (_i, ds) => {
-                    // Choose single-gene or multigene grid-width
-                    const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
+            dataType: "json"
+        }).done((data) => {
+            $.each(data["datasets"], (_i, ds) => {
+                // Choose single-gene or multigene grid-width
+                const grid_width = multigene ? ds.mg_grid_width : ds.grid_width;
 
-                    const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.controller);
+                this.reset_abort_controller();
+                const dsp = new DatasetPanel(ds, grid_width, multigene, projection, dsc_panel.controller);
 
-                    if (dsp.load_status == "completed") {
-                        // reformat the date
-                        dsp.date_added = new Date(dsp.date_added);
+                if (dsp.load_status == "completed") {
+                    // reformat the date
+                    dsp.date_added = new Date(dsp.date_added);
 
-                        // Insert line-breaks into dataset descriptions if it doesn't look
-                        // like HTML already
-                        if (dsp.ldesc && !/<\/?[a-z][\s\S]*>/i.test(dsp.ldesc)) {
-                            dsp.ldesc = dsp.ldesc.replace(/(\r\n|\n\r|\r|\n)/g, "<br />");
-                        }
+                    // Insert line-breaks into dataset descriptions if it doesn't look
+                    // like HTML already
+                    if (dsp.ldesc && !/<\/?[a-z][\s\S]*>/i.test(dsp.ldesc)) {
+                        dsp.ldesc = dsp.ldesc.replace(/(\r\n|\n\r|\r|\n)/g, "<br />");
                     }
-
-                    dsc_panel.datasets.push(dsp);
-                });
-
-                $("span#domain_choice_info_count").text(dsc_panel.datasets.length);
-
-                if (dataset_id) {
-                    const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
-                    const permalinkViewHtml = permalinkViewTmpl.render(data["datasets"]);
-                    $("#permalink_info").html(permalinkViewHtml);
-                    dsc_panel.datasets.forEach((ds) => (ds.zoomed = true));
                 }
-                const listViewTmpl = $.templates("#tmpl_datasetbox");
-                const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
-                $("#dataset_grid").html(listViewHtml);
-            },
-            error(jqXHR, _textStatus, errorThrown) {
-                display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
-            },
+                dsc_panel.datasets.push(dsp);
+            });
+
+            $("span#domain_choice_info_count").text(dsc_panel.datasets.length);
+
+            if (dataset_id) {
+                const permalinkViewTmpl = $.templates("#tmpl_permalink_info");
+                const permalinkViewHtml = permalinkViewTmpl.render(data["datasets"]);
+                $("#permalink_info").html(permalinkViewHtml);
+                dsc_panel.datasets.forEach((ds) => (ds.zoomed = true));
+            }
+            const listViewTmpl = $.templates("#tmpl_datasetbox");
+            const listViewHtml = listViewTmpl.render(dsc_panel.datasets);
+            $("#dataset_grid").html(listViewHtml);
+        }).fail((jqXHR, textStatus, errorThrown) => {
+            display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
         });
     }
 
@@ -94,7 +93,7 @@ class DatasetCollectionPanel {
     }
 
     reset_abort_controller() {
-        if (this.controller) {
+        if (this.controller && !this.performing_projection) {
             this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
         }
         this.controller = new AbortController(); // Create new controller for new set of frames
@@ -114,7 +113,6 @@ class DatasetCollectionPanel {
         /*
               Updates this object, the user's stored cookie, and the database and UI labels
             */
-
         Cookies.set("gear_default_domain", layout_label);
 
         this.layout_id = layout_id;
@@ -142,6 +140,11 @@ class DatasetCollectionPanel {
                 data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
             }).done((data) => {
                 if (data.success == 1) {
+                    if (projection) {
+                        update_datasetframes_projections();
+                        return;
+                    }
+
                     //Was a search already performed?
                     if (this.search_performed) {
                         // User has already searched, automatically update datasets and gene searches

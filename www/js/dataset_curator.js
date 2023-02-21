@@ -21,10 +21,8 @@ window.onload=() => {
     template: `
       <b-row v-if='title' class='justify-content-md-center id="dataset-title"'>
         <div class="mt-5 col-12">
-        <!--
-          <h2 class='font-weight-light'>You are curating <span class='font-weight-bold'>{{ title }}</span></h2>
+          <h2 class='font-weight-light'>Dataset: <span class='font-weight-bold'>{{ title }}</span></h2>
           <hr />
-          -->
         </div>
       </b-row>
     `,
@@ -118,10 +116,10 @@ window.onload=() => {
       ]),
       is_loading() {
         return (this.preconfigured && this.display_tsne_is_loading == true) ||
-        this.tsne_is_loading ? true : false;
+        this.tsne_is_loading;
       },
       plot_params_ready() {
-        return this.config.x_axis && this.config.y_axis ? true : false;
+        return this.config.x_axis && this.config.y_axis;
       },
     },
     created() {
@@ -466,7 +464,11 @@ window.onload=() => {
           } else {
             const curator_conf = post_plotly_config.curator;
             const plot_config = this.get_plotly_updates(curator_conf, this.plot_type, "config");
-            Plotly.newPlot(this.$refs.chart, plot_json.data, plot_json.layout, plot_config);          }
+            Plotly.newPlot(this.$refs.chart, plot_json.data, plot_json.layout, plot_config);
+            // Update plot with custom plot config stuff stored in plot_display_config.js
+            const update_layout = this.get_plotly_updates(curator_conf, this.plot_type, "layout")
+            Plotly.relayout(this.$refs.chart, update_layout)
+          }
         }
         this.loading = false;
       },
@@ -1802,7 +1804,7 @@ window.onload=() => {
             v-if="is_there_data_to_save && is_gene_available && Object.entries(this.config.colors).length !== 0"
           ></display-colors>
         </transition>
-        <transition name="fade" mode="out-in">
+        <transition name="fade" mode="out-in" v-if="['scatter', 'tsne_dynamic', 'tsne/umap_dynamic'].includes(this.plot_type)">
           <display-palettes
             v-if="is_there_data_to_save && is_gene_available && this.config.color_name !== (null || undefined) && Object.entries(this.config.colors).length === 0"
           ></display-palettes>
@@ -1827,7 +1829,7 @@ window.onload=() => {
       };
     },
     computed: {
-      ...Vuex.mapState(["config"]),
+      ...Vuex.mapState(["config", "plot_type"]),
       is_there_data_to_save() {
         return (
           "x_axis" in this.config &&
@@ -2774,12 +2776,9 @@ window.onload=() => {
       </b-container>
     `,
     components: {
-      plotlyDisplay,
       plotlyChart,
       svgChart,
       tsneChart,
-      svgDisplay,
-      tsneDisplay,
       configurationPanel,
     },
     computed: {
@@ -2821,6 +2820,13 @@ window.onload=() => {
   const datasetDisplay = Vue.component("dataset-display", {
     template: `
       <b-container v-if='!loading' fluid id="dataset-display">
+        <!--
+        <b-row>
+        <b-col cols='2'>
+          <choose-display-type></choose-display-type>
+        </b-col>
+        </b-row>
+        -->
         <b-row>
           <b-col cols='2'>
             <plotly-display v-if="is_type_plotly" :display_id='display_id'></plotly-display>
@@ -2850,9 +2856,13 @@ window.onload=() => {
     `,
     props: ["display_id"],
     components: {
-      newDisplay,
       plotlyDisplay,
+      svgDisplay,
       tsneDisplay,
+      plotlyChart,
+      svgChart,
+      tsneChart,
+      chooseDisplayType,
     },
     data() {
       return {
@@ -3016,7 +3026,7 @@ window.onload=() => {
         // reset config, as different display types
         // has different configs
         state.config = {
-          gene_symbol: "",
+          gene_symbol: "",  // Commenting out since switching plot types should not affect the gene symbol.
           analysis: state.config.analysis,
           colors: null,
         };

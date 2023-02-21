@@ -1,19 +1,24 @@
+
 import base64
 import io
 import os
 import re
 from math import ceil
+from pathlib import Path
+from time import sleep
 
 import geardb
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
+
 from flask import request
 from flask_restful import Resource
 from matplotlib import cm
 
 sc.settings.set_figure_params(dpi=100)
+sc.settings.verbosity = 0
 
 PLOT_TYPE_TO_BASIS = {
     "tsne_static": "tsne",
@@ -25,6 +30,10 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
 NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
+
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -68,6 +77,9 @@ def calculate_num_legend_cols(group_len):
 
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
+    from matplotlib import cm
+    from matplotlib.colors import ListedColormap
+
     # Create custom colorscale with gray at the 0.0 level
     # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
     ylorrd = cm.get_cmap(colorscale, 256)
@@ -76,16 +88,28 @@ def create_colorscale_with_zero_gray(colorscale):
     newcolors[0, :] = gray
     return mcolors.ListedColormap(newcolors)
 
-def create_projection_adata(dataset_adata, projection_csv):
+def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
-    try:
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
-    except:
-        raise PlotError("Could not create projection AnnData object from CSV.")
+    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+    if projection_adata_path.is_file():
+        return sc.read_h5ad(projection_adata_path)#, backed="r")
 
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
+    try:
+        projection_adata = sc.read_csv(projection_csv_path)
+    except Exception as e:
+        import sys
+        print(str(e), file=sys.stderr)
+        raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
+    # Close dataset adata so that we do not have a stale opened object
+    if dataset_adata.isbacked:
+        dataset_adata.file.close()
     projection_adata.var["gene_symbol"] = projection_adata.var_names
+    # Associate with a filename to ensure AnnData is read in "backed" mode
+    projection_adata.filename = projection_adata_path
     return projection_adata
 
 def get_colorblind_scale(n_colors):
@@ -108,7 +132,7 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
         # If number of groups is less than num_cols, they can just be put on a single line
         if num_chunks == 0:
-           return (new_handles, new_labels)
+            return (new_handles, new_labels)
 
         # Split into relatively equal chumks.
         handles_sublists = np.array_split(np.array(new_handles), num_chunks)
@@ -179,9 +203,8 @@ class TSNEData(Resource):
         adata = ana.get_adata(backed=True)
 
         if projection_id:
-            projection_csv = "{}.csv".format(projection_id)
             try:
-                adata = create_projection_adata(adata, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_id)
             except PlotError as pe:
                 return {
                     'success': -1,
@@ -225,6 +248,7 @@ class TSNEData(Resource):
         # Reorder the categorical values in the observation dataframe
         # Currently in UI only "plot_by_group" has reordering capabilities
         if order:
+            order = order
             obs_keys = order.keys()
             for key in obs_keys:
                 col = adata.obs[key]
@@ -400,6 +424,10 @@ class TSNEData(Resource):
                         f2.get_legend().remove()  # Remove legend added by scanpy
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False)
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
 
         io_pic = io.BytesIO()
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too

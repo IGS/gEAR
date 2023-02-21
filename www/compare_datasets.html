@@ -198,13 +198,70 @@
               <p id='genes_not_found' style="display:none;"></p>
             </div>
           </div>
+
+          <div id="weighted_gene_cart_c" class="card w-50" style="display:none;">
+            <div class="card-body">
+              <h3 class="card-title">Save Fold-change as Weighted Gene Cart</h3>
+              <p class="card-subtitle mb-2 text-muted">Save all dataset genes as a weighted gene cart. This can be used in plotting projections into curated displays from other datasets</p>
+              <div class="form-group form-group-sm form-row">
+                <label for="weighted_gene_cart_name col-1" class="control-label col-form-label col-4">Cart name to create:</label>
+                <input class="form-control mb-1 col-8" type="text" value="" id="weighted_gene_cart_name" />
+              </div>
+              <div class="form-group form-group-sm form-row">
+                <label for="weighted_gene_cart_name" class="control-label col-form-label col-4">Fold-change:</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-raw" value="1" checked>
+                  <label class="form-check-label" for="log-raw">Raw</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-2" value="2">
+                  <label class="form-check-label" for="log-2">Log2</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-10" value="10">
+                  <label class="form-check-label" for="log-10">Log10</label>
+                </div>
+              </div>
+              <button id="save_weighted_gene_cart" class="btn btn-sm btn-purple">Save as Pattern Signature</button>
+              <div id='saved_weighted_gene_cart_info_c' style="display:none;">
+                <p class="status"></p>
+                <div class="alert alert-danger alert-dismissible" role="alert">
+                  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                  <p class="message"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div> <!-- end #viewport -->
         <div id="docsbar" class="col-2">
+          <div id='selection_methods_c' class='selection_instructions'>
+            <div id='controls_label'>
+              <h3>Plot controls</h3>
+            </div>
+            <p>
+              Hover over the plot and you'll see buttons on the right side, which control
+              actions like zooming and selection of points.
+            </p>
+            <dl>
+              <dt>Control icons</dt>
+              <dd>
+                <div><img class='img-fluid' src='img/instructions_comparison_controls.png' /></div>
+                The Box and Lasso selection tools allow you to click and drag a shape around
+                genes of interest.
+              </dd>
+              <dt>Selecting genes</dt>
+              <dd>
+                <div><img class='img-fluid' src='img/instructions_freeform_selection.png' /></div>
+                After you select your desired genes, a list of them all will
+                be displayed.
+              </dd>
+            </dl>
+          </div>
           <div id="gene_list_c" class="row">
             <div class="col-12">
-              <div id='controls_label'>
-                <h3>Plot controls</h3>
-              </div>
               <div id='selected_label'>
                 <h3>Selected genes</h3>
                 <div>
@@ -233,26 +290,6 @@
                     <span id='gene_cart_member_count'></span> genes saved into cart
                   </p>
                 </div>
-              </div>
-              <div id='selection_methods_c' class='selection_instructions'>
-                <p>
-                  Hover over the plot and you'll see buttons on the right side, which control
-                  actions like zooming and selection of points.
-                </p>
-                <dl>
-                  <dt>Control icons</dt>
-                  <dd>
-                    <div><img class='img-fluid' src='img/instructions_comparison_controls.png' /></div>
-                    The Box and Lasso selection tools allow you to click and drag a shape around
-                    genes of interest.
-                  </dd>
-                  <dt>Selecting genes</dt>
-                  <dd>
-                    <div><img class='img-fluid' src='img/instructions_freeform_selection.png' /></div>
-                    After you select your desired genes, a list of them all will
-                    be displayed.
-                  </dd>
-                </dl>
               </div>
               <table id="tbl_selected_genes" class="table">
                 <thead>

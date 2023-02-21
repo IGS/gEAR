@@ -65,8 +65,12 @@ div.svg-container {
 p#saved_gene_cart_info {
     font-size: 80%;
 }
-table#tbl_selected_genes {
+
+#gene_list_c {
     display: none;
+}
+
+table#tbl_selected_genes {
     border-collapse: collapse;
 }
 table#tbl_selected_genes td {

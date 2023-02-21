@@ -23,7 +23,6 @@ class DatasetPanel extends Dataset {
         grid_width,
         multigene = false,
         projection = false,
-        colorblind_mode = false,
         controller = null,
     ) {
         super(args);
@@ -44,6 +43,8 @@ class DatasetPanel extends Dataset {
         //this.links = args.links;
         //this.linksfoo = "foo";
         this.controller = controller;   // AbortController
+        this.performing_projection = false;
+        this.projectR_info = null;
     }
 
     // Call API to return observation information on this dataset
@@ -126,7 +127,10 @@ class DatasetPanel extends Dataset {
         // We first draw with the display then zoom in, so whenever
         // gene search is updated, the other displays behind the zoomed
         // is updated too.
-        display.draw(gene_symbol);
+        await display.draw(gene_symbol);
+        // If projectR information is present, show the info hoverbar
+        display.show_info(this.projectR_info);
+
         if (zoom) display.zoom_in();
     }
 
@@ -155,13 +159,17 @@ class DatasetPanel extends Dataset {
         // gene search is updated, the other displays behind the zoomed
         // is updated too.
         if (this.has_h5ad) {
-            display.draw_mg(gene_symbols);
+            await display.draw_mg(gene_symbols);
+            // If projectR information is present, show the info hoverbar
+            display.show_info(this.projectR_info);
         } else {
             this.show_error(
                 "This dataset type does not currently support curated multigene displays."
             );
         }
         if (zoom) display.zoom_in();
+
+
     }
 
     // Draw single-gene plots
@@ -189,16 +197,15 @@ class DatasetPanel extends Dataset {
 
                 // cache all owner/user displays for this panel;
                 // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                const owner_displays =
-                    CURRENT_USER.id === this.user_id
-                        ? []
-                        : await this.get_dataset_displays(this.user_id, this.id);
-                this.owner_displays = owner_displays;
+                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+                ).then((res) => res.map((r) => r.value));
 
-                const user_displays = await this.get_dataset_displays(
-                    CURRENT_USER.id,
-                    this.id
-                );
+                if (CURRENT_USER.id === this.user_id) {
+                    owner_displays = [];
+                }
+
+                this.owner_displays = owner_displays;
                 this.user_displays = user_displays;
 
                 this.register_events();
@@ -228,9 +235,7 @@ class DatasetPanel extends Dataset {
         // For datasets with no h5ad (like Epiviz), we cannot call the multigene API to create a display
         // So return an explanation for this.
         if (!this.has_h5ad) {
-            this.show_error(
-                "This dataset type does not currently support curated multigene displays."
-            );
+            this.show_error("This dataset type does not currently support curated multigene displays.");
             return;
         }
 
@@ -249,9 +254,7 @@ class DatasetPanel extends Dataset {
             }
         }
         if (!Object.keys(this.h5ad_info.obs_levels).length) {
-            this.show_error(
-                "This dataset does not have any categorical observations to plot from."
-            );
+            this.show_error("This dataset does not have any categorical observations to plot from.");
             return;
         }
 
@@ -272,16 +275,15 @@ class DatasetPanel extends Dataset {
 
                 // cache all owner/user displays for this panel;
                 // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                const owner_displays =
-                    CURRENT_USER.id === this.user_id
-                        ? []
-                        : await this.get_dataset_displays(this.user_id, this.id);
-                this.owner_displays = owner_displays;
+                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+                ).then((res) => res.map((r) => r.value));
 
-                const user_displays = await this.get_dataset_displays(
-                    CURRENT_USER.id,
-                    this.id
-                );
+                if (CURRENT_USER.id === this.user_id) {
+                    owner_displays = [];
+                }
+
+                this.owner_displays = owner_displays;
                 this.user_displays = user_displays;
 
                 this.register_events();
@@ -311,7 +313,7 @@ class DatasetPanel extends Dataset {
     }
 
     // Generate single-gene preview images (Plotly) or plots
-    draw_preview_images(display) {
+    async draw_preview_images(display) {
         // check if config has been stringified
         const config =
             typeof display.plotly_config == "string"
@@ -322,30 +324,48 @@ class DatasetPanel extends Dataset {
         display.controller = this.controller;
         display.colorblind_mode = CURRENT_USER.colorblind_mode;
 
+        display.controller = this.controller;
+
         if (gene_symbol) {
             if (
                 ["violin", "bar", "line", "scatter", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(display.plot_type)
             ) {
                 const d = new PlotlyDisplay(display);
-                d.get_data(gene_symbol).then(({ data }) => {
+                try {
+                    const { data } = await d.get_data(gene_symbol);
                     const { plot_json } = data;
-                    Plotly.toImage(
-                        { ...plot_json, ...{static_plot:true} },
-                        { height: 500, width: 500 }
-                    ).then((url) => {
-                        $(`#modal-display-img-${display.id}`).attr("src", url);
-                    });
-                });
+                    const url = await Plotly.toImage(
+                                    { ...plot_json, ...{static_plot:true} },
+                                    { height: 500, width: 500 }
+                                );
+                    $(`#modal-display-img-${display.id}`).attr("src", url);
+                } catch (err) {
+                    if (err.name == "CanceledError") {
+                        console.info("Canceled fetching Plotly preview image for previous request");
+                        return;
+                    }
+                    console.error(err.message);
+                    throw err;
+                }
+
             } else if (display.plot_type === "svg") {
                 const target = `modal-display-${display.id}`;
                 const d = new SVGDisplay(display, null, target);
-                d.get_data(gene_symbol).then(({ data }) => {
+                try {
+                    const { data } = await d.get_data(gene_symbol);
                     d.draw_chart(data);
-                });
+                } catch (err) {
+                    if (err.name == "CanceledError") {
+                        console.info("Canceled fetching SVG preview image for previous request");
+                        return;
+                    }
+                    console.error(err.message);
+                    throw err;
+                }
             } else {
                 // tsne
                 const target = `modal-display-${display.id}`;
-                const d = new TsneDisplay(display, gene_symbol, null, target);
+                const d = new TsneDisplay(display, gene_symbol, target);
                 d.draw(gene_symbol);
             }
             $(`#modal-display-${display.id}-loading`).hide();
@@ -356,7 +376,7 @@ class DatasetPanel extends Dataset {
     }
 
     // Generate multigene preview plots
-    draw_preview_images_mg(display) {
+    async draw_preview_images_mg(display) {
         // check if config has been stringified
         const config =
             typeof display.plotly_config === "string"
@@ -370,15 +390,22 @@ class DatasetPanel extends Dataset {
         // Draw preview image
         if (gene_symbols) {
             const d = new MultigeneDisplay(display, gene_symbols);
-            d.get_data(gene_symbols).then(({ data }) => {
+            try {
+                const { data } = await d.get_data(gene_symbols);
                 const { plot_json } = data;
-                Plotly.toImage(
-                    { ...plot_json, ...{static_plot:true} },
-                    { height: 500, width: 500 }
-                ).then((url) => {
-                    $(`#modal-display-img-${display.id}`).attr("src", url);
-                });
-            });
+                const url = await Plotly.toImage(
+                                { ...plot_json, ...{static_plot:true} },
+                                { height: 500, width: 500 }
+                            );
+                $(`#modal-display-img-${display.id}`).attr("src", url);
+            } catch (err) {
+                if (err.name == "CanceledError") {
+                    console.info("Canceled fetching multigene preview image for previous request");
+                    return;
+                }
+                console.error(err.message);
+                throw err;
+            }
             $(`#modal-display-${display.id}-loading`).hide();
         } else {
             // Hide the container box for the single-gene plot
@@ -387,7 +414,7 @@ class DatasetPanel extends Dataset {
     }
 
     register_events() {
-        const primary_key = this.primary_key;
+        const { primary_key } = this;
 
         // redraw plot when user changes display
         $(`#dataset_${primary_key}`).on("changePlot", (e, display_id) =>
@@ -403,21 +430,16 @@ class DatasetPanel extends Dataset {
 
         // info event
         $(`#dataset_${primary_key}_info_launcher`).click(() => {
-            // SAdkins - found bug where if single-gene/multigene is toggled,
-            // two modals will be overlayed.  Dispose of the earlier one.
-            //$(`#dataset_${primary_key}_info`).modal('dispose');
 
             const panel = dataset_collection_panel.datasets.find(
                 (d) => d.id == this.id
             );
 
-            // get default display id for this display?
-
             const { id, title, ldesc, schematic_image } = panel;
             const infobox_tmpl = $.templates("#tmpl_infobox");
             const infobox_html = infobox_tmpl.render({
                 dataset_id: id,
-                primary_key: this.primary_key,
+                primary_key,
                 title,
                 ldesc,
                 schematic_image,
@@ -485,8 +507,10 @@ class DatasetPanel extends Dataset {
         $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
 
-    show_loading() {
-        $(`#${this.primary_key}_dataset_status_c h2`).text("Loading...");
+    show_loading(msg=null) {
+        if (!msg) {msg = "Loading display.."}
+        $(`#${this.primary_key}_dataset_status_c h2`).text(msg);
+
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
 
         if (this.dtype !== "svg-expression") {
@@ -502,7 +526,7 @@ class DatasetPanel extends Dataset {
     }
 
     show_no_match() {
-        $(`#${this.primary_key}_dataset_status_c h2`).text("Gene not found");
+        $(`#${this.primary_key}_dataset_status_c h2`).text(this.projection ? "Projection not run yet on dataset" : "Gene not found");
         $(`#dataset_${this.primary_key} .dataset-status-container`).show();
         $(`#dataset_${this.primary_key} .plot-container`).hide();
     }
@@ -524,11 +548,11 @@ class DatasetPanel extends Dataset {
     }
 
     // Call API to return plot JSON data
-    async run_projectR(projection_source, is_pca, scope) {
+    async run_projectR(projection_source, algorithm, gctype) {
         const dataset_id = this.id;
         const payload = {
             genecart_id: projection_source,
-            is_pca,
+            algorithm,
         };
         const other_opts = {}
         if (this.controller) {
@@ -539,19 +563,22 @@ class DatasetPanel extends Dataset {
             const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
             // If file was not found, put some loading text in the plot
             if (! response.data.projection_id) {
-                this.show_loading({
-                    info:"Plot generation may take a few minutes as projections need to be generated beforehand."
-                });
+                this.show_loading("Plot generation may take a few minutes as projections need to be generated beforehand.");
             }
             payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
         } catch (e) {
+            if (e.name == "CanceledError") {
+                console.info("display draw canceled for previous request");
+                return;
+            }
             this.show_error(e.message);
-            throw(e.message);
+            throw e.message;
         }
 
-        payload.scope = scope;
+        payload.scope = gctype;  // genecart type
 
         let message = "There was an error projecting patterns onto this dataset.";
+        this.performing_projection = true;
         try {
             const { data } = await axios.post(`/api/projectr/${dataset_id}`, payload, other_opts);
             if (data.message) {
@@ -561,7 +588,8 @@ class DatasetPanel extends Dataset {
                 throw message; // will be caught below
             }
             this.projection_id = data.projection_id;
-            this.show_info(message)
+            this.projectR_info = message;
+            this.show_loading(this.projectR_info)
         } catch (e) {
             if (e.name == "CanceledError") {
                 console.info("Canceled previous projectR request.");
@@ -569,6 +597,8 @@ class DatasetPanel extends Dataset {
             }
             this.show_error(message);
             throw message
+        } finally {
+            this.performing_projection = false;
         }
     }
 }

@@ -1,7 +1,4 @@
-from flask import request
 from flask_restful import Resource
-import scanpy as sc
-import os
 import geardb
 
 class DatasetDisplay(Resource):

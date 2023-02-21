@@ -17,6 +17,8 @@ Bulk RNAseq data can be uploaded to gEAR through three paths (from Recount3 data
 
 **Note: Count files must be normalized prior to upload, any common normalization method is accepted**
 
+**Note: To open the links in the flowchart, right click and choose open in new window otherwise link will show as blocked**
+
 ```mermaid
 graph TB 
 
@@ -53,6 +55,8 @@ style B color:blue
 Single cell sequencing  data can be uploaded to gEAR through multiple paths. The most common path for data upload is creating three tab-deliminated text files which are compressed together for upload, but other upload methods are avialable.  In addition to the data files, every submission requires a standard metatdata template to be filled out with basic information about your dataset. A blank template form can be found on the upload page or linked [here](https://umgear.org/user_templates/metadata_template.xlsx). 
 
 **Note: Count files must be normalized prior to upload, any common normalization method is accepted**
+
+**Note: To open the links in the flowchart, right click and choose open in new window otherwise link will show as blocked**
 
 ```mermaid
 graph TB 
@@ -98,6 +102,9 @@ style I color:blue
 ## Epigenetic data (EpiViz)
 
 Epigenetic data are uploaded and displayed using integration with the EpiViz platform. If your data are already in BigWig/BigBed format they can be uploaded via URL or through standard file uploads. Epigenetic uploads do not currently require a seperate metadata file (in contrast to Bulk RNAseq or Single cell data). 
+
+**Note: To open the links in the flowchart, right click and choose open in new window otherwise link will show as blocked**
+
 
 ```mermaid
 graph TD

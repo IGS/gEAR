@@ -29,9 +29,12 @@ fixed paths have worked fine for decades.
     $ ./pip3 install --upgrade pip
 
     $ ./pip3 install \
+      aiohttp==3.8.3 \
       anndata==0.7.8 \
+      aiohttp \
       biocode==0.10.0 \
       biopython==1.79 \
+      cairosvg==2.5.2 \
       dash-bio==1.0.2 \
       Flask==2.1.0 \
       Flask-RESTful==0.3.9 \
@@ -42,6 +45,7 @@ fixed paths have worked fine for decades.
       kaleido==0.2.1 \
       llvmlite==0.38.0 \
       mod-wsgi==4.9.0 \
+      more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
       numba==0.55.1 \
       numexpr==2.8.1 \
@@ -50,20 +54,19 @@ fixed paths have worked fine for decades.
       openpyxl==3.0.10 \
       pandas==1.4.1 \
       Pillow==9.0.1 \
+      pika==1.3.1 \
       plotly==5.6.0 \
       python-dotenv==0.20.0 \
       requests==2.27.1 \
-      rpy2==3.5.4 \
+      rpy2==3.5.1 \
       sanic \
       scanpy==1.8.2 \
       scanpy[louvain]==1.8.2 \
       scikit-learn==1.0.2 \
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
-      xlrd==1.2.0 \
-      cairosvg==2.5.2
-
-
+      tables==3.7.0 \
+      xlrd==1.2.0
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 

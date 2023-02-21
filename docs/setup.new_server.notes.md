@@ -39,7 +39,15 @@ Follow instructions in our setup.mysql.md document
 
 ### R
 
-sudo apt install r-base
+Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
+
+`sudo apt install r-base`
+
+### RabbitMQ
+
+Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
+
+Follow instructions in setup_rabbit_mq.md document
 
 ### Python
 
@@ -53,15 +61,17 @@ Follow instructions in setup.apache.md document
 
 ### gEAR portal
 
-    $ cd ~/git
-    $ git clone https://github.com/jorvis/gEAR.git
-    $ cd /var
-    $ sudo rm -rf www && sudo ln -s ~/git/gEAR/www
+```bash
+$ cd ~/git
+$ git clone https://github.com/jorvis/gEAR.git
+$ cd /var
+$ sudo rm -rf www && sudo ln -s ~/git/gEAR/www
+```
 
 ### Data transfer
-#
-#  If moving to a new instance and you need to transfer data you need
-#  to shift the contents of the following directories:
+
+If moving to a new instance and you need to transfer data you need
+to shift the contents of the following directories:
 
 $HOME/git/gEAR/www/datasets
 $HOME/git/gEAR/www/analyses
@@ -70,6 +80,7 @@ $HOME/git/gEAR/www/analyses
 
 Permissions need to be writeable for your apache user.
 
-    $ cd /var/www
-    $ chmod 777 datasets analyses/* uploads/files/
-
+```bash
+$ cd /var/www
+$ chmod 777 datasets analyses/* uploads/files/
+```

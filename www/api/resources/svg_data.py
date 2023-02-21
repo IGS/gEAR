@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import geardb
 import numpy as np
@@ -7,6 +8,9 @@ import scanpy as sc
 from flask import request
 from flask_restful import Resource
 
+TWO_LEVELS_UP = 2
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 class PlotError(Exception):
     """Error based on plotting issues."""
@@ -14,16 +18,26 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
-def create_projection_adata(dataset_adata, projection_csv):
+def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
+    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+    if projection_adata_path.is_file():
+        return sc.read_h5ad(projection_adata_path)  #, backed="r")
+
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
-        projection_adata = sc.read_csv("/tmp/{}".format(projection_csv))
+        projection_adata = sc.read_csv(projection_csv_path)
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
-
     projection_adata.obs = dataset_adata.obs
+    # Close dataset adata so that we do not have a stale opened object
+    if dataset_adata.isbacked:
+        dataset_adata.file.close()
     projection_adata.var["gene_symbol"] = projection_adata.var_names
+    # Associate with a filename to ensure AnnData is read in "backed" mode
+    projection_adata.filename = projection_adata_path
     return projection_adata
 
 class SvgData(Resource):
@@ -45,18 +59,6 @@ class SvgData(Resource):
             }
 
         dataset = geardb.get_dataset_by_id(dataset_id)
-        # If the dataset is not public, make sure the user
-        # requesting resource owns the dataset
-        # This is commented right now until we work out modeling URL-shared datasets/profiles
-        #if not dataset.is_public:
-        #    session_id = request.cookies.get('gear_session_id')
-        #    user = geardb.get_user_from_session_id(session_id)
-        #    if user.id != dataset.owner_id:
-        #        return {
-        #            "success": -1,
-        #            "message": 'Only the owner can access this dataset.'
-        #        }
-
 
         h5_path = dataset.get_file_path()
         if not os.path.exists(h5_path):
@@ -68,9 +70,8 @@ class SvgData(Resource):
         adata = sc.read_h5ad(h5_path)
 
         if projection_id:
-            projection_csv = "{}.csv".format(projection_id)
             try:
-                adata = create_projection_adata(adata, projection_csv)
+                adata = create_projection_adata(adata, dataset_id, projection_id)
             except PlotError as pe:
                 return {
                     'success': -1,
@@ -124,6 +125,10 @@ class SvgData(Resource):
                 "min": float(tissue_adata.X[~np.isnan(tissue_adata.X)].min()),
                 "max": float(tissue_adata.X[~np.isnan(tissue_adata.X)].max())
             }
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
 
         # Get the average for all cells if there is a cell_type
         # in case there is an SVG path that has the convention

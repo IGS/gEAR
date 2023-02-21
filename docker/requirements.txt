@@ -25,9 +25,11 @@ mod-wsgi==4.9.0
 opencv-python==4.5.5.64
 anndata==0.7.8
 openpyxl==3.0.10
-h5py==2.10.0    # Installed through scanpy but that version breaks things
-rpy2==3.5.2    # For projectR
+h5py==3.6.0
+tables==3.7.0    # Read hdf5 files into pandas
+aiohttp
 cairosvg==2.5.2
+pika==1.3.1
+more_itertools==9.0.0
 #diffxpy==0.7.4
 #selenium   # Browser testing
-#needle # Visual regression testing

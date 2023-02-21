@@ -4,8 +4,14 @@ div#sidebar {
 div#conference_banner {
     margin-bottom: 50px;
 }
+div#sidebar h3 {
+    color: black;
+}
 div.schedule_column_2 {
     border-left: 1px solid rgb(150,150,150);
+}
+div.tutorial_video_link_c img {
+    border: 1px solid black;
 }
 h2 {
     font-size: 140%;
@@ -15,11 +21,19 @@ h2 {
 }
 h3.workshop_day {
     font-weight: bold;
-    
+}
+h3.tutorial_video_links {
+    margin-top: 50px;
 }
 img.session_image {
     border: 1px solid rgb(150,150,150);
     margin-left: 10px;
+}
+p.account_needed_message {
+    display:none;
+}
+p.account_needed_message a {
+    text-decoration: underline;
 }
 span.registration_note {
     padding-left: 15px;
@@ -28,6 +42,9 @@ span.registration_note {
 ul.session_actions {
     margin: 15px 0 0 10px;
     padding: 0;
+    list-style: none;
+}
+ul.demo_files {
     list-style: none;
 }
 ul.session_actions li {

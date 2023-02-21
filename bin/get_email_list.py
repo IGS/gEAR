@@ -13,13 +13,15 @@ import sys
 
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
-import gear.db
+
+import mysql.connector
+import geardb
 
 def main():
 
     #connect to gEAR MySQL
-    mysql_cnx = gear.db.MySQLDB().connect()
-    cursor = mysql_cnx.cursor()
+    cnx = geardb.Connection()
+    cursor = cnx.get_cursor()
     
     qry = "SELECT email FROM guser WHERE updates_wanted = 1"
     cursor.execute(qry)

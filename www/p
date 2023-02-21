@@ -10,6 +10,7 @@ p = page to send to:
     null = index.html (default)
     a = analyze_dataset.html
 s = dataset_share_id
+id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
 
 '''
 
@@ -28,6 +29,7 @@ def main():
     layout_id = form.getvalue('l')
     page = form.getvalue('p')
     share_id = form.getvalue('s')
+    identifiers_org_id = form.getvalue('id')
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
     main_page = 'index.html'
@@ -56,6 +58,15 @@ def main():
     if gene_cart:
         params['gene_cart_share_id'] = gene_cart
 
+    if identifiers_org_id:
+        (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')
+
+        if id_prefix == 'd':
+            params['share_id'] = identifiers_share_id
+
+        elif id_prefix == 'p':
+            params['layout_id'] = identifiers_share_id
+        
     if len(params) > 0:
         url += '?'
         first_param = True
@@ -66,7 +77,7 @@ def main():
                 first_param = False
             else:
                 url += "&{0}={1}".format(p, params[p])
-                
+
     #redirect user to permalink
     print("""<!DOCTYPE html>
     <html>

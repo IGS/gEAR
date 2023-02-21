@@ -20,7 +20,6 @@ $(document).ready(() => {
     $('#navigation_bar').load('./include/navigation_bar.html', () => {
         // Load popover info
         load_forgot_password();
-
         // Now that the navigation bar is loaded, we can check if the user is logged in
         // and by extension, handle the login UI updates
         check_for_login();
@@ -34,7 +33,7 @@ $(document).ready(() => {
         url: "/site_domain_prefs.json",
         dataType: 'json',
         //async: false,
-     }).done((data) => {
+    }).done((data) => {
         SITE_PREFS = data;
         loadCSS(`./css/by_domain/${SITE_PREFS['domain_label']}/theme_colors.${(new Date()).getTime()}.css`);
         $('#funding').load(`./include/by_domain/${SITE_PREFS['domain_label']}/funding.html`);
@@ -59,11 +58,16 @@ $(document).ready(() => {
             }
         });
 
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
+
         // populate any site-specific labels, usually spans
         $('.domain_short_display_label').text(SITE_PREFS['domain_short_display_label']);
 
         let page_name = location.pathname.replace(/^\//, '');
-         
+
         if (page_name == "") {
             page_name = 'index.html';
         }
@@ -253,8 +257,12 @@ $('#navigation_bar').on('click', '#btn_sign_in', (e) => {
             session_id = Cookies.get('gear_session_id');
             Cookies.set('gear_default_domain', CURRENT_USER.profile);
 
+            console.log(document.URL);
+
             // do we process the current page or reload?
-            if (document.URL.includes("dataset_explorer.html")) {
+            if (document.URL.includes("dataset_explorer.html") ||
+                document.URL.includes("workshop")
+               ) {
                 location.reload();
             } else {
                 handle_login_ui_updates();
@@ -391,8 +399,8 @@ $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
         url: './cgi/send_email.cgi',
         type: 'POST',
         data: { 'email': email, 'scope': 'forgot_password', 'destination_page': destination_page },
-        dataType: 'json',
-        success(data) {
+        dataType: 'json'
+    }).done((data) => {
             $('#submit_wait_c').hide();
             if (data.success == 1) {
                 $('#forgot_pass_c').hide();
@@ -402,10 +410,8 @@ $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
             $('p#forgot_pass_instruct').hide();
             $('input#forgot_pass_email').val('');
             $('p#forgot_pass_warning, input#forgot_pass_email, button#submit_forgot_pass_email').show();
-        },
-        error(jqXHR, textStatus, errorThrown) {
-            display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Failure to submit forgotten password form');
-        }
+    }).fail((data) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Failure to submit forgotten password form');
     });
 });
 
@@ -533,20 +539,20 @@ function download_table_as_excel(table_id, filename) {
     $('#' + table_id + ' thead tr th').each(function() {
         table_str += $(this).text() + "\t";
     });
-    table_str = table_str.trim() + "\n";
+    table_str = `${table_str.trim()}\n`;
 
     $('#' + table_id + ' tbody tr').each(function() {
         var rows = $(this).find('td');
 
         rows.each(function() {
-            table_str += $(this).text() + "\t";
+            table_str += `${$(this).text()}\t`;
         });
 
-        table_str = table_str.trim() + "\n";
+        table_str = `${table_str.trim()}\n`;
     });
 
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(table_str));
+    const element = document.createElement('a');
+    element.setAttribute('href', `data:text/plain;charset=utf-8,${encodeURIComponent(table_str)}`);
     element.setAttribute('download', filename);
     element.style.display = 'none';
     document.body.appendChild(element);
@@ -610,4 +616,33 @@ function image_loaded(img) {
     }
 
     return true;
+}
+
+// Source: https://dev.to/kepta/comment/5e6f (read main article for breakdown of function)
+function asyncLimit (fn, n) {
+    // n is the number of concurrent calls allowed
+    // Create a queue of functions to be called, never to exceed n.
+    // When a promise is resolved, ensure only 1 new function is added to the pending queue.
+
+    const pendingPromises = new Set();
+    return async function(...args) {
+        while (pendingPromises.size >= n) {
+            await Promise.race(pendingPromises);
+        }
+
+        const p = fn.apply(this, args);
+        const r = p.catch(() => {});
+        pendingPromises.add(r);
+        await r;
+        pendingPromises.delete(r);
+        return p;
+    }
+}
+
+function deepCopy(obj) {
+    // Return a deepCopy of the object if it is defined.
+    if (obj == undefined) {
+        return obj;
+    }
+    return JSON.parse(JSON.stringify(obj));
 }

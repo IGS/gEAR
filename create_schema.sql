@@ -101,6 +101,7 @@ CREATE TABLE gene_cart (
        is_domain       TINYINT DEFAULT 0,
        date_added      DATETIME DEFAULT CURRENT_TIMESTAMP,
        FULLTEXT        text_idx (label, ldesc),
+       -- INDEX           share_id (share_id),
        FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
        FOREIGN KEY (organism_id) REFERENCES organism(id) ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
@@ -232,7 +233,8 @@ CREATE TABLE dataset_display (
           ON DELETE CASCADE,
        FOREIGN KEY (user_id)
           REFERENCES guser(id)
-          ON DELETE CASCADE
+          ON DELETE CASCADE,
+       INDEX user_dataset (user_id, dataset_id)
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE dataset_preference (
