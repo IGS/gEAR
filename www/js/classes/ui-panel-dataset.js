@@ -98,11 +98,6 @@ class DatasetPanel extends Dataset {
     async create_data_object(display_id) {
         const data = await this.get_dataset_display(display_id);
 
-        let zoom = false;
-        if (this.display?.zoomed) {
-            zoom = true;
-        }
-
         data.primary_key = this.primary_key;
         data.controller = this.controller;
         data.projection_id = this.projection_id;
@@ -111,7 +106,7 @@ class DatasetPanel extends Dataset {
     }
 
     async draw_chart(gene_symbol, display_id) {
-        this.create_data_object(display_id);
+        const data = await this.create_data_object(display_id);
         let display;
         if (
             ["bar", "scatter", "violin", "line", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(data.plot_type)
@@ -126,7 +121,6 @@ class DatasetPanel extends Dataset {
         } else if (data.plot_type === "epiviz") {
             display = new EpiVizDisplay(data, gene_symbol);
         }
-        this.display = display;
 
         // We first draw with the display then zoom in, so whenever
         // gene search is updated, the other displays behind the zoomed
@@ -135,11 +129,14 @@ class DatasetPanel extends Dataset {
         // If projectR information is present, show the info hoverbar
         display.show_info(this.projectR_info);
 
-        if (zoom) display.zoom_in();
+        if (display?.zoomed) display.zoom_in();
+
+        // Assign this display to the current active display
+        this.display = display;
     }
 
     async draw_mg_chart(gene_symbols, display_id) {
-        this.create_data_object(display_id);
+        const data = await this.create_data_object(display_id);
 
         let display;
         if (
@@ -147,7 +144,6 @@ class DatasetPanel extends Dataset {
         ) {
             display = new MultigeneDisplay(data, gene_symbols);
         }
-        this.display = display;
 
         // We first draw with the display then zoom in, so whenever
         // gene search is updated, the other displays behind the zoomed
@@ -161,9 +157,11 @@ class DatasetPanel extends Dataset {
                 "This dataset type does not currently support curated multigene displays."
             );
         }
-        if (zoom) display.zoom_in();
 
+        if (display?.zoomed) display.zoom_in();
 
+        // Assign this display to the current active display
+        this.display = display;
     }
 
     // Draw single-gene plots
