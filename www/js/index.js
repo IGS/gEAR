@@ -213,7 +213,7 @@ $(document).on("handle_page_loading", () => {
         if (this.id === "selected_profile") {
 
             let uniq_gene_symbols = []; // list of unique gene symbols
-            let selected_projections = [];  // list of selected projections
+            const selected_projections = {};  // list of selected projections
 
             // Update search history depending on parameters involved.
             if (projection) {
@@ -748,6 +748,8 @@ const customNumericSort = function (a, b) {
 }
 
 function populate_search_result_list(data) {
+    $('#search_results').empty();
+    $('#search_result_count').empty();
     // so we can display in sorted order.  javascript sucks like that.
     sorted_gene_syms = [];
 
@@ -1022,7 +1024,7 @@ $("#projection_search_form").submit((event) => {
     const projection_algorithm = $('[name="projection_algo"]:checked').val();
 
     // Get selected projections and add as state
-    const selected_projections = [];
+    const selected_projections = {};
     $('.js-projection-pattern-elts-check:checked').each(function() {
         // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
         const label = $(this).data('label');
@@ -1080,6 +1082,9 @@ $("#projection_source").on('change', (_event) => {
     // Hide previous genecart pattern list of results
     $('#search_results_scrollbox').hide();
     $('#search_result_count').empty();
+    // Empty these since the old pattern vals may not be relevent to the current pattern.
+    $('#search_results').empty();
+    $("#search_gene_symbol").empty();
 
     const gctype = $("#projection_source").data("gctype");
 
@@ -1089,10 +1094,6 @@ $("#projection_source").on('change', (_event) => {
         $("#binary_algo_form_check").show();
         $('#multi_pattern').hide();
     }
-
-    // Empty these since the old pattern vals may not be relevent to the current pattern.
-    $('#search_results').empty();
-    $("#search_gene_symbol").empty();
 
     $.ajax({
         type: "POST",
@@ -1400,7 +1401,7 @@ function update_datasetframes_projections() {
     }
 
     // Get selected projections and add as state
-    const selected_projections = [];
+    const selected_projections = {};
     $('.js-projection-pattern-elts-check:checked').each(function() {
         // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
         const label = $(this).data('label');
