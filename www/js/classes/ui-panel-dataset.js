@@ -31,7 +31,7 @@ class DatasetPanel extends Dataset {
         this.multigene = Number(multigene); // "true/false" works but keeping consistent with the other bool properties
         this.projection = Number(projection);
         this.config = null;
-        this.displays = null;
+        this.active_display = null;
         this.default_display_id = null;
         this.active_display_id = null;
         this.zoomed = false;
@@ -132,7 +132,7 @@ class DatasetPanel extends Dataset {
         if (display?.zoomed) display.zoom_in();
 
         // Assign this display to the current active display
-        this.display = display;
+        this.active_display = display;
     }
 
     async draw_mg_chart(gene_symbols, display_id) {
@@ -161,21 +161,21 @@ class DatasetPanel extends Dataset {
         if (display?.zoomed) display.zoom_in();
 
         // Assign this display to the current active display
-        this.display = display;
+        this.active_display = display;
     }
 
     // Draw single-gene plots
     async draw({ gene_symbol } = {}) {
-        if (this.display) this.display.clear_display();
+        if (this.active_display) this.active_display.clear_display();
 
         this.show_loading();
 
         // cache gene_symbol so we can use it to redraw with different display
         this.gene_symbol = gene_symbol;
 
-        if (this.display?.gene_symbol) {
+        if (this.active_display?.gene_symbol) {
             // Ensure that this display is a single-gene display
-            this.draw_chart(gene_symbol, this.display.id);
+            this.draw_chart(gene_symbol, this.active_display.id);
         } else {
             // first time searching gene and displays have not been loaded
             const { default_display_id } = await this.get_default_display(
@@ -203,7 +203,7 @@ class DatasetPanel extends Dataset {
      * @param {Array} gene_symbols - Array of gene symbols
      */
     async draw_mg({ gene_symbols } = {}) {
-        if (this.display) this.display.clear_display();
+        if (this.active_display) this.active_display.clear_display();
 
         this.show_loading();
 
@@ -236,9 +236,9 @@ class DatasetPanel extends Dataset {
             return;
         }
 
-        if (this.display?.gene_symbols) {
+        if (this.active_display?.gene_symbols) {
             // Ensure this display is a multigene display
-            this.draw_mg_chart(gene_symbols, this.display.id);
+            this.draw_mg_chart(gene_symbols, this.active_display.id);
         } else {
             // first time searching gene and displays have not been loaded
             const { default_display_id } = await this.get_default_display(
@@ -284,7 +284,7 @@ class DatasetPanel extends Dataset {
         // default display rendered, and a user tries
         // to toggle to a different display. There would
         // be no display to clear.
-        if (this.display) this.display.clear_display();
+        if (this.active_display) this.active_display.clear_display();
 
         this.show_loading();
         if (this.multigene) {
@@ -406,7 +406,7 @@ class DatasetPanel extends Dataset {
         // zoom event
         $(`#dataset_${primary_key}_zoom_in_control`).click((event) => {
             $(`#dataset_grid`).fadeOut(() => {
-                this.display.zoom_in();
+                this.active_display.zoom_in();
             });
         });
 
