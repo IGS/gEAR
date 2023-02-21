@@ -1289,8 +1289,8 @@ async function run_projection(dataset, projection_source, projection_algorithm, 
                 dataset.draw({ gene_symbol: first_thing.data('gene_symbol') });
             }
         } else {
-            if (dataset.display)
-                dataset.display.clear_display();
+            if (dataset.active_display)
+                dataset.active_display.clear_display();
             dataset.show_no_match();
         }
 

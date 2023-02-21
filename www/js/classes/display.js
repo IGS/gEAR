@@ -54,7 +54,7 @@ class Display {
                 // now we want to redraw display panels
                 // so they are stay contained inside their container
                 dataset_collection_panel.datasets.forEach(dataset => {
-                    const display = dataset.display;
+                    const display = dataset.active_display;
                     // check for display data, it could be null
                     // if gene was not found.
                     if (display?.data) {

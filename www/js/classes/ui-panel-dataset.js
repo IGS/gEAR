@@ -129,10 +129,10 @@ class DatasetPanel extends Dataset {
         // If projectR information is present, show the info hoverbar
         display.show_info(this.projectR_info);
 
-        if (display?.zoomed) display.zoom_in();
-
         // Assign this display to the current active display
         this.active_display = display;
+
+        if (display?.zoomed) display.zoom_in();
     }
 
     async draw_mg_chart(gene_symbols, display_id) {
@@ -158,10 +158,11 @@ class DatasetPanel extends Dataset {
             );
         }
 
-        if (display?.zoomed) display.zoom_in();
-
         // Assign this display to the current active display
         this.active_display = display;
+
+        if (display?.zoomed) display.zoom_in();
+
     }
 
     // Draw single-gene plots
@@ -458,7 +459,7 @@ class DatasetPanel extends Dataset {
             $("#modals_c div.modal-display").click(function (event) {
                 $("#modals_c img.active-display").removeClass("active-display");
                 const display_id = this.id.split("-").pop();
-                display_panel.active_display_id = display_id;
+                display_panel.active_display_id = parseInt(display_id);
                 $(`#dataset_${primary_key}`).trigger("changePlot", display_id);
                 $(`#modals_c img#modal-display-img-${display_id}`).addClass(
                     "active-display"
