@@ -95,7 +95,7 @@ class DatasetPanel extends Dataset {
         });
     }
 
-    async draw_chart(gene_symbol, display_id) {
+    async create_data_object(display_id) {
         const data = await this.get_dataset_display(display_id);
 
         let zoom = false;
@@ -107,7 +107,11 @@ class DatasetPanel extends Dataset {
         data.controller = this.controller;
         data.projection_id = this.projection_id;
         data.colorblind_mode = CURRENT_USER.colorblind_mode;
+        return data;
+    }
 
+    async draw_chart(gene_symbol, display_id) {
+        this.create_data_object(display_id);
         let display;
         if (
             ["bar", "scatter", "violin", "line", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(data.plot_type)
@@ -135,17 +139,7 @@ class DatasetPanel extends Dataset {
     }
 
     async draw_mg_chart(gene_symbols, display_id) {
-        const data = await this.get_dataset_display(display_id);
-
-        let zoom = false;
-        if (this.display?.zoomed) {
-            zoom = true;
-        }
-
-        data.primary_key = this.primary_key;
-        data.controller = this.controller;
-        data.projection_id = this.projection_id;
-        data.colorblind_mode = CURRENT_USER.colorblind_mode;
+        this.create_data_object(display_id);
 
         let display;
         if (
@@ -194,21 +188,7 @@ class DatasetPanel extends Dataset {
             if (default_display_id) {
                 this.default_display_id = default_display_id;
                 this.draw_chart(gene_symbol, default_display_id);
-
-                // cache all owner/user displays for this panel;
-                // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
-                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
-                ).then((res) => res.map((r) => r.value));
-
-                if (CURRENT_USER.id === this.user_id) {
-                    owner_displays = [];
-                }
-
-                this.owner_displays = owner_displays;
-                this.user_displays = user_displays;
-
-                this.register_events();
+                this.cache_displays();
             } else {
                 // No default display, this really shouldn't happen because
                 // owners should always have atleast done this after upload
@@ -272,21 +252,8 @@ class DatasetPanel extends Dataset {
             if (default_display_id) {
                 this.default_display_id = default_display_id;
                 this.draw_mg_chart(gene_symbols, default_display_id);
+                this.cache_displays();
 
-                // cache all owner/user displays for this panel;
-                // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
-                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
-                ).then((res) => res.map((r) => r.value));
-
-                if (CURRENT_USER.id === this.user_id) {
-                    owner_displays = [];
-                }
-
-                this.owner_displays = owner_displays;
-                this.user_displays = user_displays;
-
-                this.register_events();
             } else {
                 // No default display, this really shouldn't happen because
                 // owners should always have atleast done this after upload
@@ -295,6 +262,23 @@ class DatasetPanel extends Dataset {
                 );
             }
         }
+    }
+
+    async cache_displays(){
+        // cache all owner/user displays for this panel;
+        // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
+        let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+            .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+        ).then((res) => res.map((r) => r.value));
+
+        if (CURRENT_USER.id === this.user_id) {
+            owner_displays = [];
+        }
+
+        this.owner_displays = owner_displays;
+        this.user_displays = user_displays;
+
+        this.register_events();
     }
 
     async redraw(display_id) {
@@ -341,7 +325,7 @@ class DatasetPanel extends Dataset {
                     $(`#modal-display-img-${display.id}`).attr("src", url);
                 } catch (err) {
                     if (err.name == "CanceledError") {
-                        console.info("Canceled fetching Plotly preview image for previous request");
+                        console.info(`Canceled fetching Plotly preview image for previous request for display ${display_id}`);
                         return;
                     }
                     console.error(err.message);
@@ -356,7 +340,7 @@ class DatasetPanel extends Dataset {
                     d.draw_chart(data);
                 } catch (err) {
                     if (err.name == "CanceledError") {
-                        console.info("Canceled fetching SVG preview image for previous request");
+                        console.info(`Canceled fetching SVG preview image for previous request for display ${display_id}`);
                         return;
                     }
                     console.error(err.message);
@@ -400,7 +384,7 @@ class DatasetPanel extends Dataset {
                 $(`#modal-display-img-${display.id}`).attr("src", url);
             } catch (err) {
                 if (err.name == "CanceledError") {
-                    console.info("Canceled fetching multigene preview image for previous request");
+                    console.info(`Canceled fetching multigene preview image for previous request for display ${display_id}`);
                     return;
                 }
                 console.error(err.message);
