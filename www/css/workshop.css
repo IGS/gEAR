@@ -1,3 +1,6 @@
+a.slides {
+    text-decoration: underline;
+}
 div#sidebar {
     border-left: 1px solid rgb(150,150,150);
 }
