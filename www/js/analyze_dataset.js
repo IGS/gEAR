@@ -443,10 +443,10 @@ window.onload=() => {
         reset_manual_marker_gene_entries();
     });
     $('#marker_genes_manually_entered').keyup(function() {
-        update_manual_marker_gene_entries($(this).val());
+        update_manual_marker_gene_entries();
     });
     $('#marker_genes_manually_entered').change(function() {
-        process_manual_marker_gene_entries($(this).val());
+        process_manual_marker_gene_entries();
     });
 
 
@@ -480,6 +480,14 @@ window.onload=() => {
 		}
 	});
 
+    $("#save_marker_gene_cart").on("click", () => {
+		$("#save_marker_gene_cart").prop("disabled", true);
+		if (CURRENT_USER) {
+			save_marker_gene_cart();
+		} else {
+			alert("You must be signed in to do that.");
+		}
+	});
 
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
@@ -500,6 +508,44 @@ window.onload=() => {
     // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
     // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
     observer.observe(target_node || safer_node , { attributes: true });
+}
+
+function save_marker_gene_cart() {
+    // must have access to USER_SESSION_ID
+    const gc = new GeneCart({
+        session_id: CURRENT_USER.session_id,
+        label: $("#marker_gene_cart_name").val(),
+        gctype: 'unweighted-list',
+        organism_id: $("#dataset_id").data('organism-id'),
+        is_public: 0
+    });
+
+    current_analysis.genes_of_interest.forEach((gene_id) => {
+        const gene = new Gene({
+            //id: gene_id,    // TODO: figure out how to get ensembl ID for this
+            gene_symbol: gene_id,
+        });
+        gc.add_gene(gene);
+    });
+
+    gc.save(update_ui_after_marker_gene_cart_save_success, update_ui_after_marker_gene_cart_save_failure);
+
+}
+
+function update_ui_after_marker_gene_cart_save_success(gc) {
+	$("#saved_marker_gene_cart_info_c > p").html(`Cart "${gc.label}" successfully saved.`);
+	$("#saved_marker_gene_cart_info_c > p").removeClass("text-danger").addClass("text-success");
+	$("#saved_marker_gene_cart_info_c").show();
+    done_working("Saved marker gene cart", false);
+}
+
+function update_ui_after_marker_gene_cart_save_failure(gc, message) {
+	$("#saved_marker_gene_cart_info_c > p").html("There was an issue saving the marker gene cart.");
+	$("#saved_marker_gene_cart_info_c > p").removeClass("text-success").addClass("text-danger");
+	$("#saved_marker_gene_cart_info_c").show();
+    report_error(`Error saving gene cart: ${gc.label}`);
+    report_error(message);
+    $('#save_marker_gene_cart').attr("disabled", false);
 }
 
 function save_weighted_gene_cart() {
@@ -922,8 +968,14 @@ async function populate_dataset_selection() {
     $('#pre_dataset_spinner').hide();
 }
 
-function process_manual_marker_gene_entries(gene_str) {
+function process_manual_marker_gene_entries() {
     current_analysis.genes_of_interest = new Set([...entered_marker_genes, ...clicked_marker_genes]);
+    // Only allow saving of gene cart if genes are selected
+    $("#save_marker_gene_cart").prop("disabled", true);
+    if (current_analysis.genes_of_interest.size) {
+		$("#save_marker_gene_cart").prop("disabled", false);
+
+    }
 }
 
 function report_error(msg) {
@@ -1125,6 +1177,7 @@ function run_analysis_marker_genes() {
 
                 $('#btn_marker_genes_run').attr("disabled", false);
                 done_working("Marker genes computed");
+                $("#marker_gene_cart_g").show();
                 $('#marker_genes_options_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
                 $('#btn_marker_genes_run').attr("disabled", false);
