@@ -422,89 +422,6 @@
                 <small id="selected_gene_cart_div" style="visibility:hidden;" class="js-gene-cart-div"><strong>Gene Cart: </strong><span id="selected_gene_cart"  class="js-gene-cart"></span></small>
               </div> <!-- gene search div -->
 
-              <form id="projection_search_form"></form>
-              <div id="projection_search_div">
-                <div id="projection_source_container" class="form-group">
-                  <a id="projectr_paper_link" class="js-search btn btn-secondary btn-sm" role="button" href="https://academic.oup.com/bioinformatics/article/36/11/3592/5804979" target="_blank"><i class="fa fa-lg fa-info-circle"></i> Read the ProjectR paper</a>
-                  <h3 id="projection_source_label">Select Pattern Source</h3>
-                  <div id="projection_source_c" class="dropdown">
-                    <div id="projection_source" value="" data-title="Click to change" class="js-pattern form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
-                    <div class="dropdown-menu" aria-labelledby="projection_source">
-                      <form class="px-4 py-3" onsubmit="return false;">
-                        <div class="input-group input-group-sm mb-3">
-                          <div class="input-group-prepend">
-                            <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                          </div>
-                          <input type="text" class="form-control" id="projection_source_tree_q" placeholder="Type to search for patterns or weighted gene carts">
-                        </div>
-                        <div id="projection_source_tree"></div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="projection_algorithm_c" class="form-group form-group-sm"  data-toggle="tooltip" data-placement="right" title="Choose which projection algorithm to use">
-                  <h3>Select Algorithm</h3>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="pca_algo" value="pca" checked>
-                    <label class="form-check-label" for="pca_algo">
-                      Principal Component Analysis (PCA)
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="nmf">
-                    <label class="form-check-label" for="nmf_algo">
-                      Non-Negative Matrix factorization (NMF)
-                    </label>
-                  </div>
-                  <div class="form-check" id="binary_algo_form_check" style="display:none;">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="binary_algo" value="binary">
-                    <label class="form-check-label" for="binary_algo">
-                      Binary Gene Count
-                    </label>
-                  </div>
-                </div>
-
-                <div id="projection_display_mode_c" class="form-group form-group-sm">
-                  <h3>Select Display Mode</h3>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_display_mode" id="single_pattern" value="single" checked>
-                    <label class="form-check-label" for="single_pattern">
-                      Single-pattern display
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_display_mode" id="multi_pattern" value="multi">
-                    <label class="form-check-label" for="multi_pattern">
-                      Multi-pattern display
-                    </label>
-                  </div>
-                </div>
-
-                <div id="projection_pattern_elements_c" style="display:none;" class="form-group form-group-sm">
-                  <h3>Select Patterns to Plot</h3>
-                  <div class="form-group form-group-sm form-row">
-                    <div class="col-6">
-                      <a id="projection_pattern_select_all" class="btn btn-sm btn-link" role="button">Select all</a>
-                    </div>
-                    <div class="col-6">
-                      <a id="projection_pattern_deselect_all" class="btn btn-sm btn-link" role="button">Deselect all</a>
-                    </div>
-                  </div>
-                  <div id="projection_pattern_elements"></div>
-                </div>
-
-                <script id="pattern_list_tmpl" type="text/x-jsrender">
-                  <option value="{{:id}}">{{:title}}</option>
-                </script>
-                <script id="pattern_elements_tmpl" type="text/x-jsrender">
-                  <div class="form-check">
-                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}" data-top-up="{{:top_up}}" data-top-down="{{:top_down}}">
-                    <label class="form-check-label">{{:label}}</label>
-                  </div>
-                </script>
-              </div>
-
               <div id="selected_profile_container" class="form-group">
                 <h3 id="selected_profile_label">Select Profile</h3>
                 <div id="selected_profile_c" class="dropdown">
@@ -521,9 +438,6 @@
                     </form>
                   </div>
                 </div> <!-- end selected_profile_c -->
-              </div>
-              <div class="form-group form-group-sm">
-                <button id="submit_search_projection" class="js-search btn btn-secondary btn-sm">Search projections</button>
               </div>
             </div><!-- end #search_container -->
 
@@ -584,12 +498,6 @@
                       Here are some examples: "atoh1" or "atoh1 gfi1 pou4f3 lfng"
                     </p>
                   </div>
-                  <div id="projection_permalink_info">
-                    <h3>Cannot display plots since no projecton patterns were selected</h3>
-                    <p>
-                      To view the datasets for this profile, first select one or more projection patterns in the "Select Pattern Source" panel on the left
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -602,11 +510,6 @@
             Main panel of active page
         ------------------------------------------->
           <div id="viewport_main" class="main_column col-10">
-            <div class="alert-info alert" role="alert" id="functional_not_supported_alert" style="display:none;">
-              <p>
-                Functional annotation information is not available for multigene searches and for projection patterns.
-              </p>
-            </div>
             <div id="highly_expressed_genes_card" class="card bg-light mb-3" style="display:none;">
               <h5 class="card-header"></h5>  <!-- filled in with JS -->
               <div class="card-body row">

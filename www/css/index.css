@@ -509,20 +509,6 @@ li.scope_choice:hover {
   padding-right: 5px !important;  /* Give some cushion to the longest submenu name */
 }
 
-#submit_search_projection {
-  background-color: var(--main-section-launcher-bg-color-active);
-}
-
-#projection_pattern_select_all,#projection_pattern_deselect_all {
-  color: var(--main-section-launcher-bg-color-active);
-  text-decoration: underline;
-}
-
-#projection_pattern_select_all:hover,#projection_pattern_deselect_all:hover {
-  background-color: var(--main-section-launcher-bg-color-active);
-  color: white;
-}
-
 #projectr_paper_link {
   color: white;
 }
