@@ -539,6 +539,7 @@ async function load_all_gene_carts() {
             }
         }
 
+        //? Since many weighted gene carts include all dataset genes, they could overload the system. Should we restrict to only unweighted lists?
         gene_cart_tree.domainGeneCarts = carts.domain;
         gene_cart_tree.userGeneCarts = carts.user;
         gene_cart_tree.groupGeneCarts = carts.group;
@@ -733,7 +734,6 @@ $("#gene_search_form").submit((event) => {
     // Ensure correct tooltip text is displayed
     set_exact_match(exact_match, false);
     set_multigene_plots(multigene, false);
-
 
     const formData = $("#gene_search_form").serializeArray();
 

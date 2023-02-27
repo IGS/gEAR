@@ -141,7 +141,7 @@ class DatasetCollectionPanel {
             }).done((data) => {
                 if (data.success == 1) {
                     if (projection) {
-                        //update_datasetframes_projections();
+                        // We want the user to explicitly click the "search" button.
                         return;
                     }
 

@@ -8,7 +8,6 @@ const GO_TERM_SCROLLBAR_DRAWN = false;
 const AT_FIRST_MATCH_RECORD = false;
 const AT_LAST_MATCH_RECORD  = false;
 const PREVIOUS_SELECTED_RECORD_NUM = null;
-let SCORING_METHOD = 'gene';
 let SELECTED_GENE = null;
 
 let dataset_id = null; //from permalink - dataset share ID
@@ -110,16 +109,6 @@ $(document).on("handle_page_loading", () => {
         layout_id = $(this).data('profile-share-id');
     });
 
-    // track the mouse movement so we can display scoring tooltips
-    $( document ).on( "mousemove", (event) => {
-        // Positioning for dataset_grid tips
-        // Why is this pixel adjustment necessary?
-        xpos = event.pageX - 240;
-        ypos = event.pageY - 130 - 30;
-        $("#tip").css("left", `${xpos}px` );
-        $("#tip").css("top" , `${ypos}px` );
-    });
-
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
 
@@ -170,7 +159,6 @@ function validate_help_id(help_id) {
     });
 };
 
-// TODO: If search is clicked before trees are loaded, gene is searched twice as submission happens twice.
 // Disable search button until trees are loaded.
 $(document).on("build_jstrees", async () => await load_all_trees());
 
@@ -406,7 +394,7 @@ async function load_pattern_carts() {
 
     })
     .fail((jqXHR, textStatus, errorThrown) => {
-        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Weighted gene carts not sucessfully retrieved.");
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, "Pattern gene carts not sucessfully retrieved.");
     });
 
     // If projection info was in URL, one of the above should have the JSTree element returned
@@ -550,32 +538,6 @@ $('#search_results').on("click", "a", function(e) {
     select_search_result(this, draw_display=false);
 });
 
-// Warn user if no datasets in profile
-$( "#search_gene_symbol").focus(function(){
-    if (dataset_collection_panel.datasets.length < 1) {
-        $("#search_gene_symbol").popover('show');
-    } else {
-        $("#search_gene_symbol").popover('hide');
-    }
-});
-$("#search_gene_symbol").blur(function() {
-    $("#search_gene_symbol").popover('hide');
-});
-
-// Popover for warning user that profile lacks datasets.
-$('#search_gene_symbol').popover({
-  	animation: true,
-  	trigger: 'manual',
-    container: 'body',
-  	content: "<div class='text-center' style='width:250px;'>" +
-        "<div class='alert alert-warning text-center'>" +
-        "<p><span class='fa fa-exclamation'></span> <b>No datasets in current profile</b></p>" +
-      	"</div>" +
-        "<p>To search a gene, add a dataset to your layout profile in the <a href='./dataset_manager.html'>Dataset Manager</a>.</p>" +
-        "</div>",
-  	html: true,
-  	placement: 'right'
-});
 
 $("#projection_search_form").submit((event) => {
     // ! Needs to be in 'submit' event to ensure "Enter" triggera are handled correctly as well
@@ -654,7 +616,6 @@ $("#projection_source").on('change', (_event) => {
     $('#search_results_scrollbox').hide();
     // Empty these since the old pattern vals may not be relevent to the current pattern.
     clear_search_result_info();
-    $("#search_gene_symbol").empty();
 
     const gctype = $("#projection_source").data("gctype");
 
@@ -773,13 +734,6 @@ $(document).keydown((event) => {
     }
 });
 
-// If #search_param_gene_cart (front page) was the setter, set #selected_gene_cart
-$('#search_param_gene_cart').change(() => {
-    $('.js-gene-cart').text($('#search_param_gene_cart').text());
-    $('.js-gene-cart').val($('#search_param_gene_cart').val());
-    $('.js-gene-cart-div').css("visibility", "visible");
-});
-
 async function run_projection(dataset, projection_source, projection_algorithm, gctype, selected_projections, first_thing) {
     try {
         await dataset.run_projectR(projection_source, projection_algorithm, gctype);
@@ -865,43 +819,6 @@ function set_scrollbar_props() {
     } else {
         $("#search_results_scrollbox").mCustomScrollbar("update");
     }
-}
-
-function update_datasetframes_projections() {
-    // TODO: Refactor this to not repeat so much of the projection search submit event
-
-    // Assumes that projection source is still present.
-    const projection_source = $("#projection_source").val();
-    if (!projection_source) {
-        return;
-    }
-
-    if (!multipattern) {
-        // If single gene, select all genes
-        $(`.js-projection-pattern-elts-check`).prop('checked', true);
-    }
-
-    // Get selected projections and add as state
-    const selected_projections = {};
-    $('.js-projection-pattern-elts-check:checked').each(function() {
-        // Needs to be Object so it can be the same structure as "search_genes.cgi" so it fits nicesly in populate_search_result_list()
-        const label = $(this).data('label');
-        selected_projections[label] = label;
-    });
-
-    // Implementing search_genes.cgi results without the CGI execution
-    populate_search_result_list(selected_projections);
-
-    const gctype = $("#projection_source").data('gctype');
-    const first_thing = $('#search_results a.list-group-item').first();
-    select_search_result(first_thing, draw_display=false);
-
-    const projection_algorithm = $('[name="projection_algo"]:checked').val();
-
-    // Run ProjectR for the chosen pattern
-    dataset_collection_panel.datasets.map((dataset) => {
-        run_projection(dataset, projection_source, projection_algorithm, gctype, selected_projections, first_thing);
-    });
 }
 
 function set_multipattern_plots(is_enabled, show_tooltip=true) {
