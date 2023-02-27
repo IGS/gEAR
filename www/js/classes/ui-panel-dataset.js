@@ -467,14 +467,14 @@ class DatasetPanel extends Dataset {
             });
 
             user_displays.forEach((display) => {
-                if (multigene) {
+                if (this.multigene) {
                     this.draw_preview_images_mg(display);
                 } else {
                     this.draw_preview_images(display);
                 }
             });
             owner_displays.forEach((display) => {
-                if (multigene) {
+                if (this.multigene) {
                     this.draw_preview_images_mg(display);
                 } else {
                     this.draw_preview_images(display);
