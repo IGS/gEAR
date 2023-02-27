@@ -109,6 +109,16 @@ $(document).on("handle_page_loading", () => {
         layout_id = $(this).data('profile-share-id');
     });
 
+    // track the mouse movement so we can display SVG scoring tooltips
+    $( document ).on( "mousemove", (event) => {
+        // Positioning for dataset_grid tips
+        // Why is this pixel adjustment necessary?
+        xpos = event.pageX - 240;
+        ypos = event.pageY - 130 - 30;
+        $("#tip").css("left", `${xpos}px` );
+        $("#tip").css("top" , `${ypos}px` );
+    });
+
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
 
@@ -426,11 +436,6 @@ async function load_all_trees(){
     $(document).trigger("handle_page_loading");
 
 }
-
-// Handle direct documentation links
-$(document).on('click', '#doc-link-choices li', function(){
-    window.location.replace(`./manual.html?doc=${$(this).data('doc-link')}`);
-});
 
 // Sort numerically in situations where a alphabetical string is followed by a number
 // i.e. PC1, PC2, etc.

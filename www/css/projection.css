@@ -1,16 +1,3 @@
-a.domain_choice_c {
-    font-size: 90%;
-}
-div.bargraph-standard-container,
-div.linegraph-standard-container {
-  padding: 0px 5px 0px 5px;
-  /*flex: 1 0 auto;*/
-  flex: 1 0 100%;
-}
-div.bargraph-standard-container div,
-div.linegraph-standard-container div {
-  max-height: 350px;
-}
 div#dataset_grid {
   display: flex;
   flex-wrap: wrap;
@@ -61,51 +48,14 @@ div.dataset-status-container h2 {
   bottom: calc(100% - 50%);
   opacity: 0.6;
 }
-div.empty-container {
-  background-color: #ffffff;
-}
-div#go_terms_c {
-  display: flex;
-  flex-direction: column;
-  max-height: 300px;
-}
-div#go_terms_table_c {
-  overflow: auto;
-}
-
 div.h5ad-container {
   height: 350px;
-}
-div.input-group-text {
-    padding: 6px 8px;
-}
-div.input-group-text img {
-  width: 20px;
 }
 .js-search:hover,
 .js-exact-match:hover,
 .js-multipattern:hover,
 .js-gene-cart-icon:hover {
   cursor: pointer;
-}
-
-div.math-container {
-  display: block;
-  position: absolute;
-  bottom: 0;
-}
-div.organism_icon_c img {
-  height: 24px;
-  width: 24px;
-}
-div.organism_icon_c img:hover {
-  cursor: pointer;
-}
-div#primary_annotation_attributes {
-  height: 260px;
-}
-div#primary_annotation_attributes dd {
-  margin-bottom: 10px;
 }
 div#search_container {
   background-color: rgb(255, 255, 255);
@@ -120,86 +70,6 @@ div.search_result_c {
 div#search_results .list-group-item-active {
   background-color: var(--main-search-list-selected-gene);
   color: white;
-}
-div.section_launcher {
-    margin: 0 10px 0 10px;
-    background-color: var(--main-section-launcher-bg-color-active);
-    border-radius: 3px;
-    position: relative;
-}
-div.section_launcher_double {
-    height: 3.5em;
-}
-div.section_launcher_single {
-    height: 2.5em;
-}
-div.section_launcher_notready {
-    background-color: var(--main-section-launcher-bg-color-inactive);
-}
-div.section_launcher:hover {
-    cursor: pointer;
-}
-div.section_launcher_label {
-    color: white;
-    font-weight: bold;
-    width: 100%;
-    text-align: center;
-    margin: 0;
-    padding: 5px;
-}
-div.section_panel {
-    background-color: white;
-    border-radius: 3px;
-    padding: 5px;
-    height: 300px;
-}
-div.section_panel h3 {
-    font-size: 110%;
-    color: black;
-    font-weight: bold;
-    margin: 5px 0 0 5px;
-    padding: 0;
-}
-div.section_panel hr {
-    margin: 5px 0 5px 0;
-    padding: 0;
-}
-div.section_panel .img_c {
-    padding: 20px;
-}
-div.section_panel p {
-    margin: 5px 0 0 5px;
-}
-div.section_panels_row {
-    margin-bottom: 10px;
-}
-div.sidebar_section {
-  background-color: #e8ebee;
-  padding: 10px 10px 10px 10px;
-  border-radius: 5px;
-  margin-bottom: 15px;
-}
-div.sidebar_section h5 {
-  color: #2f0f3e;
-}
-div#site_stats_c ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-div#site_stats_c ul li {
-  font-weight: bold;
-  font-size: 120%;
-  color: black;
-}
-div#site_stats_c ul span {
-  font-weight: normal;
-  padding-right: 10px;
-  font-size: 100%;
-  color: black;
-}
-div.svg_c_parent {
-  overflow: hidden;
 }
 div.h5ad-svg-container {
     position: relative;
@@ -240,47 +110,6 @@ div.textarea-ldesc table td {
 }
 div.textarea-ldesc table th {
     font-weight: bold;
-}
-div.tool_launcher_c:hover {
-    cursor: pointer;
-}
-div.tool_launcher_c img {
-    border: 1px solid rgb(220,220,220);
-}
-div#tutorials_c {
-    background-color: var(--banner-bg-color);
-    color: white;
-}
-div#tutorials_c h3 {
-    color: white;
-}
-div#tutorials_c ul {
-    margin-left: 15px;
-}
-div#tutorials_c ul li a {
-    color: white;
-}
-div#tutorials_c ul li:before {
-  content: '\0BB \020';
-}
-div#uploader_header_c {
-    margin-top: 30px;
-}
-div#uploader_header_c hr {
-    margin: 8px 0 15px 0;
-}
-div.youtube-video-container {
-    position: relative;
-    width: 100%;
-    padding-top: 60%;
-    overflow: hidden;
-}
-div.youtube-video-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
 }
 img.modal-display-loading {
     height: 50px;
@@ -332,45 +161,6 @@ p#dataset_browse_label a {
     font-weight: bold;
     color: var(--banner-bg-color);
 }
-span.citation_authors,
-span.citation_code_and_license,
-span.citation_pub,
-span.citation_pmid {
-    font-size: 90%;
-}
-span.corner-badge {
-  /* Inspiration for badges: https://codepen.io/eode9/pen/twkKm */
-  width: 45px;
-  background: #ddd;
-  position: absolute;
-  bottom: 0;
-  text-align: center;
-  cursor: pointer;
-  line-height: 20px;
-  border-radius: 4px;
-  color: #060606;
-}
-span.data-raw {
-  background: #401362;
-  color: #f0f0f0;
-}
-span.data-raw:hover {
-  background: #a28ca7;
-}
-span.data-log2 {
-  background: #6f2a7d;
-  color: #f0f0f0;
-}
-span.data-log2:hover {
-  background: #a28ca7;
-}
-span.data-log10 {
-  background: #c086a5;
-  color: #f0f0f0;
-}
-span.data-log10:hover {
-  background: #a28ca7;
-}
 svg {
   max-width: 100%;
   max-height: 100%;
@@ -381,28 +171,7 @@ svg.svg-gradient-container {
 table#annot-go_terms td {
   padding: 3px;
 }
-ul#doc-link-choices li:hover {
-    cursor: pointer;
-    font-weight: bold;
-}
-ul#links_out {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-ul#links_out li {
-  float: left;
-  margin-right: 10px;
-}
-ul.math-options {
-  min-width: 60px;
-}
-ul.math-options > li {
-  padding-left: 0px;
-}
-ul.math-options > li > a {
-  padding: 1px 7px;
-}
+
 div#tip {
   display: absolute;
   background: white;
@@ -410,16 +179,14 @@ div#tip {
   border: 1px solid black;
   border-radius: 5px;
 }
-li.scope_choice:hover {
-  cursor: pointer;
-  background-color: rgb(230, 230, 230);
-}
 .grid-width-8 {
   padding-bottom: 36%;
 }
 .grid-width-12 {
   padding-bottom: 24%;
 }
+
+/* For SVG */
 .axis path,
 .axis tick,
 .axis line {
