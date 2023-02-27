@@ -167,12 +167,10 @@ $(document).on("handle_page_loading", () => {
         // adjust state history and other results page things
         // These are adjustments that are normally made when the "search" button is hit
         if (this.id === "selected_profile") {
-
-            let uniq_gene_symbols = []; // list of unique gene symbols
             // split on combination of space and comma (individually or both together.)
             const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
             // Remove duplicates in gene search if they exist
-            uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
+            const uniq_gene_symbols = gene_symbol_array.filter((value, index, self) => self.indexOf(value) === index);
             const curated_searched_gene_symbols = uniq_gene_symbols.join(',');
             // Update search history
             add_state_history(curated_searched_gene_symbols);
