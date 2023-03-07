@@ -1,4 +1,4 @@
-# https://docs.python.org/3.4/library/http.cookies.html
+/* https://docs.python.org/3.4/library/http.cookies.html */
 CREATE TABLE guser (
        id             INT PRIMARY KEY AUTO_INCREMENT,
        user_name      VARCHAR(255),
@@ -13,13 +13,13 @@ CREATE TABLE guser (
        is_gear_curator TINYINT(1) DEFAULT 0
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-# password is a hashlib md5 hexdigest
+/* password is a hashlib md5 hexdigest */
 INSERT INTO guser (id, user_name, email, institution, pass, updates_wanted, is_admin)
        VALUES (0, 'gEAR admin', 'admin@localhost', 'UMaryland', 'fcdf1dc2c1ef7dec3dbb1a6e2c5e3c8a', 0, 1);
 INSERT INTO guser (email, user_name, institution, pass, updates_wanted, is_admin)
        VALUES('jorvis@gmail.com', 'Joshua Orvis', 'IGS', 'e81e78d854d86edc38ba45c443662aee', 0, 1);
 
-# Group is a reserved word, so we get gEAR Group (ggroup)
+/* Group is a reserved word, so we get gEAR Group (ggroup) */
 CREATE TABLE ggroup (
        id             INT PRIMARY KEY AUTO_INCREMENT,
        creator_id     INT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE organism (
        taxon_id       INT
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-## DO NOT change these values without making corresponding changes in the annotation loading scripts
+/*! DO NOT change these values without making corresponding changes in the annotation loading scripts*/
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
        VALUES (1, 'Mouse', 'Mus', 'musculus', NULL, 10090);
 INSERT INTO organism (id, label, genus, species, strain, taxon_id)
@@ -191,12 +191,12 @@ CREATE TABLE dataset (
        ldesc                    TEXT,
        date_added               DATETIME,
        dtype                    VARCHAR(50) NOT NULL DEFAULT 'svg-expression',
-       # paths are relative to the root, so probably like datasets_uploaded/{dataset_id}.jpg
+       /* paths are relative to the root, so probably like datasets_uploaded/{dataset_id}.jpg*/
        schematic_image          VARCHAR(255),
        share_id                 VARCHAR(50),
-       math_default             VARCHAR(50) NOT NULL DEFAULT 'raw', #options: 'raw', 'log2', 'log10'
+       math_default             VARCHAR(50) NOT NULL DEFAULT 'raw', /*options: 'raw', 'log2', 'log10'*/
        marked_for_removal       TINYINT DEFAULT 0,
-       load_status              VARCHAR(20), #options: 'pending', 'loading', 'completed', 'failed',
+       load_status              VARCHAR(20), /*options: 'pending', 'loading', 'completed', 'failed',*/
        has_h5ad                 TINYINT DEFAULT 0,
        platform_id              VARCHAR(255),
        instrument_model         VARCHAR(255),
@@ -207,7 +207,7 @@ CREATE TABLE dataset (
        contact_institute        VARCHAR(255),
        contact_name             VARCHAR(100),
        annotation_source        VARCHAR(20),
-       plot_default             VARCHAR(50), #options: 'bar', 'line', 'violin'
+       plot_default             VARCHAR(50), /*options: 'bar', 'line', 'violin'*/
        annotation_release       INT,
        FULLTEXT                 text_idx (title, ldesc),
        FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
@@ -255,7 +255,7 @@ CREATE TABLE dataset_preference (
       ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-# Stores custom external URLs to be displayed with each dataset
+/* Stores custom external URLs to be displayed with each dataset */
 CREATE TABLE dataset_link (
       id                        INT PRIMARY KEY AUTO_INCREMENT,
       dataset_id                VARCHAR(50) NOT NULL,
@@ -303,8 +303,8 @@ CREATE TABLE event_registration (
       FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 );
 
-# Recursive organizational table allowing item types (like gene carts
-#  or profiles) to be grouped into 'folders'
+/* Recursive organizational table allowing item types (like gene carts
+   or profiles) to be grouped into 'folders' */
 CREATE TABLE folder (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        parent_id                INT,
@@ -312,7 +312,7 @@ CREATE TABLE folder (
        FOREIGN KEY (parent_id) REFERENCES folder(id) ON DELETE CASCADE
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-# The label for this one is not actually displayed.  It is set in tree.js
+/* The label for this one is not actually displayed.  It is set in js/classes/tree.js */
 INSERT INTO folder (id, parent_id, label) VALUES (101, NULL, 'Highlighted profiles');
 INSERT INTO folder (id, parent_id, label) VALUES (102, NULL, 'Your profiles');
 INSERT INTO folder (id, parent_id, label) VALUES (103, NULL, 'Group profiles');
@@ -328,7 +328,7 @@ CREATE TABLE folder_member (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        folder_id                INT NOT NULL,
        item_id                  INT NOT NULL,
-       item_type                VARCHAR(20) NOT NULL, #options: 'layout', 'genecart'
+       item_type                VARCHAR(20) NOT NULL, /* options: 'layout', 'genecart' */
        FOREIGN KEY (folder_id) REFERENCES folder(id) ON DELETE CASCADE,
        UNIQUE KEY uk_folder_item (folder_id, item_id, item_type)
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
@@ -356,8 +356,8 @@ CREATE TABLE layout_members (
        grid_position            INT NOT NULL,
        grid_width               INT NOT NULL DEFAULT 4,
        mg_grid_width            INT NOT NULL DEFAULT 12,
-       math_preference          VARCHAR(50), #options: 'raw', 'log2', 'log10'
-       plot_preference          VARCHAR(50), #options: 'bar', 'line', 'violin'
+       math_preference          VARCHAR(50), /* options: 'raw', 'log2', 'log10' */
+       plot_preference          VARCHAR(50), /* options: 'bar', 'line', 'violin' */
        FOREIGN KEY (layout_id)
           REFERENCES layout(id)
           ON DELETE CASCADE,
@@ -376,7 +376,7 @@ CREATE TABLE layout_group_membership (
 
 CREATE TABLE supplemental_images (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
-       # label is a meant to identify the class of image
+       /* label is a meant to identify the class of image */
        label                    VARCHAR(50),
        ensembl_id               VARCHAR(20),
        gene_symbol              VARCHAR(20),
@@ -389,7 +389,7 @@ CREATE TABLE tag (
 	label	VARCHAR(55)
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
-# multiple tags to multiple comments
+/* multiple tags to multiple comments */
 CREATE TABLE comment_tag (
 	id			INT PRIMARY KEY AUTO_INCREMENT,
 	tag_id		INT,
@@ -449,3 +449,41 @@ CREATE TABLE user_history (
     FOREIGN KEY (user_id)
      REFERENCES guser(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+/* Restrictd datasets can only be accessed by users in a specific group */
+CREATE TABLE dataset_group_membership (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       dataset_id     VARCHAR(50) NOT NULL,
+       group_id       INT NOT NULL,
+       FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE,
+       FOREIGN KEY (group_id) REFERENCES ggroup(id) ON DELETE CASCADE
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+CREATE TABLE submission {
+       id                          INT PRIMARY KEY AUTO_INCREMENT,
+       user_id                     INT NOT NULL,
+       load_to_cloud_status        VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       extract_h5ad_status         VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       load_to_vm_status           VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       is_restricted               TINYINT DEFAULT 0 /* if one dataset is restricted, then the whole submission must be */
+       FOREIGN KEY (user_id) REFERENCES guser(id),
+}
+
+CREATE TABLE submission_dataset {
+       id                          INT PRIMARY KEY AUTO_INCREMENT,
+       dataset_id                  VARCHAR(50) NOT NULL,
+       nemo_identifier             VARCHAR(20) NOT NULL, /* from nemoarchive */
+       on_cloud_incoming           TINYINT DEFAULT 0,
+       on_cloud_final              TINYINT DEFAULT 0,
+       on_vm                       TINYINT DEFAULT 0,
+       is_restricted               TINYINT DEFAULT 0,
+       FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE
+}
+
+CREATE TABLE submission_member {
+       id                          INT PRIMARY KEY AUTO_INCREMENT,
+       submission_id               INT NOT NULL,
+       submission_dataset_id       INT NOT NULL,
+       FOREIGN KEY (submission_id) REFERENCES submission(id) ON DELETE CASCADE,
+       FOREIGN KEY (submission_dataset_id) REFERENCES submission_dataset(id) ON DELETE CASCADE,
+}
