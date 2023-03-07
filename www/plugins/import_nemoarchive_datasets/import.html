@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js"> <!--<![endif]-->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>NeMO Archive Dataset Import Wizard</title>
+    <meta name="description"
+      content="This is a tool used to import one or more NeMO Archive portal datasets into NeMO Analytics.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+          -->
+    <base href="/" />
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="plugins/import_nemoarchive_datasets/import.' + (new Date()).getTime() + '.css" />');</script>
+</head>
+
+<body>
+    <div id="navigation_bar">
+        <?php include "./include/navigation_bar.html" ?>
+        <!-- content here inserted via JQuery -->
+        <!-- leaving out bootstrap CSS for now -->
+    </div>
+
+    <section class="hero">
+        <div class="hero-body">
+            <p class="title">
+                Import NeMO Archive Portal Datasets
+            </p>
+            <p class="subtitle">
+                You can use this tool to import one or more datasets from the NeMO Archive Data Portal into NeMO
+                Analytics.
+            </p>
+        </div>
+    </section>
+
+    <section class="section">
+        <h1 class="title">Submission Status</h1>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Submission ID</th>
+                    <th>Status</th>
+                    <th>Current Step</th>
+                    <th>Number of Datasets</th>
+                    <th>View display</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>abc1234</th>
+                    <td>In Progress</td>
+                    <td>Copying to Cloud</td>
+                    <th>5</th>
+                    <td><a href="https://umgear.org/index.html?layout_id=6a738334" title="View submission abc1234">View</a></td>
+                </tr>
+                <tr>
+                    <th>def5678</th>
+                    <td>Complete</td>
+                    <td>---</td>
+                    <th>10</th>
+                    <td><a href="https://umgear.org/index.html?layout_id=6a738334" title="View submission def1234">View</a></td>
+                </tr>
+            </tbody>
+        </table>
+      </section>
+
+    <div class="container columns is-fluid">
+        <nav class="panel column is-3">
+            <p class="panel-heading">
+                Filters
+            </p>
+            <div class="panel-block">
+                <p class="control has-icons-left">
+                    <input class="input" type="text" placeholder="Search">
+                    <span class="icon is-left">
+                        <i class="fa fa-search" aria-hidden="true"></i>
+                    </span>
+                </p>
+            </div>
+            <div class="dropdown panel-block">
+                <div class="dropdown-trigger">
+                    <div class="is-clickable" aria-haspopup="true" aria-controls="dropdown-menu">
+                        Organism
+                        <span class="panel-icon">
+                            <i class="fa fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                    <div class="dropdown-content">
+                        <div class="dropdown-item">
+                            <label class="checkbox">
+                                <input type="checkbox">
+                                Human
+                                <span class="tag is-info is-light is-rounded">1</span>
+                            </label>
+                        </div>
+                        <div class="dropdown-item">
+                            <label class="checkbox">
+                                <input type="checkbox">
+                                Mouse
+                                <span class="tag is-info is-light is-rounded">1</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dropdown panel-block">
+                <div class="dropdown-trigger">
+                    <div class="is-clickable" aria-haspopup="true" aria-controls="dropdown-menu">
+                        Anatomical Region
+                        <span class="panel-icon">
+                            <i class="fa fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                    <div class="dropdown-content">
+                        <div class="dropdown-item">
+                            <label class="checkbox">
+                                <input type="checkbox">
+                                Hypothalamus
+                                <span class="tag is-info is-light is-rounded">1</span>
+                            </label>
+                        </div>
+                        <div class="dropdown-item">
+                            <label class="checkbox">
+                                <input type="checkbox">
+                                Cerebral Cortex
+                                <span class="tag is-info is-light is-rounded">1</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-block">
+                <button class="button is-link is-outlined is-fullwidth">
+                    Reset all filters
+                </button>
+            </div>
+        </nav>
+
+        <div class="column is-9">
+            <!-- alternatively use "level" component classes -->
+            <div class="container is-fluid is-flex is-justify-content-space-between">
+                <p class="has-text-weight-bold"><span id="selected-datasets"></span> selected</p>
+                <div class="field is-grouped">
+                    <div class="control">
+                        <input id="name-profile" class="input" type="text" placeholder="Profile Name">
+                    </div>
+                    <button id="dataset-selection-submit" class="button is-primary" type="button" disabled>
+                        <span class="icon"><i class="fa fa-arrow-right"></i></span>
+                        <span id="dataset-selection-submit-text">Start Import</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="container is-fluid">
+                <div class="tabs">
+                    <ul>
+                        <li class="is-active"><a>Datasets</a></li>
+                        <li><a>Collections</a></li>
+                    </ul>
+                </div>
+                <p>Showing <span id="pagination-limit"></span> of <span id="results-total"></span> results</p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th><abbr title="File name">File</abbr></th>
+                            <th>Sample ID</th>
+                            <th><abbr title="Description">Desc</abbr></th>
+                            <th><abbr title="Number of Genes">Num Genes</abbr></th>
+                            <th><abbr title="Number of Cells">Num Cells</abbr></th>
+                        </tr>
+                    </thead>
+                    <tbody id="results">
+                        <tr>
+                            <td><input class="selection" type="checkbox" /></td>
+                            <th>Human_File.mex</th>
+                            <td>Human Sample</td>
+                            <td>This is an example human sample</td>
+                            <td>30000</td>
+                            <td>40000</td>
+                        </tr>
+                        <tr>
+                            <td><input class="selection" type="checkbox" /></td>
+                            <th>Mouse_File.h5ad</th>
+                            <td>Mouse Sample</td>
+                            <td>This is an example mouse sample</td>
+                            <td>25000</td>
+                            <td>25000</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <nav class="pagination" role="navigation" aria-label="pagination">
+                    <a id="results-prev-button" class="pagination-previous">Previous</a>
+                    <a id="results-next-button" class="pagination-next">Next page</a>
+                    <ul id="pagination-numbers" class="pagination-list">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- JS Imports -->
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/vendor/js.cookie.js"></script>
+    <script>document.write('<script src="plugins/import_nemoarchive_datasets/import.' + (new Date()).getTime() + '.js"><\/script>');</script>
+</body>
+
+</html>
