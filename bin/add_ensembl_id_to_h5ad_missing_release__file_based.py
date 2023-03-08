@@ -50,8 +50,8 @@ def main():
     adata = sc.read(args.input_file)
     (_, n_genes) = adata.shape
 
-    #ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
-    ensembl_releases = [84, 85]
+    ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    #ensembl_releases = [84, 85]
     
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -109,8 +109,11 @@ def main():
     print(f"Original # Genes: {n_genes}")
     print(f"Genes lost: {n_genes - best_count}\n")
 
+    # What if we didn't find any? Throw error and fail
+    if best_release is None:
+        raise Exception("ERROR: No mappings found (check that the proper organism was passed?)")
+    
     # Now we have our best release and ensembl ids for those gene symbols,
-
     # Get separate adata for those where the gene symbols were mapped and where they weren't
     genes_present_filter = adata.var.index.isin(best_df.index)
     adata_present = adata[:, genes_present_filter]
