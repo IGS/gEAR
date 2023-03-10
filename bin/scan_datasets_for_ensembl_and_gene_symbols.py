@@ -29,7 +29,7 @@ DATASET_BASE_DIR = '{}/www/datasets'.format(gear_root_path)
 CMD_FILE = 'fix_cmds.sh'
 LOG_FILE = 'investigate.log'
 # Any files larger than this (in MB) will be skipped, unless = None
-FILE_SIZE_LIMIT = 5000
+FILE_SIZE_LIMIT = 4000
 
 def main():
     log_fh = open(LOG_FILE, 'wt')
@@ -55,17 +55,24 @@ def main():
 
         indexed_on_ensembl_id = False
         gene_symbols_present = False
+        preexisting_ensembl_col_name = None
         org_by_ds = get_dataset_organism_id_map()
 
         if dataset_id not in org_by_ds:
             print("\tSkipping, I don't have info for this dataset in the database")
             continue
 
-        if idx_looks_like_ensembl(adata):
+        if looks_like_ensembl(adata.var.index):
             print("\tAppears to be indexed by Ensembl ID", file=sys.stderr)
             indexed_on_ensembl_id = True
         else:
             print("\tDoesn't appear to be indexed by Ensembl ID", file=sys.stderr)
+            ## check for other columns
+            for col_name in ['Accession', 'ensembl']:
+                if col_name in adata.var.columns:
+                    if looks_like_ensembl(adata.var[col_name].tolist()):
+                        preexisting_ensembl_col_name = col_name
+                        break
 
         if has_gene_symbols(adata):
             gene_symbols_present = True
@@ -75,10 +82,17 @@ def main():
             continue
 
         if gene_symbols_present and not indexed_on_ensembl_id:
-            print("\tHas gene symbols but not indexed on ensembl ID, writing to command log", file=sys.stderr)
-            cmd_fh.write("./add_ensembl_id_to_h5ad_missing_release__file_based.py -i {0} -o {0}.reindexed -org {1} -idp FAKEID_\n".format(
-                h5ad_path, org_by_ds[dataset_id]
-            ))
+            ## Did we find a non-index Ensembl column?
+            if preexisting_ensembl_col_name:
+                print("\tHas gene symbols, not indexed on ensembl ID, but found an ensembl column. Writing to command log", file=sys.stderr)
+                cmd_fh.write("./add_ensembl_id_to_h5ad_missing_release__file_based.py -i {0} -o {0} -org {1} -uec {2} -idp FAKEID_\nrm -rf mapped/* unmapped/* merged/*\n".format(
+                    h5ad_path, org_by_ds[dataset_id], preexisting_ensembl_col_name
+                ))
+            else:
+                print("\tHas gene symbols, not indexed on ensembl ID. Writing to command log", file=sys.stderr)
+                cmd_fh.write("./add_ensembl_id_to_h5ad_missing_release__file_based.py -i {0} -o {0} -org {1} -idp FAKEID_\nrm -rf mapped/* unmapped/* merged/*\n".format(
+                    h5ad_path, org_by_ds[dataset_id]
+                ))
         else:
             print("\tNo gene symbols found. Writing var to log", file=sys.stderr)
             log_fh.write("\n---------------------------------------------\n")
@@ -111,16 +125,24 @@ def has_gene_symbols(adata):
     else:
         return False
 
-def idx_looks_like_ensembl(adata):
+def looks_like_ensembl(coldata):
     """
-    Just checks the first entry of the index list and returns True if it is formatted like
+    Just checks the first N entries of the passed list and returns True if any are formatted like
     an Ensembl ID
     """
-    m = re.match("ENS.+\d", adata.var.index[0])
-    if m:
-        return True
-    else:
-        return False
+    entries_to_check = 20
+
+    for id in coldata:
+        m = re.match("ENS.+\d", id)
+        if m:
+            return True
+
+        entries_to_check -= 1
+
+        if entries_to_check <= 0:
+            break
+
+    return False
     
 
 if __name__ == '__main__':
