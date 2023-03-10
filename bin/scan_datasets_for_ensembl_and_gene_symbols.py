@@ -68,7 +68,7 @@ def main():
         else:
             print("\tDoesn't appear to be indexed by Ensembl ID", file=sys.stderr)
             ## check for other columns
-            for col_name in ['Accession', 'ensembl']:
+            for col_name in ['Accession', 'ensembl', 'ENSEMBL']:
                 if col_name in adata.var.columns:
                     if looks_like_ensembl(adata.var[col_name].tolist()):
                         preexisting_ensembl_col_name = col_name
