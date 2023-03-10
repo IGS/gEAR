@@ -121,7 +121,7 @@ def main():
     print(f"\nBest release: {best_release}")
     print(f"Matches for release: {best_count}")
     print(f"Original # Genes: {n_genes}")
-    print(f"Genes lost: {n_genes - best_count}\n")
+    print(f"Genes unmapped: {n_genes - best_count}\n")
 
     # What if we didn't find any? Throw error and fail
     if best_release is None:
