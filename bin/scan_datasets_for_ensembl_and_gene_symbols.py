@@ -26,14 +26,19 @@ gear_bin_path = os.path.dirname(os.path.realpath(__file__))
 gear_root_path = os.path.dirname(gear_bin_path)
 DATASET_BASE_DIR = '{}/www/datasets'.format(gear_root_path)
 
+# dataset IDs in this list file will be skipped (and this script appends to this file)
+SKIP_FILE = 'scan.skip.list'
 CMD_FILE = 'fix_cmds.sh'
 LOG_FILE = 'investigate.log'
 # Any files larger than this (in MB) will be skipped, unless = None
 FILE_SIZE_LIMIT = 4000
 
 def main():
+    skip_ids = get_skip_ids(SKIP_FILE)
+    
     log_fh = open(LOG_FILE, 'wt')
     cmd_fh = open(CMD_FILE, 'wt')
+    skp_fh = open(SKIP_FILE, 'at')
     
     for h5_file in os.listdir(DATASET_BASE_DIR):
         if not h5_file.endswith('.h5ad'):
@@ -50,6 +55,10 @@ def main():
             if os.path.getsize(h5ad_path) >= (FILE_SIZE_LIMIT * 1024 * 1024):
                 print("\tSkipping, File is over the size limit")
                 continue
+
+        if dataset_id in skip_ids:
+            print("\tSkipping, File has already been processed")
+            continue
         
         adata = sc.read(h5ad_path)
 
@@ -79,6 +88,7 @@ def main():
 
         if indexed_on_ensembl_id and gene_symbols_present:
             print("\tIndexed on Ensembl ID and gene symbols found", file=sys.stderr)
+            skp_fh.write("{0}\n".format(dataset_id))
             continue
 
         if gene_symbols_present and not indexed_on_ensembl_id:
@@ -118,6 +128,17 @@ def get_dataset_organism_id_map():
         orgmap[id] = organism_id
 
     return orgmap
+
+def get_skip_ids(fname):
+    ids = list()
+    
+    with open(fname) as fh:
+        for line in fh:
+            line = line.rstrip()
+            ids.append(line)
+
+    return ids
+        
         
 def has_gene_symbols(adata):
     if 'gene_symbol' in adata.var.columns:
