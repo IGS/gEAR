@@ -113,6 +113,10 @@ def main():
             for col in adata.var.columns:
                 log_fh.write("\t'{0}'\n".format(col))
 
+    log_fh.close()
+    cmd_fh.close()
+    skp_fh.close()
+
     print("\nLog file written to: {0}".format(LOG_FILE), file=sys.stderr)
     print("Command file written to: {0}\n".format(CMD_FILE), file=sys.stderr)
         
