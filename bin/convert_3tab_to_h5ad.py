@@ -54,7 +54,23 @@ def main():
     # Ensure observations and genes are sorted the same as found in the expressions file
     obs_index = list(obs.index)
     if set(obs_index) != set(exp_obs):
-        raise Exception("Observation IDs from 'expressions' and 'observations' files are not the same.")
+        print("Observation IDs from 'expressions' and 'observations' files are not the same.", file=sys.stderr)
+
+        print("Got {0} obs IDs from observations file".format(set(obs_index)))
+        print("Got {0} obs IDs from expressions file".format(set(exp_obs)))
+
+        col_num = 0
+    
+        for (of_id, ef_id) in zip(set(obs_index), set(exp_obs)):
+            col_num += 1
+
+            if of_id != ef_id:
+                print("Obs column mismatch at row/column {0}. Expression file has ({1}) but observation file has ({2})".format(col_num, ef_id, of_id))
+                sys.exit(1)
+
+        print("All observation values seemed to match")
+        sys.exit(1)
+    
     obs = obs.reindex(exp_obs)
 
     genes_index = list(var.index)
