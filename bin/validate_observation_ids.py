@@ -48,7 +48,7 @@ def main():
 
         if of_id != ef_id:
             print("Obs column mismatch at row/column {0}. Expression file has ({1}) but observation file has ({2})".format(col_num, ef_id, of_id))
-            exit(1)
+            sys.exit(1)
 
     print("All observation values seemed to match")
 
