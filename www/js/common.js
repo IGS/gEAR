@@ -297,18 +297,24 @@ $('#navigation_bar').on('click', '#btn_sign_out', function(e){
     window.location.replace('./index.html');
 });
 
+function does_page_need_login() {
+    // these are the pages which require a login
+    return (document.URL.includes("upload_dataset.html") ||
+        document.URL.includes("analyze_dataset.html") ||
+        document.URL.includes("projection.html") ||
+        document.URL.includes("user_profile.html") ||
+        document.URL.includes("upload_epigenetic_data.html") ||
+        document.URL.includes("dataset_curator.html") ||
+        document.URL.includes("gene_cart_manager.html") ||
+        document.URL.includes("multigene_curator.html") ||
+        document.URL.includes("epiviz_panel_designer.html") ||
+        document.URL.includes("dataset_explorer.html")
+        );
+}
+
 function handle_login_ui_updates() {
     if (CURRENT_USER.session_id == null) {
-        // these are the pages which require a login
-        if (document.URL.includes("upload_dataset.html") ||
-            document.URL.includes("analyze_dataset.html") ||
-            document.URL.includes("projection.html") ||
-            document.URL.includes("user_profile.html") ||
-            document.URL.includes("upload_epigenetic_data.html") ||
-            document.URL.includes("dataset_curator.html") ||
-            document.URL.includes("gene_cart_manager.html") ||
-            document.URL.includes("multigene_curator.html") ||
-            document.URL.includes("epiviz_panel_designer.html")) {
+        if (does_page_need_login()) {
             $('div#login_warning').show();
             $('div#login_checking').hide();
             $('div#main_content').hide();
@@ -367,16 +373,7 @@ function handle_login_ui_updates() {
 
     }
 
-    if (document.URL.includes("upload_dataset.html") ||
-        document.URL.includes("dataset_explorer.html") ||
-        document.URL.includes("gene_cart_manager.html") ||
-        document.URL.includes("analyze_dataset.html") ||
-        document.URL.includes("projection.html") ||
-        document.URL.includes("user_profile.html") ||
-        document.URL.includes("upload_epigenetic_data.html") ||
-        document.URL.includes("dataset_curator.html") ||
-        document.URL.includes("multigene_curator.html") ||
-        document.URL.includes("epiviz_panel_designer.html")) {
+    if (does_page_need_login()) {
         $('div#login_warning').hide();
         $('div#login_checking').hide();
         $('div#main_content').show();

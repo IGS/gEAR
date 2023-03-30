@@ -31,7 +31,7 @@ class DatasetPanel extends Dataset {
         this.multigene = Number(multigene); // "true/false" works but keeping consistent with the other bool properties
         this.projection = Number(projection);
         this.config = null;
-        this.displays = null;
+        this.active_display = null;
         this.default_display_id = null;
         this.active_display_id = null;
         this.zoomed = false;
@@ -95,19 +95,18 @@ class DatasetPanel extends Dataset {
         });
     }
 
-    async draw_chart(gene_symbol, display_id) {
+    async create_data_object(display_id) {
         const data = await this.get_dataset_display(display_id);
-
-        let zoom = false;
-        if (this.display?.zoomed) {
-            zoom = true;
-        }
 
         data.primary_key = this.primary_key;
         data.controller = this.controller;
         data.projection_id = this.projection_id;
         data.colorblind_mode = CURRENT_USER.colorblind_mode;
+        return data;
+    }
 
+    async draw_chart(gene_symbol, display_id) {
+        const data = await this.create_data_object(display_id);
         let display;
         if (
             ["bar", "scatter", "violin", "line", "contour", "tsne_dynamic", "tsne/umap_dynamic"].includes(data.plot_type)
@@ -122,7 +121,6 @@ class DatasetPanel extends Dataset {
         } else if (data.plot_type === "epiviz") {
             display = new EpiVizDisplay(data, gene_symbol);
         }
-        this.display = display;
 
         // We first draw with the display then zoom in, so whenever
         // gene search is updated, the other displays behind the zoomed
@@ -131,21 +129,14 @@ class DatasetPanel extends Dataset {
         // If projectR information is present, show the info hoverbar
         display.show_info(this.projectR_info);
 
-        if (zoom) display.zoom_in();
+        // Assign this display to the current active display
+        this.active_display = display;
+
+        if (display?.zoomed) display.zoom_in();
     }
 
     async draw_mg_chart(gene_symbols, display_id) {
-        const data = await this.get_dataset_display(display_id);
-
-        let zoom = false;
-        if (this.display?.zoomed) {
-            zoom = true;
-        }
-
-        data.primary_key = this.primary_key;
-        data.controller = this.controller;
-        data.projection_id = this.projection_id;
-        data.colorblind_mode = CURRENT_USER.colorblind_mode;
+        const data = await this.create_data_object(display_id);
 
         let display;
         if (
@@ -153,7 +144,6 @@ class DatasetPanel extends Dataset {
         ) {
             display = new MultigeneDisplay(data, gene_symbols);
         }
-        this.display = display;
 
         // We first draw with the display then zoom in, so whenever
         // gene search is updated, the other displays behind the zoomed
@@ -167,23 +157,26 @@ class DatasetPanel extends Dataset {
                 "This dataset type does not currently support curated multigene displays."
             );
         }
-        if (zoom) display.zoom_in();
 
+        // Assign this display to the current active display
+        this.active_display = display;
+
+        if (display?.zoomed) display.zoom_in();
 
     }
 
     // Draw single-gene plots
     async draw({ gene_symbol } = {}) {
-        if (this.display) this.display.clear_display();
+        if (this.active_display) this.active_display.clear_display();
 
         this.show_loading();
 
         // cache gene_symbol so we can use it to redraw with different display
         this.gene_symbol = gene_symbol;
 
-        if (this.display?.gene_symbol) {
+        if (this.active_display?.gene_symbol) {
             // Ensure that this display is a single-gene display
-            this.draw_chart(gene_symbol, this.display.id);
+            this.draw_chart(gene_symbol, this.active_display.id);
         } else {
             // first time searching gene and displays have not been loaded
             const { default_display_id } = await this.get_default_display(
@@ -194,21 +187,7 @@ class DatasetPanel extends Dataset {
             if (default_display_id) {
                 this.default_display_id = default_display_id;
                 this.draw_chart(gene_symbol, default_display_id);
-
-                // cache all owner/user displays for this panel;
-                // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
-                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
-                ).then((res) => res.map((r) => r.value));
-
-                if (CURRENT_USER.id === this.user_id) {
-                    owner_displays = [];
-                }
-
-                this.owner_displays = owner_displays;
-                this.user_displays = user_displays;
-
-                this.register_events();
+                this.cache_displays();
             } else {
                 // No default display, this really shouldn't happen because
                 // owners should always have atleast done this after upload
@@ -225,7 +204,7 @@ class DatasetPanel extends Dataset {
      * @param {Array} gene_symbols - Array of gene symbols
      */
     async draw_mg({ gene_symbols } = {}) {
-        if (this.display) this.display.clear_display();
+        if (this.active_display) this.active_display.clear_display();
 
         this.show_loading();
 
@@ -258,9 +237,9 @@ class DatasetPanel extends Dataset {
             return;
         }
 
-        if (this.display?.gene_symbols) {
+        if (this.active_display?.gene_symbols) {
             // Ensure this display is a multigene display
-            this.draw_mg_chart(gene_symbols, this.display.id);
+            this.draw_mg_chart(gene_symbols, this.active_display.id);
         } else {
             // first time searching gene and displays have not been loaded
             const { default_display_id } = await this.get_default_display(
@@ -272,21 +251,8 @@ class DatasetPanel extends Dataset {
             if (default_display_id) {
                 this.default_display_id = default_display_id;
                 this.draw_mg_chart(gene_symbols, default_display_id);
+                this.cache_displays();
 
-                // cache all owner/user displays for this panel;
-                // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-                let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
-                    .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
-                ).then((res) => res.map((r) => r.value));
-
-                if (CURRENT_USER.id === this.user_id) {
-                    owner_displays = [];
-                }
-
-                this.owner_displays = owner_displays;
-                this.user_displays = user_displays;
-
-                this.register_events();
             } else {
                 // No default display, this really shouldn't happen because
                 // owners should always have atleast done this after upload
@@ -297,12 +263,29 @@ class DatasetPanel extends Dataset {
         }
     }
 
+    async cache_displays(){
+        // cache all owner/user displays for this panel;
+        // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
+        let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+            .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+        ).then((res) => res.map((r) => r.value));
+
+        if (CURRENT_USER.id === this.user_id) {
+            owner_displays = [];
+        }
+
+        this.owner_displays = owner_displays;
+        this.user_displays = user_displays;
+
+        this.register_events();
+    }
+
     async redraw(display_id) {
         // This check is here in case there was no
         // default display rendered, and a user tries
         // to toggle to a different display. There would
         // be no display to clear.
-        if (this.display) this.display.clear_display();
+        if (this.active_display) this.active_display.clear_display();
 
         this.show_loading();
         if (this.multigene) {
@@ -341,7 +324,7 @@ class DatasetPanel extends Dataset {
                     $(`#modal-display-img-${display.id}`).attr("src", url);
                 } catch (err) {
                     if (err.name == "CanceledError") {
-                        console.info("Canceled fetching Plotly preview image for previous request");
+                        console.info(`Canceled fetching Plotly preview image for previous request for display ${display_id}`);
                         return;
                     }
                     console.error(err.message);
@@ -356,7 +339,7 @@ class DatasetPanel extends Dataset {
                     d.draw_chart(data);
                 } catch (err) {
                     if (err.name == "CanceledError") {
-                        console.info("Canceled fetching SVG preview image for previous request");
+                        console.info(`Canceled fetching SVG preview image for previous request for display ${display_id}`);
                         return;
                     }
                     console.error(err.message);
@@ -400,7 +383,7 @@ class DatasetPanel extends Dataset {
                 $(`#modal-display-img-${display.id}`).attr("src", url);
             } catch (err) {
                 if (err.name == "CanceledError") {
-                    console.info("Canceled fetching multigene preview image for previous request");
+                    console.info(`Canceled fetching multigene preview image for previous request for display ${display_id}`);
                     return;
                 }
                 console.error(err.message);
@@ -424,7 +407,7 @@ class DatasetPanel extends Dataset {
         // zoom event
         $(`#dataset_${primary_key}_zoom_in_control`).click((event) => {
             $(`#dataset_grid`).fadeOut(() => {
-                this.display.zoom_in();
+                this.active_display.zoom_in();
             });
         });
 
@@ -476,7 +459,7 @@ class DatasetPanel extends Dataset {
             $("#modals_c div.modal-display").click(function (event) {
                 $("#modals_c img.active-display").removeClass("active-display");
                 const display_id = this.id.split("-").pop();
-                display_panel.active_display_id = display_id;
+                display_panel.active_display_id = parseInt(display_id);
                 $(`#dataset_${primary_key}`).trigger("changePlot", display_id);
                 $(`#modals_c img#modal-display-img-${display_id}`).addClass(
                     "active-display"
@@ -484,14 +467,14 @@ class DatasetPanel extends Dataset {
             });
 
             user_displays.forEach((display) => {
-                if (multigene) {
+                if (this.multigene) {
                     this.draw_preview_images_mg(display);
                 } else {
                     this.draw_preview_images(display);
                 }
             });
             owner_displays.forEach((display) => {
-                if (multigene) {
+                if (this.multigene) {
                     this.draw_preview_images_mg(display);
                 } else {
                     this.draw_preview_images(display);

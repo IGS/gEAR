@@ -141,7 +141,7 @@ class DatasetCollectionPanel {
             }).done((data) => {
                 if (data.success == 1) {
                     if (projection) {
-                        update_datasetframes_projections();
+                        // We want the user to explicitly click the "search" button.
                         return;
                     }
 
@@ -181,7 +181,7 @@ class DatasetCollectionPanel {
                 const gene_symbol = gene.gene_symbol;
                 dataset.draw({ gene_symbol });
             } else {
-                if (dataset.display) dataset.display.clear_display();
+                if (dataset.active_display) dataset.active_display.clear_display();
                 dataset.show_no_match();
             }
         }
@@ -198,7 +198,7 @@ class DatasetCollectionPanel {
                 // 'entries' is array of gene_symbols
                 dataset.draw_mg({ gene_symbols: entries });
             } else {
-                if (dataset.display) dataset.display.clear_display();
+                if (dataset.active_display) dataset.active_display.clear_display();
                 dataset.show_no_match();
             }
         }
