@@ -304,6 +304,9 @@ class Metadata:
         # Make all datasets private if not specified in the metadata
         try:
             is_public = get_value_from_df(df, 'is_public')
+
+            if is_public != 1:
+                is_public = 0
         except:
             is_public = 0
 
