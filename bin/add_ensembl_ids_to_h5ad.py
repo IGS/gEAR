@@ -25,7 +25,7 @@ def main():
     ensembl_genes_df = get_df_index(args)
     adata = sc.read_h5ad(args.input_file)
 
-    # Some gene's are duplicated in the index,
+    # Some genes are duplicated in the index,
     # we make them unique here, however we lose
     # these genes when merging with our ensembl ids
     # because the new unique names do not match
