@@ -251,23 +251,20 @@ function load_comparison_graph() {
 			plot_data_to_graph(data);
 			return;
 		}
-		// Handle graphing failures
-		$("#plot_loading").hide();
-		$("#ticket_dataset_id").text(dataset_id);
-		$("#ticket_dataset_text").text(dataset_text);
-		$("#ticket_datasetx_condition").text(condition_x_string);
-		$("#ticket_datasety_condition").text(condition_y_string);
-		$("#ticket_error_msg").html(data.error);
-		$("#error_loading_c").show();
+		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
 	}).fail((data) => {
-		// Handle graphing failures
-		$("#plot_loading").hide();
-		$("#ticket_dataset_id").text(dataset_id);
-		$("#ticket_dataset_text").text(dataset_text);
-		$("#ticket_datasetx_condition").text(condition_x_string);
-		$("#ticket_datasety_condition").text(condition_y_string);
-		$("#error_loading_c").show();
+		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
 	});
+}
+
+function handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string) {
+	// Handle graphing failures
+	$("#plot_loading").hide();
+	$("#ticket_dataset_id").text(dataset_id);
+	$("#ticket_dataset_text").text(dataset_text);
+	$("#ticket_datasetx_condition").text(condition_x_string);
+	$("#ticket_datasety_condition").text(condition_y_string);
+	$("#error_loading_c").show();
 }
 
 async function fetch_h5ad_observations (dataset_id) {
@@ -365,15 +362,7 @@ $(document).on('change', '.js-cat-check', function (e) {
 	// Expand collaspable since category was focused on
 	category_collaspable.collapse('show');
 
-	// Update the "axis label" input boxes
-	if ($("#condition_x_tab").hasClass("active")) {
-		const curr_condition_x = update_selected_conditions();
-		$('#x_label').val(stringify_all_conditions(curr_condition_x));
-	} else {
-		// on #condition_y_tab
-		const curr_condition_y = update_selected_conditions();
-		$('#y_label').val(stringify_all_conditions(curr_condition_y));
-	}
+	update_axis_labels();
 })
 
 $(document).on('click', '.js-cat-collapse', function (e) {
@@ -422,6 +411,10 @@ $(document).on('change', '.js-group-check', function(e) {
 		});
 	}
 
+	update_axis_labels();
+})
+
+function update_axis_labels() {
 	// Update the "axis label" input boxes
 	if ($("#condition_x_tab").hasClass("active")) {
 		const curr_condition_x = update_selected_conditions();
@@ -431,7 +424,7 @@ $(document).on('change', '.js-group-check', function(e) {
 		const curr_condition_y = update_selected_conditions();
 		$('#y_label').val(stringify_all_conditions(curr_condition_y));
 	}
-})
+}
 
 // Get all chosen condition groups and return as a semicolon-joined string
 function stringify_all_conditions(condition) {

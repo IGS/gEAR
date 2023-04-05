@@ -102,7 +102,7 @@ def main():
                     print("WARN: feature ({0}) found in ortholog mapping but has no entry in taxon ({1}) reference file".format(g1_id, tx1))
                     continue
 
-            h5_file_path = os.path.abspath("{0}/orthomap.{1}.ensembl__{2}.ensembl.h5ad".format(
+            h5_file_path = os.path.abspath("{0}/orthomap.{1}.ensembl__{2}.ensembl.hdf5".format(
                 args.output_directory, taxon_ids[tx1], taxon_ids[tx2]))
             df = pd.DataFrame(annot, index=identifiers)
             df.to_hdf(os.path.basename(h5_file_path), os.path.dirname(h5_file_path))

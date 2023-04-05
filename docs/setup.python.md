@@ -24,7 +24,7 @@ fixed paths have worked fine for decades.
     $ cd /opt/Python-${PYTHONV}/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
-    $ sudo apt install hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+    $ sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
 
     $ ./pip3 install --upgrade pip
 

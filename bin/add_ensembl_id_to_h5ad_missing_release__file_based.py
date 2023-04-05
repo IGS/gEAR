@@ -44,14 +44,17 @@ def main():
                         help='If true, only print and do not write to output.')
     parser.add_argument('-idp', '--id_prefix', type=str,
                         required=True, help="Fake Ensembl IDs will be generated for any rows whose gene symbols don't match, using this prefix.")
+    parser.add_argument('-uec', '--use_ensembl_column', type=str,
+                        required=False, help="If the datafile already has an Ensembl column it wasn't indexed with, pass its name here.")
+    
 
     args = parser.parse_args()
 
     adata = sc.read(args.input_file)
     (_, n_genes) = adata.shape
 
-    #ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
-    ensembl_releases = [84, 85]
+    ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+    #ensembl_releases = [84, 85]
     
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -76,11 +79,22 @@ def main():
     print(f"File: {args.input_file}")
     print(f"Duplicated Genes: {duplicated_genes.sum()}")
 
-    # print(f"The file, {args.input_file} has {duplicated_genes.sum()} duplicate genes. These will be dropped.")
     adata = adata[:, ~duplicated_genes]
 
     print("\nOriginal loaded adata\n")
     print(adata)
+
+    # If an ensembl column was provided all we have to do is reindex on that and rewrite the file
+    if args.use_ensembl_column:
+        print("INFO: re-indexing file on column ({0})".format(args.use_ensembl_column))
+        adata.var = adata.var.set_index(args.use_ensembl_column)
+        
+        if not args.read_only:
+            adata.write(args.output_file)
+
+        # And we're done
+        print('############################################################')
+        return True
 
     for release in ensembl_releases:
         print("INFO: comparing with ensembl release: {0} ... ".format(release), end='')
@@ -107,10 +121,13 @@ def main():
     print(f"\nBest release: {best_release}")
     print(f"Matches for release: {best_count}")
     print(f"Original # Genes: {n_genes}")
-    print(f"Genes lost: {n_genes - best_count}\n")
+    print(f"Genes unmapped: {n_genes - best_count}\n")
 
+    # What if we didn't find any? Throw error and fail
+    if best_release is None:
+        raise Exception("ERROR: No mappings found (check that the proper organism was passed?)")
+    
     # Now we have our best release and ensembl ids for those gene symbols,
-
     # Get separate adata for those where the gene symbols were mapped and where they weren't
     genes_present_filter = adata.var.index.isin(best_df.index)
     adata_present = adata[:, genes_present_filter]

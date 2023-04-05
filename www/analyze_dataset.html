@@ -431,7 +431,7 @@
                         <tbody class="empty_on_change"></tbody>
                       </table>
                       <script id="marker_genes_table_head_tmpl" type="text/x-jsrender">
-                        <th scope="col">{{:label}}</th>
+                        <th class="js-col-idx" scope="col">{{:label}}</th>
                       </script>
                       <script id="marker_genes_table_body_tmpl" type="text/x-jsrender">
                         <tr>
@@ -445,11 +445,7 @@
                     <div id='marker_genes_visualization_c' class='mt-3 shown_later'>
                       <h4>Marker gene visualization</h4>
                       <p>Select desired marker genes in the table above and/or type gene symbols (separated by commas) in the field below to visualize</p>
-                      <div class="row">
-                        <div class="col-12">
-                          <input type="text" class="form-control form-control-sm ml-2 mr-2 mb-2" id="marker_genes_manually_entered" size="60" value=""/>
-                        </div>
-                      </div>
+                      <input type="text" class="form-control form-control-sm ml-2 mr-2 mb-2 w-50" id="marker_genes_manually_entered" size="60" value=""/>
                       <ul>
                         <li>Unique marker genes selected in table: <span id='marker_genes_selected_count'>0</span></li>
                         <li>Unique marker genes manually entered: <span id='marker_genes_entered_count'>0</span></li>
@@ -463,6 +459,16 @@
                         </div>
                       </div>
                     </div> <!-- marker_genes_visualization_c -->
+                    <div id="marker_gene_cart_g" class="shown_later">
+                      <hr class="separator">
+                      <h4>Save New Gene Collection</h4>
+                      <p>Enter name to save selected genes as a genecart.</p>
+                      <input type="text" class="form-control form-control-sm ml-2 mr-2 mb-2 w-50" value="" id="marker_gene_cart_name" />
+                      <button id="save_marker_gene_cart" class="btn btn-sm btn-purple">Save Selected</button>
+                      <div id='saved_marker_gene_cart_info_c' style="display:none;">
+                        <p></p>
+                      </div>
+                    </div>
                   </div> <!-- end #analysis_marker_genes -->
 
                   <div class='infoblock shown_later' id='analysis_sbs_tsne'>
@@ -652,8 +658,8 @@
                                 <button id='btn_pca_top_genes' type='button' class='btn btn-default btn-sm click-once'>Plot top genes</button>
                               </div>
                             </form>
-                            <hr class="separator">
                             <div id="weighted_gene_cart_g" class="shown_later">
+                              <hr class="separator">
                               <div class="form-group form-group-sm">
                                 <label for="weighted_gene_cart_name" class="col-form-label">Cart name to create
                                   <span class="fa fa-info-circle" data-toggle="tooltip" data-placement="right" data-html="true"

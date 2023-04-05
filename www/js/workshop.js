@@ -23,6 +23,9 @@ window.onload=function() {
                },
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
+            // event is closed, don't show any buttons
+            return true;
+            
             // Loop through the events on the page and update status of each
             for (let event_id in data) {
                 let event = data[event_id];
