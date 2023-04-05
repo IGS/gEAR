@@ -119,6 +119,14 @@ RUN ./pip3 install --upgrade pip \
 #ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libgomp.so.1:/opt/Python-${PYTHON_VERSION}/lib/python3.10/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
 ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
 
+# Install gcloud (need to figure out how to do init w/o interaction)
+#WORKDIR /opt
+#RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-424.0.0-linux-x86_64.tar.gz \
+#  && tar -xzf google-cloud-cli-424.0.0-linux-x86_64.tar.gz \
+#  && ./google-cloud-sdk/install.sh --quiet
+  #&& ./google-cloud-sdk/bin/gcloud init --console-only
+
+
 # Apache things
 WORKDIR /opt/gEAR
 COPY ./apache2.conf /etc/apache2/apache2.conf

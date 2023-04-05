@@ -1,0 +1,14 @@
+{
+    "name": "nemoanalytics-import-builder",
+    "version": "0.0.0-SNAPSHOT",
+    "dependencies": {
+        "fast-crc32c": "^1.0.4",
+        "@google-cloud/storage": "^2.4.2",
+        "jsonschema": "^1.2.4",
+        "lodash.groupby": "^4.6.0",
+        "lodash.map": "^4.6.0",
+        "lodash.uniq": "^4.5.0",
+        "pluralize": "^7.0.0",
+        "uuid": "^3.3.2"
+    }
+}

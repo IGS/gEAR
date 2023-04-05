@@ -308,7 +308,8 @@ function handle_login_ui_updates() {
             document.URL.includes("dataset_curator.html") ||
             document.URL.includes("gene_cart_manager.html") ||
             document.URL.includes("multigene_curator.html") ||
-            document.URL.includes("epiviz_panel_designer.html")) {
+            document.URL.includes("epiviz_panel_designer.html") ||
+            document.URL.includes("nemoarchive_import/import.html")) {
             $('div#login_warning').show();
             $('div#login_checking').hide();
             $('div#main_content').hide();
@@ -367,21 +368,23 @@ function handle_login_ui_updates() {
 
     }
 
-    if (document.URL.includes("upload_dataset.html") ||
-        document.URL.includes("dataset_explorer.html") ||
-        document.URL.includes("gene_cart_manager.html") ||
-        document.URL.includes("analyze_dataset.html") ||
-        document.URL.includes("projection.html") ||
-        document.URL.includes("user_profile.html") ||
-        document.URL.includes("upload_epigenetic_data.html") ||
-        document.URL.includes("dataset_curator.html") ||
-        document.URL.includes("multigene_curator.html") ||
-        document.URL.includes("epiviz_panel_designer.html")) {
-        $('div#login_warning').hide();
-        $('div#login_checking').hide();
-        $('div#main_content').show();
-        $('input#session_id').val(CURRENT_USER.session_id);
+    if (!(document.URL.includes("upload_dataset.html") ||
+    document.URL.includes("dataset_explorer.html") ||
+    document.URL.includes("gene_cart_manager.html") ||
+    document.URL.includes("analyze_dataset.html") ||
+    document.URL.includes("projection.html") ||
+    document.URL.includes("user_profile.html") ||
+    document.URL.includes("upload_epigenetic_data.html") ||
+    document.URL.includes("dataset_curator.html") ||
+    document.URL.includes("multigene_curator.html") ||
+    document.URL.includes("epiviz_panel_designer.html") ||
+    document.URL.includes("nemoarchive_import/import.html"))) {
+        return;
     }
+    $('div#login_warning').hide();
+    $('div#login_checking').hide();
+    $('div#main_content').show();
+    $('input#session_id').val(CURRENT_USER.session_id);
 }
 
 $(document).on('click', 'button#submit_forgot_pass_email', function(e) {
@@ -574,8 +577,12 @@ function uuid() {
 //   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
 //   then:      var tech = getUrlParameter('technology');
 //              var blog = getUrlParameter('blog');
-const getUrlParameter = function getUrlParameter(sParam) {
-    const sPageURL = decodeURIComponent(window.location.search.substring(1));
+const getUrlParameter = function getUrlParameter(sParam, decode=true) {
+    const substr = window.location.search.substring(1);
+    // If decode=false, then do not decode substring.
+    // This is necessary for params that are themselves a URI with params of their own.
+    // as the '=' now is erroneously added to the "split" params section
+    const sPageURL = decode ? decodeURIComponent(substr) : substr;
     const sURLVariables = sPageURL.split('&');
     let sParameterName;
     let i;

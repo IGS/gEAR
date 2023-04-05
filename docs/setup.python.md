@@ -38,6 +38,7 @@ fixed paths have worked fine for decades.
       dash-bio==1.0.2 \
       Flask==2.1.0 \
       Flask-RESTful==0.3.9 \
+      google-cloud-storage \
       gunicorn \
       h5py==3.6.0 \
       itsdangerous==2.1.2 \

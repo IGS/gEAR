@@ -1,0 +1,198 @@
+<mxfile host="65bd71144e">
+    <diagram id="6dscw00UcyDlalNh9v6r" name="Page-1">
+        <mxGraphModel dx="822" dy="1108" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="Portal UI" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Portal API" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="239" y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="NeMO Analytics Google Cloud Funciton" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="483" y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="NeMO Analytics Portal UI" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="721" y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="59.5" y="80" as="sourcePoint"/>
+                        <mxPoint x="59" y="690" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="8" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="298.5" y="80" as="sourcePoint"/>
+                        <mxPoint x="298" y="690" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="9" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="542.5" y="80" as="sourcePoint"/>
+                        <mxPoint x="542" y="690" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="10" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="780.5" y="80" as="sourcePoint"/>
+                        <mxPoint x="780" y="690" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="11" value="Click Export to NeMO Archive&lt;br&gt;&lt;br&gt;POST files and Sample metadata" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="60" y="120" as="sourcePoint"/>
+                        <mxPoint x="300" y="120" as="targetPoint"/>
+                        <Array as="points"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="167" value="POST JSON" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="300" y="202" as="sourcePoint"/>
+                        <mxPoint x="540" y="202" as="targetPoint"/>
+                        <Array as="points"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="168" value="Filters supported filetypes" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="140" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="170" value="&lt;div style=&quot;&quot;&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;Validates JSON&lt;/span&gt;&lt;br&gt;&lt;/div&gt;" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="549" y="209" width="91" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="173" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="540" y="290" as="sourcePoint"/>
+                        <mxPoint x="300" y="290" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="175" value="JSON response for successful validation&lt;br&gt;includes signed url" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="173" vertex="1" connectable="0">
+                    <mxGeometry x="0.0882" y="3" relative="1" as="geometry">
+                        <mxPoint x="12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="176" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="300" y="320" as="sourcePoint"/>
+                        <mxPoint x="60" y="320" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="177" value="AJA X response contains:&lt;br&gt;* response.url&lt;br&gt;* response.unsupported_file_count&amp;nbsp;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="176" vertex="1" connectable="0">
+                    <mxGeometry x="0.0882" y="3" relative="1" as="geometry">
+                        <mxPoint x="12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="178" value="Redirects to encoded URL in new window" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="60" y="400" as="sourcePoint"/>
+                        <mxPoint x="781.0526315789474" y="400" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="179" value="&lt;ul&gt;&lt;li&gt;User logs in if not already&lt;/li&gt;&lt;li&gt;User is notified how many files are not supported&lt;/li&gt;&lt;li&gt;User uses the &quot;import wizard&quot; to setup visualizaitons&lt;/li&gt;&lt;li&gt;RabbitMQ message published&lt;/li&gt;&lt;/ul&gt;" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="780" y="410" width="140" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="182" value="NeMO Analytics Portal VM" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="962" y="39" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="183" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="1021.5" y="79" as="sourcePoint"/>
+                        <mxPoint x="1021" y="689" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="185" value="NeMO Analytics GCP Bucket" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1200" y="40" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="186" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="1259.5" y="80" as="sourcePoint"/>
+                        <mxPoint x="1259" y="689.9999999999998" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="187" value="&lt;span style=&quot;background-color: initial;&quot;&gt;Writes JSON to bucket submission area and creates signed URL&lt;/span&gt;" style="text;whiteSpace=wrap;html=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="548" y="250" width="175" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="188" value="Create submission staging area" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="554.5" y="239" as="sourcePoint"/>
+                        <mxPoint x="1252.1052631578948" y="239" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="190" value="RabbitMQ Conumer" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1024" y="410" width="140" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="191" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="1020" y="440" as="sourcePoint"/>
+                        <mxPoint x="1250" y="440" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="1110" y="440"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="192" value="JSON file is read" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="191" vertex="1" connectable="0">
+                    <mxGeometry x="-0.0577" y="-3" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="193" value="NeMO Archive GCP Bucket" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1440" y="39" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="194" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=8 8;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="1499.97" y="83" as="sourcePoint"/>
+                        <mxPoint x="1499.47" y="692.9999999999998" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="195" value="Check which files do not exist on VM" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1024" y="470" width="160" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="196" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;rounded=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="1024" y="530" as="sourcePoint"/>
+                        <mxPoint x="1500" y="530" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="197" value="Component files copied to submission staging area on VM" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="196" vertex="1" connectable="0">
+                    <mxGeometry x="0.0798" y="-2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="198" value="Files converted to h5ad" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1024" y="541" width="160" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="200" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" edge="1">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="780" y="639" as="sourcePoint"/>
+                        <mxPoint x="1020" y="639" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="201" value="Clicks &quot;Configure&quot;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="200" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1304" relative="1" as="geometry">
+                        <mxPoint y="1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="202" value="Database submission info updated" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1024" y="571" width="160" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="203" value="Layout and dataset display information in database is inserted" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="1024" y="640" width="160" height="30" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
