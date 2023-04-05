@@ -133,11 +133,11 @@ window.onload = async () => {
     populateFileSubmissionTable(fileEntities);
     pullFilesToVm(fileEntities);
 
-    // ! If dataset importer is not dataset owner (submitter in nemoarchive), link to owner
-    // ! If owner not created, create owner account where flag is set that entry not created by owner
-
     // ? Figure out what to do if counts are per sample rather than per file
 
-    // Convert to H5AD (/upload_datasets.html)
+    // Convert to H5AD and move to final destination
+
+    // ! If dataset importer is not dataset owner (submitter in nemoarchive), link to owner
+    // ! If owner not created, create owner account where flag is set that entry not created by owner
 
 };
