@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js"> <!--<![endif]-->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>NeMO Archive Dataset Import Wizard</title>
+    <meta name="description"
+      content="This is a tool used to import one or more NeMO Archive portal datasets into NeMO Analytics.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+          -->
+    <base href="/" />
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
+    <script>document.write('<link rel="stylesheet" href="nemoarchive_import/import.' + (new Date()).getTime() + '.css" />');</script>
+</head>
+
+<body>
+    <div id="body_c">
+        <div id="navigation_bar">
+            <?php include "./include/navigation_bar.html" ?>
+            <!-- content here inserted via JQuery -->
+            <!-- leaving out bootstrap CSS for now -->
+        </div>
+
+        <div id="login_checking">
+            <div class="col-12">
+            <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
+            </div>
+        </div>
+
+        <div id="login_warning">
+            <div class="col-12">
+            <h2>Login required</h2>
+            <p>
+                You must be logged in before importing NeMO Archive data.  Please use the login form in the top-right.
+            </p>
+            </div>
+        </div>
+
+        <div id="main_content" class="container">
+            <h1 class="title is-1">NeMO Archive Import Tool</h1>
+
+            <h2 class="subtitle is-2">Submission: <span id="submission_id"></span></h2>
+
+            <form>
+                <div class="field">
+                    <label class="label" for="collection_name">Name collection (optional)</label>
+                    <div class="control is-expanded">
+                        <input class="input" type="text" id="collection_name" aria-describedby="collection_help">
+                    </div>
+                    <small id="collection_help" class="help">Enter a name for this collection of datasets. A permalink will be created for displaying visualizations for this collection</small>
+                </div>
+                <div class="field">
+                    <label class="label" for="global_gene_selection">Select gene for plotting expression</label>
+                    <div class="control is-expanded">
+                        <input class="input" type="text" id="global_gene_selection" aria-describedby="global_gene_selection_help">
+                    </div>
+                    <small id="global_gene_selection_help" class="help">Enter a gene name to create standard tSNE plots for. If this gene does not exist for a dataset, a textbox for the dataset will be provided to specify a gene there.</small>
+                </div>
+            </form>
+
+            <table class="table" id="submission_datasets">
+                <thead>
+                    <tr>
+                        <th>Dataset ID</th>
+                        <th>File name</th>
+                        <th>Pull to VM</th>
+                        <th>Convert to H5AD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <p id="not_supported_p">There were <span id="not_supported"></span> files that could not be imported because their file type is not supported.</p>
+        </div>
+    </div>
+
+
+    <!-- JS Imports -->
+    <script src="js/vendor/js.cookie.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="nemoarchive_import/import.' + (new Date()).getTime() + '.js"><\/script>');</script>
+</body>
+
+</html>
