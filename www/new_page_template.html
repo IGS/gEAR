@@ -18,66 +18,112 @@
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/css/bootstrap-select.min.css">
-        <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
-
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-
-
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <!-- <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>-->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        
+        
         <!--Page-specific CSS here
             <script>document.write('<link rel="stylesheet" href="css/compare_datasets.' + (new Date()).getTime() + '.css" />');</script>-->
-
-        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
     </head>
     <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
- <div id="body_c">
-    <div id="navigation_bar">
-       <!-- content here inserted via JQuery -->
-    </div> <!-- end navigation_bar -->
+      <section id="header_bar">
+        <!-- content here TO BE inserted via common.js -->
+        <nav class="navbar" role="navigation" aria-label="main navigation">
+          <div class="navbar-brand">
+            <a class="navbar-item" href="https://bulma.io">
+              <img src="/img/by_domain/gear/logo_standard.png">
+            </a>
 
-    <div id="main_content" class="container-fluid">
-      <div class="row">
-        <div class="col-12 alert-container">
-	      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+            </a>
+          </div>
+
+          <div id="navbarBasicExample" class="navbar-menu">
+            <div class="navbar-start"></div>
+
+            <div class="navbar-end">
+              <a class="navbar-item">
+                <span class="icon-text">
+                  <span class="icon"><i class="mdi mdi-book-open-variant"></i></span>
+                  <span>User Guide</span>
+                </span>
+              </a>
+              <a class="navbar-item">
+                <span class="icon-text">
+                  <span class="icon"><i class="mdi mdi-account-question-outline"></i></span>
+                  <span>Contact</span>
+                </span>
+              </a>
+              <div class="navbar-item">
+                <div class="navbar-item has-dropdown is-hoverable">
+                  <a class="navbar-link">
+                    Joshua Orvis
+                  </a>
+                  <div class="navbar-dropdown is-right">
+                    <a class="navbar-item">
+                      <span class="icon-text">
+                        <span class="icon"><i class="mdi mdi-account"></i></span>
+                        <span>User profile</span>
+                      </span>
+                    </a>
+                    <a class="navbar-item">
+                      <span class="icon-text">
+                        <span class="icon"><i class="mdi mdi-logout-variant"></i></span>
+                        <span>Sign out</span>
+                      </span>
+                    </a>
+                    <hr class="navbar-divider">
+                    <a class="navbar-item">
+                      <span class="icon-text">
+                        <span class="icon"><i class="mdi mdi-bug"></i></span>
+                        <span>Report an issue</span>
+                      </span>
+                    </a>
+                  </div><!-- end .navbar-dropdown -->
+                </div>
+                
+                <!-- toggle display depending on whether user is logged in -->
+                <div class="buttons is-hidden">
+                  <a class="button is-primary">
+                    <strong>Sign up</strong>
+                  </a>
+                  <a class="button is-light">
+                    Log in
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </nav>
+        
+      </section> <!-- end #header_bar -->
+
+      <section id="main_c">
+        <section id="primary_nav">
+
+        </section><!-- end #primary_nav -->
+        <section id='content_c'>
+
+        </section><!-- end #content_c -->
+      </section> <!-- end #main_c -->
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
         </div>
-      </div>
-      <div id='main_row' class="row">
-        <div id="sidebar" class="col-2">
-          <p>left-side bar</p>
-        </div> <!-- end #sidebar -->
+      </footer>
 
-        <div id="viewport" class="col-10">
-          <h3>main viewport</h3>
-        </div> <!-- end #viewport -->
-      </div><!-- end #main_row -->
-    </div> <!-- end #main_content -->
+      <script src="js/vendor/js.cookie.js"></script>
+      <script src="js/vendor/jsrender.20181003.min.js"></script>
 
-    <footer>
-      <div id='funding'>
-        <!-- content here inserted via common.js -->
-      </div>
-    </footer>
-</div> <!-- /body_c -->
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+      <!-- Page-specific JS file here -->
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/js/bootstrap-select.min.js"></script>
-
-        <script src="js/vendor/js.cookie.js"></script>
-        <script src="js/vendor/jsrender.20181003.min.js"></script>
-
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <!-- Page-specific JS file here
-        <script>document.write('<script src="js/compare_datasets.' + (new Date()).getTime() + '.js"\><\/script>');</script>-->
     </body>
 </html>
