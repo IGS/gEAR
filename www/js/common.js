@@ -257,8 +257,6 @@ $('#navigation_bar').on('click', '#btn_sign_in', (e) => {
             session_id = Cookies.get('gear_session_id');
             Cookies.set('gear_default_domain', CURRENT_USER.profile);
 
-            console.log(document.URL);
-
             // do we process the current page or reload?
             if (document.URL.includes("dataset_explorer.html") ||
                 document.URL.includes("workshop")
@@ -575,7 +573,7 @@ function uuid() {
 //   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
 //   then:      var tech = getUrlParameter('technology');
 //              var blog = getUrlParameter('blog');
-const getUrlParameter = function getUrlParameter(sParam, decode=true) {
+const getUrlParameter = (sParam, decode=true) => {
     const substr = window.location.search.substring(1);
     // If decode=false, then do not decode substring.
     // This is necessary for params that are themselves a URI with params of their own.
