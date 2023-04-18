@@ -449,31 +449,28 @@ CREATE TABLE dataset_group_membership (
 ) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE submission {
-       id                          INT PRIMARY KEY AUTO_INCREMENT,
+       id               VARCHAR(50) PRIMARY KEY,
        user_id                     INT NOT NULL,
-       load_status                 VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
-       is_restricted               TINYINT DEFAULT 0 /* if one dataset is restricted, then the whole submission must be */
+       is_finished                 TINYINT DEFAULT 0,
+       is_restricted               TINYINT DEFAULT 0, /* if one dataset is restricted, then the whole submission must be */
        FOREIGN KEY (user_id) REFERENCES guser(id),
 }
 
 CREATE TABLE submission_dataset {
        id                          INT PRIMARY KEY AUTO_INCREMENT,
        dataset_id                  VARCHAR(50) NOT NULL,
-       orig_owner_id               INT NOT NULL,   /* Original owner from nemoarchive, if email does not match create new user */
        nemo_identifier             VARCHAR(20) NOT NULL, /* from nemoarchive (should we do UUID here and make new one?) */
        pulled_to_vm_status         VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       convert_metadata_status   VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
        convert_to_h5ad_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
-       is_loaded                   TINYINT DEFAULT 0,
        is_restricted               TINYINT DEFAULT 0,
        FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE
-       FOREIGN KEY (orig_owner_id) REFERENCES guser(id),
 }
 
 CREATE TABLE submission_member {
        id                          INT PRIMARY KEY AUTO_INCREMENT,
-       submission_id               INT NOT NULL,
+       submission_id               VARCHAR(50),
        submission_dataset_id       INT NOT NULL,
-       default_gene                VARCHAR(20)   /* has to be in dataset - default plots will be tSNE */
        FOREIGN KEY (submission_id) REFERENCES submission(id) ON DELETE CASCADE,
        FOREIGN KEY (submission_dataset_id) REFERENCES submission_dataset(id) ON DELETE CASCADE,
 }

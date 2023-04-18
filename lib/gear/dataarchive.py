@@ -1,8 +1,12 @@
 import os,sys
+import shutil
+import uuid
 import anndata
 import pandas as pd
 import scanpy as sc
+import gzip, tarfile
 
+from pathlib import Path
 
 class DataArchive:
     """
@@ -12,20 +16,66 @@ class DataArchive:
     3. Write h5ad to specfic directory
     """
 
-    def __init__(self, base_dir=None, extracted_file_paths=None, format=None, tarball_path=None):
+    def __init__(self, base_dir=None, extracted_file_paths=None, format=None, tarball_path=None, dataset_id=None):
         # If the archive is a tarball, this is the source path for it
         self.tarball_path = tarball_path
+        if self.tarball_path:
+            self.base_dir = self.extract_dataset()
 
         # If the archive is extracted into a directory, this should be
         #  that directory base, directly within which all files are found.
-        self.base_dir = base_dir
+        if base_dir:
+            self.base_dir = base_dir
+        if not self.base_dir:
+            raise Exception("No base dataset directory detected from arguments or extracted tarball")
 
         # The full path to each file in the archive
-        self.extracted_file_paths = list()
+        self.extracted_file_paths = list(extracted_file_paths.split(","))
+        # TODO: Do one os.listdir here instead of in all these methods
 
         # Can be explicit or derived (mex, 3tab, etc.)
-        self.format = format
+        self.format = format if format else self.get_archive_type(data_path=self.base_dir)
+        if self.format == "tabcounts":
+            self.format == "3tab"
 
+        # Dataset ID to name H5AD file
+        self.dataset_id = dataset_id if dataset_id else str(uuid.uuid4())
+
+        # Are ensembl IDs present in our file?
+        self.ens_present = False
+
+    def extract_dataset(self, save_path=None):
+        """
+        Input: A path to an input dataset tarball, and the base directory where output can be
+            written temporarily.
+
+        Output: This function will extract the .tar or .tar.gz file and return the path to the
+            directory created.
+
+        Assumptions:  The specification states that the tar or tarball should create a unique
+            directory name within which all the files of the dataset are contained.
+
+        Example:
+            Input:  /path/to/DLPFCcon322polyAgeneLIBD.3tab.tar.gz
+            Output: /path/to/DLPFCcon322polyAgeneLIBD/DLPFCcon322polyAgeneLIBD_COLmeta.tab
+                                                    ./DLPFCcon322polyAgeneLIBD_DataMTX.tab
+                                                    ./DLPFCcon322polyAgeneLIBD_ROWmeta.tab
+                                                    ./DLPFCcon322polyAgeneLIBD_EXPmeta.json
+            Returns: /path/to/DLPFCcon322polyAgeneLIBD
+        """
+
+        if not (self.tarball_path and tarfile.is_tarfile(self.tarball_path)):
+            return None
+
+        save_path = Path(save_path) if save_path else Path(self.tarball_path.parent)
+
+        tar = tarfile.open(self.tarball_path)
+        sample_file = tar.next().name   # Get path of first member so we can extract directory later
+        if not sample_file:
+            raise Exception("Tar file {} appears to be empty".format(self.tarball_path))
+        tar.extractall(path=save_path)
+        tar.close()
+        return save_path
 
     def get_archive_type(self, data_path = None):
         """
@@ -37,6 +87,8 @@ class DataArchive:
         -----
             return "mex" or "3tab"
         """
+        data_path = data_path if data_path else self.base_dir
+
         archive_filenames = os.listdir(data_path)
         archive_files=''.join(archive_filenames)
         data_type = None
@@ -46,9 +98,46 @@ class DataArchive:
             data_type = "mex"
         if 'DataMTX.tab' in archive_files and 'COLmeta.tab' in archive_files and 'ROWmeta.tab' in archive_files:
             data_type = "3tab"
+        if ".h5ad" in archive_files:
+            return "h5ad"
         return data_type
 
-    def read_mex_files(self, data_path = None):
+    def convert_to_h5ad(self, output_dir):
+        """
+        Input: An extracted directory containing expression data files to be converted
+            to H5AD.  These can be MEX or 3tab and should be handled appropriately.
+
+        Output: An H5AD file should be created and the path returned.  The name of the
+            file created should use the ID passed, like this:
+
+            f50c5432-e9ca-4bdd-9a44-9e1d624c32f5.h5ad
+
+        TBD: Error with writing to file.
+        """
+        outdir_name = str(Path(output_dir).joinpath(self.dataset_id + ".h5ad"))
+        # If dataset directory has h5ad file, skip that step
+        file_list = os.listdir(self.base_dir)
+        if self.format=="h5ad":
+            outdir_name = "{}/{}".format(self.base_dir, file_list[0])
+            # assume ENSEMBL IDs are not present if h5ad was already passed to us
+            self.ens_present = False
+            return outdir_name
+
+        # If errors occur in gEAR's parsing steps propagate upwards
+        try:
+            if self.format == "3tab":
+                self.read_3tab_files()
+            elif self.format == "mex":
+                self.read_mex_files()
+            else:
+                raise Exception("Undetermined Format: {0}".format(self.format))
+            self.write_h5ad(output_path=outdir_name)
+        except:
+            raise
+
+        return outdir_name
+
+    def read_mex_files(self, data_path=None):
         """
         Reads all files in the direcory and returns an Anndata object.
 
@@ -65,18 +154,22 @@ class DataArchive:
                 AnnData.var = genes.tsv
 
         """
-        is_en=False
+        data_path = data_path if data_path else self.base_dir
+
         archive_files_list = os.listdir(data_path)
         archive_files = [os.path.join(data_path, s) for s in archive_files_list]
         for entry in archive_files:
             if 'matrix.mtx' in entry:
-                adata = sc.read(entry, cache=False).transpose()
+                unzipped_entry = gunzip_file(entry, data_path)
+                adata = sc.read(unzipped_entry, cache=False).transpose()
             elif 'barcodes.tsv' in entry:
-                obs = pd.read_csv(entry, sep='\t', header=None,index_col = 0, names=['observations'])
+                unzipped_entry = gunzip_file(entry, data_path)
+                obs = pd.read_csv(unzipped_entry, sep='\t', header=None,index_col = 0, names=['observations'])
             elif 'genes.tsv' in entry:
-                var = pd.read_csv(entry, sep='\t', header=None, index_col = 0, names=['genes', 'gene_symbol'])
+                unzipped_entry = gunzip_file(entry, data_path)
+                var = pd.read_csv(unzipped_entry, sep='\t', header=None, index_col = 0, names=['genes', 'gene_symbol'])
                 if var.index.str.contains('ENS').sum() >1:
-                    is_en=True
+                    self.ens_present = True
             elif 'EXPmeta.json' in entry:
                 continue
             else:
@@ -85,9 +178,8 @@ class DataArchive:
         adata.obs = obs
         self.adata = adata
         self.originalPath = data_path
-        return self, is_en
 
-    def read_3tab_files(self, data_path= None):
+    def read_3tab_files(self, data_path=None):
         """
         Reads files in direcoty and returns an Anndata object
 
@@ -103,22 +195,26 @@ class DataArchive:
                 AnnData.obs = observations file
                 AnnData.var = genes file
         """
-        is_en = False
+        data_path = data_path if data_path else self.base_dir
+
         archive_files_list = os.listdir(data_path)
         archive_files = [os.path.join(data_path, s) for s in archive_files_list]
         for entry in archive_files:
             if 'expression.tab' in entry or 'DataMTX.tab' in entry:
+                unzipped_entry = gunzip_file(entry, data_path)
                 # Get columns and rows of expression data in list form.
-                exp = pd.read_csv(entry, sep='\t', index_col=0, header=0)
+                exp = pd.read_csv(unzipped_entry, sep='\t', index_col=0, header=0)
                 exp_obs = list(exp.columns)
                 exp_genes= list(exp.index)
                 adata = sc.read(entry, first_column_names=True, cache=False).transpose()
             elif 'observations.tab' in entry or 'COLmeta.tab' in entry:
-                obs = pd.read_csv(entry, sep='\t', index_col=0, header=0)
+                unzipped_entry = gunzip_file(entry, data_path)
+                obs = pd.read_csv(unzipped_entry, sep='\t', index_col=0, header=0)
             elif 'genes.tab' in entry or 'ROWmeta.tab' in entry:
-                var = pd.read_csv(entry, sep='\t', index_col=0, header=0)
+                unzipped_entry = gunzip_file(entry, data_path)
+                var = pd.read_csv(unzipped_entry, sep='\t', index_col=0, header=0)
                 if var.index.str.contains('ENS').sum() >1:
-                    is_en=True
+                    self.ens_present = True
             elif 'EXPmeta' in entry:
                 continue
             ### Needs to be changed to account for other file types PCA etc
@@ -148,9 +244,7 @@ class DataArchive:
         self.adata = adata
         self.originalPath = data_path
 
-        return self, is_en
-
-    def write_h5ad(self, output_path, gear_identifier):
+    def write_h5ad(self, output_path):
         """
         Writes anndata object as h5ad. Returns path to file.
 
@@ -172,7 +266,18 @@ class DataArchive:
             self.adata.write(filename = output_path)
         except Exception as err:
             raise Exception("Error occurred while writing to file: ", err)
-        return ""
 
+def gunzip_file(gzip_file, base_dir):
+    """Run "gunzip" on a file and return the extracted filename."""
+    full_gzip_file = Path(base_dir).joinpath(gzip_file)
+    if not gzip_file.endswith(".gz"):
+        return gzip_file
+    gunzip_file = full_gzip_file.replace(".gz", "")
+    with gzip.open(full_gzip_file, 'rb') as f_in:
+        with open(gunzip_file, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    # Now that file is extracted.  Remove file
+    Path.unlink(full_gzip_file)
 
+    return os.path.basename(gunzip_file)
 

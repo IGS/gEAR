@@ -166,7 +166,7 @@ function validate_metadata(filename) {
 
 function validate_expression(filename) {
     $.ajax({
-        url: "./cgi/validate_expression.cgi", //TODO write this file
+        url: "./cgi/validate_expression.cgi",
         type: "POST",
         data: {"filename": filename, "session_id": CURRENT_USER.session_id},
         dataType: "json",

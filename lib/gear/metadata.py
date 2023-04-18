@@ -2,8 +2,7 @@ import ast
 import json
 import numpy as np
 import pandas as pd
-import os, sys, re
-import requests
+import sys
 import mysql.connector
 
 import geardb

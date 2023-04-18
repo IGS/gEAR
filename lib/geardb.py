@@ -296,6 +296,62 @@ def get_layout_by_id(layout_id):
     conn.close()
     return layout
 
+def get_submission_id(id):
+    """
+    Get submission dataset by searching for dataset id
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+    submission = None
+
+    qry = """
+        SELECT id, user_id, is_finished, is_restricted, date_added
+        FROM submission
+        WHERE id = %s
+    """
+
+    cursor.execute(qry, (id, ))
+
+    for (id, user_id, is_finished, is_restricted, date_added) in cursor:
+        submission = Submission(id=id, user_id=user_id,
+                is_finished=is_finished, is_restricted=is_restricted, date_added=date_added)
+        break
+
+    cursor.close()
+    conn.close()
+    return submission
+
+def get_submission_dataset_by_dataset_id(id):
+    """
+    Get submission dataset by searching for dataset id
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+    submission_dataset = None
+
+    qry = """
+        SELECT id, dataset_id, nemo_identifier, pulled_to_vm_status,
+            convert_metadata_status, convert_to_h5ad_status, is_restricted
+        FROM submission_dataset
+        WHERE dataset_id = %s
+    """
+
+    cursor.execute(qry, (id, ))
+
+    for (id, dataset_id, nemo_identifier, pulled_to_vm_status,
+        convert_metadata_status, convert_to_h5ad_status, is_restricted) in cursor:
+        submission_dataset = SubmissionDataset(id=id, dataset_id=dataset_id,
+                nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
+                convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
+                is_restricted=is_restricted)
+        break
+
+    cursor.close()
+    conn.close()
+    return submission_dataset
+
 def get_user_count():
     conn = Connection()
     cursor = conn.get_cursor()
@@ -1701,8 +1757,6 @@ class Dataset:
 
             self.displays.append(display)
 
-        return self.displays
-
         cursor.close()
         conn.close()
 
@@ -2831,3 +2885,178 @@ class User:
 
         return self._datasets
 
+@dataclass
+class SubmissionMember:
+    """
+    Keep track of an individual member of a Submission
+    """
+
+    id: int
+    submission_id: int = None
+    submission_dataset_id: int = None
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def save(self):
+        """
+        Adds a new Submission to the database
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        if self.id is None:
+            qry = """
+                INSERT INTO submission_member (submission_id, submission_dataset_id)
+                VALUES (%s, %s)
+            """
+            cursor.execute(qry, (self.submission_id, self.submission_dataset_id))
+            self.id = cursor.lastrowid
+        else:
+            raise Exception("SubmissionMember.save() not implemented for update mode. Use save_change(attribute, value)")
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+@dataclass
+class Submission:
+    """
+    Keep track of a individual submission of multiple datasets
+    """
+
+    id: str = None
+    user_id: int = None
+    is_finished: int = None
+    is_restricted: int = None
+    date_added: datetime.datetime = None
+    members: List[SubmissionMember] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def get_members(self):
+        """
+        Get all submission members associated with this submission
+        """
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        self.members = list()
+
+        qry = """
+              SELECT sm.id, sm.submission_id, sm.submission_dataset_id
+                FROM submission_members sm
+                     JOIN submission s ON sm.submission_id=s.id
+               WHERE sm.submission_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        for row in cursor:
+            sm = SubmissionMember(id=row[0], submission_id=row[1], submission_dataset_id=row[2])
+            self.members.append(sm)
+
+        cursor.close()
+        conn.close()
+
+    def save_change(self, attribute=None, value=None):
+        """
+        Update a submission attribute, both in the object and the relational database
+        """
+        if self.id is None:
+            raise Exception("Error: no submission id. Cannot save change.")
+        if attribute is None:
+            raise Exception("Error: no attribute given. Cannot save change.")
+
+        ## quick sanitization of attribute
+        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
+        setattr(self, attribute, value)
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        save_sql = """
+            UPDATE submission
+            SET {0} = %s
+            WHERE id = %s
+        """.format(attribute)
+        cursor.execute(save_sql, (str(value), self.id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+@dataclass
+class SubmissionDataset:
+    """
+    Information related to a particular dataset uploaded via one or more submission imports
+    """
+
+    id: int
+    dataset_id: str = None
+    nemo_identifier: str = None
+    pulled_to_vm_status: int = None #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    convert_metadata_status: int = None   #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    convert_to_h5ad_status: int = None  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    is_restricted: int = None
+    dataset: Dataset = None
+
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def get_dataset_info(self):
+        """
+        Get metadata about the datasset
+        """
+        self.dataset = get_dataset_by_id(self.dataset_id)
+
+    def save(self):
+        """
+        Adds a new Submission to the database
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        if self.id is None:
+            qry = """
+                INSERT INTO submission_dataset (dataset_id, nemo_identifier, pulled_to_vm_status, convert_metadata_status, convert_to_h5ad_status, is_restricted)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(qry, (self.dataset_id, self.nemo_identifier, self.pulled_to_vm_status, self.convert_metadata_status, self.convert_to_h5ad_status, self.is_restricted))
+            self.id = cursor.lastrowid
+
+        else:
+            raise Exception("SubmissionDataset.save() not implemented for update mode. Use save_change(attribute, value)")
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+    def save_change(self, attribute=None, value=None):
+        """
+        Update a submission dataset attribute, both in the object and the relational database
+        """
+        if self.id is None:
+            raise Exception("Error: no submission id. Cannot save change.")
+        if attribute is None:
+            raise Exception("Error: no attribute given. Cannot save change.")
+
+        ## quick sanitization of attribute
+        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
+        setattr(self, attribute, value)
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        save_sql = """
+            UPDATE submission_dataset
+            SET {0} = %s
+            WHERE id = %s
+        """.format(attribute)
+        cursor.execute(save_sql, (str(value), self.id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
