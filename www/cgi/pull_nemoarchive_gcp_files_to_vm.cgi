@@ -12,6 +12,8 @@ import google.auth
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 
+import geardb
+
 www_path = os.path.abspath(os.path.join('..'))
 
 # Parse gEAR config
@@ -22,7 +24,6 @@ this.servercfg = ServerConfig().parse()
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 UPLOAD_BASE_DIR = abs_path_www.joinpath("uploads/files")
-UPLOAD_BASE_DIR = "/tmp"
 
 # TODO: Will need to expand to restricted datasets eventually also
 # This bucket should be publicly-accessible without need of specialized credentials
@@ -32,7 +33,7 @@ BUCKET_NAME = "nemo-public"
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
 
-    success_dict = {"success":"", "message":"", "filename":""}
+    success_dict = {"success":False, "message":"", "filename":""}
     try:
         # https://google-auth.readthedocs.io/en/latest/user-guide.html
         #TODO maybe put in .env file instead
@@ -65,11 +66,26 @@ def main():
     bucket_path = form.getvalue('bucket_path')
     dataset_id = form.getvalue('dataset_id')
 
+    s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    s_dataset.save_change(attribute="pull_to_vm_status", value="loading")
+
     source_blob_name = bucket_path.rpartition(BUCKET_NAME + "/")[2] # Retrieve all after the bucket name
     dest_dir = Path(UPLOAD_BASE_DIR).joinpath(dataset_id)
     dest_dir.mkdir(exist_ok=True)
     dest_filename = Path(source_blob_name).name
     result = download_blob(BUCKET_NAME, source_blob_name, str(dest_dir.joinpath(dest_filename)))
+
+    # Update status in dataset
+    try:
+        if result["success"]:
+            s_dataset.save_change(attribute="pull_to_vm_status", value="completed")
+    except Exception as e:
+        s_dataset.save_change(attribute="pull_to_vm_status", value="failed")
+        # NOTE: Original files are not deleted from the "upload" area, so we can try again.
+        print(str(e), file=sys.stderr)
+        result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)
+        result["success"] = False
+
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
 

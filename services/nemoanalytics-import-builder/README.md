@@ -4,11 +4,19 @@ Cloud Function for staging JSON payloads in GCS for use by NeMO Analytics' pull-
 
 Code is heavily based off of https://github.com/BICCN/terra-import-builder
 
-I elected to build the cloud function in the online editor, and specified my GCP bucket as an environmental variable when creating the function
+I elected to build the cloud function in the online editor, and specified my GCP bucket as an environmental variable when creating the function. In addition, I created separate dev and prod buckets and functions with different CORS policies, rather than have the function create a temporary bucket during the deployment step
 
 The service account used to execute the function must have "SignBlob" granted
 
-## Adding a new environment
+## Adding cors to a bucket
+
+```bash
+gsutil -u <project_id> cors set cors-config.json gs://<bucket_name>
+```
+
+cors-config.json will be the CORS policy to apply to the bucket. See example CORS json files at https://cloud.google.com/storage/docs/cors-configurations#gsutil
+
+## Adding a new environment (for terra, not nemo import)
 
 To set up a new deployment env for the import-builder, do the following in the GCP Cloud Console:
 
