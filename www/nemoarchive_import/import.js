@@ -1,80 +1,69 @@
+'use strict';
+
 // STATUS ELEMENTS
 const tdPending = '<td class="has-text-white has-background-warning-dark">Pending</td>';
 const tdLoading = '<td class="has-text-white has-background-info-dark">Loading</td>';
-const tdCompleted = '<td class="has-text-white has-background-success-dark">Complete</td>';
+const tdCompleted = '<td class="has-text-white has-background-success-dark">Completed</td>';
 const tdCanceled = '<td class="has-text-white has-background-dark">Canceled</td>';
 const tdFailed = '<td class="has-text-white has-background-danger-dark">Failed</td>';
 
-const grabSubmissionId = (jd) => {
-    return jd.filter( entity => entity.entityType === "file_set")[0].name;
-};
-
-const getFileEntities = (jd) => {
-    return jd.filter(entity => entity.entityType == "file")
+/* Create a dataset permalink URL from the stored share ID */
+const createPermalinkUrl = (shareId) => {
+    const currentUrl = window.location.href;
+    const currentPage = currentUrl.lastIndexOf("nemoarchive_import");
+    return currentUrl.substring(0, currentPage) + 'p?s=' + shareId;
 }
 
+/* Get submission ID from JSON */
+const grabSubmissionId = (jd) => {
+    return jd.find(entity => entity.entityType === "file_set").name;
+};
+
+/* Get array of all "file" entityType objects */
+const getFileEntities = (jd) => {
+    return jd.filter(entity => entity.entityType === "file")
+}
+
+/* Get array of all "sample" entityType objects */
+const getSampleEntities = (jd) => {
+    return jd.filter(entity => entity.entityType === "sample")
+}
+
+/* Get sample attributes when passed in a sample name. Accepts a list of sample entites */
+const getSampleAttributesByName = (jd, name) => {
+    return jd.find(entity => entity.name === name).attributes
+}
+
+/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection */
 const generateElements = (html) => {
-    /* Generate a DocumentFragment based on an HTML template. Returns htmlCollection */
     const template = document.createElement('template');
     template.innerHTML = html.trim();
     return template.content.children[0];
 }
 
-const populateFileSubmissionTable = (fileEntities) => {
-    // Populate table to show files
-    for (entity of fileEntities) {
-        const { attributes, name } = entity;
-        const datasetId = attributes.id;
-        // TODO: handle situations where dataset ID is null (https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID)
-        const parent = document.querySelector("#submission_datasets tbody");
-        const htmlCollection = generateElements(`
-        <tr id="submission-${datasetId}">
-            <td>${datasetId}</td>
-            <td>${name}</td>
-            ${tdPending}
-            ${tdPending}
-        </tr>
-        `);
-        parent.append(htmlCollection);
+/* Given a table header "step" name, return the cell index position */
+const getIndexOfTableStep = (stepName) => {
+    const tableHead = document.querySelectorAll("#submission_datasets thead tr th");
+    const foundElt = [...tableHead].filter( elt => elt.textContent === stepName);
+    if (foundElt.length) {
+        return foundElt[0].cellIndex;
     }
+    console.error(`Could not find step ${stepName} in table headers`);
+    return -1;
 }
 
-const populateNonSupportedElement = () => {
-    const notSupported = getUrlParameter('notsupported') || 0;
-    const notSupportedEl = document.querySelector("#not_supported");
-    notSupportedEl.textContent = notSupported;
-    if (!(parseInt(notSupported))) {
-        const notSupportedP = document.querySelector("#not_supported_p");
-        notSupportedP.style.display = "none";
-    }
-}
-
-const populateSubmissionId = (jsonData) => {
-    const submissionId = grabSubmissionId(jsonData);
-    const submissionEl = document.querySelector("#submission_id");
-    submissionEl.textContent = submissionId;
-}
-
-const pullFilesToVm = async (fileEntities) => {
-    /* Pull all files to VM */
-    await Promise.allSettled(fileEntities.map( async (entity) => {
-        const { attributes } = entity;
-        const datasetId = attributes.id;
-        // Pull component files to VM to upload & convert (Joshua's revision)
-        const isSuccess = await pullComponentFilesToVm(attributes, attributes.component_fields, datasetId);
-        // Update status of file in table
-        const columnIndex = 2;
-        updateTblStatus(datasetId, columnIndex, isSuccess);
-    }));
-}
-
-const pullComponentFilesToVm = (attributes, compoonentFields, datasetId) => {
-    /* For a given file set, pull all component files to VM. Fail-fast if anything is not successful */
-    // TODO: Would love to figure out how to use async/await.catch for this
-    return Promise.all(compoonentFields.map( async (component) => {
-        const path = attributes[component];
-        const params = new URLSearchParams({"bucket_path":path, "dataset_id":datasetId});
-            const response = await fetch("/cgi/pull_nemoarchive_gcp_files_to_vm.cgi?" + params)
+/* Convert metadata into a JSON file */
+const convertMetadata = (attributes) => {
+    const columnIndex = getIndexOfTableStep("Convert Metadata");
+    setTblLoadingStatus(attributes.id, columnIndex);
+    const isSuccess = async () => {
+        try {
+            const params = {"dataset_id": attributes.id, "filetype":attributes.filetype};
+            const response = await fetch("/cgi/convert_nemoarchive_metadata_to_json.cgi?", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(params)
+            });
             if (!response.ok) {
                 throw new Error(response.statusText);
             }
@@ -82,18 +71,172 @@ const pullComponentFilesToVm = (attributes, compoonentFields, datasetId) => {
             if (!jsonRes.success) {
                 throw new Error(jsonRes.message);
             }
-    })).then((values) => {
-        // All jobs passed.
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+    // Update status of file in table
+    updateTblStatus(datasetId, columnIndex, isSuccess);
+}
+
+/* Convert file set to H5AD and write to final destination */
+const convertToH5ad = (attributes) => {
+    const columnIndex = getIndexOfTableStep("Convert to H5AD");
+    setTblLoadingStatus(attributes.id, columnIndex);
+    const isSuccess = async () => {
+        try {
+            const params = new URLSearchParams({"dataset_id": attributes.id, "filetype":attributes.filetype});
+            const response = await fetch("/cgi/convert_and_write_h5ad.cgi?" + params);
+            if (!response.ok) {
+                throw new Error(response.statusText);
+            }
+            const jsonRes = await response.json();
+            if (!jsonRes.success) {
+                throw new Error(jsonRes.message);
+            }
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+    // Update status of file in table
+    updateTblStatus(datasetId, columnIndex, isSuccess);
+}
+
+/* Create new submission-related entries in database */
+const initializeNewSubmissionInDb = async (fileEntities, submissionId) => {
+    try {
+        const params = { "file_entities": fileEntities, "submission_id": submissionId, session_id };
+        const response = await fetch("/cgi/initialize_new_submission.cgi", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(params)
+            });
+        if (!response.ok) {
+            throw new Error(response.statusText);
+        }
+        const jsonRes = await response.json();
+        if (!jsonRes.success) {
+            throw new Error(jsonRes.message);
+        }
         return true;
-    }).catch((error) => {
-        // At least one failed
+    } catch (error) {
         return false;
-    });
+    }
+}
+
+/* Initialize submission table to show files */
+const initializeSubmissionTable = (fileEntities) => {
+    for (entity of fileEntities) {
+        const { attributes, name } = entity;
+        const datasetId = attributes.id;
+        // TODO: handle situations where dataset ID is null (https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID)
+
+        const template = `
+        <tr id="submission-${datasetId}">
+            <td class="dataset-id">${datasetId}</td>
+            <td>${name}</td>
+            ${tdPending}
+            ${tdPending}
+            ${tdPending}
+            <td id="${datasetId}_obslevels" class="select">Not ready</td>
+            <td id="${datasetId}_permalink">Not ready</td>
+        </tr>
+        `
+        const parent = document.querySelector("#submission_datasets tbody");
+        const htmlCollection = generateElements(template);
+        parent.append(htmlCollection);
+    }
+}
+
+/* Populate and show number of non-supported files, if any exist */
+const populateNonSupportedElement = () => {
+    const notSupported = getUrlParameter('notsupported') || 0;
+    const notSupportedEl = document.querySelector("#not_supported");
+    notSupportedEl.textContent = notSupported;
+    if (parseInt(notSupported) === 0) {
+        const notSupportedP = document.querySelector("#not_supported_p");
+        notSupportedP.style.display = "none";
+    }
+}
+
+/* Populate select dropdown of observation categorical metadata */
+const populateObsDropdown = async (datasetId) => {
+    const parent = document.querySelector(`#${datasetId}_obslevels`);
+    parent.classList.add("is-loading");
+    const response = await fetch(`/api/h5ad/${datasetId}`);
+    const jsonData = await response.json();
+    const obsLevels = Object.keys(jsonData.obs_levels);
+
+    const optionElts = obsLevels.map(cat => `<option>${cat}</option>`);
+    const template = `<select>${optionElts.join("")}</select>`;
+    const htmlCollection = generateElements(template);
+    parent.append(htmlCollection);
+    parent.classList.remove("is-loading");
 
 }
 
+/* Populate submission ID in DOM */
+const populateSubmissionId = (jsonData) => {
+    const submissionId = grabSubmissionId(jsonData);
+    const submissionEl = document.querySelector("#submission_id");
+    submissionEl.textContent = submissionId;
+    return submissionId;
+}
+
+/* Pull all files to VM */
+const pullFileSetToVm = async (attributes) => {
+    const columnIndex = getIndexOfTableStep("Pull to VM");
+    setTblLoadingStatus(attributes.id, columnIndex);
+    // Pull component files from GCP to VM
+    const isSuccess = await pullComponentFilesToVm(attributes);
+
+    // Update status of file in table
+    updateTblStatus(attributes.id, columnIndex, isSuccess);
+}
+
+/* For a given file set, pull all component files to VM.
+   Fail-fast if anything is not successful */
+const pullComponentFilesToVm = async (attributes) => {
+    try {
+        const { component_fields, id } = attributes
+        await Promise.all(component_fields.map(async (component) => {
+            const path = attributes[component];
+            const params = new URLSearchParams({ "bucket_path": path, "dataset_id": id });
+            const response = await fetch("/cgi/pull_nemoarchive_gcp_files_to_vm.cgi?" + params);
+            if (!response.ok) {
+                throw new Error(response.statusText);
+            }
+            const jsonRes = await response.json();
+            if (!jsonRes.success) {
+                throw new Error(jsonRes.message);
+            }
+        }));
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+const showPermalink = (datasetId) => {
+    const permalinkRow = document.querySelector(`${datasetId}_permalink`)
+    // get permalink
+    const shareId = $(this).attr('value');
+    const permalinkUrl =  createPermalinkUrl(shareId);
+    const template = `<a href=${permalinkUrl} target="_blank">View Dataset</a>`;
+    const htmlCollection = generateElements(template);
+    parent.append(htmlCollection);
+}
+
+const setTblLoadingStatus = (datasetId, columnIndex) => {
+    const tableRow = document.querySelector(`#submission-${datasetId}`);
+    // Change status. In case of failure, "cancel" all subsequent tasks
+    tableRow.children[columnIndex].outerHTML = tdLoading;
+}
+
+/* Update the statuses of the table based on the current job's failure state */
 const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
-    /* Update the statuses of the table based on the current job's failure state */
     //TODO: Eventually get this info from the database
     const updatedStatus = isSuccess ? tdCompleted : tdFailed;
     const tableRow = document.querySelector(`#submission-${datasetId}`);
@@ -106,6 +249,21 @@ const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
     }
 }
 
+/* Create UMAPs, save as a layout, and navigate to gene expression results */
+const handleViewDatasets = async () => {
+    const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
+    await Promise.allSettled([...tableRows].map( async (row) => {
+        // Create UMAPs
+        const datasetId = row.querySelector(".dataset-id").textContent;
+        const obsLevel = row.querySelector(`#${datasetId}_obslevels select`).value();
+    }));
+}
+
+/* Send email when importing has finished. Some RabbitMQ stuff will happen */
+const handleEmailButton = () => {
+
+}
+
 window.onload = async () => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
 
@@ -114,7 +272,7 @@ window.onload = async () => {
 
     // Cannot use decoding from getUrlParameter as the entire url needs to be decoded first
     // Otherwise, the components within the url are dropped
-    const encodedJsonUrl = getUrlParameter('url', decode=false);
+    const encodedJsonUrl = getUrlParameter('url', false);
     const jsonUrl = decodeURIComponent(decodeURI(encodedJsonUrl));
     console.log("staged URL: " + jsonUrl);
 
@@ -122,22 +280,59 @@ window.onload = async () => {
     const urlResponse = await fetch(jsonUrl);
     const jsonData = await urlResponse.json();
 
-    populateSubmissionId(jsonData);
+    const submissionId = await populateSubmissionId(jsonData);
     populateNonSupportedElement();
 
-    // Check db if datasets were loaded in previous submissions
-
-
-    // Pull files into VM
     const fileEntities = getFileEntities(jsonData);
-    populateFileSubmissionTable(fileEntities);
-    pullFilesToVm(fileEntities);
+    const sampleEntities = getSampleEntities(jsonData);
+
+    throw("stopping here");
+
+    // Initialize db information about this submission
+    // Check db if datasets were loaded in previous submissions
+    // (initialize_new_submission.cgi)
+    try {
+        await initializeNewSubmissionInDb(fileEntities, submissionId);
+    } catch (error) {
+        const mainAlert = document.querySelector("#main_alert");
+        mainAlert.textContent("Something went wrong with saving this submission to database. Please contact gEAR support.");
+        mainAlert.classList.remove("is-hidden");
+        console.error(error);
+    }
+
+    initializeSubmissionTable(fileEntities);
+
+    await Promise.allSettled(fileEntities.map( async (entity) => {
+        const { attributes } = entity;
+        // Merge in sample attributes
+        const sampleAttributes = getSampleAttributesByName(sampleEntities, attributes.sample_id);
+        const allAttributes = {...attributes, ...sampleAttributes};
+        allAttributes.name = entity.name;
+
+        // Pull files into VM
+        await pullFileSetToVm(allAttributes);
+        // Create JSON from metadata
+        // convertMetadata(attributes);
+        // Convert to H5AD while validating metadata and move to final destination
+        // const datasetInfo = convertToH5ad(attributes);
+
+        // enable select-obs dropdown
+        populateObsDropdown(allAttributes.id)
+        // show permalink
+        showPermalink(allAttributes.id)
+    }));
+
+    // Finalize submission.load_status depending on everything succeeded or not
+    // if at least one is successfully imported, show the layout button
 
     // ? Figure out what to do if counts are per sample rather than per file
 
-    // Convert to H5AD and move to final destination
+
 
     // ! If dataset importer is not dataset owner (submitter in nemoarchive), link to owner
     // ! If owner not created, create owner account where flag is set that entry not created by owner
-
 };
+
+document.getElementById("view_datasets").addEventListener("click", () => handleViewDatasets);
+document.getElementById("email_button").addEventListener("click", () => handleEmailButton);
+
