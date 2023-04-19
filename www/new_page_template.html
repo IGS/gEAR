@@ -18,99 +18,115 @@
           -->
         <base href="/" />
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <!-- <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>-->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
-        
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
         
         <!--Page-specific CSS here
             <script>document.write('<link rel="stylesheet" href="css/compare_datasets.' + (new Date()).getTime() + '.css" />');</script>-->
     </head>
     <body>
-      <section id="header_bar">
-        <!-- content here TO BE inserted via common.js -->
-        <nav class="navbar" role="navigation" aria-label="main navigation">
-          <div class="navbar-brand">
-            <a class="navbar-item" href="https://bulma.io">
-              <img src="/img/by_domain/gear/logo_standard.png">
-            </a>
-
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
-              <span aria-hidden="true"></span>
-              <span aria-hidden="true"></span>
-              <span aria-hidden="true"></span>
-            </a>
-          </div>
-
-          <div id="navbarBasicExample" class="navbar-menu">
-            <div class="navbar-start"></div>
-
-            <div class="navbar-end">
-              <a class="navbar-item">
-                <span class="icon-text">
-                  <span class="icon"><i class="mdi mdi-book-open-variant"></i></span>
-                  <span>User Guide</span>
+      <div class="columns">
+        <section id="primary_nav" class="column is-3 has-background-gear-bg-secondary has-text-primary-light">
+          <img src="/img/by_domain/gear/logo_standard.png" style="height: 50px;"/>
+          <aside class="menu mt-5 pl-3">
+            <p class="menu-label is-capitalized has-text-primary-light has-text-weight-medium">
+              Menu
+            </p>
+            <ul class="menu-list">
+              <li>
+                <span class="icon-text is-align-items-center is-flex">
+                  <span class="icon"><i class="mdi mdi-18px mdi-monitor"></i></span>
+                  <span><a class="is-active">My Workspace</a></span>
                 </span>
-              </a>
-              <a class="navbar-item">
-                <span class="icon-text">
-                  <span class="icon"><i class="mdi mdi-account-question-outline"></i></span>
-                  <span>Contact</span>
+              </li>
+            </ul>
+            <p class="menu-label is-capitalized has-text-primary-light">
+              Explore
+            </p>
+            <ul class="menu-list">
+              <li>
+                <span class="icon-text is-align-items-center is-flex">
+                  <span class="icon"><i class="mdi mdi-18px mdi-test-tube"></i></span>
+                  <span><a>Gene expression</a></span>
                 </span>
+              </li>
+              <li>
+                <span class="icon-text is-align-items-center is-flex">
+                  <span class="icon"><i class="mdi mdi-18px mdi-table-search"></i></span>
+                  <span><a>Datasets</a></span>
+                </span>
+              </li>
+            </ul>
+          </aside>
+          
+
+          
+        </section> <!-- end #primary_nav-->
+        <section id="main_c" class="column is-9 pl-0">
+          <section id="header_bar">
+            <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="navbar-brand">
+              <a class="navbar-item" href="https://bulma.io">
+                My Workspace
               </a>
-              <div class="navbar-item">
-                <div class="navbar-item has-dropdown is-hoverable">
-                  <a class="navbar-link">
-                    Joshua Orvis
-                  </a>
-                  <div class="navbar-dropdown is-right">
-                    <a class="navbar-item">
-                      <span class="icon-text">
-                        <span class="icon"><i class="mdi mdi-account"></i></span>
-                        <span>User profile</span>
-                      </span>
+              <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+              </a>
+            </div>
+
+            <div id="navbarBasicExample" class="navbar-menu">
+              <div class="navbar-start"></div>
+
+              <div class="navbar-end">
+                <div class="navbar-item">
+                  <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                      Joshua Orvis
                     </a>
-                    <a class="navbar-item">
-                      <span class="icon-text">
-                        <span class="icon"><i class="mdi mdi-logout-variant"></i></span>
-                        <span>Sign out</span>
-                      </span>
+                    <div class="navbar-dropdown is-right">
+                      <a class="navbar-item">
+                        <span class="icon-text">
+                          <span class="icon"><i class="mdi mdi-account"></i></span>
+                          <span>User profile</span>
+                        </span>
+                      </a>
+                      <a class="navbar-item">
+                        <span class="icon-text">
+                          <span class="icon"><i class="mdi mdi-logout-variant"></i></span>
+                          <span>Sign out</span>
+                        </span>
+                      </a>
+                      <hr class="navbar-divider">
+                      <a class="navbar-item">
+                        <span class="icon-text">
+                          <span class="icon"><i class="mdi mdi-bug"></i></span>
+                          <span>Report an issue</span>
+                        </span>
+                      </a>
+                    </div><!-- end .navbar-dropdown -->
+                  </div>
+                  
+                  <!-- toggle display depending on whether user is logged in -->
+                  <div class="buttons is-hidden">
+                    <a class="button is-light">
+                      Sign in
                     </a>
-                    <hr class="navbar-divider">
-                    <a class="navbar-item">
-                      <span class="icon-text">
-                        <span class="icon"><i class="mdi mdi-bug"></i></span>
-                        <span>Report an issue</span>
-                      </span>
-                    </a>
-                  </div><!-- end .navbar-dropdown -->
-                </div>
-                
-                <!-- toggle display depending on whether user is logged in -->
-                <div class="buttons is-hidden">
-                  <a class="button is-primary">
-                    <strong>Sign up</strong>
-                  </a>
-                  <a class="button is-light">
-                    Log in
-                  </a>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </nav>
-        
-      </section> <!-- end #header_bar -->
+            </nav>
+          </section> <!-- end #header_bar -->
+          <section id='content_c'>
 
-      <section id="main_c">
-        <section id="primary_nav">
-
-        </section><!-- end #primary_nav -->
-        <section id='content_c'>
-
-        </section><!-- end #content_c -->
-      </section> <!-- end #main_c -->
+          </section><!-- end #content_c -->
+        </section> <!-- end #main_c -->
+      </div>
       <footer>
         <div>
           <!-- content here TO BE inserted via common.js -->

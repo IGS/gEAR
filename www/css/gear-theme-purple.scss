@@ -14,9 +14,33 @@ $gear-state-disabled: #D1D1D1;
 // Update some of Bulma's global variables
 $family-sans-serif: "Inter", sans-serif;
 $primary: $gear-bg-primary;
+$success: $gear-state-success;
+$danger: $gear-state-error;
+
+$menu-item-color: white;
+$menu-item-active-background-color: $gear-bg-primary;
+$menu-item-hover-color: $gear-bg-primary;
+$menu-item-hover-backbround-color: white;
+
+// Add some custom colors for use anywhere
+// https://stackoverflow.com/questions/70885859/bulma-how-can-i-update-access-secondary-and-tertiary-color-variables
+@import "../css/bulma/sass/utilities/derived-variables.sass";
+$addColors: (
+    "gear-bg-secondary": ($gear-bg-secondary, findColorInvert($gear-bg-secondary))
+);
+$colors: map-merge($colors, $addColors);
 
 // Update some of Bulma's component variables
-$body-background-color: $gear-bg-secondary;
+//$body-background-color: $gear-bg-secondary;
+$body-background-color: white;
 
-// Import Bulma itself
-@import url('https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css');
+// Import what we need from Bulma
+@import "../css/bulma/sass/utilities/_all.sass";
+@import "../css/bulma/sass/base/_all.sass";
+@import "../css/bulma/sass/elements/_all.sass";
+@import "../css/bulma/sass/form/_all.sass";
+@import "../css/bulma/sass/grid/_all.sass";
+@import "../css/bulma/sass/helpers/_all.sass";
+@import "../css/bulma/sass/components/_all.sass";
+@import "../css/bulma/sass/layout/_all.sass";
+
