@@ -17,12 +17,15 @@ def get_or_save_submission_dataset(params):
     # Check if dataset already exists in a previous submission
     s_dataset = geardb.get_submission_dataset_by_dataset_id(params["dataset_id"])
     if s_dataset:
+        # In order to ensure the UI looks correct,reset all non-complete back to pending
+        # since they will be attempted again
+        s_dataset.reset_incomplete_steps()
         return s_dataset
     # Not found, so insert new submission dataset
     # NOTE: We do not insert into "dataset" until metadata is validated and dataset converted to H5AD
     s_dataset = geardb.SubmissionDataset(dataset_id=params["dataset_id"],
                         is_restricted=params["is_restricted"], nemo_identifier=params["identifier"],
-                        pulled_to_vm_status=0, convert_metadata_status=0, convert_to_h5ad_status=0
+                        pulled_to_vm_status="pending", convert_metadata_status="pending", convert_to_h5ad_status="pending"
                         )
     s_dataset.save()
     return s_dataset
@@ -34,7 +37,6 @@ def save_submission(submission_id, user_id, is_restricted):
     conn = geardb.Connection()
     cursor = conn.get_cursor()
 
-    submission = None
     qry = """
         INSERT INTO submission (id, user_id, is_finished, is_restricted, date_added)
         VALUES (%s, %s, 0, %s, NOW())
@@ -60,7 +62,11 @@ def main():
     # TODO: Set to be obtained from the dataset metadata but currently not in metadata
     is_restricted = 0
 
-    save_submission(submission_id, user.id, is_restricted)
+    # Test if submission is already present in database (i.e. someone refreshed page)
+    # If found, just load statuses from existing submission
+    existing_submission = geardb.get_submission_by_id(submission_id)
+    if not existing_submission:
+        save_submission(submission_id, user.id, is_restricted)
 
     for file_entity in file_info:
         attributes = file_entity["attributes"]
@@ -71,6 +77,7 @@ def main():
             , "identifier": attributes["identifier"]
             }
 
+        # Dataset may already be inserted from a previous submission
         s_dataset = get_or_save_submission_dataset(submission_dataset_params)
 
         result["dataset_status"][s_dataset.dataset_id] = {
@@ -80,8 +87,9 @@ def main():
             }
 
         # Insert submission members and create new submisison datasets if they do not exist
-        submission_member = geardb.SubmissionMember(submission_id=submission_id, submission_dataset_id=s_dataset.id)
-        submission_member.save()
+        if not existing_submission:
+            submission_member = geardb.SubmissionMember(submission_id=submission_id, submission_dataset_id=s_dataset.id)
+            submission_member.save()
 
 
     print(json.dumps(result))
