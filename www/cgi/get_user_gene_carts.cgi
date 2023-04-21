@@ -62,8 +62,7 @@ def main():
     filter_cart_type = form.getvalue('cart_type', None)
     group_by_type = form.getvalue("group_by_type", False)
     current_user = geardb.get_user_from_session_id(session_id)
-    if not current_user:
-        raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
+
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'shared_carts':[], 'user_carts':[] }
 
@@ -71,8 +70,11 @@ def main():
     cart_ids_found = set()
 
     domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
-    user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
-    group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
+    user_carts = []
+    group_carts = []
+    if current_user:
+        user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
+        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
     shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
     public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
 
