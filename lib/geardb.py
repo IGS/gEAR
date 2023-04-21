@@ -296,9 +296,9 @@ def get_layout_by_id(layout_id):
     conn.close()
     return layout
 
-def get_submission_id(id):
+def get_submission_by_id(id):
     """
-    Get submission dataset by searching for dataset id
+    Get submission dataset by searching for submission id
     """
 
     conn = Connection()
@@ -2663,6 +2663,9 @@ class GeneCartCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
+        if not share_ids:
+            return self.carts
+
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
                      gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
@@ -2689,6 +2692,9 @@ class GeneCartCollection:
     def get_by_user(self, user=None):
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
+
+        if not user:
+            return self.carts
 
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
@@ -2719,6 +2725,9 @@ class GeneCartCollection:
         """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
+
+        if not user:
+            return self.carts
 
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc,
@@ -3064,3 +3073,20 @@ class SubmissionDataset:
         conn.commit()
         cursor.close()
         conn.close()
+
+    def reset_incomplete_steps(self):
+        """Reset all steps that are not complete to be pending."""
+        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status"]
+        for i in range(0, len(steps)):
+            if not self[steps[i]] == "completed":
+                self.save_change(attribute=steps[i], value="pending")
+
+    def update_downstream_steps_to_cancelled(self, attribute=None):
+        """Update all downstream steps of this one in case it failed."""
+        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status"]
+        start = 0
+        if attribute:
+            start = steps.index(attribute) + 1
+        [self.save_change(attribute=steps[i], value="canceled") for i in range(start, len(steps))]
+
+

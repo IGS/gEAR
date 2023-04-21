@@ -299,7 +299,6 @@ function does_page_need_login() {
     // these are the pages which require a login
     return (document.URL.includes("upload_dataset.html") ||
         document.URL.includes("analyze_dataset.html") ||
-        document.URL.includes("projection.html") ||
         document.URL.includes("user_profile.html") ||
         document.URL.includes("upload_epigenetic_data.html") ||
         document.URL.includes("dataset_curator.html") ||
@@ -323,9 +322,6 @@ function handle_login_ui_updates() {
 
         } else if (document.URL.includes("contact.html")) {
             $('a#comment_link').parent().addClass('active');
-
-        } else if (document.URL.includes("projection.html")) {
-            populate_dataset_selection();
         } else if (document.URL.includes("dataset_explorer.html")) {
             // these are defined in dataset_explorer.js
             load_preliminary_data();

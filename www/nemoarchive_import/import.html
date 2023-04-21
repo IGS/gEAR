@@ -47,9 +47,16 @@
         </div>
 
         <div id="main_content" class="container">
+
             <h1 class="title is-1">NeMO Archive Import Tool</h1>
 
             <h2 class="subtitle is-2">Submission: <span id="submission_id"></span></h2>
+
+            <p class="content is-small">
+                The NeMO Archive import tool is a useful too for quickly importing data into NeMO Analytics for quick visualization.
+                Here, you can keep track of the status of importing and converting each requested file.
+                The tool will also attempt to create default plot curations for each dataset, though it is highly recommended to visit the Single-Cell Analysis Workbench, Dataset Curator, or the Multigene Viewer to create more relevant curations.
+            </p>
 
             <div id="main_alert" class="notification is-danger is-hidden">
                 <button class="delete"></button>
@@ -58,15 +65,15 @@
             <form>
                 <div class="field">
                     <label class="label" for="collection_name">Name collection (optional)</label>
-                    <div class="control is-expanded">
+                    <div class="control">
                         <input class="input" type="text" id="collection_name" aria-describedby="collection_help">
                     </div>
                     <small id="collection_help" class="help">Enter a name for this collection of datasets. A permalink will be created for displaying visualizations for this collection</small>
                 </div>
                 <div class="field">
                     <label class="label" for="global_gene_selection">Select gene for plotting expression</label>
-                    <div class="control is-expanded columns">
-                        <input class="input is-one-fifth" type="text" id="global_gene_selection" aria-describedby="global_gene_selection_help">
+                    <div class="control">
+                        <input class="input column is-one-fifth" type="text" id="global_gene_selection" aria-describedby="global_gene_selection_help">
                     </div>
                     <small id="global_gene_selection_help" class="help">This gene will be searched against when the "View Datasets" button is clicked. Orthology mapping between species will be attempted if necessary. Any datasets missing this gene will not plot.</small>
                 </div>

@@ -62,7 +62,6 @@ def main():
     filter_cart_type = form.getvalue('cart_type', None)
     group_by_type = form.getvalue("group_by_type", False)
     current_user = geardb.get_user_from_session_id(session_id)
-
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'shared_carts':[], 'user_carts':[] }
 
