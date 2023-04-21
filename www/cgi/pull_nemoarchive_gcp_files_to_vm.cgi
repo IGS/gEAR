@@ -30,6 +30,8 @@ UPLOAD_BASE_DIR = abs_path_www.joinpath("uploads/files")
 # ! Do not include "gs://"
 BUCKET_NAME = "nemo-public"
 
+DB_STEP = "pulled_to_vm"    # step name in database
+
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
 
@@ -78,9 +80,10 @@ def main():
     # Update status in dataset
     try:
         if result["success"]:
-            s_dataset.save_change(attribute="pull_to_vm_status", value="completed")
+            s_dataset.save_change(attribute=DB_STEP, value="completed")
     except Exception as e:
-        s_dataset.save_change(attribute="pull_to_vm_status", value="failed")
+        s_dataset.save_change(attribute=DB_STEP, value="failed")
+        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         print(str(e), file=sys.stderr)
         result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)

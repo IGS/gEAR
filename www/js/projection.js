@@ -353,12 +353,6 @@ async function load_pattern_carts() {
 
     const cart_share_id = getUrlParameter('projection_source');
 
-    if (!session_id) {
-        console.info("User is not logged in. Patterns not loaded.");
-        projection_source_tree.generateTree();
-        return;
-    }
-
     await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',

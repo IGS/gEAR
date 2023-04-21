@@ -7,6 +7,14 @@ const tdCompleted = '<td class="has-text-white has-background-success-dark">Comp
 const tdCanceled = '<td class="has-text-white has-background-dark">Canceled</td>';
 const tdFailed = '<td class="has-text-white has-background-danger-dark">Failed</td>';
 
+const status2Element = {
+    "pending" : tdPending
+    , "loading" : tdLoading
+    , "completed" : tdCompleted
+    , "canceled" : tdCanceled
+    , "failed" : tdFailed
+}
+
 /* Create a dataset permalink URL from the stored share ID */
 const createPermalinkUrl = (shareId) => {
     const currentUrl = window.location.href;
@@ -55,10 +63,11 @@ const getIndexOfTableStep = (stepName) => {
 /* Convert metadata into a JSON file */
 const convertMetadata = (attributes) => {
     const columnIndex = getIndexOfTableStep("Convert Metadata");
+    if (stepIsComplete(columnIndex)) return;
     setTblLoadingStatus(attributes.id, columnIndex);
     const isSuccess = async () => {
         try {
-            const params = {"dataset_id": attributes.id, "filetype":attributes.filetype};
+            const params = {"dataset_id": attributes.id, "filetype":attributes.filetype, session_id};
             const response = await fetch("/cgi/convert_nemoarchive_metadata_to_json.cgi?", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
@@ -83,6 +92,7 @@ const convertMetadata = (attributes) => {
 /* Convert file set to H5AD and write to final destination */
 const convertToH5ad = (attributes) => {
     const columnIndex = getIndexOfTableStep("Convert to H5AD");
+    if (stepIsComplete(columnIndex)) return;
     setTblLoadingStatus(attributes.id, columnIndex);
     const isSuccess = async () => {
         try {
@@ -105,7 +115,7 @@ const convertToH5ad = (attributes) => {
 }
 
 /* Create new submission-related entries in database */
-const initializeNewSubmissionInDb = async (fileEntities, submissionId) => {
+const initializeNewSubmission = async (fileEntities, submissionId) => {
     try {
         const params = { "file_entities": fileEntities, "submission_id": submissionId, session_id };
         const response = await fetch("/cgi/initialize_new_submission.cgi", {
@@ -120,6 +130,7 @@ const initializeNewSubmissionInDb = async (fileEntities, submissionId) => {
         if (!jsonRes.success) {
             throw new Error(jsonRes.message);
         }
+        initializeSubmissionTable(fileEntities, jsonRes.dataset_status)
         return true;
     } catch (error) {
         return false;
@@ -127,19 +138,20 @@ const initializeNewSubmissionInDb = async (fileEntities, submissionId) => {
 }
 
 /* Initialize submission table to show files */
-const initializeSubmissionTable = (fileEntities) => {
+const initializeSubmissionTable = (fileEntities, datasetStatus) => {
     for (entity of fileEntities) {
         const { attributes, name } = entity;
         const datasetId = attributes.id;
-        // TODO: handle situations where dataset ID is null (https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID)
+
+        const { pulledToVm, convertMetadata, convertToH5ad } = datasetStatus.datasetId
 
         const template = `
         <tr id="submission-${datasetId}">
             <td class="dataset-id">${datasetId}</td>
             <td>${name}</td>
-            ${tdPending}
-            ${tdPending}
-            ${tdPending}
+            ${status2Element[pulledToVm]}
+            ${status2Element[convertMetadata]}
+            ${status2Element[convertToH5ad]}
             <td id="${datasetId}_obslevels" class="select">Not ready</td>
             <td id="${datasetId}_permalink">Not ready</td>
         </tr>
@@ -188,6 +200,7 @@ const populateSubmissionId = (jsonData) => {
 /* Pull all files to VM */
 const pullFileSetToVm = async (attributes) => {
     const columnIndex = getIndexOfTableStep("Pull to VM");
+    if (stepIsComplete(columnIndex)) return;
     setTblLoadingStatus(attributes.id, columnIndex);
     // Pull component files from GCP to VM
     const isSuccess = await pullComponentFilesToVm(attributes);
@@ -286,13 +299,12 @@ window.onload = async () => {
     const fileEntities = getFileEntities(jsonData);
     const sampleEntities = getSampleEntities(jsonData);
 
-    throw("stopping here");
 
     // Initialize db information about this submission
     // Check db if datasets were loaded in previous submissions
     // (initialize_new_submission.cgi)
     try {
-        await initializeNewSubmissionInDb(fileEntities, submissionId);
+        await initializeNewSubmission(fileEntities, submissionId);
     } catch (error) {
         const mainAlert = document.querySelector("#main_alert");
         mainAlert.textContent("Something went wrong with saving this submission to database. Please contact gEAR support.");
@@ -300,7 +312,7 @@ window.onload = async () => {
         console.error(error);
     }
 
-    initializeSubmissionTable(fileEntities);
+    throw("stopping here");
 
     await Promise.allSettled(fileEntities.map( async (entity) => {
         const { attributes } = entity;
@@ -317,7 +329,9 @@ window.onload = async () => {
         // const datasetInfo = convertToH5ad(attributes);
 
         // enable select-obs dropdown
-        populateObsDropdown(allAttributes.id)
+        if (! ["MEX"].includes(allAttributes.filetype)) {
+            populateObsDropdown(allAttributes.id)
+        }
         // show permalink
         showPermalink(allAttributes.id)
     }));
