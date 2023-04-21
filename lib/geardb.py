@@ -2632,6 +2632,9 @@ class GeneCartCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
+        if not ids:
+            return self.carts
+
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
                      gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
@@ -2689,8 +2692,8 @@ class GeneCartCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
-        if not user:
-            return self.carts
+        if not isinstance(user, User):
+            raise Exception("GeneCartCollection.get_by_user() requires an instance of User to be passed.")
 
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
@@ -2722,8 +2725,8 @@ class GeneCartCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
-        if not user:
-            return self.carts
+        if not isinstance(user, User):
+            raise Exception("GeneCartCollection.get_by_user_groups() requires an instance of User to be passed.")
 
         qry = """
               SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc,
