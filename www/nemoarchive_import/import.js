@@ -114,36 +114,44 @@ const convertToH5ad = (attributes) => {
     updateTblStatus(datasetId, columnIndex, isSuccess);
 }
 
-/* Create new submission-related entries in database */
-const initializeNewSubmission = async (fileEntities, submissionId) => {
-    try {
-        const params = { "file_entities": fileEntities, "submission_id": submissionId, session_id };
-        const response = await fetch("/cgi/initialize_new_submission.cgi", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(params)
-            });
-        if (!response.ok) {
-            throw new Error(response.statusText);
-        }
-        const jsonRes = await response.json();
-        if (!jsonRes.success) {
-            throw new Error(jsonRes.message);
-        }
-        initializeSubmissionTable(fileEntities, jsonRes.dataset_status)
-        return true;
-    } catch (error) {
-        return false;
+const getFileMetadata = async (attributes) => {
+    const {dataset_id : datasetId, identifier} = attributes
+    if (! identifier) {
+        throw new Error(`No identifier found for dataset ${datasetId}`)
+    }
+    // Call NeMO Archive assets API using identifier
+    //const response = await fetch(`https://nemoarchive.org/asset/derived/${identifier}`);
+    const response = await fetch('/api/mock_identifier');
+    if (!response.ok) {
+        throw new Error(response.statusText);
+    }
+    const jsonRes = await response.json();
+    if (!jsonRes.success) {
+        throw new Error(jsonRes.message);
     }
 }
 
+/* Create new submission-related entries in database */
+const initializeNewSubmission = async (fileEntities, submissionId) => {
+    const datasets = await processSubmission(fileEntities, submissionId)
+    // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
+    initializeSubmissionTable(fileEntities, datasets)
+
+}
+
 /* Initialize submission table to show files */
-const initializeSubmissionTable = (fileEntities, datasetStatus) => {
-    for (entity of fileEntities) {
+const initializeSubmissionTable = (fileEntities, datasets) => {
+    for (const entity of fileEntities) {
         const { attributes, name } = entity;
         const datasetId = attributes.id;
 
-        const { pulledToVm, convertMetadata, convertToH5ad } = datasetStatus.datasetId
+        const {
+            pulled_to_vm: pulledToVm
+            , convert_metadata: convertMetadata
+            , convert_to_h5ad: convertToH5ad
+            } = datasets[datasetId].dataset_status
+
+        console.log(datasets[datasetId].dataset_status)
 
         const template = `
         <tr id="submission-${datasetId}">
@@ -152,7 +160,7 @@ const initializeSubmissionTable = (fileEntities, datasetStatus) => {
             ${status2Element[pulledToVm]}
             ${status2Element[convertMetadata]}
             ${status2Element[convertToH5ad]}
-            <td id="${datasetId}_obslevels" class="select">Not ready</td>
+            <td id="${datasetId}_obslevels">Not ready</td>
             <td id="${datasetId}_permalink">Not ready</td>
         </tr>
         `
@@ -176,7 +184,7 @@ const populateNonSupportedElement = () => {
 /* Populate select dropdown of observation categorical metadata */
 const populateObsDropdown = async (datasetId) => {
     const parent = document.querySelector(`#${datasetId}_obslevels`);
-    parent.classList.add("is-loading");
+    parent.classList.add("is-loading", "select");
     const response = await fetch(`/api/h5ad/${datasetId}`);
     const jsonData = await response.json();
     const obsLevels = Object.keys(jsonData.obs_levels);
@@ -195,6 +203,36 @@ const populateSubmissionId = (jsonData) => {
     const submissionEl = document.querySelector("#submission_id");
     submissionEl.textContent = submissionId;
     return submissionId;
+}
+
+/* Retrieve existing submission or add new one. Returns datasets from submission */
+const processSubmission = async (fileEntities, submissionId) => {
+    // Going to attempt to get existing submission
+    const getResponse = await fetch(`/api/submission/${submissionId}`)
+    if (!getResponse.ok) {
+        throw new Error(getResponse.statusText);
+    }
+    const getJsonRes = await getResponse.json();
+    if (getJsonRes.success) {
+        return getJsonRes.datasets;
+    }
+
+    // If existing submission does not exist, create new submission
+    const params = { "file_entities": fileEntities, "submission_id": submissionId };
+    const postresponse = await fetch("/api/submission", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(params)
+        });
+    if (!postresponse.ok) {
+        throw new Error(postresponse.statusText);
+    }
+
+    const postJsonRes = await postresponse.json();
+    if (!postJsonRes.success) {
+        throw new Error(postJsonRes.message);
+    }
+    return postJsonRes.datasets;
 }
 
 /* Pull all files to VM */
@@ -280,6 +318,10 @@ const handleEmailButton = () => {
 window.onload = async () => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
 
+    if (!CURRENT_USER.id) {
+        throw("Must be logged in to use this tool")
+    }
+
     // URI and it's component is encoded so need to decode all that
     // https://thisthat.dev/encode-uri-vs-encode-uri-component/
 
@@ -290,7 +332,8 @@ window.onload = async () => {
     console.log("staged URL: " + jsonUrl);
 
     // https://github.github.io/fetch
-    const urlResponse = await fetch(jsonUrl);
+    //const urlResponse = await fetch(jsonUrl);
+    const urlResponse = await fetch("nemoarchive_import/test.json")
     const jsonData = await urlResponse.json();
 
     const submissionId = await populateSubmissionId(jsonData);
@@ -307,7 +350,7 @@ window.onload = async () => {
         await initializeNewSubmission(fileEntities, submissionId);
     } catch (error) {
         const mainAlert = document.querySelector("#main_alert");
-        mainAlert.textContent("Something went wrong with saving this submission to database. Please contact gEAR support.");
+        mainAlert.textContent = "Something went wrong with saving this submission to database. Please contact gEAR support.";
         mainAlert.classList.remove("is-hidden");
         console.error(error);
     }
@@ -324,9 +367,10 @@ window.onload = async () => {
         // Pull files into VM
         await pullFileSetToVm(allAttributes);
         // Create JSON from metadata
-        // convertMetadata(attributes);
+        await getFileMetadata(allAttributes);
+        // convertMetadata(allAttributes);
         // Convert to H5AD while validating metadata and move to final destination
-        // const datasetInfo = convertToH5ad(attributes);
+        // const datasetInfo = convertToH5ad(allAttributes);
 
         // enable select-obs dropdown
         if (! ["MEX"].includes(allAttributes.filetype)) {

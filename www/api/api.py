@@ -29,24 +29,29 @@ from resources.gene_symbols import GeneSymbols
 from resources.tsne_data import TSNEData
 from resources.epiviz_data import EpivizData
 from resources.projectr import ProjectR, ProjectROutputFile
+from resources.submission import Submission, Submissions
+from resources.mock_data import MockIdentifier
 
 app = Flask(__name__)
 api = Api(app)
 # Add API endpoints to resources
 
-api.add_resource(PlotlyData, '/plot/<dataset_id>') # May want to add /plotly to this endpoint for consistency
-api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
-api.add_resource(SvgData, '/plot/<dataset_id>/svg')
-api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
-api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
-api.add_resource(ProjectR, '/projectr/<dataset_id>')
-api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
-api.add_resource(H5ad, '/h5ad/<dataset_id>')
-api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
+api.add_resource(PlotlyData, '/plot/<string:dataset_id>') # May want to add /plotly to this endpoint for consistency
+api.add_resource(MultigeneDashData, '/plot/<string:dataset_id>/mg_dash')
+api.add_resource(SvgData, '/plot/<string:dataset_id>/svg')
+api.add_resource(TSNEData, '/plot/<string:dataset_id>/tsne')
+api.add_resource(EpivizData, '/plot/<string:dataset_id>/epiviz')
+api.add_resource(ProjectR, '/projectr/<string:dataset_id>')
+api.add_resource(ProjectROutputFile, '/projectr/<string:dataset_id>/output_file')
+api.add_resource(H5ad, '/h5ad/<string:dataset_id>')
+api.add_resource(AvailableDisplayTypes, '/h5ad/<string:dataset_id>/availableDisplayTypes')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
-api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
+api.add_resource(GeneSymbols, '/h5ad/<string:dataset_id>/genes')
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
-api.add_resource(DatasetDisplay, '/displays/<display_id>')
+api.add_resource(DatasetDisplay, '/displays/<int:display_id>')
+api.add_resource(Submission, '/submission/<string:submission_id>')
+api.add_resource(Submissions, "/submission")
+api.add_resource(MockIdentifier, "/mock_identifier")
 
 if __name__ == '__main__':
     # Problem:
