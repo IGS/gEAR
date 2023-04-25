@@ -45,10 +45,6 @@ def setup_logger():
 
 logger = setup_logger()
 
-def find_importer_id():
-    importer_id = this.servercfg["nemoanalytics_import"]["importer_id"]
-    return geardb.get_user_by_id(importer_id)
-
 def organism_to_taxon_id(org):
     # Returns a gear-related mapping, or None if not encountered
     ORG2TAX_ID = {
@@ -96,7 +92,7 @@ def write_json(file, base_dir, filetype):
         return base_dir.glob("*EXPmeta.json")[0]
 
 def main():
-    form = cgi.FieldStorage(environ="post")
+    form = cgi.FieldStorage(environ={'REQUEST_METHOD':'POST'})
     attributes = json.loads(form.getvalue("attributes"))
     dataset_id = attributes["id"]
     filetype = attributes["filetype"]
@@ -121,7 +117,7 @@ def main():
     """
 
     # "Importer" service account will be the contact
-    importer = find_importer_id()
+    importer = geardb.find_importer_id()
     if not importer:
         err_msg = "Could not find gEAR importer account"
         handle_error(s_dataset, result, err_msg)
@@ -129,6 +125,7 @@ def main():
 
     # ! Eventually the metadata will be taken from an API call to NeMO Archive based on the identifier,
     # !     not from the neo4j database. Also may need to fail file if identifier cannot be found.
+    # https://dba.stackexchange.com/questions/192208/mysql-return-json-from-a-standard-sql-query
 
     attributes["contact_name"] = importer.user_name
     attributes["contact_institution"] = importer.institution    # ? should this be attributes["organization"]

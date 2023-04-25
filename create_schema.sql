@@ -467,6 +467,7 @@ CREATE TABLE submission (
        user_id                     INT NOT NULL,
        is_finished                 TINYINT DEFAULT 0,
        is_restricted               TINYINT DEFAULT 0, /* if one dataset is restricted, then the whole submission must be */
+       date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
        FOREIGN KEY (user_id) REFERENCES guser(id)
 )
 

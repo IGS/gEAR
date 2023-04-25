@@ -69,6 +69,11 @@ this.domain_label = _read_domain_label()
 this.domain_short_label = _read_domain_short_label()
 this.links_out = _read_domain_links_out()
 
+def find_importer_id():
+    """Find and return gear importer user ID"""
+    importer_id = this.servercfg["nemoanalytics_import"]["importer_id"]
+    return get_user_by_id(importer_id)
+
 def get_dataset_by_id(id=None, include_shape=None):
     """
     Given a dataset ID string this returns a Dataset object with all attributes
@@ -2907,7 +2912,7 @@ class SubmissionMember:
     Keep track of an individual member of a Submission
     """
 
-    id: int
+    id: int = None
     submission_id: int = None
     submission_dataset_id: int = None
 
@@ -2946,35 +2951,10 @@ class Submission:
     is_finished: int = None
     is_restricted: int = None
     date_added: datetime.datetime = None
-    members: List[SubmissionMember] = field(default_factory=list)
+    datasets = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
-
-    def get_members(self):
-        """
-        Get all submission members associated with this submission
-        """
-
-        conn = Connection()
-        cursor = conn.get_cursor()
-
-        self.members = list()
-
-        qry = """
-              SELECT sm.id, sm.submission_id, sm.submission_dataset_id
-                FROM submission_members sm
-                     JOIN submission s ON sm.submission_id=s.id
-               WHERE sm.submission_id = %s
-        """
-        cursor.execute(qry, (self.id,))
-
-        for row in cursor:
-            sm = SubmissionMember(id=row[0], submission_id=row[1], submission_dataset_id=row[2])
-            self.members.append(sm)
-
-        cursor.close()
-        conn.close()
 
     def save_change(self, attribute=None, value=None):
         """
@@ -3004,12 +2984,50 @@ class Submission:
         conn.close()
 
 @dataclass
+class SubmissionCollection:
+    submissions: List[Submission] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def get_by_dataset_id(self, dataset_id):
+        """
+        Return a list of submissions that this dataset belongs to
+        """
+
+        query = """
+            SELECT s.* from submission s
+            JOIN submission_member sm on sm.submission_id = s.id
+            JOIN submission_dataset sd on sm.submission_dataset_id = sd.id
+            WHERE sd.dataset_id = %s
+        """
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(query, (dataset_id, ))
+
+        for (id, user_id, is_finished, is_restricted, date_added) in cursor:
+            submission = Submission(id=id, user_id=user_id,
+                    is_finished=is_finished, is_restricted=is_restricted, date_added=date_added)
+            self.submissions.append(submission)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return self.submissions
+
+@dataclass
 class SubmissionDataset:
     """
     Information related to a particular dataset uploaded via one or more submission imports
     """
 
-    id: int
+    id: int = None
     dataset_id: str = None
     nemo_identifier: str = None
     pulled_to_vm_status: int = None #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
@@ -3017,7 +3035,7 @@ class SubmissionDataset:
     convert_to_h5ad_status: int = None  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
     is_restricted: int = None
     dataset: Dataset = None
-
+    submissions = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -3092,4 +3110,44 @@ class SubmissionDataset:
             start = steps.index(attribute) + 1
         [self.save_change(attribute=steps[i], value="canceled") for i in range(start, len(steps))]
 
+@dataclass
+class SubmissionDatasetCollection:
+    datasets: List[SubmissionDataset] = field(default_factory=list)
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+
+    def get_by_submission_id(self, submission_id):
+        """
+        Return a list of submission datasets that are in this submission
+        """
+
+        query = """
+            SELECT sd.* from submission_dataset sd
+            JOIN submission_member sm on sm.submission_dataset_id = sd.id
+            JOIN submission s on sm.submission_id = s.id
+            WHERE s.id = %s
+        """
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(query, (submission_id, ))
+
+        for (id, dataset_id, nemo_identifier, pulled_to_vm_status,
+            convert_metadata_status, convert_to_h5ad_status, is_restricted) in cursor:
+            submission_dataset = SubmissionDataset(id=id, dataset_id=dataset_id,
+                    nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
+                    convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
+                    is_restricted=is_restricted)
+            self.datasets.append(submission_dataset)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return self.datasets
 
