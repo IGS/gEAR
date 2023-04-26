@@ -17,12 +17,12 @@ const elementsWithTipsList = '[title]:not("path")';
 
 // Do any includes first
 $(document).ready(() => {
-    $('#navigation_bar').load('./include/navigation_bar.html', () => {
+    $('#navigation_bar').load('./include/navigation_bar.html', async () => {
         // Load popover info
         load_forgot_password();
         // Now that the navigation bar is loaded, we can check if the user is logged in
         // and by extension, handle the login UI updates
-        check_for_login();
+        await check_for_login();
 
         if (! show_video_link()) {
             $(".js-video-link").hide();
@@ -159,7 +159,9 @@ function check_for_login() {
     session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
 
-    if (typeof session_id !== 'undefined') {
+    if (typeof session_id === 'undefined') {
+        handle_login_ui_updates();
+    } else {
         // we found a cookie, so see if it's a valid session
         $.ajax({
             url : './cgi/get_session_info.cgi',
@@ -175,8 +177,6 @@ function check_for_login() {
         }).fail((jqXHR, textStatus, errorThrown) => {
             console.error(`Error getting session info: ${textStatus}`);
         });
-    } else {
-        handle_login_ui_updates();
     }
 
     // Now that session_id has been obtained, we can trigger events that depend on it
