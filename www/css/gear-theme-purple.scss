@@ -34,6 +34,14 @@ $colors: map-merge($colors, $addColors);
 //$body-background-color: $gear-bg-secondary;
 $body-background-color: white;
 
+// Used (initialy) as the citation box
+$card-color: white;
+$card-header-color: white;
+$card-header-padding: 0.25rem 0.5rem;
+$card-background-color: $gear-bg-primary;
+$card-content-padding: 0.5rem;
+
+
 // Import what we need from Bulma
 @import "../css/bulma/sass/utilities/_all.sass";
 @import "../css/bulma/sass/base/_all.sass";

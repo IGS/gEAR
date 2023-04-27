@@ -5608,10 +5608,10 @@ a.has-text-gear-bg-secondary:hover, a.has-text-gear-bg-secondary:focus {
     content: "≻"; }
 
 .card {
-  background-color: white;
+  background-color: #362E5C;
   border-radius: 0.25rem;
   box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0px 0 1px rgba(10, 10, 10, 0.02);
-  color: #4a4a4a;
+  color: white;
   max-width: 100%;
   position: relative; }
 
@@ -5630,11 +5630,11 @@ a.has-text-gear-bg-secondary:hover, a.has-text-gear-bg-secondary:focus {
 
 .card-header-title {
   align-items: center;
-  color: #363636;
+  color: white;
   display: flex;
   flex-grow: 1;
   font-weight: 700;
-  padding: 0.75rem 1rem; }
+  padding: 0.25rem 0.5rem; }
   .card-header-title.is-centered {
     justify-content: center; }
 
@@ -5653,7 +5653,7 @@ a.has-text-gear-bg-secondary:hover, a.has-text-gear-bg-secondary:focus {
   cursor: pointer;
   display: flex;
   justify-content: center;
-  padding: 0.75rem 1rem; }
+  padding: 0.25rem 0.5rem; }
 
 .card-image {
   display: block;
@@ -5667,7 +5667,7 @@ a.has-text-gear-bg-secondary:hover, a.has-text-gear-bg-secondary:focus {
 
 .card-content {
   background-color: transparent;
-  padding: 1.5rem; }
+  padding: 0.5rem; }
 
 .card-footer {
   background-color: transparent;
