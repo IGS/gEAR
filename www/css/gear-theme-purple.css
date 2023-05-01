@@ -2196,9 +2196,9 @@ a.tag:hover {
 
 /* Bulma Form */
 .input, .textarea, .select select {
-  background-color: white;
-  border-color: #dbdbdb;
-  border-radius: 4px;
+  background-color: #EFEDF7;
+  border-color: #544A8E;
+  border-radius: 5px;
   color: #363636; }
   .input::-moz-placeholder, .textarea::-moz-placeholder, .select select::-moz-placeholder {
     color: rgba(54, 54, 54, 0.3); }

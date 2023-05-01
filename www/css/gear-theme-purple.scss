@@ -41,6 +41,9 @@ $card-header-padding: 0.25rem 0.5rem;
 $card-background-color: $gear-bg-primary;
 $card-content-padding: 0.5rem;
 
+$input-background-color: $gear-bg-tertiary;
+$input-border-color: $gear-bg-secondary;
+$input-radius: 5px;
 
 // Import what we need from Bulma
 @import "../css/bulma/sass/utilities/_all.sass";
