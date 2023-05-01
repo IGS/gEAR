@@ -500,13 +500,6 @@ async function load_all_gene_carts() {
     $("#selected_gene_cart_c").prop("disabled", false);
     const cart_share_id = getUrlParameter('gene_cart_share_id');
 
-    if (!session_id) {
-        //User is not logged in. Hide gene carts container
-        $("#selected_gene_cart_c").prop("disabled", true);
-        gene_cart_tree.generateTree();
-        selected_gene_cart_tree.generateTree();
-        return;
-    }
     await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
