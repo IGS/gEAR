@@ -410,6 +410,29 @@ class Metadata:
 
         cursor.close()
 
+    def update_dataset_in_db(self, dataset_id, status=None):
+        """Update the dataset metadata with the supplied DataFrame fields."""
+        if self.metadata is None:
+            raise Exception("No values to evaluate. Please load a metadata file first.")
+
+        df = self.metadata
+
+        try:
+            dataset = geardb.get_dataset_by_id(dataset_id)
+        except:
+            raise
+
+        for row in df.itertuples():
+            field = row.Index
+            if not hasattr(dataset, field):
+                print("Field {} not found in 'dataset' table. Skipping".format(field), file=sys.stderr)
+                continue
+            dataset.save_change(attribute=field, value=row.value)
+
+        # Data updating is complete. Set to "loading" to indicate we are ready for converting to h5ad
+        if status:
+            dataset.save_change(attribute="load_status", value="loading")
+
     #TODO: This is not currently used anywhere.
     def _list_invalid_fields(self):
         """

@@ -50,7 +50,7 @@
 
             <h1 class="title is-1">NeMO Archive Import Tool</h1>
 
-            <h2 class="subtitle is-2">Submission: <span id="submission_id"></span></h2>
+            <h2 id="submission_title" class="subtitle is-2">Submission: <span id="submission_id"></span> <i class="fa fa-share-alt" aria-hidden="true"></i></h2>
 
             <p class="content">
                 The NeMO Archive import tool is a useful too for quickly importing data into NeMO Analytics for quick visualization.
@@ -58,8 +58,14 @@
                 The tool will also attempt to create default plot curations for each dataset, though it is highly recommended to visit the Single-Cell Analysis Workbench, Dataset Curator, or the Multigene Viewer to create more relevant curations.
             </p>
 
+            <div id="main_notify" class="notification is-info is-light is-hidden">
+                <button class="delete"></button>
+                <span></span>
+            </div>
+
             <div id="main_alert" class="notification is-danger is-hidden">
                 <button class="delete"></button>
+                <span></span>
             </div>
 
             <form>
@@ -79,21 +85,24 @@
                 </div>
             </form>
 
-            <table class="table" id="submission_datasets">
+            <div class="table-container">
+            <table class="table is-narrow" id="submission_datasets">
                 <thead>
                     <tr>
                         <th>Dataset ID</th>
                         <th>File name</th>
-                        <th>Pull to VM</th>
-                        <th>Convert Metadata</th>
+                        <th>Pull Files</th>
+                        <th>Validate Metadata</th>
                         <th>Convert to H5AD</th>
-                        <th>Select Metadata for Plotting</th>
+                        <th>Messages</th>
+                        <th>Plot Metadata</th>
                         <th>Permalink</th>
                     </tr>
                 </thead>
                 <tbody>
                 </tbody>
             </table>
+            </div>
             <p id="not_supported_p">There were <span id="not_supported"></span> files that could not be imported because their file type is not supported.</p>
 
             <div id="import_finish" class="is-hidden">

@@ -484,7 +484,7 @@ CREATE TABLE submission_dataset (
 
 CREATE TABLE submission_member (
        id                          INT PRIMARY KEY AUTO_INCREMENT,
-       submission_id               VARCHAR(50),
+       submission_id               VARCHAR(50) NOT NULL,
        submission_dataset_id       INT NOT NULL,
        FOREIGN KEY (submission_id) REFERENCES submission(id) ON DELETE CASCADE,
        FOREIGN KEY (submission_dataset_id) REFERENCES submission_dataset(id) ON DELETE CASCADE

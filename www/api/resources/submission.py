@@ -23,6 +23,7 @@ class Submission(Resource):
 
     def get(self, submission_id):
         """Retrieve a particular submission based on ID."""
+        reset_steps = request.args.get("reset_steps") == "true"
         result = {"self": request.path, "success":0, "datasets":{}, "message":""}
 
         session_id = request.cookies.get('session_id')
@@ -37,15 +38,19 @@ class Submission(Resource):
         submission.datasets = sd.get_by_submission_id(submission_id)
 
         for s_dataset in submission.datasets:
+
+            # Before initializing a new submission, we check this route to see if it exists
+            # Need to reset the steps so it can be resumed.
+            if reset_steps:
+                s_dataset.reset_incomplete_steps()
+
             dataset_id = s_dataset.dataset_id
-            result["datasets"][dataset_id] = {"message":""}
-            result["datasets"][dataset_id]["dataset_status"] = {
-                "pulled_to_vm": s_dataset.pulled_to_vm_status
-                , "convert_metadata": s_dataset.convert_metadata_status
-                , "convert_to_h5ad": s_dataset.convert_to_h5ad_status
-                }
+            result["datasets"][dataset_id] = {"message":"", "identifier":s_dataset.nemo_identifier}
+            result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
         result["success"] = 1
         return result
+
+    # TODO: Have a POST to resume this submission initialization in case of failure.
 
 class Submissions(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""
@@ -81,9 +86,10 @@ class Submissions(Resource):
             attributes = file_entity["attributes"]
 
             dataset_id = attributes["id"]
-            result["datasets"][dataset_id] = {"message":""}
+            identifier = attributes["identifier"]
+            result["datasets"][dataset_id] = {"message":"", "identifier":identifier}
 
-            if not attributes["identifier"]:
+            if not identifier:
                 result["datasets"][dataset_id]["message"] = "NeMO Identifier empty. Cannot load."
                 result["datasets"][dataset_id]["dataset_status"] = {
                     "pulled_to_vm": "canceled"
@@ -96,7 +102,7 @@ class Submissions(Resource):
             submission_dataset_params = {
                 "is_restricted": is_restricted
                 , "dataset_id": dataset_id
-                , "identifier": attributes["identifier"]
+                , "identifier": identifier
                 }
 
             # Dataset may already be inserted from a previous submission
@@ -113,11 +119,7 @@ class Submissions(Resource):
                 issues_found = True
                 continue
 
-            result["datasets"][dataset_id]["dataset_status"] = {
-                "pulled_to_vm": s_dataset.pulled_to_vm_status
-                , "convert_metadata": s_dataset.convert_metadata_status
-                , "convert_to_h5ad": s_dataset.convert_to_h5ad_status
-                }
+            result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
 
             # Insert submission members and create new submisison datasets if they do not exist
             try:
@@ -125,11 +127,8 @@ class Submissions(Resource):
             except Exception as e:
                 print(str(e), file=sys.stderr)
                 result["datasets"][dataset_id]["message"] = f"Could not save dataset {attributes['id']} as a new SubmissionMember in database"
-                result["datasets"][dataset_id]["dataset_status"] = {
-                    "pulled_to_vm": "canceled"
-                    , "convert_metadata": "canceled"
-                    , "convert_to_h5ad": "canceled"
-                    }
+                s_dataset.update_downstream_steps_to_cancelled()
+                result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
                 issues_found = True
                 continue
 
@@ -160,6 +159,13 @@ def add_submission_dataset(params):
     except Exception as e:
         raise
 
+def get_db_status(s_dataset):
+    return {
+                "pulled_to_vm": s_dataset.pulled_to_vm_status
+                , "convert_metadata": s_dataset.convert_metadata_status
+                , "convert_to_h5ad": s_dataset.convert_to_h5ad_status
+            }
+
 def insert_minimal_dataset(dataset_id, identifier):
     """
     Insert a minimally viable dataset. We will populate it with metadata later.
@@ -169,7 +175,7 @@ def insert_minimal_dataset(dataset_id, identifier):
 
     add_dataset_sql = """
     INSERT INTO dataset (id, share_id, owner_id, title, organism_id, date_added, load_status)
-    VALUES              (%s, %s,       %s,       "PRESTAGE NEMO IMPORT - %s",    1, NOW(), "pending")
+    VALUES              (%s, %s,       %s,       "PRE-STAGE NEMO IMPORT - %s",    1, NOW(), "pending")
     """
 
     (before, sep, share_id) = identifier.rpartition("nemo:")

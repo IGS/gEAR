@@ -54,7 +54,7 @@ api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<int:display_id>')
 api.add_resource(Submission, '/submission/<string:submission_id>')
 api.add_resource(Submissions, "/submission")
-api.add_resource(MockIdentifier, "/mock_identifier")
+api.add_resource(MockIdentifier, "/mock_identifier/<string:identifier>")
 
 if __name__ == '__main__':
     # Problem:

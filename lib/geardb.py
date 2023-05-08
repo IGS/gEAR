@@ -3099,7 +3099,7 @@ class SubmissionDataset:
         """Reset all steps that are not complete to be pending."""
         steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status"]
         for i in range(0, len(steps)):
-            if not self[steps[i]] == "completed":
+            if not getattr(self, steps[i]) == "completed":
                 self.save_change(attribute=steps[i], value="pending")
 
     def update_downstream_steps_to_cancelled(self, attribute=None):
