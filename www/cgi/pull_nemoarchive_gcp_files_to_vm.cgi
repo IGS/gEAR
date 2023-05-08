@@ -30,7 +30,7 @@ UPLOAD_BASE_DIR = abs_path_www.joinpath("uploads/files")
 # ! Do not include "gs://"
 BUCKET_NAME = "nemo-public"
 
-DB_STEP = "pulled_to_vm"    # step name in database
+DB_STEP = "pulled_to_vm_status"    # step name in database
 
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
@@ -69,7 +69,7 @@ def main():
     dataset_id = form.getvalue('dataset_id')
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-    s_dataset.save_change(attribute="pull_to_vm_status", value="loading")
+    s_dataset.save_change(attribute=DB_STEP, value="loading")
 
     source_blob_name = bucket_path.rpartition(BUCKET_NAME + "/")[2] # Retrieve all after the bucket name
     dest_dir = Path(UPLOAD_BASE_DIR).joinpath(dataset_id)
@@ -89,7 +89,7 @@ def main():
         result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)
         result["success"] = False
 
-    print('Content-Type: application/json\n\n')
+    print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))
 
 if __name__ == '__main__':
