@@ -1,6 +1,6 @@
 #!/opt/bin/python3
 
-# pull_nemoarchive_gcp_files_to_vm.cgi - Run gsutils to pull datasets from a NeMO Archive GCP bucket into the NeMO Analytics VM
+# nemoarchive_pull_gcp_files_to_vm.cgi - Run gsutils to pull datasets from a NeMO Archive GCP bucket into the NeMO Analytics VM
 
 import cgi
 import json
