@@ -2,6 +2,7 @@
 
 # nemoarchive_write_h5ad.cgi - Convert import data archive files into a writable h5ad. This script also validates Metadata as it writes the final h5ad
 import cgi
+import datetime
 import json
 import logging
 import os,sys, subprocess, shutil
@@ -10,17 +11,17 @@ from pathlib import Path
 
 gear_root = Path(__file__).resolve().parents[2] # web-root dir
 bin_path = gear_root.joinpath("bin")
-sys.path.append(bin_path)
+sys.path.append(str(bin_path))
 lib_path = gear_root.joinpath("lib")
-sys.path.append(lib_path)
+sys.path.append(str(lib_path))
 
 from gear.dataarchive import DataArchive
-from gear.metadata import Metadata
 import geardb
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 UPLOAD_BASE_DIR = abs_path_www.joinpath("uploads/files")
-DATASETS_DIR = abs_path_www.joinpath("datasets")
+DATASETS_DIR_PATH = abs_path_www.joinpath("datasets")
+DATASETS_DIR = str(DATASETS_DIR_PATH)
 
 DB_STEP = "convert_to_h5ad_status"
 
@@ -40,7 +41,7 @@ def setup_logger():
 logger = setup_logger()
 
 
-def ensure_ensembl_index(h5_path, organism_id, is_en):
+def ensure_ensembl_index(h5_path, organism_id):
     """
     Input: An H5AD ideally with Ensembl IDs as the index.  If instead they are gene
            symbols, this function should perform the mapping.
@@ -49,13 +50,9 @@ def ensure_ensembl_index(h5_path, organism_id, is_en):
            Returns nothing.
     """
 
-    if is_en == False:
-        add_ensembl_cmd = "python3 {0}/add_ensembl_id_to_h5ad_missing_release.py -i {1} -o {1}_new.h5ad -org {2}".format(bin_path, h5_path, organism_id)
-        run_command(add_ensembl_cmd)
-        shutil.move("{0}_new.h5ad".format(h5_path), h5_path)
-    else:
-        add_ensembl_cmd = "python3 {0}/find_best_ensembl_release_from_h5ad.py -i {1} -org {2}".format(bin_path, h5_path, organism_id)
-        run_command(add_ensembl_cmd)
+    add_ensembl_cmd = "python3 {0}/add_ensembl_id_to_h5ad_missing_release.py -i {1} -o {1}_new.h5ad -org {2}".format(bin_path, h5_path, organism_id)
+    run_command(add_ensembl_cmd)
+    shutil.move("{0}_new.h5ad".format(h5_path), h5_path)
 
 
 def main():
@@ -78,14 +75,16 @@ def main():
         logger.debug("Organism ID is {}".format(organism_id))
 
         h5ad_path = da.convert_to_h5ad(output_dir=DATASETS_DIR)
-        ensure_ensembl_index(h5ad_path, organism_id, da.ens_present)
+        if not da.ens_present:
+            # If anndata.var only has genes, add ensembl IDs to index
+            ensure_ensembl_index(h5ad_path, organism_id, da.ens_present)
 
         source_metadata_filepath = base_dir.joinpath("EXPmeta.json")
-        dest_metadata_filepath = "{0}/{1}}.json".format(DATASETS_DIR, dataset_id)
+        dest_metadata_filepath = "{0}/{1}.json".format(DATASETS_DIR, dataset_id)
         shutil.copy(source_metadata_filepath, dest_metadata_filepath)
         result["success"] = True
-        result['message'] = 'File successfully read.'
-        logger.info("Complete! Exiting.")
+        result['message'] = 'File successfully converted to h5ad.'
+        logger.info("H5AD conversion complete!")
 
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
@@ -96,9 +95,11 @@ def main():
     try:
         if result["success"]:
             dataset.save_change(attribute="load_status", value="completed")
+            dataset.save_change(attribute="has_h5ad", value=1)
             s_dataset.save_change(attribute=DB_STEP, value="completed")
-            #result["dataset"] = dataset
-    except:
+            result["share_id"] = dataset.share_id
+            logger.info("Database updated! Exiting")
+    except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         logger.error(str(e))

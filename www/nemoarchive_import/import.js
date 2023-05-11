@@ -88,47 +88,17 @@ const getIndexOfTableStep = (stepName) => {
     return -1;
 }
 
-/* Convert metadata into a JSON file */
-const validateMetadata = async (attributes, submissionId) => {
-    const datasetId = attributes.dataset.id;
-    const columnIndex = getIndexOfTableStep("Validate Metadata");
-    if (!shouldStepRun(datasetId, columnIndex)) return;
-    setTblLoadingStatus(datasetId, columnIndex);
-    const runScript = async() => {
-        try {
-            const params = {attributes, "submission_id": submissionId, session_id};
-            const response = await fetch("/cgi/convert_nemoarchive_metadata_to_json.cgi?", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(params)
-            });
-            if (!response?.ok) {
-                throw new Error(response.statusText);
-            }
-            const jsonRes = await response.json();
-            if (!jsonRes.success) {
-                printTblMessage(datasetId, jsonRes.message, "danger");
-                throw new Error(jsonRes.message);
-            }
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
-    const isSuccess = await runScript();
-    // Update status of file in table
-    updateTblStatus(datasetId, columnIndex, isSuccess);
-}
-
 /* Convert file set to H5AD and write to final destination */
 const convertToH5ad = async (attributes) => {
+    // attributes = dataset attributes
+    const datasetId = attributes.id;
     const columnIndex = getIndexOfTableStep("Convert to H5AD");
-    if (!shouldStepRun(attributes.id, columnIndex)) return;
-    setTblLoadingStatus(attributes.id, columnIndex);
+    if (!shouldStepRun(datasetId, columnIndex)) return true;
+    setTblLoadingStatus(datasetId, columnIndex);
     const runScript = async () => {
         try {
-            const params = new URLSearchParams({"dataset_id": attributes.id, "filetype":attributes.filetype});
-            const response = await fetch("/cgi/convert_and_write_h5ad.cgi?" + params);
+            const params = new URLSearchParams({"dataset_id": datasetId, "filetype":attributes.filetype});
+            const response = await fetch("/cgi/nemoarchive_write_h5ad.cgi?" + params);
             if (!response?.ok) {
                 throw new Error(response.statusText);
             }
@@ -137,6 +107,9 @@ const convertToH5ad = async (attributes) => {
                 printTblMessage(datasetId, jsonRes.message, "danger");
                 throw new Error(jsonRes.message);
             }
+
+            const tableRow = document.querySelector(`#dataset-${datasetId}`);
+            tableRow.dataset.share_id = jsonRes.share_id;
             return true;
         } catch (error) {
             return false;
@@ -145,6 +118,7 @@ const convertToH5ad = async (attributes) => {
     const isSuccess = await runScript();
     // Update status of file in table
     updateTblStatus(datasetId, columnIndex, isSuccess);
+    return isSuccess;
 }
 
 const getFileMetadata = async (attributes) => {
@@ -205,7 +179,6 @@ const initializeSubmissionTable = (datasets) => {
 
         const template = `
         <tr id="dataset-${datasetId}">
-            <td class="dataset-id">${datasetId}</td>
             <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
             ${status2Element[pulledToVm]}
             ${status2Element[validateMetadata]}
@@ -288,6 +261,7 @@ const processSubmission = async (fileEntities, submissionId) => {
 
 /* Pull all files to VM */
 const pullFileSetToVm = async (attributes) => {
+    // attributes = dataset attributes
     const columnIndex = getIndexOfTableStep("Pull Files");
     if (!shouldStepRun(attributes.id, columnIndex)) return;
     setTblLoadingStatus(attributes.id, columnIndex);
@@ -306,7 +280,7 @@ const pullComponentFilesToVm = async (attributes) => {
         await Promise.all(component_fields.map(async (component) => {
             const path = attributes[component];
             const params = new URLSearchParams({ "bucket_path": path, "dataset_id": id });
-            const response = await fetch(`/cgi/pull_nemoarchive_gcp_files_to_vm.cgi?${params}`);
+            const response = await fetch(`/cgi/nemoarchive_pull_gcp_files_to_vm.cgi?${params}`);
             if (!response?.ok) {
                 throw new Error(response.statusText);
             }
@@ -322,9 +296,10 @@ const pullComponentFilesToVm = async (attributes) => {
 }
 
 const showPermalink = (datasetId) => {
-    const permalinkRow = document.querySelector(`${datasetId}_permalink`)
+    const tableRow = document.querySelector(`#dataset-${datasetId}`);
+    const permalinkRow = tableRow.querySelector(`${datasetId}_permalink`);
     // get permalink
-    const shareId = $(this).attr('value');
+    const shareId = tableRow.dataset.share_id;
     const permalinkUrl =  createDatasetPermalinkUrl(shareId);
     const template = `<a href=${permalinkUrl} target="_blank">View Dataset</a>`;
     const htmlCollection = generateElements(template);
@@ -354,6 +329,39 @@ const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
             tableRow.children[i].outerHTML = tdCanceled;
         }
     }
+}
+
+/* Convert metadata into a JSON file */
+const validateMetadata = async (attributes, submissionId) => {
+    // attributes = dataset + sample attributes
+    const datasetId = attributes.dataset.id;
+    const columnIndex = getIndexOfTableStep("Validate Metadata");
+    if (!shouldStepRun(datasetId, columnIndex)) return;
+    setTblLoadingStatus(datasetId, columnIndex);
+    const runScript = async() => {
+        try {
+            const params = {attributes, "submission_id": submissionId, session_id};
+            const response = await fetch("/cgi/nemoarchive_validate_json.cgi?", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(params)
+            });
+            if (!response?.ok) {
+                throw new Error(response.statusText);
+            }
+            const jsonRes = await response.json();
+            if (!jsonRes.success) {
+                printTblMessage(datasetId, jsonRes.message, "danger");
+                throw new Error(jsonRes.message);
+            }
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+    const isSuccess = await runScript();
+    // Update status of file in table
+    updateTblStatus(datasetId, columnIndex, isSuccess);
 }
 
 const handleSubmissionLink = () => {
@@ -389,7 +397,8 @@ const handleEmailButton = () => {
 window.onload = async () => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
 
-    if (! await CURRENT_USER?.id) {
+    await CURRENT_USER;
+    if (! CURRENT_USER?.id) {
         throw("Must be logged in to use this tool")
     }
 
@@ -458,18 +467,21 @@ window.onload = async () => {
         await pullFileSetToVm(allMetadata.dataset);
         await validateMetadata(allMetadata, submissionId);
 
-        /*
         // Convert to H5AD while validating metadata and move to final destination
-        const datasetInfo = convertToH5ad(allMetadata);
+        const importSuccess = await convertToH5ad(allMetadata.dataset);
 
-        const datasetId = allMetadata.dataset.id
-        // enable select-obs dropdown
-        if (! ["MEX"].includes(allMetadata.dataset.filetype)) {
-            populateObsDropdown(datasetId)
+        if (importSuccess) {
+            const datasetId = allMetadata.dataset.id
+            /*
+            // enable select-obs dropdown
+            if (! ["MEX"].includes(allMetadata.dataset.filetype)) {
+                populateObsDropdown(datasetId)
+            }
+            */
+            // show permalink
+            showPermalink(datasetId);
         }
-        // show permalink
-        showPermalink(datasetId)
-        */
+
     }));
 
     // Finalize submission.load_status depending on everything succeeded or not
