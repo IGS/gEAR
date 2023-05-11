@@ -1,6 +1,6 @@
 #!/opt/bin/python3
 
-# write_nemoarchive_metadata_to_json.cgi - Write metadata to JSON file
+# nemoarchive_validate_metadata.cgi - Write metadata to JSON file
 
 import json
 import logging
