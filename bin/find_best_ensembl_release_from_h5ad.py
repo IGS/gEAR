@@ -29,7 +29,7 @@ def main():
 
     first_index = adata.var.first_valid_index()
     key_type = get_key_type(first_index)
-    
+
     # connect to db
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -40,7 +40,7 @@ def main():
     elif key_type == 'gene_symbol':
         qry = "SELECT gene_symbol, ensembl_release FROM gene WHERE organism_id = %s"
     else:
-        raise Error("Couldn't guess key type based on first key ({0})".format(first_index))
+        raise "Couldn't guess key type based on first key ({0})".format(first_index)
 
     cursor.execute(qry, (args.organism_id,))
 
@@ -48,7 +48,7 @@ def main():
         if release_num not in id_ref:
             id_ref[release_num] = dict()
 
-        id_ref[release_num][id] = 1;
+        id_ref[release_num][id] = 1
 
     best_release = None
     best_count = 0
@@ -80,7 +80,7 @@ def get_key_type(id):
     """
     We want to magically allow for the first column to be either gene symbols or Ensembl gene IDs.
 
-    This checks to see if the identifier begins with ENS and returns either 'gene_symbol' 
+    This checks to see if the identifier begins with ENS and returns either 'gene_symbol'
     or 'ensembl_id'
     """
     if not id.startswith('ENS'):

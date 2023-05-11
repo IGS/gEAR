@@ -30,8 +30,9 @@ class DataArchive:
             raise Exception("No base dataset directory detected from arguments or extracted tarball")
 
         # The full path to each file in the archive
-        self.extracted_file_paths = list(extracted_file_paths.split(","))
-        # TODO: Do one os.listdir here instead of in all these methods
+        if extracted_file_paths:
+            self.extracted_file_paths = list(extracted_file_paths.split(","))
+            # TODO: Do one Path.iterdir here instead of in all these methods
 
         # Can be explicit or derived (mex, 3tab, etc.)
         self.format = format if format else self.get_archive_type(data_path=self.base_dir)
@@ -89,12 +90,13 @@ class DataArchive:
         """
         data_path = data_path if data_path else self.base_dir
 
-        archive_filenames = os.listdir(data_path)
+        archive_filepaths = Path(data_path).iterdir()
+        archive_filenames = [str(f) for f in archive_filepaths]
         archive_files=''.join(archive_filenames)
         data_type = None
         if 'expression.tab' in archive_files and 'genes.tab' in archive_files and 'observations.tab' in archive_files:
             data_type = "3tab"
-        if 'matrix.mtx' in archive_files and 'barcodes.tsv' in archive_files and 'genes.tsv' in archive_files:
+        if 'matrix.mtx' in archive_files and 'barcodes.tsv' in archive_files and ('genes.tsv' in archive_files or 'features.tsv' in archive_files):
             data_type = "mex"
         if 'DataMTX.tab' in archive_files and 'COLmeta.tab' in archive_files and 'ROWmeta.tab' in archive_files:
             data_type = "3tab"
@@ -114,15 +116,15 @@ class DataArchive:
 
         TBD: Error with writing to file.
         """
-        outdir_name = str(Path(output_dir).joinpath(self.dataset_id + ".h5ad"))
         # If dataset directory has h5ad file, skip that step
-        file_list = os.listdir(self.base_dir)
         if self.format=="h5ad":
-            outdir_name = "{}/{}".format(self.base_dir, file_list[0])
             # assume ENSEMBL IDs are not present if h5ad was already passed to us
             self.ens_present = False
-            return outdir_name
+            file_gen = Path(self.base_dir).iterdir()
+            return str(next(file_gen))
 
+        outdir_name_path = Path(output_dir).joinpath(self.dataset_id + ".h5ad")
+        outdir_name = str(outdir_name_path)
         # If errors occur in gEAR's parsing steps propagate upwards
         try:
             if self.format == "3tab":
@@ -156,17 +158,18 @@ class DataArchive:
         """
         data_path = data_path if data_path else self.base_dir
 
-        archive_files_list = os.listdir(data_path)
-        archive_files = [os.path.join(data_path, s) for s in archive_files_list]
+        archive_filepaths = Path(data_path).iterdir()
+        archive_files = [str(f) for f in archive_filepaths]
+
         for entry in archive_files:
             if 'matrix.mtx' in entry:
-                unzipped_entry = gunzip_file(entry, data_path)
+                unzipped_entry = gunzip_file(entry)
                 adata = sc.read(unzipped_entry, cache=False).transpose()
             elif 'barcodes.tsv' in entry:
-                unzipped_entry = gunzip_file(entry, data_path)
+                unzipped_entry = gunzip_file(entry)
                 obs = pd.read_csv(unzipped_entry, sep='\t', header=None,index_col = 0, names=['observations'])
-            elif 'genes.tsv' in entry:
-                unzipped_entry = gunzip_file(entry, data_path)
+            elif 'genes.tsv' in entry or 'features.tsv' in entry:
+                unzipped_entry = gunzip_file(entry)
                 var = pd.read_csv(unzipped_entry, sep='\t', header=None, index_col = 0, names=['genes', 'gene_symbol'])
                 if var.index.str.contains('ENS').sum() >1:
                     self.ens_present = True
@@ -197,21 +200,22 @@ class DataArchive:
         """
         data_path = data_path if data_path else self.base_dir
 
-        archive_files_list = os.listdir(data_path)
-        archive_files = [os.path.join(data_path, s) for s in archive_files_list]
+        archive_filepaths = Path(data_path).iterdir()
+        archive_files = [str(f) for f in archive_filepaths]
+
         for entry in archive_files:
             if 'expression.tab' in entry or 'DataMTX.tab' in entry:
-                unzipped_entry = gunzip_file(entry, data_path)
+                unzipped_entry = gunzip_file(entry)
                 # Get columns and rows of expression data in list form.
                 exp = pd.read_csv(unzipped_entry, sep='\t', index_col=0, header=0)
                 exp_obs = list(exp.columns)
                 exp_genes= list(exp.index)
                 adata = sc.read(entry, first_column_names=True, cache=False).transpose()
             elif 'observations.tab' in entry or 'COLmeta.tab' in entry:
-                unzipped_entry = gunzip_file(entry, data_path)
+                unzipped_entry = gunzip_file(entry)
                 obs = pd.read_csv(unzipped_entry, sep='\t', index_col=0, header=0)
             elif 'genes.tab' in entry or 'ROWmeta.tab' in entry:
-                unzipped_entry = gunzip_file(entry, data_path)
+                unzipped_entry = gunzip_file(entry)
                 var = pd.read_csv(unzipped_entry, sep='\t', index_col=0, header=0)
                 if var.index.str.contains('ENS').sum() >1:
                     self.ens_present = True
@@ -267,17 +271,17 @@ class DataArchive:
         except Exception as err:
             raise Exception("Error occurred while writing to file: ", err)
 
-def gunzip_file(gzip_file, base_dir):
+def gunzip_file(gzip_file:str):
     """Run "gunzip" on a file and return the extracted filename."""
-    full_gzip_file = Path(base_dir).joinpath(gzip_file)
     if not gzip_file.endswith(".gz"):
         return gzip_file
-    gunzip_file = full_gzip_file.replace(".gz", "")
-    with gzip.open(full_gzip_file, 'rb') as f_in:
+    gunzip_file = gzip_file.replace(".gz", "")
+    with gzip.open(gzip_file, 'rb') as f_in:
         with open(gunzip_file, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
-    # Now that file is extracted.  Remove file
-    Path.unlink(full_gzip_file)
 
-    return os.path.basename(gunzip_file)
+    # Now that file is extracted.  Remove file
+    Path(gzip_file).unlink()
+
+    return gunzip_file
 

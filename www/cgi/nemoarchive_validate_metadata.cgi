@@ -7,11 +7,11 @@ import logging
 import os, subprocess, sys
 from pathlib import Path
 
-#gear_root = Path(__file__).resolve().parents[2] # web-root dir
-bin_path = os.path.abspath(os.path.join('..', '..', 'bin'))
-sys.path.append(bin_path)
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
-sys.path.append(lib_path)
+gear_root = Path(__file__).resolve().parents[2] # web-root dir
+bin_path = gear_root.joinpath("bin")
+sys.path.append(str(bin_path))
+lib_path = gear_root.joinpath("lib")
+sys.path.append(str(lib_path))
 
 from find_best_ensembl_release_match import find_best_ensembl_release_match
 

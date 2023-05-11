@@ -218,6 +218,6 @@ def save_submission_dataset(dataset_id, identifier, is_restricted):
     s_dataset.save()
     return s_dataset
 
-def save_submission_member(submission_id, s_dataset):
+def save_submission_member(submission_id:geardb.Submission, s_dataset:geardb.SubmissionDataset):
     submission_member = geardb.SubmissionMember(submission_id=submission_id, submission_dataset_id=s_dataset.id)
     submission_member.save()
