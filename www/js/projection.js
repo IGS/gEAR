@@ -754,6 +754,7 @@ async function run_projection(dataset, projection_source, projection_algorithm, 
 
 
 // Set the state history based on current conditions
+// ? Could we consolidate this with build permalink?
 function add_state_history(searched_entities, projection_source=null, projection_algorithm=null) {
     const state_info = {
         'multipattern_plots': Number(multipattern)
@@ -798,6 +799,8 @@ function add_state_history(searched_entities, projection_source=null, projection
         // URL
         state_url
     )
+    // Update permalink as state is updated
+    build_permalink(state_url);
 }
 
 function set_scrollbar_props() {
@@ -866,3 +869,54 @@ $(document).on("click", "#projection_pattern_deselect_all", () => {
 $('#submit_search_projection').click((e) => {
     $('#projection_search_form').submit();
 })
+
+function build_permalink(state_url) {
+    // Map longform params to shortform params
+    const plink_map = {
+        "share_id":"s"
+        , "layout_id":"l"
+        , "multipattern_plots":"multi"
+        , "projection_source":"c"
+        , "projection_algo":"algo"
+        , "projection_patterns":"ptrns"
+    }
+
+    let url = `${window.origin}/p?p=p`
+
+    const sPageURL = decodeURIComponent(window.location.search.substring(1));
+    const sURLVariables = sPageURL.split('&');
+
+    // Build shortform url params
+    for (const sUrlVariable of sURLVariables) {
+        const sParameterName = sUrlVariable.split('=');
+        const new_param = plink_map[sParameterName[0]]
+        const val = sParameterName[1]
+        url += `&${new_param}=${val}`
+    }
+
+    // Assign to share button
+    $("#share_search").val(url)
+}
+
+function show_share_confirmation(gc_id, msg) {
+    var note_selector = "#result_gc_id_" + gc_id + " span.gc_action_note";
+    $(note_selector).html(msg).show();
+    setTimeout(function() {
+        $(note_selector).fadeOut().empty();
+    }, 5000);
+}
+
+$(document).on('click', '#share_search', function() {
+    const permalink_url = $(this).val();
+
+    const msg = copyToClipboard(permalink_url) ?
+        "Search URL copied to clipboard" :
+        `Failed to copy to clipboard. URL: ${permalink_url}`;
+
+    const confirm_elt = $("#share_confirm")
+    confirm_elt.html(msg).show();
+    setTimeout(function() {
+        $(confirm_elt).fadeOut().empty();
+    }, 5000);
+
+});
