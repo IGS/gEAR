@@ -296,6 +296,9 @@ div#uploader_header_c {
 div#uploader_header_c hr {
     margin: 8px 0 15px 0;
 }
+div#whatsnew_c h4 {
+    margin-bottom: 3px;
+}
 div.youtube-video-container {
     position: relative;
     width: 100%;
