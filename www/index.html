@@ -214,9 +214,16 @@
             </div>
             <script id="whatsnew_list_tmpl" type="text/x-jsrender">
               <h4>Dataset</h4>
-              <p class="new_dataset_title">
-                <a href="./">{{:title}}</a>
-              </p>
+              <div class="row">
+                <div class="col-3 pr-0">
+                  <img class="img-fluid" src="{{:preview_image_url}}" alt="Dataset preview image"/>
+                </div>
+                <div class="col-9">
+                  <p class="new_dataset_title">
+                    <a href="./">{{:title}}</a>
+                  </p>
+                </div>
+              </div>  
             </script>
           </div> <!-- end whatsnew card -->
           <div class="card">
