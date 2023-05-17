@@ -230,3 +230,9 @@ div#tip {
 #projectr_paper_link {
   color: white;
 }
+
+#share_confirm {
+  font-size: 90%;
+  font-weight: bold;
+  display: none;
+}

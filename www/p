@@ -26,9 +26,12 @@ def main():
     gene_cart = form.getvalue('c')
     gene_symbol = form.getvalue('g')
     gene_symbol_exact_match = form.getvalue('gsem')
+    multi = form.getvalue("multi")
+    patterns = form.getvalue("ptrns")
+    algo = form.getvalue("algo")
     layout_id = form.getvalue('l')
-    page = form.getvalue('p')
-    share_id = form.getvalue('s')
+    page = form.getvalue('p')   # web page to navigate to
+    share_id = form.getvalue('s')   # share single dataset
     identifiers_org_id = form.getvalue('id')
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
@@ -36,9 +39,11 @@ def main():
 
     if page == 'a':
         main_page = 'analyze_dataset.html'
+    if page == 'p':
+        main_page = 'projection.html'
 
     url = url_base + '/' + main_page
-        
+
     params = dict()
 
     if share_id is not None:
@@ -56,7 +61,22 @@ def main():
         params['gene_symbol_exact_match'] = gene_symbol_exact_match
 
     if gene_cart:
-        params['gene_cart_share_id'] = gene_cart
+        key = 'gene_cart_share_id'
+        if page == "p":
+            key = 'projection_source'
+        params[key] = gene_cart
+
+    if multi:
+        key = "multigene_plots"
+        if page == "p":
+            key = "multipattern_plots"
+        params[key] = multi
+
+    if patterns and page == "p":
+        params["projection_patterns"] = patterns
+
+    if algo and page == "p":
+        params["projections_algo"] = algo
 
     if identifiers_org_id:
         (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')
@@ -66,11 +86,11 @@ def main():
 
         elif id_prefix == 'p':
             params['layout_id'] = identifiers_share_id
-        
+
     if len(params) > 0:
         url += '?'
         first_param = True
-        
+
         for p in params:
             if first_param:
                 url += "{0}={1}".format(p, params[p])
