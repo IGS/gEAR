@@ -454,10 +454,12 @@ CREATE TABLE dataset_group_membership (
 CREATE TABLE submission (
        id               VARCHAR(50) PRIMARY KEY,
        user_id                     INT NOT NULL,
+       layout_id                   INT
        is_finished                 TINYINT DEFAULT 0,
        is_restricted               TINYINT DEFAULT 0, /* if one dataset is restricted, then the whole submission must be */
        date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
        FOREIGN KEY (user_id) REFERENCES guser(id)
+       FOREIGN KEY (layout_id) REFERENCES layout(id)
 )
 
 CREATE TABLE submission_dataset (
