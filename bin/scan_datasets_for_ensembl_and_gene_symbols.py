@@ -30,8 +30,10 @@ DATASET_BASE_DIR = '{}/www/datasets'.format(gear_root_path)
 SKIP_FILE = 'scan.skip.list'
 CMD_FILE = 'fix_cmds.sh'
 LOG_FILE = 'investigate.log'
+LRG_FILE = 'large_dataset.list'
+
 # Any files larger than this (in MB) will be skipped, unless = None
-FILE_SIZE_LIMIT = 4000
+FILE_SIZE_LIMIT = 5000
 
 def main():
     skip_ids = get_skip_ids(SKIP_FILE)
@@ -39,6 +41,7 @@ def main():
     log_fh = open(LOG_FILE, 'wt')
     cmd_fh = open(CMD_FILE, 'wt')
     skp_fh = open(SKIP_FILE, 'at')
+    lrg_fh = open(LRG_FILE, 'at')
     
     for h5_file in os.listdir(DATASET_BASE_DIR):
         if not h5_file.endswith('.h5ad'):
@@ -54,6 +57,8 @@ def main():
         if FILE_SIZE_LIMIT:
             if os.path.getsize(h5ad_path) >= (FILE_SIZE_LIMIT * 1024 * 1024):
                 print("\tSkipping, File is over the size limit")
+                lrg_fh.write("{0}\n".format(dataset_id))
+                lrg_fh.flush()
                 continue
 
         if dataset_id in skip_ids:
@@ -89,6 +94,7 @@ def main():
         if indexed_on_ensembl_id and gene_symbols_present:
             print("\tIndexed on Ensembl ID and gene symbols found", file=sys.stderr)
             skp_fh.write("{0}\n".format(dataset_id))
+            skp_fh.flush()
             continue
 
         if gene_symbols_present and not indexed_on_ensembl_id:

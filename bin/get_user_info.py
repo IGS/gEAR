@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/bin/python3
 
 """
 This lets analysis/devs look up a user ID without getting into the database directly.
