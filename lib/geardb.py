@@ -318,8 +318,8 @@ def get_submission_by_id(id):
 
     cursor.execute(qry, (id, ))
 
-    for (id, user_id, is_finished, is_restricted, date_added) in cursor:
-        submission = Submission(id=id, user_id=user_id,
+    for (id, user_id, layout_id, is_finished, is_restricted, date_added) in cursor:
+        submission = Submission(id=id, user_id=user_id, layout_id=layout_id,
                 is_finished=is_finished, is_restricted=is_restricted, date_added=date_added)
         break
 
@@ -351,6 +351,7 @@ def get_submission_dataset_by_dataset_id(id):
                 nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
                 convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
                 is_restricted=is_restricted)
+        submission_dataset.get_dataset_info()
         break
 
     cursor.close()
@@ -2948,6 +2949,7 @@ class Submission:
 
     id: str = None
     user_id: int = None
+    layout_id: int = None
     is_finished: int = None
     is_restricted: int = None
     date_added: datetime.datetime = None
@@ -2955,6 +2957,9 @@ class Submission:
 
     def __repr__(self):
         return json.dumps(self.__dict__)
+
+    def get_layout_info(self):
+        return get_layout_by_id(self.layout_id)
 
     def save_change(self, attribute=None, value=None):
         """
@@ -3010,8 +3015,8 @@ class SubmissionCollection:
         cursor = conn.get_cursor()
         cursor.execute(query, (dataset_id, ))
 
-        for (id, user_id, is_finished, is_restricted, date_added) in cursor:
-            submission = Submission(id=id, user_id=user_id,
+        for (id, user_id, layout_id, is_finished, is_restricted, date_added) in cursor:
+            submission = Submission(id=id, user_id=user_id, layout_id=layout_id,
                     is_finished=is_finished, is_restricted=is_restricted, date_added=date_added)
             self.submissions.append(submission)
 
@@ -3143,6 +3148,7 @@ class SubmissionDatasetCollection:
                     nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
                     convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
                     is_restricted=is_restricted)
+            submission_dataset.get_dataset_info()
             self.datasets.append(submission_dataset)
 
         conn.commit()

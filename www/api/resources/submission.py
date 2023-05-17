@@ -24,7 +24,7 @@ class Submission(Resource):
     def get(self, submission_id):
         """Retrieve a particular submission based on ID."""
         reset_steps = request.args.get("reset_steps") == "true"
-        result = {"self": request.path, "success":0, "datasets":{}, "message":""}
+        result = {"self": request.path, "success":0, "datasets":{}, "layout_id":None, "message":""}
 
         session_id = request.cookies.get('session_id')
         # Must have a gEAR account to upload datasets
@@ -33,6 +33,8 @@ class Submission(Resource):
         submission = geardb.get_submission_by_id(submission_id)
         if not submission:
             return result
+
+        result["layout_id"] = submission.layout_id
 
         sd = geardb.SubmissionDatasetCollection()
         submission.datasets = sd.get_by_submission_id(submission_id)
@@ -46,6 +48,7 @@ class Submission(Resource):
 
             dataset_id = s_dataset.dataset_id
             result["datasets"][dataset_id] = {"message":"", "identifier":s_dataset.nemo_identifier}
+            result["datasets"][dataset_id]["share_id"] = s_dataset.dataset.share_id
             result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
         result["success"] = 1
         return result
@@ -65,7 +68,7 @@ class Submissions(Resource):
         file_info = req.get("file_entities")
         submission_id = req.get("submission_id")
 
-        result = {"self": request.path, "success":0, "datasets":{}, "message":""}
+        result = {"self": request.path, "success":0, "datasets":{}, "layout_id":None, "message":""}
 
         issues_found = False
 
@@ -119,6 +122,7 @@ class Submissions(Resource):
                 issues_found = True
                 continue
 
+            result["datasets"][dataset_id]["share_id"] = s_dataset.dataset.share_id
             result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
 
             # Insert submission members and create new submisison datasets if they do not exist
@@ -216,6 +220,7 @@ def save_submission_dataset(dataset_id, identifier, is_restricted):
                     pulled_to_vm_status="pending", convert_metadata_status="pending", convert_to_h5ad_status="pending"
                     )
     s_dataset.save()
+    s_dataset.get_dataset_info()
     return s_dataset
 
 def save_submission_member(submission_id:geardb.Submission, s_dataset:geardb.SubmissionDataset):

@@ -35,7 +35,7 @@ const notify = (msg, fade=false) => {
 }
 
 const printTblMessage = (datasetId, msg, level) => {
-    const cell = document.getElementById(`${datasetId}_messages`);
+    const cell = document.getElementById(`${datasetId}-messages`);
     cell.classList = [];
     cell.textContent = msg;
     if (level) {
@@ -107,9 +107,6 @@ const convertToH5ad = async (attributes) => {
                 printTblMessage(datasetId, jsonRes.message, "danger");
                 throw new Error(jsonRes.message);
             }
-
-            const tableRow = document.querySelector(`#dataset-${datasetId}`);
-            tableRow.dataset.share_id = jsonRes.share_id;
             return true;
         } catch (error) {
             return false;
@@ -119,6 +116,16 @@ const convertToH5ad = async (attributes) => {
     // Update status of file in table
     updateTblStatus(datasetId, columnIndex, isSuccess);
     return isSuccess;
+}
+
+const getDefaultDisplay = async (datasetId) => {
+    const response = await fetch("./cgi/get_default_display.cgi", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id: CURRENT_USER.id, dataset_id: datasetId})
+        });
+
+    return response.default_display_id;
 }
 
 const getFileMetadata = async (attributes) => {
@@ -154,6 +161,8 @@ const getSubmission = async(submissionId) => {
     }
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
     initializeSubmissionTable(jsonRes.datasets)
+
+    return jsonRes.datasets;
 }
 
 /* Create new submission-related entries in database */
@@ -162,12 +171,13 @@ const initializeNewSubmission = async (fileEntities, submissionId) => {
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
     initializeSubmissionTable(datasets)
 
+    return datasets;
 }
 
 /* Initialize submission table to show files */
 const initializeSubmissionTable = (datasets) => {
     for (const datasetId in datasets) {
-        const {identifier} = datasets[datasetId];
+        const {identifier, share_id:shareId} = datasets[datasetId];
         const namespace = identifier.split("nemo:")[1];
         const identifierUrl = `https://assets.nemoarchive.org/${namespace}`;
 
@@ -178,20 +188,41 @@ const initializeSubmissionTable = (datasets) => {
             } = datasets[datasetId].dataset_status;
 
         const template = `
-        <tr id="dataset-${datasetId}">
+        <tr id="dataset-${datasetId}" data-share_id="${shareId}">
             <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
             ${status2Element[pulledToVm]}
             ${status2Element[validateMetadata]}
             ${status2Element[convertToH5ad]}
-            <td id="${datasetId}_messages"></td>
-            <td id="${datasetId}_obslevels">Not ready</td>
-            <td id="${datasetId}_permalink">Not ready</td>
+            <td id="${datasetId}-messages"></td>
+            <td id="${datasetId}-obslevels">Not ready</td>
+            <td id="${datasetId}-permalink">Not ready</td>
         </tr>
         `
         const parent = document.querySelector("#submission_datasets tbody");
         const htmlCollection = generateElements(template);
         parent.append(htmlCollection);
     }
+}
+
+const isImportComplete = (datasetId) => {
+    /* Returns True if step finished */
+    const columnIndex = getIndexOfTableStep("Convert to H5AD");
+    if (!shouldStepRun(datasetId, columnIndex)) return true;
+    return false
+    // ? Consolidate with first steps of "ConvertH5ad"
+}
+
+/* Convert metadata into a JSON file */
+const makeDefaultDisplay = async (datasetId, category, gene) => {
+    const params = {"dataset_id": datasetId, category, gene}
+    const response = await fetch("/cgi/nemoarchive_make_default_display.cgi", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(params)
+            });
+    const jsonRes = await response.json();
+    return jsonRes.plot_config;
+
 }
 
 /* Populate and show number of non-supported files, if any exist */
@@ -207,7 +238,7 @@ const populateNonSupportedElement = () => {
 
 /* Populate select dropdown of observation categorical metadata */
 const populateObsDropdown = async (datasetId) => {
-    const parent = document.querySelector(`#${datasetId}_obslevels`);
+    const parent = document.querySelector(`#${datasetId}-obslevels`);
     parent.classList.add("is-loading", "select");
     const response = await fetch(`/api/h5ad/${datasetId}`);
     const jsonData = await response.json();
@@ -295,25 +326,48 @@ const pullComponentFilesToVm = async (attributes) => {
     }
 }
 
+const saveNewDisplay = async (datasetId, plotConfig, plotType, label) => {
+    const response = await fetch("./cgi/save_dataset_display.cgi", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id: CURRENT_USER.id
+            , dataset_id: datasetId
+            , plotly_config: plotConfig
+            , plot_type: plotType
+            , label
+            })
+        });
+
+    return response.display_id;
+}
+
+const saveDefaultDisplay = async (datasetId, displayId) => {
+    const response = await fetch("./cgi/save_default_display.cgi", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id: CURRENT_USER.id, dataset_id: datasetId, display_id: displayId})
+        });
+
+    return response.default_display_id;
+}
+
 const showPermalink = (datasetId) => {
-    const tableRow = document.querySelector(`#dataset-${datasetId}`);
-    const permalinkRow = tableRow.querySelector(`${datasetId}_permalink`);
-    // get permalink
+    const tableRow = document.getElementById(`dataset-${datasetId}`);
+    const permalinkRow = document.getElementById(`${datasetId}-permalink`);
     const shareId = tableRow.dataset.share_id;
     const permalinkUrl =  createDatasetPermalinkUrl(shareId);
     const template = `<a href=${permalinkUrl} target="_blank">View Dataset</a>`;
-    const htmlCollection = generateElements(template);
-    parent.append(htmlCollection);
+    permalinkRow.innerHTML = template;
 }
 
 const setTblLoadingStatus = (datasetId, columnIndex) => {
-    const tableRow = document.querySelector(`#dataset-${datasetId}`);
+    const tableRow = document.getElementById(`dataset-${datasetId}`);
     tableRow.children[columnIndex].outerHTML = tdLoading;
 }
 
 /* Return true if this step should run (is pending), false otherwise */
 const shouldStepRun = (datasetId, columnIndex) => {
-    const tableRow = document.querySelector(`#dataset-${datasetId}`);
+    const tableRow = document.getElementById(`dataset-${datasetId}`);
     return (tableRow.children[columnIndex].outerHTML === tdPending);
 }
 
@@ -321,7 +375,7 @@ const shouldStepRun = (datasetId, columnIndex) => {
 const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
     //TODO: Eventually get this info from the database
     const updatedStatus = isSuccess ? tdCompleted : tdFailed;
-    const tableRow = document.querySelector(`#dataset-${datasetId}`);
+    const tableRow = document.getElementById(`dataset-${datasetId}`);
     // Change status. In case of failure, "cancel" all subsequent tasks
     tableRow.children[columnIndex].outerHTML = updatedStatus;
     if (!isSuccess) {
@@ -341,7 +395,7 @@ const validateMetadata = async (attributes, submissionId) => {
     const runScript = async() => {
         try {
             const params = {attributes, "submission_id": submissionId, session_id};
-            const response = await fetch("/cgi/nemoarchive_validate_json.cgi?", {
+            const response = await fetch("/cgi/nemoarchive_validate_json.cgi", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(params)
@@ -381,12 +435,34 @@ const handleSubmissionLink = () => {
 
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
 const handleViewDatasets = async () => {
+    const gene = document.getElementById("global_gene_selection");
     const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
+
+    const plotType = "tsne_static";
+    const label = "nemoanalytics import default plot";
     await Promise.allSettled([...tableRows].map( async (row) => {
-        // Create UMAPs
+        // Check if default displays are made for this dataset available for this user
+        // If not, the make some
+
+        if (await getDefaultDisplay(datasetId)) {
+            return;
+        }
+
         const datasetId = row.querySelector(".dataset-id").textContent;
-        const obsLevel = row.querySelector(`#${datasetId}_obslevels select`).value();
+        const obsLevel = document.getElementById(`#${datasetId}-obslevels`);
+        const category = obsLevel.querySelector("select").value();
+        const plotConfig = await makeDefaultDisplay(datasetId, category, gene);
+
+        const displayId = await saveNewDisplay(CURRENT_USER.id, datasetId, plotConfig, plotType, label);
+        await saveDefaultDisplay(CURRENT_USER.id, datasetId, displayId);
+
     }));
+
+    // Save new layout for submisison if it does not exist
+    const collectionName = document.getElementById("collection_name");
+    await saveNewLayout()
+
+    // Redirect to layout share ID
 }
 
 /* Send email when importing has finished. Some RabbitMQ stuff will happen */
@@ -401,6 +477,9 @@ window.onload = async () => {
     if (! CURRENT_USER?.id) {
         throw("Must be logged in to use this tool")
     }
+    const importFinish = document.getElementById("import_finish");
+    const partialSuccess = document.getElementById("partial_success");
+    const completeSuccess = document.getElementById("complete_success");
 
     // This is meant purely to check a submission status, but will not resume it
     const submissionParam = getUrlParameter("submission_id")
@@ -408,10 +487,26 @@ window.onload = async () => {
         const submissionElt = document.getElementById("submission_title");
         submissionElt.setAttribute("submission", submissionParam);
         populateSubmissionId(submissionParam);
-        getSubmission(submissionParam);
+        const datasets = await getSubmission(submissionParam);
         submissionElt.addEventListener("click", () => handleSubmissionLink());
-        return;
+
+        for (const datasetId in datasets) {
+            const importSuccess = isImportComplete(datasetId);
+            if (importSuccess) {
+                /*
+                // enable select-obs dropdown
+                if (! ["MEX"].includes(allMetadata.dataset.filetype)) {
+                    populateObsDropdown(datasetId)
+                }
+                */
+                // show permalink
+                showPermalink(datasetId);
+            }
+        }
+
+        importFinish.classList.remove("is-hidden");
     }
+
 
     // URI and it's component is encoded so need to decode all that
     // https://thisthat.dev/encode-uri-vs-encode-uri-component/
@@ -480,12 +575,24 @@ window.onload = async () => {
             */
             // show permalink
             showPermalink(datasetId);
+
+            // After the first dataset is finished, we can View Datasets if desired
+            importFinish.classList.remove("is-hidden");
+        } else {
+            partialSuccess.classList.remove("is-hidden");
         }
 
     }));
 
+    // If everything went well, change to a complete success
+    if (partialSuccess.classList.contains("is-hidden")) {
+        completeSuccess.classList.remove("is-hidden");
+    }
+
     // Finalize submission.load_status depending on everything succeeded or not
     // if at least one is successfully imported, show the layout button
+
+
 
     // ? Figure out what to do if counts are per sample rather than per file
 

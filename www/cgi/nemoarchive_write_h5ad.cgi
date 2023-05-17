@@ -97,7 +97,7 @@ def main():
             dataset.save_change(attribute="load_status", value="completed")
             dataset.save_change(attribute="has_h5ad", value=1)
             s_dataset.save_change(attribute=DB_STEP, value="completed")
-            result["share_id"] = dataset.share_id
+            #result["share_id"] = dataset.share_id
             logger.info("Database updated! Exiting")
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
