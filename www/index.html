@@ -204,15 +204,24 @@
           </div>
         </div> <!-- end .section_panels_row -->
 
-        <div class="section_panels_row card-deck mt-2 pt-3">
+        <div id="whatsnew_c" class="section_panels_row card-deck mt-2 pt-3">
+          <div class="card">
+            <div class="card-header bg-white pb-0">
+              <h3><img src="./img/icons/icon_megaphone.png" /> What's new</h3>
+            </div>
+            <div id="whatsnew_items_c" class="card-body">
+              <!-- Inserted from template below -->
+            </div>
+            <script id="whatsnew_list_tmpl" type="text/x-jsrender">
+              <h4>Dataset</h4>
+              <p class="new_dataset_title">
+                <a href="./">{{:title}}</a>
+              </p>
+            </script>
+          </div> <!-- end whatsnew card -->
           <div class="card">
             <div class="card-header bg-white pb-0">
               <h3><img src="./img/icons/wrench_purple.png" /> Tools and utilities:</h3>
-              <!--
-                  - Comparison tool
-                  - Analysis workbench
-                  - Dataset uploader
-                -->
             </div>
             <div class="card-body">
               <div class="row">
@@ -275,24 +284,16 @@
           </div> <!-- end Launcher card -->
           <div class="card">
             <div class="card-header bg-white pb-0">
-              <h3><img src="./img/icons/drives_purple.png" /> Getting started video</h3>
-            </div>
-            <div class="card-body">
-              <div class="youtube-video-container">
-                <iframe width="560" height="315" src="https://www.youtube.com/embed/sr_kvm7W4OE" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-              </div>
-            </div>
-            <div class="card-footer bg-white">
-              <div class="section_launcher section_launcher_single" id="launcher_manual">
-                <div class="section_launcher_label">SEE ALL DOCUMENTATION</div>
-              </div>
-            </div>
-          </div> <!-- end youtube card -->
-          <div class="card">
-            <div class="card-header bg-white pb-0">
               <h3><img src="./img/icons/book_purple.png" /> Learn how to:</h3>
             </div>
             <div class="card-body">
+              <div class="row">
+                <div class="col-12">
+                  <div class="youtube-video-container">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/sr_kvm7W4OE" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                  </div>
+                </div>
+              </div>
               <div class="row">
                 <div class="col-12">
                   <ul class="list-group" id="doc-link-choices">

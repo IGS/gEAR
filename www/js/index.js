@@ -65,6 +65,7 @@ $(document).on("handle_page_loading", () => {
         layout_id = getUrlParameter('layout_id');
         scope = "profile";
         get_index_info();
+        get_whatsnew_items();
     }
 
     // Was help_id found?
@@ -249,6 +250,21 @@ function get_index_info() {
         }
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
+    });
+};
+
+function get_whatsnew_items() {
+    $.ajax({
+        url: './cgi/get_whatsnew_list.cgi',
+        type: 'GET',
+        dataType: 'json'
+    }).done((data) => {
+        console.log(data);
+        var ListTmpl = $.templates("#whatsnew_list_tmpl");
+        var ListHtml = ListTmpl.render(data['new_items']['datasets']);
+        $("#whatsnew_items_c").html(ListHtml);
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting What\'s New items.');
     });
 };
 
