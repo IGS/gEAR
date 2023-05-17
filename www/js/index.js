@@ -261,7 +261,7 @@ function get_whatsnew_items() {
     }).done((data) => {
         console.log(data);
         var ListTmpl = $.templates("#whatsnew_list_tmpl");
-        var ListHtml = ListTmpl.render(data['new_items']['datasets']);
+        var ListHtml = ListTmpl.render(data['new_items']);
         $("#whatsnew_items_c").html(ListHtml);
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting What\'s New items.');
