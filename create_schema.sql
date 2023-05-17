@@ -438,3 +438,14 @@ CREATE TABLE `dataset_epiviz` (
   `share_id` varchar(50) NOT NULL,
   `organism` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+
+CREATE TABLE user_history (
+ 	id			    INT PRIMARY KEY AUTO_INCREMENT,
+    user_id         INT NOT NULL,
+    entry_date      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    entry_category  VARCHAR(100) NOT NULL,
+    label           VARCHAR(255) NOT NULL,
+    url             VARCHAR(255) NOT NULL,
+    FOREIGN KEY (user_id)
+     REFERENCES guser(id)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
