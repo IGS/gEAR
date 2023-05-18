@@ -216,11 +216,6 @@ $(document).on("handle_page_loading", () => {
         $("#tip").css("top" , `${ypos}px` );
     });
 
-    $('.adv-tooltip').tooltipster({
-        content: $('<p>Something here<p>')
-        //content: $(this).data('dataset-id')
-    });
-    
     // Create observer to watch if user changes (ie. successful login does not refresh page)
     // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
 
