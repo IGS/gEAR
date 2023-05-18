@@ -11,7 +11,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-DATASETS_TO_SHOW = 3
+DATASETS_TO_SHOW = 5
 IMAGE_ROOT = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
 WEB_IMAGE_ROOT = './img/dataset_previews'
 
@@ -28,6 +28,10 @@ def main():
     dc.get_public(has_h5ad=1, n=DATASETS_TO_SHOW, order_by='date_added')
 
     for dataset in dc.datasets:
+        # Strip the time off the date
+        dataset.date_added = str(dataset.date_added).split(" ")[0]
+        
+        # Add the preview image
         if os.path.exists("{0}/{1}.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):

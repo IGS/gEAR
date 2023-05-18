@@ -298,6 +298,17 @@ div#uploader_header_c hr {
 }
 div#whatsnew_c h4 {
     margin-bottom: 3px;
+    margin-top: 10px;
+}
+div#whatsnew_c h4 span.dataset-date {
+    font-size: 80%;
+}
+div#whatsnew_c p {
+    font-size: 90%;
+    font-weight: bold;
+}
+div.adv-tooltip {
+    display: none;
 }
 div.youtube-video-container {
     position: relative;
