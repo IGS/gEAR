@@ -58,6 +58,16 @@ class Submission(Resource):
 class Submissions(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""
 
+    def get(self):
+        """Retrieve all submissions."""
+        # Must have a gEAR account to create submissions
+        session_id = request.cookies.get('gear_session_id')
+        user = geardb.get_user_from_session_id(session_id)
+        result = {"self": request.path, "success":0, "entries":[], "message":""}
+        submissions = geardb.SubmissionCollection()
+        # TODO: Flesh this out
+        pass
+
     def post(self):
         """Create a new submission in the database."""
         # Must have a gEAR account to create submissions

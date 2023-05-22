@@ -52,8 +52,8 @@ api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
 api.add_resource(GeneSymbols, '/h5ad/<string:dataset_id>/genes')
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<int:display_id>')
-api.add_resource(Submission, '/submission/<string:submission_id>')
-api.add_resource(Submissions, "/submission")
+api.add_resource(Submission, '/submissions/<string:submission_id>')
+api.add_resource(Submissions, "/submissions")
 api.add_resource(MockIdentifier, "/mock_identifier/<string:identifier>")
 
 if __name__ == '__main__':

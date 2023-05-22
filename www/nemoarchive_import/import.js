@@ -151,7 +151,7 @@ const getFileMetadata = async (attributes) => {
 /* Retrieve existing submission */
 const getSubmission = async(submissionId) => {
     // Going to attempt to get existing submission
-    const response = await fetch(`/api/submission/${submissionId}`)
+    const response = await fetch(`/api/submissions/${submissionId}`)
     if (!response?.ok) {
         throw new Error(response.statusText);
     }
@@ -262,7 +262,7 @@ const populateSubmissionId = (submissionId) => {
 const processSubmission = async (fileEntities, submissionId) => {
     // Going to attempt to get existing submission (and resume)
     const getParams = new URLSearchParams({ "reset_steps": true });
-    const getResponse = await fetch(`/api/submission/${submissionId}?${getParams}`)
+    const getResponse = await fetch(`/api/submissions/${submissionId}?${getParams}`)
     if (!getResponse?.ok) {
         throw new Error(getResponse.statusText);
     }
@@ -273,7 +273,7 @@ const processSubmission = async (fileEntities, submissionId) => {
 
     // If existing submission does not exist, create new submission
     const postParams = { "file_entities": fileEntities, "submission_id": submissionId };
-    const postResponse = await fetch("/api/submission", {
+    const postResponse = await fetch("/api/submissions", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(postParams)
