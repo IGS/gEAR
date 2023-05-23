@@ -24,7 +24,7 @@ class Submission(Resource):
     def get(self, submission_id):
         """Retrieve a particular submission based on ID."""
         reset_steps = request.args.get("reset_steps") == "true"
-        result = {"self": request.path, "success":0, "datasets":{}, "layout_id":None, "message":""}
+        result = {"self": request.path, "success":0, "datasets":{}, "layout_share_id":None, "message":""}
 
         session_id = request.cookies.get('session_id')
         # Must have a gEAR account to upload datasets
@@ -34,7 +34,9 @@ class Submission(Resource):
         if not submission:
             return result
 
-        result["layout_id"] = submission.layout_id
+        layout = submission.get_layout_info()
+        if layout:
+            result["layout_share_id"] = layout.share_id
 
         sd = geardb.SubmissionDatasetCollection()
         submission.datasets = sd.get_by_submission_id(submission_id)
@@ -53,8 +55,6 @@ class Submission(Resource):
         result["success"] = 1
         return result
 
-    # TODO: Have a POST to resume this submission initialization in case of failure.
-
 class Submissions(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""
 
@@ -66,7 +66,7 @@ class Submissions(Resource):
         result = {"self": request.path, "success":0, "entries":[], "message":""}
         submissions = geardb.SubmissionCollection()
         # TODO: Flesh this out
-        pass
+        abort(501, "GET /submissions has not been implemented yet.")
 
     def post(self):
         """Create a new submission in the database."""
@@ -78,7 +78,7 @@ class Submissions(Resource):
         file_info = req.get("file_entities")
         submission_id = req.get("submission_id")
 
-        result = {"self": request.path, "success":0, "datasets":{}, "layout_id":None, "message":""}
+        result = {"self": request.path, "success":0, "datasets":{}, "layout_share_id":None, "message":""}
 
         issues_found = False
 

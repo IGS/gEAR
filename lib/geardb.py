@@ -286,9 +286,9 @@ def get_layout_by_id(layout_id):
     layout = None
 
     qry = """
-          SELECT id, user_id, label, is_current, is_domain, share_id
-          FROM layout
-          WHERE id = %s
+        SELECT id, user_id, label, is_current, is_domain, share_id
+        FROM layout
+        WHERE id = %s
     """
     cursor.execute(qry, (layout_id,))
 
@@ -311,7 +311,7 @@ def get_submission_by_id(id):
     submission = None
 
     qry = """
-        SELECT id, user_id, is_finished, is_restricted, date_added
+        SELECT id, user_id, layout_id, is_finished, is_restricted, date_added
         FROM submission
         WHERE id = %s
     """

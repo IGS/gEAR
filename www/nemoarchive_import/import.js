@@ -34,13 +34,34 @@ const notify = (msg, fade=false) => {
     }
 }
 
+const convertToFormData = (object) => {
+    // Source -> https://stackoverflow.com/a/66611630
+    // NOTE: When using FormData do not set headers to application/json
+    const formData = new FormData();
+    Object.keys(object).forEach(key => {
+      if (typeof object[key] !== 'object') formData.append(key, object[key])
+      else formData.append(key, JSON.stringify(object[key]))
+    })
+    return formData;
+}
+
 const printTblMessage = (datasetId, msg, level) => {
+    // ? Should I make this a hover element since messages may be long?
     const cell = document.getElementById(`${datasetId}-messages`);
     cell.classList = [];
     cell.textContent = msg;
     if (level) {
         cell.classList.add(`has-text-${level}-dark`)
     }
+}
+
+/* Add this dataset to this layout */
+const addDatasetToLayout = async (datasetId, layoutId) => {
+    const response = await fetch("./cgi/add_dataset_to_layout.cgi", {
+        method: "POST",
+        body: convertToFormData({session_id, dataset_id: datasetId, layout_id: layoutId})
+        });
+    return await response.json();
 }
 
 /* Create a dataset permalink URL from the stored share ID */
@@ -80,7 +101,7 @@ const generateElements = (html) => {
 /* Given a table header "step" name, return the cell index position */
 const getIndexOfTableStep = (stepName) => {
     const tableHead = document.querySelectorAll("#submission_datasets thead tr th");
-    const foundElt = [...tableHead].filter( elt => elt.textContent === stepName);
+    const foundElt = [...tableHead].filter(elt => elt.textContent === stepName);
     if (foundElt.length) {
         return foundElt[0].cellIndex;
     }
@@ -119,13 +140,12 @@ const convertToH5ad = async (attributes) => {
 }
 
 const getDefaultDisplay = async (datasetId) => {
-    const response = await fetch("./cgi/get_default_display.cgi", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({user_id: CURRENT_USER.id, dataset_id: datasetId})
-        });
+    const params = new URLSearchParams({"user_id":CURRENT_USER.id, "dataset_id": datasetId});
 
-    return response.default_display_id;
+    const response = await fetch(`./cgi/get_default_display.cgi?${params}`);
+    const jsonRes = await response.json();
+    const {default_display_id: defaultDisplayId} = jsonRes;
+    return defaultDisplayId;
 }
 
 const getFileMetadata = async (attributes) => {
@@ -144,7 +164,6 @@ const getFileMetadata = async (attributes) => {
         printTblMessage(datasetId, jsonRes.message, "danger");
         throw new Error(jsonRes.message);
     }
-
     return jsonRes.metadata
 }
 
@@ -161,16 +180,14 @@ const getSubmission = async(submissionId) => {
     }
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
     initializeSubmissionTable(jsonRes.datasets)
-
-    return jsonRes.datasets;
+    return jsonRes;
 }
 
 /* Create new submission-related entries in database */
 const initializeNewSubmission = async (fileEntities, submissionId) => {
-    const datasets = await processSubmission(fileEntities, submissionId);
+    const { datasets } = await processSubmission(fileEntities, submissionId);
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
     initializeSubmissionTable(datasets)
-
     return datasets;
 }
 
@@ -188,7 +205,7 @@ const initializeSubmissionTable = (datasets) => {
             } = datasets[datasetId].dataset_status;
 
         const template = `
-        <tr id="dataset-${datasetId}" data-share_id="${shareId}">
+        <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
             <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
             ${status2Element[pulledToVm]}
             ${status2Element[validateMetadata]}
@@ -214,11 +231,11 @@ const isImportComplete = (datasetId) => {
 
 /* Convert metadata into a JSON file */
 const makeDefaultDisplay = async (datasetId, category, gene) => {
-    const params = {"dataset_id": datasetId, category, gene}
+    // TODO: Do this after converting to h5ad, and then add category when saving default displays
+    const params = {"dataset_id": datasetId, "category":category, "gene":gene, "session_id":session_id}
     const response = await fetch("/cgi/nemoarchive_make_default_display.cgi", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(params)
+            body: convertToFormData(params)
             });
     const jsonRes = await response.json();
     return jsonRes.plot_config;
@@ -238,7 +255,7 @@ const populateNonSupportedElement = () => {
 
 /* Populate select dropdown of observation categorical metadata */
 const populateObsDropdown = async (datasetId) => {
-    const parent = document.querySelector(`#${datasetId}-obslevels`);
+    const parent = document.getElementById(`${datasetId}-obslevels`);
     parent.classList.add("is-loading", "select");
     const response = await fetch(`/api/h5ad/${datasetId}`);
     const jsonData = await response.json();
@@ -254,7 +271,7 @@ const populateObsDropdown = async (datasetId) => {
 
 /* Populate submission ID in DOM */
 const populateSubmissionId = (submissionId) => {
-    const submissionEl = document.querySelector("#submission_id");
+    const submissionEl = document.getElementById("submission_id");
     submissionEl.textContent = submissionId;
 }
 
@@ -268,7 +285,7 @@ const processSubmission = async (fileEntities, submissionId) => {
     }
     const getJsonRes = await getResponse.json();
     if (getJsonRes.success) {
-        return getJsonRes.datasets;
+        return getJsonRes;
     }
 
     // If existing submission does not exist, create new submission
@@ -287,7 +304,7 @@ const processSubmission = async (fileEntities, submissionId) => {
         printTblMessage(datasetId, jsonRes.message, "danger");
         throw new Error(postJsonRes.message);
     }
-    return postJsonRes.datasets;
+    return postJsonRes;
 }
 
 /* Pull all files to VM */
@@ -329,29 +346,35 @@ const pullComponentFilesToVm = async (attributes) => {
 const saveNewDisplay = async (datasetId, plotConfig, plotType, label) => {
     const response = await fetch("./cgi/save_dataset_display.cgi", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({user_id: CURRENT_USER.id
+        body: convertToFormData({user_id: CURRENT_USER.id
             , dataset_id: datasetId
             , plotly_config: plotConfig
             , plot_type: plotType
             , label
             })
         });
-
-    return response.display_id;
+    const jsonRes = await response.json();
+    return jsonRes.display_id;
 }
 
 const saveDefaultDisplay = async (datasetId, displayId) => {
     const response = await fetch("./cgi/save_default_display.cgi", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({user_id: CURRENT_USER.id, dataset_id: datasetId, display_id: displayId})
+        body: convertToFormData({user_id: CURRENT_USER.id, dataset_id: datasetId, display_id: displayId})
         });
-
-    return response.default_display_id;
+    const jsonRes = await response.json();
+    return jsonRes.default_display_id;
 }
 
-const showPermalink = (datasetId) => {
+const saveNewLayout = async (submissionId, collectionName) => {
+    const response = await fetch("./cgi/nemoarchive_add_submission_layout.cgi", {
+        method: "POST",
+        body: convertToFormData({session_id, submission_id: submissionId, layout_name: collectionName})
+        });
+    return await response.json();
+}
+
+const showSubmissionPermalink = (datasetId) => {
     const tableRow = document.getElementById(`dataset-${datasetId}`);
     const permalinkRow = document.getElementById(`${datasetId}-permalink`);
     const shareId = tableRow.dataset.share_id;
@@ -420,7 +443,7 @@ const validateMetadata = async (attributes, submissionId) => {
 
 const handleSubmissionLink = () => {
     const submissionElt = document.getElementById("submission_title");
-    const submissionId = submissionElt.getAttribute("submission");
+    const submissionId = submissionElt.dataset.submission_id;
     const currentUrl = window.location.href;
     const currentPage = currentUrl.lastIndexOf("?");
     if (currentPage === -1) currentPage = currentUrl.length;    // If nemoarchive import url with no params, use whole URL
@@ -433,36 +456,68 @@ const handleSubmissionLink = () => {
     }
 }
 
+const redirect_to_gene_search = (layoutShareId, gene) => {
+    const gene_addition = (gene) ? `&g=${gene}` : "";
+    window.open(`${window.origin}/p?l=${layoutShareId}${gene_addition}`, "_blank");
+}
+
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
 const handleViewDatasets = async () => {
-    const gene = document.getElementById("global_gene_selection");
-    const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
+    const submissionElt = document.getElementById("submission_title");
+    const submissionId = submissionElt.dataset.submission_id;
+
+    const gene = document.getElementById("global_gene_selection").value;
+
+    // If submission already has an associated layout, we do not want to change it.
+    // Just redirect to the gene search
+    if (submissionElt.dataset.layout_share_id) {
+        redirect_to_gene_search(submissionElt.dataset.layout_share_id, gene);
+        return;
+    }
 
     const plotType = "tsne_static";
     const label = "nemoanalytics import default plot";
-    await Promise.allSettled([...tableRows].map( async (row) => {
-        // Check if default displays are made for this dataset available for this user
-        // If not, the make some
-
-        if (await getDefaultDisplay(datasetId)) {
-            return;
-        }
-
-        const datasetId = row.querySelector(".dataset-id").textContent;
-        const obsLevel = document.getElementById(`#${datasetId}-obslevels`);
-        const category = obsLevel.querySelector("select").value();
-        const plotConfig = await makeDefaultDisplay(datasetId, category, gene);
-
-        const displayId = await saveNewDisplay(CURRENT_USER.id, datasetId, plotConfig, plotType, label);
-        await saveDefaultDisplay(CURRENT_USER.id, datasetId, displayId);
-
-    }));
 
     // Save new layout for submisison if it does not exist
-    const collectionName = document.getElementById("collection_name");
-    await saveNewLayout()
+    const collectionName = document.getElementById("collection_name").value;
+    const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
+    try {
+        const {layout_id: layoutId, layout_share_id: layoutShareId} = await saveNewLayout(submissionId, collectionName)
+        await Promise.allSettled([...tableRows].map( async (row) => {
+            const datasetId = row.dataset.dataset_id;
 
-    // Redirect to layout share ID
+            if (!(isImportComplete(datasetId))) {
+                console.info(`Dataset ${datasetId} did not finish. Cannot save displays or to layout.`)
+                return;
+            }
+
+            // Add completed datasets to layout (easy since they are in submission)
+            await addDatasetToLayout(datasetId, layoutId)
+
+            // Check if default displays are made for this dataset available for this user
+            // If not, then make some
+            if (await getDefaultDisplay(datasetId)) {
+                return;
+            }
+
+            // If select dropdown is not present, then there is no category to plot by.
+            const obsLevel = document.getElementById(`${datasetId}-obslevels`);
+            const category = (obsLevel.textContent == "Categories not found") ? null : obsLevel.querySelector("select").value;
+
+            // ! This step can take a while. Probably should add a loading icon and notify user.
+            const plotConfig = await makeDefaultDisplay(datasetId, category, gene);
+
+            const displayId = await saveNewDisplay(datasetId, plotConfig, plotType, label);
+            await saveDefaultDisplay(datasetId, displayId);
+        }));
+
+        // Redirect to layout share ID
+        redirect_to_gene_search(layoutShareId, gene);
+
+    } catch (e) {
+        console.warn(`Submission ${submissionId} already has layout ID. Not saving new datasets.`)
+        // ? Should we return the layout ID and redirect anyways?
+    }
 }
 
 /* Send email when importing has finished. Some RabbitMQ stuff will happen */
@@ -472,39 +527,40 @@ const handleEmailButton = () => {
 
 window.onload = async () => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
+    // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
 
+    // TODO: Sometimes loads too early. Load based on trigger?
     await CURRENT_USER;
     if (! CURRENT_USER?.id) {
         throw("Must be logged in to use this tool")
     }
+
     const importFinish = document.getElementById("import_finish");
     const partialSuccess = document.getElementById("partial_success");
     const completeSuccess = document.getElementById("complete_success");
 
     // This is meant purely to check a submission status, but will not resume it
+    // Essentially a "read-only" mode.
     const submissionParam = getUrlParameter("submission_id")
     if (submissionParam) {
         const submissionElt = document.getElementById("submission_title");
-        submissionElt.setAttribute("submission", submissionParam);
+        submissionElt.dataset.submission_id = submissionParam;
         populateSubmissionId(submissionParam);
-        const datasets = await getSubmission(submissionParam);
-        submissionElt.addEventListener("click", () => handleSubmissionLink());
+        const { layout_share_id: layoutShareId, datasets } = await getSubmission(submissionParam);
+        submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
+        submissionElt.addEventListener("click", handleSubmissionLink);
 
         for (const datasetId in datasets) {
             const importSuccess = isImportComplete(datasetId);
             if (importSuccess) {
-                /*
-                // enable select-obs dropdown
-                if (! ["MEX"].includes(allMetadata.dataset.filetype)) {
-                    populateObsDropdown(datasetId)
-                }
-                */
+                //TODO: Hide obsLevels column
                 // show permalink
-                showPermalink(datasetId);
+                showSubmissionPermalink(datasetId);
             }
         }
 
         importFinish.classList.remove("is-hidden");
+        return;
     }
 
 
@@ -525,7 +581,7 @@ window.onload = async () => {
     const submissionId = await grabSubmissionId(jsonData);
     populateSubmissionId(submissionId);
     const submissionElt = document.getElementById("submission_title");
-    submissionElt.setAttribute("submission", submissionId);
+    submissionElt.dataset.submission_id = submissionId;
     submissionElt.addEventListener("click", () => handleSubmissionLink());
     populateNonSupportedElement();
 
@@ -558,6 +614,7 @@ window.onload = async () => {
             , sample: {...allAttributes.sample, ...fileMetadata.sample}
         }
 
+
         // Pull files into VM
         await pullFileSetToVm(allMetadata.dataset);
         await validateMetadata(allMetadata, submissionId);
@@ -565,22 +622,24 @@ window.onload = async () => {
         // Convert to H5AD while validating metadata and move to final destination
         const importSuccess = await convertToH5ad(allMetadata.dataset);
 
+
         if (importSuccess) {
             const datasetId = allMetadata.dataset.id
-            /*
             // enable select-obs dropdown
-            if (! ["MEX"].includes(allMetadata.dataset.filetype)) {
+            if (["MEX"].includes(allMetadata.dataset.filetype)) {
+                const parent = document.getElementById(`${datasetId}-obslevels`);
+                parent.textContent = "Categories not found"
+            } else {
                 populateObsDropdown(datasetId)
             }
-            */
             // show permalink
-            showPermalink(datasetId);
+            showSubmissionPermalink(datasetId);
 
             // After the first dataset is finished, we can View Datasets if desired
             importFinish.classList.remove("is-hidden");
-        } else {
-            partialSuccess.classList.remove("is-hidden");
+            return;
         }
+        partialSuccess.classList.remove("is-hidden");
 
     }));
 
@@ -592,18 +651,11 @@ window.onload = async () => {
     // Finalize submission.load_status depending on everything succeeded or not
     // if at least one is successfully imported, show the layout button
 
-
-
     // ? Figure out what to do if counts are per sample rather than per file
-
-
-
-    // ! If dataset importer is not dataset owner (submitter in nemoarchive), link to owner
-    // ! If owner not created, create owner account where flag is set that entry not created by owner
 };
 
-document.getElementById("view_datasets").addEventListener("click", () => handleViewDatasets);
-document.getElementById("email_button").addEventListener("click", () => handleEmailButton);
+document.getElementById("view_datasets").addEventListener("click", handleViewDatasets);
+document.getElementById("email_button").addEventListener("click", handleEmailButton);
 
 /* enables 'delete' button - https://bulma.io/documentation/elements/notification/#javascript-example */
 document.addEventListener('DOMContentLoaded', () => {
