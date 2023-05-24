@@ -133,7 +133,7 @@ class DataArchive:
                 self.read_mex_files()
             else:
                 raise Exception("Undetermined Format: {0}".format(self.format))
-            self.write_h5ad(output_path=outdir_name)
+            self.write_h5ad(output_name=outdir_name)
         except:
             raise
 
@@ -170,7 +170,8 @@ class DataArchive:
                 obs = pd.read_csv(unzipped_entry, sep='\t', header=None,index_col = 0, names=['observations'])
             elif 'genes.tsv' in entry or 'features.tsv' in entry:
                 unzipped_entry = gunzip_file(entry)
-                var = pd.read_csv(unzipped_entry, sep='\t', header=None, index_col = 0, names=['genes', 'gene_symbol'])
+                # features.tsv has a third column for feature type, which can throw off the columns grabbed by 1
+                var = pd.read_csv(unzipped_entry, sep='\t', header=None, index_col = 0, names=['genes', 'gene_symbol'], usecols=[0, 1])
                 if var.index.str.contains('ENS').sum() >1:
                     self.ens_present = True
             elif 'EXPmeta.json' in entry:
@@ -248,7 +249,7 @@ class DataArchive:
         self.adata = adata
         self.originalPath = data_path
 
-    def write_h5ad(self, output_path):
+    def write_h5ad(self, output_name):
         """
         Writes anndata object as h5ad. Returns path to file.
 
@@ -264,10 +265,13 @@ class DataArchive:
         """
         if self.adata is None:
             raise Exception("No AnnData object present to write to file.")
-        if output_path is None:
+        if output_name is None:
             raise Exception("No destination file path given. Provide one to write file.")
+
+        # Ensure file exists for writing to
+        Path(output_name).touch(exist_ok=True)
         try:
-            self.adata.write(filename = output_path)
+            self.adata.write(filename=output_name)
         except Exception as err:
             raise Exception("Error occurred while writing to file: ", err)
 
