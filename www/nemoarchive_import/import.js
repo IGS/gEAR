@@ -529,7 +529,7 @@ window.onload = async () => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
     // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
 
-    // TODO: Sometimes loads too early. Load based on trigger?
+    // TODO: Remove global async, which is causing this to not work on occasion
     await CURRENT_USER;
     if (! CURRENT_USER?.id) {
         throw("Must be logged in to use this tool")
@@ -540,7 +540,7 @@ window.onload = async () => {
     const completeSuccess = document.getElementById("complete_success");
 
     // This is meant purely to check a submission status, but will not resume it
-    // Essentially a "read-only" mode.
+    // Essentially a "view-only" mode.
     const submissionParam = getUrlParameter("submission_id")
     if (submissionParam) {
         const submissionElt = document.getElementById("submission_title");

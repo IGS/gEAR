@@ -143,6 +143,11 @@ def main():
         json.dump(analysis_json, outfile, indent=3)
 
     # Set up tSNE plot
+
+    if category == "null":
+        # Fix JS "null"
+        category = None
+
     plot_config = {
         "gene_symbol":gene
         ,"colors":{}
@@ -154,6 +159,10 @@ def main():
         ,"max_columns":None
         ,"skip_gene_plot":False
         ,"horizontal_legend":False
+        , "analysis": {
+            "id": analysis_json["id"]
+            , "type": analysis_json["type"]
+            }
         }
 
     result["plot_config"] = plot_config
