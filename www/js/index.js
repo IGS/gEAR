@@ -648,7 +648,7 @@ function select_search_result(elm, draw_display=true) {
     lastCall = callTime;
 
     SELECTED_GENE = $(elm);
-    gene_sym = $(elm).data("gene_symbol");
+    const gene_sym = $(elm).data("gene_symbol");
 
     // remove coloring from other result links
     $('.list-group-item-active').removeClass('list-group-item-active');
