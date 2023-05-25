@@ -8,3 +8,6 @@ div.tabs-content li {
 div.tabs-content li.is-active {
     display: block;
 }
+.icon-text {
+    width: max-content;
+}
