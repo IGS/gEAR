@@ -13,7 +13,7 @@ the rest of the interface.
 Autodetection isn't perfect.  Currently it checks for these columns for
 clustering identification:
 
-VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label']
+VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'CellType', 'cluster_label', 'subclass_label']
 
 And these pairs for tSNE:
 
@@ -43,7 +43,7 @@ sc.settings.verbosity = 0
 gear_bin_path = os.path.dirname(os.path.realpath(__file__))
 gear_root_path = os.path.dirname(gear_bin_path)
 DATASET_BASE_DIR = '{}/www/datasets'.format(gear_root_path)
-VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot']
+VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'CellType', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot']
 VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'],
                     # These are all carlo's custom ones.  Need to resolve this a different way later
                     ['PC1%var6.14', 'PC2%var1.79']]

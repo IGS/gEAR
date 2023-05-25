@@ -24,23 +24,23 @@ def validate_weighted_gene_cart(df):
     """Ensure weighted gene cart meets the requirements.  Returns a boolean."""
     # Check that first column is identifiers, second column is gene symbols, and following columns are numeric weights
     if len(df.columns) < 3:
-        return False
+        return [False, 'Too few data columns']
 
     # Objects are variable string length.
     if df[df.columns[0]].dtype not in ["string", "object"] \
         or df[df.columns[1]].dtype not in ["string", "object"]:
-        return False
+        return [False, 'Columns 1 and 2 should be Identifier, Gene symbol']
 
     # The third column onward must be a numeric weight
     for col in df[df.columns[2:]]:
-        if df[col].dtype != 'float64':
-            return False
+        if df[col].dtype not in ['float64', 'int']:
+            return [False, 'Columns after 2 must be numeric']
 
     # The first column has to be unique identifiers
     if not df[df.columns[0]].is_unique:
-        return False
+        return [False, 'Identifiers in column 1 must be unique']
 
-    return True
+    return [True, '']
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -108,10 +108,10 @@ def main():
             else:
                 raise Exception("Unsupported file type for carts uploaded. File name: {0}. Supported extensions: ['xlsx', 'xls', 'tab', 'tsv', 'csv']".format(fileitem.filename))
 
-            is_valid = validate_weighted_gene_cart(df)
+            [is_valid, invalid_msg] = validate_weighted_gene_cart(df)
 
             if not is_valid:
-                raise Exception("Weighted gene cart is not valid. Ensure first column is unique identifiers, second column is gene symbols, and following columns are numeric weights.")
+                raise Exception("Weighted gene cart is not valid. {0}".format(invalid_msg))
 
             # Write dataframe to tab file
             try:
