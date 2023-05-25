@@ -461,6 +461,102 @@ const redirect_to_gene_search = (layoutShareId, gene) => {
     window.open(`${window.origin}/p?l=${layoutShareId}${gene_addition}`, "_blank");
 }
 
+/* Create a brand new submission from JSON contents */
+const createSubmission = async (jsonUrl, importFinish, partialSuccess) => {
+    // https://github.github.io/fetch
+    //const urlResponse = await fetch(jsonUrl);
+    const urlResponse = await fetch("nemoarchive_import/test.json");
+    const jsonData = await urlResponse.json();
+
+    const submissionId = await grabSubmissionId(jsonData);
+    populateSubmissionId(submissionId);
+    const submissionElt = document.getElementById("submission_title");
+    submissionElt.dataset.submission_id = submissionId;
+    submissionElt.addEventListener("click", () => handleSubmissionLink());
+    populateNonSupportedElement();
+
+    const fileEntities = getFileEntities(jsonData);
+    const sampleEntities = getSampleEntities(jsonData);
+
+    // Initialize db information about this submission
+    // Check db if datasets were loaded in previous submissions
+    // (initialize_new_submission.cgi)
+    try {
+        await initializeNewSubmission(fileEntities, submissionId);
+    } catch (error) {
+        alert("Something went wrong with saving this submission to database. Please contact gEAR support.");
+        console.error(error);
+    }
+
+    await Promise.allSettled(fileEntities.map(async (entity) => {
+        const { attributes: fileAttributes } = entity;
+        // Merge in sample attributes
+        const sampleAttributes = getSampleAttributesByName(sampleEntities, fileAttributes.sample_id);
+        const allAttributes = { dataset: fileAttributes, sample: sampleAttributes };
+        allAttributes.name = entity.name;
+
+        // Create JSON from metadata
+        const fileMetadata = await getFileMetadata(allAttributes.dataset);
+
+        // Merge all API metadata and metadata pulled from the portal
+        const allMetadata = {
+            dataset: { ...allAttributes.dataset, ...fileMetadata.dataset },
+            sample: { ...allAttributes.sample, ...fileMetadata.sample }
+        };
+
+
+        // Pull files into VM
+        await pullFileSetToVm(allMetadata.dataset);
+        await validateMetadata(allMetadata, submissionId);
+
+        // Convert to H5AD while validating metadata and move to final destination
+        const importSuccess = await convertToH5ad(allMetadata.dataset);
+
+
+        if (importSuccess) {
+            const datasetId = allMetadata.dataset.id;
+            // enable select-obs dropdown
+            if (["MEX"].includes(allMetadata.dataset.filetype)) {
+                const parent = document.getElementById(`${datasetId}-obslevels`);
+                parent.textContent = "Categories not found";
+            } else {
+                populateObsDropdown(datasetId);
+            }
+            // show permalink
+            showSubmissionPermalink(datasetId);
+
+            // After the first dataset is finished, we can View Datasets if desired
+            importFinish.classList.remove("is-hidden");
+            return;
+        }
+        partialSuccess.classList.remove("is-hidden");
+
+    }));
+}
+
+/* View a submission in "view-only" mode */
+const viewSubmission = async (submissionParam, importFinish) => {
+    // This is meant purely to check a submission status, but will not resume it
+    const submissionElt = document.getElementById("submission_title");
+    submissionElt.dataset.submission_id = submissionParam;
+    populateSubmissionId(submissionParam);
+    const { layout_share_id: layoutShareId, datasets } = await getSubmission(submissionParam);
+    submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
+    submissionElt.addEventListener("click", handleSubmissionLink);
+
+    for (const datasetId in datasets) {
+        const importSuccess = isImportComplete(datasetId);
+        if (importSuccess) {
+            //TODO: Hide obsLevels column
+            // show permalink
+            showSubmissionPermalink(datasetId);
+        }
+    }
+
+    importFinish.classList.remove("is-hidden");
+    return;
+}
+
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
 const handleViewDatasets = async () => {
     const submissionElt = document.getElementById("submission_title");
@@ -525,12 +621,10 @@ const handleEmailButton = () => {
 
 }
 
-window.onload = async () => {
+window.onload = () => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
     // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
 
-    // TODO: Remove global async, which is causing this to not work on occasion
-    await CURRENT_USER;
     if (! CURRENT_USER?.id) {
         throw("Must be logged in to use this tool")
     }
@@ -539,28 +633,10 @@ window.onload = async () => {
     const partialSuccess = document.getElementById("partial_success");
     const completeSuccess = document.getElementById("complete_success");
 
-    // This is meant purely to check a submission status, but will not resume it
     // Essentially a "view-only" mode.
     const submissionParam = getUrlParameter("submission_id")
     if (submissionParam) {
-        const submissionElt = document.getElementById("submission_title");
-        submissionElt.dataset.submission_id = submissionParam;
-        populateSubmissionId(submissionParam);
-        const { layout_share_id: layoutShareId, datasets } = await getSubmission(submissionParam);
-        submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
-        submissionElt.addEventListener("click", handleSubmissionLink);
-
-        for (const datasetId in datasets) {
-            const importSuccess = isImportComplete(datasetId);
-            if (importSuccess) {
-                //TODO: Hide obsLevels column
-                // show permalink
-                showSubmissionPermalink(datasetId);
-            }
-        }
-
-        importFinish.classList.remove("is-hidden");
-        return;
+        return viewSubmission(submissionParam, importFinish);
     }
 
 
@@ -573,75 +649,8 @@ window.onload = async () => {
     const jsonUrl = decodeURIComponent(decodeURI(encodedJsonUrl));
     console.log("staged URL: " + jsonUrl);
 
-    // https://github.github.io/fetch
-    //const urlResponse = await fetch(jsonUrl);
-    const urlResponse = await fetch("nemoarchive_import/test.json")
-    const jsonData = await urlResponse.json();
-
-    const submissionId = await grabSubmissionId(jsonData);
-    populateSubmissionId(submissionId);
-    const submissionElt = document.getElementById("submission_title");
-    submissionElt.dataset.submission_id = submissionId;
-    submissionElt.addEventListener("click", () => handleSubmissionLink());
-    populateNonSupportedElement();
-
-    const fileEntities = getFileEntities(jsonData);
-    const sampleEntities = getSampleEntities(jsonData);
-
-    // Initialize db information about this submission
-    // Check db if datasets were loaded in previous submissions
-    // (initialize_new_submission.cgi)
-    try {
-        await initializeNewSubmission(fileEntities, submissionId);
-    } catch (error) {
-        alert("Something went wrong with saving this submission to database. Please contact gEAR support.")
-        console.error(error);
-    }
-
-    await Promise.allSettled(fileEntities.map( async (entity) => {
-        const { attributes:fileAttributes } = entity;
-        // Merge in sample attributes
-        const sampleAttributes = getSampleAttributesByName(sampleEntities, fileAttributes.sample_id);
-        const allAttributes = {dataset:fileAttributes, sample:sampleAttributes};
-        allAttributes.name = entity.name;
-
-        // Create JSON from metadata
-        const fileMetadata = await getFileMetadata(allAttributes.dataset)
-
-        // Merge all API metadata and metadata pulled from the portal
-        const allMetadata = {
-            dataset: {...allAttributes.dataset, ...fileMetadata.dataset}
-            , sample: {...allAttributes.sample, ...fileMetadata.sample}
-        }
-
-
-        // Pull files into VM
-        await pullFileSetToVm(allMetadata.dataset);
-        await validateMetadata(allMetadata, submissionId);
-
-        // Convert to H5AD while validating metadata and move to final destination
-        const importSuccess = await convertToH5ad(allMetadata.dataset);
-
-
-        if (importSuccess) {
-            const datasetId = allMetadata.dataset.id
-            // enable select-obs dropdown
-            if (["MEX"].includes(allMetadata.dataset.filetype)) {
-                const parent = document.getElementById(`${datasetId}-obslevels`);
-                parent.textContent = "Categories not found"
-            } else {
-                populateObsDropdown(datasetId)
-            }
-            // show permalink
-            showSubmissionPermalink(datasetId);
-
-            // After the first dataset is finished, we can View Datasets if desired
-            importFinish.classList.remove("is-hidden");
-            return;
-        }
-        partialSuccess.classList.remove("is-hidden");
-
-    }));
+    // Create a brand new submission from the JSON pulled in
+    createSubmission(jsonUrl, importFinish, partialSuccess);
 
     // If everything went well, change to a complete success
     if (partialSuccess.classList.contains("is-hidden")) {
@@ -668,3 +677,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
