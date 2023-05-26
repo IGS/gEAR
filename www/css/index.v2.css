@@ -9,5 +9,6 @@ div.tabs-content li.is-active {
     display: block;
 }
 .icon-text {
+    /* https://github.com/jgthms/bulma/issues/3635 */
     width: max-content;
 }
