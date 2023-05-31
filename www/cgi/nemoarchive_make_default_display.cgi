@@ -38,13 +38,7 @@ N_PCS = 40
 def get_analysis(dataset_id, user_id):
     return geardb.Analysis(type='public', id=dataset_id, dataset_id=dataset_id, user_id=user_id, vetting="owner", label="Automated Analysis")
 
-def main():
-    form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
-    category = form.getvalue("category")
-    gene = form.getvalue("gene")
-
+def make_default_display(dataset_id, session_id, category=None, gene=None):
     # Must have a gEAR account to upload datasets
     user = geardb.get_user_from_session_id(session_id)
     user_id = user.id
@@ -164,8 +158,17 @@ def main():
             , "type": analysis_json["type"]
             }
         }
-
+    result["success"] = True
     result["plot_config"] = plot_config
+    return result
+
+def main():
+    form = cgi.FieldStorage()
+    session_id = form.getvalue('session_id')
+    dataset_id = form.getvalue('dataset_id')
+    category = form.getvalue("category")
+    gene = form.getvalue("gene")
+    result = make_default_display(dataset_id, session_id, category, gene)
     print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))
 

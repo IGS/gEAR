@@ -458,6 +458,7 @@ CREATE TABLE submission (
        is_finished                 TINYINT DEFAULT 0,
        is_restricted               TINYINT DEFAULT 0, /* if one dataset is restricted, then the whole submission must be */
        date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
+       email_updates               TINYINT DEFAULT 0,
        FOREIGN KEY (user_id) REFERENCES guser(id)
        FOREIGN KEY (layout_id) REFERENCES layout(id)
 )

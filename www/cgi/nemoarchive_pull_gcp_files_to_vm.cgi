@@ -62,12 +62,7 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
 
     return success_dict
 
-
-def main():
-    form = cgi.FieldStorage()
-    bucket_path = form.getvalue('bucket_path')
-    dataset_id = form.getvalue('dataset_id')
-
+def pull_gcp_files_to_vm(bucket_path, dataset_id):
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
     s_dataset.save_change(attribute=DB_STEP, value="loading")
 
@@ -88,6 +83,14 @@ def main():
         print(str(e), file=sys.stderr)
         result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)
         result["success"] = False
+    return result
+
+def main():
+    form = cgi.FieldStorage()
+    bucket_path = form.getvalue('bucket_path')
+    dataset_id = form.getvalue('dataset_id')
+
+    result = pull_gcp_files_to_vm(bucket_path, dataset_id)
 
     print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))

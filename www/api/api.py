@@ -30,6 +30,7 @@ from resources.tsne_data import TSNEData
 from resources.epiviz_data import EpivizData
 from resources.projectr import ProjectR, ProjectROutputFile
 from resources.submission import Submission, Submissions
+from resources.submission_dataset import SubmissionDataset, SubmissionDatasets
 from resources.mock_data import MockIdentifier
 
 app = Flask(__name__)
@@ -51,6 +52,8 @@ api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<int:display_id>')
 api.add_resource(Submission, '/submissions/<string:submission_id>')
 api.add_resource(Submissions, "/submissions")
+api.add_resource(SubmissionDataset, "/submission_datasets/<string:dataset_id>")
+api.add_resource(SubmissionDatasets, "/submission_datasets")
 api.add_resource(MockIdentifier, "/mock_identifier/<string:identifier>")
 
 if __name__ == '__main__':
