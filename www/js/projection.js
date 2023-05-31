@@ -856,6 +856,7 @@ $(document).on("click", "#projection_pattern_deselect_all", () => {
 
 // Display curations using projections instead of genes
 $('#submit_search_projection').click((e) => {
+    $("#share_search").show();
     $('#projection_search_form').submit();
 })
 
