@@ -606,9 +606,6 @@ window.onload = () => {
         completeSuccess.classList.remove("is-hidden");
     }
 
-    // Finalize submission.load_status depending on everything succeeded or not
-    // if at least one is successfully imported, show the layout button
-
     // ? Figure out what to do if counts are per sample rather than per file
 };
 
