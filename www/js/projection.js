@@ -878,7 +878,6 @@ function build_permalink(state_url) {
 
     // Build shortform url params
     for (const sUrlVariable of sURLVariables) {
-        console.log(sUrlVariable);
         const sParameterName = sUrlVariable.split('=');
         const new_param = plink_map[sParameterName[0]]
         const val = sParameterName[1]
