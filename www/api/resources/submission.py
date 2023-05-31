@@ -141,6 +141,8 @@ class Submissions(Resource):
         if issues_found:
             result["message"] += " but there were issues found."
 
+        # TODO: Set up rabbitmq to poll when submission import is complete and email user when done
+
         return result
 
 
