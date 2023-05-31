@@ -43,3 +43,6 @@ queue_host = queue
 importer_id = [db_id]
 gcp_project_id=[project_id]
 credentials_json=[path_to_json]
+;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
+queue_enabled = 0
+queue_host = queue
