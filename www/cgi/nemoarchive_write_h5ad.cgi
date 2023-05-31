@@ -55,10 +55,7 @@ def ensure_ensembl_index(h5_path, organism_id):
     shutil.move("{0}_new.h5ad".format(h5_path), h5_path)
 
 
-def main():
-    form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    filetype = form.getvalue("filetype")
+def run_write_h5ad(dataset_id, filetype):
     base_dir = Path(UPLOAD_BASE_DIR).joinpath(dataset_id)
     result = {'success':False, 'message': '', 'dataset': None }
 
@@ -105,6 +102,16 @@ def main():
         logger.error(str(e))
         result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)
         result["success"] = False
+    finally:
+        return result
+
+
+def main():
+    form = cgi.FieldStorage()
+    dataset_id = form.getvalue('dataset_id')
+    filetype = form.getvalue("filetype")
+
+    result = run_write_h5ad(dataset_id, filetype)
 
     print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))

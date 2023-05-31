@@ -170,21 +170,10 @@ def write_json(attributes, base_dir:Path):
         json.dump(attributes, out_fh, ensure_ascii=False, indent=4)
     return outpath
 
-def main():
-    data = json.load(sys.stdin)
-    attributes = data["attributes"]
-    dataset_id = attributes["dataset"]["id"]
+def validate_metadata(dataset_id, session_id, attributes):
 
-    submission_id = data["submission_id"]
-
-    # Must have a gEAR account to upload datasets
-    session_id = data['session_id']
     user = geardb.get_user_from_session_id(session_id)
-
     result = {'success':False, 'message': ''}
-
-    print('Content-Type: application/json\n\n', flush=True)
-
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
     s_dataset.save_change(attribute=DB_STEP, value="loading")
@@ -192,19 +181,6 @@ def main():
     # ! Eventually the metadata will be taken from an API call to NeMO Archive based on the identifier,
     # !     not from the neo4j database. Also may need to fail file if identifier cannot be found.
     json_attributes = {"field":[], "value":[]}  # see Metadata.read_file()
-
-    """
-    # "Importer" service account will be the contact
-    importer = geardb.find_importer_id()
-    if not importer:
-        err_msg = "Could not find gEAR importer account"
-        handle_error(s_dataset, result, err_msg)
-        return
-
-    json_attributes["contact_name"] = importer.user_name
-    json_attributes["contact_institution"] = importer.institution
-    json_attributes["contact_email"] = importer.email
-    """
 
     json_attributes["field"].append("contact_name")
     json_attributes["field"].append("contact_email")
@@ -312,16 +288,27 @@ def main():
         logger.error(str(ve))
         s_dataset.save_change(attribute=DB_STEP, value="failed")
         s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
-        return
     except Exception as e:
-        err_msg = "Submission {} - Dataset - {} -- Could not save status to database.".format(submission_id, dataset_id)
+        err_msg = "Dataset - {} -- Could not save status to database.".format(dataset_id)
         handle_error(s_dataset, result, err_msg)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         logger.error(str(e))
         s_dataset.save_change(attribute=DB_STEP, value="failed")
         s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
-        return
+    finally:
+        return result
 
+def main():
+    data = json.load(sys.stdin)
+    attributes = data["attributes"]
+    dataset_id = attributes["dataset"]["id"]
+
+    # Must have a gEAR account to upload datasets
+    session_id = data['session_id']
+
+
+    result = validate_metadata(dataset_id, session_id, attributes)
+    print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))
 
 if __name__ == '__main__':

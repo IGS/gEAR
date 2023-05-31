@@ -109,36 +109,15 @@ const getIndexOfTableStep = (stepName) => {
     return -1;
 }
 
-/* Convert file set to H5AD and write to final destination */
-const convertToH5ad = async (attributes) => {
-    // attributes = dataset attributes
-    const datasetId = attributes.id;
-    const columnIndex = getIndexOfTableStep("Convert to H5AD");
-    if (!shouldStepRun(datasetId, columnIndex)) return true;
-    setTblLoadingStatus(datasetId, columnIndex);
-    const runScript = async () => {
-        try {
-            const params = new URLSearchParams({"dataset_id": datasetId, "filetype":attributes.filetype});
-            const response = await fetch("/cgi/nemoarchive_write_h5ad.cgi?" + params);
-            if (!response?.ok) {
-                throw new Error(response.statusText);
-            }
-            const jsonRes = await response.json();
-            if (!jsonRes.success) {
-                printTblMessage(datasetId, jsonRes.message, "danger");
-                throw new Error(jsonRes.message);
-            }
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
-    const isSuccess = await runScript();
-    // Update status of file in table
-    updateTblStatus(datasetId, columnIndex, isSuccess);
-    return isSuccess;
+/* Get specific dataset display information */
+const getDatasetDisplay = async (displayId) => {
+    const params = new URLSearchParams({"display_id": displayId});
+
+    const response = await fetch(`./cgi/get_dataset_display.cgi?${params}`);
+    return await response.json();
 }
 
+/* Get a saved default display for the given dataset and user */
 const getDefaultDisplay = async (datasetId) => {
     const params = new URLSearchParams({"user_id":CURRENT_USER.id, "dataset_id": datasetId});
 
@@ -231,15 +210,13 @@ const isImportComplete = (datasetId) => {
 
 /* Convert metadata into a JSON file */
 const makeDefaultDisplay = async (datasetId, category, gene) => {
-    // TODO: Do this after converting to h5ad, and then add category when saving default displays
-    const params = {"dataset_id": datasetId, "category":category, "gene":gene, "session_id":session_id}
-    const response = await fetch("/cgi/nemoarchive_make_default_display.cgi", {
+    const params = {"dataset_id": datasetId, "category":category, "gene":gene, "session_id":session_id, "action":'make_display'}
+    const response = await fetch(`/api/submission_dataset/${datasetId}`, {
             method: "POST",
-            body: convertToFormData(params)
+            body: json.stringify(params)
             });
     const jsonRes = await response.json();
     return jsonRes.plot_config;
-
 }
 
 /* Populate and show number of non-supported files, if any exist */
@@ -307,42 +284,6 @@ const processSubmission = async (fileEntities, submissionId) => {
     return postJsonRes;
 }
 
-/* Pull all files to VM */
-const pullFileSetToVm = async (attributes) => {
-    // attributes = dataset attributes
-    const columnIndex = getIndexOfTableStep("Pull Files");
-    if (!shouldStepRun(attributes.id, columnIndex)) return;
-    setTblLoadingStatus(attributes.id, columnIndex);
-    // Pull component files from GCP to VM
-    const isSuccess = await pullComponentFilesToVm(attributes);
-
-    // Update status of file in table
-    updateTblStatus(attributes.id, columnIndex, isSuccess);
-}
-
-/* For a given file set, pull all component files to VM.
-   Fail-fast if anything is not successful */
-const pullComponentFilesToVm = async (attributes) => {
-    try {
-        const { component_fields, id } = attributes
-        await Promise.all(component_fields.map(async (component) => {
-            const path = attributes[component];
-            const params = new URLSearchParams({ "bucket_path": path, "dataset_id": id });
-            const response = await fetch(`/cgi/nemoarchive_pull_gcp_files_to_vm.cgi?${params}`);
-            if (!response?.ok) {
-                throw new Error(response.statusText);
-            }
-            const jsonRes = await response.json();
-            if (!jsonRes.success) {
-                throw new Error(jsonRes.message);
-            }
-        }));
-        return true;
-    } catch (error) {
-        return false;
-    }
-}
-
 const saveNewDisplay = async (datasetId, plotConfig, plotType, label) => {
     const response = await fetch("./cgi/save_dataset_display.cgi", {
         method: "POST",
@@ -408,39 +349,6 @@ const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
     }
 }
 
-/* Convert metadata into a JSON file */
-const validateMetadata = async (attributes, submissionId) => {
-    // attributes = dataset + sample attributes
-    const datasetId = attributes.dataset.id;
-    const columnIndex = getIndexOfTableStep("Validate Metadata");
-    if (!shouldStepRun(datasetId, columnIndex)) return;
-    setTblLoadingStatus(datasetId, columnIndex);
-    const runScript = async() => {
-        try {
-            const params = {attributes, "submission_id": submissionId, session_id};
-            const response = await fetch("/cgi/nemoarchive_validate_json.cgi", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(params)
-            });
-            if (!response?.ok) {
-                throw new Error(response.statusText);
-            }
-            const jsonRes = await response.json();
-            if (!jsonRes.success) {
-                printTblMessage(datasetId, jsonRes.message, "danger");
-                throw new Error(jsonRes.message);
-            }
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
-    const isSuccess = await runScript();
-    // Update status of file in table
-    updateTblStatus(datasetId, columnIndex, isSuccess);
-}
-
 const handleSubmissionLink = () => {
     const submissionElt = document.getElementById("submission_title");
     const submissionId = submissionElt.dataset.submission_id;
@@ -499,38 +407,54 @@ const createSubmission = async (jsonUrl, importFinish, partialSuccess) => {
         const fileMetadata = await getFileMetadata(allAttributes.dataset);
 
         // Merge all API metadata and metadata pulled from the portal
+        // TODO: Pull sample just for specific dataset
         const allMetadata = {
             dataset: { ...allAttributes.dataset, ...fileMetadata.dataset },
             sample: { ...allAttributes.sample, ...fileMetadata.sample }
         };
 
+        const datasetId = allMetadata.dataset.id;
 
-        // Pull files into VM
-        await pullFileSetToVm(allMetadata.dataset);
-        await validateMetadata(allMetadata, submissionId);
-
-        // Convert to H5AD while validating metadata and move to final destination
-        const importSuccess = await convertToH5ad(allMetadata.dataset);
-
-
-        if (importSuccess) {
-            const datasetId = allMetadata.dataset.id;
-            // enable select-obs dropdown
-            if (["MEX"].includes(allMetadata.dataset.filetype)) {
-                const parent = document.getElementById(`${datasetId}-obslevels`);
-                parent.textContent = "Categories not found";
-            } else {
-                populateObsDropdown(datasetId);
-            }
-            // show permalink
-            showSubmissionPermalink(datasetId);
-
-            // After the first dataset is finished, we can View Datasets if desired
-            importFinish.classList.remove("is-hidden");
-            return;
+        // If import has already finished, let's just focus on the display
+        if (isImportComplete(datasetId) && await getDefaultDisplay(datasetId)) {
+            return true;
         }
-        partialSuccess.classList.remove("is-hidden");
 
+        const params = { "metadata": allMetadata};
+        const response = await fetch(`/api/submission_dataset/${datasetId}`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(params)
+            });
+        if (!response?.ok) {
+            throw new Error(postResponse.statusText);
+        }
+        const jsonRes = await response.json();
+        if (!jsonRes.success) {
+            printTblMessage(datasetId, jsonRes.message, "danger");
+            partialSuccess.classList.remove("is-hidden");
+            return false
+        }
+
+        // Save the newly created display as a default.
+        const plotType = "tsne_static";
+        const label = "nemoanalytics import default plot";
+        const displayId = await saveNewDisplay(datasetId, jsonRes.plot_config, plotType, label);
+        await saveDefaultDisplay(datasetId, displayId);
+
+        // enable select-obs dropdown
+        if (["MEX"].includes(allMetadata.dataset.filetype)) {
+            const parent = document.getElementById(`${datasetId}-obslevels`);
+            parent.textContent = "Categories not found";
+        } else {
+            populateObsDropdown(datasetId);
+        }
+        // show permalink
+        showSubmissionPermalink(datasetId);
+
+        // After the first dataset is finished, we can View Datasets if desired
+        importFinish.classList.remove("is-hidden");
+        return true
     }));
 }
 
@@ -590,19 +514,33 @@ const handleViewDatasets = async () => {
             // Add completed datasets to layout (easy since they are in submission)
             await addDatasetToLayout(datasetId, layoutId)
 
-            // Check if default displays are made for this dataset available for this user
-            // If not, then make some
-            if (await getDefaultDisplay(datasetId)) {
-                return;
-            }
-
             // If select dropdown is not present, then there is no category to plot by.
             const obsLevel = document.getElementById(`${datasetId}-obslevels`);
             const category = (obsLevel.textContent == "Categories not found") ? null : obsLevel.querySelector("select").value;
 
+            // Determine if we need to make or update default displays for this dataset.
+            // Either because a display did not previously exist, or a default was created but the user selected a category.
+            const defaultDisplayId = await getDefaultDisplay(datasetId)
+            if (defaultDisplayId) {
+                const display = await getDatasetDisplay(defaultDisplayId);
+                if (display.label === label && category) {
+                    const displayConfig = display.plotly_config;
+                    displayConfig.colorize_legend_by = category;
+                    const newLabel = label + " with category";
+                    if (gene) displayConfig.gene_symbol = gene;
+                    const displayId = await saveNewDisplay(datasetId, displayConfig, plotType, newLabel);
+                    await saveDefaultDisplay(datasetId, displayId);
+                }
+                return;
+            }
+
+            // If user chooses a category, make a new tSNE_static display
+            if (!category) {
+                return;
+            }
+            // No default display was found. Need to make one.
             // ! This step can take a while. Probably should add a loading icon and notify user.
             const plotConfig = await makeDefaultDisplay(datasetId, category, gene);
-
             const displayId = await saveNewDisplay(datasetId, plotConfig, plotType, label);
             await saveDefaultDisplay(datasetId, displayId);
         }));
@@ -617,7 +555,18 @@ const handleViewDatasets = async () => {
 }
 
 /* Send email when importing has finished. Some RabbitMQ stuff will happen */
-const handleEmailButton = () => {
+const handleEmailButton = async () => {
+    const submissionElt = document.getElementById("submission_title");
+    const submissionId = submissionElt.dataset.submission_id;
+
+    const params = {"submission_id": submissionId};
+
+    const response = await fetch("./cgi/nemoarchive_enable_submission_emails.cgi", {
+        method:"POST"
+        , body:convertToFormData(params)
+    });
+    const jsonRes = await response.json();
+    return
 
 }
 
