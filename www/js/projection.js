@@ -766,10 +766,12 @@ function add_state_history(searched_entities, projection_source=null, projection
         state_url += `&share_id=${dataset_id}`;
     }
 
-    if (layout_id) {
-        state_info.layout_id = layout_id;
-        state_url += `&layout_id=${layout_id}`;
+    if (!layout_id) {
+        layout_id = dataset_collection_panel.layout_id;
     }
+
+    state_info.layout_id = layout_id;
+    state_url += `&layout_id=${layout_id}`;
 
     // If "transfer learning button on front page was clicked, this will initially be undefined
     if (projection_source) {
@@ -870,11 +872,13 @@ function build_permalink(state_url) {
 
     let url = `${window.origin}/p?p=p`
 
-    const sPageURL = decodeURIComponent(window.location.search.substring(1));
+    const urlParts = state_url.split('?');
+    const sPageURL = decodeURIComponent(urlParts[1]);
     const sURLVariables = sPageURL.split('&');
 
     // Build shortform url params
     for (const sUrlVariable of sURLVariables) {
+        console.log(sUrlVariable);
         const sParameterName = sUrlVariable.split('=');
         const new_param = plink_map[sParameterName[0]]
         const val = sParameterName[1]
