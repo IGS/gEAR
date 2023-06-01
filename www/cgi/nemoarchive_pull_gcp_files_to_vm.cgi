@@ -35,7 +35,7 @@ DB_STEP = "pulled_to_vm_status"    # step name in database
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
 
-    success_dict = {"success":False, "message":"", "filename":""}
+    success_dict = {"success":False, "filename":""}
     try:
         # https://google-auth.readthedocs.io/en/latest/user-guide.html
         #TODO maybe put in .env file instead
@@ -52,13 +52,12 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
         blob = bucket.blob(source_blob_name)
         blob.download_to_filename(destination_file_name)
         success_dict["success"] = True
-        success_dict["message"] = "Downloaded storage object {} from bucket {} to local file {}.".format(
-            source_blob_name, bucket_name, destination_file_name
-        )
+        #success_dict["message"] = "Downloaded storage object {} from bucket {} to local file {}.".format(
+        #    source_blob_name, bucket_name, destination_file_name
+        #)
         success_dict["filename"] = destination_file_name
     except Exception as e:
-        success_dict["success"] = False
-        success_dict["message"] = str(e)
+        raise
 
     return success_dict
 
@@ -70,7 +69,11 @@ def pull_gcp_files_to_vm(bucket_path, dataset_id):
     dest_dir = Path(UPLOAD_BASE_DIR).joinpath(dataset_id)
     dest_dir.mkdir(exist_ok=True)
     dest_filename = Path(source_blob_name).name
-    result = download_blob(BUCKET_NAME, source_blob_name, str(dest_dir.joinpath(dest_filename)))
+    try:
+        result = download_blob(BUCKET_NAME, source_blob_name, str(dest_dir.joinpath(dest_filename)))
+    except Exception as e:
+        s_dataset.save_change(attribute="log_message", value=str(e))
+        result["success"] = False
 
     # Update status in dataset
     try:
@@ -81,7 +84,6 @@ def pull_gcp_files_to_vm(bucket_path, dataset_id):
         s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         print(str(e), file=sys.stderr)
-        result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)
         result["success"] = False
     return result
 

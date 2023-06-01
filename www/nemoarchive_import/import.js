@@ -157,47 +157,71 @@ const getSubmission = async(submissionId) => {
     if (!jsonRes.success) {
         throw new Error(jsonRes.message);
     }
+
+    for (const datasetId in jsonRes.datasets) {
+        const response = await fetch(datasets[datasetId].href);
+        const datasetInfo = await response.json();
+
+        // Set up the dataset row in the submission table
+        intitializeDatasetRow(datasetInfo)
+    }
+
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
-    initializeSubmissionTable(jsonRes.datasets)
     return jsonRes;
 }
 
 /* Create new submission-related entries in database */
 const initializeNewSubmission = async (fileEntities, submissionId) => {
     const { datasets } = await processSubmission(fileEntities, submissionId);
-    // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
-    initializeSubmissionTable(datasets)
-    return datasets;
+    for (const datasetId in datasets) {
+        // Link submission and dataset together if they have not been
+        await fetch(datasets[datasetId].href, {
+            method:"PUT"
+            , body:JSON.stringify({"action":"save_submission_member"})
+        })
+
+        const response = await fetch(datasets[datasetId].href);
+        const datasetInfo = await response.json();
+
+        // Reset any non-complete, non-loading steps to pending
+        const putResponse = await fetch(datasets[datasetId].href, {
+            method: "PUT"
+            , body: json.stringify({"action":"reset_steps"})
+        })
+        const {newStatus} = await response.json();
+        datasetInfo.status = newStatus
+
+        // Set up the dataset row in the submission table
+        updateDatasetRow(datasetInfo)
+    }
 }
 
-/* Initialize submission table to show files */
-const initializeSubmissionTable = (datasets) => {
-    for (const datasetId in datasets) {
-        const {identifier, share_id:shareId} = datasets[datasetId];
-        const namespace = identifier.split("nemo:")[1];
-        const identifierUrl = `https://assets.nemoarchive.org/${namespace}`;
+/* Set up the dataset row in the submission table */
+const updateDatasetRow = (dataset) => {
+    const {dataset_id:datasetId, identifier, share_id:shareId} = dataset;
+    const namespace = identifier.split("nemo:")[1];
+    const identifierUrl = `https://assets.nemoarchive.org/${namespace}`;
 
-        const {
-            pulled_to_vm: pulledToVm
-            , convert_metadata: validateMetadata
-            , convert_to_h5ad: convertToH5ad
-            } = datasets[datasetId].dataset_status;
+    const {
+        pulled_to_vm: pulledToVm
+        , convert_metadata: validateMetadata
+        , convert_to_h5ad: convertToH5ad
+        } = datasets[datasetId].status;
 
-        const template = `
-        <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
-            <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
-            ${status2Element[pulledToVm]}
-            ${status2Element[validateMetadata]}
-            ${status2Element[convertToH5ad]}
-            <td id="${datasetId}-messages"></td>
-            <td id="${datasetId}-obslevels">Not ready</td>
-            <td id="${datasetId}-permalink">Not ready</td>
-        </tr>
-        `
-        const parent = document.querySelector("#submission_datasets tbody");
-        const htmlCollection = generateElements(template);
-        parent.append(htmlCollection);
-    }
+    const template = `
+    <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
+        <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
+        ${status2Element[pulledToVm]}
+        ${status2Element[validateMetadata]}
+        ${status2Element[convertToH5ad]}
+        <td id="${datasetId}-messages"></td>
+        <td id="${datasetId}-obslevels">Not ready</td>
+        <td id="${datasetId}-permalink">Not ready</td>
+    </tr>
+    `
+    const parent = document.querySelector("#submission_datasets tbody");
+    const htmlCollection = generateElements(template);
+    parent.append(htmlCollection);
 }
 
 const isImportComplete = (datasetId) => {
@@ -255,7 +279,6 @@ const populateSubmissionId = (submissionId) => {
 /* Retrieve existing submission or add new one. Returns datasets from submission */
 const processSubmission = async (fileEntities, submissionId) => {
     // Going to attempt to get existing submission (and resume)
-    const getParams = new URLSearchParams({ "reset_steps": true });
     const getResponse = await fetch(`/api/submissions/${submissionId}?${getParams}`)
     if (!getResponse?.ok) {
         throw new Error(getResponse.statusText);
@@ -265,8 +288,11 @@ const processSubmission = async (fileEntities, submissionId) => {
         return getJsonRes;
     }
 
+    const isRestricted = 0;    // hardcoded for now
+
+
     // If existing submission does not exist, create new submission
-    const postParams = { "file_entities": fileEntities, "submission_id": submissionId };
+    const postParams = {"submission_id": submissionId, "is_restricted": isRestricted };
     const postResponse = await fetch("/api/submissions", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -281,6 +307,35 @@ const processSubmission = async (fileEntities, submissionId) => {
         printTblMessage(datasetId, jsonRes.message, "danger");
         throw new Error(postJsonRes.message);
     }
+
+    // NOTE: at this point we have no routes for our submission
+    // Go through the projected dataset routes, and create the ones that do not already exist
+
+    for (const entity in fileEntities) {
+        const datasetId = entity.attributes.id;
+        const identifier = entity.attributes.identifier;
+        const sdParams = {"dataset_id":datasetId, "identifier":identifier, "is_restricted":isRestricted}
+
+        // GET route first
+        const sdGetResponse = await fetch(`/api/submissions/${submissionId}/datasets/${datasetId}`);
+        if (!sdGetResponse?.ok) {
+            // Submission dataset did not already exist... create it
+            const sdPostResponse = await fetch(`/api/submissions/${submissionId}/datasets`, {
+                method:"POST"
+                , body: JSON.stringify(sdParams)
+            });
+            const sdPostJsonRes = await sdPostResponse.json();
+            if (sdPostJsonRes.success) {
+                postJsonRes.datasets[datasetId].href = sdPostJsonRes.href
+            }
+        } else {
+            const sdGetJsonRes = await sdGetResponse.json();
+            if (sdGetJsonRes.success) {
+                postJsonRes.datasets[datasetId].href = sdGetJsonRes.href
+            }
+        }
+    }
+
     return postJsonRes;
 }
 
@@ -315,7 +370,7 @@ const saveNewLayout = async (submissionId, collectionName) => {
     return await response.json();
 }
 
-const showSubmissionPermalink = (datasetId) => {
+const showDatasetPermalink = (datasetId) => {
     const tableRow = document.getElementById(`dataset-${datasetId}`);
     const permalinkRow = document.getElementById(`${datasetId}-permalink`);
     const shareId = tableRow.dataset.share_id;
@@ -382,6 +437,22 @@ const createSubmission = async (jsonUrl, importFinish, partialSuccess) => {
     submissionElt.dataset.submission_id = submissionId;
     submissionElt.addEventListener("click", () => handleSubmissionLink());
     populateNonSupportedElement();
+
+    const postParams = { "metadata": jsonData, "action":"import" };
+    const postResponse = await fetch(`/api/submissions/${submissionId}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(postParams)
+        });
+    if (!postResponse?.ok) {
+        throw new Error(postResponse.statusText);
+    }
+
+    const postJsonRes = await postResponse.json();
+    if (!postJsonRes.success) {
+        printTblMessage(datasetId, jsonRes.message, "danger");
+        throw new Error(postJsonRes.message);
+    }
 
     const fileEntities = getFileEntities(jsonData);
     const sampleEntities = getSampleEntities(jsonData);
@@ -450,7 +521,7 @@ const createSubmission = async (jsonUrl, importFinish, partialSuccess) => {
             populateObsDropdown(datasetId);
         }
         // show permalink
-        showSubmissionPermalink(datasetId);
+        showDatasetPermalink(datasetId);
 
         // After the first dataset is finished, we can View Datasets if desired
         importFinish.classList.remove("is-hidden");
@@ -473,7 +544,7 @@ const viewSubmission = async (submissionParam, importFinish) => {
         if (importSuccess) {
             //TODO: Hide obsLevels column
             // show permalink
-            showSubmissionPermalink(datasetId);
+            showDatasetPermalink(datasetId);
         }
     }
 
@@ -559,12 +630,11 @@ const handleEmailButton = async () => {
     const submissionElt = document.getElementById("submission_title");
     const submissionId = submissionElt.dataset.submission_id;
 
-    const params = {"submission_id": submissionId};
+    const response = await fetch(`/api/submissions/${submissionId}/email`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        });
 
-    const response = await fetch("./cgi/nemoarchive_enable_submission_emails.cgi", {
-        method:"POST"
-        , body:convertToFormData(params)
-    });
     const jsonRes = await response.json();
     return
 
