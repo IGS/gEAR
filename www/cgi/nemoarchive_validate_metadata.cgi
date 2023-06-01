@@ -35,7 +35,7 @@ def handle_error(s_dataset, result, err_msg):
     logger.error(err_msg)
     s_dataset.save_change(attribute=DB_STEP, value="failed")
     s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
-    result["message"] = err_msg
+    s_dataset.save_change(attribute="log_message", value=err_msg)
     print(json.dumps(result))
 
 def setup_logger():
@@ -173,7 +173,7 @@ def write_json(attributes, base_dir:Path):
 def validate_metadata(dataset_id, session_id, attributes):
 
     user = geardb.get_user_from_session_id(session_id)
-    result = {'success':False, 'message': ''}
+    result = {'success':False }
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
     s_dataset.save_change(attribute=DB_STEP, value="loading")

@@ -42,7 +42,7 @@ def _on_request(channel, method_frame, properties, body):
 
     with open(stream, "a") as fh:
         print("{} - [x] - Received request".format(pid), flush=True, file=fh)
-        output_payload = submission_dataset_callback(dataset_id, metadata, session_id, action, category, gene fh)
+        output_payload = submission_dataset_callback(dataset_id, metadata, session_id, action, category, gene)
 
         # Send the output back to the Flask API call
         try:

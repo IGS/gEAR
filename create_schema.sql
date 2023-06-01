@@ -470,6 +470,8 @@ CREATE TABLE submission_dataset (
        pulled_to_vm_status         VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
        convert_metadata_status   VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
        convert_to_h5ad_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       make_tsne_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       log_message                 TEXT
        is_restricted               TINYINT DEFAULT 0,
        FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE
 )

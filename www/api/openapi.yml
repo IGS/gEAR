@@ -1,0 +1,18 @@
+openapi: '3.0.2'
+info:
+  title: gEAR API
+  version: '1.0'
+servers:
+  - url: https://localhost:8080/api/
+paths:
+  /submissions:
+    get:
+      description: ''
+      parameters: []
+      responses:
+        "401":
+          description: Not implemented yet
+    post:
+      responses:
+        "201":
+          description: Created
