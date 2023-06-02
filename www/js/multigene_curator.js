@@ -39,6 +39,8 @@ const quadrantOptsIds = ["#quadrant_options_container", "#de_test_container"];
 const violinOptsIds = ["#violin_options_container", "#obs_primary_container", "#obs_secondary_container", '#colorscale_container'];
 const volcanoOptsIds = ["#volcano_options_container", "#de_test_container"];
 
+const CLUSTER_LIMIT = 5000
+
 window.onload = () => {
     // Hide further configs until a dataset is chosen.
     // Changing the dataset will start triggering these to show
@@ -745,6 +747,10 @@ function loadDisplayConfigHtml (plotConfig) {
         $('#hide_gene_labels').prop('checked', plotConfig.hide_gene_labels);
         $('#distance_select').val(plotConfig.distance_metric);
         $('#distance_select').trigger('change');
+        if (plotConfig.subsample_limit) {
+            $('#subsample_val').prop('checked', true);
+            $('#subsample_val').val(subsample_limit);
+        }
         break;
     case 'mg_violin':
         $('#stacked_violin').prop('checked', plotConfig.stacked_violin);
@@ -1324,7 +1330,9 @@ $('#plot_type_select').change(() => {
 
 $(document).on('change', '#cluster_obs', () => {
     $('#cluster_obs_warning').hide();
-    if ($('#cluster_obs').is(':checked') && numObs >= 1000){
+    if ($('#cluster_obs').is(':checked') && numObs >= CLUSTER_LIMIT){
+        const new_string = $('#cluster_obs_warning').text().replace(/~num~/g, CLUSTER_LIMIT);
+        $('#cluster_obs_warning').text(new_string);
         $('#cluster_obs_warning').show();
     }
 });
@@ -1501,6 +1509,9 @@ $(document).on('click', '#create_plot', async () => {
         plotConfig.hide_obs_labels = $('#hide_obs_labels').is(':checked');
         plotConfig.hide_gene_labels = $('#hide_gene_labels').is(':checked');
         plotConfig.distance_metric = $('#distance_select').select2('data')[0].id;
+        if ($("#subsample_check").is(":checked")){
+            plotConfig.subsample_limit = Number($("#subsample_val").val());
+        }
         break;
     case 'mg_violin':
         if ((plotConfig.gene_symbols).length < 1) {
@@ -1913,3 +1924,10 @@ $(document).on('click', '.js-save-default', async function () {
         $('#saved_default_confirmation').addClass('alert-danger');
     }
 });
+
+$(document).on('click', '#subsample_check', function() {
+    $("#subsample_val").prop("disabled", true);
+    if ($("#subsample_check").is(":checked")){
+        $("#subsample_val").prop("disabled", false);
+    }
+})

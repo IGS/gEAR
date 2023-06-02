@@ -678,6 +678,7 @@ class MultigeneDisplay extends Display {
             sort_order,
             obs_filters,
             clusterbar_fields,
+            subsample_limit,
             matrixplot,
             center_around_zero,
             cluster_obs,
@@ -713,6 +714,7 @@ class MultigeneDisplay extends Display {
         this.sort_order = sort_order;
         this.obs_filters = obs_filters;
         this.clusterbar_fields = clusterbar_fields;
+        this.subsample_limit = subsample_limit;
         this.matrixplot = matrixplot;
         this.center_around_zero = center_around_zero;
         this.cluster_obs = cluster_obs;
@@ -770,6 +772,7 @@ class MultigeneDisplay extends Display {
             plot_type: this.plot_type,
             obs_filters: this.obs_filters,
             clusterbar_fields: this.clusterbar_fields,
+            subsample_limit: this.subsample_limit,
             matrixplot: this.matrixplot,
             center_around_zero: this.center_around_zero,
             cluster_obs: this.cluster_obs,
