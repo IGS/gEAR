@@ -5,14 +5,71 @@ info:
 servers:
   - url: https://localhost:8080/api/
 paths:
+  # TODO: Eventually add other API routes
+
   /submissions:
-    get:
-      description: ''
+    post:
+      description: 'Create a new submission'
       parameters: []
       responses:
-        "401":
-          description: Not implemented yet
-    post:
-      responses:
-        "201":
+        '201':
           description: Created
+
+  /submssions/{submission_id}:
+    get:
+      description: 'Retrieve an existing submission based on submission_id'
+      parameters: []
+      responses:
+        '200':
+          description: OK
+
+    post:
+      description: 'Start the import process for this submission'
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+
+  /submssions/{submission_id}/email:
+    put:
+      description: 'Enable email updates for the user when the import is finished'
+      parameters: []
+      responses:
+        '200':
+          description: OK
+
+  /submssions/{submission_id}/datasets:
+    post:
+      description: 'Create a new submission_dataset'
+      parameters: []
+      responses:
+        '201':
+          description: Created
+
+  /submssions/{submission_id}/datasets/{dataset_id}:
+    get:
+      description: 'Retrieve an existing submission_dataset based on dataset_id'
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bed Request
+
+    put:
+      description: 'Perform an action on the submission_dataset'
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '405':
+          description: Method Not Allowed
+
+    post:
+      description: 'Start the import process for a given submission_dataset'
+      parameters: []
+      responses:
+        '204':
+          description: No Content

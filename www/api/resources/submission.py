@@ -53,8 +53,21 @@ class Submission(Resource):
         metadata = req.get("metadata")
         action = req.get("action")
 
+        submission = geardb.get_submission_by_id(submission_id)
+        submission_datasets = geardb.SubmissionDatasetCollection()
+        submission_datasets.get_by_submission_id(submission_id=submission_id)
+
         if action == "import":
-            pass
+            for s_dataset in submission_datasets:
+                pass
+
+            if submission.email_updates:
+                pass
+                # send email about submission
+
+        abort(400)
+
+
 
         """
         const fileEntities = getFileEntities(jsonData);
