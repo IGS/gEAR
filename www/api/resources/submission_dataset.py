@@ -152,89 +152,67 @@ def submission_dataset_callback(dataset_id, metadata, session_id, action=None, c
         result["self"] = request.path
         return result
 
-    dataset_mdata = metadata["dataset"]
-    s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    if action == "import":
+        dataset_mdata = metadata["dataset"]
+        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
-    #NOTE: Each of the CGI scripts will control loading/failed/complete status of their process
+        #NOTE: Each of the CGI scripts will control loading/failed/complete status of their process
 
-    ###
-    db_step = "pulled_to_vm_status"    # step name in database
-    if should_step_run(s_dataset, db_step):
-        # Component = file format type
-        component_files = dataset_mdata["component_fields"]
-        for component in component_files:
-            bucket_path = dataset_mdata[component]
-            result = pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id)
+        ###
+        db_step = "pulled_to_vm_status"    # step name in database
+        if should_step_run(s_dataset, db_step):
+            # Component = file format type
+            component_files = dataset_mdata["component_fields"]
+            for component in component_files:
+                bucket_path = dataset_mdata[component]
+                result = pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id)
+                if not result["success"]:
+                    result["self"] = request.path
+                    return result
+
+        ###
+        db_step = "convert_metadata_status"
+        if should_step_run(s_dataset, db_step):
+            result = validate_mdata.validate_metadata(dataset_id, session_id, metadata)
+            result["self"] = request.path
             if not result["success"]:
                 result["self"] = request.path
                 return result
 
-    ###
-    db_step = "convert_metadata_status"
-    if should_step_run(s_dataset, db_step):
-        result = validate_mdata.validate_metadata(dataset_id, session_id, metadata)
+        ###
+        db_step = "convert_to_h5ad_status"
+        if should_step_run(s_dataset, db_step):
+            filetype = dataset_mdata["filetype"]
+            result = write_h5ad.run_write_h5ad(dataset_id, filetype)
+            if not result["success"]:
+                result["self"] = request.path
+                return result
+
+        ###
+        db_step = "make_tsne_status"
+        if should_step_run(s_dataset, db_step):
+            result = make_tsne_display(dataset_id, session_id, category, gene)
+
         result["self"] = request.path
-        if not result["success"]:
-            result["self"] = request.path
-            return result
+        return result
 
-    ###
-    db_step = "convert_to_h5ad_status"
-    if should_step_run(s_dataset, db_step):
-        filetype = dataset_mdata["filetype"]
-        result = write_h5ad.run_write_h5ad(dataset_id, filetype)
-        if not result["success"]:
-            result["self"] = request.path
-            return result
-
-    ###
-    db_step = "make_tsne_status"
-    if should_step_run(s_dataset, db_step):
-        result = make_tsne_display(dataset_id, session_id, category, gene)
-
-    result["self"] = request.path
-    return result
+    abort(400)
 
 class SubmissionDataset(Resource):
     """Requests to deal with a single submission"""
 
     def get(self, submission_id, dataset_id):
         """Retrieve a particular submission dataset based on ID."""
-        result = {"self":request.path}
+        result = {"self":request.path, "href":request.path}
         try:
             s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+            result["success"] = True
             result["dataset_id"] = s_dataset.dataset_id
             result["identifier"] = s_dataset.nemo_identifier
             result["share_id"] = s_dataset.dataset.share_id
             result["status"] = get_db_status(s_dataset)
         except:
             abort(404)
-
-    def put(self, submission_id, dataset_id):
-        req = request.get_json()
-        action = req.get("action")
-
-        result = {"success": False, "message":""}
-        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-
-        if action == "reset_steps":
-            # Before initializing a new submission, we check this route to see if the current dataset exists
-            # If it does and is not complete or loading, need to reset the steps so it can be resumed.
-            s_dataset.reset_incomplete_steps()
-            result["success"] = True
-            return result
-        if action == "save_submission_member":
-            # Insert submission members and create new submisison datasets if they do not exist
-            try:
-                save_submission_member(submission_id, s_dataset)
-            except Exception as e:
-                print(str(e), file=sys.stderr)
-                result["message"] = f"Could not save dataset {dataset_id} as a new SubmissionMember in database"
-                s_dataset.update_downstream_steps_to_cancelled()
-                result["status"] = get_db_status(s_dataset)
-                return result
-        abort(400)
-
 
     def post(self, submission_id, dataset_id):
         # Must have a gEAR account to create submissions
@@ -312,7 +290,37 @@ class SubmissionDataset(Resource):
         else:
             return submission_dataset_callback(dataset_id, metadata, session_id, category, gene)
 
+class SubmissionDatasetMember(Resource):
+    def put(self, submission_id, dataset_id):
+        result = {"success": False, "message":"", "self": request.path}
+        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
+        # Insert submission members and create new submisison datasets if they do not exist
+        try:
+            save_submission_member(submission_id, s_dataset)
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            result["message"] = f"Could not save dataset {dataset_id} as a new SubmissionMember in database"
+            s_dataset.update_downstream_steps_to_cancelled()
+            result["status"] = get_db_status(s_dataset)
+            return result
+
+class SubmissionDatasetStatus(Resource):
+    def put(self, submission_id, dataset_id):
+        req = request.get_json()
+        action = req.get("action")
+
+        result = {"success": False, "self": request.path}
+        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+
+        if action == "reset_steps":
+            # Before initializing a new submission, we check this route to see if the current dataset exists
+            # If it does and is not complete or loading, need to reset the steps so it can be resumed.
+            s_dataset.reset_incomplete_steps()
+            result["status"] = get_db_status(s_dataset)
+            result["success"] = True
+            return result
+        abort(405)
 
 class SubmissionDatasets(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""

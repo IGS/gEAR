@@ -8,11 +8,17 @@ const tdCanceled = '<td class="has-text-white has-background-dark">Canceled</td>
 const tdFailed = '<td class="has-text-white has-background-danger-dark">Failed</td>';
 
 const status2Element = {
-    "pending" : tdPending
-    , "loading" : tdLoading
-    , "completed" : tdCompleted
-    , "canceled" : tdCanceled
-    , "failed" : tdFailed
+    pending : tdPending
+    , loading : tdLoading
+    , completed : tdCompleted
+    , canceled : tdCanceled
+    , failed : tdFailed
+}
+
+const finishElements = {
+    importFinish: document.getElementById("import_finish")
+    , partialSuccess: document.getElementById("partial_success")
+    , completeSuccess: document.getElementById("complete_success")
 }
 
 const alert = (msg, fade=false) => {
@@ -39,8 +45,8 @@ const convertToFormData = (object) => {
     // NOTE: When using FormData do not set headers to application/json
     const formData = new FormData();
     Object.keys(object).forEach(key => {
-      if (typeof object[key] !== 'object') formData.append(key, object[key])
-      else formData.append(key, JSON.stringify(object[key]))
+        if (typeof object[key] !== 'object') formData.append(key, object[key])
+        else formData.append(key, JSON.stringify(object[key]))
     })
     return formData;
 }
@@ -127,25 +133,6 @@ const getDefaultDisplay = async (datasetId) => {
     return defaultDisplayId;
 }
 
-const getFileMetadata = async (attributes) => {
-    const {id : datasetId, identifier} = attributes
-    if (! identifier) {
-        throw new Error(`No identifier found for dataset ${datasetId}`)
-    }
-    // Call NeMO Archive assets API using identifier
-    //const response = await fetch(`https://nemoarchive.org/asset/derived/${identifier}`);
-    const response = await fetch(`/api/mock_identifier/${identifier}`);
-    if (!response?.ok) {
-        throw new Error(response.statusText);
-    }
-    const jsonRes = await response.json();
-    if (!jsonRes.success) {
-        printTblMessage(datasetId, jsonRes.message, "danger");
-        throw new Error(jsonRes.message);
-    }
-    return jsonRes.metadata
-}
-
 /* Retrieve existing submission */
 const getSubmission = async(submissionId) => {
     // Going to attempt to get existing submission
@@ -159,11 +146,11 @@ const getSubmission = async(submissionId) => {
     }
 
     for (const datasetId in jsonRes.datasets) {
-        const response = await fetch(datasets[datasetId].href);
+        const response = await fetch(jsonRes.datasets[datasetId].href);
         const datasetInfo = await response.json();
 
         // Set up the dataset row in the submission table
-        intitializeDatasetRow(datasetInfo)
+        updateDatasetRow(datasetInfo)
     }
 
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
@@ -173,32 +160,24 @@ const getSubmission = async(submissionId) => {
 /* Create new submission-related entries in database */
 const initializeNewSubmission = async (fileEntities, submissionId) => {
     const { datasets } = await processSubmission(fileEntities, submissionId);
+
     for (const datasetId in datasets) {
-        // Link submission and dataset together if they have not been
-        await fetch(datasets[datasetId].href, {
-            method:"PUT"
-            , body:JSON.stringify({"action":"save_submission_member"})
-        })
-
-        const response = await fetch(datasets[datasetId].href);
-        const datasetInfo = await response.json();
-
         // Reset any non-complete, non-loading steps to pending
-        const putResponse = await fetch(datasets[datasetId].href, {
+        const putResponse = await fetch(`${datasets[datasetId].href}/status`, {
             method: "PUT"
             , body: json.stringify({"action":"reset_steps"})
         })
-        const {newStatus} = await response.json();
-        datasetInfo.status = newStatus
+        const {status} = await putResponse.json();
+        datasets[datasetId].status = status
 
         // Set up the dataset row in the submission table
-        updateDatasetRow(datasetInfo)
+        updateDatasetRow(datasets[datasetId])
     }
 }
 
 /* Set up the dataset row in the submission table */
 const updateDatasetRow = (dataset) => {
-    const {dataset_id:datasetId, identifier, share_id:shareId} = dataset;
+    const {dataset_id:datasetId, share_id:shareId, identifier} = dataset;
     const namespace = identifier.split("nemo:")[1];
     const identifierUrl = `https://assets.nemoarchive.org/${namespace}`;
 
@@ -206,7 +185,8 @@ const updateDatasetRow = (dataset) => {
         pulled_to_vm: pulledToVm
         , convert_metadata: validateMetadata
         , convert_to_h5ad: convertToH5ad
-        } = datasets[datasetId].status;
+        , make_tsne: makeTSNE
+        } = dataset.status;
 
     const template = `
     <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
@@ -214,6 +194,7 @@ const updateDatasetRow = (dataset) => {
         ${status2Element[pulledToVm]}
         ${status2Element[validateMetadata]}
         ${status2Element[convertToH5ad]}
+        ${status2Element[makeTSNE]}
         <td id="${datasetId}-messages"></td>
         <td id="${datasetId}-obslevels">Not ready</td>
         <td id="${datasetId}-permalink">Not ready</td>
@@ -224,12 +205,11 @@ const updateDatasetRow = (dataset) => {
     parent.append(htmlCollection);
 }
 
-const isImportComplete = (datasetId) => {
+const isImportComplete = (status) => {
     /* Returns True if step finished */
-    const columnIndex = getIndexOfTableStep("Convert to H5AD");
-    if (!shouldStepRun(datasetId, columnIndex)) return true;
-    return false
-    // ? Consolidate with first steps of "ConvertH5ad"
+    // i.e. a non-runnable state. Incomplete steps are reset to "pending" when an import is attempted
+    if (status.make_tsne == "pending") return false;
+    return true;
 }
 
 /* Convert metadata into a JSON file */
@@ -257,11 +237,15 @@ const populateNonSupportedElement = () => {
 /* Populate select dropdown of observation categorical metadata */
 const populateObsDropdown = async (datasetId) => {
     const parent = document.getElementById(`${datasetId}-obslevels`);
-    parent.classList.add("is-loading", "select");
     const response = await fetch(`/api/h5ad/${datasetId}`);
     const jsonData = await response.json();
     const obsLevels = Object.keys(jsonData.obs_levels);
-
+    if (!length(obsLevels)) {
+        const parent = document.getElementById(`${datasetId}-obslevels`);
+        parent.textContent = "No categories found.";
+        return
+    }
+    parent.classList.add("is-loading", "select");
     const optionElts = obsLevels.map(cat => `<option>${cat}</option>`);
     const template = `<select>${optionElts.join("")}</select>`;
     const htmlCollection = generateElements(template);
@@ -290,7 +274,6 @@ const processSubmission = async (fileEntities, submissionId) => {
 
     const isRestricted = 0;    // hardcoded for now
 
-
     // If existing submission does not exist, create new submission
     const postParams = {"submission_id": submissionId, "is_restricted": isRestricted };
     const postResponse = await fetch("/api/submissions", {
@@ -310,6 +293,7 @@ const processSubmission = async (fileEntities, submissionId) => {
 
     // NOTE: at this point we have no routes for our submission
     // Go through the projected dataset routes, and create the ones that do not already exist
+    // If the dataset exists (for another submission), then associate with this submission
 
     for (const entity in fileEntities) {
         const datasetId = entity.attributes.id;
@@ -326,14 +310,20 @@ const processSubmission = async (fileEntities, submissionId) => {
             });
             const sdPostJsonRes = await sdPostResponse.json();
             if (sdPostJsonRes.success) {
-                postJsonRes.datasets[datasetId].href = sdPostJsonRes.href
+                postJsonRes.datasets[datasetId] = sdPostJsonRes
             }
         } else {
             const sdGetJsonRes = await sdGetResponse.json();
             if (sdGetJsonRes.success) {
-                postJsonRes.datasets[datasetId].href = sdGetJsonRes.href
+                postJsonRes.datasets[datasetId] = sdGetJsonRes
             }
         }
+
+        // Save dataset as a new SubmissionMember
+        await fetch(`${postJsonRes.datasets[datasetId].href}/members`, {
+            method:"PUT"
+        })
+
     }
 
     return postJsonRes;
@@ -384,12 +374,6 @@ const setTblLoadingStatus = (datasetId, columnIndex) => {
     tableRow.children[columnIndex].outerHTML = tdLoading;
 }
 
-/* Return true if this step should run (is pending), false otherwise */
-const shouldStepRun = (datasetId, columnIndex) => {
-    const tableRow = document.getElementById(`dataset-${datasetId}`);
-    return (tableRow.children[columnIndex].outerHTML === tdPending);
-}
-
 /* Update the statuses of the table based on the current job's failure state */
 const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
     //TODO: Eventually get this info from the database
@@ -424,8 +408,47 @@ const redirect_to_gene_search = (layoutShareId, gene) => {
     window.open(`${window.origin}/p?l=${layoutShareId}${gene_addition}`, "_blank");
 }
 
+/* Poll submission status */
+const pollSubmission = async (submissionId) => {
+    // Source -> https://javascript.info/long-polling
+    const { datasets } = await getSubmission(submissionId);
+
+    const isAllComplete = Object.keys(datasets).every( (datasetId) => isImportComplete(datasets[datasetId].status) );
+
+    for (const datasetId in datasets) {
+        const importSuccess = isImportComplete(datasets[datasetId].status);
+        if (importSuccess) {
+            // Populated categorical observations if possible
+            populateObsDropdown(datasetId);
+            // show permalink
+            showDatasetPermalink(datasetId);
+
+            if (datasets[datasetId].status.make_tsne == "completed") {
+                // After the first dataset is finished, we can View Datasets if desired
+                finishElements.importFinish.classList.remove("is-hidden");
+                return;
+            }
+            // But if final step did not complete, only a partial success
+            finishElements.partialSuccess.classList.remove("is-hidden");
+
+        }
+    }
+
+    // If submission is complete (nothing in runnable state), then exit polling.
+    if (isAllComplete) {
+        // If every dataset was successful, change to a complete success
+        if (finishElements.partialSuccess.classList.contains("is-hidden")) {
+            finishElements.completeSuccess.classList.remove("is-hidden");
+        }
+        return;
+    }
+
+    // Pull again after a brief timeout
+    setTimeout(() => {pollSubmission(submissionId)}, 5000);
+}
+
 /* Create a brand new submission from JSON contents */
-const createSubmission = async (jsonUrl, importFinish, partialSuccess) => {
+const createSubmission = async (jsonUrl) => {
     // https://github.github.io/fetch
     //const urlResponse = await fetch(jsonUrl);
     const urlResponse = await fetch("nemoarchive_import/test.json");
@@ -467,70 +490,24 @@ const createSubmission = async (jsonUrl, importFinish, partialSuccess) => {
         console.error(error);
     }
 
-    await Promise.allSettled(fileEntities.map(async (entity) => {
-        const { attributes: fileAttributes } = entity;
-        // Merge in sample attributes
-        const sampleAttributes = getSampleAttributesByName(sampleEntities, fileAttributes.sample_id);
-        const allAttributes = { dataset: fileAttributes, sample: sampleAttributes };
-        allAttributes.name = entity.name;
+    // Launch off the new submission import. Since we are polling for status, we do not need to block here.
+    const params = { "file_metadata": fileEntities, "sample_metadata":sampleEntities, "action":"import"};
+    //const response = await fetch(`/api/submissions/${submissionId}`, {
+    const response = fetch(`/api/submissions/${submissionId}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(params)
+        });
+    if (!response?.ok) {
+        throw new Error(postResponse.statusText);
+    }
 
-        // Create JSON from metadata
-        const fileMetadata = await getFileMetadata(allAttributes.dataset);
-
-        // Merge all API metadata and metadata pulled from the portal
-        // TODO: Pull sample just for specific dataset
-        const allMetadata = {
-            dataset: { ...allAttributes.dataset, ...fileMetadata.dataset },
-            sample: { ...allAttributes.sample, ...fileMetadata.sample }
-        };
-
-        const datasetId = allMetadata.dataset.id;
-
-        // If import has already finished, let's just focus on the display
-        if (isImportComplete(datasetId) && await getDefaultDisplay(datasetId)) {
-            return true;
-        }
-
-        const params = { "metadata": allMetadata};
-        const response = await fetch(`/api/submission_dataset/${datasetId}`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(params)
-            });
-        if (!response?.ok) {
-            throw new Error(postResponse.statusText);
-        }
-        const jsonRes = await response.json();
-        if (!jsonRes.success) {
-            printTblMessage(datasetId, jsonRes.message, "danger");
-            partialSuccess.classList.remove("is-hidden");
-            return false
-        }
-
-        // Save the newly created display as a default.
-        const plotType = "tsne_static";
-        const label = "nemoanalytics import default plot";
-        const displayId = await saveNewDisplay(datasetId, jsonRes.plot_config, plotType, label);
-        await saveDefaultDisplay(datasetId, displayId);
-
-        // enable select-obs dropdown
-        if (["MEX"].includes(allMetadata.dataset.filetype)) {
-            const parent = document.getElementById(`${datasetId}-obslevels`);
-            parent.textContent = "Categories not found";
-        } else {
-            populateObsDropdown(datasetId);
-        }
-        // show permalink
-        showDatasetPermalink(datasetId);
-
-        // After the first dataset is finished, we can View Datasets if desired
-        importFinish.classList.remove("is-hidden");
-        return true
-    }));
+    // Poll datasets for updates. Function calls itself until importing is finished.
+    return await pollSubmission(submissionId);
 }
 
 /* View a submission in "view-only" mode */
-const viewSubmission = async (submissionParam, importFinish) => {
+const viewSubmission = async (submissionParam) => {
     // This is meant purely to check a submission status, but will not resume it
     const submissionElt = document.getElementById("submission_title");
     submissionElt.dataset.submission_id = submissionParam;
@@ -539,17 +516,8 @@ const viewSubmission = async (submissionParam, importFinish) => {
     submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
     submissionElt.addEventListener("click", handleSubmissionLink);
 
-    for (const datasetId in datasets) {
-        const importSuccess = isImportComplete(datasetId);
-        if (importSuccess) {
-            //TODO: Hide obsLevels column
-            // show permalink
-            showDatasetPermalink(datasetId);
-        }
-    }
-
-    importFinish.classList.remove("is-hidden");
-    return;
+    // Poll datasets for updates. Function calls itself until importing is finished.
+    return await pollSubmission(submissionParam);
 }
 
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
@@ -636,6 +604,11 @@ const handleEmailButton = async () => {
         });
 
     const jsonRes = await response.json();
+
+    if (jsonRes.success) {
+        notify("A email will be sent when importing has finished. It is safe to close the tab or browser.");
+    }
+    alert("Could not subscribe to email updates. Please contact gEAR support.");
     return
 
 }
@@ -648,14 +621,10 @@ window.onload = () => {
         throw("Must be logged in to use this tool")
     }
 
-    const importFinish = document.getElementById("import_finish");
-    const partialSuccess = document.getElementById("partial_success");
-    const completeSuccess = document.getElementById("complete_success");
-
     // Essentially a "view-only" mode.
     const submissionParam = getUrlParameter("submission_id")
     if (submissionParam) {
-        return viewSubmission(submissionParam, importFinish);
+        return viewSubmission(submissionParam);
     }
 
 
@@ -669,12 +638,7 @@ window.onload = () => {
     console.log("staged URL: " + jsonUrl);
 
     // Create a brand new submission from the JSON pulled in
-    createSubmission(jsonUrl, importFinish, partialSuccess);
-
-    // If everything went well, change to a complete success
-    if (partialSuccess.classList.contains("is-hidden")) {
-        completeSuccess.classList.remove("is-hidden");
-    }
+    createSubmission(jsonUrl);
 
     // ? Figure out what to do if counts are per sample rather than per file
 };

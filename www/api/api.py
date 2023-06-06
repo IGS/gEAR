@@ -30,7 +30,7 @@ from resources.tsne_data import TSNEData
 from resources.epiviz_data import EpivizData
 from resources.projectr import ProjectR, ProjectROutputFile
 from resources.submission import Submission, Submissions, SubmissionEmail
-from resources.submission_dataset import SubmissionDataset, SubmissionDatasets
+from resources.submission_dataset import SubmissionDataset, SubmissionDatasets, SubmissionDatasetStatus, SubmissionDatasetMember
 from resources.mock_data import MockIdentifier
 
 app = Flask(__name__)
@@ -53,8 +53,10 @@ api.add_resource(DatasetDisplay, '/displays/<int:display_id>')
 api.add_resource(Submission, '/submissions/<string:submission_id>')
 api.add_resource(SubmissionEmail, '/submissions/<string:submission_id>/email')
 api.add_resource(Submissions, "/submissions")
-api.add_resource(SubmissionDataset, "/submissions/<string:submission_id>/<string:dataset_id>")
+api.add_resource(SubmissionDataset, "/submissions/<string:submission_id>/datasets/<string:dataset_id>")
 api.add_resource(SubmissionDatasets, "/submissions/<string:submission_id>/datasets")
+api.add_resource(SubmissionDatasetStatus, "/submissions/<string:submission_id>/datasets/<string:dataset_id>/status")
+api.add_resource(SubmissionDatasetMember, "/submissions/<string:submission_id>/datasets/<string:dataset_id>/members")
 api.add_resource(MockIdentifier, "/mock_identifier/<string:identifier>")
 
 if __name__ == '__main__':
