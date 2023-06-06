@@ -338,7 +338,7 @@ def get_submission_dataset_by_dataset_id(id):
 
     qry = """
         SELECT id, dataset_id, nemo_identifier, pulled_to_vm_status,
-            convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message=is_restricted
+            convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted
         FROM submission_dataset
         WHERE dataset_id = %s
     """
