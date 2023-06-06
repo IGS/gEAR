@@ -3,6 +3,7 @@
 from flask import request, abort
 from flask_restful import Resource
 import os,sys
+import requests
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -14,6 +15,64 @@ import geardb
 this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
+
+def send_email(result, submission, user_email):
+    """Send user an email about the completion status of their dataset imports."""
+
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    sender = this.servercfg['email_sender']['address']
+    password = this.servercfg['email_sender']['password']
+
+    domain_url = geardb.domain_url
+    domain_short_label = geardb.domain_short_label
+
+    submission_id = submission.id
+    layout = submission.get_layout_info()
+    layout_share_id = layout.share_id
+
+    # https://docs.python.org/3/library/email-examples.html
+    # user = email
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'{domain_short_label} - Submission {submission_id} import complete'.format(domain_short_label)
+    msg['From'] = sender
+    msg['To'] = user_email
+
+    num_failures = result["num_failures"]
+    num_datasets = len(submission.datasets)
+
+    text = f"This message is to inform you that your recent dataset import on {domain_short_label} with submission ID {submission_id} has finished."
+    if result["all_success"]:
+        text += "It looks like every dataset was successfully imported."
+    elif result["partial_success"]:
+        text += f"While some datasets were successfully imported, we encountered some issues importing {num_failures} of the datasets."
+    else:
+        text += f"Unfortunately, it appears that all {num_datasets} datasets for this submission ran into issues during the import process."
+
+    text += f"\n\nYou can view the status of all datasets at {domain_url}/nemoarchive_import/import.html?submission_id={submission_id}. "
+    if result["partial_success"]:
+        text += "Each successfully imported dataset has a link to view the dataset on the gene expression search page. "
+        text += "We performed a basic Seurat analysis on the dataset and created a tSNE display, but we encourage you to curate your own displays to support your own research (see https://umgear.org/manual.html?doc=curation for documentation). "
+
+        text += f"\n\nYou can also view all dataset displays as a collection by going to {domain_url}/p?l=${layout_share_id} (you will need to search for a gene to show the displays)."
+
+    text += f"\n\nIf you have any questions about your import, feel free to reach us at {domain_url}/contact.html"
+
+    text += f"\n\nSigned,\n The {domain_short_label} team"
+
+    part1 = MIMEText(text, 'plain')
+
+    msg.attach(part1)
+
+    # http://stackoverflow.com/a/17596848/2900840
+    s = smtplib.SMTP('smtp.gmail.com:587')
+    s.ehlo()
+    s.starttls()
+    s.login(sender, password)
+
+    s.sendmail( sender, user_email, msg.as_string() )
+    s.quit()
 
 class Submission(Resource):
     """Requests to deal with a single submission"""
@@ -50,99 +109,77 @@ class Submission(Resource):
         user = geardb.get_user_from_session_id(session_id)
 
         req = request.get_json()
-        metadata = req.get("metadata")
+        file_metadata = req.get("file_metadata")  # Metadata from neo4j request
+        sample_metadata = req.get("sample_metadata")
         action = req.get("action")
 
         submission = geardb.get_submission_by_id(submission_id)
         submission_datasets = geardb.SubmissionDatasetCollection()
-        submission_datasets.get_by_submission_id(submission_id=submission_id)
+        submission.datasets = submission_datasets.get_by_submission_id(submission_id=submission_id)
 
         if action == "import":
+            dataset_results = {}
+
+            all_success = True  # Every dataset import was successful
+            partial_success = False # At least one dataset import was successful
+            num_failures = 0
+
             for s_dataset in submission_datasets:
-                pass
+
+                # Get first instance of entity match dataset ID or sample ID
+                file_attributes = next(filter(lambda entity: entity["id"] == dataset_id, file_metadata))["attributes"]
+                sample_attributes = next(filter(lambda entity: entity["name"] == file_attributes["sample_id"], sample_metadata))["attributes"]
+
+                all_attributes = {
+                    "dataset": file_attributes
+                    , "sample": sample_attributes
+                    }
+
+                dataset_id = s_dataset["dataset_id"]
+                identifier = s_dataset["identifier"]
+
+                # Call NeMO Archive assets API using identifier
+                #result = requests.post(f"https://nemoarchive.org/asset/derived/{identifier}")
+                result = requests.post(f"/api/mock_identifier/{identifier}")
+                result.raise_for_status()
+                decoded_result = result.json()
+                api_metadata = decoded_result["metadata"]
+
+                # TODO: Eventually get everything from API
+                all_metadata = {
+                    "dataset": {**all_attributes["dataset"], **api_metadata["dataset"]}
+                    , "sample": {**all_attributes["sample"], **api_metadata["sample"]}
+
+                }
+
+                # Start the import process for each dataset
+                params = {"metadata": all_metadata, "action": "import"}
+                result = requests.post(request.path + f"datasets/${dataset_id}", json=params, verify=False)
+                result.raise_for_status()
+                decoded_result = result.json()
+
+                dataset_results[dataset_id] = decoded_result
+                dataset_results[dataset_id]["filetype"] = all_metadata["dataset"]["filetype"]
+
+                if dataset_results[dataset_id]["success"]:
+                    partial_success = True
+                else:
+                    num_failures += 1
+                    all_success = False
+
+            result = {"self":request.path
+                    , "dataset":dataset_results
+                    , "all_success":all_success
+                    , "partial_success":partial_success
+                    , "num_failures": num_failures
+                    }
 
             if submission.email_updates:
-                pass
-                # send email about submission
+                # send email about submission status
+                send_email(result, submission, user.email)
 
+            return result
         abort(400)
-
-
-
-        """
-        const fileEntities = getFileEntities(jsonData);
-        const sampleEntities = getSampleEntities(jsonData);
-
-        // Initialize db information about this submission
-        // Check db if datasets were loaded in previous submissions
-        // (initialize_new_submission.cgi)
-        try {
-            await initializeNewSubmission(fileEntities, submissionId);
-        } catch (error) {
-            alert("Something went wrong with saving this submission to database. Please contact gEAR support.");
-            console.error(error);
-        }
-
-        await Promise.allSettled(fileEntities.map(async (entity) => {
-            const { attributes: fileAttributes } = entity;
-            // Merge in sample attributes
-            const sampleAttributes = getSampleAttributesByName(sampleEntities, fileAttributes.sample_id);
-            const allAttributes = { dataset: fileAttributes, sample: sampleAttributes };
-            allAttributes.name = entity.name;
-
-            // Create JSON from metadata
-            const fileMetadata = await getFileMetadata(allAttributes.dataset);
-
-            // Merge all API metadata and metadata pulled from the portal
-            // TODO: Pull sample just for specific dataset
-            const allMetadata = {
-                dataset: { ...allAttributes.dataset, ...fileMetadata.dataset },
-                sample: { ...allAttributes.sample, ...fileMetadata.sample }
-            };
-
-            const datasetId = allMetadata.dataset.id;
-
-            // If import has already finished, let's just focus on the display
-            if (isImportComplete(datasetId) && await getDefaultDisplay(datasetId)) {
-                return true;
-            }
-
-            const params = { "metadata": allMetadata};
-            const response = await fetch(`/api/submission_dataset/${datasetId}`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(params)
-                });
-            if (!response?.ok) {
-                throw new Error(postResponse.statusText);
-            }
-            const jsonRes = await response.json();
-            if (!jsonRes.success) {
-                printTblMessage(datasetId, jsonRes.message, "danger");
-                partialSuccess.classList.remove("is-hidden");
-                return false
-            }
-
-            // Save the newly created display as a default.
-            const plotType = "tsne_static";
-            const label = "nemoanalytics import default plot";
-            const displayId = await saveNewDisplay(datasetId, jsonRes.plot_config, plotType, label);
-            await saveDefaultDisplay(datasetId, displayId);
-
-            // enable select-obs dropdown
-            if (["MEX"].includes(allMetadata.dataset.filetype)) {
-                const parent = document.getElementById(`${datasetId}-obslevels`);
-                parent.textContent = "Categories not found";
-            } else {
-                populateObsDropdown(datasetId);
-            }
-            // show permalink
-            showSubmissionPermalink(datasetId);
-
-            // After the first dataset is finished, we can View Datasets if desired
-            return true
-        }));
-        """
 
 class SubmissionEmail(Resource):
     def put(self, submission_id):
