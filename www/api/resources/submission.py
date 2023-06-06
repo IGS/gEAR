@@ -98,7 +98,7 @@ class Submission(Resource):
 
         for s_dataset in submission.datasets:
             dataset_id = s_dataset.dataset_id
-            result["datasets"][dataset_id] = {"href":f"/api/submission/{submission_id}/datasets/{dataset_id}"}
+            result["datasets"][dataset_id] = {"href":f"/api/submissions/{submission_id}/datasets/{dataset_id}"}
         result["success"] = True
         return result
 

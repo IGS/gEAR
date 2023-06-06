@@ -7,9 +7,6 @@ import requests
 import json
 import os,sys
 
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
-sys.path.append(lib_path)
-
 import geardb
 
 # Parse gEAR config
@@ -18,7 +15,9 @@ this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
-cgi_path = os.path.abspath(os.path.join("..", "cgi"))
+from pathlib import Path
+abs_path_gear = Path(__file__).resolve().parents[2]
+cgi_path = str(abs_path_gear.joinpath('cgi'))
 sys.path.append(cgi_path)
 
 # Need extra stuff to import .cgi scripts due to not having the .py extensions
@@ -38,10 +37,10 @@ def import_from_file(module_name, file_path):
     spec.loader.exec_module(module)
     return module
 
-pull_from_gcp = import_from_file("pull_from_gcp", "../cgi/nemoarchive_pull_gcp_files_to_vm.cgi")
-validate_mdata = import_from_file("validate_mdata", "../cgi/nemoarchive_validate_metadata.cgi")
-write_h5ad = import_from_file("write_h5ad", "../cgi/nemoarchive_write_h5ad.cgi")
-make_display = import_from_file("make_display", "../cgi/nemoarchive_make_default_display.cgi")
+pull_from_gcp = import_from_file("pull_from_gcp", f"{cgi_path}/nemoarchive_pull_gcp_files_to_vm.cgi")
+validate_mdata = import_from_file("validate_mdata", f"{cgi_path}/nemoarchive_validate_metadata.cgi")
+write_h5ad = import_from_file("write_h5ad", f"{cgi_path}/nemoarchive_write_h5ad.cgi")
+make_display = import_from_file("make_display", f"{cgi_path}/nemoarchive_make_default_display.cgi")
 
 def should_step_run(s_dataset, db_step):
     # Step should only run if it is pending.
@@ -211,6 +210,7 @@ class SubmissionDataset(Resource):
             result["identifier"] = s_dataset.nemo_identifier
             result["share_id"] = s_dataset.dataset.share_id
             result["status"] = get_db_status(s_dataset)
+            return result
         except:
             abort(404)
 

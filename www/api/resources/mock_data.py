@@ -3,10 +3,6 @@ from flask_restful import Resource
 from pathlib import Path
 import os, sys
 
-gear_root = Path(__file__).resolve().parents[2] # web-root dir
-lib_path = gear_root.joinpath("lib")
-sys.path.append(lib_path)
-
 import mysql.connector
 from mysql.connector import errorcode
 

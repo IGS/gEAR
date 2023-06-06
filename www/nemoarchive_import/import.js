@@ -21,6 +21,8 @@ const finishElements = {
     , completeSuccess: document.getElementById("complete_success")
 }
 
+const POLL_TIMEOUT = 10_000; // 10 seconds
+
 const alert = (msg, fade=false) => {
     // TODO: Add some fade effect
     const alertElt = document.getElementById("main_alert");
@@ -104,17 +106,6 @@ const generateElements = (html) => {
     return template.content.children[0];
 }
 
-/* Given a table header "step" name, return the cell index position */
-const getIndexOfTableStep = (stepName) => {
-    const tableHead = document.querySelectorAll("#submission_datasets thead tr th");
-    const foundElt = [...tableHead].filter(elt => elt.textContent === stepName);
-    if (foundElt.length) {
-        return foundElt[0].cellIndex;
-    }
-    console.error(`Could not find step ${stepName} in table headers`);
-    return -1;
-}
-
 /* Get specific dataset display information */
 const getDatasetDisplay = async (displayId) => {
     const params = new URLSearchParams({"display_id": displayId});
@@ -134,7 +125,7 @@ const getDefaultDisplay = async (datasetId) => {
 }
 
 /* Retrieve existing submission */
-const getSubmission = async(submissionId) => {
+const getSubmission = async (submissionId) => {
     // Going to attempt to get existing submission
     const response = await fetch(`/api/submissions/${submissionId}`)
     if (!response?.ok) {
@@ -143,14 +134,6 @@ const getSubmission = async(submissionId) => {
     const jsonRes = await response.json();
     if (!jsonRes.success) {
         throw new Error(jsonRes.message);
-    }
-
-    for (const datasetId in jsonRes.datasets) {
-        const response = await fetch(jsonRes.datasets[datasetId].href);
-        const datasetInfo = await response.json();
-
-        // Set up the dataset row in the submission table
-        updateDatasetRow(datasetInfo)
     }
 
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
@@ -167,39 +150,34 @@ const initializeNewSubmission = async (fileEntities, submissionId) => {
             method: "PUT"
             , body: json.stringify({"action":"reset_steps"})
         })
-        const {status} = await putResponse.json();
-        datasets[datasetId].status = status
-
+        if (!putResponse?.ok) {
+            throw new Error(response.statusText);
+        }
         // Set up the dataset row in the submission table
-        updateDatasetRow(datasets[datasetId])
+        initializeDatasetRow(datasets[datasetId])
     }
 }
 
 /* Set up the dataset row in the submission table */
-const updateDatasetRow = (dataset) => {
+const initializeDatasetRow = (dataset) => {
     const {dataset_id:datasetId, share_id:shareId, identifier} = dataset;
     const namespace = identifier.split("nemo:")[1];
     const identifierUrl = `https://assets.nemoarchive.org/${namespace}`;
 
-    const {
-        pulled_to_vm: pulledToVm
-        , convert_metadata: validateMetadata
-        , convert_to_h5ad: convertToH5ad
-        , make_tsne: makeTSNE
-        } = dataset.status;
-
     const template = `
     <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
         <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
-        ${status2Element[pulledToVm]}
-        ${status2Element[validateMetadata]}
-        ${status2Element[convertToH5ad]}
-        ${status2Element[makeTSNE]}
+        <td id="${datasetId}-pulled-to-vm"></td>
+        <td id="${datasetId}-validate-metadata"></td>
+        <td id="${datasetId}-convert-to-h5ad"></td>
+        <td id="${datasetId}-make-tsne"></td>
         <td id="${datasetId}-messages"></td>
         <td id="${datasetId}-obslevels">Not ready</td>
         <td id="${datasetId}-permalink">Not ready</td>
     </tr>
     `
+
+    // Append row to table
     const parent = document.querySelector("#submission_datasets tbody");
     const htmlCollection = generateElements(template);
     parent.append(htmlCollection);
@@ -263,7 +241,7 @@ const populateSubmissionId = (submissionId) => {
 /* Retrieve existing submission or add new one. Returns datasets from submission */
 const processSubmission = async (fileEntities, submissionId) => {
     // Going to attempt to get existing submission (and resume)
-    const getResponse = await fetch(`/api/submissions/${submissionId}?${getParams}`)
+    const getResponse = await fetch(`/api/submissions/${submissionId}`)
     if (!getResponse?.ok) {
         throw new Error(getResponse.statusText);
     }
@@ -302,7 +280,12 @@ const processSubmission = async (fileEntities, submissionId) => {
 
         // GET route first
         const sdGetResponse = await fetch(`/api/submissions/${submissionId}/datasets/${datasetId}`);
-        if (!sdGetResponse?.ok) {
+        if (sdGetResponse?.ok) {
+            const sdGetJsonRes = await sdGetResponse.json();
+            if (sdGetJsonRes.success) {
+                postJsonRes.datasets[datasetId] = sdGetJsonRes
+            }
+        } else {
             // Submission dataset did not already exist... create it
             const sdPostResponse = await fetch(`/api/submissions/${submissionId}/datasets`, {
                 method:"POST"
@@ -311,11 +294,6 @@ const processSubmission = async (fileEntities, submissionId) => {
             const sdPostJsonRes = await sdPostResponse.json();
             if (sdPostJsonRes.success) {
                 postJsonRes.datasets[datasetId] = sdPostJsonRes
-            }
-        } else {
-            const sdGetJsonRes = await sdGetResponse.json();
-            if (sdGetJsonRes.success) {
-                postJsonRes.datasets[datasetId] = sdGetJsonRes
             }
         }
 
@@ -368,24 +346,32 @@ const showDatasetPermalink = (datasetId) => {
     const template = `<a href=${permalinkUrl} target="_blank">View Dataset</a>`;
     permalinkRow.innerHTML = template;
 }
+/* Update the statuses of the table */
+const updateTblStatus = (datasetId, statuses) => {
+    // Initially I had the status HTML elements in <div> to be added as innerHTML.
+    // However Bulma adds padding to the <td> so the bg-colors look weird.
+    // Resolving this by creating a new element, adding the ID, and replacing the old with the new.
 
-const setTblLoadingStatus = (datasetId, columnIndex) => {
-    const tableRow = document.getElementById(`dataset-${datasetId}`);
-    tableRow.children[columnIndex].outerHTML = tdLoading;
-}
+    const pulledToVm = document.getElementById(`${datasetId}-pulled-to-vm`);
+    const newPulledToVm = generateElements(status2Element[statuses.pulled_to_vm]);
+    newPulledToVm.setAttribute("id", `${datasetId}-pulled-to-vm`);
+    pulledToVm.replaceWith(newPulledToVm);
 
-/* Update the statuses of the table based on the current job's failure state */
-const updateTblStatus = (datasetId, columnIndex, isSuccess) => {
-    //TODO: Eventually get this info from the database
-    const updatedStatus = isSuccess ? tdCompleted : tdFailed;
-    const tableRow = document.getElementById(`dataset-${datasetId}`);
-    // Change status. In case of failure, "cancel" all subsequent tasks
-    tableRow.children[columnIndex].outerHTML = updatedStatus;
-    if (!isSuccess) {
-        for (i = columnIndex+1; i < tableRow.children.length; i++) {
-            tableRow.children[i].outerHTML = tdCanceled;
-        }
-    }
+    const validateMetadata = document.getElementById(`${datasetId}-validate-metadata`);
+    const newValidateMetadata = generateElements(status2Element[statuses.convert_metadata]);
+    newValidateMetadata.setAttribute("id", `${datasetId}-validate-metadata`);
+    validateMetadata.replaceWith(newValidateMetadata);
+
+    const convertToH5ad = document.getElementById(`${datasetId}-convert-to-h5ad`);
+    const newConvertToH5ad = generateElements(status2Element[statuses.convert_to_h5ad]);
+    newConvertToH5ad.setAttribute("id", `${datasetId}-convert-to-h5ad`);
+    convertToH5ad.replaceWith(newConvertToH5ad);
+
+    const makeTSNE = document.getElementById(`${datasetId}-make-tsne`);
+    const newMakeTSNE = generateElements(status2Element[statuses.make_tsne]);
+    newMakeTSNE.setAttribute("id", `${datasetId}-make-tsne`);
+    makeTSNE.replaceWith(newMakeTSNE);
+
 }
 
 const handleSubmissionLink = () => {
@@ -413,17 +399,29 @@ const pollSubmission = async (submissionId) => {
     // Source -> https://javascript.info/long-polling
     const { datasets } = await getSubmission(submissionId);
 
-    const isAllComplete = Object.keys(datasets).every( (datasetId) => isImportComplete(datasets[datasetId].status) );
+    const datasetStatus = {}
 
+    // Update the statuses
     for (const datasetId in datasets) {
-        const importSuccess = isImportComplete(datasets[datasetId].status);
+        const response = await fetch(datasets[datasetId].href);
+        if (!response?.ok) {
+            throw new Error(response.statusText);
+        }
+        const datasetInfo = await response.json();
+
+        datasetStatus[datasetId] = datasetInfo.status;
+
+        // Set up the dataset row in the submission table
+        updateTblStatus(datasetId, datasetInfo.status)
+
+        const importSuccess = isImportComplete(datasetInfo.status);
         if (importSuccess) {
             // Populated categorical observations if possible
             populateObsDropdown(datasetId);
             // show permalink
             showDatasetPermalink(datasetId);
 
-            if (datasets[datasetId].status.make_tsne == "completed") {
+            if (datasetInfo.status.make_tsne == "completed") {
                 // After the first dataset is finished, we can View Datasets if desired
                 finishElements.importFinish.classList.remove("is-hidden");
                 return;
@@ -433,6 +431,8 @@ const pollSubmission = async (submissionId) => {
 
         }
     }
+
+    const isAllComplete = Object.keys(datasetStatus).every( (datasetId) => isImportComplete(datasetStatus[datasetId]) );
 
     // If submission is complete (nothing in runnable state), then exit polling.
     if (isAllComplete) {
@@ -444,7 +444,7 @@ const pollSubmission = async (submissionId) => {
     }
 
     // Pull again after a brief timeout
-    setTimeout(() => {pollSubmission(submissionId)}, 5000);
+    setTimeout(() => {pollSubmission(submissionId)}, POLL_TIMEOUT);
 }
 
 /* Create a brand new submission from JSON contents */
@@ -513,11 +513,23 @@ const viewSubmission = async (submissionParam) => {
     submissionElt.dataset.submission_id = submissionParam;
     populateSubmissionId(submissionParam);
     const { layout_share_id: layoutShareId, datasets } = await getSubmission(submissionParam);
+    // Set up the rows
+    for (const datasetId in datasets) {
+        const response = await fetch(datasets[datasetId].href);
+        if (!response?.ok) {
+            throw new Error(response.statusText);
+        }
+        const datasetInfo = await response.json();
+
+        // Set up the dataset row in the submission table
+        initializeDatasetRow(datasetInfo)
+    }
+
     submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
     submissionElt.addEventListener("click", handleSubmissionLink);
 
     // Poll datasets for updates. Function calls itself until importing is finished.
-    return await pollSubmission(submissionParam);
+    return pollSubmission(submissionParam);
 }
 
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
