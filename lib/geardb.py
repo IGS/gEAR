@@ -2126,13 +2126,17 @@ class DatasetCollection:
         conn.close()
         return self.datasets
 
-    def get_public(self, has_h5ad=None, n=None, order_by=None, types=None):
+    def get_public(self, has_h5ad=None, n=None, offset=None, order_by=None, types=None):
         """
         Populates the DatasetCollection's datasets list with those datasets which are marked
         as public (with optional filtering arguments.)
 
         Does NOT clear the existing internal list first, so a few methods could be called to
         make custom collections.
+
+        n: Limit the number of datasets to this count
+
+        offset: skips this number of datasets in the list
 
         order_by: ['title' (default), 'date_added']
 
@@ -2168,6 +2172,9 @@ class DatasetCollection:
 
         if n is not None:
             qry += " LIMIT {0}".format(n)
+
+        if offset is not None:
+            qry += " OFFSET {0}".format(offset)
 
         cursor.execute(qry, qry_args)
         for r in cursor:
