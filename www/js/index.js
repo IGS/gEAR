@@ -8,6 +8,7 @@ const GO_TERM_SCROLLBAR_DRAWN = false;
 const AT_FIRST_MATCH_RECORD = false;
 const AT_LAST_MATCH_RECORD  = false;
 const PREVIOUS_SELECTED_RECORD_NUM = null;
+let WHATS_NEW_IDX = 0
 let SCORING_METHOD = 'gene';
 let SELECTED_GENE = null;
 
@@ -139,6 +140,14 @@ $(document).on("handle_page_loading", () => {
         window.location.replace('./upload_epigenetic_data.html');
     });
 
+    $('#whatsnew_nav_prev').click(() => {
+        get_whatsnew_items('previous');
+    });
+
+    $('#whatsnew_nav_next').click(() => {
+        get_whatsnew_items('next');
+    });
+
     $('.tool-launcher').click(function() {
         if ($(this).data('tool-name') == 'comparison') {
             window.location.replace('./compare_datasets.html');
@@ -253,16 +262,29 @@ function get_index_info() {
     });
 };
 
-function get_whatsnew_items() {
+function get_whatsnew_items(direction) {
+    $('#whatsnew_nav_prev').prop('disabled', true);
+    $('#whatsnew_nav_next').prop('disabled', true);
+
     $.ajax({
         url: './cgi/get_whatsnew_list.cgi',
+        data: {'direction': direction, 'idx_start': WHATS_NEW_IDX},
         type: 'GET',
         dataType: 'json'
     }).done((data) => {
-        console.log(data);
         var ListTmpl = $.templates("#whatsnew_list_tmpl");
         var ListHtml = ListTmpl.render(data['new_items']);
         $("#whatsnew_items_c").html(ListHtml);
+
+        // handle the nav links
+        $('#whatsnew_nav_next').prop('disabled', false);
+        
+        if (data['idx_start'] > 0) {
+            $('#whatsnew_nav_prev').prop('disabled', false);
+        }
+
+        WHATS_NEW_IDX = data['idx_start']
+
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting What\'s New items.');
     });

@@ -11,21 +11,33 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-DATASETS_TO_SHOW = 5
+ITEMS_TO_SHOW = 5
 IMAGE_ROOT = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
 WEB_IMAGE_ROOT = './img/dataset_previews'
 
 def main():
     new_items = list()
-    
+    form = cgi.FieldStorage()
+    idx_start = int(form.getvalue('idx_start'))
+    direction = form.getvalue('direction')
+
+    if not idx_start:
+        idx_start = 0
+
+    if direction == 'next':
+        idx_start += ITEMS_TO_SHOW
+    elif direction == 'previous':
+        idx_start -= ITEMS_TO_SHOW
+
     result = {
         'success': 1,
         'new_items': None,
+        'idx_start': idx_start
     }
 
     cnx = geardb.Connection()
     dc = geardb.DatasetCollection()
-    dc.get_public(has_h5ad=1, n=DATASETS_TO_SHOW, order_by='date_added')
+    dc.get_public(has_h5ad=1, n=ITEMS_TO_SHOW, offset=idx_start, order_by='date_added')
 
     for dataset in dc.datasets:
         # Strip the time off the date
