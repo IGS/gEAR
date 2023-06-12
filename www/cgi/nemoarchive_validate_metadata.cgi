@@ -171,7 +171,6 @@ def write_json(attributes, base_dir:Path):
     return outpath
 
 def validate_metadata(dataset_id, session_id, attributes):
-
     user = geardb.get_user_from_session_id(session_id)
     result = {'success':False }
 

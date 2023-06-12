@@ -172,7 +172,7 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
     result["success"] = True
     result["plot_config"] = plot_config
 
-    s_dataset.save_change(attribute=DB_STEP, value="complete")
+    s_dataset.save_change(attribute=DB_STEP, value="completed")
 
     return result
 

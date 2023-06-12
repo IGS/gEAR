@@ -5,4 +5,4 @@
 * To ensure Google has credentials to work with:
   * For the service account to use, download JSON keys
   * Put keys in VM
-  * Add key filepath to gear.ini->nemoanalytics_import->credentials_json
+  * Add key filepath to gear.ini->nemoarchive_import->credentials_json

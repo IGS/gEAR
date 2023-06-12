@@ -36,13 +36,14 @@ def _on_request(channel, method_frame, properties, body):
     dataset_id = deserialized_body["dataset_id"]
     metadata = deserialized_body["metadata"]
     session_id = deserialized_body["session_id"]
+    url_path = deserialized_body["url_path"]
     action = deserialized_body["action"]
     category = deserialized_body["category"]
     gene = deserialized_body["gene"]
 
     with open(stream, "a") as fh:
         print("{} - [x] - Received request".format(pid), flush=True, file=fh)
-        output_payload = submission_dataset_callback(dataset_id, metadata, session_id, action, category, gene)
+        output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
 
         # Send the output back to the Flask API call
         try:
@@ -107,7 +108,7 @@ class Consumer:
         return self._reconnect_delay
 
 def main():
-    host = this.servercfg['nemoanalytics_import']['queue_host']
+    host = this.servercfg['nemoarchive_import']['queue_host']
     consumer = Consumer(host=host)
     consumer.run()
 
