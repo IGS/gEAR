@@ -39,7 +39,7 @@ cloud_run_enabled = 1
 queue_enabled = 0
 queue_host = queue
 
-[nemoanalytics_import]
+[nemoarchive_import]
 importer_id = [db_id]
 gcp_project_id=[project_id]
 credentials_json=[path_to_json]
