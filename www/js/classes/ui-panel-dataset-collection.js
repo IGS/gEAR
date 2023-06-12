@@ -164,6 +164,12 @@ class DatasetCollectionPanel {
             }).fail((jqXHR, _textStatus, errorThrown) => {
                 display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
+        } else {
+            //Was a search already performed?
+            if (this.search_performed) {
+                // User has already searched, automatically update datasets and gene searches
+                update_datasetframes_generesults();
+            }
         }
     }
 
