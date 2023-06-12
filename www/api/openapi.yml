@@ -76,6 +76,18 @@ paths:
                   layout_share_id:
                     type: string
                     description: Permalink profile share identifier for this submission, if created
+                  is_finished:
+                    type: string
+                    description: True if the submission import has finished.
+        '404':
+          description: Submission was not found
+    delete:
+      description: Delete this submission from the database.
+      responses:
+        '200':
+          description: Submission was successfully deleted
+        '404':
+          description: Submission was not found
     post:
       description: 'Start the import process for this submission'
       requestBody:
@@ -267,7 +279,11 @@ paths:
         '204':
           description: Submission_dataset successfully imported
         '400':
-          description: Dataset with this ID already exists.
+          description: Dataset with this ID already exists and no operation was passed.
+        '404':
+          description: Dataset with this ID was not found
+        '500':
+          description: Something happened internally.
 
   /submssions/{submission_id}/datasets/{dataset_id}/status:
     parameters:
@@ -314,6 +330,8 @@ paths:
                       make_tsne:
                         type: string
                         description: Status of running a tSNE analysis and creating a basic display
+        '404':
+          description: The submission dataset was not found
         '405':
           description: Invalid action or no action passed
 
@@ -340,6 +358,8 @@ paths:
                   message:
                     type: string
                     description: Error message, if applicable
+        '404':
+          description: The submission dataset was not found
 
 components:
   parameters:

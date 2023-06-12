@@ -1,8 +1,7 @@
 #!/opt/bin/python3
 
-from flask import request, abort
-from flask_restful import Resource
-import requests
+from flask import request
+from flask_restful import Resource, abort
 
 import json
 import os,sys
@@ -45,7 +44,7 @@ make_display = import_from_file("make_display", f"{cgi_path}/nemoarchive_make_de
 def should_step_run(s_dataset, db_step):
     # Step should only run if it is pending.
     # GET /submission has an option to reset incomplete steps back to pending if enabled
-    return s_dataset[db_step] == "pending"
+    return getattr(s_dataset, db_step) == "pending"
 
 def get_db_status(s_dataset):
     return {
@@ -64,6 +63,7 @@ def add_submission_dataset(params):
         # In order to ensure the UI looks correct,reset all non-complete back to pending
         # since they will be attempted again
         s_dataset.reset_incomplete_steps()
+        s_dataset.save_change(attribute="log_message", value="")
         return s_dataset
 
     # Not found, so insert new submission dataset
@@ -116,39 +116,50 @@ def insert_minimal_dataset(dataset_id, identifier):
     conn.close()
 
 def make_tsne_display(dataset_id, session_id, category=None, gene=None):
+    import requests
+
     result = make_display.make_default_display(dataset_id, session_id, category, gene)
 
     plot_type = "tsne_static"
     label = "nemoanalytics import default plot"
-    user = geardb.get_user_id_from_session_id(session_id)
+
+    user_id = geardb.get_user_id_from_session_id(session_id)
 
     params = {
-        "user_id": user.id
+        "user_id": user_id
         , "dataset_id": dataset_id
         , "plotly_config": result["plot_config"]
         , "plot_type": plot_type
         , "label": label
     }
-    result = requests.post("https://localhost/cgi/save_dataset_display.cgi", json=params, verify=False)
-    result.raise_for_status()
-    decoded_result = result.json()
-    display_id = decoded_result["display_id"]
-    params = {
-        "user_id": user.id
-        , "dataset_id": dataset_id
-        , "display_id": display_id
-    }
-    result = requests.post("https://localhost/cgi/save_default_display.cgi", json=params, verify=False)
-    result.raise_for_status()
-    result = result.json()
+    try:
+        result = requests.post("http://localhost/cgi/save_dataset_display.cgi", json=params, verify=False)
+        result.raise_for_status()
+        decoded_result = result.json()
+        display_id = decoded_result["display_id"]
+        params = {
+            "user_id": user_id
+            , "dataset_id": dataset_id
+            , "display_id": display_id
+        }
+        result = requests.post("http://localhost/cgi/save_default_display.cgi", json=params, verify=False)
+        result.raise_for_status()
+        result = result.json()
+        result["success"] = True
+    except Exception as e:
+        result["message"] = str(e)
+        print(str(e), file=sys.stderr)
+        result["success"] = False
     return result
 
-def submission_dataset_callback(dataset_id, metadata, session_id, action=None, category=None, gene=None):
+def submission_dataset_callback(dataset_id, metadata, session_id, url_path, action=None, category=None, gene=None):
     """Run all steps to import a single dataset."""
+
+    result = {"success" : False}
 
     if action == "make_display":
         result = make_tsne_display(dataset_id, session_id, category, gene)
-        result["self"] = request.path
+        result["self"] = url_path
         return result
 
     if action == "import":
@@ -158,64 +169,74 @@ def submission_dataset_callback(dataset_id, metadata, session_id, action=None, c
         #NOTE: Each of the CGI scripts will control loading/failed/complete status of their process
 
         ###
-        db_step = "pulled_to_vm_status"    # step name in database
-        if should_step_run(s_dataset, db_step):
-            # Component = file format type
-            component_files = dataset_mdata["component_fields"]
-            for component in component_files:
-                bucket_path = dataset_mdata[component]
-                result = pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id)
+        try:
+            db_step = "pulled_to_vm_status"    # step name in database
+            if should_step_run(s_dataset, db_step):
+                # Component = file format type
+                component_files = dataset_mdata["component_fields"]
+                for component in component_files:
+                    bucket_path = dataset_mdata[component]
+                    result = pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id)
+                    if not result["success"]:
+                        raise Exception("Pull GCP Files step failed")
+
+            ###
+            db_step = "convert_metadata_status"
+            if should_step_run(s_dataset, db_step):
+                result = validate_mdata.validate_metadata(dataset_id, session_id, metadata)
                 if not result["success"]:
-                    result["self"] = request.path
-                    return result
+                    raise Exception("Validate Metadata step failed")
 
-        ###
-        db_step = "convert_metadata_status"
-        if should_step_run(s_dataset, db_step):
-            result = validate_mdata.validate_metadata(dataset_id, session_id, metadata)
-            result["self"] = request.path
-            if not result["success"]:
-                result["self"] = request.path
-                return result
+            ###
+            db_step = "convert_to_h5ad_status"
+            if should_step_run(s_dataset, db_step):
+                filetype = dataset_mdata["filetype"]
+                result = write_h5ad.run_write_h5ad(dataset_id, filetype)
+                print(result, file=sys.stderr)
+                if not result["success"]:
+                    raise Exception("Write H5AD step failed")
 
-        ###
-        db_step = "convert_to_h5ad_status"
-        if should_step_run(s_dataset, db_step):
-            filetype = dataset_mdata["filetype"]
-            result = write_h5ad.run_write_h5ad(dataset_id, filetype)
-            if not result["success"]:
-                result["self"] = request.path
-                return result
+            ###
+            db_step = "make_tsne_status"
+            if should_step_run(s_dataset, db_step):
+                result = make_tsne_display(dataset_id, session_id, category, gene)
+                print(result, file=sys.stderr)
+                if not result["success"]:
+                    raise Exception("Make tSNE step failed")
+        except Exception as e:
+            result["message"] = str(e)
+        finally:
+            result["self"] = url_path
+            return result
 
-        ###
-        db_step = "make_tsne_status"
-        if should_step_run(s_dataset, db_step):
-            result = make_tsne_display(dataset_id, session_id, category, gene)
+    result["message"] = "No action operation requested"
+    return result
 
-        result["self"] = request.path
-        return result
-
-    abort(400)
 
 class SubmissionDataset(Resource):
     """Requests to deal with a single submission"""
 
     def get(self, submission_id, dataset_id):
         """Retrieve a particular submission dataset based on ID."""
-        result = {"self":request.path, "href":request.path}
-        try:
-            s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-            result["success"] = True
-            result["dataset_id"] = s_dataset.dataset_id
-            result["identifier"] = s_dataset.nemo_identifier
-            result["share_id"] = s_dataset.dataset.share_id
-            result["status"] = get_db_status(s_dataset)
-            return result
-        except:
+        url_path = request.root_path + request.path
+
+        result = {"self":url_path, "href":url_path}
+
+        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+        if not s_dataset:
             abort(404)
+
+        result["success"] = True
+        result["dataset_id"] = s_dataset.dataset_id
+        result["identifier"] = s_dataset.nemo_identifier
+        result["share_id"] = s_dataset.dataset.share_id
+        result["status"] = get_db_status(s_dataset)
+        result["message"] = s_dataset.log_message
+        return result
 
     def post(self, submission_id, dataset_id):
         # Must have a gEAR account to create submissions
+        url_path = request.root_path + request.path
         session_id = request.cookies.get('gear_session_id')
 
         req = request.get_json()
@@ -223,6 +244,10 @@ class SubmissionDataset(Resource):
         action = req.get("action", None)
         category = req.get("category", None)
         gene = req.get("gene", None)
+
+        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+        if not s_dataset:
+            abort(404)
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
@@ -233,10 +258,10 @@ class SubmissionDataset(Resource):
                 # Connect as a blocking RabbitMQ publisher
                 connection = gearqueue.Connection(host=host, publisher_or_consumer="publisher")
             except Exception as e:
-                return {
-                    'success': -1
-                , 'message': str(e)
-                }
+                s_dataset.save_change(attribute="log_message", value="Could not establish connection as RabbitMQ publisher.")
+                print(f"{request.path} - ERROR - {str(e)}", file=sys.stderr)
+                abort(500)
+
             # Connect as a blocking RabbitMQ publisher
             with connection:
                 connection.open_channel()
@@ -256,16 +281,16 @@ class SubmissionDataset(Resource):
                         on_message_callback=_on_response
                     )
                 except Exception as e:
-                    return {
-                        'success': -1
-                    , 'message': str(e)
-                    }
+                    s_dataset.save_change(attribute="log_message", value="Could not receive reply response from RabbitMQ consumer.")
+                    print(f"{request.path} - ERROR - {str(e)}", file=sys.stderr)
+                    abort(500)
 
                 # Create the publisher
                 payload = {}
                 payload["dataset_id"] = dataset_id
                 payload["metadata"] = metadata
                 payload["session_id"] = session_id
+                payload["url_path"] = url_path
                 payload["action"] = action
                 payload["category"] = category
                 payload["gene"] = gene
@@ -278,22 +303,35 @@ class SubmissionDataset(Resource):
                     )
                     print("[x] Requesting for submission_dataset {}".format(dataset_id), file=sys.stderr)
                 except Exception as e:
-                    return {
-                        'success': -1
-                    , 'message': str(e)
-                    }
+                    s_dataset.save_change(attribute="log_message", value="Could not publish payload to RabbitMQ consumer.")
+                    print(f"{request.path} - ERROR - {str(e)}", file=sys.stderr)
+                    abort(500)
+
                 # Wait for callback to finish, then return the response
                 while not task_finished:
                     pass
                 print("[x] sending payload response for submission_dataset {} back to client".format(dataset_id), file=sys.stderr)
+                if not response["success"]:
+                    print(response["message"], file=sys.stderr)
+                    abort(500)
                 return response
+
         else:
-            return submission_dataset_callback(dataset_id, metadata, session_id, category, gene)
+            result =  submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
+            if not result["success"]:
+                print(result["message"], file=sys.stderr)
+                abort(500)
+            return result
 
 class SubmissionDatasetMember(Resource):
     def put(self, submission_id, dataset_id):
-        result = {"success": False, "message":"", "self": request.path}
+        url_path = request.root_path + request.path
+
+        result = {"success": False, "message":"", "self": url_path}
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+
+        if not s_dataset:
+            abort(404)
 
         # Insert submission members and create new submisison datasets if they do not exist
         try:
@@ -309,14 +347,19 @@ class SubmissionDatasetStatus(Resource):
     def put(self, submission_id, dataset_id):
         req = request.get_json()
         action = req.get("action")
+        url_path = request.root_path + request.path
 
-        result = {"success": False, "self": request.path}
+        result = {"success": False, "self": url_path}
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+
+        if not s_dataset:
+            abort(404)
 
         if action == "reset_steps":
             # Before initializing a new submission, we check this route to see if the current dataset exists
             # If it does and is not complete or loading, need to reset the steps so it can be resumed.
             s_dataset.reset_incomplete_steps()
+            s_dataset.save_change(attribute="log_message", value="")
             result["status"] = get_db_status(s_dataset)
             result["success"] = True
             return result
@@ -332,7 +375,10 @@ class SubmissionDatasets(Resource):
         identifier = req.get("identifier")
         is_restricted = req.get("is_restricted")
 
-        result = {"self":request.path, "message":"", "success": False}
+        # NOTE: Eventually the passed in dataset UUID may be abandoned, so
+        # we may have to create one and check for the existance of the nemo identifier
+
+        result = {"self":request.url, "message":"", "success": False}
 
         if not identifier:
             result["message"] = "NeMO Identifier empty. Cannot load."
@@ -369,7 +415,7 @@ class SubmissionDatasets(Resource):
         result["share_id"] = s_dataset.dataset.share_id
         result["status"] = get_db_status(s_dataset)
 
-        result["href"] = result["self"] + f"/${dataset_id}" # This can be GET-able
+        result["href"] = result["self"] + f"/{dataset_id}" # This can be GET-able
 
         result["success"] = True
         return result

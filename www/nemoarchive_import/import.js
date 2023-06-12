@@ -37,8 +37,10 @@ const notify = (msg, fade=false) => {
     notifyElt.classList.remove("is-hidden");
     notifyBody.textContent = msg;
     if (fade) {
-        notifyElt.classList.replace('show', 'hide');
-        notifyElt.classList.replace('hide', 'is-hidden');
+        setTimeout(() => {
+            notifyElt.classList.add('is-hidden');
+            }, 2000);
+
     }
 }
 
@@ -140,6 +142,20 @@ const getSubmission = async (submissionId) => {
     return jsonRes;
 }
 
+/* Retrieve existing submission_dataset */
+const getSubmissionDataset = async (href) => {
+    // ? Should I use submission_id and dataset_id as args instead?
+    const response = await fetch(href);
+    if (!response?.ok) {
+        throw new Error(response.statusText);
+    }
+    const jsonRes = await response.json();
+    if (!jsonRes.success) {
+        throw new Error(jsonRes.message);
+    }
+    return jsonRes;
+}
+
 /* Create new submission-related entries in database */
 const initializeNewSubmission = async (fileEntities, submissionId) => {
     const { datasets } = await processSubmission(fileEntities, submissionId);
@@ -148,13 +164,19 @@ const initializeNewSubmission = async (fileEntities, submissionId) => {
         // Reset any non-complete, non-loading steps to pending
         const putResponse = await fetch(`${datasets[datasetId].href}/status`, {
             method: "PUT"
-            , body: json.stringify({"action":"reset_steps"})
+            , headers: {"Content-Type": "application/json"}
+            , body: JSON.stringify({"action":"reset_steps"})
         })
         if (!putResponse?.ok) {
-            throw new Error(response.statusText);
+            throw new Error(putResponse.statusText);
         }
         // Set up the dataset row in the submission table
-        initializeDatasetRow(datasets[datasetId])
+        initializeDatasetRow(datasets[datasetId]);
+
+        // Log info about any dataset that could not be initialized
+        if (datasets[datasetId].failed_datasets) {
+            printTblMessage(datasetId, datasets[datasetId].failed_datasets, "danger")
+        }
     }
 }
 
@@ -167,10 +189,10 @@ const initializeDatasetRow = (dataset) => {
     const template = `
     <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
         <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
-        <td id="${datasetId}-pulled-to-vm"></td>
-        <td id="${datasetId}-validate-metadata"></td>
-        <td id="${datasetId}-convert-to-h5ad"></td>
-        <td id="${datasetId}-make-tsne"></td>
+        <td id="${datasetId}-pulled-to-vm" class="has-text-white has-background-warning-dark">Pending</td>
+        <td id="${datasetId}-validate-metadata" class="has-text-white has-background-warning-dark">Pending</td>
+        <td id="${datasetId}-convert-to-h5ad" class="has-text-white has-background-warning-dark">Pending</td>
+        <td id="${datasetId}-make-tsne" class="has-text-white has-background-warning-dark">Pending</td>
         <td id="${datasetId}-messages"></td>
         <td id="${datasetId}-obslevels">Not ready</td>
         <td id="${datasetId}-permalink">Not ready</td>
@@ -186,7 +208,7 @@ const initializeDatasetRow = (dataset) => {
 const isImportComplete = (status) => {
     /* Returns True if step finished */
     // i.e. a non-runnable state. Incomplete steps are reset to "pending" when an import is attempted
-    if (status.make_tsne == "pending") return false;
+    if (status.make_tsne == "pending" || status.make_tsne == "loading") return false;
     return true;
 }
 
@@ -194,8 +216,9 @@ const isImportComplete = (status) => {
 const makeDefaultDisplay = async (datasetId, category, gene) => {
     const params = {"dataset_id": datasetId, "category":category, "gene":gene, "session_id":session_id, "action":'make_display'}
     const response = await fetch(`/api/submission_dataset/${datasetId}`, {
-            method: "POST",
-            body: json.stringify(params)
+            method: "POST"
+            , headers: {"Content-Type": "application/json"}
+            , body: json.stringify(params)
             });
     const jsonRes = await response.json();
     return jsonRes.plot_config;
@@ -218,7 +241,7 @@ const populateObsDropdown = async (datasetId) => {
     const response = await fetch(`/api/h5ad/${datasetId}`);
     const jsonData = await response.json();
     const obsLevels = Object.keys(jsonData.obs_levels);
-    if (!length(obsLevels)) {
+    if (!obsLevels.length) {
         const parent = document.getElementById(`${datasetId}-obslevels`);
         parent.textContent = "No categories found.";
         return
@@ -240,71 +263,84 @@ const populateSubmissionId = (submissionId) => {
 
 /* Retrieve existing submission or add new one. Returns datasets from submission */
 const processSubmission = async (fileEntities, submissionId) => {
-    // Going to attempt to get existing submission (and resume)
-    const getResponse = await fetch(`/api/submissions/${submissionId}`)
-    if (!getResponse?.ok) {
-        throw new Error(getResponse.statusText);
-    }
-    const getJsonRes = await getResponse.json();
-    if (getJsonRes.success) {
-        return getJsonRes;
-    }
 
-    const isRestricted = 0;    // hardcoded for now
-
-    // If existing submission does not exist, create new submission
-    const postParams = {"submission_id": submissionId, "is_restricted": isRestricted };
-    const postResponse = await fetch("/api/submissions", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(postParams)
-        });
-    if (!postResponse?.ok) {
-        throw new Error(postResponse.statusText);
-    }
-
-    const postJsonRes = await postResponse.json();
-    if (!postJsonRes.success) {
-        printTblMessage(datasetId, jsonRes.message, "danger");
-        throw new Error(postJsonRes.message);
-    }
-
-    // NOTE: at this point we have no routes for our submission
-    // Go through the projected dataset routes, and create the ones that do not already exist
-    // If the dataset exists (for another submission), then associate with this submission
-
-    for (const entity in fileEntities) {
-        const datasetId = entity.attributes.id;
-        const identifier = entity.attributes.identifier;
-        const sdParams = {"dataset_id":datasetId, "identifier":identifier, "is_restricted":isRestricted}
-
-        // GET route first
-        const sdGetResponse = await fetch(`/api/submissions/${submissionId}/datasets/${datasetId}`);
-        if (sdGetResponse?.ok) {
-            const sdGetJsonRes = await sdGetResponse.json();
-            if (sdGetJsonRes.success) {
-                postJsonRes.datasets[datasetId] = sdGetJsonRes
-            }
-        } else {
-            // Submission dataset did not already exist... create it
-            const sdPostResponse = await fetch(`/api/submissions/${submissionId}/datasets`, {
-                method:"POST"
-                , body: JSON.stringify(sdParams)
-            });
-            const sdPostJsonRes = await sdPostResponse.json();
-            if (sdPostJsonRes.success) {
-                postJsonRes.datasets[datasetId] = sdPostJsonRes
-            }
+    try {
+        // Going to attempt to get existing submission (and resume)
+        const getResponse = await fetch(`/api/submissions/${submissionId}`)
+        if (!getResponse?.ok) {
+            throw new Error(getResponse.statusText);
+        }
+        const getJsonRes = await getResponse.json();
+        if (!getJsonRes.success) {
+            throw new Error(getJsonRes.message);
         }
 
-        // Save dataset as a new SubmissionMember
-        await fetch(`${postJsonRes.datasets[datasetId].href}/members`, {
-            method:"PUT"
-        })
+        // Append extra dataset information
+        for (const datasetId in getJsonRes.datasets) {
+            getJsonRes.datasets[datasetId] = await getSubmissionDataset(getJsonRes.datasets[datasetId].href);
+        }
+        return getJsonRes
 
+    } catch {
+        const isRestricted = 0;    // hardcoded for now
+
+        // If existing submission does not exist, create new submission
+        const postParams = {"submission_id": submissionId, "is_restricted": isRestricted };
+        const postResponse = await fetch("/api/submissions", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(postParams)
+            });
+        if (!postResponse?.ok) {
+            throw new Error(postResponse.statusText);
+        }
+
+        const postJsonRes = await postResponse.json();
+        if (!postJsonRes.success) {
+            throw new Error(postJsonRes.message);
+        }
+
+        // NOTE: at this point we have no routes for our submission
+        // Go through the projected dataset routes, and create the ones that do not already exist
+        // If the dataset exists (for another submission), then associate with this submission
+
+        for (const entity of fileEntities) {
+            const datasetId = entity.attributes.id;
+            const identifier = entity.attributes.identifier;
+            const sdParams = {"dataset_id":datasetId, "identifier":identifier, "is_restricted":isRestricted}
+
+            const href = `/api/submissions/${submissionId}/datasets/${datasetId}`
+
+            // GET route first
+            try {
+                postJsonRes.datasets[datasetId] = await getSubmissionDataset(href);
+            } catch {
+                // Submission dataset did not already exist... create it
+                const sdPostResponse = await fetch(`/api/submissions/${submissionId}/datasets`, {
+                    method:"POST"
+                    , headers: {"Content-Type": "application/json"}
+                    , body: JSON.stringify(sdParams)
+                });
+                if (! sdPostResponse?.ok) {
+                    postJsonRes.datasets[datasetId].failed_datasets = sdPostResponse.statusText;
+                }
+                const sdPostJsonRes = await sdPostResponse.json();
+                if (sdPostJsonRes.success) {
+                    postJsonRes.datasets[datasetId] = sdPostJsonRes
+                } else {
+                    postJsonRes.datasets[datasetId].failed_datasets = sdPostResponse.message;
+                }
+            }
+
+            // Save dataset as a new SubmissionMember
+            await fetch(`${postJsonRes.datasets[datasetId].href}/members`, {
+                method:"PUT"
+                , headers: {"Content-Type": "application/json"}
+            })
+            // TODO: Create a rollback script in case of failure of submission or datasets;
+        }
+        return postJsonRes;
     }
-
-    return postJsonRes;
 }
 
 const saveNewDisplay = async (datasetId, plotConfig, plotType, label) => {
@@ -346,6 +382,7 @@ const showDatasetPermalink = (datasetId) => {
     const template = `<a href=${permalinkUrl} target="_blank">View Dataset</a>`;
     permalinkRow.innerHTML = template;
 }
+
 /* Update the statuses of the table */
 const updateTblStatus = (datasetId, statuses) => {
     // Initially I had the status HTML elements in <div> to be added as innerHTML.
@@ -397,34 +434,33 @@ const redirect_to_gene_search = (layoutShareId, gene) => {
 /* Poll submission status */
 const pollSubmission = async (submissionId) => {
     // Source -> https://javascript.info/long-polling
-    const { datasets } = await getSubmission(submissionId);
+    const { is_finished: isFinished, datasets } = await getSubmission(submissionId);
 
     const datasetStatus = {}
 
     // Update the statuses
     for (const datasetId in datasets) {
-        const response = await fetch(datasets[datasetId].href);
-        if (!response?.ok) {
-            throw new Error(response.statusText);
-        }
-        const datasetInfo = await response.json();
-
+        const datasetInfo = await getSubmissionDataset(datasets[datasetId].href);
         datasetStatus[datasetId] = datasetInfo.status;
 
         // Set up the dataset row in the submission table
         updateTblStatus(datasetId, datasetInfo.status)
+        printTblMessage(datasetId, datasetInfo.message, "danger")
+
+        if (datasetInfo.status.convert_to_h5ad == "completed") {
+            // Populated categorical observations if possible
+            populateObsDropdown(datasetId);
+        }
 
         const importSuccess = isImportComplete(datasetInfo.status);
         if (importSuccess) {
-            // Populated categorical observations if possible
-            populateObsDropdown(datasetId);
+
             // show permalink
             showDatasetPermalink(datasetId);
 
             if (datasetInfo.status.make_tsne == "completed") {
                 // After the first dataset is finished, we can View Datasets if desired
                 finishElements.importFinish.classList.remove("is-hidden");
-                return;
             }
             // But if final step did not complete, only a partial success
             finishElements.partialSuccess.classList.remove("is-hidden");
@@ -435,13 +471,12 @@ const pollSubmission = async (submissionId) => {
     const isAllComplete = Object.keys(datasetStatus).every( (datasetId) => isImportComplete(datasetStatus[datasetId]) );
 
     // If submission is complete (nothing in runnable state), then exit polling.
-    if (isAllComplete) {
-        // If every dataset was successful, change to a complete success
-        if (finishElements.partialSuccess.classList.contains("is-hidden")) {
-            finishElements.completeSuccess.classList.remove("is-hidden");
-        }
-        return;
+    if (isAllComplete && finishElements.partialSuccess.classList.contains("is-hidden")) {
+        finishElements.completeSuccess.classList.remove("is-hidden");
     }
+
+    //if (isFinished) return;
+    if (isAllComplete) return;
 
     // Pull again after a brief timeout
     setTimeout(() => {pollSubmission(submissionId)}, POLL_TIMEOUT);
@@ -449,9 +484,19 @@ const pollSubmission = async (submissionId) => {
 
 /* Create a brand new submission from JSON contents */
 const createSubmission = async (jsonUrl) => {
+    // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
+    // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
+
+    // Super hacky but sometimes this loads before common.check_for_login completes.
+    setTimeout(() => {CURRENT_USER}, 500);
+    if (! CURRENT_USER?.id) {
+        alert("Must be logged in to import a new submission. Please login and refresh page.");
+        throw("Must be logged in to import a new submission");
+    }
+
     // https://github.github.io/fetch
     //const urlResponse = await fetch(jsonUrl);
-    const urlResponse = await fetch("nemoarchive_import/test.json");
+    const urlResponse = await fetch("nemoarchive_import/test2.json");
     const jsonData = await urlResponse.json();
 
     const submissionId = await grabSubmissionId(jsonData);
@@ -460,22 +505,6 @@ const createSubmission = async (jsonUrl) => {
     submissionElt.dataset.submission_id = submissionId;
     submissionElt.addEventListener("click", () => handleSubmissionLink());
     populateNonSupportedElement();
-
-    const postParams = { "metadata": jsonData, "action":"import" };
-    const postResponse = await fetch(`/api/submissions/${submissionId}`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(postParams)
-        });
-    if (!postResponse?.ok) {
-        throw new Error(postResponse.statusText);
-    }
-
-    const postJsonRes = await postResponse.json();
-    if (!postJsonRes.success) {
-        printTblMessage(datasetId, jsonRes.message, "danger");
-        throw new Error(postJsonRes.message);
-    }
 
     const fileEntities = getFileEntities(jsonData);
     const sampleEntities = getSampleEntities(jsonData);
@@ -488,21 +517,22 @@ const createSubmission = async (jsonUrl) => {
     } catch (error) {
         alert("Something went wrong with saving this submission to database. Please contact gEAR support.");
         console.error(error);
+        return;
     }
+
+    const emailDiv = document.getElementById("email_on_success_div")
+    emailDiv.classList.remove("is-hidden");
 
     // Launch off the new submission import. Since we are polling for status, we do not need to block here.
     const params = { "file_metadata": fileEntities, "sample_metadata":sampleEntities, "action":"import"};
-    //const response = await fetch(`/api/submissions/${submissionId}`, {
     const response = fetch(`/api/submissions/${submissionId}`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(params)
         });
-    if (!response?.ok) {
-        throw new Error(postResponse.statusText);
-    }
 
     // Poll datasets for updates. Function calls itself until importing is finished.
+    // If import has an error, it should at least poll once to show final statuses
     return await pollSubmission(submissionId);
 }
 
@@ -553,6 +583,8 @@ const handleViewDatasets = async () => {
     const collectionName = document.getElementById("collection_name").value;
     const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
     try {
+        // ? Should we save new layout after initializing submission
+        // ? Should we save datasets to layout after import completion
         const {layout_id: layoutId, layout_share_id: layoutShareId} = await saveNewLayout(submissionId, collectionName)
         await Promise.allSettled([...tableRows].map( async (row) => {
             const datasetId = row.dataset.dataset_id;
@@ -619,6 +651,7 @@ const handleEmailButton = async () => {
 
     if (jsonRes.success) {
         notify("A email will be sent when importing has finished. It is safe to close the tab or browser.");
+        return;
     }
     alert("Could not subscribe to email updates. Please contact gEAR support.");
     return
@@ -626,19 +659,12 @@ const handleEmailButton = async () => {
 }
 
 window.onload = () => {
-    // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
-    // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
-
-    if (! CURRENT_USER?.id) {
-        throw("Must be logged in to use this tool")
-    }
 
     // Essentially a "view-only" mode.
     const submissionParam = getUrlParameter("submission_id")
     if (submissionParam) {
         return viewSubmission(submissionParam);
     }
-
 
     // URI and it's component is encoded so need to decode all that
     // https://thisthat.dev/encode-uri-vs-encode-uri-component/
