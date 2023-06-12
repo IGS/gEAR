@@ -166,7 +166,7 @@ class DatasetCollectionPanel {
             });
         } else {
             //Was a search already performed?
-            if (this.search_performed) {
+            if (this.search_performed && !projection) {
                 // User has already searched, automatically update datasets and gene searches
                 update_datasetframes_generesults();
             }
