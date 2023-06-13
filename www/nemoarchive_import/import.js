@@ -129,14 +129,11 @@ const getDefaultDisplay = async (datasetId) => {
 /* Retrieve existing submission */
 const getSubmission = async (submissionId) => {
     // Going to attempt to get existing submission
-    const response = await fetch(`/api/submissions/${submissionId}`)
-    if (!response?.ok) {
-        throw new Error(response.statusText);
-    }
+    const response = await fetch(`/api/submissions/${submissionId}`);
+    // NOTE: This is actually OK for situations where we want to check the submission exists before creating a new one
+    if (!response?.ok) throw new Error(response.statusText);
     const jsonRes = await response.json();
-    if (!jsonRes.success) {
-        throw new Error(jsonRes.message);
-    }
+    if (!jsonRes.success) throw new Error(jsonRes.message);
 
     // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
     return jsonRes;
@@ -505,7 +502,7 @@ const createSubmission = async (jsonUrl) => {
 
     // https://github.github.io/fetch
     //const urlResponse = await fetch(jsonUrl);
-    const urlResponse = await fetch("nemoarchive_import/test2.json");
+    const urlResponse = await fetch("nemoarchive_import/test3.json");
     const jsonData = await urlResponse.json();
 
     const submissionId = await grabSubmissionId(jsonData);

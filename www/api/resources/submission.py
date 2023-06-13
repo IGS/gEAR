@@ -4,6 +4,7 @@ from flask import request
 from flask_restful import Resource, abort
 import os,sys
 import requests
+import asyncio, aiohttp
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -141,14 +142,9 @@ class Submission(Resource):
         submission.datasets = geardb.SubmissionDatasetCollection().get_by_submission_id(submission_id=submission_id)
 
         if action == "import":
-            dataset_results = {}
-
-            all_success = True  # Every dataset import was successful
-            partial_success = False # At least one dataset import was successful
-            num_failures = 0
-
-            # TODO: make async
-            for s_dataset in submission.datasets:
+            async def import_dataset(s_dataset):
+                nonlocal file_metadata
+                nonlocal sample_metadata
 
                 dataset_id = s_dataset.dataset_id
                 identifier = s_dataset.nemo_identifier
@@ -162,44 +158,68 @@ class Submission(Resource):
                     , "sample": sample_attributes
                     }
 
-                # Call NeMO Archive assets API using identifier
-                try:
-                    #result = requests.post(f"https://nemoarchive.org/asset/derived/{identifier}")
-                    result = requests.get(f"http://localhost/api/mock_identifier/{identifier}", verify=False)
-                    result.raise_for_status()
-                except Exception as e:
-                    s_dataset.save_change(attribute="log_message", value=str(e))
-                    continue
+                result = {"success": False, "dataset_id": dataset_id}
 
-                decoded_result = result.json()
-                api_metadata = decoded_result["metadata"]
+                async with aiohttp.ClientSession() as session:
+                    # Call NeMO Archive assets API using identifier
+                    try:
+                        #url = f"https://nemoarchive.org/asset/derived/{identifier}"
+                        url = f"http://localhost/api/mock_identifier/{identifier}"
+                        async with session.get(url
+                                , verify_ssl=False
+                                , raise_for_status=True) as resp:
+                            api_result = await resp.json()
+                    except Exception as e:
+                        s_dataset.save_change(attribute="log_message", value=str(e))
+                        return result
 
-                # TODO: Eventually get everything from API
-                all_metadata = {
-                    "dataset": {**all_attributes["dataset"], **api_metadata["dataset"]}
-                    , "sample": {**all_attributes["sample"], **api_metadata["sample"]}
-                }
+                    api_metadata = api_result["metadata"]
 
-                # Start the import process for each dataset
-                params = {"metadata": all_metadata, "action": "import"}
-                try:
-                    result = requests.post(f"http://localhost/{url_path}" + f"/datasets/{dataset_id}"
-                        , json=params
-                        , cookies={"gear_session_id":session_id}
-                        , verify=False)
-                    result.raise_for_status()
-                except Exception as e:
+                    # TODO: Eventually get everything from API
+                    all_metadata = {
+                        "dataset": {**all_attributes["dataset"], **api_metadata["dataset"]}
+                        , "sample": {**all_attributes["sample"], **api_metadata["sample"]}
+                    }
+
+                    # Start the import process for each dataset
+                    params = {"metadata": all_metadata, "action": "import"}
+                    try:
+                        url = f"http://localhost/{url_path}" + f"/datasets/{dataset_id}"
+                        async with session.post(url
+                                , json=params
+                                , cookies={"gear_session_id":session_id}
+                                , verify_ssl=False
+                                , raise_for_status=True) as resp:
+                            import_result = await resp.json()
+                    except Exception as e:
+                        print(str(e), file=sys.stderr)
+                        return result
+
+                result = import_result # should have "success" = True in here
+                result["filetype"] = all_metadata["dataset"]["filetype"]
+                result["dataset_id"] = dataset_id
+                return result
+
+            coros = [import_dataset(s_dataset) for s_dataset in submission.datasets]
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            tasks = asyncio.gather(*coros, return_exceptions=True)  # We don't want exceptions to crash the other tasks
+            results = loop.run_until_complete(tasks)
+
+            all_success = True  # Every dataset import was successful
+            partial_success = False # At least one dataset import was successful
+            num_failures = 0
+            dataset_results = {}
+
+            for res in results:
+                if isinstance(res, Exception):
+                    # TODO: what to do here
                     print(str(e), file=sys.stderr)
-                    num_failures += 1
-                    all_success = False
-                    continue
 
-                decoded_result = result.json()
+                dataset_id = res["dataset_id"]
+                dataset_results[dataset_id] = res
 
-                dataset_results[dataset_id] = decoded_result
-                dataset_results[dataset_id]["filetype"] = all_metadata["dataset"]["filetype"]
-
-                if dataset_results[dataset_id]["success"]:
+                if res["success"]:
                     partial_success = True
                 else:
                     num_failures += 1
@@ -281,12 +301,17 @@ class Submissions(Resource):
                                 is_current=0, members=None)
             layout.save()
             result['layout_share_id'] = layout.share_id
-            submission.save_change(attribute="layout_id", value=layout.id)
+            cursor.close()
+            conn.commit()   # So Submission transaction is saved
 
+            cursor = conn.get_cursor()
+            submission = geardb.get_submission_by_id(submission_id)
+            submission.save_change(attribute="layout_id", value=layout.id)
             cursor.close()
             conn.commit()
             conn.close()
-        except:
+        except Exception as e:
+            print(str(e), file=sys.stderr)
             abort(400, message="Could not save new submission to database")
 
         result["href"] = result["self"] + f"/{submission_id}" # This can be GET-able
