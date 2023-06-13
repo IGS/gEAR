@@ -21,3 +21,6 @@ img#checking_indicator {
     width: 30px;
     margin-right: 10px;
 }
+#not_supported_p{
+    display: none;
+}

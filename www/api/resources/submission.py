@@ -44,16 +44,16 @@ def send_email(result, submission, user_email):
 
     text = f"This message is to inform you that your recent dataset import on {domain_short_label} with submission ID {submission_id} has finished."
     if result["all_success"]:
-        text += "It looks like every dataset was successfully imported."
+        text += " It looks like every dataset was successfully imported."
     elif result["partial_success"]:
-        text += f"While some datasets were successfully imported, we encountered some issues importing {num_failures} of the datasets."
+        text += f" While some datasets were successfully imported, we encountered some issues importing {num_failures} of the datasets."
     else:
         text += f" Unfortunately, it appears that all {num_datasets} datasets for this submission ran into issues during the import process."
 
-    text += f"\n\nYou can view the status of all datasets at {domain_url}/nemoarchive_import/import.html?submission_id={submission_id}. "
+    text += f"\n\nYou can view the status of all datasets at {domain_url}/nemoarchive_import/import.html?submission_id={submission_id}."
     if result["partial_success"]:
-        text += "Each successfully imported dataset has a link to view the dataset on the gene expression search page. "
-        text += "We performed a basic Seurat analysis on the dataset and created a tSNE display, but we encourage you to curate your own displays to support your own research (see https://umgear.org/manual.html?doc=curation for documentation). "
+        text += " Each successfully imported dataset has a link to view the dataset on the gene expression search page."
+        text += f" We performed a basic Seurat analysis on the dataset and created a tSNE display, but we encourage you to curate your own displays to support your own research (see {domain_url}/manual.html?doc=curation for documentation)."
 
     if layout_share_id:
         text += f"\n\nYou can also view all dataset displays as a collection by going to {domain_url}/p?l=${layout_share_id} (you will need to search for a gene to show the displays)."
@@ -81,19 +81,29 @@ class Submission(Resource):
     def get(self, submission_id):
         """Retrieve a particular submission based on ID."""
         url_path = request.root_path + request.path
-        result = {"self": url_path, "success":False, "datasets":{}, "layout_share_id":None, "is_finished":False}
+        result = {
+            "self": url_path
+            , "success":False
+            , "datasets":{}
+            , "layout_share_id":None
+            , "is_finished":False
+            , "is_submitter":False
+            }
 
         session_id = request.cookies.get('gear_session_id')
-        # Must have a gEAR account to upload datasets
-        user = geardb.get_user_from_session_id(session_id)
+        user_id = geardb.get_user_id_from_session_id(session_id)
 
         submission = geardb.get_submission_by_id(submission_id)
         if not submission:
             abort(404)
 
+        if user_id == submission.user_id:
+            result["is_submitter"] = True
+
         layout = submission.get_layout_info()
         if layout:
             result["layout_share_id"] = layout.share_id
+            result["collection_name"] = layout.label
 
         result["is_finished"] = bool(submission.is_finished)
 
@@ -195,7 +205,7 @@ class Submission(Resource):
                     num_failures += 1
                     all_success = False
 
-            #submission.save_change(attribute="is_finished", value=1)
+            submission.save_change(attribute="is_finished", value=1)
 
             result = {"self":url_path
                     , "datasets":dataset_results
@@ -259,6 +269,15 @@ class Submissions(Resource):
             """
 
             cursor.execute(qry, (submission_id, user.id, is_restricted))
+
+            # Save submission as a layout
+            layout_name = f"Submission {submission_id}"
+            layout = geardb.Layout(user_id=user.id, label=layout_name,
+                                is_current=0, members=None)
+            layout.save()
+            result['layout_share_id'] = layout.share_id
+            submission.save_change(attribute="layout_id", value=layout.id)
+
             cursor.close()
             conn.commit()
             conn.close()
