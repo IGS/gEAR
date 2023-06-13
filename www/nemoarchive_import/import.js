@@ -229,9 +229,9 @@ const populateNonSupportedElement = () => {
     const notSupported = getUrlParameter('notsupported') || 0;
     const notSupportedEl = document.querySelector("#not_supported");
     notSupportedEl.textContent = notSupported;
-    if (parseInt(notSupported) === 0) {
+    if (parseInt(notSupported) > 0) {
         const notSupportedP = document.querySelector("#not_supported_p");
-        notSupportedP.style.display = "none";
+        notSupportedP.style.display = "block";
     }
 }
 
@@ -278,6 +278,15 @@ const processSubmission = async (fileEntities, submissionId) => {
         // Append extra dataset information
         for (const datasetId in getJsonRes.datasets) {
             getJsonRes.datasets[datasetId] = await getSubmissionDataset(getJsonRes.datasets[datasetId].href);
+        }
+
+        // Prepopulate collection name if previously added
+        if (getJsonRes.collectionName) {
+            document.getElementById("collection_name").value = collectionName;
+        }
+        // If this is a different user viewing the submission, disable naming the layout
+        if (! getJsonRes.isSubmitter) {
+            document.getElementById("collection_name").disabled = "disabled";
         }
         return getJsonRes
 
@@ -366,10 +375,10 @@ const saveDefaultDisplay = async (datasetId, displayId) => {
     return jsonRes.default_display_id;
 }
 
-const saveNewLayout = async (submissionId, collectionName) => {
-    const response = await fetch("./cgi/nemoarchive_add_submission_layout.cgi", {
+const updateLayoutName = async (submissionId, collectionName) => {
+    const response = await fetch("./cgi/nemoarchive_update_submission_layout_namecgi", {
         method: "POST",
-        body: convertToFormData({session_id, submission_id: submissionId, layout_name: collectionName})
+        body: convertToFormData({submission_id: submissionId, layout_name: collectionName})
         });
     return await response.json();
 }
@@ -542,7 +551,17 @@ const viewSubmission = async (submissionParam) => {
     const submissionElt = document.getElementById("submission_title");
     submissionElt.dataset.submission_id = submissionParam;
     populateSubmissionId(submissionParam);
-    const { layout_share_id: layoutShareId, datasets } = await getSubmission(submissionParam);
+    const { layout_share_id: layoutShareId, collection_name: collectionName, is_submitter: isSubmitter, datasets } = await getSubmission(submissionParam);
+
+    // Prepopulate collection name if previously added
+    if (collectionName) {
+        document.getElementById("collection_name").value = collectionName;
+    }
+    // If this is a different user viewing the submission, disable naming the layout
+    if (! isSubmitter) {
+        document.getElementById("collection_name").disabled = "disabled";
+    }
+
     // Set up the rows
     for (const datasetId in datasets) {
         const response = await fetch(datasets[datasetId].href);
@@ -569,23 +588,19 @@ const handleViewDatasets = async () => {
 
     const gene = document.getElementById("global_gene_selection").value;
 
-    // If submission already has an associated layout, we do not want to change it.
-    // Just redirect to the gene search
-    if (submissionElt.dataset.layout_share_id) {
-        redirect_to_gene_search(submissionElt.dataset.layout_share_id, gene);
-        return;
-    }
-
     const plotType = "tsne_static";
     const label = "nemoanalytics import default plot";
 
     // Save new layout for submisison if it does not exist
     const collectionName = document.getElementById("collection_name").value;
+    if (collectionName) {
+        await updateLayoutName(submissionId, collectionName)
+    }
+
     const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
     try {
-        // ? Should we save new layout after initializing submission
-        // ? Should we save datasets to layout after import completion
-        const {layout_id: layoutId, layout_share_id: layoutShareId} = await saveNewLayout(submissionId, collectionName)
+
+
         await Promise.allSettled([...tableRows].map( async (row) => {
             const datasetId = row.dataset.dataset_id;
 
@@ -593,9 +608,6 @@ const handleViewDatasets = async () => {
                 console.info(`Dataset ${datasetId} did not finish. Cannot save displays or to layout.`)
                 return;
             }
-
-            // Add completed datasets to layout (easy since they are in submission)
-            await addDatasetToLayout(datasetId, layoutId)
 
             // If select dropdown is not present, then there is no category to plot by.
             const obsLevel = document.getElementById(`${datasetId}-obslevels`);
@@ -629,7 +641,7 @@ const handleViewDatasets = async () => {
         }));
 
         // Redirect to layout share ID
-        redirect_to_gene_search(layoutShareId, gene);
+        redirect_to_gene_search(submissionElt.dataset.layout_share_id, gene);
 
     } catch (e) {
         console.warn(`Submission ${submissionId} already has layout ID. Not saving new datasets.`)

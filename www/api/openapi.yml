@@ -76,9 +76,15 @@ paths:
                   layout_share_id:
                     type: string
                     description: Permalink profile share identifier for this submission, if created
+                  collection_name:
+                    type: string
+                    description: Name of the profile for this submission, if provided
                   is_finished:
                     type: string
                     description: True if the submission import has finished.
+                  is_submitter:
+                    type: boolean
+                    description: True, if the logged-in user the one who owns this submission
         '404':
           description: Submission was not found
     delete:

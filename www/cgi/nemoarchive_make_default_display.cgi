@@ -4,6 +4,7 @@
 
 import json, cgi
 import sys, shutil
+import requests
 from pathlib import Path
 import scanpy as sc
 
@@ -35,6 +36,9 @@ MIN_DISPERSION = 0.5
 N_NEIGHBORS = 10
 N_PCS = 40
 
+PLOT_TYPE = "tsne_static"
+LABEL = "nemoanalytics import default plot"
+
 DB_STEP = "make_tsne_status"    # step name in database
 
 
@@ -43,8 +47,7 @@ def get_analysis(dataset_id, user_id):
 
 def make_default_display(dataset_id, session_id, category=None, gene=None):
     # Must have a gEAR account to upload datasets
-    user = geardb.get_user_from_session_id(session_id)
-    user_id = user.id
+    user_id = geardb.get_user_id_from_session_id(session_id)
 
     result = {'success':False}
 
@@ -169,10 +172,36 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
             , "type": analysis_json["type"]
             }
         }
-    result["success"] = True
     result["plot_config"] = plot_config
 
-    s_dataset.save_change(attribute=DB_STEP, value="completed")
+    params = {
+        "user_id": user_id
+        , "dataset_id": dataset_id
+        , "plotly_config": json.dumps(plot_config)
+        , "plot_type": PLOT_TYPE
+        , "label": LABEL
+    }
+    try:
+        post_result = requests.post("http://localhost/cgi/save_dataset_display.cgi", data=params, verify=False)
+        post_result.raise_for_status()
+        decoded_result = post_result.json()
+        display_id = decoded_result["display_id"]
+        params = {
+            "user_id": user_id
+            , "dataset_id": dataset_id
+            , "display_id": display_id
+        }
+        post_result = requests.post("http://localhost/cgi/save_default_display.cgi", data=params, verify=False)
+        post_result.raise_for_status()
+        decoded_result = post_result.json()
+        s_dataset.save_change(attribute=DB_STEP, value="completed")
+
+        result["success"] = True
+    except Exception as e:
+        print(str(e), file=sys.stderr)
+        s_dataset.save_change(attribute="log_message", value=str(e))
+        s_dataset.save_change(attribute=DB_STEP, value="failed")
+        result["success"] = False
 
     return result
 

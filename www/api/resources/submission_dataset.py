@@ -115,50 +115,13 @@ def insert_minimal_dataset(dataset_id, identifier):
     conn.commit()
     conn.close()
 
-def make_tsne_display(dataset_id, session_id, category=None, gene=None):
-    import requests
-
-    result = make_display.make_default_display(dataset_id, session_id, category, gene)
-
-    plot_type = "tsne_static"
-    label = "nemoanalytics import default plot"
-
-    user_id = geardb.get_user_id_from_session_id(session_id)
-
-    params = {
-        "user_id": user_id
-        , "dataset_id": dataset_id
-        , "plotly_config": result["plot_config"]
-        , "plot_type": plot_type
-        , "label": label
-    }
-    try:
-        result = requests.post("http://localhost/cgi/save_dataset_display.cgi", json=params, verify=False)
-        result.raise_for_status()
-        decoded_result = result.json()
-        display_id = decoded_result["display_id"]
-        params = {
-            "user_id": user_id
-            , "dataset_id": dataset_id
-            , "display_id": display_id
-        }
-        result = requests.post("http://localhost/cgi/save_default_display.cgi", json=params, verify=False)
-        result.raise_for_status()
-        result = result.json()
-        result["success"] = True
-    except Exception as e:
-        result["message"] = str(e)
-        print(str(e), file=sys.stderr)
-        result["success"] = False
-    return result
-
 def submission_dataset_callback(dataset_id, metadata, session_id, url_path, action=None, category=None, gene=None):
     """Run all steps to import a single dataset."""
 
     result = {"success" : False}
 
     if action == "make_display":
-        result = make_tsne_display(dataset_id, session_id, category, gene)
+        result = make_display.make_default_display(dataset_id, session_id, category, gene)
         result["self"] = url_path
         return result
 
@@ -192,15 +155,13 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
             if should_step_run(s_dataset, db_step):
                 filetype = dataset_mdata["filetype"]
                 result = write_h5ad.run_write_h5ad(dataset_id, filetype)
-                print(result, file=sys.stderr)
                 if not result["success"]:
                     raise Exception("Write H5AD step failed")
 
             ###
             db_step = "make_tsne_status"
             if should_step_run(s_dataset, db_step):
-                result = make_tsne_display(dataset_id, session_id, category, gene)
-                print(result, file=sys.stderr)
+                result = make_display.make_default_display(dataset_id, session_id, category, gene)
                 if not result["success"]:
                     raise Exception("Make tSNE step failed")
         except Exception as e:
@@ -327,6 +288,9 @@ class SubmissionDatasetMember(Resource):
     def put(self, submission_id, dataset_id):
         url_path = request.root_path + request.path
 
+        session_id = request.cookies.get('gear_session_id')
+        user_id = geardb.get_user_id_from_session_id(session_id)
+
         result = {"success": False, "message":"", "self": url_path}
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
@@ -336,6 +300,22 @@ class SubmissionDatasetMember(Resource):
         # Insert submission members and create new submisison datasets if they do not exist
         try:
             save_submission_member(submission_id, s_dataset)
+
+            # ? Should this go in a separate API function, like /layout
+            # Let's save the dataset to the submission layout while we are at it
+            submission = geardb.get_submission_by_id(submission_id)
+            if not submission:
+                abort(404)
+
+            layout = submission.get_layout_info()
+            # make sure the user owns the layout
+            gpos = len(layout.members) + 1
+
+            # This shoud never be an issue here (copied from add_dataset_to_layout.cgi)
+            if user_id == layout.user_id:
+                lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4, mg_grid_width=12)
+                layout.add_member(lm)
+
         except Exception as e:
             print(str(e), file=sys.stderr)
             result["message"] = f"Could not save dataset {dataset_id} as a new SubmissionMember in database"
