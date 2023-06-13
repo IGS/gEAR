@@ -249,11 +249,16 @@ class Submissions(Resource):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
 
+        result = {"self": url_path, "success":False, "datasets":{}, "layout_share_id":None, "message":""}
+
+        if not user:
+            result["message"] = "User not logged in."
+            return result
+
         req = request.get_json()
         submission_id = req.get("submission_id")
         is_restricted = req.get("is_restricted")
 
-        result = {"self": url_path, "success":False, "datasets":{}, "layout_share_id":None, "message":""}
 
         submission = geardb.get_submission_by_id(submission_id)
         if submission:

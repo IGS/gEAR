@@ -292,6 +292,11 @@ class SubmissionDatasetMember(Resource):
         user_id = geardb.get_user_id_from_session_id(session_id)
 
         result = {"success": False, "message":"", "self": url_path}
+
+        if not user_id:
+            result["message"] = "User not logged in."
+            return result
+
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
         if not s_dataset:
