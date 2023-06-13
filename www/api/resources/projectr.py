@@ -196,22 +196,6 @@ def limited_as_completed(coros, limit):
                     except StopIteration as e:
                         pass
                     return f.result()
-
-    async def first_to_finish_nonworking():
-        nonlocal futures
-        # Suggested by commenter "ruslan" in the URL. Using "while True" can be CPU-intensive
-        # EDIT: not using this for the time being, as some chunks are dropped
-        done, futures = await asyncio.wait(futures, return_when=asyncio.FIRST_COMPLETED)
-        # then re-fill the set of futures from the coros iterable
-        try:
-            newf = next(coros)
-            futures.add(
-                asyncio.ensure_future(newf))
-        except StopIteration as e:
-            pass
-        # Pass the new done results back
-        return done.pop().result()
-
     while futures:
         yield first_to_finish()
 
