@@ -124,8 +124,9 @@ def main():
             var = df[df.columns[:2]]
             var.set_index(var.columns[0], inplace=True)
             for gene_sym in var[var.columns[0]]:
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+                if len(gene_sym):
+                    gene = geardb.Gene(gene_symbol=gene_sym)
+                    gc.add_gene(gene)
 
             # Remaining columns make adata.X
             X = df[df.columns[2:]].transpose().to_numpy()
