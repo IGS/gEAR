@@ -2530,7 +2530,7 @@ class GeneCart:
 
     def add_gene(self, gene):
         # Remove quotes 
-        gene = gene.replace('"', '').replace("'", '')
+        gene.gene_symbol = gene.gene_symbol.replace('"', '').replace("'", '')
 
         if gene == '':
             raise Exception("ERROR: attempted to add an empty string as a gene symbol")
