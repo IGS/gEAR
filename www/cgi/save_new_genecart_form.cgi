@@ -77,8 +77,9 @@ def main():
             pasted_genes = re.sub(r"\s+", " ", pasted_genes)
 
             for gene_sym in pasted_genes.split(' '):
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+                if len(gene_sym):
+                    gene = geardb.Gene(gene_symbol=gene_sym)
+                    gc.add_gene(gene)
         else:
             raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
 
