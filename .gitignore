@@ -17,3 +17,4 @@ www/datasets_epigenetic/uploads/files/*
 www/.DS_Store
 www/.cache
 .DS_Store
+*.pyc
