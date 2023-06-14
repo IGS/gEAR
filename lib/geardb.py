@@ -2529,6 +2529,12 @@ class GeneCart:
         return json.dumps(self.__dict__)
 
     def add_gene(self, gene):
+        # Remove quotes 
+        gene = gene.replace('"', '').replace("'", '')
+
+        if gene == '':
+            raise Exception("ERROR: attempted to add an empty string as a gene symbol")
+
         self.genes.append(gene)
 
     def get_genes(self):
