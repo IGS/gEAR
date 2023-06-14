@@ -22,7 +22,6 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
     layout_name = form.getvalue('layout_name')
     submission_id = form.getvalue("submission_id")
 
@@ -32,29 +31,23 @@ def main():
     if not layout_name:
         layout_name = f"Submission {submission_id}"
 
-    user = geardb.get_user_from_session_id(session_id)
-
     # Throw error if submission already has layout associated.
     # Submissions must have one-to-one relationships with layouts.
     submission = geardb.get_submission_by_id(submission_id)
-    if submission.layout_id:
-        error =  f"Submission already has an associated layout {submission.layout_id}. Aborting."
+    if not submission.layout_id:
+        error =  f"Submission does not have an associated layout id. Aborting."
         result = {'error':error}
         print(json.dumps(result))
         return
 
-    if user is None:
-        result = {'error':[]}
-        error = "Not able to add layout. User must be logged in."
-        result['error'] = error
-    else:
-        layout = geardb.Layout(user_id=user.id, label=layout_name,
-                               is_current=0, members=None)
-        layout.save()
-        result = {'layout_id': layout.id,
-                  'layout_label': layout.label,
-                  'layout_share_id': layout.share_id
-        }
+    layout = geardb.Layout()
+    layout.load(submission.layout_id)
+
+    layout.save_change(attribute="label", value=layout_name)
+    result = {'layout_id': layout.id,
+            'layout_label': layout.label,
+            'layout_share_id': layout.share_id
+    }
 
     # Associate layout with submission.
     submission.save_change(attribute="layout_id", value=layout.id)

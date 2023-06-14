@@ -54,6 +54,7 @@ RUN apt-get -qq update \
   python3-tk \
   openssh-server \
   llvm \
+  # TODO: Re-add R stuff from here https://github.com/IGS/gEAR/tree/611717853afe88003a2d2767afc019f7938ad570
   # Apache2 and PHP
   libapache2-mod-wsgi-py3 \
   apache2-dev \
@@ -82,7 +83,6 @@ RUN wget $CMAKE_URL \
   && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
 
 # Install Python (with configuration options needed for gEAR)
-# TODO: test using a apt install instead, now that virtualenv is not needed
 WORKDIR /tmp
 RUN wget $PYTHON_URL \
   && tar -xf Python-${PYTHON_VERSION}.tar.xz \

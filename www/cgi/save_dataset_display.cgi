@@ -145,7 +145,7 @@ def main():
     config["plot_type"] = plot_type
 
     success = False
-    url = "https://localhost/api/plot/{}".format(dataset_id)
+    url = "http://localhost/api/plot/{}".format(dataset_id)
     try:
         if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
             success = make_static_plotly_graph(filename, config, url)

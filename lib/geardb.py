@@ -71,7 +71,7 @@ this.links_out = _read_domain_links_out()
 
 def find_importer_id():
     """Find and return gear importer user ID"""
-    importer_id = this.servercfg["nemoanalytics_import"]["importer_id"]
+    importer_id = this.servercfg["nemoarchive_import"]["importer_id"]
     return get_user_by_id(importer_id)
 
 def get_dataset_by_id(id=None, include_shape=None):
@@ -311,16 +311,16 @@ def get_submission_by_id(id):
     submission = None
 
     qry = """
-        SELECT id, user_id, layout_id, is_finished, is_restricted, date_added
+        SELECT id, user_id, layout_id, is_finished, is_restricted, date_added, email_updates
         FROM submission
         WHERE id = %s
     """
 
     cursor.execute(qry, (id, ))
 
-    for (id, user_id, layout_id, is_finished, is_restricted, date_added) in cursor:
+    for (id, user_id, layout_id, is_finished, is_restricted, date_added, email_updates) in cursor:
         submission = Submission(id=id, user_id=user_id, layout_id=layout_id,
-                is_finished=is_finished, is_restricted=is_restricted, date_added=date_added)
+                is_finished=is_finished, is_restricted=is_restricted, date_added=date_added, email_updates=email_updates)
         break
 
     cursor.close()
@@ -338,7 +338,7 @@ def get_submission_dataset_by_dataset_id(id):
 
     qry = """
         SELECT id, dataset_id, nemo_identifier, pulled_to_vm_status,
-            convert_metadata_status, convert_to_h5ad_status, is_restricted
+            convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted
         FROM submission_dataset
         WHERE dataset_id = %s
     """
@@ -346,11 +346,42 @@ def get_submission_dataset_by_dataset_id(id):
     cursor.execute(qry, (id, ))
 
     for (id, dataset_id, nemo_identifier, pulled_to_vm_status,
-        convert_metadata_status, convert_to_h5ad_status, is_restricted) in cursor:
+        convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted) in cursor:
         submission_dataset = SubmissionDataset(id=id, dataset_id=dataset_id,
                 nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
                 convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
-                is_restricted=is_restricted)
+                make_tsne_status=make_tsne_status, log_message=log_message, is_restricted=is_restricted)
+        submission_dataset.get_dataset_info()
+        break
+
+    cursor.close()
+    conn.close()
+    return submission_dataset
+
+def get_submission_dataset_by_nemo_identifier(identifier):
+    """
+    Get submission dataset by searching for the corresponding NeMO Archive identifier
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+    submission_dataset = None
+
+    qry = """
+        SELECT id, dataset_id, nemo_identifier, pulled_to_vm_status,
+            convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted
+        FROM submission_dataset
+        WHERE nemo_identifier = %s
+    """
+
+    cursor.execute(qry, (identifier, ))
+
+    for (id, dataset_id, nemo_identifier, pulled_to_vm_status,
+        convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted) in cursor:
+        submission_dataset = SubmissionDataset(id=id, dataset_id=dataset_id,
+                nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
+                convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
+                make_tsne_status=make_tsne_status, log_message=log_message, is_restricted=is_restricted)
         submission_dataset.get_dataset_info()
         break
 
@@ -1129,6 +1160,33 @@ class Layout:
 
     # TODO: Need a function to take a DatasetCollection and populate
     #  information on it within a layout
+
+    def save_change(self, attribute=None, value=None):
+        """
+        Update a submission dataset attribute, both in the object and the relational database
+        """
+        if self.id is None:
+            raise Exception("Error: no submission id. Cannot save change.")
+        if attribute is None:
+            raise Exception("Error: no attribute given. Cannot save change.")
+
+        ## quick sanitization of attribute
+        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
+        setattr(self, attribute, value)
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        save_sql = """
+            UPDATE layout
+            SET {0} = %s
+            WHERE id = %s
+        """.format(attribute)
+        cursor.execute(save_sql, (str(value), self.id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
 
 @dataclass
 class LayoutCollection:
@@ -2937,6 +2995,29 @@ class SubmissionMember:
         conn.commit()
         conn.close()
 
+    def does_submission_member_exist(self):
+        """Simple check to see if submission exists."""
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        sm_id = None
+
+        qry = """
+            SELECT id FROM submission_member
+            WHERE submission_id = %s AND submission_dataset_id = %s
+        """
+        cursor.execute(qry, (self.submission_id, self.submission_dataset_id))
+        for row in cursor:
+            sm_id = row[0]
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+        if sm_id:
+            return True
+        return False
+
 @dataclass
 class Submission:
     """
@@ -2949,6 +3030,7 @@ class Submission:
     is_finished: int = None
     is_restricted: int = None
     date_added: datetime.datetime = None
+    email_updates: int = None
     datasets = None
 
     def __repr__(self):
@@ -2984,6 +3066,24 @@ class Submission:
         cursor.close()
         conn.close()
 
+    def remove(self):
+        """
+        Deletes the current submission from the database. Cascades to submission_members.
+        """
+        self.remove_all_members()
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              DELETE FROM submission
+              WHERE id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        cursor.close()
+        conn.commit()
+
 @dataclass
 class SubmissionCollection:
     submissions: List[Submission] = field(default_factory=list)
@@ -3011,9 +3111,38 @@ class SubmissionCollection:
         cursor = conn.get_cursor()
         cursor.execute(query, (dataset_id, ))
 
-        for (id, user_id, layout_id, is_finished, is_restricted, date_added) in cursor:
+        for (id, user_id, layout_id, is_finished, is_restricted, date_added, email_updates) in cursor:
             submission = Submission(id=id, user_id=user_id, layout_id=layout_id,
-                    is_finished=is_finished, is_restricted=is_restricted, date_added=date_added)
+                    is_finished=is_finished, is_restricted=is_restricted, date_added=date_added
+                    ,email_updates=email_updates)
+            self.submissions.append(submission)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return self.submissions
+
+    def get_by_nemo_identifier(self, identifier):
+        """
+        Return a list of submissions that this NeMO Archive identifier belongs to
+        """
+
+        query = """
+            SELECT s.* from submission s
+            JOIN submission_member sm on sm.submission_id = s.id
+            JOIN submission_dataset sd on sm.submission_dataset_id = sd.id
+            WHERE sd.nemo_identifier = %s
+        """
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(query, (identifier, ))
+
+        for (id, user_id, layout_id, is_finished, is_restricted, date_added, email_updates) in cursor:
+            submission = Submission(id=id, user_id=user_id, layout_id=layout_id,
+                    is_finished=is_finished, is_restricted=is_restricted, date_added=date_added
+                    ,email_updates=email_updates)
             self.submissions.append(submission)
 
         conn.commit()
@@ -3034,6 +3163,8 @@ class SubmissionDataset:
     pulled_to_vm_status: int = None #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
     convert_metadata_status: int = None   #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
     convert_to_h5ad_status: int = None  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    make_tsne_status: int = None  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    log_message: str = ""
     is_restricted: int = None
     dataset: Dataset = None
     submissions = None
@@ -3049,17 +3180,19 @@ class SubmissionDataset:
 
     def save(self):
         """
-        Adds a new Submission to the database
+        Adds a new SubmissionDataset to the database
         """
         conn = Connection()
         cursor = conn.get_cursor()
 
         if self.id is None:
             qry = """
-                INSERT INTO submission_dataset (dataset_id, nemo_identifier, pulled_to_vm_status, convert_metadata_status, convert_to_h5ad_status, is_restricted)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO submission_dataset (dataset_id, nemo_identifier, pulled_to_vm_status, convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
-            cursor.execute(qry, (self.dataset_id, self.nemo_identifier, self.pulled_to_vm_status, self.convert_metadata_status, self.convert_to_h5ad_status, self.is_restricted))
+            cursor.execute(qry, (self.dataset_id, self.nemo_identifier, self.pulled_to_vm_status
+                                , self.convert_metadata_status, self.convert_to_h5ad_status
+                                , self.make_tsne_status, self.log_message, self.is_restricted))
             self.id = cursor.lastrowid
 
         else:
@@ -3098,14 +3231,14 @@ class SubmissionDataset:
 
     def reset_incomplete_steps(self):
         """Reset all steps that are not complete to be pending."""
-        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status"]
+        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status", "make_tsne_status"]
         for i in range(0, len(steps)):
-            if not getattr(self, steps[i]) == "completed":
+            if not getattr(self, steps[i]) in ["completed", "loading"]:
                 self.save_change(attribute=steps[i], value="pending")
 
     def update_downstream_steps_to_cancelled(self, attribute=None):
         """Update all downstream steps of this one in case it failed."""
-        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status"]
+        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status", "make_tsne_status"]
         start = 0
         if attribute:
             start = steps.index(attribute) + 1
@@ -3139,11 +3272,11 @@ class SubmissionDatasetCollection:
         cursor.execute(query, (submission_id, ))
 
         for (id, dataset_id, nemo_identifier, pulled_to_vm_status,
-            convert_metadata_status, convert_to_h5ad_status, is_restricted) in cursor:
+            convert_metadata_status, convert_to_h5ad_status, make_tsne_status, log_message, is_restricted) in cursor:
             submission_dataset = SubmissionDataset(id=id, dataset_id=dataset_id,
                     nemo_identifier=nemo_identifier, pulled_to_vm_status=pulled_to_vm_status,
                     convert_metadata_status=convert_metadata_status, convert_to_h5ad_status=convert_to_h5ad_status,
-                    is_restricted=is_restricted)
+                    make_tsne_status=make_tsne_status, log_message=log_message, is_restricted=is_restricted)
             submission_dataset.get_dataset_info()
             self.datasets.append(submission_dataset)
 

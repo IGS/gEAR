@@ -4,6 +4,7 @@
 
 import json, cgi
 import sys, shutil
+import requests
 from pathlib import Path
 import scanpy as sc
 
@@ -35,21 +36,23 @@ MIN_DISPERSION = 0.5
 N_NEIGHBORS = 10
 N_PCS = 40
 
+PLOT_TYPE = "tsne_static"
+LABEL = "nemoanalytics import default plot"
+
+DB_STEP = "make_tsne_status"    # step name in database
+
+
 def get_analysis(dataset_id, user_id):
     return geardb.Analysis(type='public', id=dataset_id, dataset_id=dataset_id, user_id=user_id, vetting="owner", label="Automated Analysis")
 
-def main():
-    form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
-    category = form.getvalue("category")
-    gene = form.getvalue("gene")
-
+def make_default_display(dataset_id, session_id, category=None, gene=None):
     # Must have a gEAR account to upload datasets
-    user = geardb.get_user_from_session_id(session_id)
-    user_id = user.id
+    user_id = geardb.get_user_id_from_session_id(session_id)
 
-    result = {'success':False, 'message': ''}
+    result = {'success':False}
+
+    s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    s_dataset.save_change(attribute=DB_STEP, value="loading")
 
     # Verify h5ad is in primary area
     ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
@@ -86,41 +89,46 @@ def main():
     adata.obs_names_make_unique()
 
     # primary filter
-    sc.pp.filter_cells(adata, min_genes=MIN_GENES)
-    sc.pp.filter_genes(adata, min_cells=MIN_CELLS)
-    analysis_json["primary_filter"]["calculated"] = True
-    analysis_json["primary_filter"]["filter_cells_gt_n_genes"] = MIN_GENES
-    analysis_json["primary_filter"]["filter_cells_gt_n_cells"] = MIN_CELLS
-    # mitochondrial genes qc
-    adata.var['mt'] = adata.var_names.str.startswith(MITO_PREFIX)  # annotate the group of mitochondrial genes as 'mt'
-    analysis_json["qc_by_mito"]["gene_prefix"] = MITO_PREFIX
-    sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
-    adata = adata[adata.obs.n_genes_by_counts < FILTER_MITO_COUNT, :]
-    adata = adata[adata.obs.pct_counts_mt < FILTER_MITO_PERCENT, :]
-    analysis_json["qc_by_mito"]["filter_mito_count"] = FILTER_MITO_COUNT
-    analysis_json["qc_by_mito"]["filter_mito_perc"] = FILTER_MITO_PERCENT
-    # highly variable genes
-    sc.pp.normalize_total(adata, target_sum=NORM_COUNTS_PER_CELL)
-    sc.pp.log1p(adata)
-    sc.pp.highly_variable_genes(adata, min_mean=MIN_MEAN, max_mean=MAX_MEAN, min_disp=MIN_DISPERSION)
-    adata.raw = adata
-    adata = adata[:, adata.var.highly_variable]
-    analysis_json["select_variable_genes"]["calculated"] = True
-    analysis_json["select_variable_genes"]["norm_counts_per_cell"] = NORM_COUNTS_PER_CELL
-    analysis_json["select_variable_genes"]["min_dispersion"] = MIN_DISPERSION
-    analysis_json["select_variable_genes"]["min_mean"] = MIN_MEAN
-    analysis_json["select_variable_genes"]["max_mean"] = MAX_MEAN
-    analysis_json["select_variable_genes"]["flavor"] = "seurat"
-    # PCA
-    sc.tl.pca(adata, svd_solver='arpack')
-    analysis_json['pca']['calculated'] = True
-    # tSNE
-    sc.pp.neighbors(adata, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS)
-    sc.tl.tsne(adata)
-    analysis_json['tsne']['n_neighbors'] = N_NEIGHBORS
-    analysis_json['tsne']['n_pcs'] = N_PCS
-    analysis_json['tsne']['tsne_calculated'] = True
-
+    try:
+        sc.pp.filter_cells(adata, min_genes=MIN_GENES)
+        sc.pp.filter_genes(adata, min_cells=MIN_CELLS)
+        analysis_json["primary_filter"]["calculated"] = True
+        analysis_json["primary_filter"]["filter_cells_gt_n_genes"] = MIN_GENES
+        analysis_json["primary_filter"]["filter_cells_gt_n_cells"] = MIN_CELLS
+        # mitochondrial genes qc
+        adata.var['mt'] = adata.var_names.str.startswith(MITO_PREFIX)  # annotate the group of mitochondrial genes as 'mt'
+        analysis_json["qc_by_mito"]["gene_prefix"] = MITO_PREFIX
+        sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
+        adata = adata[adata.obs.n_genes_by_counts < FILTER_MITO_COUNT, :]
+        adata = adata[adata.obs.pct_counts_mt < FILTER_MITO_PERCENT, :]
+        analysis_json["qc_by_mito"]["filter_mito_count"] = FILTER_MITO_COUNT
+        analysis_json["qc_by_mito"]["filter_mito_perc"] = FILTER_MITO_PERCENT
+        # highly variable genes
+        sc.pp.normalize_total(adata, target_sum=NORM_COUNTS_PER_CELL)
+        sc.pp.log1p(adata)
+        sc.pp.highly_variable_genes(adata, min_mean=MIN_MEAN, max_mean=MAX_MEAN, min_disp=MIN_DISPERSION)
+        adata.raw = adata
+        adata = adata[:, adata.var.highly_variable]
+        analysis_json["select_variable_genes"]["calculated"] = True
+        analysis_json["select_variable_genes"]["norm_counts_per_cell"] = NORM_COUNTS_PER_CELL
+        analysis_json["select_variable_genes"]["min_dispersion"] = MIN_DISPERSION
+        analysis_json["select_variable_genes"]["min_mean"] = MIN_MEAN
+        analysis_json["select_variable_genes"]["max_mean"] = MAX_MEAN
+        analysis_json["select_variable_genes"]["flavor"] = "seurat"
+        # PCA
+        sc.tl.pca(adata, svd_solver='arpack')
+        analysis_json['pca']['calculated'] = True
+        # tSNE
+        sc.pp.neighbors(adata, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS)
+        sc.tl.tsne(adata)
+        analysis_json['tsne']['n_neighbors'] = N_NEIGHBORS
+        analysis_json['tsne']['n_pcs'] = N_PCS
+        analysis_json['tsne']['tsne_calculated'] = True
+    except Exception as e:
+        s_dataset.save_change(attribute=DB_STEP, value="failed")
+        s_dataset.save_change(attribute="log_message", value=str(e))
+        result["success"] = False
+        return result
 
     try:
         # If gene was not passed, or does not exist, we find a highly variable gene candidate
@@ -164,8 +172,46 @@ def main():
             , "type": analysis_json["type"]
             }
         }
-
     result["plot_config"] = plot_config
+
+    params = {
+        "user_id": user_id
+        , "dataset_id": dataset_id
+        , "plotly_config": json.dumps(plot_config)
+        , "plot_type": PLOT_TYPE
+        , "label": LABEL
+    }
+    try:
+        post_result = requests.post("http://localhost/cgi/save_dataset_display.cgi", data=params, verify=False)
+        post_result.raise_for_status()
+        decoded_result = post_result.json()
+        display_id = decoded_result["display_id"]
+        params = {
+            "user_id": user_id
+            , "dataset_id": dataset_id
+            , "display_id": display_id
+        }
+        post_result = requests.post("http://localhost/cgi/save_default_display.cgi", data=params, verify=False)
+        post_result.raise_for_status()
+        decoded_result = post_result.json()
+        s_dataset.save_change(attribute=DB_STEP, value="completed")
+
+        result["success"] = True
+    except Exception as e:
+        print(str(e), file=sys.stderr)
+        s_dataset.save_change(attribute="log_message", value=str(e))
+        s_dataset.save_change(attribute=DB_STEP, value="failed")
+        result["success"] = False
+
+    return result
+
+def main():
+    form = cgi.FieldStorage()
+    session_id = form.getvalue('session_id')
+    dataset_id = form.getvalue('dataset_id')
+    category = form.getvalue("category")
+    gene = form.getvalue("gene")
+    result = make_default_display(dataset_id, session_id, category, gene)
     print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))
 

@@ -1,0 +1,383 @@
+openapi: '3.0.2'
+info:
+  title: gEAR API
+  version: '1.0'
+servers:
+  - url: https://localhost:8080/api/
+paths:
+  # TODO: Eventually add other API routes
+
+  /submissions:
+    post:
+      description: 'Create a new submission'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                submission_id:
+                  type: string
+                  description: Submission ID to use to create this submission
+                is_restricted:
+                  type: boolean
+                  description: If true, this submission contains restricted datasets
+
+      responses:
+        '201':
+          description: New submission was successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  self:
+                    type: string
+                    description: This route
+                  href:
+                    type: string
+                    description: Route of the newly created submission
+                  success:
+                    type: boolean
+                    description: True if operation succeeded
+                  message:
+                    type: string
+                    description: Error message, if applicable
+
+  /submssions/{submission_id}:
+    parameters:
+      - $ref: "#/components/parameters/submission_id"
+    get:
+      description: 'Retrieve an existing submission based on submission_id'
+      responses:
+        '200':
+          description: Submission was successfully retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  self:
+                    type: string
+                    description: This route
+                  datasets:
+                    type: object
+                    properties:
+                      dataset_id:
+                        type: object
+                        properties:
+                          href:
+                            type: string
+                            description: Route of this submission dataset
+                  success:
+                    type: boolean
+                    description: True if operation succeeded
+                  layout_share_id:
+                    type: string
+                    description: Permalink profile share identifier for this submission, if created
+                  collection_name:
+                    type: string
+                    description: Name of the profile for this submission, if provided
+                  is_finished:
+                    type: string
+                    description: True if the submission import has finished.
+                  is_submitter:
+                    type: boolean
+                    description: True, if the logged-in user the one who owns this submission
+        '404':
+          description: Submission was not found
+    delete:
+      description: Delete this submission from the database.
+      responses:
+        '200':
+          description: Submission was successfully deleted
+        '404':
+          description: Submission was not found
+    post:
+      description: 'Start the import process for this submission'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                file_metadata:
+                  type: object
+                  description: Relevant file-centric metadata needed for the import process
+                sample_metadata:
+                  type: object
+                  description: Relevant sample-centric metadata needed for the import process
+                action:
+                  type: string
+                  description: Operation code to perform an action, such as import
+      responses:
+        '200':
+          description: Import process was successful
+          # TODO:
+        '400':
+          description: Submission with this ID already exists.
+
+  /submssions/{submission_id}/email:
+    parameters:
+      - $ref: "#/components/parameters/submission_id"
+    put:
+      description: 'Enable email updates for the user when the import is finished'
+      responses:
+        '200':
+          description: Subscribed to email updates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: True if operation succeeded
+                  message:
+                    type: string
+                    description: Error message, if applicable
+
+  /submssions/{submission_id}/datasets:
+    parameters:
+      - $ref: "#/components/parameters/submission_id"
+    post:
+      description: 'Create a new submission_dataset'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dataset_id:
+                  type: string
+                  description: Dataset ID to use to create this submission_dataset entry
+                identifier:
+                  type: string
+                  description: NeMO identifier associated with this dataset
+                is_restricted:
+                  type: boolean
+                  description: If true, this dataset is classified as restricted
+
+      responses:
+        '201':
+          description: New submission_dataset was created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  self:
+                    type: string
+                    description: This route
+                  href:
+                    type: string
+                    description: Route of the newly created submission_dataset
+                  success:
+                    type: boolean
+                    description: True if operation succeeded
+                  message:
+                    type: string
+                    description: Error message, if applicable
+                  dataset_id:
+                    type: string
+                    description: ID of this dataset
+                  identifier:
+                    type: string
+                    description: NeMO identifier of this dataset
+                  share_id:
+                    type: string
+                    description: Permalink share identifier for this dataset
+                  status:
+                    type: object
+                    properties:
+                      pulled_to_vm:
+                        type: string
+                        description: Status of pulling the files from GCP to the host
+                      convert_metadata:
+                        type: string
+                        description: Status of acquiring and validating metadata
+                      convert_to_h5ad:
+                        type: string
+                        description: Status of converting dataset into h5ad format
+                      make_tsne:
+                        type: string
+                        description: Status of running a tSNE analysis and creating a basic display
+
+  /submssions/{submission_id}/datasets/{dataset_id}:
+    parameters:
+      - $ref: "#/components/parameters/submission_id"
+      - $ref: "#/components/parameters/dataset_id"
+    get:
+      description: 'Retrieve an existing submission_dataset based on dataset_id'
+      responses:
+        '200':
+          description: Submission_dataset was retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  self:
+                    type: string
+                    description: This route
+                  href:
+                    type: string
+                    description: This route
+                  success:
+                    type: boolean
+                    description: True if operation succeeded
+                  message:
+                    type: string
+                    description: Error message, if applicable
+                  dataset_id:
+                    type: string
+                    description: ID of this dataset
+                  identifier:
+                    type: string
+                    description: NeMO identifier of this dataset
+                  share_id:
+                    type: string
+                    description: Permalink share identifier for this dataset
+                  status:
+                    type: object
+                    properties:
+                      pulled_to_vm:
+                        type: string
+                        description: Status of pulling the files from GCP to the host
+                      convert_metadata:
+                        type: string
+                        description: Status of acquiring and validating metadata
+                      convert_to_h5ad:
+                        type: string
+                        description: Status of converting dataset into h5ad format
+                      make_tsne:
+                        type: string
+                        description: Status of running a tSNE analysis and creating a basic display
+        '404':
+          description: Submission_dataset was not found.
+
+    post:
+      description: 'Start the import process for a given submission_dataset'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  description: Relevant metadata needed for the import process
+                action:
+                  type: string
+                  description: Operation code to perform an action, such as import
+                category:
+                  type: string
+                  description: Metadata category to annotate tSNE display on, if action = "make_display"
+                gene:
+                  type: string
+                  description: Gene to plot tSNE expression on, if action = "make_display"
+
+      responses:
+        '204':
+          description: Submission_dataset successfully imported
+        '400':
+          description: Dataset with this ID already exists and no operation was passed.
+        '404':
+          description: Dataset with this ID was not found
+        '500':
+          description: Something happened internally.
+
+  /submssions/{submission_id}/datasets/{dataset_id}/status:
+    parameters:
+      - $ref: "#/components/parameters/submission_id"
+      - $ref: "#/components/parameters/dataset_id"
+    put:
+      description: 'Perform an action on the status of a submission dataset'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  description: Operation code to perform an action, such as resetting steps
+      responses:
+        '200':
+          description: Action was successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  self:
+                    type: string
+                    description: This route
+                  success:
+                    type: boolean
+                    description: True, if the action succeeded
+                  status:
+                    type: object
+                    properties:
+                      pulled_to_vm:
+                        type: string
+                        description: Status of pulling the files from GCP to the host
+                      convert_metadata:
+                        type: string
+                        description: Status of acquiring and validating metadata
+                      convert_to_h5ad:
+                        type: string
+                        description: Status of converting dataset into h5ad format
+                      make_tsne:
+                        type: string
+                        description: Status of running a tSNE analysis and creating a basic display
+        '404':
+          description: The submission dataset was not found
+        '405':
+          description: Invalid action or no action passed
+
+  /submssions/{submission_id}/datasets/{dataset_id}/members:
+    parameters:
+      - $ref: "#/components/parameters/submission_id"
+      - $ref: "#/components/parameters/dataset_id"
+    put:
+      description: 'Save this dataset as a member of this submission'
+      responses:
+        '200':
+          description: Action was successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  self:
+                    type: string
+                    description: This route
+                  success:
+                    type: boolean
+                    description: True, if the action succeeded
+                  message:
+                    type: string
+                    description: Error message, if applicable
+        '404':
+          description: The submission dataset was not found
+
+components:
+  parameters:
+    submission_id:
+      name: submission_id
+      in: path
+      required: True
+      schema:
+        type: string
+    dataset_id:
+      name: dataset_id
+      in: path
+      required: True
+      schema:
+        type: string

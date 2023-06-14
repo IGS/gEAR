@@ -2,10 +2,9 @@
 
 from flask import request
 from flask_restful import Resource, abort
-
-import cgi
-import json
 import os,sys
+import requests
+import asyncio, aiohttp
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -18,221 +17,306 @@ this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
+def send_email(result, submission, user_email):
+    """Send user an email about the completion status of their dataset imports."""
+
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    sender = this.servercfg['email_sender']['address']
+    password = this.servercfg['email_sender']['password']
+
+    domain_url = geardb.domain_url
+    domain_short_label = geardb.domain_short_label
+
+    submission_id = submission.id
+    layout = submission.get_layout_info()
+    layout_share_id = layout.share_id if layout else None
+
+    # https://docs.python.org/3/library/email-examples.html
+    # user = email
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'{domain_short_label} - Submission {submission_id} import complete'.format(domain_short_label)
+    msg['From'] = sender
+    msg['To'] = user_email
+
+    num_failures = result["num_failures"]
+    num_datasets = len(submission.datasets)
+
+    text = f"This message is to inform you that your recent dataset import on {domain_short_label} with submission ID {submission_id} has finished."
+    if result["all_success"]:
+        text += " It looks like every dataset was successfully imported."
+    elif result["partial_success"]:
+        text += f" While some datasets were successfully imported, we encountered some issues importing {num_failures} of the datasets."
+    else:
+        text += f" Unfortunately, it appears that all {num_datasets} datasets for this submission ran into issues during the import process."
+
+    text += f"\n\nYou can view the status of all datasets at {domain_url}/nemoarchive_import/import.html?submission_id={submission_id}."
+    if result["partial_success"]:
+        text += " Each successfully imported dataset has a link to view the dataset on the gene expression search page."
+        text += f" We performed a basic Seurat analysis on the dataset and created a tSNE display, but we encourage you to curate your own displays to support your own research (see {domain_url}/manual.html?doc=curation for documentation)."
+
+    if layout_share_id:
+        text += f"\n\nYou can also view all dataset displays as a collection by going to {domain_url}/p?l=${layout_share_id} (you will need to search for a gene to show the displays)."
+
+    text += f"\n\nIf you have any questions about your import, feel free to reach us at {domain_url}/contact.html"
+
+    text += f"\n\nSigned,\n The {domain_short_label} team"
+
+    part1 = MIMEText(text, 'plain')
+
+    msg.attach(part1)
+
+    # http://stackoverflow.com/a/17596848/2900840
+    s = smtplib.SMTP('smtp.gmail.com:587')
+    s.ehlo()
+    s.starttls()
+    s.login(sender, password)
+
+    s.sendmail( sender, user_email, msg.as_string() )
+    s.quit()
+
 class Submission(Resource):
     """Requests to deal with a single submission"""
 
     def get(self, submission_id):
         """Retrieve a particular submission based on ID."""
-        reset_steps = request.args.get("reset_steps") == "true"
-        result = {"self": request.path, "success":0, "datasets":{}, "layout_share_id":None, "message":""}
+        url_path = request.root_path + request.path
+        result = {
+            "self": url_path
+            , "success":False
+            , "datasets":{}
+            , "layout_share_id":None
+            , "is_finished":False
+            , "is_submitter":False
+            }
 
-        session_id = request.cookies.get('session_id')
-        # Must have a gEAR account to upload datasets
-        user = geardb.get_user_from_session_id(session_id)
+        session_id = request.cookies.get('gear_session_id')
+        user_id = geardb.get_user_id_from_session_id(session_id)
 
         submission = geardb.get_submission_by_id(submission_id)
         if not submission:
-            return result
+            abort(404)
+
+        if user_id == submission.user_id:
+            result["is_submitter"] = True
 
         layout = submission.get_layout_info()
         if layout:
             result["layout_share_id"] = layout.share_id
+            result["collection_name"] = layout.label
+
+        result["is_finished"] = bool(submission.is_finished)
 
         sd = geardb.SubmissionDatasetCollection()
         submission.datasets = sd.get_by_submission_id(submission_id)
 
         for s_dataset in submission.datasets:
-
-            # Before initializing a new submission, we check this route to see if it exists
-            # Need to reset the steps so it can be resumed.
-            if reset_steps:
-                s_dataset.reset_incomplete_steps()
-
             dataset_id = s_dataset.dataset_id
-            result["datasets"][dataset_id] = {"message":"", "identifier":s_dataset.nemo_identifier}
-            result["datasets"][dataset_id]["share_id"] = s_dataset.dataset.share_id
-            result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
-        result["success"] = 1
+            result["datasets"][dataset_id] = {"href":f"/api/submissions/{submission_id}/datasets/{dataset_id}"}
+        result["success"] = True
+        return result
+
+    def delete(self, submission_id):
+        """Delete the existing submission from the database."""
+        submission = geardb.get_submission_by_id(submission_id)
+        if not submission:
+            abort(404)
+        submission.remove()
+
+
+    def post(self, submission_id):
+        """Start the import process for this submission."""
+        url_path = request.root_path + request.path
+
+        session_id = request.cookies.get('gear_session_id')
+        # Must have a gEAR account to upload datasets
+        user = geardb.get_user_from_session_id(session_id)
+
+        req = request.get_json()
+        file_metadata = req.get("file_metadata")  # Metadata from neo4j request
+        sample_metadata = req.get("sample_metadata")
+        action = req.get("action")
+
+        submission = geardb.get_submission_by_id(submission_id)
+        submission.datasets = geardb.SubmissionDatasetCollection().get_by_submission_id(submission_id=submission_id)
+
+        if action == "import":
+            async def import_dataset(s_dataset):
+                nonlocal file_metadata
+                nonlocal sample_metadata
+
+                dataset_id = s_dataset.dataset_id
+                identifier = s_dataset.nemo_identifier
+
+                # Get first instance of entity match dataset ID or sample ID
+                file_attributes = next(filter(lambda entity: entity["attributes"]["id"] == dataset_id, file_metadata))["attributes"]
+                sample_attributes = next(filter(lambda entity: entity["name"] == file_attributes["sample_id"], sample_metadata))["attributes"]
+
+                all_attributes = {
+                    "dataset": file_attributes
+                    , "sample": sample_attributes
+                    }
+
+                result = {"success": False, "dataset_id": dataset_id}
+
+                async with aiohttp.ClientSession() as session:
+                    # Call NeMO Archive assets API using identifier
+                    try:
+                        #url = f"https://nemoarchive.org/asset/derived/{identifier}"
+                        url = f"http://localhost/api/mock_identifier/{identifier}"
+                        async with session.get(url
+                                , verify_ssl=False
+                                , raise_for_status=True) as resp:
+                            api_result = await resp.json()
+                    except Exception as e:
+                        s_dataset.save_change(attribute="log_message", value=str(e))
+                        return result
+
+                    api_metadata = api_result["metadata"]
+
+                    # TODO: Eventually get everything from API
+                    all_metadata = {
+                        "dataset": {**all_attributes["dataset"], **api_metadata["dataset"]}
+                        , "sample": {**all_attributes["sample"], **api_metadata["sample"]}
+                    }
+
+                    # Start the import process for each dataset
+                    params = {"metadata": all_metadata, "action": "import"}
+                    try:
+                        url = f"http://localhost/{url_path}" + f"/datasets/{dataset_id}"
+                        async with session.post(url
+                                , json=params
+                                , cookies={"gear_session_id":session_id}
+                                , verify_ssl=False
+                                , raise_for_status=True) as resp:
+                            import_result = await resp.json()
+                    except Exception as e:
+                        print(str(e), file=sys.stderr)
+                        return result
+
+                result = import_result # should have "success" = True in here
+                result["filetype"] = all_metadata["dataset"]["filetype"]
+                result["dataset_id"] = dataset_id
+                return result
+
+            coros = [import_dataset(s_dataset) for s_dataset in submission.datasets]
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            tasks = asyncio.gather(*coros, return_exceptions=True)  # We don't want exceptions to crash the other tasks
+            results = loop.run_until_complete(tasks)
+
+            all_success = True  # Every dataset import was successful
+            partial_success = False # At least one dataset import was successful
+            num_failures = 0
+            dataset_results = {}
+
+            for res in results:
+                if isinstance(res, Exception):
+                    # TODO: what to do here
+                    print(str(e), file=sys.stderr)
+
+                dataset_id = res["dataset_id"]
+                dataset_results[dataset_id] = res
+
+                if res["success"]:
+                    partial_success = True
+                else:
+                    num_failures += 1
+                    all_success = False
+
+            submission.save_change(attribute="is_finished", value=1)
+
+            result = {"self":url_path
+                    , "datasets":dataset_results
+                    , "all_success":all_success
+                    , "partial_success":partial_success
+                    , "num_failures": num_failures
+                    }
+
+            if submission.email_updates:
+                # send email about submission status
+                send_email(result, submission, user.email)
+
+            return result
+        abort(400)
+
+class SubmissionEmail(Resource):
+    def put(self, submission_id):
+        """Update email updates."""
+        if not submission_id:
+            abort(404)  # "Submissiom ID not found for this request."
+
+        result = {"success": False, "message":""}
+
+        try:
+            submission = geardb.get_submission_by_id(submission_id)
+            submission.save_change(attribute="email_updates", value=1)
+            result["success"] = True
+        except Exception as e:
+            result["message"] = str(e)
+
         return result
 
 class Submissions(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""
 
-    def get(self):
-        """Retrieve all submissions."""
-        # Must have a gEAR account to create submissions
-        session_id = request.cookies.get('gear_session_id')
-        user = geardb.get_user_from_session_id(session_id)
-        result = {"self": request.path, "success":0, "entries":[], "message":""}
-        submissions = geardb.SubmissionCollection()
-        # TODO: Flesh this out
-        abort(501, "GET /submissions has not been implemented yet.")
-
     def post(self):
-        """Create a new submission in the database."""
+        """Create a new empty submission in the database."""
+        url_path = request.root_path + request.path
+
         # Must have a gEAR account to create submissions
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
+
+        result = {"self": url_path, "success":False, "datasets":{}, "layout_share_id":None, "message":""}
+
+        if not user:
+            result["message"] = "User not logged in."
+            return result
 
         req = request.get_json()
-        file_info = req.get("file_entities")
         submission_id = req.get("submission_id")
+        is_restricted = req.get("is_restricted")
 
-        result = {"self": request.path, "success":0, "datasets":{}, "layout_share_id":None, "message":""}
-
-        issues_found = False
-
-        # TODO: Set to be obtained from the dataset metadata but currently not in metadata
-        is_restricted = 0
 
         submission = geardb.get_submission_by_id(submission_id)
         if submission:
             abort(400, message="Submission already exists for this ID.")
 
         try:
-            save_submission(submission_id, user.id, is_restricted)
-        except:
+            conn = geardb.Connection()
+            cursor = conn.get_cursor()
+
+            qry = """
+                INSERT INTO submission (id, user_id, is_finished, is_restricted, date_added)
+                VALUES (%s, %s, 0, %s, NOW())
+            """
+
+            cursor.execute(qry, (submission_id, user.id, is_restricted))
+
+            # Save submission as a layout
+            layout_name = f"Submission {submission_id}"
+            layout = geardb.Layout(user_id=user.id, label=layout_name,
+                                is_current=0, members=None)
+            layout.save()
+            result['layout_share_id'] = layout.share_id
+            cursor.close()
+            conn.commit()   # So Submission transaction is saved
+
+            cursor = conn.get_cursor()
+            submission = geardb.get_submission_by_id(submission_id)
+            submission.save_change(attribute="layout_id", value=layout.id)
+            cursor.close()
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(str(e), file=sys.stderr)
             abort(400, message="Could not save new submission to database")
 
-        # TODO: Think about making separate API call for submission datasets and members
-        for file_entity in file_info:
-            attributes = file_entity["attributes"]
+        result["href"] = result["self"] + f"/{submission_id}" # This can be GET-able
 
-            dataset_id = attributes["id"]
-            identifier = attributes["identifier"]
-            result["datasets"][dataset_id] = {"message":"", "identifier":identifier}
-
-            if not identifier:
-                result["datasets"][dataset_id]["message"] = "NeMO Identifier empty. Cannot load."
-                result["datasets"][dataset_id]["dataset_status"] = {
-                    "pulled_to_vm": "canceled"
-                    , "convert_metadata": "canceled"
-                    , "convert_to_h5ad": "canceled"
-                    }
-                issues_found = True
-                continue
-
-            submission_dataset_params = {
-                "is_restricted": is_restricted
-                , "dataset_id": dataset_id
-                , "identifier": identifier
-                }
-
-            # Dataset may already be inserted from a previous submission
-            try:
-                s_dataset = add_submission_dataset(submission_dataset_params)
-            except Exception as e:
-                print(str(e), file=sys.stderr)
-                result["datasets"][dataset_id]["message"] = f"Could not save dataset {attributes['id']} as a new SubmissionDataset in database"
-                result["datasets"][dataset_id]["dataset_status"] = {
-                    "pulled_to_vm": "canceled"
-                    , "convert_metadata": "canceled"
-                    , "convert_to_h5ad": "canceled"
-                    }
-                issues_found = True
-                continue
-
-            result["datasets"][dataset_id]["share_id"] = s_dataset.dataset.share_id
-            result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
-
-            # Insert submission members and create new submisison datasets if they do not exist
-            try:
-                save_submission_member(submission_id, s_dataset)
-            except Exception as e:
-                print(str(e), file=sys.stderr)
-                result["datasets"][dataset_id]["message"] = f"Could not save dataset {attributes['id']} as a new SubmissionMember in database"
-                s_dataset.update_downstream_steps_to_cancelled()
-                result["datasets"][dataset_id]["dataset_status"] = get_db_status(s_dataset)
-                issues_found = True
-                continue
-
-        result["success"] = 1
+        result["success"] = True
         result["message"] = "Submission database entries have been populated"
-        if issues_found:
-            result["message"] += " but there were issues found."
-
         return result
 
-
-
-def add_submission_dataset(params):
-    """Add existing or new submission dataset. If existing, reset all non-complete steps."""
-
-    # Dataset is a foreign key in SubmissionDataset so we need to ensure we do not duplicate
-    s_dataset = geardb.get_submission_dataset_by_dataset_id(params["dataset_id"])
-    if s_dataset:
-        # In order to ensure the UI looks correct,reset all non-complete back to pending
-        # since they will be attempted again
-        s_dataset.reset_incomplete_steps()
-        return s_dataset
-
-    # Not found, so insert new submission dataset
-    # NOTE: We do not insert into "dataset" until metadata is validated and dataset converted to H5AD
-    try:
-        return save_submission_dataset(params["dataset_id"], params["identifier"], params["is_restricted"])
-    except Exception as e:
-        raise
-
-def get_db_status(s_dataset):
-    return {
-                "pulled_to_vm": s_dataset.pulled_to_vm_status
-                , "convert_metadata": s_dataset.convert_metadata_status
-                , "convert_to_h5ad": s_dataset.convert_to_h5ad_status
-            }
-
-def insert_minimal_dataset(dataset_id, identifier):
-    """
-    Insert a minimally viable dataset. We will populate it with metadata later.
-
-    This is purely to get the SubmissionDataset row inserted.
-    """
-
-    add_dataset_sql = """
-    INSERT INTO dataset (id, share_id, owner_id, title, organism_id, date_added, load_status)
-    VALUES              (%s, %s,       %s,       "PRE-STAGE NEMO IMPORT - %s",    1, NOW(), "pending")
-    """
-
-    (before, sep, share_id) = identifier.rpartition("nemo:")
-
-    # Insert dataset info to database
-    conn = geardb.Connection()
-    cursor = conn.get_cursor()
-    cursor.execute(add_dataset_sql, (dataset_id, share_id, geardb.find_importer_id().id, share_id))
-    cursor.close()
-    conn.commit()
-    conn.close()
-
-def save_submission(submission_id, user_id, is_restricted):
-    """
-    Adds a new Submission to the database
-    """
-    conn = geardb.Connection()
-    cursor = conn.get_cursor()
-
-    qry = """
-        INSERT INTO submission (id, user_id, is_finished, is_restricted, date_added)
-        VALUES (%s, %s, 0, %s, NOW())
-    """
-
-    cursor.execute(qry, (submission_id, user_id, is_restricted))
-    cursor.close()
-    conn.commit()
-    conn.close()
-
-def save_submission_dataset(dataset_id, identifier, is_restricted):
-    # Dataset is a foreign key in SubmissionDataset so we need to ensure we do not duplicate
-    dataset = geardb.get_dataset_by_id(dataset_id)
-    if not dataset:
-        insert_minimal_dataset(dataset_id, identifier)
-
-    s_dataset = geardb.SubmissionDataset(dataset_id=dataset_id,
-                    is_restricted=is_restricted, nemo_identifier=identifier,
-                    pulled_to_vm_status="pending", convert_metadata_status="pending", convert_to_h5ad_status="pending"
-                    )
-    s_dataset.save()
-    s_dataset.get_dataset_info()
-    return s_dataset
-
-def save_submission_member(submission_id:geardb.Submission, s_dataset:geardb.SubmissionDataset):
-    submission_member = geardb.SubmissionMember(submission_id=submission_id, submission_dataset_id=s_dataset.id)
-    submission_member.save()

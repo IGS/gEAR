@@ -50,7 +50,14 @@
 
             <h1 class="title is-1">NeMO Archive Import Tool</h1>
 
-            <h2 id="submission_title" class="subtitle is-2">Submission: <span id="submission_id"></span> <i class="fa fa-share-alt" aria-hidden="true"></i></h2>
+            <h2 id="submission_title" class="subtitle is-2">
+                <span class="icon-text">
+                    <span>Submission: <span id="submission_id"></span></span>
+                    <span class="icon has-text-info">
+                        <i class="fa fa-share-alt" aria-hidden="true"></i>
+                    </span>
+                </span>
+            </h2>
 
             <p class="content">
                 The NeMO Archive import tool is a useful utility for importing data into NeMO Analytics for quick visualization.
@@ -76,7 +83,8 @@
                         <th>Pull Files</th>
                         <th>Validate Metadata</th>
                         <th>Convert to H5AD</th>
-                        <th>Messages</th>
+                        <th>Make tSNE</th>
+                        <th>Message</th>
                         <th>Metadata to Plot</th>
                         <th>Permalink</th>
                     </tr>
@@ -111,7 +119,7 @@
             </div>
             <div id="email_on_success_div" class="is-hidden">
                 <p>If you would like, click this button, and we will email you when the datasets have finished importing. We will attempt to choose the best metadata category for plotting.</p>
-                <button id="email_button" class="button is-link">Send email</button>
+                <button id="email_button" class="button is-link">Send Email Updates</button>
             </div>
         </div>
     </div>

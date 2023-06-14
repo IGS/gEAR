@@ -55,12 +55,9 @@ def ensure_ensembl_index(h5_path, organism_id):
     shutil.move("{0}_new.h5ad".format(h5_path), h5_path)
 
 
-def main():
-    form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    filetype = form.getvalue("filetype")
+def run_write_h5ad(dataset_id, filetype):
     base_dir = Path(UPLOAD_BASE_DIR).joinpath(dataset_id)
-    result = {'success':False, 'message': '', 'dataset': None }
+    result = {'success':False, 'dataset': None }
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
     s_dataset.save_change(attribute=DB_STEP, value="loading")
@@ -83,13 +80,13 @@ def main():
         dest_metadata_filepath = "{0}/{1}.json".format(DATASETS_DIR, dataset_id)
         shutil.copy(source_metadata_filepath, dest_metadata_filepath)
         result["success"] = True
-        result['message'] = 'File successfully converted to h5ad.'
         logger.info("H5AD conversion complete!")
 
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
+        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
         logger.error(str(e))
-        result["message"] = str(e)
+        s_dataset.save_change(attribute="log_message", value=str(e))
 
     # Update status in dataset
     try:
@@ -101,10 +98,21 @@ def main():
             logger.info("Database updated! Exiting")
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
+        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         logger.error(str(e))
-        result["message"] = "Submission {} - Dataset - {} -- Could not save status to database.".format("test", dataset_id)
+        logger.error("Dataset - {} -- Could not save status to database.".format("test", dataset_id))
         result["success"] = False
+    finally:
+        return result
+
+
+def main():
+    form = cgi.FieldStorage()
+    dataset_id = form.getvalue('dataset_id')
+    filetype = form.getvalue("filetype")
+
+    result = run_write_h5ad(dataset_id, filetype)
 
     print('Content-Type: application/json\n\n', flush=True)
     print(json.dumps(result))
