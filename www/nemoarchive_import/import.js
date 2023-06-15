@@ -209,18 +209,6 @@ const isImportComplete = (status) => {
     return true;
 }
 
-/* Convert metadata into a JSON file */
-const makeDefaultDisplay = async (datasetId, category, gene) => {
-    const params = {"dataset_id": datasetId, "category":category, "gene":gene, "session_id":session_id, "action":'make_display'}
-    const response = await fetch(`/api/submission_dataset/${datasetId}`, {
-            method: "POST"
-            , headers: {"Content-Type": "application/json"}
-            , body: json.stringify(params)
-            });
-    const jsonRes = await response.json();
-    return jsonRes.plot_config;
-}
-
 /* Populate and show number of non-supported files, if any exist */
 const populateNonSupportedElement = () => {
     const notSupported = getUrlParameter('notsupported') || 0;
@@ -539,7 +527,12 @@ const createSubmission = async (jsonUrl) => {
 
     // Poll datasets for updates. Function calls itself until importing is finished.
     // If import has an error, it should at least poll once to show final statuses
-    return await pollSubmission(submissionId);
+    await pollSubmission(submissionId);
+
+    // Submission is finished and API has responded... email updates won't be triggered at this point
+    emailDiv.classList.add("is-hidden");
+
+    return;
 }
 
 /* View a submission in "view-only" mode */
@@ -595,55 +588,38 @@ const handleViewDatasets = async () => {
     }
 
     const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
-    try {
+    await Promise.allSettled([...tableRows].map( async (row) => {
+        const datasetId = row.dataset.dataset_id;
 
+        if (!(isImportComplete(datasetId))) {
+            console.info(`Dataset ${datasetId} did not finish. Cannot save displays or to layout.`)
+            return;
+        }
 
-        await Promise.allSettled([...tableRows].map( async (row) => {
-            const datasetId = row.dataset.dataset_id;
+        // If select dropdown is not present, then there is no category to plot by.
+        const obsLevel = document.getElementById(`${datasetId}-obslevels`);
+        const category = (obsLevel.textContent == "Categories not found") ? null : obsLevel.querySelector("select").value;
 
-            if (!(isImportComplete(datasetId))) {
-                console.info(`Dataset ${datasetId} did not finish. Cannot save displays or to layout.`)
-                return;
-            }
-
-            // If select dropdown is not present, then there is no category to plot by.
-            const obsLevel = document.getElementById(`${datasetId}-obslevels`);
-            const category = (obsLevel.textContent == "Categories not found") ? null : obsLevel.querySelector("select").value;
-
-            // Determine if we need to make or update default displays for this dataset.
-            // Either because a display did not previously exist, or a default was created but the user selected a category.
-            const defaultDisplayId = await getDefaultDisplay(datasetId)
-            if (defaultDisplayId) {
-                const display = await getDatasetDisplay(defaultDisplayId);
-                if (display.label === label && category) {
-                    const displayConfig = display.plotly_config;
-                    displayConfig.colorize_legend_by = category;
-                    const newLabel = label + " with category";
-                    if (gene) displayConfig.gene_symbol = gene;
-                    const displayId = await saveNewDisplay(datasetId, displayConfig, plotType, newLabel);
-                    await saveDefaultDisplay(datasetId, displayId);
-                }
-                return;
-            }
-
-            // If user chooses a category, make a new tSNE_static display
-            if (!category) {
-                return;
-            }
-            // No default display was found. Need to make one.
-            // ! This step can take a while. Probably should add a loading icon and notify user.
-            const plotConfig = await makeDefaultDisplay(datasetId, category, gene);
-            const displayId = await saveNewDisplay(datasetId, plotConfig, plotType, label);
+        // Determine if we need to make or update default displays for this dataset.
+        // Either because a display did not previously exist, or a default was created but the user selected a category.
+        const defaultDisplayId = await getDefaultDisplay(datasetId)
+        if (!defaultDisplayId) {
+            return;
+        }
+        const display = await getDatasetDisplay(defaultDisplayId);
+        if (display.label === label && category) {
+            const displayConfig = display.plotly_config;
+            if (category) displayConfig.colorize_legend_by = category;
+            const newLabel = `${label} with category`;
+            if (gene) displayConfig.gene_symbol = gene;
+            const displayId = await saveNewDisplay(datasetId, displayConfig, plotType, newLabel);
             await saveDefaultDisplay(datasetId, displayId);
-        }));
+        }
+        return;
+    }));
 
-        // Redirect to layout share ID
-        redirect_to_gene_search(submissionElt.dataset.layout_share_id, gene);
-
-    } catch (e) {
-        console.warn(`Submission ${submissionId} already has layout ID. Not saving new datasets.`)
-        // ? Should we return the layout ID and redirect anyways?
-    }
+    // Redirect to layout share ID
+    redirect_to_gene_search(submissionElt.dataset.layout_share_id, gene);
 }
 
 /* Send email when importing has finished. Some RabbitMQ stuff will happen */

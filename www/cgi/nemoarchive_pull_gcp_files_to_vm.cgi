@@ -78,7 +78,7 @@ def pull_gcp_files_to_vm(bucket_path, dataset_id):
     except Exception as e:
         s_dataset.save_change(attribute="log_message", value=str(e))
         s_dataset.save_change(attribute=DB_STEP, value="failed")
-        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
+        s_dataset.update_downstream_steps_to_canceled(attribute=DB_STEP)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         print(str(e), file=sys.stderr)
         result["success"] = False

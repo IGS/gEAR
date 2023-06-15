@@ -84,7 +84,7 @@ def run_write_h5ad(dataset_id, filetype):
 
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
-        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
+        s_dataset.update_downstream_steps_to_canceled(attribute=DB_STEP)
         logger.error(str(e))
         s_dataset.save_change(attribute="log_message", value=str(e))
 
@@ -98,7 +98,7 @@ def run_write_h5ad(dataset_id, filetype):
             logger.info("Database updated! Exiting")
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
-        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
+        s_dataset.update_downstream_steps_to_canceled(attribute=DB_STEP)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         logger.error(str(e))
         logger.error("Dataset - {} -- Could not save status to database.".format("test", dataset_id))

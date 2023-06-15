@@ -3236,7 +3236,15 @@ class SubmissionDataset:
             if not getattr(self, steps[i]) in ["completed", "loading"]:
                 self.save_change(attribute=steps[i], value="pending")
 
-    def update_downstream_steps_to_cancelled(self, attribute=None):
+    def find_loading_step(self):
+        """Find the currently "loading" step. Should be only one."""
+        steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status", "make_tsne_status"]
+        for i in range(0, len(steps)):
+            if getattr(self, steps[i]) == "loading":
+                return steps[i]
+        return None
+
+    def update_downstream_steps_to_canceled(self, attribute=None):
         """Update all downstream steps of this one in case it failed."""
         steps = ["pulled_to_vm_status", "convert_metadata_status", "convert_to_h5ad_status", "make_tsne_status"]
         start = 0

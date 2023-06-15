@@ -121,9 +121,17 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
     result = {"success" : False}
 
     if action == "make_display":
-        result = make_display.make_default_display(dataset_id, session_id, category, gene)
-        result["self"] = url_path
-        return result
+        try:
+            result = make_display.make_default_display(dataset_id, session_id, category, gene)
+            result["self"] = url_path
+            if not result["success"]:
+                raise Exception("Make tSNE step failed")
+        except Exception as e:
+            result["message"] = str(e)
+        finally:
+            result["self"] = url_path
+            return result
+
 
     if action == "import":
         dataset_mdata = metadata["dataset"]
@@ -166,6 +174,14 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
                     raise Exception("Make tSNE step failed")
         except Exception as e:
             result["message"] = str(e)
+
+            # If something happened that prevents the above scripts from changing step status to "failed",
+            # such as RabbitMQ consumer crashing, resolve that here
+            loading_step = s_dataset.find_loading_step()
+            if loading_step:
+                s_dataset.save_change(attribute=loading_step, value="failed")
+                s_dataset.update_downstream_steps_to_canceled(attribute=loading_step)
+
         finally:
             result["self"] = url_path
             return result
@@ -324,7 +340,7 @@ class SubmissionDatasetMember(Resource):
         except Exception as e:
             print(str(e), file=sys.stderr)
             result["message"] = f"Could not save dataset {dataset_id} as a new SubmissionMember in database"
-            s_dataset.update_downstream_steps_to_cancelled()
+            s_dataset.update_downstream_steps_to_canceled()
             result["status"] = get_db_status(s_dataset)
             return result
 
