@@ -34,7 +34,7 @@ DB_STEP = "convert_metadata_status" # name of step in database
 def handle_error(s_dataset, result, err_msg):
     logger.error(err_msg)
     s_dataset.save_change(attribute=DB_STEP, value="failed")
-    s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
+    s_dataset.update_downstream_steps_to_canceled(attribute=DB_STEP)
     s_dataset.save_change(attribute="log_message", value=err_msg)
     print(json.dumps(result))
 
@@ -286,14 +286,14 @@ def validate_metadata(dataset_id, session_id, attributes):
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         logger.error(str(ve))
         s_dataset.save_change(attribute=DB_STEP, value="failed")
-        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
+        s_dataset.update_downstream_steps_to_canceled(attribute=DB_STEP)
     except Exception as e:
         err_msg = "Dataset - {} -- Could not save status to database.".format(dataset_id)
         handle_error(s_dataset, result, err_msg)
         # NOTE: Original files are not deleted from the "upload" area, so we can try again.
         logger.error(str(e))
         s_dataset.save_change(attribute=DB_STEP, value="failed")
-        s_dataset.update_downstream_steps_to_cancelled(attribute=DB_STEP)
+        s_dataset.update_downstream_steps_to_canceled(attribute=DB_STEP)
     finally:
         return result
 

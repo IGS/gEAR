@@ -213,8 +213,9 @@ class Submission(Resource):
 
             for res in results:
                 if isinstance(res, Exception):
-                    # TODO: what to do here
-                    print(str(e), file=sys.stderr)
+                    message = res
+                    print(str(message), file=sys.stderr)
+                    #res = {"success":False, "message": message}
 
                 dataset_id = res["dataset_id"]
                 dataset_results[dataset_id] = res
