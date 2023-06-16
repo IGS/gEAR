@@ -393,11 +393,13 @@
                           </div>
                           <div class="col-sm-11 is-editable">
                              <h5>Long description</h5>
+                             <div id="result_gc_id_{{:id}}_display_ldesc">
                              {{if ldesc}}
-                             <div id="result_gc_id_{{:id}}_display_ldesc">{{:ldesc}}</div>
+                                {{:ldesc}}
                              {{else}}
-                             <p>No description entered</p>
+                                <p>No description entered</p>
                              {{/if}}
+                             </div>
                           </div>
                           <div class="col-sm-11 editable-version">
                              <h5>Long description</h5>
