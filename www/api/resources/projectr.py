@@ -196,22 +196,6 @@ def limited_as_completed(coros, limit):
                     except StopIteration as e:
                         pass
                     return f.result()
-
-    async def first_to_finish_nonworking():
-        nonlocal futures
-        # Suggested by commenter "ruslan" in the URL. Using "while True" can be CPU-intensive
-        # EDIT: not using this for the time being, as some chunks are dropped
-        done, futures = await asyncio.wait(futures, return_when=asyncio.FIRST_COMPLETED)
-        # then re-fill the set of futures from the coros iterable
-        try:
-            newf = next(coros)
-            futures.add(
-                asyncio.ensure_future(newf))
-        except StopIteration as e:
-            pass
-        # Pass the new done results back
-        return done.pop().result()
-
     while futures:
         yield first_to_finish()
 
@@ -258,42 +242,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     if not fh:
         fh=sys.stderr
 
-    projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, algorithm)
-    dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
-    dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
-
-    # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
-    if Path(dataset_projection_csv).is_file():
-        print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv), file=fh)
-
-        # Projection already exists, so we can just return info we want to return in a message
-        with open(dataset_projection_json_file) as projection_fh:
-            projections_dict = json.load(projection_fh)
-        common_genes = None
-        genecart_genes = None
-        dataset_genes = None
-        for config in projections_dict[genecart_id]:
-            # Handle legacy algorithm
-            if "is_pca" in config:
-                config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
-
-            if algorithm == config["algorithm"]:
-                common_genes = config.get('num_common_genes', None)
-                genecart_genes = config.get('num_genecart_genes', -1)
-                dataset_genes = config.get('num_dataset_genes', -1)
-                break
-
-        if common_genes:
-            message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
-
-        return {
-            "success": success
-            , "message": message
-            , "projection_id": projection_id
-            , "num_common_genes": common_genes
-            , "num_genecart_genes": genecart_genes
-            , "num_dataset_genes": dataset_genes
-        }
     """
     Steps
 
@@ -411,6 +359,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # Close dataset adata so that we do not have a stale opened object
     adata.file.close()
+
+    dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
 
     # Create lock file if it does not exist
     lockfile = str(dataset_projection_csv) + ".lock"
@@ -537,6 +487,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     gc.collect()    # trying to clear memory
 
     # Add new configuration to the list for this dictionary key
+    dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
     with open(dataset_projection_json_file) as projection_fh:
             dataset_projections_dict = json.load(projection_fh)
     dataset_projections_dict.setdefault(genecart_id, []).append({
@@ -668,6 +619,44 @@ class ProjectR(Resource):
         algorithm = args['algorithm']
         projection_id = args['projection_id']
         scope = args['scope']
+
+        projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, algorithm)
+        dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+        dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
+
+        # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
+        if Path(dataset_projection_csv).is_file():
+            print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv))
+
+            # Projection already exists, so we can just return info we want to return in a message
+            with open(dataset_projection_json_file) as projection_fh:
+                projections_dict = json.load(projection_fh)
+            common_genes = None
+            genecart_genes = None
+            dataset_genes = None
+            for config in projections_dict[genecart_id]:
+                # Handle legacy algorithm
+                if "is_pca" in config:
+                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+
+                if algorithm == config["algorithm"]:
+                    common_genes = config.get('num_common_genes', None)
+                    genecart_genes = config.get('num_genecart_genes', -1)
+                    dataset_genes = config.get('num_dataset_genes', -1)
+                    break
+
+            if common_genes:
+                message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
+
+            return {
+                "success": 1
+                , "message": message
+                , "projection_id": projection_id
+                , "num_common_genes": common_genes
+                , "num_genecart_genes": genecart_genes
+                , "num_dataset_genes": dataset_genes
+            }
+
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
