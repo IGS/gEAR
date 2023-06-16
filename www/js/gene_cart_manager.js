@@ -244,6 +244,9 @@ $(document).on('click', '.edit_gc_cancel', function() {
 
     var org_id = $(selector_base + "_editable_organism_id").data("original-val");
     $(selector_base + "_editable_organism_id").val(org_id);
+
+    var ldesc = $(selector_base + "_editable_ldesc").data("original-val");
+    $(selector_base + "_editable_ldesc").val(ldesc);
 });
 
 $(document).on('click', '.edit_gc_save', function() {
