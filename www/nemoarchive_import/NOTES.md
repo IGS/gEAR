@@ -4,8 +4,12 @@
   * `archive-file-transfer@nemo-analytics.iam.gserviceaccount.com` does not have serviceusage.services.use access to the Google Cloud project
 * To ensure Google has credentials to work with:
   * For the service account to use, download JSON keys
-  * Put keys in VM in /var/www
+  * Put keys in VM in <gEAR_root>/www
   * Add key filepath to gear.ini->nemoarchive_import->credentials_json
+
+## Setting up the Cloud Function service
+
+Please see the file at file://../../services/nemoanalytics-import-builder/README.md
 
 ## API ROUTES
 
@@ -77,7 +81,7 @@ The import process can either run inside the Apache process or a message can be 
 
 ### Pull GCP files to VM
 
-This step identifies each of the component files that make up a particular "file" dataset. The Google Cloud Platform (GCP) bucket path is retrieved and each file is pulled from GCP to the `/var/www/uploads/files` area under a directory named after the dataset UUID.
+This step identifies each of the component files that make up a particular "file" dataset. The Google Cloud Platform (GCP) bucket path is retrieved and each file is pulled from GCP to the `<gEAR_root>/www/uploads/files` area under a directory named after the dataset UUID.
 
 ### Validate Metadata
 
@@ -87,7 +91,7 @@ This step builds a JSON structure out of the file and sample metadata. There is 
 
 ### Write to H5AD
 
-This step looks at the uploaded dataset files (plus JSON file) and uses them in a gear.DataArchive object. This object will now convert the dataset files to H5AD inside `/var/www/datasets`. If the filetype is already H5AD (no conversion) or is not deemed to have Ensembl IDs present for the adata.var index, those are added using the gear database. The JSON is also copied to `/var/www/datasets` and the database is updated
+This step looks at the uploaded dataset files (plus JSON file) and uses them in a gear.DataArchive object. This object will now convert the dataset files to H5AD inside `<gEAR_root>/www/datasets`. If the filetype is already H5AD (no conversion) or is not deemed to have Ensembl IDs present for the adata.var index, those are added using the gear database. The JSON is also copied to `<gEAR_root>/www/datasets` and the database is updated
 
 ### Make tSNE
 
