@@ -238,6 +238,9 @@ class Submission(Resource):
             if submission.email_updates:
                 # send email about submission status
                 send_email(result, submission, user.email)
+                # Disable email updates in case people refresh the "import" link.
+                # If they want another email, they must click the "Send Updates" button on page
+                submission.save_change(attribute="email_updates", value=0)
 
             return result
         abort(400)
@@ -299,7 +302,7 @@ class Submissions(Resource):
             # Save submission as a layout
             layout_name = f"Submission {submission_id}"
             layout = geardb.Layout(user_id=user.id, label=layout_name,
-                                is_current=0, members=None)
+                                is_current=1, members=None)
             layout.save()
             result['layout_share_id'] = layout.share_id
             cursor.close()

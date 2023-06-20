@@ -248,6 +248,7 @@ const populateSubmissionId = (submissionId) => {
 
 /* Retrieve existing submission or add new one. Returns datasets from submission */
 const processSubmission = async (fileEntities, submissionId) => {
+    const submissionElt = document.getElementById("submission_title");
 
     try {
         // Going to attempt to get existing submission (and resume)
@@ -256,7 +257,6 @@ const processSubmission = async (fileEntities, submissionId) => {
             throw new Error(getResponse.statusText);
         }
         const getJsonRes = await getResponse.json();
-        console.log(getJsonRes)
         if (!getJsonRes.success) {
             throw new Error(getJsonRes.message);
         }
@@ -272,10 +272,11 @@ const processSubmission = async (fileEntities, submissionId) => {
         }
         // If this is a different user viewing the submission, disable naming the layout
         if (! getJsonRes.is_submitter) {
-            console.log("here");
-            console.log(getJsonRes);
             document.getElementById("collection_name").disabled = "disabled";
         }
+
+        submissionElt.dataset.layout_share_id = getJsonRes.layout_share_id; // Store layout_share_id for future retrieval
+
         return getJsonRes
 
     } catch {
@@ -297,12 +298,15 @@ const processSubmission = async (fileEntities, submissionId) => {
             throw new Error(postJsonRes.message);
         }
 
+        submissionElt.dataset.layout_share_id = getJsonRes.layout_share_id; // Store layout_share_id for future retrieval
+
+
         // NOTE: at this point we have no routes for our submission
         // Go through the projected dataset routes, and create the ones that do not already exist
         // If the dataset exists (for another submission), then associate with this submission
 
-        // TODO: Process with async "all promises settled"
-        for (const entity of fileEntities) {
+        await Promise.allSettled([...fileEntities].map( async (entity) => {
+            console.log(entity);
             const datasetId = entity.attributes.id;
             const identifier = entity.attributes.identifier;
             const sdParams = {"dataset_id":datasetId, "identifier":identifier, "is_restricted":isRestricted}
@@ -336,7 +340,7 @@ const processSubmission = async (fileEntities, submissionId) => {
                 , headers: {"Content-Type": "application/json"}
             })
             // TODO: Create a rollback script in case of failure of submission or datasets;
-        }
+        }));
         return postJsonRes;
     }
 }
@@ -365,7 +369,7 @@ const saveDefaultDisplay = async (datasetId, displayId) => {
 }
 
 const updateLayoutName = async (submissionId, collectionName) => {
-    const response = await fetch("./cgi/nemoarchive_update_submission_layout_namecgi", {
+    const response = await fetch("./cgi/nemoarchive_update_submission_layout_name.cgi", {
         method: "POST",
         body: convertToFormData({submission_id: submissionId, layout_name: collectionName})
         });
@@ -437,7 +441,7 @@ const pollSubmission = async (submissionId) => {
     const datasetStatus = {}
 
     // Update the statuses
-    for (const datasetId in datasets) {
+    await Promise.allSettled([...Object.keys(datasets)].map( async (datasetId) => {
         const datasetInfo = await getSubmissionDataset(datasets[datasetId].href);
         datasetStatus[datasetId] = datasetInfo.status;
 
@@ -451,20 +455,19 @@ const pollSubmission = async (submissionId) => {
         }
 
         const importSuccess = isImportComplete(datasetInfo.status);
-        if (importSuccess) {
-
-            // show permalink
-            showDatasetPermalink(datasetId);
-
-            if (datasetInfo.status.make_tsne == "completed") {
-                // After the first dataset is finished, we can View Datasets if desired
-                finishElements.importFinish.classList.remove("is-hidden");
-            }
-            // But if final step did not complete, only a partial success
-            finishElements.partialSuccess.classList.remove("is-hidden");
-
+        if (!importSuccess) {
+            return;
         }
-    }
+        // show permalink
+        showDatasetPermalink(datasetId);
+
+        if (datasetInfo.status.make_tsne == "completed") {
+            // After the first dataset is finished, we can View Datasets if desired
+            finishElements.importFinish.classList.remove("is-hidden");
+        }
+        // But if final step did not complete, only a partial success
+        finishElements.partialSuccess.classList.remove("is-hidden");
+    }));
 
     const isAllComplete = Object.keys(datasetStatus).every( (datasetId) => isImportComplete(datasetStatus[datasetId]) );
 
@@ -473,7 +476,7 @@ const pollSubmission = async (submissionId) => {
         finishElements.completeSuccess.classList.remove("is-hidden");
     }
 
-    //if (isFinished) return;
+    //if (isFinished) return;   // This (from submission object) seems to execute early if things go bad, which can lead to confusion
     if (isAllComplete) return;
 
     // Pull again after a brief timeout

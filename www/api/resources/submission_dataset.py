@@ -291,16 +291,15 @@ class SubmissionDataset(Resource):
                 while not task_finished:
                     pass
                 print("[x] sending payload response for submission_dataset {} back to client".format(dataset_id), file=sys.stderr)
-                print(response)
-                if not response["success"]:
-                    print(response.get("message", "Something went wrong."), file=sys.stderr)
+                if not result["success"]:
+                    print(result.get("message", "Something went wrong."), file=sys.stderr)
                     abort(500)
-                return response
+                return result
 
         else:
             result =  submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
             if not result["success"]:
-                print(response.get("message", "Something went wrong."), file=sys.stderr)
+                print(result.get("message", "Something went wrong."), file=sys.stderr)
                 abort(500)
             return result
 
