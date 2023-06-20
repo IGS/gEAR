@@ -121,7 +121,11 @@ class DataArchive:
             # assume ENSEMBL IDs are not present if h5ad was already passed to us
             self.ens_present = False
             file_gen = Path(self.base_dir).iterdir()
-            return str(next(file_gen))
+            filepath = str(next(file_gen))
+            if Path(filepath).stat().st_size == 0:
+                filename = Path(filepath).name
+                raise Exception(f"File {filename} appears to be empty. Cannot proceed")
+            return filepath
 
         outdir_name_path = Path(output_dir).joinpath(self.dataset_id + ".h5ad")
         outdir_name = str(outdir_name_path)
@@ -162,6 +166,9 @@ class DataArchive:
         archive_files = [str(f) for f in archive_filepaths]
 
         for entry in archive_files:
+            if Path(entry).stat().st_size == 0:
+                filename = Path(entry).name
+                raise Exception(f"File {filename} appears to be empty. Cannot proceed")
             if 'matrix.mtx' in entry:
                 unzipped_entry = gunzip_file(entry)
                 adata = sc.read(unzipped_entry, cache=False).transpose()
@@ -205,6 +212,9 @@ class DataArchive:
         archive_files = [str(f) for f in archive_filepaths]
 
         for entry in archive_files:
+            if Path(entry).stat().st_size == 0:
+                filename = Path(entry).name
+                raise Exception(f"File {filename} appears to be empty. Cannot proceed")
             if 'expression.tab' in entry or 'DataMTX.tab' in entry:
                 unzipped_entry = gunzip_file(entry)
                 # Get columns and rows of expression data in list form.

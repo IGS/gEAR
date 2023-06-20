@@ -40,8 +40,8 @@ def main():
         print(json.dumps(result))
         return
 
-    layout = geardb.Layout()
-    layout.load(submission.layout_id)
+    layout = submission.get_layout_info()
+    layout.load()
 
     layout.save_change(attribute="label", value=layout_name)
     result = {'layout_id': layout.id,
