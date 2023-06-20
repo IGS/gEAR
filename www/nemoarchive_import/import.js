@@ -256,6 +256,7 @@ const processSubmission = async (fileEntities, submissionId) => {
             throw new Error(getResponse.statusText);
         }
         const getJsonRes = await getResponse.json();
+        console.log(getJsonRes)
         if (!getJsonRes.success) {
             throw new Error(getJsonRes.message);
         }
@@ -266,11 +267,13 @@ const processSubmission = async (fileEntities, submissionId) => {
         }
 
         // Prepopulate collection name if previously added
-        if (getJsonRes.collectionName) {
-            document.getElementById("collection_name").value = collectionName;
+        if (getJsonRes.collection_name) {
+            document.getElementById("collection_name").value = getJsonRes.collection_name;
         }
         // If this is a different user viewing the submission, disable naming the layout
-        if (! getJsonRes.isSubmitter) {
+        if (! getJsonRes.is_submitter) {
+            console.log("here");
+            console.log(getJsonRes);
             document.getElementById("collection_name").disabled = "disabled";
         }
         return getJsonRes
@@ -298,6 +301,7 @@ const processSubmission = async (fileEntities, submissionId) => {
         // Go through the projected dataset routes, and create the ones that do not already exist
         // If the dataset exists (for another submission), then associate with this submission
 
+        // TODO: Process with async "all promises settled"
         for (const entity of fileEntities) {
             const datasetId = entity.attributes.id;
             const identifier = entity.attributes.identifier;
@@ -490,7 +494,7 @@ const createSubmission = async (jsonUrl) => {
 
     // https://github.github.io/fetch
     //const urlResponse = await fetch(jsonUrl);
-    const urlResponse = await fetch("nemoarchive_import/test3.json");
+    const urlResponse = await fetch("nemoarchive_import/test4.json");
     const jsonData = await urlResponse.json();
 
     const submissionId = await grabSubmissionId(jsonData);

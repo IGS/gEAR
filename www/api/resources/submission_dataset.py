@@ -172,6 +172,9 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
                 result = make_display.make_default_display(dataset_id, session_id, category, gene)
                 if not result["success"]:
                     raise Exception("Make tSNE step failed")
+            else:
+                # Nothing needs to be run.
+                result["success"] = True
         except Exception as e:
             result["message"] = str(e)
 
@@ -288,15 +291,16 @@ class SubmissionDataset(Resource):
                 while not task_finished:
                     pass
                 print("[x] sending payload response for submission_dataset {} back to client".format(dataset_id), file=sys.stderr)
+                print(response)
                 if not response["success"]:
-                    print(response["message"], file=sys.stderr)
+                    print(response.get("message", "Something went wrong."), file=sys.stderr)
                     abort(500)
                 return response
 
         else:
             result =  submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
             if not result["success"]:
-                print(result["message"], file=sys.stderr)
+                print(response.get("message", "Something went wrong."), file=sys.stderr)
                 abort(500)
             return result
 
