@@ -48,16 +48,18 @@
 
         <div id="main_content" class="container">
 
-            <h1 class="title is-3">NeMO Archive Import Tool</h1>
+            <h3 class="title is-3">NeMO Archive Import Tool</h3>
 
-            <h2 id="submission_title" class="subtitle is-5">
+            <h5 id="submission_title" class="subtitle is-5">
                 <span class="icon-text">
                     <span>Submission: <span id="submission_id"></span></span>
                     <span class="icon has-text-info is-clickable">
                         <i class="fa fa-share-alt" aria-hidden="true"></i>
                     </span>
                 </span>
-            </h2>
+            </h5>
+
+            <p id="not_supported_p">There were <span id="not_supported"></span> files that could not be imported because their file type is not supported.</p>
 
             <p class="content">
                 The NeMO Archive import tool is a useful utility for importing data into NeMO Analytics for quick visualization.
@@ -73,6 +75,35 @@
             <div id="main_alert" class="notification is-danger is-hidden">
                 <button class="delete"></button>
                 <span></span>
+            </div>
+
+
+            <div id="import_finish" class="is-hidden my-4">
+                <div class="columns">
+                    <div class="field column">
+                        <label class="label" for="collection_name">OPTIONAL: Name collection</label>
+                        <div class="control">
+                            <input class="input column is-half" type="text" id="collection_name" aria-describedby="collection_help">
+                        </div>
+                        <small id="collection_help" class="help">Enter a name for this collection of datasets. A permalink will be created for displaying visualizations for this collection</small>
+                    </div>
+                    <div class="field column">
+                        <label class="label" for="global_gene_selection">OPTIONAL: Select gene for plotting expression</label>
+                        <div class="control">
+                            <input class="input column is-half" type="text" id="global_gene_selection" aria-describedby="global_gene_selection_help">
+                        </div>
+                        <small id="global_gene_selection_help" class="help">This gene will be searched against when the "Visualize Collection" button is clicked.<br>Orthology mapping between species will be attempted if necessary. Any datasets missing this gene will not plot.</small>
+                    </div>
+                </div>
+
+                <p id="partial_success" class="has-text-warning-dark is-hidden">Importing is complete, but some datasets did not successfully import. Click "Visualize Collection" to view the successful ones</p>
+                <p id="complete_success" class="is-hidden">Importing is complete. Click "Visualize Collection" to view the collection</p>
+
+                <button id="view_datasets" class="button is-primary">Visualize Collection</button>
+            </div>
+            <div id="email_on_success_div" class="is-hidden my-4">
+                <p>If you would like, click this button, and we will email you when the datasets have finished importing. We will attempt to choose the best metadata category for plotting.</p>
+                <button id="email_button" class="button is-link">Send Email Updates</button>
             </div>
 
             <div class="table-container">
@@ -91,34 +122,6 @@
                 <tbody>
                 </tbody>
             </table>
-            </div>
-            <p id="not_supported_p">There were <span id="not_supported"></span> files that could not be imported because their file type is not supported.</p>
-
-            <div id="import_finish" class="is-hidden">
-                <div class="field">
-                    <label class="label" for="collection_name">OPTIONAL: Name collection</label>
-                    <div class="control">
-                        <input class="input column is-one-fifth" type="text" id="collection_name" aria-describedby="collection_help">
-                    </div>
-                    <small id="collection_help" class="help">Enter a name for this collection of datasets. A permalink will be created for displaying visualizations for this collection</small>
-                </div>
-                <div class="field">
-                    <label class="label" for="global_gene_selection">OPTIONAL: Select gene for plotting expression</label>
-                    <div class="control">
-                        <input class="input column is-one-fifth" type="text" id="global_gene_selection" aria-describedby="global_gene_selection_help">
-                    </div>
-                    <small id="global_gene_selection_help" class="help">This gene will be searched against when the "View Datasets" button is clicked. Orthology mapping between species will be attempted if necessary. Any datasets missing this gene will not plot.</small>
-                </div>
-
-
-                <p id="partial_success" class="has-text-warning-dark is-hidden">Importing is complete, but some datasets did not successfully import. Click "Visualize Collection" to view the successful ones</p>
-                <p id="complete_success" class="is-hidden">Importing is complete. Click "Visualize Collection" to view the collection</p>
-
-                <button id="view_datasets" class="button is-primary">Visualize Collection</button>
-            </div>
-            <div id="email_on_success_div" class="is-hidden">
-                <p>If you would like, click this button, and we will email you when the datasets have finished importing. We will attempt to choose the best metadata category for plotting.</p>
-                <button id="email_button" class="button is-link">Send Email Updates</button>
             </div>
         </div>
     </div>
