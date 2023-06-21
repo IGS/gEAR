@@ -118,6 +118,8 @@ def insert_minimal_dataset(dataset_id, identifier):
 def submission_dataset_callback(dataset_id, metadata, session_id, url_path, action=None, category=None, gene=None):
     """Run all steps to import a single dataset."""
 
+    #TODO: How to run as non-root when RabbitMQ is running this (at least to move h5ad/json to final area)
+
     result = {"success" : False}
 
     if action == "make_display":

@@ -48,12 +48,12 @@
 
         <div id="main_content" class="container">
 
-            <h1 class="title is-1">NeMO Archive Import Tool</h1>
+            <h1 class="title is-3">NeMO Archive Import Tool</h1>
 
-            <h2 id="submission_title" class="subtitle is-2">
+            <h2 id="submission_title" class="subtitle is-5">
                 <span class="icon-text">
                     <span>Submission: <span id="submission_id"></span></span>
-                    <span class="icon has-text-info">
+                    <span class="icon has-text-info is-clickable">
                         <i class="fa fa-share-alt" aria-hidden="true"></i>
                     </span>
                 </span>
@@ -76,7 +76,7 @@
             </div>
 
             <div class="table-container">
-            <table class="table is-narrow is-fullwidth" id="submission_datasets">
+            <table class="table is-fullwidth" id="submission_datasets">
                 <thead>
                     <tr>
                         <th>File name</th>
@@ -86,7 +86,6 @@
                         <th>Make tSNE</th>
                         <th>Message</th>
                         <th>Metadata to Plot</th>
-                        <th>Permalink</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -112,10 +111,10 @@
                 </div>
 
 
-                <p id="partial_success" class="has-text-warning-dark is-hidden">Importing is complete, but some datasets did not successfully import. Click "View Datasets" to view the successful ones</p>
-                <p id="complete_success" class="is-hidden">Importing is complete. Click "View Datasets" to view the collection</p>
+                <p id="partial_success" class="has-text-warning-dark is-hidden">Importing is complete, but some datasets did not successfully import. Click "Visualize Collection" to view the successful ones</p>
+                <p id="complete_success" class="is-hidden">Importing is complete. Click "Visualize Collection" to view the collection</p>
 
-                <button id="view_datasets" class="button is-primary">View Datasets</button>
+                <button id="view_datasets" class="button is-primary">Visualize Collection</button>
             </div>
             <div id="email_on_success_div" class="is-hidden">
                 <p>If you would like, click this button, and we will email you when the datasets have finished importing. We will attempt to choose the best metadata category for plotting.</p>

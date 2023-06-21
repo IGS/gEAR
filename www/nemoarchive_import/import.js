@@ -58,7 +58,7 @@ const convertToFormData = (object) => {
 const printTblMessage = (datasetId, msg, level) => {
     // ? Should I make this a hover element since messages may be long?
     const cell = document.getElementById(`${datasetId}-messages`);
-    cell.classList = [];
+    cell.classList = ["table-messages"];
     cell.textContent = msg;
     if (level) {
         cell.classList.add(`has-text-${level}-dark`)
@@ -185,14 +185,16 @@ const initializeDatasetRow = (dataset) => {
 
     const template = `
     <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
-        <td><a class="has-text-link" href="${identifierUrl}" target="_blank">${identifier}</a></td>
+        <td>
+            <div><a class="has-text-link has-text-weight-semibold" href="${identifierUrl}" target="_blank">${identifier}</a><div>
+            <div id="${datasetId}-permalink" class="is-size-7"></div>
+        </td>
         <td id="${datasetId}-pulled-to-vm" class="has-text-white has-background-warning-dark">Pending</td>
         <td id="${datasetId}-validate-metadata" class="has-text-white has-background-warning-dark">Pending</td>
         <td id="${datasetId}-convert-to-h5ad" class="has-text-white has-background-warning-dark">Pending</td>
         <td id="${datasetId}-make-tsne" class="has-text-white has-background-warning-dark">Pending</td>
-        <td id="${datasetId}-messages"></td>
+        <td id="${datasetId}-messages" class="table-messages"></td>
         <td id="${datasetId}-obslevels">Not ready</td>
-        <td id="${datasetId}-permalink">Not ready</td>
     </tr>
     `
 
@@ -203,7 +205,7 @@ const initializeDatasetRow = (dataset) => {
 }
 
 const isImportComplete = (status) => {
-    /* Returns True if step finished */
+    /* Returns True if last step finished */
     // i.e. a non-runnable state. Incomplete steps are reset to "pending" when an import is attempted
     if (status.make_tsne == "pending" || status.make_tsne == "loading") return false;
     return true;
@@ -228,7 +230,7 @@ const populateObsDropdown = async (datasetId) => {
     const obsLevels = Object.keys(jsonData.obs_levels);
     if (!obsLevels.length) {
         const parent = document.getElementById(`${datasetId}-obslevels`);
-        parent.textContent = "No categories found.";
+        parent.textContent = "Not applicable.";
         return
     }
     parent.classList.add("is-loading", "select");
@@ -381,7 +383,7 @@ const showDatasetPermalink = (datasetId) => {
     const permalinkRow = document.getElementById(`${datasetId}-permalink`);
     const shareId = tableRow.dataset.share_id;
     const permalinkUrl =  createDatasetPermalinkUrl(shareId);
-    const template = `<a href=${permalinkUrl} target="_blank">View Dataset</a>`;
+    const template = `<a href=${permalinkUrl} target="_blank">Visualize</a>`;
     permalinkRow.innerHTML = template;
 }
 
@@ -452,14 +454,17 @@ const pollSubmission = async (submissionId) => {
         if (datasetInfo.status.convert_to_h5ad == "completed") {
             // Populated categorical observations if possible
             populateObsDropdown(datasetId);
+
+            // show permalink (though no curations will be made until make_tsne finishes)
+            showDatasetPermalink(datasetId);
         }
 
-        const importSuccess = isImportComplete(datasetInfo.status);
-        if (!importSuccess) {
+        const importComplete = isImportComplete(datasetInfo.status);
+        if (!importComplete) {
             return;
         }
-        // show permalink
-        showDatasetPermalink(datasetId);
+
+
 
         if (datasetInfo.status.make_tsne == "completed") {
             // After the first dataset is finished, we can View Datasets if desired
