@@ -6,6 +6,7 @@ servers:
   - url: https://localhost:8080/api/
 paths:
   # TODO: Eventually add other API routes
+  # TODO: Consider making the response properties camelCase, to play nice with the client-side (Javascript) standard
 
   /submissions:
     post:

@@ -1,18 +1,11 @@
 'use strict';
 
-// STATUS ELEMENTS
-const tdPending = '<td class="has-text-white has-background-warning-dark">Pending</td>';
-const tdLoading = '<td class="has-text-white has-background-info-dark">Loading</td>';
-const tdCompleted = '<td class="has-text-white has-background-success-dark">Completed</td>';
-const tdCanceled = '<td class="has-text-white has-background-dark">Canceled</td>';
-const tdFailed = '<td class="has-text-white has-background-danger-dark">Failed</td>';
-
-const status2Element = {
-    pending : tdPending
-    , loading : tdLoading
-    , completed : tdCompleted
-    , canceled : tdCanceled
-    , failed : tdFailed
+const status2Class = {
+    pending : "is-warning"
+    , loading : "is-info"
+    , completed : "is-success"
+    , canceled : "is-dark"  // should not be seen ideally
+    , failed : "is-danger"
 }
 
 const finishElements = {
@@ -189,10 +182,8 @@ const initializeDatasetRow = (dataset) => {
             <div><a class="has-text-link has-text-weight-semibold" href="${identifierUrl}" target="_blank">${identifier}</a><div>
             <div id="${datasetId}-permalink" class="is-size-7"></div>
         </td>
-        <td id="${datasetId}-pulled-to-vm" class="has-text-white has-background-warning-dark">Pending</td>
-        <td id="${datasetId}-validate-metadata" class="has-text-white has-background-warning-dark">Pending</td>
-        <td id="${datasetId}-convert-to-h5ad" class="has-text-white has-background-warning-dark">Pending</td>
-        <td id="${datasetId}-make-tsne" class="has-text-white has-background-warning-dark">Pending</td>
+        <td><progress id="${datasetId}-progress" class="progress is-info" value="0" max="100"></progress></td>
+        <td id="${datasetId}-current-step"></td>
         <td id="${datasetId}-messages" class="table-messages"></td>
         <td id="${datasetId}-obslevels">Not ready</td>
     </tr>
@@ -387,32 +378,55 @@ const showDatasetPermalink = (datasetId) => {
     permalinkRow.innerHTML = template;
 }
 
+/* Determine the current step in the import process */
+const getCurrentStep = (statuses) => {
+    // NOTE: This is under the assumption only one status is loading or failed.
+    // Is anything currently loading or failed.
+    for (const status in statuses) {
+        if (statuses[status] == "loading") return status;
+        if (statuses[status] == "failed") return status;
+    }
+
+    // Find last complete step
+    if (statuses.make_tsne == "completed") return "make_tsne"
+    // Just report what was the most recent step
+    if (statuses.convert_to_h5ad == "completed") return "convert_to_h5ad"
+    if (statuses.convert_metadata == "completed") return "convert_metadata"
+    return "pulled_to_vm"
+
+}
+
 /* Update the statuses of the table */
 const updateTblStatus = (datasetId, statuses) => {
     // Initially I had the status HTML elements in <div> to be added as innerHTML.
     // However Bulma adds padding to the <td> so the bg-colors look weird.
     // Resolving this by creating a new element, adding the ID, and replacing the old with the new.
 
-    const pulledToVm = document.getElementById(`${datasetId}-pulled-to-vm`);
-    const newPulledToVm = generateElements(status2Element[statuses.pulled_to_vm]);
-    newPulledToVm.setAttribute("id", `${datasetId}-pulled-to-vm`);
-    pulledToVm.replaceWith(newPulledToVm);
+    const currentStep = getCurrentStep(statuses);
+    const stepOrder = ["pulled_to_vm", "convert_metadata", "convert_to_h5ad", "make_tsne"];
+    const stepIndex = stepOrder.indexOf(currentStep);
+    if (stepIndex == -1) {
+        throw new Error(`Could not find index of ${currentStep}`);
+    }
+    const currentStepStatus = statuses[currentStep];
+    const statusCapitalized = currentStepStatus.charAt(0).toUpperCase() + currentStepStatus.slice(1)
+    const progressModifier = currentStepStatus == "completed" ? 1 : 0;
 
-    const validateMetadata = document.getElementById(`${datasetId}-validate-metadata`);
-    const newValidateMetadata = generateElements(status2Element[statuses.convert_metadata]);
-    newValidateMetadata.setAttribute("id", `${datasetId}-validate-metadata`);
-    validateMetadata.replaceWith(newValidateMetadata);
+    const progressBarElt = document.getElementById(`${datasetId}-progress`);
+    progressBarElt.value = (stepIndex + progressModifier) * 25;
+    // ? classList is supposed to be read-only so unsure why this works
+    progressBarElt.classList = [`progress ${status2Class[statuses[currentStep]]}`];
+    progressBarElt.textContent = statusCapitalized;
 
-    const convertToH5ad = document.getElementById(`${datasetId}-convert-to-h5ad`);
-    const newConvertToH5ad = generateElements(status2Element[statuses.convert_to_h5ad]);
-    newConvertToH5ad.setAttribute("id", `${datasetId}-convert-to-h5ad`);
-    convertToH5ad.replaceWith(newConvertToH5ad);
+    const step2Name = {
+        "pulled_to_vm": "Pull Files"
+        , "convert_metadata": "Validate Metadata"
+        , "convert_to_h5ad": "Convert to H5AD"
+        , "make_tsne": "Make tSNE"
+    }
 
-    const makeTSNE = document.getElementById(`${datasetId}-make-tsne`);
-    const newMakeTSNE = generateElements(status2Element[statuses.make_tsne]);
-    newMakeTSNE.setAttribute("id", `${datasetId}-make-tsne`);
-    makeTSNE.replaceWith(newMakeTSNE);
-
+    const currentStepElt = document.getElementById(`${datasetId}-current-step`);
+    currentStepElt.textContent = step2Name[currentStep];
 }
 
 const handleSubmissionLink = () => {
