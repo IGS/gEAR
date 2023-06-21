@@ -160,7 +160,9 @@ const initializeNewSubmission = async (fileEntities, submissionId) => {
         if (!putResponse?.ok) {
             throw new Error(putResponse.statusText);
         }
+
         // Set up the dataset row in the submission table
+        // ? Consider pagination
         initializeDatasetRow(datasets[datasetId]);
 
         // Log info about any dataset that could not be initialized
