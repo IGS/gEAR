@@ -206,7 +206,7 @@ class SubmissionDataset(Resource):
 
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
         if not s_dataset:
-            abort(404)
+            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
 
         result["success"] = True
         result["dataset_id"] = s_dataset.dataset_id
@@ -229,7 +229,7 @@ class SubmissionDataset(Resource):
 
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
         if not s_dataset:
-            abort(404)
+            abort(404, message=f"Submission dataset id {dataset_id} does not exist. Cannot perform operations on it.")
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
@@ -242,7 +242,7 @@ class SubmissionDataset(Resource):
             except Exception as e:
                 s_dataset.save_change(attribute="log_message", value="Could not establish connection as RabbitMQ publisher.")
                 print(f"{request.path} - ERROR - {str(e)}", file=sys.stderr)
-                abort(500)
+                abort(500, message=f"Cannot open connection to RabbitMQ publisher for submission dataset id {dataset_id}.")
 
             # Connect as a blocking RabbitMQ publisher
             with connection:
@@ -265,7 +265,7 @@ class SubmissionDataset(Resource):
                 except Exception as e:
                     s_dataset.save_change(attribute="log_message", value="Could not receive reply response from RabbitMQ consumer.")
                     print(f"{request.path} - ERROR - {str(e)}", file=sys.stderr)
-                    abort(500)
+                    abort(500, message=f"Could not open receive reply response from RabbitMQ consumer for submission dataset id {dataset_id}.")
 
                 # Create the publisher
                 payload = {}
@@ -287,7 +287,7 @@ class SubmissionDataset(Resource):
                 except Exception as e:
                     s_dataset.save_change(attribute="log_message", value="Could not publish payload to RabbitMQ consumer.")
                     print(f"{request.path} - ERROR - {str(e)}", file=sys.stderr)
-                    abort(500)
+                    abort(500, message=f"Could not publish payload to RabbitMQ consumer for submission dataset id {dataset_id}.")
 
                 # Wait for callback to finish, then return the response
                 while not task_finished:
@@ -295,14 +295,14 @@ class SubmissionDataset(Resource):
                 print("[x] sending payload response for submission_dataset {} back to client".format(dataset_id), file=sys.stderr)
                 if not result["success"]:
                     print(result.get("message", "Something went wrong."), file=sys.stderr)
-                    abort(500)
+                    abort(500, message="Submission dataset id {} - {}".format(dataset_id, result.get("message", "Something went wrong.")))
                 return result
 
         else:
             result =  submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
             if not result["success"]:
                 print(result.get("message", "Something went wrong."), file=sys.stderr)
-                abort(500)
+                abort(500, message="Submission dataset id {} - {}".format(dataset_id, result.get("message", "Something went wrong.")))
             return result
 
 class SubmissionDatasetMember(Resource):
@@ -321,7 +321,7 @@ class SubmissionDatasetMember(Resource):
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
         if not s_dataset:
-            abort(404)
+            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
 
         # Insert submission members and create new submisison datasets if they do not exist
         try:
@@ -331,7 +331,7 @@ class SubmissionDatasetMember(Resource):
             # Let's save the dataset to the submission layout while we are at it
             submission = geardb.get_submission_by_id(submission_id)
             if not submission:
-                abort(404)
+                abort(404, message=f"Submission id {submission_id} does not exist.")
 
             layout = submission.get_layout_info()
             # make sure the user owns the layout
@@ -359,7 +359,7 @@ class SubmissionDatasetStatus(Resource):
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
         if not s_dataset:
-            abort(404)
+            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
 
         if action == "reset_steps":
             # Before initializing a new submission, we check this route to see if the current dataset exists
@@ -369,7 +369,7 @@ class SubmissionDatasetStatus(Resource):
             result["status"] = get_db_status(s_dataset)
             result["success"] = True
             return result
-        abort(405)
+        abort(405, f"No action or unknown action specified for submission dataset id {dataset_id}.")
 
 class SubmissionDatasets(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""
