@@ -397,10 +397,6 @@ const getCurrentStep = (statuses) => {
 
 /* Update the statuses of the table */
 const updateTblStatus = (datasetId, statuses) => {
-    // Initially I had the status HTML elements in <div> to be added as innerHTML.
-    // However Bulma adds padding to the <td> so the bg-colors look weird.
-    // Resolving this by creating a new element, adding the ID, and replacing the old with the new.
-
     const currentStep = getCurrentStep(statuses);
     const stepOrder = ["pulled_to_vm", "convert_metadata", "convert_to_h5ad", "make_tsne"];
     const stepIndex = stepOrder.indexOf(currentStep);
@@ -411,8 +407,26 @@ const updateTblStatus = (datasetId, statuses) => {
     const statusCapitalized = currentStepStatus.charAt(0).toUpperCase() + currentStepStatus.slice(1)
     const progressModifier = currentStepStatus == "completed" ? 1 : 0;
 
+    // Update progress bar
     const progressBarElt = document.getElementById(`${datasetId}-progress`);
-    progressBarElt.value = (stepIndex + progressModifier) * 25;
+    const progressMaxValue = (stepIndex + progressModifier) * 25;
+
+    if (currentStepStatus == "loading") {
+        // Dynamically update bar to look like it's "loading"
+        progressBarElt.value = 0;
+        setInterval(() => {
+            progressBarElt.value = progressBarElt.value + 1;
+            if (progressBarElt.value == progressMaxValue) {
+                setTimeout(() => {
+                    progressBarElt.value = 0;
+                }, 500);
+            }
+        },25);
+    } else {
+        progressBarElt.value = progressMaxValue;
+    }
+
+
     // ? classList is supposed to be read-only so unsure why this works
     progressBarElt.classList = [`progress ${status2Class[statuses[currentStep]]}`];
     progressBarElt.textContent = statusCapitalized;
@@ -424,6 +438,7 @@ const updateTblStatus = (datasetId, statuses) => {
         , "make_tsne": "Make tSNE"
     }
 
+    // Update current step information
     const currentStepElt = document.getElementById(`${datasetId}-current-step`);
     currentStepElt.textContent = progressBarElt.value == 100 ? "Complete" : step2Name[currentStep];
 }
