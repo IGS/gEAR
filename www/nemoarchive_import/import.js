@@ -291,7 +291,7 @@ const processSubmission = async (fileEntities, submissionId) => {
             throw new Error(postJsonRes.message);
         }
 
-        submissionElt.dataset.layout_share_id = getJsonRes.layout_share_id; // Store layout_share_id for future retrieval
+        submissionElt.dataset.layout_share_id = postJsonRes.layout_share_id; // Store layout_share_id for future retrieval
 
 
         // NOTE: at this point we have no routes for our submission
@@ -299,7 +299,6 @@ const processSubmission = async (fileEntities, submissionId) => {
         // If the dataset exists (for another submission), then associate with this submission
 
         await Promise.allSettled([...fileEntities].map( async (entity) => {
-            console.log(entity);
             const datasetId = entity.attributes.id;
             const identifier = entity.attributes.identifier;
             const sdParams = {"dataset_id":datasetId, "identifier":identifier, "is_restricted":isRestricted}
@@ -426,7 +425,7 @@ const updateTblStatus = (datasetId, statuses) => {
     }
 
     const currentStepElt = document.getElementById(`${datasetId}-current-step`);
-    currentStepElt.textContent = step2Name[currentStep];
+    currentStepElt.textContent = progressBarElt.value == 100 ? "Complete" : step2Name[currentStep];
 }
 
 const handleSubmissionLink = () => {
@@ -516,7 +515,7 @@ const createSubmission = async (jsonUrl) => {
 
     // https://github.github.io/fetch
     //const urlResponse = await fetch(jsonUrl);
-    const urlResponse = await fetch("nemoarchive_import/test4.json");
+    const urlResponse = await fetch("nemoarchive_import/test.json");
     const jsonData = await urlResponse.json();
 
     const submissionId = await grabSubmissionId(jsonData);
@@ -540,7 +539,7 @@ const createSubmission = async (jsonUrl) => {
         return;
     }
 
-    const emailDiv = document.getElementById("email_on_success_div")
+    const emailDiv = document.getElementById("email_on_success_div");
     emailDiv.classList.remove("is-hidden");
 
     // Launch off the new submission import. Since we are polling for status, we do not need to block here.
@@ -556,7 +555,7 @@ const createSubmission = async (jsonUrl) => {
     await pollSubmission(submissionId);
 
     // Submission is finished and API has responded... email updates won't be triggered at this point
-    emailDiv.classList.add("is-hidden");
+    emailDiv.disabled = "disabled";
 
     return;
 }
