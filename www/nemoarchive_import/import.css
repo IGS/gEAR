@@ -21,6 +21,12 @@ img#checking_indicator {
     width: 30px;
     margin-right: 10px;
 }
-#not_supported_p{
+#not_supported_p {
     display: none;
+}
+.table-messages {
+    max-width: 150px;
+}
+td {
+    width: 120px;
 }

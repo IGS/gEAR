@@ -57,7 +57,7 @@ def send_email(result, submission, user_email):
         text += f" We performed a basic Seurat analysis on the dataset and created a tSNE display, but we encourage you to curate your own displays to support your own research (see {domain_url}/manual.html?doc=curation for documentation)."
 
     if layout_share_id:
-        text += f"\n\nYou can also view all dataset displays as a collection by going to {domain_url}/p?l=${layout_share_id} (you will need to search for a gene to show the displays)."
+        text += f"\n\nYou can also visualize all datasets as a collection by going to {domain_url}/p?l=${layout_share_id} (you will first need to search for a gene to show the displays)."
 
     text += f"\n\nIf you have any questions about your import, feel free to reach us at {domain_url}/contact.html"
 
