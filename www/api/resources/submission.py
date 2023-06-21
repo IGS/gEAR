@@ -96,7 +96,7 @@ class Submission(Resource):
 
         submission = geardb.get_submission_by_id(submission_id)
         if not submission:
-            abort(404)
+            abort(404, message=f"Submission id {submission_id} does not exist.")
 
         if user_id == submission.user_id:
             result["is_submitter"] = True
@@ -121,7 +121,7 @@ class Submission(Resource):
         """Delete the existing submission from the database."""
         submission = geardb.get_submission_by_id(submission_id)
         if not submission:
-            abort(404)
+            abort(404, message=f"Cannot delete submission {submission_id} which does not exist.")
         submission.remove()
 
 
@@ -243,13 +243,13 @@ class Submission(Resource):
                 submission.save_change(attribute="email_updates", value=0)
 
             return result
-        abort(400)
+        abort(400, message=f"No action or unknown action specified for submission id {submission_id}.")
 
 class SubmissionEmail(Resource):
     def put(self, submission_id):
         """Update email updates."""
         if not submission_id:
-            abort(404)  # "Submissiom ID not found for this request."
+            abort(404, message=f"Submission id {submission_id} does not exist.")
 
         result = {"success": False, "message":""}
 
@@ -286,7 +286,7 @@ class Submissions(Resource):
 
         submission = geardb.get_submission_by_id(submission_id)
         if submission:
-            abort(400, message="Submission already exists for this ID.")
+            abort(400, message=f"Submission already exists for this ID {submission_id}.")
 
         try:
             conn = geardb.Connection()
