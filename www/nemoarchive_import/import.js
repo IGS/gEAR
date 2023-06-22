@@ -524,7 +524,7 @@ const createSubmission = async (jsonUrl) => {
     // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
 
     // Super hacky but sometimes this loads before common.check_for_login completes.
-    setTimeout(() => {CURRENT_USER}, 500);
+    setTimeout(() => {CURRENT_USER}, 1000);
     if (! CURRENT_USER?.id) {
         alert("Must be logged in to import a new submission. Please login and refresh page.");
         throw("Must be logged in to import a new submission");
@@ -699,13 +699,19 @@ window.onload = () => {
     // Cannot use decoding from getUrlParameter as the entire url needs to be decoded first
     // Otherwise, the components within the url are dropped
     const encodedJsonUrl = getUrlParameter('url', false);
-    const jsonUrl = decodeURIComponent(decodeURI(encodedJsonUrl));
-    console.log("staged URL: " + jsonUrl);
+    if (encodedJsonUrl) {
+        const jsonUrl = decodeURIComponent(decodeURI(encodedJsonUrl));
+        console.log("staged URL: " + jsonUrl);
 
-    // Create a brand new submission from the JSON pulled in
-    createSubmission(jsonUrl);
+        // Create a brand new submission from the JSON pulled in
+        return createSubmission(jsonUrl);
 
-    // ? Figure out what to do if counts are per sample rather than per file
+        // ? Figure out what to do if counts are per sample rather than per file
+    }
+
+    // Neither path above was passed.  Alert user
+    alert("You accessed this page without providing an import URL or an existing submission ID.")
+
 };
 
 document.getElementById("view_datasets").addEventListener("click", handleViewDatasets);
