@@ -583,6 +583,19 @@ const getUrlParameter = function getUrlParameter(sParam) {
     }
 };
 
+// todo: change getUrlParameter to URLSearchParams
+// From: http://stackoverflow.com/a/21903119/1368079 (2023 Solution)
+const searchParams = function URLSearchParams(sParam) {
+    const sPageURL = decodeURIComponent(window.location.search.substring(1));
+    const sURLVariables = sPageURL.split('&');
+
+
+
+    // todo: iterate through URLSearchParams object
+}
+}
+
+
 // error should be html message for user. Example: error = '<p>You cannot do that.</p>'
 function display_error_bar(msg, detail) {
     $('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
