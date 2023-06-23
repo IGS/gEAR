@@ -6,12 +6,13 @@ nemoarchive_consumer.py - RabbitMQ messaging consumer
 
 import os, sys, json
 import gc
+from pathlib import Path
 
-lib_path = os.path.abspath(os.path.join('..', 'lib'))
+lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
 sys.path.append(lib_path)
 import gearqueue
 
-www_path = os.path.abspath(os.path.join('..', 'www'))
+www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
 sys.path.append(www_path)
 
 from api.resources.submission_dataset import submission_dataset_callback
