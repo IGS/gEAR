@@ -42,23 +42,26 @@ def _on_request(channel, method_frame, properties, body):
     gene = deserialized_body["gene"]
 
     with open(stream, "a") as fh:
-        print("{} - [x] - Received request".format(pid), flush=True, file=fh)
-        output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
+        print("{} - [x] - Received request for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), flush=True, file=fh)
 
-        # Send the output back to the Flask API call
         try:
             import pika
+            # Run the callback function to generate the reply payload
+            output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
+
+            # Send the output back to the Flask API call
             channel.basic_publish(
                     exchange=""
                     , routing_key=properties.reply_to
                     , body=json.dumps(output_payload)
                     , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
                     )
-            print("{} - [x] - Publishing response for submission_dataset {}".format(pid, dataset_id), flush=True, file=fh)
+            print("{} - [x] - Publishing response for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), flush=True, file=fh)
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
-            print("{} - Could not deliver response back to client for submission_dataset {}".format(pid, dataset_id), flush=True, file=fh)
-            print("{} - {}".format(pid, str(e)), flush=True, file=fh)
+            print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            print("{} - Could not deliver response back to client".format(pid), flush=True, file=fh)
         finally:
             gc.collect()
 
