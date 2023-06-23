@@ -280,7 +280,7 @@ class AsyncConnection(Connection):
         if self.connection.is_closing or self.connection.is_closed:
             print("{} - Connection is closing or already closed".format(self.pid), flush=True, file=self.log_fh)
         else:
-            print("{} - Connection closed".format(self.pid), flush=True, file=self.log_fh)
+            print("{} - Closing connection".format(self.pid), flush=True, file=self.log_fh)
             self.close()
 
     def reconnect(self):
@@ -289,15 +289,7 @@ class AsyncConnection(Connection):
         ioloop.
         """
         self.should_reconnect = True
-        if not self._closing:
-            self._closing = True
-            print("{} - Stopping".format(self.pid), flush=True, file=self.log_fh)
-            if self._consuming:
-                self.stop_consuming()
-                self.connection.ioloop.start()
-            else:
-                self.connection.ioloop.stop()
-            print("{} - Stopped".format(self.pid), flush=True, file=self.log_fh)
+        self.stop()
 
     def setup_exchange(self, exchange_name):
         """Setup the exchange on RabbitMQ by invoking the Exchange.Declare RPC
