@@ -67,6 +67,26 @@ Aside from the default things, these sections are important
 
 ## /etc/apache2/sites-available/000-default.conf
 
+gEAR 2 makes use of server-side includes to ease the UI burden on the client side of loading
+common elements.
+
+$ sudo a2enmod include
+
+Then the Directory commands can look like this. Would be nice to find why combining these
+causes errors.
+
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+ 
+    <Directory /var/www/html>
+        Options +ExecCGI +Includes
+        AddHandler cgi-script .py .cgi
+        AddOutputFilter INCLUDES .html
+    </Directory>
+
 Assuming you have SSL setup (below) you want to make sure apache redirects http traffic
 to https, so you need to add this line to the <VirtualHost *:80> block, adjusted for your
 domain, of course:
