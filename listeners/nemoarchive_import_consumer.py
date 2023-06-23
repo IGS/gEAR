@@ -40,11 +40,12 @@ def _on_request(channel, method_frame, properties, body):
     action = deserialized_body["action"]
     category = deserialized_body["category"]
     gene = deserialized_body["gene"]
+
+    import pika
     
     with open(stream, "a") as fh:
         print("{} - [x] - Received request for submission dataset {}".format(pid, dataset_id), flush=True, file=fh)
         try:
-            import pika
             # Run the callback function to generate the reply payload
             output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
 
@@ -59,6 +60,14 @@ def _on_request(channel, method_frame, properties, body):
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
             print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
+            # Publish an unsuccessful message
+            channel.basic_publish(
+                    exchange=""
+                    , routing_key=properties.reply_to
+                    , body=json.dumps({"success":False, "message":str(e)})
+                    , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
+                    )
+            
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             print("{} - Could not deliver response back to client for submission dataset {}".format(pid, dataset_id), flush=True, file=fh)
         finally:
