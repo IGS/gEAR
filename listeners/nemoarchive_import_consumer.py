@@ -6,12 +6,13 @@ nemoarchive_consumer.py - RabbitMQ messaging consumer
 
 import os, sys, json
 import gc
+from pathlib import Path
 
-lib_path = os.path.abspath(os.path.join('..', 'lib'))
+lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
 sys.path.append(lib_path)
 import gearqueue
 
-www_path = os.path.abspath(os.path.join('..', 'www'))
+www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
 sys.path.append(www_path)
 
 from api.resources.submission_dataset import submission_dataset_callback
@@ -41,13 +42,15 @@ def _on_request(channel, method_frame, properties, body):
     category = deserialized_body["category"]
     gene = deserialized_body["gene"]
 
+    import pika
+    
     with open(stream, "a") as fh:
-        print("{} - [x] - Received request".format(pid), flush=True, file=fh)
-        output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
-
-        # Send the output back to the Flask API call
+        print("{} - [x] - Received request for submission dataset {}".format(pid, dataset_id), flush=True, file=fh)
         try:
-            import pika
+            # Run the callback function to generate the reply payload
+            output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
+
+            # Send the output back to the Flask API call
             channel.basic_publish(
                     exchange=""
                     , routing_key=properties.reply_to
@@ -57,8 +60,17 @@ def _on_request(channel, method_frame, properties, body):
             print("{} - [x] - Publishing response for submission_dataset {}".format(pid, dataset_id), flush=True, file=fh)
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
-            print("{} - Could not deliver response back to client for submission_dataset {}".format(pid, dataset_id), flush=True, file=fh)
-            print("{} - {}".format(pid, str(e)), flush=True, file=fh)
+            print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
+            # Publish an unsuccessful message
+            channel.basic_publish(
+                    exchange=""
+                    , routing_key=properties.reply_to
+                    , body=json.dumps({"success":False, "message":str(e)})
+                    , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
+                    )
+            
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            print("{} - Could not deliver response back to client for submission dataset {}".format(pid, dataset_id), flush=True, file=fh)
         finally:
             gc.collect()
 
