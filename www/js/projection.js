@@ -8,11 +8,10 @@ const GO_TERM_SCROLLBAR_DRAWN = false;
 const AT_FIRST_MATCH_RECORD = false;
 const AT_LAST_MATCH_RECORD  = false;
 const PREVIOUS_SELECTED_RECORD_NUM = null;
-let SELECTED_GENE = null;
+let SELECTED_PATTERN = null;
 
 let dataset_id = null; //from permalink - dataset share ID
 let layout_id = null; //from permalink - profile grid layout ID
-let gene_cart_id = null; //from permalink - gene cart share ID
 let multipattern = false;  // Is this a multipattern search?
 
 const dataset_collection_panel = new DatasetCollectionPanel();
@@ -34,8 +33,6 @@ $(document).on("handle_page_loading", () => {
     let scope = "permalink";
 
     if (dataset_id) {
-        hide_functional_panel();
-
         // validate the dataset_id. runs load_frames() on success
         validate_permalink(scope);
     } else {
@@ -441,28 +438,32 @@ const customNumericSort = function (a, b) {
 function populate_search_result_list(data) {
     clear_search_result_info();
     // so we can display in sorted order.  javascript sucks like that.
-    sorted_gene_syms = [];
+    sorted_patterns = [];
 
     for (const key in data) {
         if (data.hasOwnProperty(key)) {
-            sorted_gene_syms.push(key);
+            sorted_patterns.push(key);
         }
     }
 
     // Source - https://stackoverflow.com/a/29180576
-    sorted_gene_syms.sort(customNumericSort);
-    sorted_gene_syms_len = sorted_gene_syms.length
+    try {
+        sorted_patterns.sort(customNumericSort);
+    } catch {
+        // No PC numbers to sort. Just leave be
+    }
+    sorted_patterns_len = sorted_patterns.length
 
     const items = [];
 
-    for (i = 0; i < sorted_gene_syms_len; i++) {
-        gene_symbol = sorted_gene_syms[i];
+    for (i = 0; i < sorted_patterns_len; i++) {
+        pattern = sorted_patterns[i];
 
         // Build search result html
-        let gene_result_html = `<a class="list-group-item" data-gene_symbol="${gene_symbol}" href="#">${gene_symbol}`;
+        let pattern_result_html = `<a class="list-group-item" data-pattern="${pattern}" href="#">${pattern}`;
 
-        gene_result_html += '</a>';
-        items.push(gene_result_html);
+        pattern_result_html += '</a>';
+        items.push(pattern_result_html);
     }
 
     if (items.length == 0) {
@@ -471,7 +472,7 @@ function populate_search_result_list(data) {
     } else {
         $('#search_results').append( items.join('') );
 
-        // the value here needs to match the max in gene_search.cgi
+        // the value here needs to match the max in pattern_search.cgi
         if (items.length == 100) {
             $('#search_result_count').text(`max:${items.length}`);
         } else {
@@ -490,8 +491,8 @@ function select_search_result(elm, draw_display=true) {
     }
     lastCall = callTime;
 
-    SELECTED_GENE = $(elm);
-    gene_sym = $(elm).data("gene_symbol");
+    SELECTED_PATTERN = $(elm);
+    const pattern = $(elm).data("pattern");
 
     // remove coloring from other result links
     $('.list-group-item-active').removeClass('list-group-item-active');
@@ -499,21 +500,20 @@ function select_search_result(elm, draw_display=true) {
 
     if (! multipattern) {
         // Get to top up- and down-regulated genes for each pattern if they exist.
-        const escaped_gene_sym = $.escapeSelector(gene_sym);
-        const top_up = $(`.js-projection-pattern-elts-check[data-label=${escaped_gene_sym}]`).data('top-up') || undefined;
-        const top_down = $(`.js-projection-pattern-elts-check[data-label=${escaped_gene_sym}]`).data('top-down') || undefined;
+        const escaped_pattern = $.escapeSelector(pattern);
+        const top_up = $(`.js-projection-pattern-elts-check[data-label=${escaped_pattern}]`).data('top-up') || undefined;
+        const top_down = $(`.js-projection-pattern-elts-check[data-label=${escaped_pattern}]`).data('top-down') || undefined;
 
         if (! (top_up === undefined)) {
-            $("#highly_expressed_genes_card .card-header").text(`Pattern ${gene_sym}`);
+            $("#highly_expressed_genes_card .card-header").text(`Pattern ${pattern}`);
             $("#highly_expressed_genes_card #top_up_genes .card-text").text(top_up);
             $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
             $("#highly_expressed_genes_card").show();
-            $('#functional_not_supported_alert').hide();    // Hide functional support panel to clean up some screen real estate
         }
     }
 
     if (draw_display) {
-        dataset_collection_panel.update_by_search_result(search_results[gene_sym]);
+        dataset_collection_panel.update_by_search_result(search_results[pattern]);
     }
 
     // call any plugin functions
@@ -532,7 +532,7 @@ $('#search_results').on("click", "a", function(e) {
 
     dataset_collection_panel.datasets.forEach((dataset) => {
         if (dataset.projection_id)
-        dataset.draw({gene_symbol: $(this).data("gene_symbol")});
+        dataset.draw({gene_symbol: $(this).data("pattern")});
     });
     select_search_result(this, draw_display=false);
 });
@@ -542,8 +542,6 @@ $("#projection_search_form").submit((event) => {
     // ! Needs to be in 'submit' event to ensure "Enter" triggera are handled correctly as well
     // Reset some stuff before submission, so it does not show while AJAX stuff is happening
     clear_search_result_info();
-
-    hide_functional_panel();
 
     // re-initialize any open tooltips
     $('[data-toggle="tooltip"], .tooltip').tooltip();
@@ -606,7 +604,6 @@ $("#projection_search_form").submit((event) => {
         return false;  // keeps the page from not refreshing
     }
 
-    $("#functional_not_supported_alert").hide();    // otherwise it shows way at the bottom of the screen
     return false;   // keeps the page from not refreshing
 })
 
@@ -656,7 +653,7 @@ $("#projection_source").on('change', (_event) => {
 });
 
 $("#highly_expressed_genes_card .card-footer button").on("click", (_event) => {
-    const pattern_id = $(SELECTED_GENE).data("gene_symbol");
+    const pattern_id = $(SELECTED_PATTERN).data("pattern");
 
     $.ajax({
         type: "POST",
@@ -703,30 +700,30 @@ $(document).keydown((event) => {
             // up key
             case 38:
             if (AT_FIRST_MATCH_RECORD == false) {
-                const new_gene = $(SELECTED_GENE).prev();
+                const new_pattern = $(SELECTED_PATTERN).prev();
                 // For projections, we do not want to go through checks where the organism_id is checked
                 // (since there isn't one).  So we draw the display and select the search result independently
                 if (!draw) {
                     dataset_collection_panel.datasets.forEach((dataset) => {
-                        dataset.draw({gene_symbol: $(new_gene).data("gene_symbol")});
+                        dataset.draw({gene_symbol: $(new_pattern).data("pattern")});
                     });
                 }
 
-                select_search_result($(SELECTED_GENE).prev(), draw_display=draw);
+                select_search_result($(SELECTED_PATTERN).prev(), draw_display=draw);
             }
             break;
 
             // down key
             case 40:
             if (AT_LAST_MATCH_RECORD == false) {
-                const new_gene = $(SELECTED_GENE).next();
+                const new_pattern = $(SELECTED_PATTERN).next();
                 if (!draw) {
                     dataset_collection_panel.datasets.forEach((dataset) => {
-                        dataset.draw({gene_symbol: $(new_gene).data("gene_symbol")});
+                        dataset.draw({gene_symbol: $(new_pattern).data("pattern")});
                     });
                 }
 
-                select_search_result($(SELECTED_GENE).next(), draw_display=draw);
+                select_search_result($(SELECTED_PATTERN).next(), draw_display=draw);
             }
             break;
         }
@@ -741,7 +738,7 @@ async function run_projection(dataset, projection_source, projection_algorithm, 
                 // 'entries' is array of gene_symbols
                 dataset.draw_mg({ gene_symbols: Object.keys(selected_projections) });
             } else {
-                dataset.draw({ gene_symbol: first_thing.data('gene_symbol') });
+                dataset.draw({ gene_symbol: first_thing.data('pattern') });
             }
         } else {
             if (dataset.active_display)
@@ -769,10 +766,12 @@ function add_state_history(searched_entities, projection_source=null, projection
         state_url += `&share_id=${dataset_id}`;
     }
 
-    if (layout_id) {
-        state_info.layout_id = layout_id;
-        state_url += `&layout_id=${layout_id}`;
+    if (!layout_id) {
+        layout_id = dataset_collection_panel.layout_id;
     }
+
+    state_info.layout_id = layout_id;
+    state_url += `&layout_id=${layout_id}`;
 
     // If "transfer learning button on front page was clicked, this will initially be undefined
     if (projection_source) {
@@ -827,28 +826,18 @@ function set_multipattern_plots(is_enabled, show_tooltip=true) {
     const action = show_tooltip ? "show" : "hide";
 
     if (is_enabled) {
-        $(".js-multipattern:visible").attr('data-original-title', "multipattern displays enabled. Click to search for single-gene displays.").tooltip(action);
+        $(".js-multipattern:visible").attr('data-original-title', "multipattern displays enabled. Click to search for single-pattern displays.").tooltip(action);
         $(".js-multipattern img").attr('src', 'img/icons/multi-dna.svg');
         // projection tab stuff
         $("#projection_pattern_deselect_all").click();
         $("#projection_pattern_elements_c").show();
         return;
     }
-    $(".js-multipattern:visible").attr('data-original-title', "Single-gene displays enabled. Click to search for multipattern displays.").tooltip(action);
+    $(".js-multipattern:visible").attr('data-original-title', "Single-pattern displays enabled. Click to search for multipattern displays.").tooltip(action);
     $(".js-multipattern img").attr('src', 'img/icons/single-dna.svg');
     // projection tab stuff
     $("#projection_pattern_select_all").click();
     $("#projection_pattern_elements_c").hide();
-}
-
-function hide_functional_panel() {
-    $('#functional_not_supported_alert').show();
-    $('#highly_expressed_genes_card').hide();
-}
-
-function show_functional_panel() {
-    $('#functional_not_supported_alert').hide();
-    $('#highly_expressed_genes_card').hide();
 }
 
 function clear_search_result_info() {
@@ -867,6 +856,7 @@ $(document).on("click", "#projection_pattern_deselect_all", () => {
 
 // Display curations using projections instead of genes
 $('#submit_search_projection').click((e) => {
+    $("#share_search").show();
     $('#projection_search_form').submit();
 })
 
@@ -883,7 +873,8 @@ function build_permalink(state_url) {
 
     let url = `${window.origin}/p?p=p`
 
-    const sPageURL = decodeURIComponent(window.location.search.substring(1));
+    const urlParts = state_url.split('?');
+    const sPageURL = decodeURIComponent(urlParts[1]);
     const sURLVariables = sPageURL.split('&');
 
     // Build shortform url params

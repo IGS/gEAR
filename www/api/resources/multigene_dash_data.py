@@ -1,5 +1,5 @@
 import json
-import os
+import os, sys
 from pathlib import Path
 
 import gear.mg_plotting as mg
@@ -58,6 +58,8 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
+CLUSTER_LIMIT = 5000
+
 def order_by_time_point(obs_df):
     """Order observations by time point column if it exists."""
     # check if time point order is intially provided in h5ad
@@ -108,9 +110,19 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except Exception as e:
-        import sys
-        print(str(e), file=sys.stderr)
-        raise PlotError("Could not create projection AnnData object from CSV.")
+        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
+        # Encountered edge cases were sample indexes had commas in them which
+        # breaks scanpy's read_csv feature (since they split on comma first)
+        import tempfile
+        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
+        df.index = df.index.astype(str).str.replace(",", "/")
+        with tempfile.NamedTemporaryFile() as fp:
+            df.to_csv(fp)
+            try:
+                projection_adata = sc.read_csv(fp.name)
+            except Exception as e:
+                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
+                raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
     # Close dataset adata so that we do not have a stale opened object
     if dataset_adata.isbacked:
@@ -149,6 +161,7 @@ class MultigeneDashData(Resource):
         reverse_colorscale = req.get('reverse_colorscale', False)
         # Heatmap opts
         clusterbar_fields = req.get('clusterbar_fields', [])
+        subsample_limit = req.get('subsample_limit', 0)
         matrixplot = req.get('matrixplot', False)
         center_around_zero = req.get('center_around_zero', False)
         cluster_obs = req.get('cluster_obs', False)
@@ -468,6 +481,15 @@ class MultigeneDashData(Resource):
 
             # Sort Ensembl ID columns by the gene symbol order
             df = df[sorted_ensm]
+
+            # Enabling subsampling to deal with potential memory issues for clustering.
+            # If clustering on observations, limit samples to 10,000 or fewer
+            # If a subsampling limit was set, sample based on the min of these two values
+            if subsample_limit > len(df) or subsample_limit == 0:
+                subsample_limit = len(df)
+            if cluster_obs and len(df) > CLUSTER_LIMIT:
+                subsample_limit = min(subsample_limit, CLUSTER_LIMIT)
+            df = df.sample(subsample_limit, random_state=1)
 
             groupby_index = "composite_index"
             groupby_fields = columns

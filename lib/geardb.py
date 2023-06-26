@@ -2126,13 +2126,17 @@ class DatasetCollection:
         conn.close()
         return self.datasets
 
-    def get_public(self, has_h5ad=None, n=None, order_by=None, types=None):
+    def get_public(self, has_h5ad=None, n=None, offset=None, order_by=None, types=None):
         """
         Populates the DatasetCollection's datasets list with those datasets which are marked
         as public (with optional filtering arguments.)
 
         Does NOT clear the existing internal list first, so a few methods could be called to
         make custom collections.
+
+        n: Limit the number of datasets to this count
+
+        offset: skips this number of datasets in the list
 
         order_by: ['title' (default), 'date_added']
 
@@ -2168,6 +2172,9 @@ class DatasetCollection:
 
         if n is not None:
             qry += " LIMIT {0}".format(n)
+
+        if offset is not None:
+            qry += " OFFSET {0}".format(offset)
 
         cursor.execute(qry, qry_args)
         for r in cursor:
@@ -2522,6 +2529,12 @@ class GeneCart:
         return json.dumps(self.__dict__)
 
     def add_gene(self, gene):
+        # Remove quotes 
+        gene.gene_symbol = gene.gene_symbol.replace('"', '').replace("'", '')
+
+        if gene == '':
+            raise Exception("ERROR: attempted to add an empty string as a gene symbol")
+
         self.genes.append(gene)
 
     def get_genes(self):
@@ -2572,11 +2585,11 @@ class GeneCart:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
             gc_insert_qry = """
-                            INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, is_domain, gctype)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO gene_cart (user_id, label, ldesc, organism_id, share_id, is_public, is_domain, gctype)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
 
-            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public, self.is_domain, self.gctype))
+            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.ldesc, self.organism_id, self.share_id, self.is_public, self.is_domain, self.gctype))
             self.id = cursor.lastrowid
 
             for gene in self.genes:

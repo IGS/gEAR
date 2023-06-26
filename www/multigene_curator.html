@@ -196,6 +196,21 @@
                 </select>
               </div>
             </div>
+
+            <div class="form-group">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="subsample_check">
+                <label class="form-check-label" for="subsample_check">
+                  Enable subsampling
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-check-label" for="subsample_val">Select observation subsampling number</label>
+                <input id="subsample_val" class="form-control w-25" type="number" value="0" min="0" aria-describedby="subsample_help" disabled>
+                <small id="subsample_help" class="form-text text-muted">Select a number of random observation samples from the total set to use. Saves on computation.</small>
+              </div>
+            </div>
+
             <div class="form-group" id="matrixplot_container">
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" value="" id="matrixplot" checked>
@@ -220,7 +235,7 @@
                   Perform hierarchical clustering of observation samples.
                 </label>
               </div>
-              <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
+              <div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than ~num~ observations. Due to large memory requirements, we will subsample down to, at most, ~num~ observations after filtering is applied.</div>
               <small class="form-text text-muted">
                 NOTE: Disables sorting by primary and secondary categories.
               </small>

@@ -696,9 +696,13 @@ class ProjectR(Resource):
                     }
 
                 # Create the publisher
-                payload = args
+                payload = dict()
                 payload["dataset_id"] = dataset_id
                 payload["session_id"] = session_id
+                payload["projection_id"] = projection_id    # the "arg" was assigned and potentially modified
+                payload["genecart_id"] = genecart_id
+                payload["scope"] = scope
+                payload["algorithm"] = algorithm
 
                 try:
                     connection.publish(

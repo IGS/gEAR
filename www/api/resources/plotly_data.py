@@ -33,8 +33,20 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
-    except:
-        raise PlotError("Could not create projection AnnData object from CSV.")
+    except Exception as e:
+        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
+        # Encountered edge cases were sample indexes had commas in them which
+        # breaks scanpy's read_csv feature (since they split on comma first)
+        import tempfile
+        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
+        df.index = df.index.astype(str).str.replace(",", "/")
+        with tempfile.NamedTemporaryFile() as fp:
+            df.to_csv(fp)
+            try:
+                projection_adata = sc.read_csv(fp.name)
+            except Exception as e:
+                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
+                raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
     # Close dataset adata so that we do not have a stale opened object
     if dataset_adata.isbacked:
@@ -289,11 +301,12 @@ class PlotlyData(Resource):
         if color_map and color_name:
             # Validate if all color map keys are in the dataframe columns
             # Ran into an issue where the color map keys were truncated compared to the dataframe column values
-            col_values = set(df[color_name].unique())
+            # Setting to categories ensures nulls are dropped, which are dropped already in the dataframe
+            col_values = set(df[color_name].cat.categories)
             diff = col_values.difference(color_map.keys())
             if diff:
                 message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
-                message += "Will set color map key values to the unique values in the dataframe column."
+                message += "Will set color map key values to the unique Categorical values in the dataframe column."
                 print(message, file=sys.stderr)
                 # Sort both the colormap and dataframe column alphabetically
                 sorted_column_values = sorted(col_values)
@@ -320,7 +333,7 @@ class PlotlyData(Resource):
                 ]
                 color_map = purples
             else:
-                names = df[color_name].unique().tolist()
+                names = df[color_name].cat.categories.tolist()
                 color_map = plotly_color_map(names)
 
                 # Check if color hexcodes exist and use if validated
@@ -330,7 +343,7 @@ class PlotlyData(Resource):
                     # Ensure one-to-one mapping of color names to codes
                     if len(grouped) == len(names):
                         # Test if names are color hexcodes and use those if applicable
-                        color_hex = df[color_code].unique().tolist()
+                        color_hex = df[color_code].cat.categories.tolist()
                         if re.search(COLOR_HEX_PTRN, color_hex[0]):
                             color_map = {name[0]:name[1] for name, group in grouped}
 

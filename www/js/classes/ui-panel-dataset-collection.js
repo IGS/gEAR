@@ -139,18 +139,7 @@ class DatasetCollectionPanel {
                 type: "post",
                 data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
             }).done((data) => {
-                if (data.success == 1) {
-                    if (projection) {
-                        // We want the user to explicitly click the "search" button.
-                        return;
-                    }
-
-                    //Was a search already performed?
-                    if (this.search_performed) {
-                        // User has already searched, automatically update datasets and gene searches
-                        update_datasetframes_generesults();
-                    }
-                } else {
+                if (!(data.success == 1)) {
                     $(".alert-container")
                         .html(
                             '<div class="alert alert-danger alert-dismissible" role="alert">' +
@@ -164,6 +153,11 @@ class DatasetCollectionPanel {
             }).fail((jqXHR, _textStatus, errorThrown) => {
                 display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
+        }
+        //Was a search already performed?
+        if (this.search_performed && !projection) {
+            // User has already searched, automatically update datasets and gene searches
+            update_datasetframes_generesults();
         }
     }
 

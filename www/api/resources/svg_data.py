@@ -1,4 +1,4 @@
-import os
+import os, sys
 from pathlib import Path
 
 import geardb
@@ -29,8 +29,20 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
-    except:
-        raise PlotError("Could not create projection AnnData object from CSV.")
+    except Exception as e:
+        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
+        # Encountered edge cases were sample indexes had commas in them which
+        # breaks scanpy's read_csv feature (since they split on comma first)
+        import tempfile
+        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
+        df.index = df.index.astype(str).str.replace(",", "/")
+        with tempfile.NamedTemporaryFile() as fp:
+            df.to_csv(fp)
+            try:
+                projection_adata = sc.read_csv(fp.name)
+            except Exception as e:
+                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
+                raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
     # Close dataset adata so that we do not have a stale opened object
     if dataset_adata.isbacked:

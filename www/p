@@ -76,7 +76,7 @@ def main():
         params["projection_patterns"] = patterns
 
     if algo and page == "p":
-        params["projections_algo"] = algo
+        params["projection_algo"] = algo
 
     if identifiers_org_id:
         (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')

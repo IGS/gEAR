@@ -74,6 +74,10 @@ In most cases, the executing code is located in the callback function.  If this 
 
 ## Troubleshooting
 
+### Finding the errors
+
+Typically we are using a callback to run the process after the rabbitmq consumer receives the message and payload. It is important to remember that the callback will be under the rabbitMQ process if that is enabled, and so printing to sys.stderr will not send to Apache logs like typical API/CGI calls do. If you wish, you can pass the filehandle from the consumer as an argument to the callback and print to that so those messages go to your consumer log (and print to sys.stderr if you are not using RabbitMQ).  See the ProjectR consumer and callback for an example.
+
 ### (406, "PRECONDITION_FAILED - inequivalent arg 'durable' for queue 'projectr' in vhost '/': received 'false' but current is 'true'")
 
 This error is probably popping up in the consumer. With this error, after attempting to start the consumer, you will probably see another error along the lines of `pika.exceptions.ChannelWrongStateError: Channel is closed` in the logs. This probably means that the queue was created in one context (durable=True) and is now attempted to be run in another context (durable=False).  Just run `sudo rabbitmqctl delete_queue <queue_name>` and then restart the consumer.

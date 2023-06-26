@@ -546,7 +546,7 @@ class DatasetPanel extends Dataset {
             const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
             // If file was not found, put some loading text in the plot
             if (! response.data.projection_id) {
-                this.show_loading("Plot generation may take a few minutes as projections need to be generated beforehand.");
+                this.show_loading("Please wait. Plot generation may take a few minutes as projections need to be generated beforehand.");
             }
             payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
         } catch (e) {

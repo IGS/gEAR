@@ -8,6 +8,7 @@ const GO_TERM_SCROLLBAR_DRAWN = false;
 const AT_FIRST_MATCH_RECORD = false;
 const AT_LAST_MATCH_RECORD  = false;
 const PREVIOUS_SELECTED_RECORD_NUM = null;
+let WHATS_NEW_IDX = 0
 let SCORING_METHOD = 'gene';
 let SELECTED_GENE = null;
 
@@ -65,6 +66,7 @@ $(document).on("handle_page_loading", () => {
         layout_id = getUrlParameter('layout_id');
         scope = "profile";
         get_index_info();
+        get_whatsnew_items();
     }
 
     // Was help_id found?
@@ -136,6 +138,14 @@ $(document).on("handle_page_loading", () => {
 
     $('#launcher_epigenetic_uploader').click(() => {
         window.location.replace('./upload_epigenetic_data.html');
+    });
+
+    $('#whatsnew_nav_prev').click(() => {
+        get_whatsnew_items('previous');
+    });
+
+    $('#whatsnew_nav_next').click(() => {
+        get_whatsnew_items('next');
     });
 
     $('.tool-launcher').click(function() {
@@ -249,6 +259,34 @@ function get_index_info() {
         }
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
+    });
+};
+
+function get_whatsnew_items(direction) {
+    $('#whatsnew_nav_prev').prop('disabled', true);
+    $('#whatsnew_nav_next').prop('disabled', true);
+
+    $.ajax({
+        url: './cgi/get_whatsnew_list.cgi',
+        data: {'direction': direction, 'idx_start': WHATS_NEW_IDX},
+        type: 'GET',
+        dataType: 'json'
+    }).done((data) => {
+        var ListTmpl = $.templates("#whatsnew_list_tmpl");
+        var ListHtml = ListTmpl.render(data['new_items']);
+        $("#whatsnew_items_c").html(ListHtml);
+
+        // handle the nav links
+        $('#whatsnew_nav_next').prop('disabled', false);
+        
+        if (data['idx_start'] > 0) {
+            $('#whatsnew_nav_prev').prop('disabled', false);
+        }
+
+        WHATS_NEW_IDX = data['idx_start']
+
+    }).fail((jqXHR, textStatus, errorThrown) => {
+        display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting What\'s New items.');
     });
 };
 
@@ -648,7 +686,7 @@ function select_search_result(elm, draw_display=true) {
     lastCall = callTime;
 
     SELECTED_GENE = $(elm);
-    gene_sym = $(elm).data("gene_symbol");
+    const gene_sym = $(elm).data("gene_symbol");
 
     // remove coloring from other result links
     $('.list-group-item-active').removeClass('list-group-item-active');
