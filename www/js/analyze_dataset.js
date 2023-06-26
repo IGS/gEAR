@@ -110,7 +110,12 @@ window.onload=() => {
     });
 
     $("#btn_louvain_rerun_with_groups").on('click', function() {
-        var duplicate_count = current_analysis.marker_genes.count_and_highlight_duplicates();
+        if ($("#louvain_merge_clusters").is(':checked') ) {
+            check_dependencies_and_run(run_analysis_louvain);
+            return;
+        }
+
+        const duplicate_count = current_analysis.marker_genes.count_and_highlight_duplicates();
         if (duplicate_count == 0) {
             check_dependencies_and_run(run_analysis_louvain);
         }
@@ -1072,7 +1077,7 @@ function run_analysis_louvain() {
     show_working("Computing Louvain clusters");
     $("#analysis_louvain div.image_result_c").empty();
 
-    var compute_louvain = true;
+    let compute_louvain = true;
 
     current_analysis.group_labels = [];
     $("input[name='group_labels[]']").each(function() {
@@ -1089,8 +1094,8 @@ function run_analysis_louvain() {
         }
     }
 
-    var plot_tsne = 0;
-    var plot_umap = 0;
+    let plot_tsne = 0;
+    let plot_umap = 0;
 
     if ($("#dimensionality_reduction_method_tsne").is(":checked")) {
         plot_tsne = 1;
@@ -1120,6 +1125,9 @@ function run_analysis_louvain() {
                 current_analysis.louvain.plot_tsne = plot_tsne;
                 current_analysis.louvain.plot_umap = plot_umap;
                 current_analysis.louvain.update_ui(current_analysis);
+
+                // Group labels are deduplicated in the script
+                current_analysis.group_labels = data.group_labels;
 
                 $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain clusters computed");

@@ -512,6 +512,10 @@
                             <p class="js-next-step" style="display:none;"> Please click on the "Find marker genes" toggle to proceed.</p>
                           </div>
                           <div id="group_labels_c" class="shown_later">
+                            <div class="form-group row form-group-sm">
+                              <div class="col-4"><input type="checkbox" name="louvain_merge_clusters" id="louvain_merge_clusters" class="pull-right"/></div>
+                              <label for="louvain_merge_clusters" class="col-8 col-form-label">Merge clusters with duplicate labels</label>
+                            </div>
                             <table id="marker_genes_group_labels" class="table table-bordered table-hover table-sm">
                               <thead>
                                 <tr>
@@ -536,7 +540,7 @@
                             </p>
                           </div> <!-- end #group_labels_c -->
                         </div>
-                        <div class="col-sm-8 col-md-8 col-lg-8">
+                        <div class="col-8">
                           <div>
                             <p class="tool_instructions">
                               The Louvain clustering is used to find the most likely groups of associated cells within a network.
@@ -676,7 +680,7 @@
                             <p class="js-next-step" style="display:none;"> Please click on the "tSNE / UMAP" toggle to proceed.</p>
                           </div>
                         </div>
-                        <div class="col-sm-8 col-md-8 col-lg-8">
+                        <div class="col-8">
                           <div class="container-fluid">
                             <div class="row tool_instructions">
                               The principal component analysis indicates the groups of genes that have the largest
