@@ -53,10 +53,11 @@ def main():
 
     # Compute tSNE and plot
     if compute_louvain == 'true':
-        # SAdkins note - Occasionally I run out of memory computing this step on Docker,
+        # NOTE - Occasionally I run out of memory computing this step on Docker,
         # especially if I want to do downstream stuff.
         # If this happens, set 'flavor="igraph"' which uses a different package.
-        sc.tl.louvain(adata, resolution=resolution)
+        sc.tl.louvain(adata, resolution=resolution, flavor="igraph")
+        adata.obs["louvain_order"] = adata.obs["louvain"]   # Copy order so it's easier to rename categories
         adata.write(dest_datafile_path)
 
     ## I don't see how to get the save options to specify a directory
@@ -65,7 +66,14 @@ def main():
 
     # doing it like this puts the labels in the legend
     if len(group_labels) > 0:
+        # NOTE: This is not backwards compatible with louvain computations before this was added.
+        # For those, renaming labels 2+ times requires a full analyses rerun (to reset louvain)
+        if "louvain_order" in adata.obs:
+            adata.obs["louvain"] = adata.obs["louvain_order"]
+
+        # Categories are sorted before renaming, so preserving the original cluster order is necessary
         adata.rename_categories('louvain', group_labels)
+
         adata.obs['louvain'] = adata.obs['louvain'].astype(str)
         adata.write(dest_datafile_path)
 
