@@ -10,7 +10,7 @@ To start the service run `sudo systemctl start <service_filename>`. If any chang
 
 ## Reboot-persisting start
 
-To start a service that persists during a reboot, run `sudo systemctl enable <service_filename>`
+To start a service that persists during a reboot, run `sudo systemctl enable <service_filename>`. After enabling, you will still need to run the `systemctl start` command to start on this boot session.
 
 ## Notes
 
