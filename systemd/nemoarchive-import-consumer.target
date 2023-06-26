@@ -1,0 +1,6 @@
+[Unit]
+Description=NeMO Archive Import Consumer Workers
+Wants=nemoarchive-import-consumer@1.service nemoarchive-import-consumer@2.service nemoarchive-import-consumer@3.service
+
+[Install]
+WantedBy=multi-user.target

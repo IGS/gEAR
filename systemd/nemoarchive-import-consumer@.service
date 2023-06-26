@@ -1,0 +1,17 @@
+[Unit]
+Description="NeMO Archive Import Consumer for RabbitMQ - #%i"
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup_rabbitmq.md
+After=rabbitmq-server.service
+
+[Service]
+Type=simple
+Environment=APACHE_STARTED_BY_SYSTEMD=true
+ExecStart=/opt/bin/python3 /home/jorvis/git/gEAR/listeners/nemoarchive_import_consumer.py
+KillMode=mixed
+PrivateTmp=true
+Restart=always
+RestartSec=2s
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target
