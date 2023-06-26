@@ -1,0 +1,6 @@
+[Unit]
+Description=ProjectR Consumer Workers
+Wants=projectr-consumer@1.service projectr-consumer@2.service projectr-consumer@3.service
+
+[Install]
+WantedBy=multi-user.target
