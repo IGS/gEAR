@@ -55,7 +55,7 @@ def main():
         # especially if I want to do downstream stuff.
         # If this happens, set 'flavor="igraph"' which uses a different package.
         sc.tl.louvain(adata, resolution=resolution, flavor="igraph")
-        adata.obs["louvain_order"] = adata.obs["louvain"]   # Copy order so it's easier to rename categories
+        adata.obs["orig_louvain"] = adata.obs["louvain"]   # Copy order so it's easier to rename categories
         adata.write(dest_datafile_path)
 
     ## I don't see how to get the save options to specify a directory
@@ -67,32 +67,32 @@ def main():
 
         # NOTE: This is not backwards compatible with louvain computations before this was added.
         # For those, renaming labels 2+ times requires a full analyses rerun (to reset louvain)
-        if "louvain_order" in adata.obs:
-            adata.obs["louvain"] = adata.obs["louvain_order"]
+        if "orig_louvain" in adata.obs:
+            adata.obs["louvain"] = adata.obs["orig_louvain"]
 
-        # Deduplicate categories and merge clusters (probably cleaner way to do this)
-        first_idx = dict()
-        first_idx_map = dict()
+        # Create mapping of original cluster IDs and new labels. Clusters will merge on duplicated labels
+        idx_label_map = dict()
         for idx, label in enumerate(group_labels):
             str_idx = str(idx)  # sc.tl.louvain always saves clusters as strings
-            if label in first_idx:
-                pass
-            else:
-                first_idx[label] = str_idx
-            first_idx_map[str_idx] = label
+            idx_label_map[str_idx] = label
+        adata.obs["louvain"] = adata.obs["louvain"].map(idx_label_map)
 
-        print(adata.obs["louvain"], file=sys.stderr)
-        adata.obs["louvain"] = adata.obs["louvain"].map(first_idx_map)
-        print(adata.obs["louvain"], file=sys.stderr)
+        # Create new cluster IDs and labels. Assumes that running this script again will preserve the order
+        # Duplicating "h5ad_find_marker_genes" group labels structure here, so we can re-render the html table
+        new_group_labels = []
+        label2idx = dict()
+        deduped_group_labels = list(set(group_labels))
+        for idx, label in enumerate(deduped_group_labels):
+            num_cells = adata.obs[adata.obs["louvain"] == label]["louvain"].count()
+            new_group_labels.append({'group_label':idx, 'num_cells':num_cells, 'genes': label})
+            label2idx[label] = str(idx)
+            # ? Can we eliminate making as string since and use ints in "louvain" and "orig_louvain"
 
-        print(group_labels, file=sys.stderr)
-        group_labels = list(first_idx.keys()) # dicts respect insertion order after Python3.7
-        print(group_labels, file=sys.stderr)
+        # Ensure orig_louvain is parallel to the group_labels, so relabeling uses the correct cluster numbers
+        if not len(group_labels) == len(deduped_group_labels):
+            adata.obs["orig_louvain"] = adata.obs["louvain"].map(label2idx)
+        group_labels = new_group_labels
 
-        # Categories are sorted before renaming, so preserving the original cluster order is necessary
-        #adata.rename_categories('louvain', group_labels)
-
-        #adata.obs['louvain'] = adata.obs['louvain'].astype(str)
         adata.write(dest_datafile_path)
 
         if plot_tsne == 1:

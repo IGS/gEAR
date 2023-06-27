@@ -635,7 +635,7 @@ class AnalysisStepMarkerGenes {
 
         // If the user has saved labels before, put them in the table here.  Else leave it
         //  as the top gene.
-        var i = 0;
+        let i = 0;
         if (ana.group_labels.length > 0) {
             for (i=0; i < ana.group_labels.length; i++) {
                 data['group_labels'][i]['new_group_label'] = ana.group_labels[i];
@@ -651,8 +651,8 @@ class AnalysisStepMarkerGenes {
         }
 
         // show the abbreviated table in the louvain analysis block
-        var marker_genes_group_labels_tmpl = $.templates("#marker_genes_group_labels_tmpl");
-        var marker_genes_group_labels_html = marker_genes_group_labels_tmpl.render(data['group_labels']);
+        const marker_genes_group_labels_tmpl = $.templates("#marker_genes_group_labels_tmpl");
+        const marker_genes_group_labels_html = marker_genes_group_labels_tmpl.render(data['group_labels']);
         $("#marker_genes_group_labels tbody").html(marker_genes_group_labels_html);
         $("#group_labels_c").show();
     }
