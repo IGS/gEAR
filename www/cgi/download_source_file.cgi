@@ -41,7 +41,7 @@ def main():
             copyfileobj(binfile, sys.stdout.buffer)
 
     else:
-        result_error = "Dataset tarball could not be found. Unable to download data file."
+        result_error = "Dataset file could not be found. Unable to download data file."
 
         print("Content-type: text/html")
         print()
