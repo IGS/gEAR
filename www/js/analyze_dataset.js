@@ -1015,9 +1015,11 @@ function reset_workbench() {
     $("div.empty_on_change").empty();
     $("tbody.empty_on_change").empty();
     $("input#new_analysis_label").val('');
+    $('#top_genes strong').empty();
 
     // Hide any non-analysis-flow steps
     $("#analysis_sbs_tsne").hide();
+    $("#group_labels_c").hide();
 
     // Toggle the tool buttons to hide them in the UI
     $('.tooltoggle').bootstrapToggle('off');
@@ -1077,21 +1079,25 @@ function run_analysis_louvain() {
     show_working("Computing Louvain clusters");
     $("#analysis_louvain div.image_result_c").empty();
 
+    const is_same_louvain_params = (current_analysis.louvain.n_neighbors == $("#louvain_n_neighbors").val()
+    && current_analysis.louvain.resolution == $("#louvain_resolution").val())
+
     let compute_louvain = true;
 
     current_analysis.group_labels = [];
-    $("input[name='group_labels[]']").each(function() {
-        current_analysis.group_labels.push($(this).val());
-    });
+
+    // It is not safe to reuse group labels if the clustering params were changed
+    if (is_same_louvain_params) {
+        $("input[name='group_labels[]']").each(function() {
+            current_analysis.group_labels.push($(this).val());
+        });
+    }
+
     // update gene comparison options to include new labels
     current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
 
-    // TODO: check parameters to be sure we don't need to recluster
-    if (current_analysis.louvain.calculated == true) {
-        if (current_analysis.louvain.n_neighbors == $("#louvain_n_neighbors").val() &&
-            current_analysis.louvain.resolution == $("#louvain_resolution").val()) {
-            compute_louvain = false;
-        }
+    if (current_analysis.louvain.calculated == true && is_same_louvain_params) {
+        compute_louvain = false;
     }
 
     let plot_tsne = 0;
@@ -1109,13 +1115,13 @@ function run_analysis_louvain() {
         type: "POST",
         url: "./cgi/h5ad_generate_louvain.cgi",
         data: {'dataset_id': current_analysis.dataset_id, 'analysis_id': current_analysis.id,
-               'analysis_type': current_analysis.type, 'session_id': current_analysis.user_session_id,
-               'resolution': $("#louvain_resolution").val(),
-               'compute_louvain': compute_louvain,
-               'plot_tsne': plot_tsne,
-               'plot_umap': plot_umap,
-               'group_labels': JSON.stringify(current_analysis.group_labels)
-              },
+                'analysis_type': current_analysis.type, 'session_id': current_analysis.user_session_id,
+                'resolution': $("#louvain_resolution").val(),
+                'compute_louvain': compute_louvain,
+                'plot_tsne': plot_tsne,
+                'plot_umap': plot_umap,
+                'group_labels': JSON.stringify(current_analysis.group_labels)
+                },
         dataType: "json",
         success: function(data) {
             if (data['success'] == 1) {
@@ -1126,8 +1132,19 @@ function run_analysis_louvain() {
                 current_analysis.louvain.plot_umap = plot_umap;
                 current_analysis.louvain.update_ui(current_analysis);
 
-                // Group labels are deduplicated in the script
-                current_analysis.group_labels = data.group_labels;
+                // If our clusters have been merged or subsetted,
+                // remove the saved labels as they can interfere with downstream things
+                if (current_analysis.group_labels.length != data.group_labels.length) {
+                    current_analysis.group_labels = []
+                    current_analysis.marker_genes.populate_marker_genes_labels(current_analysis, data)
+
+                    // Now update the labels so they work with gene comparison
+                    for (let i=0; i < data.group_labels.length; i++) {
+                        current_analysis.group_labels.push(data.group_labels[i]["genes"]);
+                    }
+                    current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
+                }
+
 
                 $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain clusters computed");

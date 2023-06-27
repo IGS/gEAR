@@ -512,9 +512,11 @@
                             <p class="js-next-step" style="display:none;"> Please click on the "Find marker genes" toggle to proceed.</p>
                           </div>
                           <div id="group_labels_c" class="shown_later">
-                            <div class="form-group row form-group-sm">
-                              <div class="col-4"><input type="checkbox" name="louvain_merge_clusters" id="louvain_merge_clusters" class="pull-right"/></div>
-                              <label for="louvain_merge_clusters" class="col-8 col-form-label">Merge clusters with duplicate labels</label>
+                            <div class="form-group form-row">
+                              <div class="form-check">
+                                <input type="checkbox" name="louvain_merge_clusters" id="louvain_merge_clusters" class="form-check-input"/>
+                                <label for="louvain_merge_clusters" class="form-check-label">Merge clusters with duplicate labels</label>
+                              </div>
                             </div>
                             <table id="marker_genes_group_labels" class="table table-bordered table-hover table-sm">
                               <thead>
@@ -528,9 +530,9 @@
                               <tbody class="empty_on_change"></tbody>
                               <script id="marker_genes_group_labels_tmpl" type="text/x-jsrender">
                                 <tr>
-                                  <td>{{:group_label}}</td>
-                                  <td>{{:num_cells}}</td>
-                                  <td>{{:genes}}</td>
+                                  <td class="group_orig_label">{{:group_label}}</td>
+                                  <td class="group_num_cells">{{:num_cells}}</td>
+                                  <td class="group_marker">{{:genes}}</td>
                                   <td class="group_user_label"><input type="text" name="group_labels[]" placeholder="label" value="{{:new_group_label}}"/></td>
                                 </tr>
                               </script>
