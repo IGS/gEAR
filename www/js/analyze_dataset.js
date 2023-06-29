@@ -1106,19 +1106,20 @@ function run_analysis_louvain() {
     }
 
     const cluster_info = [];
-    current_analysis["group_labels"].forEach((v, i) => {
-        cluster_info.push({
-            "old_label": old_labels[i]
-            , "new_label": new_labels[i]
-            , "keep": kept_labels[i]
-        })
-    });
-
-    // update gene comparison options to include new labels
-    current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
 
     if (current_analysis.louvain.calculated == true && is_same_louvain_params) {
         compute_louvain = false;
+        current_analysis["group_labels"].forEach((v, i) => {
+            cluster_info.push({
+                "old_label": old_labels[i]
+                , "new_label": new_labels[i]
+                , "keep": kept_labels[i]
+            })
+        });
+    }
+
+    if (compute_louvain == true) {
+        $("#group_labels_c").hide();
     }
 
     let plot_tsne = 0;
