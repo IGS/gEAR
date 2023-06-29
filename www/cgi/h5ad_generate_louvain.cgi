@@ -51,10 +51,13 @@ def main():
 
     # Compute tSNE and plot
     if compute_louvain == 'true':
+
+        adata.obs.drop(columns=["louvain", "orig_louvain"], errors="ignore", inplace=True)
+
         # NOTE - Occasionally I run out of memory computing this step on Docker,
         # especially if I want to do downstream stuff.
         # If this happens, set 'flavor="igraph"' which uses a different package.
-        sc.tl.louvain(adata, resolution=resolution)
+        sc.tl.louvain(adata, resolution=resolution, flavor="igraph")
         adata.obs["orig_louvain"] = adata.obs["louvain"].astype(int)   # Copy cluster ID so it's easier to rename categories
         adata.write(dest_datafile_path)
 
