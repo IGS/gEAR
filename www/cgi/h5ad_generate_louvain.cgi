@@ -39,7 +39,7 @@ def main():
 
     resolution = float(form.getvalue('resolution'))
     compute_louvain = form.getvalue('compute_louvain')
-    group_labels = json.loads(form.getvalue('group_labels'))
+    cluster_info = json.loads(form.getvalue("cluster_info"))    # "old_label", "new_label", "keep"
 
     adata = ana.get_adata()
 
@@ -54,44 +54,54 @@ def main():
         # NOTE - Occasionally I run out of memory computing this step on Docker,
         # especially if I want to do downstream stuff.
         # If this happens, set 'flavor="igraph"' which uses a different package.
-        sc.tl.louvain(adata, resolution=resolution, flavor="igraph")
-        adata.obs["orig_louvain"] = adata.obs["louvain"]   # Copy order so it's easier to rename categories
+        sc.tl.louvain(adata, resolution=resolution)
+        adata.obs["orig_louvain"] = adata.obs["louvain"].astype(int)   # Copy cluster ID so it's easier to rename categories
         adata.write(dest_datafile_path)
 
     ## I don't see how to get the save options to specify a directory
     # sc.settings.figdir = 'whateverpathyoulike' # scanpy issue #73
     os.chdir(os.path.dirname(dest_datafile_path))
 
-    # doing it like this puts the labels in the legend
-    if len(group_labels) > 0:
+    group_labels = []
 
-        # NOTE: This is not backwards compatible with louvain computations before this was added.
-        # For those, renaming labels 2+ times requires a full analyses rerun (to reset louvain)
-        if "orig_louvain" in adata.obs:
-            adata.obs["louvain"] = adata.obs["orig_louvain"]
+    # doing it like this puts the labels in the legend
+    if len(cluster_info) > 0:
+
+        # If this is an older louvain analysis, make this mapping column if it does not exist
+        if not "orig_louvain" in adata.obs:
+            old_label2index = dict()
+            for idx, cluster in enumerate(cluster_info):
+                old_label2index[cluster["old_label"]] = idx
+            adata.obs["orig_louvain"] = adata.obs["louvain"].map(old_label2index)
+
+        # ? I think mapping old label to new label w/o using index would have worked fine, but this cleans up the logic for me
+        # Temporarily make the louvain IDs the index numbers
+        adata.obs["louvain"] = adata.obs["orig_louvain"]
+
+        # Filter only the clusters we want to use
+        kept_indexes = list(filter(lambda i: cluster_info[i]["keep"], range(len(cluster_info))))
+        adata = adata[adata.obs["louvain"].isin(kept_indexes), :]
 
         # Create mapping of original cluster IDs and new labels. Clusters will merge on duplicated labels
-        idx_label_map = dict()
-        for idx, label in enumerate(group_labels):
-            str_idx = str(idx)  # sc.tl.louvain always saves clusters as strings
-            idx_label_map[str_idx] = label
-        adata.obs["louvain"] = adata.obs["louvain"].map(idx_label_map)
+        idx2new_label = dict()
+        for idx, cluster in enumerate(cluster_info):
+            idx2new_label[idx] = cluster["new_label"]
+        adata.obs["louvain"] = adata.obs["louvain"].map(idx2new_label)
 
         # Create new cluster IDs and labels. Assumes that running this script again will preserve the order
         # Duplicating "h5ad_find_marker_genes" group labels structure here, so we can re-render the html table
-        new_group_labels = []
         label2idx = dict()
-        deduped_group_labels = list(set(group_labels))
+        deduped_group_labels = adata.obs["louvain"].unique().tolist()
         for idx, label in enumerate(deduped_group_labels):
             num_cells = adata.obs[adata.obs["louvain"] == label]["louvain"].count()
-            new_group_labels.append({'group_label':idx, 'num_cells':num_cells, 'genes': label})
-            label2idx[label] = str(idx)
-            # ? Can we eliminate making as string since and use ints in "louvain" and "orig_louvain"
+            if not num_cells:
+                continue
+            group_labels.append({'group_label':idx, 'num_cells':num_cells, 'genes': label})
+            label2idx[label] = idx
 
         # Ensure orig_louvain is parallel to the group_labels, so relabeling uses the correct cluster numbers
-        if not len(group_labels) == len(deduped_group_labels):
+        if not (len(cluster_info) == len(deduped_group_labels)):
             adata.obs["orig_louvain"] = adata.obs["louvain"].map(label2idx)
-        group_labels = new_group_labels
 
         adata.write(dest_datafile_path)
 

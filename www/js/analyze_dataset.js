@@ -110,6 +110,7 @@ window.onload=() => {
     });
 
     $("#btn_louvain_rerun_with_groups").on('click', function() {
+        $('#marker_genes_group_labels td.group_user_label input').removeClass('duplicate');
         if ($("#louvain_merge_clusters").is(':checked') ) {
             check_dependencies_and_run(run_analysis_louvain);
             return;
@@ -1084,14 +1085,34 @@ function run_analysis_louvain() {
 
     let compute_louvain = true;
 
-    current_analysis.group_labels = [];
+    const old_labels = [...current_analysis.group_labels];  // shallow-copy
+    const new_labels = [];
+    const kept_labels = [];
 
     // It is not safe to reuse group labels if the clustering params were changed
     if (is_same_louvain_params) {
         $("input[name='group_labels[]']").each(function() {
-            current_analysis.group_labels.push($(this).val());
+            new_labels.push($(this).val());
+
+            // Do we keep this cluster?
+            const this_row = $(this).closest("tr");
+            const this_check = $(this_row).children("td.group_keep_chk").children("input");
+            if ($(this_check).is(":checked")) {
+                kept_labels.push(true);
+            } else {
+                kept_labels.push(false);
+            }
         });
     }
+
+    const cluster_info = [];
+    current_analysis["group_labels"].forEach((v, i) => {
+        cluster_info.push({
+            "old_label": old_labels[i]
+            , "new_label": new_labels[i]
+            , "keep": kept_labels[i]
+        })
+    });
 
     // update gene comparison options to include new labels
     current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
@@ -1120,7 +1141,7 @@ function run_analysis_louvain() {
                 'compute_louvain': compute_louvain,
                 'plot_tsne': plot_tsne,
                 'plot_umap': plot_umap,
-                'group_labels': JSON.stringify(current_analysis.group_labels)
+                'cluster_info': JSON.stringify(cluster_info),
                 },
         dataType: "json",
         success: function(data) {
@@ -1132,16 +1153,13 @@ function run_analysis_louvain() {
                 current_analysis.louvain.plot_umap = plot_umap;
                 current_analysis.louvain.update_ui(current_analysis);
 
-                // If our clusters have been merged or subsetted,
-                // remove the saved labels as they can interfere with downstream things
-                if (current_analysis.group_labels.length != data.group_labels.length) {
+                if (data["group_labels"].length) {
+                    // Update the group labels for the analysis, marker genes, and gene comparison
                     current_analysis.group_labels = []
                     current_analysis.marker_genes.populate_marker_genes_labels(current_analysis, data)
 
                     // Now update the labels so they work with gene comparison
-                    for (let i=0; i < data.group_labels.length; i++) {
-                        current_analysis.group_labels.push(data.group_labels[i]["genes"]);
-                    }
+                    current_analysis.group_labels = data['group_labels'].map(x => x.genes);
                     current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
                 }
 
@@ -1150,7 +1168,6 @@ function run_analysis_louvain() {
                 done_working("Louvain clusters computed");
                 $('#louvain_run_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
-                $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain cluster compute failed.");
             }
         },
