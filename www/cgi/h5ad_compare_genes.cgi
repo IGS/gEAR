@@ -112,12 +112,20 @@ def main():
 
     adata.X = sparse.csc_matrix(adata.X)
 
-    # NOTE: This will probably need to be updated if we update Scanpy due to some changes to adata.raw I believe
-    # Currently does not work on my Docker instance, which is using a more recent version of Scanpy since I could not build with the gEAR prod versions anymore
+    """
+    One of the scanpy versions introduced a bug that was recently fixed, where pl.rank_genes_groups works
+    but not pl.rank_genes_groups_<plot>.  I believe it is because Ensembl IDs are stored as gene_symbols for tl.rank_genes_groups
+    and pl.rank_genes_groups looks for these ensembl_ids but pl.rank_genes_groups_<plot> is erroneously looking for the gene symbols instead
+
+    Seems to work in scanpy 1.7.2 but is broke in 1.8.2 and was fixed in https://github.com/scverse/scanpy/pull/1529
+    """
+
     ax = sc.pl.rank_genes_groups(adata, groups=[query_cluster],
                                  gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_ranked.png")
-    ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw=False,
-                                        gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_violin.png")
+
+    gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][query_cluster]]["gene_symbol"][:n_genes].tolist()
+    ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw = False,
+                                        gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin.png")
 
     result = {'success': 1, 'cluster_label': cluster_method}
 
@@ -141,8 +149,11 @@ def main():
 
         ax = sc.pl.rank_genes_groups(adata, groups=[reference_cluster],
                                      gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_ranked_rev.png")
+
+        gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][reference_cluster]]["gene_symbol"][:n_genes].tolist()
+
         ax = sc.pl.rank_genes_groups_violin(adata, groups=reference_cluster, use_raw = False,
-                                            gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_violin_rev.png")
+                                            gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin_rev.png")
 
     if method == 'logreg':
         result['table_json_r'] = ''
