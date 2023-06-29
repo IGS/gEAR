@@ -123,9 +123,15 @@ def main():
     ax = sc.pl.rank_genes_groups(adata, groups=[query_cluster],
                                  gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_ranked.png")
 
-    gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][query_cluster]]["gene_symbol"][:n_genes].tolist()
-    ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw = False,
-                                        gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin.png")
+    try:
+        # Try 1.7.2 way first
+        ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw = False,
+                                            gene_symbols="gene_symbol", n_genes=n_genes, save="_comp_violin.png")
+    except:
+        # Use gene names if that doesn't work
+        gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][query_cluster]]["gene_symbol"][:n_genes].tolist()
+        ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw = False,
+                                            gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin.png")
 
     result = {'success': 1, 'cluster_label': cluster_method}
 
@@ -150,10 +156,14 @@ def main():
         ax = sc.pl.rank_genes_groups(adata, groups=[reference_cluster],
                                      gene_symbols='gene_symbol', n_genes=n_genes, save="_comp_ranked_rev.png")
 
-        gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][reference_cluster]]["gene_symbol"][:n_genes].tolist()
+        try:
+            ax = sc.pl.rank_genes_groups_violin(adata, groups=reference_cluster, use_raw = False,
+                                                gene_symbols="gene_symbol", n_genes=n_genes, save="_comp_violin_rev.png")
+        except:
+            gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][reference_cluster]]["gene_symbol"][:n_genes].tolist()
 
-        ax = sc.pl.rank_genes_groups_violin(adata, groups=reference_cluster, use_raw = False,
-                                            gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin_rev.png")
+            ax = sc.pl.rank_genes_groups_violin(adata, groups=reference_cluster, use_raw = False,
+                                                gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin_rev.png")
 
     if method == 'logreg':
         result['table_json_r'] = ''
