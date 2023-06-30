@@ -57,7 +57,7 @@ def main():
         # NOTE - Occasionally I run out of memory computing this step on Docker,
         # especially if I want to do downstream stuff.
         # If this happens, set 'flavor="igraph"' which uses a different package.
-        sc.tl.louvain(adata, resolution=resolution, flavor="igraph")
+        sc.tl.louvain(adata, resolution=resolution)
         adata.obs["orig_louvain"] = adata.obs["louvain"].astype(int)   # Copy cluster ID so it's easier to rename categories
         adata.write(dest_datafile_path)
 
