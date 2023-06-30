@@ -541,7 +541,7 @@ async function load_all_gene_carts() {
     await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-        data: { 'session_id': session_id, 'share_id': cart_share_id },
+        data: { session_id, 'share_id': cart_share_id, "cart_type":"unweighted-list" },
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
         const carts = {};
