@@ -353,7 +353,7 @@ async function load_pattern_carts() {
     await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-        data: { 'session_id': session_id, "group_by_type":true, 'share_id': cart_share_id},
+        data: { session_id, "group_by_type":true, 'share_id': cart_share_id},
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
 
