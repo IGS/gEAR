@@ -399,13 +399,6 @@ class GeneCartTree extends Tree {
             {'id':'public_node', 'parent':'#', 'text':`Public carts from other users (${this.publicGeneCarts.length})`, 'a_attr': {'class':'jstree-ocl'}},
         ];
 
-        //const treeData = [];
-
-        // Add all the folders first
-        /*$.each(this.folders, (_i, item) => {
-            this.addFolder(treeData, item);
-        });*/
-
         // Sort the cart contents alphabetically
         ["domainGeneCarts", "userGeneCarts", "groupGeneCarts", "sharedGeneCarts", "publicGeneCarts"].forEach(e => {
             this[e].sort((a, b) => a.text.toLowerCase() > b.text.toLowerCase() ? 1 : -1);

@@ -278,7 +278,7 @@ function get_whatsnew_items(direction) {
 
         // handle the nav links
         $('#whatsnew_nav_next').prop('disabled', false);
-        
+
         if (data['idx_start'] > 0) {
             $('#whatsnew_nav_prev').prop('disabled', false);
         }
@@ -560,7 +560,7 @@ async function load_all_gene_carts() {
                     }
 
                     carts[ctype].push({value: item.id,
-                                        text: item.label,
+                                        text: `${item.label} (${item.num_genes} genes)`,
                                         folder_id: item.folder_id,
                                         folder_label: item.folder_label,
                                         folder_parent_id: item.folder_parent_id,
