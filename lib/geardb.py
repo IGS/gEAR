@@ -2529,7 +2529,7 @@ class GeneCart:
         return json.dumps(self.__dict__)
 
     def add_gene(self, gene):
-        # Remove quotes 
+        # Remove quotes
         gene.gene_symbol = gene.gene_symbol.replace('"', '').replace("'", '')
 
         if gene == '':
