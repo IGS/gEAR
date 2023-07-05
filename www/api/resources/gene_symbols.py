@@ -20,9 +20,6 @@ class GeneSymbols(Resource):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
 
-        # Import here so that Flask-RESTful does not import it with every API call.
-        import scanpy as sc
-
         if analysis_id:
             ana = geardb.Analysis(
                 id=analysis_id,
@@ -32,7 +29,7 @@ class GeneSymbols(Resource):
             )
 
             ana.discover_type()
-            adata = sc.read_h5ad(ana.dataset_path())
+            adata = ana.get_adata(backed=True)
         else:
             ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
             h5_path = ds.get_file_path()
@@ -42,8 +39,8 @@ class GeneSymbols(Resource):
                     "success": -1,
                     "message": "No h5 file found for this dataset"
                 }
-
-            adata = sc.read_h5ad(h5_path)
+            ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+            adata = ana.get_adata(backed=True)
 
         return {
             "success": 1,

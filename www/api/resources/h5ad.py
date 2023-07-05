@@ -25,7 +25,7 @@ class H5ad(Resource):
 
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
             ana.discover_type()
-            adata = sc.read_h5ad(ana.dataset_path())
+            adata = ana.get_adata(backed=True)
         else:
             ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
             h5_path = ds.get_file_path()
@@ -35,7 +35,9 @@ class H5ad(Resource):
                     "success": -1,
                     "message": "No h5 file found for this dataset"
                 }
-            adata = sc.read_h5ad(h5_path)
+            ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+            adata = ana.get_adata(backed=True)
+
         columns = adata.obs.columns.tolist()
 
         # Do we have these coordinates from the analysis workbench?

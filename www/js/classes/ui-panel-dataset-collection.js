@@ -105,6 +105,7 @@ class DatasetCollectionPanel {
 
     set_layout(
         layout_id,
+        layout_share_id,
         layout_label,
         do_load_frames,
         multigene = false,
@@ -116,6 +117,7 @@ class DatasetCollectionPanel {
         Cookies.set("gear_default_domain", layout_label);
 
         this.layout_id = layout_id;
+        this.layout_share_id = layout_share_id;
         this.layout_label = layout_label;
 
         // According to this, we shouldn't be manually setting the label:
