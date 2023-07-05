@@ -49,10 +49,7 @@ class AvailableDisplayTypes(Resource):
         svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
         if os.path.exists(svg_path):
           svg_exists = True
-          
-        # Import here so that Flask-RESTful does not import it with every API call.
-        import scanpy as sc
-          
+
         # Have a public dataset or user_saved dataset
         if analysis_id:
             # session_id = request.cookies.get('gear_session_id')
@@ -61,7 +58,7 @@ class AvailableDisplayTypes(Resource):
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
             ana.discover_type()
 
-            adata = sc.read_h5ad(ana.dataset_path())
+            adata = ana.get_adata(backed=True)
             if hasattr(adata, 'obsm') and 'X_tsne' in adata.obsm:
                 tsne_static = True
                 tsne_umap_pca_dynamic = True
@@ -72,14 +69,17 @@ class AvailableDisplayTypes(Resource):
                 pca_static = True
                 tsne_umap_pca_dynamic = True
         else:
-          # Dataset is primary type
+          ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
+          h5_path = ds.get_file_path()
+
+          # Let's not fail if the file isn't there
           if not os.path.exists(h5_path):
-              # Let's not fail if the file isn't there
-              return {
-                  "success": -1,
-                  'message': "No h5 file found for this dataset"
-              }
-          adata = sc.read_h5ad(h5_path)
+                return {
+                    "success": -1,
+                    'message': "No h5 file found for this dataset"
+                }
+          ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+          adata = ana.get_adata(backed=True)
 
         columns = adata.obs.columns.tolist()
 
