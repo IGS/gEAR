@@ -170,7 +170,7 @@ $(document).on("handle_page_loading", () => {
     // If a ProfileTree element is selected, this is changed and the new layout is set
     // NOTE: I don't think #search_param_profile needs to be a trigger
     $(document).on('change', '#search_param_profile, #selected_profile', function() {
-        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene, false);
+        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-share-id'), $(this).data('profile-label'), true, multigene, false);
         layout_id = $(this).data('profile-share-id');
 
         // If a ProfileTree element is selected from the results page,
@@ -522,7 +522,7 @@ async function load_layouts() {
             });
         }
 
-        dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
+        dataset_collection_panel.set_layout(active_layout_id, layout_id, active_layout_label, false, multigene);
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });

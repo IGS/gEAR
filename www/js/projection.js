@@ -102,7 +102,7 @@ $(document).on("handle_page_loading", () => {
 
     // If a ProfileTree element is selected, this is changed and the new layout is set
     $(document).on('change', '#selected_profile', function() {
-        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multipattern, true);
+        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-share-id'), $(this).data('profile-label'), true, multipattern, true);
         layout_id = $(this).data('profile-share-id');
     });
 
@@ -336,7 +336,7 @@ async function load_layouts() {
             });
         }
 
-        dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multipattern);
+        dataset_collection_panel.set_layout(active_layout_id, layout_id, active_layout_label, false, multipattern);
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });
@@ -767,7 +767,7 @@ function add_state_history(searched_entities, projection_source=null, projection
     }
 
     if (!layout_id) {
-        layout_id = dataset_collection_panel.layout_id;
+        layout_id = dataset_collection_panel.layout_share_id;
     }
 
     state_info.layout_id = layout_id;
