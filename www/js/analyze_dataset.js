@@ -198,12 +198,24 @@ window.onload=() => {
         if ($(this).find(':selected').data('analysis-id') == "0") {
             reset_workbench();
 
+            $("#primary_analysis_notification").hide();
             $("#analysis_action_c").hide();
             $("#analysis_status_info").text("");
             $("#analysis_status_info_c").hide();
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").hide();
+
+            current_analysis = new Analysis({'dataset_id': $("#dataset_id").val(),
+            'type': 'primary',
+            'dataset_is_raw': true});
+            // Need to reload prelim step so qc_by_mito toggle will work
+            $("#dataset_info").show();
+            load_preliminary_figures($("#dataset_id").val());
+
+            $('#analysis_id').selectpicker('refresh');
+            $("#stored_analyses_c").show(10);
+
             return;
         }
         show_working("Loading stored analysis");
@@ -214,8 +226,9 @@ window.onload=() => {
         const analysis_type = $(this).find(':selected').data('analysis-type');
 
         load_stored_analysis($(this).find(':selected').data('analysis-id'),
-         analysis_type,
-         $(this).find(':selected').data('dataset-id'));
+            analysis_type,
+            $(this).find(':selected').data('dataset-id')
+        );
 
         if (analysis_type == 'user_unsaved') {
             $("#primary_analysis_notification").hide();
@@ -224,7 +237,9 @@ window.onload=() => {
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").show();
-        } else if (analysis_type == 'user_saved') {
+            return;
+        }
+        if (analysis_type == 'user_saved') {
             $("#primary_analysis_notification").hide();
             $("#analysis_action_c").hide();
             $("#analysis_status_info").text("This analysis is stored in your profile.");
@@ -232,7 +247,9 @@ window.onload=() => {
             $("#btn_make_public_copy").show();
             $("#btn_delete_saved_analysis").show();
             $("#btn_delete_unsaved_analysis").hide();
-        } else if (analysis_type == 'public') {
+            return;
+        }
+        if (analysis_type == 'public') {
             $("#primary_analysis_notification").hide();
             $("#analysis_action_c").hide();
             $("#analysis_status_info").text("Changes made to this public analysis will spawn a local copy within your profile.");
@@ -240,7 +257,9 @@ window.onload=() => {
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").hide();
-        } else if (analysis_type == 'primary') {
+            return;
+        }
+        if (analysis_type == 'primary') {
             $("#primary_analysis_notification").show();
             $("#analysis_action_c").hide();
             $("#analysis_status_info_c").hide();
