@@ -106,6 +106,9 @@ def main():
         if not (len(cluster_info) == len(deduped_group_labels)):
             adata.obs["orig_louvain"] = adata.obs["louvain"].map(label2idx)
 
+        # Ensure louvain is string for downstream uses
+        adata.obs['louvain'] = adata.obs['louvain'].astype(str)
+
         adata.write(dest_datafile_path)
 
         if plot_tsne == 1:
