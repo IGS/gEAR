@@ -54,7 +54,7 @@ class MockIdentifier(Resource):
         * contact_institute // contributor.organization
         * title // collection.name
         * summary   // collection.description
-        * dataset_type  // file.data_type_id -> data_type.data_type
+        * dataset_type  // dependent on tissue type and technique
         * reference_annot_id    // Will have to assume it does not exist
         repository_accession
         * sample_taxid  // taxonony.name -> subject_taxonomy.taxonomy_id -> subject.id -> subject_assoc_sample.sample_id -> sample.id
@@ -84,16 +84,12 @@ class MockIdentifier(Resource):
         * treatment // subject_observations.value + subject_observations.obs_var_id -> obs_vars.name = "medication"
         treatment_label
         DRmethod_#
-        DRmethod_#
-        cell_clusters
+\        cell_clusters
         * age_value // subject_observations.value + subject_observations.obs_var_id -> obs_vars.name = "age"
         * age_unit  // subject_observations.unit + subject_observations.obs_var_id -> obs_vars.name = "age"
         age_order?
         * sex_assigned_at_birth // subject_observations.value + subject_observations.obs_var_id -> obs_vars.name= "sex" (assumed at birth)
         """
-
-        # NOTE: Only raw files are directly associated with collections. Easiest way to link a counts file to a collection
-        # is to join to the sample and then join to the collection.
 
         dataset_metadata = {}
         #dataset_metadata["identifier"] = get_identifier(connection, nemo_id) # should be already got
@@ -102,14 +98,22 @@ class MockIdentifier(Resource):
         dataset_metadata["contact_institute"] = get_contact_institute(connection, nemo_id)
         dataset_metadata["title"] = get_title(connection, nemo_id)
         dataset_metadata["summary"] = get_summary(connection, nemo_id)
-        #dataset_metadata["dataset_type"] = get_dataset_type(connection, nemo_id)    # got in neo4j
+
+        # got in neo4j
+        dataset_metadata["tissue_type"] = get_tissue_type(connection, nemo_id)
+        dataset_metadata["technique"] = get_technique(connection, nemo_id)
+        #dataset_metadata["dataset_type"] = get_dataset_type(connection, nemo_id)
+
         dataset_metadata["reference_annot_id"] = None
+        #dataset_metadata["reference_annot_id"] = get_reference_annot_id(connection, nemo_id)
+
+        #dataset_metadata["organism"] = get_organism_name(connection, nemo_id)
         #dataset_metadata["sample_taxid"] = get_taxid(connection, nemo_id)   # got in neo4j (tax name)
+
         #dataset_metadata["assay"] = get_assay(connection, nemo_id)
         dataset_metadata["normalization_method"] = None
         dataset_metadata["log_transformation"] = "raw"
         dataset_metadata["primary_analysis_completed"] = False
-        dataset_metadata["tissue_type"] = get_tissue_type(connection, nemo_id)
         #dataset_metadata["file_format"] = get_file_format(connection, nemo_id)   # should be already got
 
         sample_metadata = {}
@@ -131,18 +135,15 @@ class MockIdentifier(Resource):
 
 def get_contact_name(conn, nemo_id):
     cursor = conn.cursor()
+    # file_assoc_project sparsely populated
     query = """
         SELECT con.name from contributor con
-        JOIN collection_has_contributor chc on con.id = chc.contributor_id
-        JOIN file_in_collection fic on chc.collection_id = fic.file_id
-        JOIN file f on fic.file_id = f.id
+        JOIN project_has_contributor phc on con.id = phc.contrib_id
+        JOIN file_assoc_project fap on phc.project_id = fap.project_id
+        JOIN file f on fap.file_id = f.id
         WHERE f.nemo_id = %s
-        """
-    #cursor.execute(query, (nemo_id, ))
-
-    # collection_has_contributor is not populated.... retrieve random contributor
-    query = "SELECT name from contributor where id = 44"
-    cursor.execute(query)
+    """
+    cursor.execute(query, (nemo_id, ))
 
     try:
         (result,) = cursor.fetchone()
@@ -156,16 +157,12 @@ def get_contact_email(conn, nemo_id):
     cursor = conn.cursor()
     query = """
         SELECT con.email from contributor con
-        JOIN collection_has_contributor chc on con.id = chc.contributor_id
-        JOIN file_in_collection fic on chc.collection_id = fic.collection_id
-        JOIN file f on fic.file_id = f.id
+        JOIN project_has_contributor phc on con.id = phc.contrib_id
+        JOIN file_assoc_project fap on phc.project_id = fap.project_id
+        JOIN file f on fap.file_id = f.id
         WHERE f.nemo_id = %s
-        """
-    #cursor.execute(query, (nemo_id, ))
-
-    # collection_has_contributor is not populated.... retrieve random contributor
-    query = "SELECT email from contributor where id = 44"
-    cursor.execute(query)
+    """
+    cursor.execute(query, (nemo_id, ))
 
     try:
         (result,) = cursor.fetchone()
@@ -179,16 +176,12 @@ def get_contact_institute(conn, nemo_id):
     cursor = conn.cursor()
     query = """
         SELECT con.organization from contributor con
-        JOIN collection_has_contributor chc on con.id = chc.contributor_id
-        JOIN file_in_collection fic on chc.collection_id = fic.collection_id
-        JOIN file f on fic.file_id = f.id
+        JOIN project_has_contributor phc on con.id = phc.contrib_id
+        JOIN file_assoc_project fap on phc.project_id = fap.project_id
+        JOIN file f on fap.file_id = f.id
         WHERE f.nemo_id = %s
-        """
-    #cursor.execute(query, (nemo_id, ))
-
-    # collection_has_contributor is not populated.... retrieve random contributor
-    query = "SELECT organization from contributor where id = 44"
-    cursor.execute(query)
+    """
+    cursor.execute(query, (nemo_id, ))
 
     try:
         (result,) = cursor.fetchone()
@@ -200,12 +193,16 @@ def get_contact_institute(conn, nemo_id):
 
 def get_title(conn, nemo_id):
     cursor = conn.cursor()
+    # Not all imported files will be associated with a collection
     query = """
         SELECT c.name from collection c
         JOIN file_in_collection fic on c.id = fic.collection_id
         JOIN file f on fic.file_id = f.id
         WHERE f.nemo_id = %s
         """
+
+    # Alternative
+    #query = """SELECT f.file_name from file f where f.nemo_id = %s"""
     cursor.execute(query, (nemo_id, ))
 
     try:
@@ -219,6 +216,7 @@ def get_title(conn, nemo_id):
 
 def get_summary(conn, nemo_id):
     cursor = conn.cursor()
+    # Not all imported files will be associated with a collection
     query = """
         SELECT c.description from collection c
         JOIN file_in_collection fic on c.id = fic.collection_id
@@ -231,23 +229,104 @@ def get_summary(conn, nemo_id):
         (result,) = cursor.fetchone()
         return result
     except:
-        return "Description not available in the mock database. This is a placeholder"
+        return "Placeholder description for {}".format(nemo_id)
     finally:
         cursor.close()
 
 def get_dataset_type(conn, nemo_id):
+    # Deterined in cgi/nemoarchive_validate_metadata.cgi using tissue type or sample tecnique depending on terminology found
     pass
 
+def get_subspecimen_type(conn, nemo_id):
+    # Found in neo4j database
+    cursor = conn.cursor()
+    query = """
+        SELECT ff.format from file_format ff
+        JOIN file f on ff.id = f.file_format_id
+        WHERE f.nemo_id = %s
+        """
+    cursor.execute(query, (nemo_id, ))
+
+    try:
+        (result,) = cursor.fetchone()
+        return result
+    except:
+        return None
+    finally:
+        cursor.close()
+
+def get_technique(conn, nemo_id):
+    # Found in neo4j database
+    cursor = conn.cursor()
+    query = """
+        SELECT t.name from technique t
+        JOIN library l on t.id = l.technique_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
+        WHERE f.nemo_id = %s
+        """
+    cursor.execute(query, (nemo_id, ))
+
+    try:
+        (result,) = cursor.fetchone()
+        return result
+    except:
+        return None
+    finally:
+        cursor.close()
+
+def get_file_format(conn, nemo_id):
+    # Found in Neo4j database
+    cursor = conn.cursor()
+    query = """
+        SELECT ff.format from file_format ff
+        JOIN file f on ff.id = f.file_format_id
+        WHERE f.nemo_id = %s
+        """
+    cursor.execute(query, (nemo_id, ))
+
+    try:
+        (result,) = cursor.fetchone()
+        return result
+    except:
+        return None
+    finally:
+        cursor.close()
+
+def get_organism_name(conn, nemo_id):
+    # Found in neo4j database
+    cursor = conn.cursor()
+    # library_assoc_file sparsely populated
+    query = """
+        SELECT t.name from taxonomy t
+        JOIN subject_taxonomy st on t.id = st.taxonomy_id
+        JOIN sample_assoc_subject sasb on st.subject_id = sasb.subject_id
+        JOIN library l on sasb.sample_id = l.sample_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
+        WHERE f.nemo_id = %s
+        """
+    cursor.execute(query, (nemo_id, ))
+
+    try:
+        (result,) = cursor.fetchone()
+        return result
+    except:
+        return None
+    finally:
+        cursor.close()
+
 def get_taxid(conn, nemo_id):
+    # Deterined in cgi/nemoarchive_validate_metadata using organism name
     pass
 
 def get_assay(conn, nemo_id):
     cursor = conn.cursor()
     query = """
         SELECT a.name from assay a
-        JOIN sample s on a.id = s.assay_id
-        JOIN sample_assoc_file saf on s.id = saf.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on a.id = l.assay_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE f.nemo_id = %s
         """
     cursor.execute(query, (nemo_id, ))
@@ -264,9 +343,9 @@ def get_tissue_type(conn, nemo_id):
     cursor = conn.cursor()
     query = """
         SELECT st.name from specimen_type st
-        JOIN sample s on st.id = s.specimen_type_id
-        JOIN sample_assoc_file saf on s.id = saf.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on st.id = l.specimen_type_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE f.nemo_id = %s
         """
     cursor.execute(query, (nemo_id, ))
@@ -280,16 +359,34 @@ def get_tissue_type(conn, nemo_id):
         cursor.close()
 
 def get_sample_id(conn, nemo_id):
-    pass
+    # Found in neo4j database currently
+    cursor = conn.cursor()
+    query = """
+        SELECT sample_id from library l
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
+        WHERE f.nemo_id = %s
+    """
+    cursor.execute(query, (nemo_id, ))
+
+    try:
+        (result,) = cursor.fetchone()
+        return result
+    except:
+        return None
+    finally:
+        cursor.close()
+
 
 def get_tissue_ontology(conn, nemo_id):
     cursor = conn.cursor()
+    # Currently sample_assoc_anatomy not populated
     query = """
         SELECT a.name from anatomy a
         JOIN sample_assoc_anatomy saa on a.id = saa.anatomy_id
-        JOIN sample s on saa.sample_id = s.id
-        JOIN sample_assoc_file saf on s.id = saf.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on saa.sample_id = l.sample_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE f.nemo_id = %s
         """
     cursor.execute(query, (nemo_id, ))
@@ -304,12 +401,14 @@ def get_tissue_ontology(conn, nemo_id):
 
 def get_treatment(conn, nemo_id):
     cursor = conn.cursor()
+    # library_assoc_file sparsely populated
     query = """
         SELECT sbo.value from subject_observations sbo
         JOIN obs_vars ov on sbo.obs_vars_id = ov.id
         JOIN sample_assoc_subject sasb on sasb.subject_id = sbo.subject_id
-        JOIN sample_assoc_file saf on saf.sample_id = sasb.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on sasb.sample_id = l.sample_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE ov.var_name = "medication"
         AND f.nemo_id = %s
         """
@@ -329,8 +428,9 @@ def get_age_value(conn, nemo_id):
         SELECT sbo.value from subject_observations sbo
         JOIN obs_vars ov on sbo.obs_vars_id = ov.id
         JOIN sample_assoc_subject sasb on sasb.subject_id = sbo.subject_id
-        JOIN sample_assoc_file saf on saf.sample_id = sasb.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on sasb.sample_id = l.sample_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE ov.var_name = "age"
         AND f.nemo_id = %s
         """
@@ -350,8 +450,9 @@ def get_age_unit(conn, nemo_id):
         SELECT sbo.unit from subject_observations sbo
         JOIN obs_vars ov on sbo.obs_vars_id = ov.id
         JOIN sample_assoc_subject sasb on sasb.subject_id = sbo.subject_id
-        JOIN sample_assoc_file saf on saf.sample_id = sasb.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on sasb.sample_id = l.sample_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE ov.var_name = "age"
         AND f.nemo_id = %s
         """
@@ -371,8 +472,9 @@ def get_sex_assigned_at_birth(conn, nemo_id):
         SELECT sbo.value from subject_observations sbo
         JOIN obs_vars ov on sbo.obs_vars_id = ov.id
         JOIN sample_assoc_subject sasb on sasb.subject_id = sbo.subject_id
-        JOIN sample_assoc_file saf on saf.sample_id = sasb.sample_id
-        JOIN file f on saf.file_id = f.id
+        JOIN library l on sasb.sample_id = l.sample_id
+        JOIN library_assoc_file laf on l.id = laf.library_id
+        JOIN file f on laf.file_id = f.id
         WHERE ov.var_name = "sex"
         AND f.nemo_id = %s
         """
