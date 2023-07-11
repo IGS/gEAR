@@ -152,15 +152,15 @@ def share_dataset_with_submission_user(dataset_id, user):
     conn.commit()
     conn.close()
 
-def subspecimen_type_to_dataset_type(ss_type):
+def tissue_type_to_dataset_type(tissue_type):
     # Returns a gear-related mapping, or None if not encountered
     # ! The mapping keys will change as the assets db API comes into effect
-    SS_TYPE2_DATASET_TYPE = {
+    TISSUE_TYPE2_DATASET_TYPE = {
         "bulk":"bulk"
         , "cells":"single-cell-rnaseq"
         , "nuclei":"single-nucleus-rnaseq"
     }
-    return SS_TYPE2_DATASET_TYPE.get(ss_type.lower())
+    return TISSUE_TYPE2_DATASET_TYPE.get(tissue_type.lower())
 
 def write_json(attributes, base_dir:Path):
     """Use supplied metadata to write a JSON file."""
@@ -210,13 +210,13 @@ def validate_metadata(dataset_id, session_id, attributes):
 
     # Dataset type
     json_attributes["field"].append("dataset_type")
-    subspecimen_type = attributes["sample"]["sample_subspecimen_type"]
-    dataset_type = subspecimen_type_to_dataset_type(subspecimen_type)
+    tissue_type = attributes["sample"]["tissue_type"]
+    dataset_type = tissue_type_to_dataset_type(tissue_type)
     # ATAC-Seq has it's own metadata datatype
-    if "ATAC-seq".lower() in attributes["sample"]["sample_technique"].lower():
+    if "ATAC-seq".lower() in attributes["dataset"]["technique"].lower():
         dataset_type == "atac-seq"
     if not dataset_type:
-        err_msg = "Could not find dataset type for subspecimen type {}".format(subspecimen_type)
+        err_msg = "Could not find dataset type for tissue type {}".format(tissue_type)
         handle_error(s_dataset, result, err_msg)
         return
     json_attributes["value"].append(dataset_type)
