@@ -327,35 +327,27 @@ function truncateAxisLabels() {
 
 document.addEventListener("mouseover", (event) => {
     // mouse enter
-    if (event.target.closest('.xaxislayer-above a')) {
-        const h5adContainer = event.target.closest('.h5ad-container');
-        const hoverarea = h5adContainer.children(".hoverarea");
-
-        // Show the full label when hovering over the truncated label (assuming we are on a page where the element exists)
-        if (hoverarea.length) {
-            hoverarea.textContent = event.target.dataset.unformatted;
-        }
+    if (!event.target.closest('.xaxislayer-above a')) {
+        return;
     }
-});
+    const h5adContainer = event.target.closest('.h5ad-container');
+    const hoverarea = h5adContainer.children(".hoverarea");
 
-$(document).on('mouseleave', '.xaxislayer-above a', function () {
-    // Mouse out
-
-    const h5ad_container = $(this).closest('.h5ad-container');
-    const hoverarea = h5ad_container.children(".hoverarea");
-
+    // Show the full label when hovering over the truncated label (assuming we are on a page where the element exists)
     if (hoverarea.length) {
-        hoverarea.text('');
+        hoverarea.textContent = event.target.dataset.unformatted;
     }
 });
 
 document.addEventListener('mouseleave', (event) => {
     // mouse out
-    if (event.target.closest('.xaxislayer-above a')) {
-        const h5adContainer = event.target.closest('.h5ad-container');
-        const hoverarea = h5adContainer.children(".hoverarea");
+    if (!event.target.closest('.xaxislayer-above a')) {
+        return;
+    }
+    const h5adContainer = event.target.closest('.h5ad-container');
+    const hoverarea = h5adContainer.children(".hoverarea");
 
-        if (hoverarea.length) {
-            hoverarea.textContent = "";
-        }    }
-  });
+    if (hoverarea.length) {
+        hoverarea.textContent = "";
+    }
+});
