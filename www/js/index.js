@@ -93,7 +93,7 @@ $(document).on("handle_page_loading", () => {
     set_multigene_plots(multigene, false);
 
     if (multigene) {
-        exact_match = multigene;
+        //exact_match = multigene;
         set_exact_match(exact_match, false);  // Multigene searches are exact.  This should speed up search_genes.cgi
     }
 
@@ -170,7 +170,7 @@ $(document).on("handle_page_loading", () => {
     // If a ProfileTree element is selected, this is changed and the new layout is set
     // NOTE: I don't think #search_param_profile needs to be a trigger
     $(document).on('change', '#search_param_profile, #selected_profile', function() {
-        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-label'), true, multigene, false);
+        dataset_collection_panel.set_layout($(this).data('profile-id'), $(this).data('profile-share-id'), $(this).data('profile-label'), true, multigene, false);
         layout_id = $(this).data('profile-share-id');
 
         // If a ProfileTree element is selected from the results page,
@@ -278,7 +278,7 @@ function get_whatsnew_items(direction) {
 
         // handle the nav links
         $('#whatsnew_nav_next').prop('disabled', false);
-        
+
         if (data['idx_start'] > 0) {
             $('#whatsnew_nav_prev').prop('disabled', false);
         }
@@ -522,7 +522,7 @@ async function load_layouts() {
             });
         }
 
-        dataset_collection_panel.set_layout(active_layout_id, active_layout_label, false, multigene);
+        dataset_collection_panel.set_layout(active_layout_id, layout_id, active_layout_label, false, multigene);
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error loading layouts.');
     });
@@ -541,7 +541,7 @@ async function load_all_gene_carts() {
     await $.ajax({
         url: './cgi/get_user_gene_carts.cgi',
         type: 'post',
-        data: { 'session_id': session_id, 'share_id': cart_share_id },
+        data: { session_id, 'share_id': cart_share_id, "cart_type":"unweighted-list" },
         dataType: 'json'
     }).done((data, textStatus, jqXHR) => {
         const carts = {};
@@ -786,7 +786,6 @@ $("#gene_search_form").submit((event) => {
         // MG enabled
         $('#search_results_scrollbox').hide();
         $('#multigene_search_indicator').show();
-        // Show warning if too many genes are entered
         if (uniq_gene_symbols.length > 10) {
             $("#too_many_genes_warning").text(`There are currently ${uniq_gene_symbols.length} genes to be searched and plotted. This can be potentially slow. Also be aware that with some plots, a high number of genes can make the plot congested or unreadable.`);
             $("#too_many_genes_warning").show();
@@ -812,15 +811,15 @@ $("#gene_search_form").submit((event) => {
         populate_search_result_list(data);
         $('#intro_content').hide('fade', {}, 400, () => {
             if (multigene){
-                dataset_collection_panel.update_by_all_results(uniq_gene_symbols);
+                dataset_collection_panel.update_by_all_results(search_results);
                 hide_functional_panel();
             } else {
                 // auto-select the first match.  first <a class="list-group-item"
                 // Also draws the plot for each dataset.
                 const first_thing = $('#search_results a.list-group-item').first();
                 select_search_result(first_thing);
-                dataset_collection_panel.search_performed = true;
             }
+            dataset_collection_panel.search_performed = true;
         });
 
         set_scrollbar_props();
