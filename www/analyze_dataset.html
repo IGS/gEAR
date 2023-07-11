@@ -415,7 +415,9 @@
                         <button id='btn_marker_genes_run' type='button' class='ml-2 btn btn-default btn-sm click-once'>Go</button>
                       </form>
                       <hr class="separator">
-                      <p class="js-next-step" style="display:none;"> Please either rerun louvain clustering with labels (in previous step) or click on the "Compare genes / clusters" toggle to proceed.</p>
+                      <p class="js-next-step" style="display:none;">Please either go back to the "Clustering (Louvain)" result panel below to rename, merge and/or select specific clusters.</p>
+                      <p class="js-next-step" style="display:none;"> OR click on the "Compare genes / clusters" toggle to proceed.</p>
+
                     </div> <!-- #marker_genes_options_c -->
                     <div class='image_result_c empty_on_change' id='marker_genes_plot_c'></div>
                     <h4 id='marker_genes_table_header' class='shown_later'>
@@ -497,12 +499,12 @@
                     <h3>Clustering (Louvain)</h3>
                     <div class="container-fluid">
                       <div class="row">
-                        <div class="col-4">
+                        <div class="col-5">
                           <div id='louvain_options_c' class="container-fluid">
                             <form id='louvain_options_f' class='reset_on_change'>
-                              <div class="form-group row form-group-sm">
-                                <div class="col-4"><input type="number" class="pull-right input-length-6" name="louvain_resolution" id="louvain_resolution" size="6" value="1.3" step="0.1"/></div>
-                                <label for="louvain_resolution" class="col-8 col-form-label">Resolution</label>
+                              <div class="form-group form-row form-group-sm">
+                                <div class="col-sm-4"><input type="number" class="form-control form-control-sm input-length-6" name="louvain_resolution" id="louvain_resolution" size="6" value="1.3" step="0.1"/></div>
+                                <label for="louvain_resolution" class="col-sm-8 col-form-label col-form-label-sm">Resolution</label>
                               </div>
                             </form>
                           </div> <!-- #louvain_options_c -->
@@ -512,6 +514,12 @@
                             <p class="js-next-step" style="display:none;"> Please click on the "Find marker genes" toggle to proceed.</p>
                           </div>
                           <div id="group_labels_c" class="shown_later">
+                            <div class="form-group form-row">
+                              <div class="form-check">
+                                <input type="checkbox" name="louvain_merge_clusters" id="louvain_merge_clusters" class="form-check-input"/>
+                                <label for="louvain_merge_clusters" class="form-check-label">Merge clusters with duplicate labels</label>
+                              </div>
+                            </div>
                             <table id="marker_genes_group_labels" class="table table-bordered table-hover table-sm">
                               <thead>
                                 <tr>
@@ -519,15 +527,17 @@
                                   <th scope="col">Num Cells</th>
                                   <th scope="col">Markers</th>
                                   <th scope="col">New label</th>
+                                  <th scope="col">Keep</th>
                                 </tr>
                               </thead>
                               <tbody class="empty_on_change"></tbody>
                               <script id="marker_genes_group_labels_tmpl" type="text/x-jsrender">
                                 <tr>
-                                  <td>{{:group_label}}</td>
-                                  <td>{{:num_cells}}</td>
-                                  <td>{{:genes}}</td>
+                                  <td class="group_orig_label">{{:group_label}}</td>
+                                  <td class="group_num_cells">{{:num_cells}}</td>
+                                  <td class="group_marker">{{:genes}}</td>
                                   <td class="group_user_label"><input type="text" name="group_labels[]" placeholder="label" value="{{:new_group_label}}"/></td>
+                                  <td class="group_keep_chk"><input type="checkbox" name="group_keep[]" checked /></td>
                                 </tr>
                               </script>
                             </table>
@@ -536,7 +546,7 @@
                             </p>
                           </div> <!-- end #group_labels_c -->
                         </div>
-                        <div class="col-sm-8 col-md-8 col-lg-8">
+                        <div class="col-7">
                           <div>
                             <p class="tool_instructions">
                               The Louvain clustering is used to find the most likely groups of associated cells within a network.
@@ -554,8 +564,8 @@
                               resolution you can drop it to 1, for example. Or increase the number for higher resolution.
                             </p>
                           </div>
-                          <div class='image_result_c empty_on_change' id='louvain_tsne_plot_c'></div>
-                          <div class='image_result_c empty_on_change' id='louvain_umap_plot_c'></div>
+                          <div class='image_result_c empty_on_change ml-4' id='louvain_tsne_plot_c'></div>
+                          <div class='image_result_c empty_on_change ml-4' id='louvain_umap_plot_c'></div>
                         </div>
                       </div>
                     </div>
@@ -676,7 +686,7 @@
                             <p class="js-next-step" style="display:none;"> Please click on the "tSNE / UMAP" toggle to proceed.</p>
                           </div>
                         </div>
-                        <div class="col-sm-8 col-md-8 col-lg-8">
+                        <div class="col-8">
                           <div class="container-fluid">
                             <div class="row tool_instructions">
                               The principal component analysis indicates the groups of genes that have the largest
