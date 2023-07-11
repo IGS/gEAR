@@ -159,6 +159,8 @@ def tissue_type_to_dataset_type(tissue_type):
         "bulk":"bulk"
         , "cells":"single-cell-rnaseq"
         , "nuclei":"single-nucleus-rnaseq"
+        , "single cell":"single-cell-rnaseq"
+        , "single nucleus":"single-nucleus-rnaseq"
     }
     return TISSUE_TYPE2_DATASET_TYPE.get(tissue_type.lower())
 
