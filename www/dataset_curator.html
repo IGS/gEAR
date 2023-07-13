@@ -21,6 +21,9 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
 
+        <!-- Fancy select elements -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
+
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
@@ -39,46 +42,154 @@
       <!--#include virtual="/include/header_bar.html" -->
       <section id="content_c" class="m-3">
         <!-- This is the section to be populated for new pages -->
-        <header class="columns">
-          <div id="tool_desc_c" class="column">
+        <header class="columns section">
+          <div id="tool_desc_c" class="column is-3">
           <h3 class="title is-3">
             Curate new single-gene displays for a dataset
           </h3>
           <p>The dataset curator tool is used to create new single-gene expression displays, as well as editing existing ones. You can choose from variety of plots, such as scatter, violin, and bar plots.</p>
-        </div>
-          <div id="guides_outer_c" class="column">
-          <h3 class="mt-4 mb-4">
-            <span class="icon">
-              <i class="mdi mdi-book-outline"></i>
-            </span>
-            <span>Guides</span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-close"></i>
-            </span>
-          </h3>
-          <div id="guides_inner_c" class="columns">
-            <div class="column">
-              <div class="guide_element pr-3">
-                <div><!-- without the 2nd level div here the images disappears-->
-                  <div class="media">
-                    <div class="media-left">
-                      <figure class="image is-96x96">
-                        <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
-                      </figure>
-                    </div>
-                    <div class="media-content is-size-7 has-text-weight-semibold">
-                      <p>
-                        Learn how to use the dataset curation tool
-                      </p>
-                      <p class="mt-2"><a>Try now</a></p>
+          </div>
+          <div id="guides_outer_c" class="column is-offset-3 has-background-white-bis notification">
+            <h3 class="mt-4 mb-4">
+              <span>GUIDES</span>
+              <span class="icon is-pulled-right delete">
+                <i class="mdi mdi-close"></i>
+              </span>
+            </h3>
+            <div id="guides_inner_c" class="columns">
+              <div class="column">
+                <div class="guide_element pr-3">
+                  <div><!-- without the 2nd level div here the images disappears-->
+                    <div class="media">
+                      <div class="media-left">
+                        <figure class="image is-96x96">
+                          <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
+                        </figure>
+                      </div>
+                      <div class="media-content is-size-7 has-text-weight-semibold">
+                        <p>
+                          Learn how to use the dataset curation tool
+                        </p>
+                        <p class="mt-2"><a>Try now</a></p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </header>
+
+        <section class="has-background-light section js-step" id="dataset_s">
+          <!-- Dataset selection -->
+          <h5 class="subtitle is-5">
+            <span class="icon">
+              <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
+            </span>
+            <span>Select a dataset</span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-up"></i>
+            </span>
+          </h5>
+          <div class="js-step-collapsable">
+            <div id="pre_dataset_spinner" style="display:none;">
+              <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+              <span>Loading datasets...</span>
+            </div>
+            <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
+              <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Select a dataset to curate</div>
+              <div class="dropdown-menu w-100" aria-labelledby="dataset">
+                <form class="px-4 py-3" onsubmit="return false;">
+                  <div class="input-group input-group-sm mb-3">
+                    <div class="input-group-prepend">
+                      <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+                    </div>
+                    <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
+                  </div>
+                  <div id="dataset_tree"></div>
+                </form>
+              </div>
+            </div>
+          </div>
+  <!-- end dataset_c -->
+        </section>
+
+        <section class="has-background-white-bis section js-step" id="load_plot_s">
+          <h5 class="subtitle is-5">
+            <span class="icon">
+              <i class="mdi mdi-file-document-plus-outline"></i> <!-- Not quite the correct icon -->
+            </span>
+            <span>Create new or load existing plot</span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-down"></i>
+            </span>
+          </h5>
+          <div class="js-step-collapsable"></div>
+          <!-- Select analysis, and load plot modals -->
+        </section>
+
+        <section class="has-background-white-bis section js-step" id="plot_type_s">
+          <h5 class="subtitle is-5">
+            <span class="icon">
+              <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
+            </span>
+            <span>Select plot type</span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-down"></i>
+            </span>
+          </h5>
+          <div class="js-step-collapsable">
+            <select id="plot_type_select">
+              <option>Select plot type</option>
+              <optgroup label="Interactive">
+                <option value="bar" id="bar_opt">Bar</option>
+                <option value="line" id="line_opt">Line</option>
+                <option value="scatter" id="scatter_opt">Scatter</option>
+                <option value="violin" id="violin_opt">Violin</option>
+                <option value="tsne_dyna" id="tsne_dyna_opt">tSNE/UMAP dynamic</option>
+                <option value="svg" id="svg_opt">SVG image</option>
+              </optgroup>
+              <optgroup label="Noninteractive">
+                <option value="pca_static" id="pca_static_opt">PCA static</option>
+                <option value="tsne_static" id="tsne_static_opt">tSNE static</option>
+                <option value="umap_static" id="umap_static_opt">UMAP static</option>
+              </optgroup>
+            </select>
+          </div>
+        </section>
+
+        <section class="has-background-white-bis section js-step" id="gene_s">
+          <h5 class="subtitle is-5">
+            <span class="icon">
+              <i class="mdi mdi-dna"></i> <!-- Not quite the correct icon -->
+            </span>
+            <span>Select gene</span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-down"></i>
+            </span>
+          </h5>
+          <div class="js-step-collapsable">
+            <select id="gene_select">
+            </select>
+          </div>
+        </section>
+
+        <section class="has-background-white-bis section js-step" id="plot_options_s">
+          <h5 class="subtitle is-5">
+            <span class="icon">
+              <i class="mdi mdi-tune"></i> <!-- Not quite the correct icon -->
+            </span>
+            <span>Select plotting options</span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-down"></i>
+            </span>
+          </h5>
+          <div class="js-step-collapsable"></div>
+        </section>
+
+
+
+
 
       </section>
     </section>
@@ -91,6 +202,9 @@
   <!--<script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>-->
 
 
+  <!-- fancy select elements -->
+  <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>
+
   <!-- Promise based HTTP client for the browser  -->
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
@@ -100,8 +214,8 @@
   <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-  <script>document.write('<script src="js/classes/user.v2' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/plot_display_config.v2' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/plot_display_config.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
   <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>

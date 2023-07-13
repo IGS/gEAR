@@ -324,7 +324,7 @@ function truncateAxisLabels() {
 }
 
 // If tick label is hovered over, give full label in designated hoverspace
-
+/*  !!! Currently event.target.closest does not work
 document.addEventListener("mouseover", (event) => {
     // mouse enter
     if (!event.target.closest('.xaxislayer-above a')) {
@@ -351,3 +351,4 @@ document.addEventListener('mouseleave', (event) => {
         hoverarea.textContent = "";
     }
 });
+*/
