@@ -9,7 +9,7 @@ const uuid = require('uuid/v4');
 const {validate} = require('jsonschema');
 
 const storage = new Storage();
-const {FUNCTION_NAME, FUNCTION_REGION, GCP_PROJECT, gcp_bucket} = process.env;
+const {FUNCTION_NAME, FUNCTION_REGION, GCP_PROJECT, gcp_bucket, secret_token} = process.env;
 
 /**
  * Bucket which should host exported JSON payloads
@@ -57,6 +57,9 @@ const schema = {
             },
             "required": ["name", "entityType"]
         },
+        "secretToken": {
+            "type": "string"
+        },
         "entities": {
             "type": "array",
             "items": { "$ref": "#/definitions/entity" }
@@ -65,9 +68,10 @@ const schema = {
     "type": "object",
     "properties": {
         "entities": { "$ref": "#/definitions/entities" },
-        "cohortName": { "$ref": "#/definitions/entityId" }
+        "cohortName": { "$ref": "#/definitions/entityId" },
+        "secretToken": { "ref": "#/definitions/secretToken"}
     },
-    "required": ["entities", "cohortName"]
+    "required": ["entities", "cohortName", "secretToken"]
 };
 
 /**
@@ -158,7 +162,10 @@ exports.buildNemoanalyticsImport = (req, res) => {
             schema
         })
     } else {
-        const { entities, cohortName } = req.body;
+        const { entities, cohortName, secretToken } = req.body;
+        if (secretToken !== secret_token) [
+            res.status(401).json({ message: "Unauthorized."})
+        ]
         const uniqueIds = collectUniqueIds(entities);
 
         if (uniqueIds.length !== entities.length) {

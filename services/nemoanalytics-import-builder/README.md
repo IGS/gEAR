@@ -4,7 +4,9 @@ Cloud Function for staging JSON payloads in GCS for use by NeMO Analytics' pull-
 
 Code is heavily based off of https://github.com/BICCN/terra-import-builder
 
-I elected to build the cloud function in the online editor, and specified my GCP bucket as a service environmental variable when creating the function. In addition, I created separate static dev and prod buckets as well as functions with different dev and prod CORS policies, rather than have the function create a temporary bucket during the deployment step
+I elected to build the cloud function in the online editor, and specified my GCP bucket as a service environmental variable when creating the function. In addition, I created separate static dev and prod buckets as well as functions with different dev and prod CORS policies, rather than have the function create a temporary bucket during the deployment step.
+
+Both dev and prod cloud function services also have a "secret_token" environment variable set that ensures only NeMO Archive can post to the function.
 
 The service account used to execute the function must have "SignBlob" granted
 
