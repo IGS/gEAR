@@ -3,7 +3,6 @@
 from flask import request
 from flask_restful import Resource, abort
 import os,sys
-import requests
 import asyncio, aiohttp
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
@@ -199,6 +198,7 @@ class Submission(Resource):
                 result["filetype"] = all_metadata["dataset"]["filetype"]
                 result["dataset_id"] = dataset_id
                 return result
+
 
             coros = [import_dataset(s_dataset) for s_dataset in submission.datasets]
             loop = asyncio.new_event_loop()
