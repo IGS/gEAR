@@ -24,6 +24,10 @@
         <!-- Fancy select elements -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
 
+        <!-- Tree view/grid -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.3.5/dist/wunderbaum.css">
+
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
@@ -80,7 +84,7 @@
           </div>
         </header>
 
-        <section class="has-background-light section js-step" id="dataset_s">
+        <section class="has-background-light section js-step step-active" id="dataset_s">
           <!-- Dataset selection -->
           <h5 class="subtitle is-5">
             <span class="icon">
@@ -92,34 +96,18 @@
             </span>
           </h5>
           <div class="js-step-collapsable">
-            <div id="pre_dataset_spinner" style="display:none;">
-              <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-              <span>Loading datasets...</span>
-            </div>
-            <div id="dataset_c" class="form-control dropdown" aria-describedby="dataset_help">
-              <div id="dataset" value="" data-title="Click to change" class="text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Select a dataset to curate</div>
-              <div class="dropdown-menu w-100" aria-labelledby="dataset">
-                <form class="px-4 py-3" onsubmit="return false;">
-                  <div class="input-group input-group-sm mb-3">
-                    <div class="input-group-prepend">
-                      <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                    </div>
-                    <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
-                  </div>
-                  <div id="dataset_tree"></div>
-                </form>
-              </div>
+            <input id="dataset_query" type="search" placeholder="Enter a dataset" autofocus="" />
+            <div id="dataset_tree" class="wb-skeleton wb-initializing">
             </div>
           </div>
-  <!-- end dataset_c -->
         </section>
 
         <section class="has-background-white-bis section js-step" id="load_plot_s">
           <h5 class="subtitle is-5">
             <span class="icon">
-              <i class="mdi mdi-file-document-plus-outline"></i> <!-- Not quite the correct icon -->
+              <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
             </span>
-            <span>Create new or load existing plot</span>
+            <span>Create new or load existing curation</span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
@@ -204,6 +192,9 @@
 
   <!-- fancy select elements -->
   <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>
+
+  <!-- Tree view/grid -->
+  <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.3.5/dist/wunderbaum.umd.min.js"></script>
 
   <!-- Promise based HTTP client for the browser  -->
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>

@@ -12,13 +12,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Convert POST payload to FormData so that POSTing to CGI scripts that use cgi.FieldStorage will work
+const convertToFormData = (object) => {
+    // Source -> https://stackoverflow.com/a/66611630
+    // NOTE: When using FormData do not set headers to application/json
+    const formData = new FormData();
+    Object.keys(object).forEach(key => {
+        if (typeof object[key] !== 'object') formData.append(key, object[key])
+        else formData.append(key, JSON.stringify(object[key]))
+    })
+    return formData;
+}
+
 // If "step" sections are clicked, expand that section and collaps the others
 const jsSteps = document.getElementsByClassName("js-step");
 const resetSteps = (event) => {
+
+    // If clicked area has no parentNode (i.e. clicked target is destroyed and recreated), just leave be
+    if (! event.target.parentNode) return;
+
+    // If clicked on existing section, leave it
+    const currentStep = event.target.closest(".js-step");
+    if (currentStep.classList.contains("step-active")) return;
+
     // Make every step uniform
     for (const jsStep of jsSteps) {
+        // Reset active step
+        jsStep.classList.remove("step-active");
+
         // Reset the bg color
-        jsStep.classList.remove("has-background-light")
+        jsStep.classList.remove("has-background-light");
         jsStep.classList.add("has-background-white-bis");
 
         // Reset the rightmost arrow
@@ -32,14 +55,13 @@ const resetSteps = (event) => {
     }
 
     // Modify this step to look active
-    const currentStep = event.target.closest(".js-step");
     currentStep.classList.remove("has-background-white-bis");
     currentStep.classList.add("has-background-light");
     currentStep.querySelector("span.is-pulled-right i").classList.remove("mdi-chevron-down");
     currentStep.querySelector("span.is-pulled-right i").classList.add("mdi-chevron-up");
-    //TODO: Expand all
     const collapsableElt = currentStep.querySelector(".js-step-collapsable");
     collapsableElt.style.display = "block";
+    currentStep.classList.add("step-active")
 
 }
 

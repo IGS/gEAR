@@ -3,6 +3,8 @@
 
 'use strict';
 
+const session_id = 'ee95e48d-c512-4083-bf05-ca9f65e2c12a';
+
 //TODO - Create "error" reporting in each step
 
 let numObs = 0; // dummy value to initialize with
@@ -18,8 +20,7 @@ let obsLevels = null;
 let obsNotUsed = null;
 let geneSymbol = null;
 
-// TODO - Replace
-//const datasetTree = new DatasetTree({treeDiv: '#dataset_tree'});
+let datasetTree = null;
 
 let plotSelect = null;
 let geneSelect = null;
@@ -62,6 +63,58 @@ const fetchDatasetInfo = async (dataset_id) => {
     const payload = {dataset_id};
     const {title, is_public, owner_id} = await axios.post("/cgi/get_dataset_info.cgi", payload);
     return {title, is_public, owner_id};
+}
+
+const fetchDatasets = async (session_id) => {
+    const payload = {session_id}
+    const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+
+    // Populate select box with dataset information owned by the user
+    const userDatasets = [];
+    if (data.user.datasets.length > 0) {
+        // User has some profiles
+        data.user.datasets.forEach((item) => {
+            if (item) {
+                userDatasets.push({  title: item.title, type:"show", dataset_id: item.id, organism_id: item.organism_id });
+            }
+        });
+    }
+    // Next, add datasets shared with the user
+    const sharedDatasets = [];
+    if (data.shared_with_user.datasets.length > 0) {
+        data.shared_with_user.datasets.forEach((item) => {
+            if (item) {
+                sharedDatasets.push({  title: item.title, type:"show", dataset_id: item.id, organism_id: item.organism_id });
+            }
+        });
+    }
+    // Now, add public datasets
+    const domainDatasets = [];
+    if (data.public.datasets.length > 0) {
+        data.public.datasets.forEach((item) => {
+            if (item) {
+                domainDatasets.push({  title: item.title, type:"show", dataset_id: item.id, organism_id: item.organism_id });
+            }
+        });
+    }
+
+    return [
+        {
+            title: `Public datasets (${domainDatasets.length})`,
+            type: "folder",
+            children: domainDatasets
+        },
+        {
+            title: `Shared Datasets (${sharedDatasets.length})`,
+            type: "folder",
+            children: sharedDatasets
+        },
+        {
+            title: `Your Datasets (${userDatasets.length})`,
+            type: "folder",
+            children: userDatasets
+        },
+    ];
 }
 
 const fetchDefaultDisplay = async (user_id, dataset_id) => {
@@ -112,8 +165,40 @@ const getSelectedPlotType = () => {
 
 }
 
-const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
+const loadDatasetTree = async () => {
 
+    // Change icons
+    // https://mar10.github.io/wunderbaum/api/variables/common.iconMap.html
+
+
+    datasetTree = new mar10.Wunderbaum({
+        // https://mar10.github.io/wunderbaum/api/interfaces/wb_options.WunderbaumOptions.htm
+        element: document.getElementById("dataset_tree"),
+        source: await fetchDatasets(session_id),
+        filter: {
+            // https://github.com/mar10/wunderbaum/blob/c393a7a4e01a8c6bb9084002d3a70b9e18bcc974/src/wb_ext_filter.ts
+            connectInput: "input#dataset_query",
+            autoExpand: true,
+            mode: "hide",
+        },
+        types: {
+            folder: {icon: "mdi mdi-folder"},
+            show: {icon: "mdi mdi-card-account-details-outline"}
+        },
+        autoCollapse: true,
+        debugLevel: 2,
+        //event handlers
+        init: (e) => {
+            // After tree is created and data is loaded
+            e.tree.setFocus();
+        },
+        render: (e) => {
+            // e.node was rendered. We may now modify the markup...
+        },
+    });
+}
+
+const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
     const payload = {
         id: displayId,
         dataset_id,
@@ -142,6 +227,8 @@ const saveDefaultDisplay = async (display_id) => {
 }
 
 window.onload = () => {
+
+    loadDatasetTree();
 
     // Initialize plot types
     plotSelect = NiceSelect.bind(document.getElementById("plot_type_select"), {
