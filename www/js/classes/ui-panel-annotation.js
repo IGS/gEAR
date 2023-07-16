@@ -18,6 +18,9 @@ class FunctionalAnnotationPanel {
         this.organism_ids_present = new Set();
         this.active_organism_id = null;
 
+        console.log("Dataset_collection_panel.datasets:");
+        console.log(dataset_collection_panel.datasets);
+
         for (const dsp of dataset_collection_panel.datasets) {
             this.organism_ids_present.add(dsp.organism_id);
 
@@ -80,13 +83,16 @@ class FunctionalAnnotationPanel {
           This really just happens numerically from the organism ID starting at 1 and increasing.
 
           Returns the ID of the selected organism.
-         */
+        */
+        console.log(this);
+        
         this.organism_ids_present.forEach(org_id => {
             if (typeof this.annotation !== 'undefined' && 
                 typeof this.annotation['by_organism'][org_id] !== 'undefined' &&
                 this.organism_ids_present.has(org_id)) {
 
                 if (! this.active_organism_id) {
+                    console.log("Setting active organism: " + org_id);
                     this.set_active_organism(org_id);
                 }
             }

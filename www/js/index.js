@@ -39,8 +39,6 @@ $(document).on("handle_page_loading", () => {
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
 
-    load_annotation_organism_list();
-
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
     let scope = "permalink";
@@ -297,6 +295,8 @@ function load_annotation_organism_list() {
         data : {},
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
+            console.log("Got organism data:");
+            console.log(data);
             var ListTmpl = $.templates("#organism_list_tmpl");
             var ListHtml = ListTmpl.render(data['organisms']);
             $(".organism_icon_c").append(ListHtml);
@@ -796,6 +796,10 @@ $("#gene_search_form").submit((event) => {
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
     dataset_collection_panel.load_frames({dataset_id, multigene});
+
+    if (! annotation_panel) {
+        load_annotation_organism_list();
+    }
 
     // Add Exact Match param
     formData.push({"name": "exact_match", "value": Number(exact_match)});
