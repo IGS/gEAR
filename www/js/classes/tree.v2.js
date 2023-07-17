@@ -13,9 +13,11 @@ class Tree {
     constructor({
         element
         , searchElement
+        , selectCallback
     } = {}) {
         this.element = element; // Element to generate the tree structure on
         this.searchElement = searchElement  // Element that is used to query and filter datasets (i.e. search text box)
+        this.selectCallback = selectCallback || ((e) => {})   // Callback to execute if node is "activated"
     }
 
     // Generate the tree structure for the DOM and return the JSTree object.
@@ -46,6 +48,14 @@ class Tree {
             render: (e) => {
                 // e.node was rendered. We may now modify the markup...
             },
+            click: (e) => {
+                /* Single-click folders to expand them */
+                // NOTE: Clicking fast will sometimes not cause the expand/collapse
+                if (e.node.type === "folder") e.node.setExpanded(!(e.node.isExpanded())); // toggle open/close
+            },
+            activate: (e) => {
+                this.selectCallback(e)
+            }
         });
     }
 
