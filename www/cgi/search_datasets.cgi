@@ -22,7 +22,7 @@ sys.path.append(lib_path)
 import geardb
 
 # limits the number of matches returned
-DEFAULT_MAX_RESULTS = 200;
+DEFAULT_MAX_RESULTS = 200
 IMAGE_ROOT = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
 WEB_IMAGE_ROOT = './img/dataset_previews'
 DEBUG_MODE = False

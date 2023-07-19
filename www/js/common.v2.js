@@ -12,6 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
+const generateElements = (html) => {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content.children[0];
+}
+
 // Convert POST payload to FormData so that POSTing to CGI scripts that use cgi.FieldStorage will work
 const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
@@ -49,9 +56,7 @@ const resetSteps = (event) => {
         rightIcon.classList.remove("mdi-chevron-up");
         rightIcon.classList.add("mdi-chevron-down");
 
-        // Collapse all "non-header" parts of step
-        const collapsableElt = jsStep.querySelector(".js-step-collapsable");
-        collapsableElt.style.display = "none";
+        // Collapse all "non-header" parts of step (in CSS file)
     }
 
     // Modify this step to look active
@@ -59,8 +64,7 @@ const resetSteps = (event) => {
     currentStep.classList.add("has-background-light");
     currentStep.querySelector("span.is-pulled-right i").classList.remove("mdi-chevron-down");
     currentStep.querySelector("span.is-pulled-right i").classList.add("mdi-chevron-up");
-    const collapsableElt = currentStep.querySelector(".js-step-collapsable");
-    collapsableElt.style.display = "block";
+    // Adding "step-active" expands all "non-header" parts of step (in CSS file)
     currentStep.classList.add("step-active")
 
 }
