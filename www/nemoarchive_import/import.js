@@ -191,6 +191,7 @@ const initializeDatasetRow = (dataset) => {
     </tr>
     `
 
+    console.log("here");
     // Append row to table
     const parent = document.querySelector("#submission_datasets tbody");
     const htmlCollection = generateElements(template);
@@ -531,8 +532,8 @@ const createSubmission = async (jsonUrl) => {
     }
 
     // https://github.github.io/fetch
-    //const urlResponse = await fetch(jsonUrl);
-    const urlResponse = await fetch("nemoarchive_import/test.json");
+    const urlResponse = await fetch(jsonUrl);
+    //const urlResponse = await fetch("nemoarchive_import/test.json");
     const jsonData = await urlResponse.json();
 
     const submissionId = await grabSubmissionId(jsonData);
@@ -583,34 +584,39 @@ const viewSubmission = async (submissionParam) => {
     const submissionElt = document.getElementById("submission_title");
     submissionElt.dataset.submission_id = submissionParam;
     populateSubmissionId(submissionParam);
-    const { layout_share_id: layoutShareId, collection_name: collectionName, is_submitter: isSubmitter, datasets } = await getSubmission(submissionParam);
+    try {
+        const { layout_share_id: layoutShareId, collection_name: collectionName, is_submitter: isSubmitter, datasets } = await getSubmission(submissionParam);
 
-    // Prepopulate collection name if previously added
-    if (collectionName) {
-        document.getElementById("collection_name").value = collectionName;
-    }
-    // If this is a different user viewing the submission, disable naming the layout
-    if (! isSubmitter) {
-        document.getElementById("collection_name").disabled = "disabled";
-    }
-
-    // Set up the rows
-    for (const datasetId in datasets) {
-        const response = await fetch(datasets[datasetId].href);
-        if (!response?.ok) {
-            throw new Error(response.statusText);
+        // Prepopulate collection name if previously added
+        if (collectionName) {
+            document.getElementById("collection_name").value = collectionName;
         }
-        const datasetInfo = await response.json();
+        // If this is a different user viewing the submission, disable naming the layout
+        if (! isSubmitter) {
+            document.getElementById("collection_name").disabled = "disabled";
+        }
 
-        // Set up the dataset row in the submission table
-        initializeDatasetRow(datasetInfo)
+        // Set up the rows
+        for (const datasetId in datasets) {
+            const response = await fetch(datasets[datasetId].href);
+            if (!response?.ok) {
+                throw new Error(response.statusText);
+            }
+            const datasetInfo = await response.json();
+
+            // Set up the dataset row in the submission table
+            initializeDatasetRow(datasetInfo);
+        }
+
+        submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
+        submissionElt.addEventListener("click", handleSubmissionLink);
+
+        // Poll datasets for updates. Function calls itself until importing is finished.
+        return pollSubmission(submissionParam);
+    } catch (error) {
+        alert(`Something went wrong with viewing submission ${submissionParam} - ${error}. Please contact gEAR support.`);
+        console.error(error);
     }
-
-    submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
-    submissionElt.addEventListener("click", handleSubmissionLink);
-
-    // Poll datasets for updates. Function calls itself until importing is finished.
-    return pollSubmission(submissionParam);
 }
 
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
@@ -690,6 +696,7 @@ window.onload = () => {
     // Essentially a "view-only" mode.
     const submissionParam = getUrlParameter("submission_id")
     if (submissionParam) {
+        console.log("viewing exising submission");
         return viewSubmission(submissionParam);
     }
 

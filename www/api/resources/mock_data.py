@@ -135,7 +135,6 @@ class MockIdentifier(Resource):
 
 def get_contact_name(conn, nemo_id):
     cursor = conn.cursor()
-    # file_assoc_project sparsely populated
     query = """
         SELECT con.name from contributor con
         JOIN project_has_contributor phc on con.id = phc.contrib_id
@@ -296,7 +295,7 @@ def get_file_format(conn, nemo_id):
 def get_organism_name(conn, nemo_id):
     # Found in neo4j database
     cursor = conn.cursor()
-    # library_assoc_file sparsely populated
+    # subject_taxonomy not populated
     query = """
         SELECT t.name from taxonomy t
         JOIN subject_taxonomy st on t.id = st.taxonomy_id
@@ -362,7 +361,8 @@ def get_sample_id(conn, nemo_id):
     # Found in neo4j database currently
     cursor = conn.cursor()
     query = """
-        SELECT sample_id from library l
+        SELECT source_sample_id from sample s
+        JOIN library l on s.id = l.sample_id
         JOIN library_assoc_file laf on l.id = laf.library_id
         JOIN file f on laf.file_id = f.id
         WHERE f.nemo_id = %s
@@ -380,7 +380,6 @@ def get_sample_id(conn, nemo_id):
 
 def get_tissue_ontology(conn, nemo_id):
     cursor = conn.cursor()
-    # Currently sample_assoc_anatomy not populated
     query = """
         SELECT a.name from anatomy a
         JOIN sample_assoc_anatomy saa on a.id = saa.anatomy_id
@@ -401,7 +400,6 @@ def get_tissue_ontology(conn, nemo_id):
 
 def get_treatment(conn, nemo_id):
     cursor = conn.cursor()
-    # library_assoc_file sparsely populated
     query = """
         SELECT sbo.value from subject_observations sbo
         JOIN obs_vars ov on sbo.obs_vars_id = ov.id
