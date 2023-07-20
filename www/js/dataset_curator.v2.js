@@ -57,6 +57,8 @@ const datasetTree = new DatasetTree({
                     const displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
                     const geneSymbol = display.plotly_config.gene_symbol;
 
+                    const label = display.label || "";
+
                     const defaultElt = (display.id === defaultDisplayId)
                         ? '<a href="#" class="card-footer-item">Default</a>'
                         : '<a href="#" class="card-footer-item">Set as Default</a>';
@@ -65,7 +67,7 @@ const datasetTree = new DatasetTree({
                     <div id="${display.id}_display" class="column is-one-quarter">
                         <div class="box card has-background-primary-light has-text-primary">
                             <header class="card-header">
-                                <p class="card-header-title has-text-black">${display.label}</p>
+                                <p class="card-header-title has-text-black">${label}</p>
                             </header>
                             <div class="card-image">
                                 <figure class="image is-4by3">
@@ -92,6 +94,8 @@ const datasetTree = new DatasetTree({
                     const displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
                     const geneSymbol = display.plotly_config.gene_symbol;
 
+                    const label = display.label || "";
+
                     const defaultElt = (display.id === defaultDisplayId)
                         ? '<a href="#" class="card-footer-item">Default</a>'
                         : '<a href="#" class="card-footer-item">Set as Default</a>';
@@ -100,7 +104,7 @@ const datasetTree = new DatasetTree({
                     <div id="${display.id}_display" class="column is-one-quarter">
                         <div class="box card has-background-primary-light has-text-primary">
                             <header class="card-header">
-                                <p class="card-header-title has-text-black">${display.label}</p>
+                                <p class="card-header-title has-text-black">${label}</p>
                             </header>
                             <div class="card-image">
                                 <figure class="image is-4by3">
