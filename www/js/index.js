@@ -295,8 +295,6 @@ function load_annotation_organism_list() {
         data : {},
         dataType:"json",
         success: function(data, textStatus, jqXHR) {
-            console.log("Got organism data:");
-            console.log(data);
             var ListTmpl = $.templates("#organism_list_tmpl");
             var ListHtml = ListTmpl.render(data['organisms']);
             $(".organism_icon_c").append(ListHtml);
