@@ -43,6 +43,7 @@ fixed paths have worked fine for decades.
       jupyter==1.0.0 \
       kaleido==0.2.1 \
       llvmlite==0.38.0 \
+      matplotlib==3.5.2 \
       mod-wsgi==4.9.0 \
       more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
