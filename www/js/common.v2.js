@@ -34,7 +34,6 @@ const convertToFormData = (object) => {
 // If "step" sections are clicked, expand that section and collaps the others
 const jsSteps = document.getElementsByClassName("js-step");
 const resetSteps = (event) => {
-
     // If clicked area has no parentNode (i.e. clicked target is destroyed and recreated), just leave be
     if (! event.target.parentNode) return;
 
@@ -70,5 +69,7 @@ const resetSteps = (event) => {
 }
 
 for (const jsStep of jsSteps) {
-    jsStep.addEventListener("click", resetSteps);
+    // Add "capture=true" to trigger parent before children events
+    // This helps with manually triggering click events to open up the next section.
+    jsStep.addEventListener("click", resetSteps, {capture: true});
 }

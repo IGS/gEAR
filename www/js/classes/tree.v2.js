@@ -49,9 +49,10 @@ class Tree {
                 // e.node was rendered. We may now modify the markup...
             },
             click: (e) => {
-                /* Single-click folders to expand them */
+                /* Single-click folders to expand them  (previous default dbl-click) */
                 // NOTE: Clicking fast will sometimes not cause the expand/collapse
-                if (e.node.type === "folder") e.node.setExpanded(!(e.node.isExpanded())); // toggle open/close
+               //if (e.node.type === "folder") e.node.setExpanded(!(e.node.isExpanded())); // toggle open/close
+                // BUG: Enabling the above code breaks clickable chevrons so we need to fix those
             },
             activate: (e) => {
                 this.selectCallback(e)

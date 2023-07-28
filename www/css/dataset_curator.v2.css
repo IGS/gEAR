@@ -1,0 +1,7 @@
+/* reflecting gEAR "select" form CSS to "nice-select" elements */
+.select .nice-select {
+    background-color: #EFEDF7;
+    border-color: #544A8E;
+    border-radius: 5px;
+    color: #363636;
+}

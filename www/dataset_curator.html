@@ -96,7 +96,7 @@
             </span>
           </h5>
           <div id="current_dataset_c" style="display:none;">
-            Current Dataset:
+            Current dataset:
             <span id="current_dataset"></span>
           </div>
           <div class="js-step-collapsable" id="dataset_collapsable">
@@ -117,21 +117,14 @@
             </span>
           </h5>
           <div class="js-step-collapsable" id="load_plot_collapsable">
-              <div id="user_displays" class="columns is-multiline">
-                <div id="new_display" class="column is-one-quarter">
-                  <div class="box card has-background-primary-light has-text-primary">
-                    <div class="card-image">
-                      <span class="icon">
-                        <i class="mdi mdi-plus"></i>
-                      </span>
-                    </div>
-                    <div class="card-content">
-                      <p class="content title">Curate new display</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div id="owner_displays" class="columns is-multiline"></div>
+            <button id="new_display" class="button is-primary" disabled>
+              <span class="icon">
+                <i class="mdi mdi-plus"></i>
+              </span>
+              <span>Curate new display</span>
+            </button>
+            <div id="user_displays" class="columns is-multiline"></div>
+            <div id="owner_displays" class="columns is-multiline"></div>
 
           </div>
         </section>
@@ -141,7 +134,7 @@
             <span class="icon">
               <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
             </span>
-            <span>Select dataset type and plot type</span>
+            <span>Select dataset analysis type and plot type</span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
@@ -150,32 +143,38 @@
             <div class="columns">
               <div id="analysis_type_select_c" class="column is-3">
                 <div>Analysis Type</div>
-                <select id="analysis_type_select">
-                  <option>Primary dataset</option>
-                  <optgroup label="Saved Analyses">
+                <div class="select">
+                  <select id="analysis_type_select" disabled>
+                    <option selected>Primary analysis (default)</option>
+                    <optgroup id="private_analyses" label="Your Saved Analyses">
 
-                  </optgroup>
-                </select>
+                    </optgroup>
+                    <optgroup id="public_analyses" label="Public Saved Analyses">
 
+                    </optgroup>
+                  </select>
+                </div>
               </div>
               <div id="plot_type_select_c" class="column is-3">
                 <div>Plot type</div>
-                <select id="plot_type_select">
-                  <option>Select plot type</option>
-                  <optgroup label="Interactive">
-                    <option value="bar" id="bar_opt">Bar</option>
-                    <option value="line" id="line_opt">Line</option>
-                    <option value="scatter" id="scatter_opt">Scatter</option>
-                    <option value="violin" id="violin_opt">Violin</option>
-                    <option value="tsne_dyna" id="tsne_dyna_opt">tSNE/UMAP dynamic</option>
-                    <option value="svg" id="svg_opt">SVG image</option>
-                  </optgroup>
-                  <optgroup label="Non-interactive">
-                    <option value="pca_static" id="pca_static_opt">PCA static</option>
-                    <option value="tsne_static" id="tsne_static_opt">tSNE static</option>
-                    <option value="umap_static" id="umap_static_opt">UMAP static</option>
-                  </optgroup>
-                </select>
+                <div class="select">
+                  <select id="plot_type_select" disabled>
+                    <option>Select plot type</option>
+                    <optgroup label="Interactive">
+                      <option value="bar" id="bar_opt">Bar</option>
+                      <option value="line" id="line_opt">Line</option>
+                      <option value="scatter" id="scatter_opt">Scatter</option>
+                      <option value="violin" id="violin_opt">Violin</option>
+                      <option value="tsne_dyna" id="tsne_dyna_opt">tSNE/UMAP dynamic</option>
+                      <option value="svg" id="svg_opt">SVG image</option>
+                    </optgroup>
+                    <optgroup label="Non-interactive">
+                      <option value="pca_static" id="pca_static_opt">PCA static</option>
+                      <option value="tsne_static" id="tsne_static_opt">tSNE static</option>
+                      <option value="umap_static" id="umap_static_opt">UMAP static</option>
+                    </optgroup>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -191,9 +190,15 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
+          <div id="current_gene_c" style="display:none;">
+            Current gene:
+            <span id="current_gene"></span>
+          </div>
           <div class="js-step-collapsable" id="gene_collapsable">
-            <select id="gene_select">
-            </select>
+            <div class="select">
+              <select id="gene_select"></select>
+            </div>
+
           </div>
         </section>
 
@@ -210,9 +215,7 @@
           <div class="js-step-collapsable" id="plot_options_collapsable"></div>
         </section>
 
-
-
-
+        <button id="plot_btn" class="button is-primary" disabled>Plot</button>
 
       </section>
     </section>

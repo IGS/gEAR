@@ -1,0 +1,137 @@
+<section id="svg_arguments" class="columns">
+    <section id="main_options" class="column">
+        <p class="content">Display Parameters</p>
+        <div class="field is-horizontal columns ">
+            <div class="column">
+                <label class="label">X-axis</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="x_axis_series">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Y-axis</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="y_axis_series">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Color by category</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input id="show_colorized_legend" type="checkbox">
+                            Check to annotate (color) samples by a particular category.
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- categorical only -->
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Colorize samples by</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="colorize_legend_by">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="advanced_options" class="column">
+        <!--if show_colorized_legend && colorize_legend_by -->
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Plot per category group</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="plot_by_series">
+                                <option>None</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help">Split all samples into groups from the selected category, and then create plots.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- if show_colorized_legend & plot_by_group -->
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Max columns per row</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <input id="max_columns" class="input" type="number">
+                    </div>
+                    <p class="help">Select maximum number of plots per row.  If not provided, all plots will be on one row.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- if show_colorized_legend & not plot_by_group -->
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Skip gene expression plot</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input id="show_colorized_legend" type="checkbox">
+                            Check to skip the gene symbol plot.
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Horizontal legend</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input id="horizontal_legend" type="checkbox">
+                            Check to move legend below the plot
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</section>
