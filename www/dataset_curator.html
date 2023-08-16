@@ -139,12 +139,20 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
+          <div id="current_analysis_c" style="display:none;">
+            Current analysis:
+            <span id="current_analysis"></span>
+          </div>
+          <div id="current_plot_type_c" style="display:none;">
+            Current plot type:
+            <span id="current_plot_type"></span>
+          </div>
           <div class="js-step-collapsable" idi="plot_type_collapsable">
             <div class="columns">
               <div id="analysis_type_select_c" class="column is-3">
-                <div>Analysis Type</div>
+                <div>Analysis</div>
                 <div class="select">
-                  <select id="analysis_type_select" disabled>
+                  <select id="analysis_select" disabled>
                     <option selected>Primary analysis (default)</option>
                     <optgroup id="private_analyses" label="Your Saved Analyses">
 
@@ -217,6 +225,14 @@
 
         <button id="plot_btn" class="button is-primary" disabled>Plot</button>
 
+      </section>
+      <section id="post_plot_content_c" class="m-3 columns" style="display:none;">
+        <div id="params_summary" class="column is-one-quarter has-background-light">
+          <p class="title is-5">Plot configs</p>
+          <div id="params_container"></div>
+          <button id="edit_params" class="button my-3">Edit Parameters</button>
+        </div>
+        <div id="plot_container" class="column has-background-white-bis"></div>
       </section>
     </section>
   </div>

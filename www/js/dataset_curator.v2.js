@@ -17,8 +17,53 @@ let geneSelect = null;
 const userId = 622;     // ! It's me
 const sessionId = "ee95e48d-c512-4083-bf05-ca9f65e2c12a"    // ! It's me
 const session_id = sessionId;
+const colorblindMode = false;
 
 Cookies.set('gear_session_id', sessionId, { expires: 7 });
+
+const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
+const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
+
+const plotlyElt2Prop = {
+    "x_axis_series":"x_axis"
+    , "y_axis_series":"y_axis"
+    , "label_series":"point_label"
+    , "hide_x_ticks":"hide_x_labels"
+    , "hide_y_ticks":"hide_y_labels"
+    , "color_series":"color_name"
+    , "facet_row_series":"facet_row"
+    , "facet_col_series":"facet_col"
+    , "x_axis_title":"x_title"
+    , "y_axis_title":"y_title"
+    , "xmin_value":"x_min"
+    , "ymin_value":"y_min"
+    , "xmax_value":"x_max"
+    , "ymax_value":"y_max"
+    , "hide_legend":"hide_legend"
+    , "add_jitter":"jitter"
+    , "marker_size_series":"size_by_group"
+    , "marker_size":"markersize"
+    , "vlines_body":"vlines"    // This is a special case
+}
+/*
+        color_map = req.get('colors')
+        palette = req.get('color_palette')
+        reverse_palette = req.get('reverse_palette')
+        order = req.get('order', {})
+*/
+
+const scanpyElt2Prop = {
+    "x_axis_series":"x_axis"
+    , "y_axis_series":"y_axis"
+    , "colorize_legend_by":"colorize_legend_by"
+    , "plot_by_series":"plot_by_group"
+    , "max_columns":"max_columns"
+    , "skip_gene_plot":"skip_gene_plot"
+    , "horizontal_legend":"horizontal_legend"
+}
+/*
+        order = req.get('order', {})
+*/
 
 const datasetTree = new DatasetTree({
     element: document.getElementById("dataset_tree")
@@ -43,6 +88,9 @@ const datasetTree = new DatasetTree({
 
         // Clear "current <whatever>" text
         document.getElementById("current_gene_c").style.display = "none";
+        document.getElementById("current_analysis_c").style.display = "none";
+        document.getElementById("current_plot_type_c").style.display = "none";
+
 
         // Clear (and update) options within nice-select2 structure.
         analysisSelect.clear();
@@ -76,8 +124,14 @@ const datasetTree = new DatasetTree({
 });
 
 const chooseAnalysis = async () => {
-
     const analysisId = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+
+    const analysisText = analysisId || "Primary Analysis";
+
+    // Display current selected analysis
+    document.getElementById("current_analysis_c").style.display = "";
+    document.getElementById("current_analysis").textContent = analysisText;
+
 
     // Populate gene select element
     const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
@@ -86,7 +140,7 @@ const chooseAnalysis = async () => {
 
 /* Display has been chosen, so display analysis and plot type options */
 const chooseDisplay = async () => {
-    document.getElementById("analysis_type_select").disabled = false;
+    document.getElementById("analysis_select").disabled = false;
     analysisSelect.update();
 
     document.getElementById("plot_type_select").disabled = false;
@@ -102,14 +156,20 @@ const chooseDisplay = async () => {
 const chooseGene = () => {
     if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
 
+    // Display current selected gene
     document.getElementById("current_gene_c").style.display = "";
     document.getElementById("current_gene").textContent = getSelect2Value(geneSelect);
 
     document.getElementById("plot_options_s").click();
 }
 
-const choosePlot = () => {
+const choosePlotType = () => {
+    plotConfig = {};    // Reset the plot config parameters
     if (!plotSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
+
+    // Display current selected plot type
+    document.getElementById("current_plot_type_c").style.display = "";
+    document.getElementById("current_plot_type").textContent = getSelect2Value(plotSelect);
 
     includePlotParamOptions();
     document.getElementById("gene_s").click();
@@ -125,10 +185,88 @@ const cloneDisplay = async (display) => {
     document.getElementById("gene_select").value = plotConfig.gene_symbol
     geneSelect.update();
 
+    // TODO: Set up SVG default colors if none exist.  "gene" as default scoring method.
+
+}
+
+const colorSVG = (chartData, plotConfig) => {
+    // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
+    const low_color = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
+    const mid_color = colorblindMode ? null : plotConfig["mid_color"];
+    const high_color = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
+
+    // for those fields which have no reading, a specific value is sometimes put in instead
+    // These are colored a neutral color
+    const NA_FIELD_PLACEHOLDER = -0.012345679104328156;
+    const NA_FIELD_COLOR = '#808080';
+
+    //const scoreMethod = document.getElementById("scoring_method").value;
+    const score = chartData.scores["gene"]
+    const { min, max } = score;
+    let color = null;
+    // are we doing a three- or two-color gradient?
+    if (mid_color) {
+        if (min >= 0) {
+            // All values greater than 0, do right side of three-color
+            color = d3
+                .scaleLinear()
+                .domain([min, max])
+                .range([mid_color, high_color]);
+        } else if (max <= 0) {
+            // All values under 0, do left side of three-color
+            color = d3
+                .scaleLinear()
+                .domain([min, max])
+                .range([low_color, mid_color]);
+        } else {
+            // We have a good value range, do the three-color
+            color = d3
+                .scaleLinear()
+                .domain([min, 0, max])
+                .range([low_color, mid_color, high_color]);
+        }
+    } else {
+        color = d3
+            .scaleLinear()
+            .domain([min, max])
+            .range([low_color, high_color]);
+    }
+
+
+    // Load SVG file and set up the window
+    const svg = document.getElementById("plot_container");
+    const snap = Snap(svg);
+    const svg_path = `datasets_uploaded/${datasetId}.svg`;
+    Snap.load(svg_path, async (path) => {
+        await snap.append(path)
+
+        snap.select("svg").attr({
+            width: "100%",
+            height: "200px",
+        });
+
+        // Fill in tissue classes with the expression colors
+        const {data: expression} = chartData;
+        const tissues = Object.keys(chartData.data);   // dataframe
+        const paths = Snap.selectAll("path, circle");
+        paths.forEach((path) => {
+            const tissue = path.node.className.baseVal;
+            if (tissues.includes(tissue)) {
+                if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
+                    path.attr('fill', NA_FIELD_COLOR);
+                } else {
+                    path.attr('fill', color(expression[tissue]));
+                }
+            }
+        });
+
+        // TODO: Potentially replicate some of the features in display.js like log-transforms and tooltips
+    });
+
 }
 
 const createAnalysisSelectInstance = () => {
-    analysisSelect = NiceSelect.bind(document.getElementById("analysis_type_select"), {
+    analysisSelect = NiceSelect.bind(document.getElementById("analysis_select"), {
         placeholder: 'Select an analysis.',
         allowClear: true,
     });
@@ -143,6 +281,76 @@ const createGeneSelectInstance = () => {
     });
 
     // BUG: Figure out "scrollbar"
+}
+
+const createPlot = async () => {
+
+    const analysis = getSelect2Value(analysisSelect);
+    const plotType = getSelect2Value(plotSelect);
+    const geneSymbol = getSelect2Value(geneSelect);
+
+    const plotBtn = document.getElementById("plot_btn");
+    const plotContainer = document.getElementById("plot_container");
+    const paramsContainer = document.getElementById("params_container");
+
+    plotContainer.replaceChildren();    // erase plot
+    paramsContainer.replaceChildren();    // erase params
+
+    // Set loading
+    plotBtn.classList.add("is-loading");
+
+    // Call API route by plot type
+    if (plotlyPlots.includes(plotType)) {
+        for (const elt in plotlyElt2Prop) {
+            plotConfig[plotlyElt2Prop[elt]] = document.getElementById(elt).value;
+        }
+        const data = await fetchPlotlyData(plotConfig, datasetId, plotType, colorblindMode);
+        // TODO: Set plot
+    } else if (scanpyPlots.includes(plotType)) {
+        for (const elt in scanpyElt2Prop) {
+            plotConfig[scanpyElt2Prop[elt]] = document.getElementById(elt).value;
+        }
+        const data = await fetchTsneImage(plotConfig, datasetId, plotType, analysis, analysis_owner_id, colorblindMode);
+        // TODO: Set Plot
+    } else if (plotType === "svg") {
+        const data = await fetchSvgData(geneSymbol, datasetId)
+        plotConfig["low_color"] = document.getElementById("low_color").value;
+        plotConfig["mid_color"] = document.getElementById("mid_color").value;
+        plotConfig["high_color"] = document.getElementById("high_color").value;
+
+        // If user did not choose a mid-color, set it as null instead of to black
+        if (!(document.getElementById("enable_mid_color").checked)) {
+            plotConfig["mid_color"] = null;
+        }
+        //TODO: Set plot (high/mid/low)
+        colorSVG(data, plotConfig)
+    } else {
+        console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
+        return;
+    }
+
+    // Stop loader
+    plotBtn.classList.remove("is-loading");
+
+    // Populate params in panel
+    const geneElt = generateElements(`<p class="is-flex is-justify-content-space-between">
+        <span class="has-text-weight-medium">Gene</span>
+        <span class="has-text-weight-bold">${geneSymbol}</span>
+        </p>`);
+    paramsContainer.append(geneElt);
+    for (const param in plotConfig) {
+        const capitalized = param.charAt(0).toUpperCase() + param.slice(1)
+        const paramElt = generateElements(`<p class="is-flex is-justify-content-space-between">
+            <span class="has-text-weight-medium">${capitalized}</span>
+            <span class="has-text-weight-bold">${plotConfig[param]}</span>
+            </p>`);
+        paramsContainer.append(paramElt);
+    }
+
+    // Hide this view
+    document.getElementById("content_c").style.display = "none";
+    // Generate and display "post-plotting" view/container
+    document.getElementById("post_plot_content_c").style.display = "";
 }
 
 const createPlotSelectInstance = () => {
@@ -231,22 +439,20 @@ const fetchH5adInfo = async (datasetId, analysisId) => {
 }
 
 const fetchPlotlyData = async (plotConfig, datasetId, plot_type, colorblind_mode)  => {
-    // TODO: Set loading
     const payload = { ...plotConfig,  plot_type, colorblind_mode };
     const { data } = await axios.post(`/api/plot/${datasetId}`, payload);
-    // TODO: Set plot
+    return data
 }
 
 const fetchSvgData = async (geneSymbol, datasetId) => {
     const { data } = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`);
-    //TODO: Set plot
+    return data
 };
 
 const fetchTsneImage = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode) => {
-    // TODO: Set loading
     const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
     const { data } = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
-    // TODO: set plot
+    return data
 }
 
 const getSelect2Value = (select) => {
@@ -256,9 +462,6 @@ const getSelect2Value = (select) => {
 
 const includePlotParamOptions = async () => {
     const plotType = getSelect2Value(plotSelect);
-
-    const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
-    const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 
     const plotOptionsElt = document.getElementById("plot_options_collapsable");
     plotOptionsElt.replaceChildren();
@@ -296,6 +499,8 @@ const includePlotParamOptions = async () => {
         const response = await fetch("../include/plot_types/svg.html", {cache: "reload"});
         const body = await response.text();
         plotOptionsElt.innerHTML = body;
+
+        setupSVGOptions();
         return;
     }
 
@@ -374,7 +579,7 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
                             <div class="card-content">
                                 <p class="subtitle">Gene: ${geneSymbol}</p>
                             </div>
-                            <footer class="card-footer">
+                            <footer class="card-footer buttons">
                                 <button class="js-display-default card-footer-item is-link" id="${display.id}_default">Set as Default</button>
                                 <button class="card-footer-item button is-link" id="${display.id}_clone">Clone</button>
                                 <button class="card-footer-item button is-link" id="${display.id}_delete">Delete</button>
@@ -418,7 +623,7 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
                             <div class="card-content">
                                 <p class="subtitle is-6">Gene: ${geneSymbol}</p>
                             </div>
-                            <footer class="card-footer">
+                            <footer class="card-footer buttons">
                                 <button class="js-display-default card-footer-item button is-link" id="${display.id}_default">Set as Default</button>
                                 <button class="card-footer-item button is-link" id="${display.id}_clone">Clone</button>
                             </footer>
@@ -514,7 +719,31 @@ const setupPlotlyOptions = async () => {
         updateSeriesOptions("marker_size_series", continuousColumns, true);
     }
 
+    // Vertical line add and remove events
+    const vline_template = document.querySelector(".js-vline-field");
+    const last_vline = document.querySelector(".js-vline-field:last-of-type");
+    document.getElementById("vline_add_btn").addEventListener("click", (event) => {
+        document.getElementById("vlines_body").append(vline_template.cloneNode(true));
+    })
+    document.getElementById("vline_remove_btn").addEventListener("click", (event) => {
+        last_vline.remove();
+    })
+
+    const validationElts = document.getElementsByClassName("js-plot-req");
+    for (const elt of validationElts ) {
+        elt.addEventListener("change", () => {
+            const xVal = document.getElementById("x_axis_series").value;
+            const yVal = document.getElementById("y_axis_series").value;
+            Document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
+        })
+    }
+
+    // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
+    trigger(document.getElementById("x_axis_series"), "change");
+
     // TODO: Set up validation checkers
+    // TODO: Figure out category group colors
+    // TODO: Figure out display order
 }
 
 /* Set up the scanpy-based plot options, such as "select" elements, events, etc. */
@@ -547,7 +776,47 @@ const setupScanpyOptions = async () => {
     updateSeriesOptions("y_axis_series", allColumns, true, yDefaultOption);
     updateSeriesOptions("plot_by_series", catColumns, false);
 
+    const validationElts = document.getElementsByClassName("js-plot-req");
+    for (const elt of validationElts ) {
+        elt.addEventListener("change", () => {
+            const xVal = document.getElementById("x_axis_series").value;
+            const yVal = document.getElementById("y_axis_series").value;
+            Document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
+        })
+    }
+
+    // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
+    trigger(document.getElementById("x_axis_series"), "change");
+
     // TODO: set up validation checkers
+    // TODO: Figure out category group colors
+    // TODO: Figure out display order
+
+}
+
+const setupSVGOptions = () => {
+
+    const validationElts = document.getElementsByClassName("js-plot-req");
+    for (const elt of validationElts ) {
+        elt.addEventListener("change", () => {
+            const highVal = document.getElementById("high_color").value;
+            const lowVal = document.getElementById("low_color").value;
+            document.getElementById("plot_btn").disabled = (highVal && lowVal) ? false : true;
+        })
+    }
+
+    const enable_mid_color = document.getElementById("enable_mid_color");
+    const mid_color_field = document.getElementById("mid_color_field");
+    enable_mid_color.addEventListener("change", (event) => {
+        mid_color_field.style.display = "none";
+        if (event.target.checked) {
+            mid_color_field.style.display = "";
+        }
+    });
+
+    // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
+    trigger(document.getElementById("high_color"), "change");
+
 }
 
 const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
@@ -670,7 +939,13 @@ window.onload = () => {
 };
 
 document.getElementById("new_display").addEventListener("click", chooseDisplay);
-document.getElementById("analysis_type_select").addEventListener("change", chooseAnalysis);
-document.getElementById("plot_type_select").addEventListener("change", choosePlot);
+document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
+document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
 document.getElementById("gene_select").addEventListener("change", chooseGene);
-
+document.getElementById("plot_btn").addEventListener("click", createPlot);
+document.getElementById("edit_params").addEventListener("click", () => {
+    // Hide this view
+    document.getElementById("content_c").style.display = "";
+    // Generate and display "post-plotting" view/container
+    document.getElementById("post_plot_content_c").style.display = "none";
+})

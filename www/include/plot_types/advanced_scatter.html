@@ -27,7 +27,7 @@
                     </select>
                 </div>
             </div>
-            <p class="help">Series values to set size of data markers. Continuous series only.</p>
+            <p class="help">Series values to set size of data markers.</p>
         </div>
     </div>
 </div>
@@ -42,7 +42,7 @@
                 <input id="marker_size" type="range" min="1" max="15" />
                 <span>Larger</span>
             </div>
-            <p class="help">Set a constant marker size. If a marker size series is also selected, this slider will instead set the minimum marker size.</p>
+            <p class="help">Set a constant marker size. If a marker size series is also selected, this slider will instead set the minimum size of the range of markers.</p>
         </div>
     </div>
 </div>
@@ -52,7 +52,7 @@
     <div class="column">
         <label class="label">Add vertical lines</label>
     </div>
-    <div class="field-body column">
+    <div class="field-body column" id="vlines_body">
         <div class="field has-addons js-vline-field">
             <div class="control">
                 <input class="input js-vline-pos" type="number">

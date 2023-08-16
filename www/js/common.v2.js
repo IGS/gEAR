@@ -19,6 +19,19 @@ const generateElements = (html) => {
     return template.content.children[0];
 }
 
+// Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
+const trigger = (el, eventType) => {
+    if (typeof eventType === 'string' && typeof el[eventType] === 'function') {
+        el[eventType]();
+    } else {
+        const event =
+        typeof eventType === 'string'
+            ? new Event(eventType, {bubbles: true})
+            : eventType;
+        el.dispatchEvent(event);
+    }
+}
+
 // Convert POST payload to FormData so that POSTing to CGI scripts that use cgi.FieldStorage will work
 const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
