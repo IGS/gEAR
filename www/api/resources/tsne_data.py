@@ -119,6 +119,10 @@ def get_colorblind_scale(n_colors):
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
 
+def is_categorical(series):
+    """Return True if Dataframe series is categorical."""
+    return series.dtype.name == 'category'
+
 def sort_legend(figure, sort_order, horizontal_legend=False):
     """Sort legend of plot."""
     handles, labels = figure.get_legend_handles_labels()
@@ -162,7 +166,7 @@ class TSNEData(Resource):
 
     Returns
     -------
-      Byte stream image data
+    Byte stream image data
     """
     def post(self, dataset_id):
         req = request.get_json()
@@ -210,6 +214,7 @@ class TSNEData(Resource):
                     'success': -1,
                     'message': str(pe),
                 }
+
 
         gene_symbols = (gene_symbol,)
         if 'gene_symbol' in adata.var.columns:
@@ -281,6 +286,13 @@ class TSNEData(Resource):
                 os.remove(scanpy_copy)
             adata = adata[:, adata.var.index.duplicated() == False].copy(filename=scanpy_copy)
 
+        # In projections, reorder so that the strongest weights (positive or negative) appear in forefront of plot
+        if projection_id:
+            sort_order = np.argsort(np.abs(adata[:, gene_symbol].X.squeeze()))[::-1]
+            ordered_obs = adata.obs.iloc[sort_order].index
+            adata = adata[ordered_obs, :]
+
+
         io_fig = None
         try:
             basis = PLOT_TYPE_TO_BASIS[plot_type]
@@ -297,37 +309,39 @@ class TSNEData(Resource):
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
         if colorize_by:
-            # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
-            color_idx_name = "{0}_colors".format(colorize_by)
+            color_category = True if is_categorical(adata.obs[colorize_by]) else False
 
-            ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
-            if colors is not None and len(colors) > 2:
-                adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
+            if color_category:
+                # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
+                color_idx_name = "{0}_colors".format(colorize_by)
 
-            elif color_idx_name in adata.obs:
-                # Alternative method.  Associate with hexcodes already stored in the dataframe
-                # Making the assumption that these values are hexcodes
-                grouped = adata.obs.groupby([colorize_by, color_idx_name])
-                # Ensure one-to-one mapping between category and hexcodes
-                if len(adata.obs[colorize_by].unique()) == len(grouped):
-                    # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
-                    color_hex = adata.obs[color_idx_name].unique().tolist()
-                    if re.search(COLOR_HEX_PTRN, color_hex[0]):
-                        color_map = {name[0]:name[1] for name, group in grouped}
-                        adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+                ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
+                if colors is not None and len(colors) > 2:
+                    adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
 
+                elif color_idx_name in adata.obs:
+                    # Alternative method.  Associate with hexcodes already stored in the dataframe
+                    # Making the assumption that these values are hexcodes
+                    grouped = adata.obs.groupby([colorize_by, color_idx_name])
+                    # Ensure one-to-one mapping between category and hexcodes
+                    if len(adata.obs[colorize_by].unique()) == len(grouped):
+                        # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
+                        color_hex = adata.obs[color_idx_name].unique().tolist()
+                        if re.search(COLOR_HEX_PTRN, color_hex[0]):
+                            color_map = {name[0]:name[1] for name, group in grouped}
+                            adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
 
-            if colorblind_mode:
-                # build a cividis color map for the colorblind mode
-                cb_colors = get_colorblind_scale(len(adata.obs[colorize_by].unique()))
-                color_map = {name:cb_colors[idx] for idx, name in enumerate(adata.obs[colorize_by].cat.categories)}
-                adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+                if colorblind_mode:
+                    # build a cividis color map for the colorblind mode
+                    cb_colors = get_colorblind_scale(len(adata.obs[colorize_by].unique()))
+                    color_map = {name:cb_colors[idx] for idx, name in enumerate(adata.obs[colorize_by].cat.categories)}
+                    adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
 
-            # Calculate the number of columns in the legend (if applicable)
-            num_cols = calculate_num_legend_cols(len(adata.obs[colorize_by].unique()))
+                # Calculate the number of columns in the legend (if applicable)
+                num_cols = calculate_num_legend_cols(len(adata.obs[colorize_by].unique()))
 
-            # Get for legend order.
-            colorize_by_order = adata.obs[colorize_by].unique()
+                # Get for legend order.
+                colorize_by_order = adata.obs[colorize_by].unique()
 
             """
             NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
@@ -389,11 +403,13 @@ class TSNEData(Resource):
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
-                (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
-                f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                if horizontal_legend:
-                    io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                    f_color.get_legend().remove()  # Remove legend added by scanpy
+                if color_category:
+                    (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
+                    f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                    if horizontal_legend:
+                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            f_color.get_legend().remove()  # Remove legend added by scanpy
+
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
                 if skip_gene_plot:
@@ -404,11 +420,13 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
-                    f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                    if horizontal_legend:
-                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                        f1.get_legend().remove()  # Remove legend added by scanpy
+                    if color_category:
+                        (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
+                        f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                        if horizontal_legend:
+                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            f1.get_legend().remove()  # Remove legend added by scanpy
+
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(13, 4))
@@ -417,13 +435,22 @@ class TSNEData(Resource):
                     f2 = io_fig.add_subplot(spec[0,1])
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
-                    f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                    if horizontal_legend:
-                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                        f2.get_legend().remove()  # Remove legend added by scanpy
+                    if color_category:
+                        (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
+                        f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                        if horizontal_legend:
+                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            f2.get_legend().remove()  # Remove legend added by scanpy
+
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False)
+
+        # Rename axes labels to be whatever x and y fields were passed in
+        # If axis labels are from an analysis, just use default embedding labels
+        if not x_axis.startswith("X_"):
+            for ax in io_fig.axes:
+                ax.set_xlabel(x_axis)
+                ax.set_ylabel(y_axis)
 
         # Close adata so that we do not have a stale opened object
         if adata.isbacked:

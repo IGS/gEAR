@@ -242,7 +242,6 @@ const colorSVG = (chartData, plotConfig) => {
 
         snap.select("svg").attr({
             width: "100%",
-            height: "200px",
         });
 
         // Fill in tissue classes with the expression colors
@@ -310,8 +309,28 @@ const createPlot = async () => {
         for (const elt in scanpyElt2Prop) {
             plotConfig[scanpyElt2Prop[elt]] = document.getElementById(elt).value;
         }
-        const data = await fetchTsneImage(plotConfig, datasetId, plotType, analysis, analysis_owner_id, colorblindMode);
-        // TODO: Set Plot
+
+        // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
+        if (!(document.getElementById("show_colorized_legend").checked)) {
+            plotConfig["colorize_legend_by"] = null;
+            plotConfig["plot_by_group"] = null;
+            plotConfig["max_columns"] = null;
+            plotConfig["skip_gene_plot"] = false;
+            plotConfig["horizontal_legend"] = false;
+        }
+
+        const data = await fetchTsneImageData(plotConfig, datasetId, plotType, analysis, analysis_owner_id, colorblindMode);
+        const {image} = data;
+        const imgElt = generateElements('<img id="tsne_preview"></img>');
+        plotContainer.append(imgElt);
+
+        if (image) {
+            document.getElementById("tsne_preview").addClass("img-fluid");
+            document.getElementById("tsne_preview").attr(
+                "src",
+                `data:image/png;base64,${image}`
+                );
+        }
     } else if (plotType === "svg") {
         const data = await fetchSvgData(geneSymbol, datasetId)
         plotConfig["low_color"] = document.getElementById("low_color").value;
@@ -322,7 +341,6 @@ const createPlot = async () => {
         if (!(document.getElementById("enable_mid_color").checked)) {
             plotConfig["mid_color"] = null;
         }
-        //TODO: Set plot (high/mid/low)
         colorSVG(data, plotConfig)
     } else {
         console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
@@ -449,7 +467,7 @@ const fetchSvgData = async (geneSymbol, datasetId) => {
     return data
 };
 
-const fetchTsneImage = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode) => {
+const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode) => {
     const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
     const { data } = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
     return data
@@ -749,8 +767,9 @@ const setupPlotlyOptions = async () => {
 /* Set up the scanpy-based plot options, such as "select" elements, events, etc. */
 const setupScanpyOptions = async () => {
     const analysisId = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const plotType = getSelect2Value(plotType);
-    const {allColumns, catColumns} = await fetchH5adInfo(datasetId, analysisId);
+    const plotType = getSelect2Value(plotSelect);
+    const {obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId);
+    const catColumns = Object.keys(levels);
 
     let xDefaultOption = null;
     let yDefaultOption = null;
@@ -772,8 +791,12 @@ const setupScanpyOptions = async () => {
         }
     }
 
+    // TODO: Use custom x- and y- labels outside of what the tsne/umap/pca adds - Carlo
+    // TODO: Allow for continuous legends (disable plot by group, etc) - Carlo
+
     updateSeriesOptions("x_axis_series", allColumns, true, xDefaultOption);
     updateSeriesOptions("y_axis_series", allColumns, true, yDefaultOption);
+    updateSeriesOptions("colorize_legend_by", allColumns, false);
     updateSeriesOptions("plot_by_series", catColumns, false);
 
     const validationElts = document.getElementsByClassName("js-plot-req");
@@ -784,6 +807,46 @@ const setupScanpyOptions = async () => {
             Document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
         })
     }
+
+
+    const colorizeLegendBy = document.getElementById("colorize_legend_by");
+    const plotByGroup = document.getElementById("plot_by_group");
+    const maxColumns = document.getElementById('max_columns');
+    const skipGenePlots = document.getElementById("skip_gene_plots");
+    const horizontalLegend = document.getElementById("horizontal_legend");
+
+    // Disable colorize_legend options if we are not using it
+    document.getElementById("show_colorized_legend").addEventListener("change", (event) => {
+        colorizeLegendBy.disabled = true;
+        plotByGroup.disabled = true;
+        maxColumns.disabled = true;
+        horizontalLegend.disabled = true;
+        if (event.target.checked) {
+            colorizeLegendBy.disabled = false;
+            plotByGroup.disabled = false;
+            maxColumns.disabled = false;
+            horizontalLegend.disabled = false;
+        }
+    });
+
+    colorizeLegendBy.addEventListener("change", (event) => {
+        plotByGroup.disabled = false;
+        maxColumns.disabled = false;
+        horizontalLegend.disabled = false;
+        // If colorized legend is continuous, we cannot plot by group
+        if (!(catColumns.includes(event.target.value))) {
+            plotByGroup.disabled = true;
+            maxColumns.disabled = true;
+            horizontalLegend.disabled = true;
+        }
+    });
+
+    // Plotting by group plots gene expression, so cannot skip gene plots.
+    plotByGroup.addEventListener("change", (event) => {
+        if (event.target.value) {
+            skipGenePlots.checked = false;
+        }
+    });
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
     trigger(document.getElementById("x_axis_series"), "change");
@@ -805,12 +868,12 @@ const setupSVGOptions = () => {
         })
     }
 
-    const enable_mid_color = document.getElementById("enable_mid_color");
-    const mid_color_field = document.getElementById("mid_color_field");
-    enable_mid_color.addEventListener("change", (event) => {
-        mid_color_field.style.display = "none";
+    const enableMidColor = document.getElementById("enable_mid_color");
+    const midColorField = document.getElementById("mid_color_field");
+    enableMidColor.addEventListener("change", (event) => {
+        midColorField.style.display = "none";
         if (event.target.checked) {
-            mid_color_field.style.display = "";
+            midColorField.style.display = "";
         }
     });
 
@@ -906,6 +969,14 @@ const updateSeriesOptions = (element, seriesArray, addExpression, defaultOption)
     for (const group of seriesArray.sort()) {
         const option = document.createElement("option");
         option.textContent = group;
+        // Change X_pca/X_tsne/X_umap text content to be more user_friendly
+        if (group.includes("X_") && (
+            group.includes("pca")
+            || group.includes("tsne")
+            || group.includes("umap")
+        )) {
+            option.textContent = `${group} (from selected analysis)`;
+        }
         option.value = group;
         elt.append(option);
         if (group === defaultOption) {
