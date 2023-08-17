@@ -161,6 +161,13 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
+# Rename axes labels to be whatever x and y fields were passed in
+# If axis labels are from an analysis, just use default embedding labels
+def rename_axes_labels(ax, x_axis, y_axis):
+    if not x_axis.startswith("X_"):
+        ax.set_xlabel(x_axis)
+        ax.set_ylabel(y_axis)
+
 class TSNEData(Resource):
     """Resource for retrieving tsne data from an analysis.
 
@@ -388,6 +395,7 @@ class TSNEData(Resource):
                     adata.obs["split_by_group"] = adata.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
                     sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order)
+                    rename_axes_labels(f, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -397,6 +405,7 @@ class TSNEData(Resource):
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order) # Max expression is vmax by default
+                    rename_axes_labels(f_gene, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -404,6 +413,7 @@ class TSNEData(Resource):
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
+                rename_axes_labels(f_color, x_axis, y_axis)
                 if color_category:
                     (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
                     f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
@@ -421,6 +431,7 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
+                    rename_axes_labels(f1, x_axis, y_axis)
                     if color_category:
                         (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
                         f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
@@ -436,6 +447,8 @@ class TSNEData(Resource):
                     f2 = io_fig.add_subplot(spec[0,1])
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
+                    rename_axes_labels(f1, x_axis, y_axis)
+                    rename_axes_labels(f2, x_axis, y_axis)
                     if color_category:
                         (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
                         f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
@@ -445,13 +458,7 @@ class TSNEData(Resource):
 
         else:
             io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order)
-
-        # Rename axes labels to be whatever x and y fields were passed in
-        # If axis labels are from an analysis, just use default embedding labels
-        if not x_axis.startswith("X_"):
-            for ax in io_fig.axes:
-                ax.set_xlabel(x_axis)
-                ax.set_ylabel(y_axis)
+            rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
 
         # Close adata so that we do not have a stale opened object
         if adata.isbacked:
