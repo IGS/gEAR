@@ -287,11 +287,12 @@ class TSNEData(Resource):
             adata = adata[:, adata.var.index.duplicated() == False].copy(filename=scanpy_copy)
 
         # In projections, reorder so that the strongest weights (positive or negative) appear in forefront of plot
+        plot_sort_order = True
         if projection_id:
             sort_order = np.argsort(np.abs(adata[:, gene_symbol].X.squeeze()))[::-1]
             ordered_obs = adata.obs.iloc[sort_order].index
             adata = adata[ordered_obs, :]
-
+            plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
 
         io_fig = None
         try:
@@ -386,7 +387,7 @@ class TSNEData(Resource):
                     # Filter only expression values for a particular group.
                     adata.obs["split_by_group"] = adata.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression)
+                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -395,7 +396,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order) # Max expression is vmax by default
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -433,7 +434,7 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False)
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     if color_category:
                         (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
@@ -443,7 +444,7 @@ class TSNEData(Resource):
                             f2.get_legend().remove()  # Remove legend added by scanpy
 
         else:
-            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False)
+            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order)
 
         # Rename axes labels to be whatever x and y fields were passed in
         # If axis labels are from an analysis, just use default embedding labels
