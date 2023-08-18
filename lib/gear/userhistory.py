@@ -21,6 +21,7 @@ class UserHistory:
         Individual additional arguments needed depending on category:
 
             'gene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
+            'multigene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
 
         """
         match entry_category:
@@ -38,6 +39,22 @@ class UserHistory:
                 gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}".format(gene_string)
+
+            case 'multigene_search':
+                if 'layout_share_id' in kwargs:
+                    url = "/p?l={0}".format(kwargs['layout_share_id'])
+                elif 'dataset_share_id' in kwargs:
+                    url = "/p?s={0}".format(kwargs['dataset_share_id'])
+                else:
+                    raise Exception("ERROR: If recording a multigene_search category, 'layout_share_id' or 'dataset_share_id' must be passsed")
+
+                if 'gene_symbol' not in kwargs:
+                    raise Exception("ERROR: If recording a multigene_search category, 'gene_symbol' must be passed")
+                
+                gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
+
+                url += "&g={0}&multi=1&gsem=1".format(gene_string)
+                
             case _ :
                 raise Exception("ERROR: Invalid entry_category when calling UserHistory.add_record()")
         

@@ -17,6 +17,7 @@ from gear.userhistory import UserHistory
 MAX_GENE_SEARCH_LIMIT = 100000
 
 def main():
+    print("DEBUG: search_genes.cgi logged", file=sys.stderr)
     form = cgi.FieldStorage()
 
     ## can search for more than one gene symbol, separated by spaces
@@ -73,7 +74,8 @@ def main():
             gene_symbol_label = "{0} ...".format(search_gene_symbol[0:50])
         else:
             gene_symbol_label = search_gene_symbol
-        
+
+        print("DEBUG: Adding history record", file=sys.stderr)
         history = UserHistory()
         history.add_record(
             user_id=user_id,

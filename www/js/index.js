@@ -768,6 +768,7 @@ $("#gene_search_form").submit((event) => {
     // we want to add layout and user information here so we can log the search
     formData.push({name: 'layout_share_id', value: layout_id});
     formData.push({name: 'user_id', value: CURRENT_USER.id});
+    formData.push({name: 'is_multi', value: multigene});
 
     // split on combination of space and comma (individually or both together.)
     const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
