@@ -5,3 +5,15 @@
     border-radius: 5px;
     color: #363636;
 }
+
+.select .select[disabled] {
+    border-color: unset;    /* distinguish as being disabled */
+}
+
+.is-fullwidth .nice-select{
+    width:100%;
+}
+
+.nice-select:after {
+    content: unset;     /* remove their version of dropdown arrow (behind the Bulma select arrow) */
+}

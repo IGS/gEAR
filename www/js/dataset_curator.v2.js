@@ -110,6 +110,7 @@ const datasetTree = new DatasetTree({
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
 
         // plot types
+        // NOTE: Believe this triggers the plotSelect "change" element
         const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, undefined);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
@@ -177,9 +178,13 @@ const choosePlotType = () => {
     plotConfig = {};    // Reset the plot config parameters
     if (!plotSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
 
+    // Do not display if default opt is chosen
+    const plotType = getSelect2Value(plotSelect)
+    if (plotType === "nope") return;
+
     // Display current selected plot type
     document.getElementById("current_plot_type_c").style.display = "";
-    document.getElementById("current_plot_type").textContent = getSelect2Value(plotSelect);
+    document.getElementById("current_plot_type").textContent = plotType;
 
     includePlotParamOptions();
     document.getElementById("gene_s").click();

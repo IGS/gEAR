@@ -151,7 +151,7 @@
             <div class="columns">
               <div id="analysis_type_select_c" class="column is-3">
                 <div>Analysis</div>
-                <div class="select">
+                <div class="select is-fullwidth">
                   <select id="analysis_select" disabled>
                     <option value="-1" selected>Primary analysis (default)</option>
                     <optgroup id="private_analyses" label="Your Saved Analyses">
@@ -165,9 +165,9 @@
               </div>
               <div id="plot_type_select_c" class="column is-3">
                 <div>Plot type</div>
-                <div class="select">
+                <div class="select is-fullwidth">
                   <select id="plot_type_select" disabled>
-                    <option>Select plot type</option>
+                    <option value="nope">Select plot type</option>
                     <optgroup label="Interactive">
                       <option value="bar" id="bar_opt">Bar</option>
                       <option value="line" id="line_opt">Line</option>
@@ -202,11 +202,12 @@
             Current gene:
             <span id="current_gene"></span>
           </div>
-          <div class="js-step-collapsable mt-3" id="gene_collapsable">
-            <div class="select">
-              <select id="gene_select"></select>
+          <div class="js-step-collapsable mt-3 columns" id="gene_collapsable">
+            <div id="gene_select_c" class="column is-3">
+              <div class="select is-fullwidth">
+                <select id="gene_select"></select>
+              </div>
             </div>
-
           </div>
         </section>
 
