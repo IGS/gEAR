@@ -99,7 +99,7 @@
             Current dataset:
             <span id="current_dataset"></span>
           </div>
-          <div class="js-step-collapsable" id="dataset_collapsable">
+          <div class="js-step-collapsable mt-3" id="dataset_collapsable">
             <input class="input" id="dataset_query" type="text" placeholder="Enter a dataset" autofocus="" />
             <div id="dataset_tree" class="wb-skeleton wb-initializing">
             </div>
@@ -116,7 +116,7 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div class="js-step-collapsable" id="load_plot_collapsable">
+          <div class="js-step-collapsable mt-3" id="load_plot_collapsable">
             <button id="new_display" class="button is-primary" disabled>
               <span class="icon">
                 <i class="mdi mdi-plus"></i>
@@ -147,13 +147,13 @@
             Current plot type:
             <span id="current_plot_type"></span>
           </div>
-          <div class="js-step-collapsable" idi="plot_type_collapsable">
+          <div class="js-step-collapsable mt-3" idi="plot_type_collapsable">
             <div class="columns">
               <div id="analysis_type_select_c" class="column is-3">
                 <div>Analysis</div>
                 <div class="select">
                   <select id="analysis_select" disabled>
-                    <option selected>Primary analysis (default)</option>
+                    <option value="-1" selected>Primary analysis (default)</option>
                     <optgroup id="private_analyses" label="Your Saved Analyses">
 
                     </optgroup>
@@ -202,7 +202,7 @@
             Current gene:
             <span id="current_gene"></span>
           </div>
-          <div class="js-step-collapsable" id="gene_collapsable">
+          <div class="js-step-collapsable mt-3" id="gene_collapsable">
             <div class="select">
               <select id="gene_select"></select>
             </div>
@@ -220,7 +220,7 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div class="js-step-collapsable" id="plot_options_collapsable"></div>
+          <div class="js-step-collapsable mt-3" id="plot_options_collapsable"></div>
         </section>
 
         <button id="plot_btn" class="button is-primary" disabled>Plot</button>

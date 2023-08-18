@@ -78,12 +78,11 @@ def calculate_num_legend_cols(group_len):
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
     from matplotlib import cm
-    from matplotlib.colors import ListedColormap
 
     # Create custom colorscale with gray at the 0.0 level
     # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
-    ylorrd = cm.get_cmap(colorscale, 256)
-    newcolors = ylorrd(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
+    cmap = cm.get_cmap(colorscale, 256)
+    newcolors = cmap(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
     gray = np.array([192/256, 192/256, 192/256, 1])
     newcolors[0, :] = gray
     return mcolors.ListedColormap(newcolors)
@@ -112,12 +111,37 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.filename = projection_adata_path
     return projection_adata
 
+def create_projection_pca_colorscale():
+    """Create a diverging colorscale but with black in the middle range."""
+    from matplotlib.colors import LinearSegmentedColormap
+
+    # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
+    nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
+    colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
+    return LinearSegmentedColormap.from_list("projection_pca", list(zip(nodes, colors)))
+
+
 def get_colorblind_scale(n_colors):
     """Get a colorblind friendly colorscale (Viridis). Return n colors spaced equidistantly."""
     cividis = cm.get_cmap("viridis", n_colors)
     colors = cividis.colors
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
+
+def get_projection_algorithm(dataset_id, projection_id):
+    dataset_projection_json_file = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id, "projections.json")
+    # Projection already exists, so we can just return info we want to return in a message
+    import json
+    with open(dataset_projection_json_file) as projection_fh:
+        projections_dict = json.load(projection_fh)
+    for genecart_id, configs in projections_dict.items():
+        for config in configs:
+            if config["uuid"] == projection_id:
+                # Handle legacy algorithm
+                if "is_pca" in config:
+                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+                return config["algorithm"]
+    raise Exception("Could not find projection ID entry within projection CSV file.")
 
 def is_categorical(series):
     """Return True if Dataframe series is categorical."""
@@ -240,15 +264,40 @@ class TSNEData(Resource):
 
         # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
         if analysis is None or analysis in ["null", "undefined", dataset_id]:
-            for ds in [x_axis, y_axis]:
-                if ds not in adata.obs:
+            # Valid analysis column names from api/resources/h5ad.py
+            analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
+            analysis_umap_columns = ['X_umap_1', 'X_umap_2']
+            analysis_pca_columns = ['X_pca_1', 'X_pca_2']
+            # Safety check to ensure analysis was populated in adata.obsm if user selects those data series
+            if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
+                if not 'X_tsne' in adata.obsm:
                     return {
                         'success': -1,
-                        'message': 'Dataseries {} was selected but not present in adata.obs'.format(ds)
+                        'message': 'Analysis tSNE columns were selected but values not present in adata.obsm'
                     }
-            adata.obsm['X_tsne'] = adata.obs[[x_axis, y_axis]].values
-            adata.obsm['X_umap'] = adata.obs[[x_axis, y_axis]].values
-            adata.obsm['X_pca'] = adata.obs[[x_axis, y_axis]].values
+            elif x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
+                if not 'X_umap' in adata.obsm:
+                    return {
+                        'success': -1,
+                        'message': 'Analysis UMAP was selected but values not present in adata.obsm'
+                    }
+            elif x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
+                if not 'X_pca' in adata.obsm:
+                    return {
+                        'success': -1,
+                        'message': 'Analysis PCA was selected but values not present in adata.obsm'
+                    }
+            else:
+                # If using user-provided columns, perform safety check and create adata.obsm entry
+                for ds in [x_axis, y_axis]:
+                    if ds not in adata.obs:
+                        return {
+                            'success': -1,
+                            'message': 'Dataseries {} was selected but not present in adata.obs'.format(ds)
+                        }
+                adata.obsm['X_tsne'] = adata.obs[[x_axis, y_axis]].values
+                adata.obsm['X_umap'] = adata.obs[[x_axis, y_axis]].values
+                adata.obsm['X_pca'] = adata.obs[[x_axis, y_axis]].values
 
         # We also need to change the adata's Raw var dataframe
         # We can't explicitly reset its index so we reinitialize it with
@@ -293,14 +342,6 @@ class TSNEData(Resource):
                 os.remove(scanpy_copy)
             adata = adata[:, adata.var.index.duplicated() == False].copy(filename=scanpy_copy)
 
-        # In projections, reorder so that the strongest weights (positive or negative) appear in forefront of plot
-        plot_sort_order = True
-        if projection_id:
-            sort_order = np.argsort(np.abs(adata[:, gene_symbol].X.squeeze()))[::-1]
-            ordered_obs = adata.obs.iloc[sort_order].index
-            adata = adata[ordered_obs, :]
-            plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
-
         io_fig = None
         try:
             basis = PLOT_TYPE_TO_BASIS[plot_type]
@@ -313,6 +354,24 @@ class TSNEData(Resource):
 
         # Reverse cividis so "light" is at 0 and 'dark' is at incresing expression
         expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else "YlOrRd")
+
+        # In projections, reorder so that the strongest weights (positive or negative) appear in forefront of plot
+        plot_sort_order = True
+        plot_vcenter = None
+        if projection_id:
+            try:
+                algo = get_projection_algorithm(dataset_id, projection_id)
+                if algo == "pca":
+                    median = np.median(adata[:, gene_symbol].X.squeeze())
+                    sort_order = np.argsort(np.abs(median - adata[:, gene_symbol].X.squeeze()))
+                    ordered_obs = adata.obs.iloc[sort_order].index
+                    adata = adata[ordered_obs, :]
+                    plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
+                    plot_vcenter = median
+                    expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
+            except Exception as e:
+                import sys
+                print(str(e), file=sys.stderr)
 
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
@@ -394,7 +453,7 @@ class TSNEData(Resource):
                     # Filter only expression values for a particular group.
                     adata.obs["split_by_group"] = adata.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order)
+                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     rename_axes_labels(f, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -404,7 +463,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order) # Max expression is vmax by default
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
                     rename_axes_labels(f_gene, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -426,7 +485,7 @@ class TSNEData(Resource):
                 if skip_gene_plot:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(6, 4))
-                    if len(adata.obs[colorize_by].cat.categories) > 10:
+                    if color_category and len(adata.obs[colorize_by].cat.categories) > 10:
                         io_fig = plt.figure(figsize=(13, 4))
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
@@ -445,7 +504,7 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order)
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     rename_axes_labels(f1, x_axis, y_axis)
                     rename_axes_labels(f2, x_axis, y_axis)
@@ -457,7 +516,7 @@ class TSNEData(Resource):
                             f2.get_legend().remove()  # Remove legend added by scanpy
 
         else:
-            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order)
+            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
             rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
 
         # Close adata so that we do not have a stale opened object

@@ -9,6 +9,7 @@ let plotConfig = {};  // Plot config that is passed to API or stored in DB
 
 let datasetId = null;
 let organismId = null;
+let analysisObj = null;
 
 let analysisSelect = null;
 let plotSelect = null;
@@ -82,10 +83,6 @@ const datasetTree = new DatasetTree({
             return;
         }
 
-        // Click to get to next step
-        document.getElementById("load_plot_s").click();
-        document.getElementById('new_display').disabled = false;
-
         // Clear "current <whatever>" text
         document.getElementById("current_gene_c").style.display = "none";
         document.getElementById("current_analysis_c").style.display = "none";
@@ -93,8 +90,10 @@ const datasetTree = new DatasetTree({
 
 
         // Clear (and update) options within nice-select2 structure.
+        analysisObj = null;
         analysisSelect.clear();
         geneSelect.clear(); // BUG: Figure out why this is triggering twice (check function in Github)
+        plotSelect.clear();
 
         datasetId = newDatasetId;
         // Fetch dataset information
@@ -120,17 +119,28 @@ const datasetTree = new DatasetTree({
                 document.getElementById(`${plotType}_opt`).disabled = !isAllowed;
             }
         }
+
+        // Click to get to next step
+        document.getElementById("load_plot_s").click();
+        document.getElementById('new_display').disabled = false;
+
     })
 });
 
 const chooseAnalysis = async () => {
-    const analysisId = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-
+    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const analysisText = analysisId || "Primary Analysis";
 
     // Display current selected analysis
     document.getElementById("current_analysis_c").style.display = "";
     document.getElementById("current_analysis").textContent = analysisText;
+
+    // NOTE: For now, we can just pass analysis id only to tSNE and be fine
+    // Any private dataset will belong to our user. Any public datasets can be found by the API "get_analysis" code.
+    if (analysisId) {
+        analysisObj = {id: analysisId};
+    }
 
 
     // Populate gene select element
@@ -284,7 +294,6 @@ const createGeneSelectInstance = () => {
 
 const createPlot = async () => {
 
-    const analysis = getSelect2Value(analysisSelect);
     const plotType = getSelect2Value(plotSelect);
     const geneSymbol = getSelect2Value(geneSelect);
 
@@ -302,12 +311,18 @@ const createPlot = async () => {
     if (plotlyPlots.includes(plotType)) {
         for (const elt in plotlyElt2Prop) {
             plotConfig[plotlyElt2Prop[elt]] = document.getElementById(elt).value;
+            if (document.getElementById(elt)?.type == "checkbox") {
+                plotConfig[scanpyElt2Prop[elt]] = document.getElementById(elt).checked;
+            }
         }
-        const data = await fetchPlotlyData(plotConfig, datasetId, plotType, colorblindMode);
+        const data = await fetchPlotlyData(plotConfig, datasetId, geneSymbol, plotType, analysisObj, userId, colorblindMode);
         // TODO: Set plot
     } else if (scanpyPlots.includes(plotType)) {
         for (const elt in scanpyElt2Prop) {
             plotConfig[scanpyElt2Prop[elt]] = document.getElementById(elt).value;
+            if (document.getElementById(elt)?.type == "checkbox") {
+                plotConfig[scanpyElt2Prop[elt]] = document.getElementById(elt).checked;
+            }
         }
 
         // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
@@ -319,17 +334,14 @@ const createPlot = async () => {
             plotConfig["horizontal_legend"] = false;
         }
 
-        const data = await fetchTsneImageData(plotConfig, datasetId, plotType, analysis, analysis_owner_id, colorblindMode);
+        const data = await fetchTsneImageData(plotConfig, datasetId, geneSymbol, plotType, analysisObj, userId, colorblindMode);
         const {image} = data;
         const imgElt = generateElements('<img id="tsne_preview"></img>');
         plotContainer.append(imgElt);
 
         if (image) {
-            document.getElementById("tsne_preview").addClass("img-fluid");
-            document.getElementById("tsne_preview").attr(
-                "src",
-                `data:image/png;base64,${image}`
-                );
+            document.getElementById("tsne_preview").classList.add("image");
+            document.getElementById("tsne_preview").setAttribute("src", `data:image/png;base64,${image}`);
         }
     } else if (plotType === "svg") {
         const data = await fetchSvgData(geneSymbol, datasetId)
@@ -369,6 +381,9 @@ const createPlot = async () => {
     document.getElementById("content_c").style.display = "none";
     // Generate and display "post-plotting" view/container
     document.getElementById("post_plot_content_c").style.display = "";
+
+    // TODO: Add alert for non-success w/ message
+
 }
 
 const createPlotSelectInstance = () => {
@@ -456,8 +471,8 @@ const fetchH5adInfo = async (datasetId, analysisId) => {
     return { obs_columns, obs_levels };
 }
 
-const fetchPlotlyData = async (plotConfig, datasetId, plot_type, colorblind_mode)  => {
-    const payload = { ...plotConfig,  plot_type, colorblind_mode };
+const fetchPlotlyData = async (plotConfig, datasetId, gene_symbol, plot_type, analysis, analysis_owner_id, colorblind_mode)  => {
+    const payload = { ...plotConfig, gene_symbol, plot_type, analysis, analysis_owner_id, colorblind_mode };
     const { data } = await axios.post(`/api/plot/${datasetId}`, payload);
     return data
 }
@@ -467,8 +482,8 @@ const fetchSvgData = async (geneSymbol, datasetId) => {
     return data
 };
 
-const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode) => {
-    const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
+const fetchTsneImageData = async (plotConfig, datasetId, gene_symbol, plot_type, analysis, analysis_owner_id, colorblind_mode) => {
+    const payload = { ...plotConfig, gene_symbol, plot_type, analysis, analysis_owner_id, colorblind_mode };
     const { data } = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
     return data
 }
@@ -717,8 +732,8 @@ const saveDefaultDisplay = async (displayId) => {
 
 /* Set up the plotly-based plot options, such as "select" elements, events, etc. */
 const setupPlotlyOptions = async () => {
-
-    const analysisId = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const plotType = getSelect2Value(plotSelect);
     const {obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId);
     const catColumns = Object.keys(levels);
@@ -752,7 +767,7 @@ const setupPlotlyOptions = async () => {
         elt.addEventListener("change", () => {
             const xVal = document.getElementById("x_axis_series").value;
             const yVal = document.getElementById("y_axis_series").value;
-            Document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
+            document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
         })
     }
 
@@ -766,7 +781,8 @@ const setupPlotlyOptions = async () => {
 
 /* Set up the scanpy-based plot options, such as "select" elements, events, etc. */
 const setupScanpyOptions = async () => {
-    const analysisId = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const plotType = getSelect2Value(plotSelect);
     const {obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId);
     const catColumns = Object.keys(levels);
@@ -774,21 +790,20 @@ const setupScanpyOptions = async () => {
     let xDefaultOption = null;
     let yDefaultOption = null;
 
-    if (analysisId) {
-        switch (plotType) {
-            case "pca_static":
-                xDefaultOption = "X_pca_1";
-                yDefaultOption = "X_pca_2";
-                break;
-            case "tsne_static":
-                xDefaultOption = "X_tsne_1";
-                yDefaultOption = "X_tsne_2";
-                break;
-            case "umap_static":
-                xDefaultOption = "X_umap_1";
-                yDefaultOption = "X_umap_2";
-                break;
-        }
+    // If these exist, make the default option
+    switch (plotType) {
+        case "pca_static":
+            xDefaultOption = "X_pca_1";
+            yDefaultOption = "X_pca_2";
+            break;
+        case "tsne_static":
+            xDefaultOption = "X_tsne_1";
+            yDefaultOption = "X_tsne_2";
+            break;
+        case "umap_static":
+            xDefaultOption = "X_umap_1";
+            yDefaultOption = "X_umap_2";
+            break;
     }
 
     // TODO: Use custom x- and y- labels outside of what the tsne/umap/pca adds - Carlo
@@ -804,47 +819,55 @@ const setupScanpyOptions = async () => {
         elt.addEventListener("change", () => {
             const xVal = document.getElementById("x_axis_series").value;
             const yVal = document.getElementById("y_axis_series").value;
-            Document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
+            document.getElementById("plot_btn").disabled = (xVal && yVal) ? false : true;
         })
     }
 
 
     const colorizeLegendBy = document.getElementById("colorize_legend_by");
-    const plotByGroup = document.getElementById("plot_by_group");
+    const plotBySeries = document.getElementById("plot_by_series");
     const maxColumns = document.getElementById('max_columns');
-    const skipGenePlots = document.getElementById("skip_gene_plots");
+    const skipGenePlot = document.getElementById("skip_gene_plot");
     const horizontalLegend = document.getElementById("horizontal_legend");
 
     // Disable colorize_legend options if we are not using it
     document.getElementById("show_colorized_legend").addEventListener("change", (event) => {
         colorizeLegendBy.disabled = true;
-        plotByGroup.disabled = true;
+        plotBySeries.disabled = true;
         maxColumns.disabled = true;
+        skipGenePlot.disabled = true;
         horizontalLegend.disabled = true;
-        if (event.target.checked) {
-            colorizeLegendBy.disabled = false;
-            plotByGroup.disabled = false;
-            maxColumns.disabled = false;
-            horizontalLegend.disabled = false;
+        if (!event.target.checked) {
+            return;
         }
+        colorizeLegendBy.disabled = false;
+        plotBySeries.disabled = false;
+        maxColumns.disabled = false;
+        skipGenePlot.disabled = false;
+        horizontalLegend.disabled = false;
     });
 
     colorizeLegendBy.addEventListener("change", (event) => {
-        plotByGroup.disabled = false;
+        plotBySeries.disabled = false;
         maxColumns.disabled = false;
         horizontalLegend.disabled = false;
         // If colorized legend is continuous, we cannot plot by group
-        if (!(catColumns.includes(event.target.value))) {
-            plotByGroup.disabled = true;
-            maxColumns.disabled = true;
-            horizontalLegend.disabled = true;
+        if ((catColumns.includes(event.target.value))) {
+            return;
         }
+        plotBySeries.disabled = true;
+        maxColumns.disabled = true;
+        horizontalLegend.disabled = true;
     });
 
     // Plotting by group plots gene expression, so cannot skip gene plots.
-    plotByGroup.addEventListener("change", (event) => {
+    plotBySeries.addEventListener("change", (event) => {
+        skipGenePlot.disabled = false;
+        maxColumns.disabled = true;
         if (event.target.value) {
-            skipGenePlots.checked = false;
+            skipGenePlot.checked = false;
+            skipGenePlot.disabled = true;
+            maxColumns.disabled = false;
         }
     });
 
@@ -906,18 +929,21 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
     }
 
     // Load each analysis as an option
+    // NOTE: For now, we can just pass analysis id only to tSNE and be fine
     for (const analysis of privateAnalyses) {
         const option = document.createElement("option");
         option.textContent = analysis.label;
-        option.dataset.id = analysis.id;
-        option.dataset.type = analysis.type;
+        option.value = analysis.id;
+        //option.dataset.type = analysis.type;
+        //option.dataset.owner_id = analysis.user_id;
         privateAnalysesElt.append(option);
     }
     for (const analysis of publicAnalyses) {
         const option = document.createElement("option");
         option.textContent = analysis.label;
-        option.dataset.id = analysis.id;
-        option.dataset.type = analysis.type;
+        option.value = analysis.id;
+        //option.dataset.type = analysis.type;
+        //option.dataset.owner_id = analysis.user_id;
         publicAnalysesElt.append(option);
     }
 
@@ -979,6 +1005,7 @@ const updateSeriesOptions = (element, seriesArray, addExpression, defaultOption)
         }
         option.value = group;
         elt.append(option);
+        // NOTE: It is possible for a default option to not be in the list of groups.
         if (group === defaultOption) {
             option.selected = true;
         }

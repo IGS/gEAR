@@ -66,6 +66,8 @@
         </div>
     </section>
     <section id="advanced_options" class="column">
+        <p class="content">Advanced Parameters (Optional)</p>
+
         <!--if show_colorized_legend && colorize_legend_by -->
         <div class="field is-horizontal columns">
             <div class="column">
@@ -75,7 +77,7 @@
                 <div class="field">
                     <div class="control">
                         <div class="select is-fullwidth">
-                            <select id="plot_by_series">
+                            <select id="plot_by_series" disabled>
                                 <option>None</option>
                             </select>
                         </div>
@@ -93,7 +95,7 @@
             <div class="field-body column">
                 <div class="field">
                     <div class="control">
-                        <input id="max_columns" class="input" type="number">
+                        <input id="max_columns" class="input" type="number" disabled>
                     </div>
                     <p class="help">Select maximum number of plots per row.  If not provided, all plots will be on one row.</p>
                 </div>
@@ -109,7 +111,7 @@
                 <div class="field">
                     <div class="control">
                         <label class="checkbox">
-                            <input id="skip_gene_plot" type="checkbox">
+                            <input id="skip_gene_plot" type="checkbox" disabled>
                             Check to skip the gene symbol plot.
                         </label>
                     </div>
@@ -125,7 +127,7 @@
                 <div class="field">
                     <div class="control">
                         <label class="checkbox">
-                            <input id="horizontal_legend" type="checkbox">
+                            <input id="horizontal_legend" type="checkbox" disabled>
                             Check to move legend below the plot
                         </label>
                     </div>
