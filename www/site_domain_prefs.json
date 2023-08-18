@@ -1,7 +1,7 @@
 {
-    "domain_label": "gear",
-    "domain_short_display_label": "gEAR",
-    "domain_url":"https://umgear.org",
+    "domain_label": "nidcr",
+    "domain_short_display_label": "NIDCR",
+    "domain_url":"https://nidcr.umgear.org",
     "enabled_plugins": {"deafness_gene_annotation": ["index.html"]},
     "google_analytics_4_measurement_id": "G-N5JDQKT94F",
     "links_out": {
