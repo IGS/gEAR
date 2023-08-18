@@ -1,9 +1,9 @@
 :root {
-    --banner-bg-color: #2F0F3E;
-    --dataset-panel-header-bg-color: #2F0F3E;
+    --banner-bg-color: #005195;
+    --dataset-panel-header-bg-color: #005195;
     --global-visited-links: #2A3236;
-    --main-intro-search-nav-bg-color: #2F0F3E;
-    --main-search-list-selected-gene: #2F0F3E;
-    --main-section-launcher-bg-color-active: #2F0F3E;
-    --main-section-launcher-bg-color-inactive: #ABA9BF;
+    --main-intro-search-nav-bg-color: #005195;
+    --main-search-list-selected-gene: #005195;
+    --main-section-launcher-bg-color-active: #005195;
+    --main-section-launcher-bg-color-inactive: #7B93A6;
 }
