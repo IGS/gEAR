@@ -13,7 +13,7 @@ let SCORING_METHOD = 'gene';
 let SELECTED_GENE = null;
 
 let dataset_id = null; //from permalink - dataset share ID
-let layout_id = null; //from permalink - profile grid layout ID
+let layout_id = null; //from permalink - profile grid layout share ID
 let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
@@ -1108,9 +1108,10 @@ $('#intro_search_form').on('submit', (e) => {
     // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
     e.preventDefault();    // Prevents "enter" from being used as a submit trigger
     $('#intro_content').hide();
-
     $("#leftbar_main").show();
     $("#viewport_main").show();
+
+    layout_id = dataset_collection_panel.layout_share_id;
 
     // fire the true search button, to submit the true form
     $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());
