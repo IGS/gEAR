@@ -6,14 +6,22 @@
     color: #363636;
 }
 
-.select .select[disabled] {
-    border-color: unset;    /* distinguish as being disabled */
+/* "active step" class has same bg color as default disabled element color */
+.select select[disabled], [disabled].input {
+    border-color: grey;
+    background-color: lightgrey;
 }
 
 .is-fullwidth .nice-select{
     width:100%;
 }
 
-.nice-select:after {
+.nice-select::after {
     content: unset;     /* remove their version of dropdown arrow (behind the Bulma select arrow) */
+}
+
+.nice-select-dropdown {
+    width: 100%;    /* Override auto-width setting by nice-select */
+    overflow-y: auto;
+    overflow-x: hidden;
 }

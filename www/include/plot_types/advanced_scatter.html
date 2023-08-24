@@ -48,23 +48,25 @@
 </div>
 
 <!-- vertical lines -->
-<div class="field is-horizontal columns">
+<div class="field is-horizontal columns" id="vlines_container" style="display:none;">
     <div class="column">
         <label class="label">Add vertical lines</label>
     </div>
-    <div class="field-body column" id="vlines_body">
-        <div class="field has-addons js-vline-field">
-            <div class="control">
-                <input class="input js-vline-pos" type="number">
-            </div>
-            <div class="control">
-                <div class="select js-vline-style-select">
-                    <select>
-                        <option value="solid">Solid</option>
-                        <option value="dash">Dash</option>
-                        <option value="dot">Dotted</option>
-                        <option value="dashdot">Dash-dot</option>
-                    </select>
+    <div class="field-body column">
+        <div id="vlines_body">
+            <div class="field has-addons js-vline-field">
+                <div class="control">
+                    <input class="input js-vline-pos" type="number">
+                </div>
+                <div class="control">
+                    <div class="select js-vline-style-select">
+                        <select>
+                            <option value="solid">Solid</option>
+                            <option value="dash">Dash</option>
+                            <option value="dot">Dotted</option>
+                            <option value="dashdot">Dash-dot</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

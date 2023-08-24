@@ -86,7 +86,7 @@
 
         <section class="has-background-light section js-step step-active" id="dataset_s">
           <!-- Dataset selection -->
-          <h5 class="subtitle is-5">
+          <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
             </span>
@@ -107,7 +107,7 @@
         </section>
 
         <section class="has-background-white-bis section js-step" id="load_plot_s">
-          <h5 class="subtitle is-5">
+          <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
             </span>
@@ -130,7 +130,7 @@
         </section>
 
         <section class="has-background-white-bis section js-step" id="plot_type_s">
-          <h5 class="subtitle is-5">
+          <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
             </span>
@@ -189,7 +189,7 @@
         </section>
 
         <section class="has-background-white-bis section js-step" id="gene_s">
-          <h5 class="subtitle is-5">
+          <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-dna"></i> <!-- Not quite the correct icon -->
             </span>
@@ -202,17 +202,19 @@
             Current gene:
             <span id="current_gene"></span>
           </div>
-          <div class="js-step-collapsable mt-3 columns" id="gene_collapsable">
-            <div id="gene_select_c" class="column is-3">
-              <div class="select is-fullwidth">
-                <select id="gene_select"></select>
+          <div class="js-step-collapsable mt-3" id="gene_collapsable">
+            <div class="columns">
+              <div id="gene_select_c" class="column is-3">
+                <div class="select is-fullwidth">
+                  <select id="gene_select"></select>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         <section class="has-background-white-bis section js-step" id="plot_options_s">
-          <h5 class="subtitle is-5">
+          <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-tune"></i> <!-- Not quite the correct icon -->
             </span>
@@ -227,29 +229,33 @@
         <button id="plot_btn" class="button is-primary" disabled>Plot</button>
 
       </section>
-      <section id="post_plot_content_c" class="m-3 columns" style="display:none;">
+      <section id="post_plot_content_c" class="m-3 columns is-multiline" style="display:none;">
         <div id="params_summary" class="column is-one-quarter has-background-light">
-          <p class="title is-5">Plot configs</p>
-          <div id="params_container"></div>
-          <button id="edit_params" class="button my-3">Edit Parameters</button>
+          <div id="params_config_container">
+            <p class="title is-5">Plot configuration</p>
+            <div id="params_container"></div>
+            <button id="edit_params" class="button my-3">Edit parameters</button>
+            <button id="save_json_config" class="button my-3">Download config (JSON)</button>
+          </div>
+          <hr>
+          <div id="save_display_container">
+            <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
+            <button id="save_display_btn" class="button my-3">Save as new display</button>
+          </div>
         </div>
-        <div id="plot_container" class="column has-background-white-bis"></div>
+        <div id="plot_container" class="column is-three-quarters has-background-white-bis"></div>
       </section>
     </section>
   </div>
-
-
-  <!--<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.js"></script>-->
-  <!--<script src="//cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>-->
-  <!--<script src="//unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>-->
-  <!--<script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>-->
-
 
   <!-- fancy select elements -->
   <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>
 
   <!-- Tree view/grid -->
   <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.3.5/dist/wunderbaum.umd.min.js"></script>
+
+  <!-- sortable + drag-n-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/html5sortable@0.13.3/dist/html5sortable.min.js"></script>
 
   <!-- Promise based HTTP client for the browser  -->
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>

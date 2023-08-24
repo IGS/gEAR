@@ -95,7 +95,7 @@ const paletteInformation = {
 }
 
 
-const post_plotly_config = {
+const postPlotlyConfig = {
     index: [
         {
             plot_type: "all"
@@ -185,7 +185,7 @@ const post_plotly_config = {
             , config: {
                 showLink: false
                 , displaylogo: false
-                , responsive: false
+                , responsive: true
                 , modeBarButtonsToRemove: [
                     "zoom2d",
                     "autoScale2d",
@@ -246,12 +246,12 @@ function adjustExpressionColorbar(plotData) {
 }
 
 function adjustClusterColorbars(plotData) {
-    const plot_min_domain = 0;
-    const plot_max_domain = 1;
-    const new_min_domain = -0.5;
-    const new_max_domain = 1.5;
+    const plotMinDomain = 0;
+    const plotMaxDomain = 1;
+    const newMinDomain = -0.5;
+    const newMaxDomain = 1.5;
 
-    const num_clusterbars = plotData.filter(element => "colorbar" in element && element.name === "clusterbar").length;
+    const numClusterbars = plotData.filter(element => "colorbar" in element && element.name === "clusterbar").length;
 
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
     for (const element of plotData) {
@@ -259,9 +259,9 @@ function adjustClusterColorbars(plotData) {
             element.colorbar.xpad = 10;
             element.colorbar.x = -0.3;
             element.colorbar.xanchor = "left";
-            element.colorbar.len = 2 / num_clusterbars;
+            element.colorbar.len = 2 / numClusterbars;
             // Scale the colorbar y positions to match the plot container instead of the plot
-            element.colorbar.y = scaleBetween(element.colorbar.y, new_min_domain, new_max_domain, plot_min_domain, plot_max_domain);
+            element.colorbar.y = scaleBetween(element.colorbar.y, newMinDomain, newMaxDomain, plotMinDomain, plotMaxDomain);
         }
     }
 }
