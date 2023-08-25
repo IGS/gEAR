@@ -9,7 +9,9 @@ l = profile/layout ID
 p = page to send to:
     null = index.html (default)
     a = analyze_dataset.html
+    de = dataset_explorer.html
 s = dataset_share_id
+ss = search string (for use in things like dataset/gene cart explorers)
 id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
 
 '''
@@ -33,14 +35,18 @@ def main():
     page = form.getvalue('p')   # web page to navigate to
     share_id = form.getvalue('s')   # share single dataset
     identifiers_org_id = form.getvalue('id')
+    search_string = form.getvalue('ss')
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
     main_page = 'index.html'
 
-    if page == 'a':
-        main_page = 'analyze_dataset.html'
-    if page == 'p':
-        main_page = 'projection.html'
+    match page:
+        case 'a':
+            main_page = 'analyze_dataset.html'
+        case 'de':
+            main_page = 'dataset_explorer.html'
+        case 'p':
+            main_page = 'projection.html'
 
     url = url_base + '/' + main_page
 
@@ -77,6 +83,9 @@ def main():
 
     if algo and page == "p":
         params["projection_algo"] = algo
+
+    if search_string and page == "de":
+        params["search_string"] = search_string
 
     if identifiers_org_id:
         (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')

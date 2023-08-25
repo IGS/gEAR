@@ -25,6 +25,12 @@ class UserHistory:
 
         """
         match entry_category:
+            case 'dataset_search':
+                if 'search_string' in kwargs:
+                    url = "/p?p=de&ss={}0".format(kwargs['search_string'])
+                else:
+                    raise Exception("ERROR: If recording a dataset_search category, 'search_string' must be passsed")
+            
             case 'gene_search':
                 if 'layout_share_id' in kwargs:
                     url = "/p?l={0}".format(kwargs['layout_share_id'])
