@@ -29,6 +29,7 @@ def main():
     exact_match = form.getvalue('exact_match')
     layout_share_id = form.getvalue('layout_share_id')
     user_id = form.getvalue('user_id')
+    is_multi = form.getvalue('is_multi')
 
     # Get list of gene_ids found in miRNA_family table
     # TODO: refactor these to be on gene name rather than int (if they are)
@@ -75,11 +76,10 @@ def main():
         else:
             gene_symbol_label = search_gene_symbol
 
-        print("DEBUG: Adding history record", file=sys.stderr)
         history = UserHistory()
         history.add_record(
             user_id=user_id,
-            entry_category='gene_search',
+            entry_category = 'multigene_search' if is_multi == 'true' else 'gene_search',
             label="\"{0}\" in {1}".format(gene_symbol_label, layout.label),
             gene_symbol=search_gene_symbol,
             layout_share_id=layout_share_id
