@@ -37,10 +37,10 @@ const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
     // NOTE: When using FormData do not set headers to application/json
     const formData = new FormData();
-    Object.keys(object).forEach(key => {
+    for (const key of Object.keys(object)) {
         if (typeof object[key] !== 'object') formData.append(key, object[key])
         else formData.append(key, JSON.stringify(object[key]))
-    })
+    };
     return formData;
 }
 
