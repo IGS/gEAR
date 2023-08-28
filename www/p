@@ -35,7 +35,7 @@ def main():
     page = form.getvalue('p')   # web page to navigate to
     share_id = form.getvalue('s')   # share single dataset
     identifiers_org_id = form.getvalue('id')
-    search_string = form.getvalue('ss')
+    search_string = form.getvalue('ss') # URL-encoded
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
     main_page = 'index.html'

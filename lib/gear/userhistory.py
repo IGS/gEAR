@@ -1,5 +1,6 @@
 import geardb
 import re
+import urllib
 
 class UserHistory:
     def __init__(self, connection=False):
@@ -19,17 +20,18 @@ class UserHistory:
             user_id, entry_category, label
 
         Individual additional arguments needed depending on category:
-
+        
+            'dataset_search' -> search_terms (an array of terms)
             'gene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
             'multigene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
 
         """
         match entry_category:
             case 'dataset_search':
-                if 'search_string' in kwargs:
-                    url = "/p?p=de&ss={}0".format(kwargs['search_string'])
+                if 'search_terms' in kwargs:
+                    url = "/p?p=de&ss={}".format(urllib.parse.quote(str(" ".join(kwargs['search_terms']))))
                 else:
-                    raise Exception("ERROR: If recording a dataset_search category, 'search_string' must be passsed")
+                    raise Exception("ERROR: If recording a dataset_search category, 'search_terms' must be passsed")
             
             case 'gene_search':
                 if 'layout_share_id' in kwargs:
