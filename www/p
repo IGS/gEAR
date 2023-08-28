@@ -10,6 +10,8 @@ p = page to send to:
     null = index.html (default)
     a = analyze_dataset.html
     de = dataset_explorer.html
+    gcm = gene_cart_manager.html
+    p = projection.html
 s = dataset_share_id
 ss = search string (for use in things like dataset/gene cart explorers)
 id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
@@ -45,6 +47,8 @@ def main():
             main_page = 'analyze_dataset.html'
         case 'de':
             main_page = 'dataset_explorer.html'
+        case 'gcm':
+            main_page = 'gene_cart_manager.html'
         case 'p':
             main_page = 'projection.html'
 
@@ -84,7 +88,7 @@ def main():
     if algo and page == "p":
         params["projection_algo"] = algo
 
-    if search_string and page == "de":
+    if search_string and (page == "de" or page == "gcm"):
         params["search_string"] = search_string
 
     if identifiers_org_id:

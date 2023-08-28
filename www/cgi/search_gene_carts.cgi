@@ -14,6 +14,8 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+from gear.userhistory import UserHistory
+
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 200;
 DEBUG_MODE = False
@@ -135,6 +137,16 @@ def main():
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
+
+    # Log the search for the user
+    if user:
+        history = UserHistory()
+        history.add_record(
+            user_id=user.id,
+            entry_category='gene_cart_search',
+            label="Gene carts matching '{0}'".format(' '.join(search_terms)),
+            search_terms=search_terms,
+        )
 
 if __name__ == '__main__':
     main()

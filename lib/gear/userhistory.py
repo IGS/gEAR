@@ -32,7 +32,13 @@ class UserHistory:
                     url = "/p?p=de&ss={}".format(urllib.parse.quote(str(" ".join(kwargs['search_terms']))))
                 else:
                     raise Exception("ERROR: If recording a dataset_search category, 'search_terms' must be passsed")
-            
+
+            case 'gene_cart_search':
+                if 'search_terms' in kwargs:
+                    url = "/p?p=gcm&ss={}".format(urllib.parse.quote(str(" ".join(kwargs['search_terms']))))
+                else:
+                    raise Exception("ERROR: If recording a dataset_search category, 'search_terms' must be passsed")
+                
             case 'gene_search':
                 if 'layout_share_id' in kwargs:
                     url = "/p?l={0}".format(kwargs['layout_share_id'])
