@@ -23,6 +23,7 @@ class UserHistory:
         
             'dataset_search' -> search_terms (an array of terms)
             'gene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
+            'layout_added' -> layout_share_id
             'multigene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
 
         """
@@ -53,6 +54,12 @@ class UserHistory:
                 gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}".format(gene_string)
+
+            case 'layout_added':
+                if 'layout_share_id' in kwargs:
+                    url = "/p?l={0}".format(kwargs['layout_share_id'])
+                else:
+                    raise Exception("ERROR: If recording a layout_added category, 'layout_share_id' must be passsed")
 
             case 'multigene_search':
                 if 'layout_share_id' in kwargs:

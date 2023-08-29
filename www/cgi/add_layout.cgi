@@ -15,6 +15,8 @@ import sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.userhistory import UserHistory
+
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -29,6 +31,7 @@ def main():
         result = {'error':[]}
         error = "Not able to add layout. User must be logged in."
         result['error'] = error
+        print(json.dumps(result))
     else:
         layout = geardb.Layout(user_id=user.id, label=layout_name,
                                is_current=0, members=None)
@@ -38,7 +41,16 @@ def main():
                   'layout_share_id': layout.share_id
         }
 
-    print(json.dumps(result))
+        print(json.dumps(result))
+
+        # Log the addition
+        history = UserHistory()
+        history.add_record(
+            user_id=user.id,
+            entry_category='layout_added',
+            label="Profile added: '{0}'".format(layout.label),
+            layout_share_id=layout.share_id
+        )
 
 if __name__ == '__main__':
     main()
