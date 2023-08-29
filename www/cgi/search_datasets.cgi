@@ -238,7 +238,7 @@ def main():
     print(json.dumps(result))
 
     # Log the search for the user
-    if user:
+    if user and len(search_terms):
         history = UserHistory()
         history.add_record(
             user_id=user.id,
