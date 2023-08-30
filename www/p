@@ -35,7 +35,7 @@ def main():
     algo = form.getvalue("algo")
     layout_id = form.getvalue('l')
     page = form.getvalue('p')   # web page to navigate to
-    share_id = form.getvalue('s')   # share single dataset
+    share_id = form.getvalue('s')   # share single dataset/gene cart
     identifiers_org_id = form.getvalue('id')
     search_string = form.getvalue('ss') # URL-encoded
 
