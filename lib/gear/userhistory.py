@@ -25,6 +25,7 @@ class UserHistory:
             'gene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
             'layout_added' -> layout_share_id
             'multigene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
+            'projection_run' -> patterns, algo, gene_cart, multi, layout_share_id
 
         """
         match entry_category:
@@ -81,6 +82,13 @@ class UserHistory:
                 gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}&multi=1&gsem=1".format(gene_string)
+
+            case 'projection_run':
+                # looks like: https://nemoanalytics.org/p?p=p&multi=0&l=4e8f6c00&c=00be4b21&algo=pca
+                if 'layout_share_id' in kwargs:
+                    url = "/p?p=p&l={0}".format(kwargs['layout_share_id'])
+                else:
+                    raise Exception("ERROR: If recording a layout_added category, 'layout_share_id' must be passsed")
                 
             case _ :
                 raise Exception("ERROR: Invalid entry_category when calling UserHistory.add_record()")
