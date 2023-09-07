@@ -1,6 +1,5 @@
 <section id="svg_arguments" class="columns">
-    <section id="main_options" class="column">
-        <p class="content subtitle is-5">Display Parameters</p>
+    <section id="main_options" class="column is-half">
         <div class="field is-horizontal columns">
             <div class="column">
                 <label class="label">Enable mid-expression color</label>
@@ -9,7 +8,7 @@
                 <div class="field">
                     <div class="control">
                         <label class="checkbox">
-                            <input id="enable_mid_color" type="checkbox">
+                            <input class="js-svg-enable-mid" id="enable_mid_color" type="checkbox">
                         </label>
                     </div>
                 </div>
@@ -17,13 +16,13 @@
         </div>
         <div class="field is-horizontal columns ">
             <div class="column">
-                <label class="label">Low-expression color</label>
+                <label class="label">Low-expression color <span class="has-text-success-dark is-pulled-right">Required</span></label>
             </div>
             <div class="field-body column">
                 <div class="field">
                     <div class="control">
                         <div class="is-fullwidth">
-                            <input class="js-plot-req" id="low_color" value="#e7d1d5" type="color" aria-label="Select a color" />
+                            <input class="js-plot-req js-svg-low-color" id="low_color" value="#e7d1d5" type="color" aria-label="Select a color" />
                         </div>
                     </div>
                 </div>
@@ -37,7 +36,7 @@
                 <div class="field">
                     <div class="control">
                         <div class="is-fullwidth">
-                            <input id="mid_color" type="color" aria-label="Select a color"/>
+                            <input class="js-svg-mid-color" id="mid_color" type="color" aria-label="Select a color"/>
                         </div>
                     </div>
                 </div>
@@ -45,39 +44,17 @@
         </div>
         <div class="field is-horizontal columns ">
             <div class="column">
-                <label class="label">High-expression color</label>
+                <label class="label">High-expression color <span class="has-text-success-dark is-pulled-right">Required</span></label>
             </div>
             <div class="field-body column">
                 <div class="field">
                     <div class="control">
                         <div class="is-fullwidth">
-                            <input class="js-plot-req" id="high_color" value="#401362" type="color" aria-label="Select a color" />
+                            <input class="js-plot-req js-svg-high-color" id="high_color" value="#401362" type="color" aria-label="Select a color" />
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
-    <section id="advanced_options" class="column">
-        <!-- Maybe add scoring selection later -->
-        <!-- <div class="field is-horizontal columns ">
-            <div class="column">
-                <label class="label">Scoring method</label>
-            </div>
-            <div class="field-body column">
-                <div class="field">
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select id="scoring_method">
-                                <option value="gene" default>Selected gene only</option>
-                                <option value="tissue" default>Split by sample</option>
-                                <option value="dataset" default>Entire dataset</option>
-                            </select>
-                        </div>
-                    </div>
-                    <p class="help">Choose if expression scoring is based on the selected gene, across all genes split by sample, or across all genes for the entire dataset.</p>
-                </div>
-            </div>
-        </div> -->
     </section>
 </section>

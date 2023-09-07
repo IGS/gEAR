@@ -1,14 +1,15 @@
-numpy==1.21.5
+numpy==1.25.2
 numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
+matplotlib==3.5.2 # https://discourse.scverse.org/t/metaclass-conflict-from-trying-to-import-scanpy/1133
 louvain==0.7.1
-scanpy[louvain]==1.7.2  # uses louvain 0.7.1
+scanpy[louvain]==1.8.2
 pandas==1.4.1
 numba==0.55.1
 llvmlite==0.38.0   # For numba
 jupyterlab==4.0.5
 jupyter==1.0.0
 xlrd==1.2.0
-requests==2.28.0
+requests==2.31.0
 plotly==5.6.0
 kaleido==0.2.1
 dash-bio==1.0.2
@@ -22,14 +23,14 @@ itsdangerous==2.1.2 # See -> https://stackoverflow.com/a/71206978
 mysql-connector-python==8.0.28
 SQLAlchemy==1.4.32
 Flask-RESTful==0.3.9
-mod-wsgi==4.9.0
+mod-wsgi==4.9.4
 opencv-python==4.5.5.64
 anndata==0.7.8
 openpyxl==3.0.10
 h5py==3.9.0
 tables==3.8.0    # Read hdf5 files into pandas
 aiohttp
-cairosvg==2.5.2
+cairosvg==2.7.1
 pika==1.3.1
 more_itertools==9.0.0
 #diffxpy==0.7.4

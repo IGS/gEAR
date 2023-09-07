@@ -21,6 +21,9 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
 
+        <!-- Fancy animation effects -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
         <!-- Fancy select elements -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
 
@@ -91,6 +94,12 @@
               <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select a dataset</span>
+            <span id="dataset_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="dataset_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-up"></i>
             </span>
@@ -112,6 +121,12 @@
               <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Create new or load existing curation</span>
+            <span id="load_plot_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="load_plot_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
@@ -135,6 +150,12 @@
               <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select dataset analysis type and plot type</span>
+            <span id="plot_type_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="plot_type_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
@@ -150,7 +171,14 @@
           <div class="js-step-collapsable mt-3" idi="plot_type_collapsable">
             <div class="columns">
               <div id="analysis_type_select_c" class="column is-3">
-                <div>Analysis</div>
+                <div>Analysis (optional)
+                  <span id="analysis_type_select_c_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+                    <i class="mdi mdi-check-circle"></i>
+                  </span>
+                  <span id="analysis_type_select_c_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+                    <i class="mdi mdi-close-circle"></i>
+                  </span>
+                </div>
                 <div class="select is-fullwidth">
                   <select id="analysis_select" disabled>
                     <option value="-1" selected>Primary analysis (default)</option>
@@ -164,7 +192,14 @@
                 </div>
               </div>
               <div id="plot_type_select_c" class="column is-3">
-                <div>Plot type</div>
+                <div>Plot type
+                  <span id="plot_type_select_c_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+                    <i class="mdi mdi-check-circle"></i>
+                  </span>
+                  <span id="plot_type_select_c_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+                    <i class="mdi mdi-close-circle"></i>
+                  </span>
+                </div>
                 <div class="select is-fullwidth">
                   <select id="plot_type_select" disabled>
                     <option value="nope">Select plot type</option>
@@ -194,6 +229,12 @@
               <i class="mdi mdi-dna"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select gene</span>
+            <span id="gene_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="gene_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
@@ -219,6 +260,12 @@
               <i class="mdi mdi-tune"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select plotting options</span>
+            <span id="plot_options_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="plot_options_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
@@ -226,24 +273,50 @@
           <div class="js-step-collapsable mt-3" id="plot_options_collapsable"></div>
         </section>
 
-        <button id="plot_btn" class="button is-primary" disabled>Plot</button>
+        <button id="plot_btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
 
       </section>
-      <section id="post_plot_content_c" class="m-3 columns is-multiline" style="display:none;">
-        <div id="params_summary" class="column is-one-quarter has-background-light">
+      <section id="post_plot_content_c" class="m-3 columns" style="display:none;">
+        <div id="params_summary" class="column has-background-light">
           <div id="params_config_container">
             <p class="title is-5">Plot configuration</p>
-            <div id="params_container"></div>
-            <button id="edit_params" class="button my-3">Edit parameters</button>
-            <button id="save_json_config" class="button my-3">Download config (JSON)</button>
+            <section id="post_plot_adjustments">
+            </section>
+            <section id="order_and_colors">
+              <section id="order_section" class="my-3" style="display:none;">
+                <p class="content subtitle is-5">Order series</p>
+                <p class="help">Drag-and-drop to determine order of plotting</p>
+                <div id="order_container" class="container"></div>
+            </section>
+            <section id="colors_section" class="my-3" style="display:none;">
+                <p class="content subtitle is-5">Set colors</p>
+                <div id="colors_container" class="container"></div>
+            </section>
+            </section>
           </div>
           <hr>
-          <div id="save_display_container">
+          <div class="my-3">
+            <button id="update_plot" class="button is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
+            <div class="field is-grouped">
+              <p class="content">
+                <button id="edit_params" class="button">
+                  <span class="icon is-pulled-left">
+                    <i class="mdi mdi-arrow-left-thick"></i>
+                  </span>
+                  Go Back
+                </button>
+              </p>
+              <p class="content">
+                <button id="save_json_config" class="button">Download config (JSON)</button>
+              </p>
+            </div>
+          </div>
+          <div id="save_display_container" class="is-fullwidth">
             <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
             <button id="save_display_btn" class="button my-3">Save as new display</button>
           </div>
         </div>
-        <div id="plot_container" class="column is-three-quarters has-background-white-bis"></div>
+        <div id="plot_container" class="column has-background-white-bis"></div>
       </section>
     </section>
   </div>

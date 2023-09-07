@@ -1,0 +1,46 @@
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">X-axis</span>
+    <span class="select is-small">
+        <select class="js-plot-req js-plot-order js-tsne-x-axis" id="x_axis_series_post"></select>
+    </span>
+</p>
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Y-axis</span>
+    <span class="select is-small">
+        <select class="js-plot-req js-plot-order js-tsne-y-axis" id="y_axis_series_post"></select>
+    </span>
+</p>
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Enable coloring by data series</span>
+    <input class="js-tsne-show-colorized-legend" id="show_colorized_legend_post" type="checkbox">
+</p>
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Colorize samples by</span>
+    <span class="select is-small">
+        <select class="js-tsne-colorize-legend-by" id="colorize_legend_by_post"></select>
+    </span>
+</p>
+<hr>
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Plot per category group</span>
+    <span class="select is-small">
+        <select class="js-tsne-plot-by-series" id="plot_by_series_post" disabled></select>
+    </span>
+</p>
+<p class="help">Split samples into category groups, then create plots per group.</p>
+
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Number of subplot columns</span>
+    <input class="js-tsne-max-columns" id="max_columns_post" type="number" />
+</p>
+<p class="help">Select maximum number of plots per row.  If not provided, all plots will be on one row.</p>
+
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Omit gene expression plot</span>
+    <input class="js-tsne-skip-gene-plot" id="skip_gene_plot_post" type="checkbox" disabled>
+</p>
+
+<p class="is-flex is-justify-content-space-between">
+    <span class="has-text-weight-medium">Move legend under plot</span>
+    <input class="js-tsne-horizontal-legend" id="horizontal_legend_post" type="checkbox" disabled>
+</p>

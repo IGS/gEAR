@@ -1,0 +1,41 @@
+<p class="help">More customization options will be available once the plot has been created.</p>
+<section id="tsne_arguments" class="columns">
+    <section id="main_options" class="column is-half">
+        <div class="field">
+            <label class="label">X-axis <span class="has-text-success-dark is-pulled-right">Required</span></label>
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select class="js-plot-req js-plot-order js-tsne-x-axis" id="x_axis_series"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Y-axis <span class="has-text-success-dark is-pulled-right">Required</span></label>
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select class="js-plot-req js-plot-order js-tsne-y-axis" id="y_axis_series"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Enable coloring by data series</label>
+            <div class="control">
+                <label class="checkbox">
+                    <input class="js-tsne-show-colorized-legend" id="show_colorized_legend" type="checkbox">
+                    Check to annotate (color) samples by a particular data series.
+                </label>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Color series</label>
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select class="js-tsne-colorize-legend-by" id="colorize_legend_by"></select>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>

@@ -12,7 +12,6 @@ class Analyses(Resource):
     def get(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
-        #dataset = geardb.get_dataset_by_id(dataset_id) # Not used
 
         acollection = geardb.AnalysisCollection()
 

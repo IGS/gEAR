@@ -25,3 +25,28 @@
     overflow-y: auto;
     overflow-x: hidden;
 }
+
+/* Toast-style notifications for actual alerts */
+.notification.is-danger {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    z-index:999;
+}
+
+#post_plot_adjustments select {
+    width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#params_config_container {
+    overflow-y:auto;
+    overflow-x:hidden;
+    max-height:75vh;    /* 75% of viewport height */
+}
+
+#order_container li {
+    text-overflow: ellipsis;
+}

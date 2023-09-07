@@ -505,6 +505,8 @@ class TSNEData(Resource):
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
                     sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    # BUG: the line below throws error with stacktrace
+                    # ValueError: To copy an AnnData object in backed mode, pass a filename: `.copy(filename='myfilename.h5ad')`. To load the object into memory, use `.to_memory()
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     rename_axes_labels(f1, x_axis, y_axis)
                     rename_axes_labels(f2, x_axis, y_axis)
