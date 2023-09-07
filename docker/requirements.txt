@@ -1,11 +1,9 @@
-numpy==1.25.2
+numpy==1.24
 numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
 matplotlib==3.5.2 # https://discourse.scverse.org/t/metaclass-conflict-from-trying-to-import-scanpy/1133
 louvain==0.7.1
 scanpy[louvain]==1.8.2
 pandas==1.4.1
-numba==0.55.1
-llvmlite==0.38.0   # For numba
 jupyterlab==4.0.5
 jupyter==1.0.0
 xlrd==1.2.0
