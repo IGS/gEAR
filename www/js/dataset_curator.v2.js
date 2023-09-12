@@ -3,14 +3,11 @@
 
 'use strict';
 
-//TODO: Move "order"/"colors"/"advanced steps"/"vlines" into post-plot view
-//TODO: Show success indicator after step is clicked.
-
-// TODO: - create "post-plot" options and classes that link pre- and post- plot
-
 //TODO  - Create "error" reporting in each step
 
-let plotConfig = {};  // Plot config that is passed to API or stored in DB
+let plotStyle;  // Plot style object
+
+//let plotConfig = {};  // Plot config that is passed to API or stored in DB
 let allColumns = [];
 let catColumns = [];
 let levels = {};    // categorical columns + groups
@@ -20,7 +17,7 @@ let organismId = null;
 let analysisObj = null;
 
 let analysisSelect = null;
-let plotSelect = null;
+let plotTypeSelect = null;
 let geneSelect = null;
 
 const userId = 622;     // ! It's me
@@ -33,49 +30,470 @@ Cookies.set('gear_session_id', sessionId, { expires: 7 });
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 
-// Certain groups like "display order" and "colors" and "vlines" will be custom-handled
-// TODO: Add color palette for continuous colors
-const plotlyClassElt2Prop = {
-    "js-plotly-x-axis":"x_axis"
-    , "js-plotly-y-axis":"y_axis"
-    , "js-plotly-label":"point_label"
-    , "js-plotly-hide-x-ticks":"hide_x_labels"
-    , "js-plotly-hide-y-ticks":"hide_y_labels"
-    , "js-plotly-color":"color_name"
-    , "js-plotly-size":"size_by_group"
-    , "js-plotly-facet-row":"facet_row"
-    , "js-plotly-facet-col":"facet_col"
-    , "js-plotly-x-title":"x_title"
-    , "js-plotly-y-title":"y_title"
-    , "js-plotly-x-min":"x_min"
-    , "js-plotly-y-min":"y_min"
-    , "js-plotly-x-max":"x_max"
-    , "js-plotly-y-max":"y_max"
-    , "js-plotly-hide-legend":"hide_legend"
-    , "js-plotly-add-jitter":"jitter"
-    , "js-plotly-marker-size":"markersize"
-}
-const plotlyConfigProp2ClassElt = Object.fromEntries(Object.entries(plotlyClassElt2Prop).map(([key, value]) => [value, key]));
+/*
+! Quick note -
+This code uses a lot of "for...in..." and "for...of..." syntax
+"for...in..." is generally used to iterate over object keys or array indexes
+"for...of..." is generally used to iterate over array (or collection) values, and will not work on objects
 
-const scanpyClassElt2Prop = {
-    "js-tsne-x-axis":"x_axis"
-    , "js-tsne-y-axis":"y_axis"
-    , "js-tsne-colorize-legend-by":"colorize_legend_by"
-    , "js-tsne-plot-by-series":"plot_by_group"
-    , "js-tsne-max-columns":"max_columns"
-    , "js-tsne-skip-gene-plot":"skip_gene_plot"
-    , "js-tsne-horizontal-legend":"horizontal_legend"
-}
-const scanpyConfigProp2ClassElt = Object.fromEntries(Object.entries(scanpyClassElt2Prop).map(([key, value]) => [value, key]));
+Using "for...of..." over array.forEach means we don't have to transform HTMLCollections into arrays
+*/
 
-const svgClassElt2Prop = {
+// Create PlotStyle abstract class and Plotly, Scanpy, SVG subclasses
+class PlotHandler {
+    constructor() {
+        // Check if this is an abstract class
+        // (new PlotStyle() will fail)
+        if (new.target === PlotHandler) throw new TypeError("Cannot construct PlotHandler instances directly");
+    }
+
+    // Certain groups like "display order" and "colors" and "vlines" will be custom-handled
+    classElt2Prop = {}; // This will be overridden by subclasses
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
+
+    cloneDisplay() {
+        throw new Error("You have to implement the method cloneDisplay!");
+    }
+
+    async createPlot() {
+        throw new Error("You have to implement the method createPlot!");
+    }
+
+    async loadPlotHtml() {
+        throw new Error("You have to implement the method loadPlotHtml!");
+    }
+
+    populatePlotConfig() {
+        throw new Error("You have to implement the method populatePlotConfig!");
+    }
+
+    setupPlotSpecificEvents() {
+        throw new Error("You have to implement the method setupPlotSpecificEvents!");
+    }
+
+}
+
+// Class for methods that are common to all Plotly plot types
+class PlotlyHandler extends PlotHandler {
+    constructor(plotType) {
+        super();
+        this.plotType = plotType;
+    }
+
+    // TODO: Add color palette for continuous colors
+
+    classElt2Prop = {
+        "js-plotly-x-axis":"x_axis"
+        , "js-plotly-y-axis":"y_axis"
+        , "js-plotly-label":"point_label"
+        , "js-plotly-hide-x-ticks":"hide_x_labels"
+        , "js-plotly-hide-y-ticks":"hide_y_labels"
+        , "js-plotly-color":"color_name"
+        , "js-plotly-size":"size_by_group"
+        , "js-plotly-facet-row":"facet_row"
+        , "js-plotly-facet-col":"facet_col"
+        , "js-plotly-x-title":"x_title"
+        , "js-plotly-y-title":"y_title"
+        , "js-plotly-x-min":"x_min"
+        , "js-plotly-y-min":"y_min"
+        , "js-plotly-x-max":"x_max"
+        , "js-plotly-y-max":"y_max"
+        , "js-plotly-hide-legend":"hide_legend"
+        , "js-plotly-add-jitter":"jitter"
+        , "js-plotly-marker-size":"marker_size"
+    }
+
+    configProp2ClassElt = super.configProp2ClassElt;
+
+    plotConfig = {};  // Plot config that is passed to API
+
+    cloneDisplay(config) {
+        // plotly plots
+        for (const prop in this.configProp2ClassElt) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle order
+        if (config["order"]) {
+            const orderContainer = document.getElementById("order_container");
+            for (const series of config["order"]) {
+                renderOrderSortableSeries(series);
+            }
+
+            document.getElementById("order_section").style.display = "";
+        }
+
+        // Handle colors
+        if (config["colors"]) {
+            // do nothing if color_name is not set
+            if (!config["color_name"]) return;
+            const series = config["color_name"];
+            renderColorPicker(series);
+            for (const group in config["colors"]) {
+                const color = config["colors"][group];
+                const colorField = document.getElementById(`${group}_color`);
+                colorField.value = color;
+            }
+        }
+
+        // Handle vlines
+        if (config["vlines"]) {
+            const vLinesBody = document.getElementById("vlines_body");
+            const vlineField = document.querySelector(".js-plotly-vline-field");
+            // For each vline object create and populate a new vline field
+            for (const vlineObj in config["vlines"]) {
+                const newVlineField = vlineField.cloneNode(true);
+                newVlineField.querySelector(":scope .js-vline-pos").value = vlineObj["vl_pos"];
+                newVlineField.querySelector(":scope .js-vline-style-select select").value = vlineObj["vl_style"];
+                vLinesBody.prepend(newVlineField);
+            }
+        }
+    }
+
+    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+        // Get data and set up the image area
+        let plotJson;
+        try {
+            const data = await fetchPlotlyData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            ({plot_json: plotJson} = data);
+        } catch (error) {
+            // TODO: Make failure indicator
+            return;
+        }
+
+        const plotContainer = document.getElementById("plot_container");
+        plotContainer.replaceChildren();    // erase plot
+
+        // NOTE: Plot initially is created to a default width but is responsive.
+        // Noticed container within our "column" will make full-width go beyond the screen
+        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
+        plotContainer.append(divElt);
+        Plotly.purge("plotly_preview"); // clear old Plotly plots
+
+        // TODO: Throw error if "plotJson" is null
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const curatorDisplayConf = postPlotlyConfig.curator;
+        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
+        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
+        Plotly.relayout("plotly_preview", custonLayout)
+
+    }
+
+    async loadPlotHtml() {
+        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        const prePlot = "../include/plot_config/pre_plot/single_gene_plotly.html";
+        const preResponse = await fetch(prePlot, {cache: "reload"});
+        const preBody = await preResponse.text();
+        prePlotOptionsElt.innerHTML = preBody;
+
+        const postPlot = "../include/plot_config/post_plot/single_gene_plotly.html"
+        const postResponse = await fetch(postPlot, {cache: "reload"});
+        const postBody = await postResponse.text();
+        postPlotOptionsElt.innerHTML = postBody;
+
+        // populate advanced options for specific plot types
+        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
+        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+
+        if (["scatter", "tsne_dyna"].includes(this.plotType)) {
+            const prePlot = "../include/plot_config/pre_plot/advanced_scatter.html";
+            const preResponse = await fetch(prePlot, {cache: "reload"});
+            const preBody = await preResponse.text();
+            prePlotSpecificOptionsElt.innerHTML = preBody;
+
+            const postPlot = "../include/plot_config/post_plot/advanced_scatter.html";
+            const postResponse = await fetch(postPlot, {cache: "reload"});
+            const postBody = await postResponse.text();
+            postPlotSpecificOptionselt.innerHTML = postBody;
+            return;
+        }
+        if (this.plotType === "violin") {
+            const prePlot = "../include/plot_config/pre_plot/advanced_violin.html";
+            const preResponse = await fetch(prePlot, {cache: "reload"});
+            const preBody = await preResponse.text();
+            prePlotSpecificOptionsElt.innerHTML = preBody;
+
+            const postPlot = "../include/plot_config/post_plot/advanced_violin.html";
+            const postResponse = await fetch(postPlot, {cache: "reload"});
+            const postBody = await postResponse.text();
+            postPlotSpecificOptionselt.innerHTML = postBody;
+            return;
+        }
+    }
+
+    populatePlotConfig() {
+        this.plotConfig = {};   // Reset plot config
+
+        for (const classElt in this.classElt2Prop) {
+            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+        }
+
+        // Small fix for tsne/umap dynamic plots
+        if (this.plotType.toLowerCase() === "tsne_dyna") {
+            this.plotType = "tsne/umap_dynamic";
+        }
+
+        // Get order
+        this.plotConfig["order"] = getPlotOrderFromSortable();
+
+        // Get colors
+        const colorElts = document.getElementsByClassName("js-plot-color");
+        const colorSeries = document.getElementById("color_series_post").value;
+        if (colorSeries && colorElts.length) {
+            // Input is either color mapping or just the series
+            this.plotConfig["colors"] = {};
+            [...colorElts].map((field) => {
+                const group = field.id.replace("_color", "");
+                this.plotConfig["colors"][group] = field.value;
+            })
+        }
+
+        // Get vlines
+        const vlineFields = document.getElementsByClassName("js-plotly-vline-field");
+        this.plotConfig["vlines"] = [...vlineFields].map((field) => {
+            const vlinePos = field.querySelector(":scope .js-plotly-vline-pos").value;
+            const vlineStyle = field.querySelector(":scope .js-plotly-vline-style-select select").value;
+            // Return either objects or nothing (which will be filtered out)
+            return vlinePos ?  {"vl_pos":vlinePos, "vl_style":vlineStyle} : null;
+        }).filter(x => x !== null);
+    }
+
+    setupPlotSpecificEvents() {
+        setupPlotlyOptions();
+    }
+
+}
+
+// Class for methods that are common to all Scanpy plot types
+class ScanpyHandler extends PlotHandler {
+    constructor(plotType) {
+        super();
+        this.plotType = plotType;
+    }
+
+    classElt2Prop = {
+        "js-tsne-x-axis":"x_axis"
+        , "js-tsne-y-axis":"y_axis"
+        , "js-tsne-colorize-legend-by":"colorize_legend_by"
+        , "js-tsne-plot-by-series":"plot_by_group"
+        , "js-tsne-max-columns":"max_columns"
+        , "js-tsne-skip-gene-plot":"skip_gene_plot"
+        , "js-tsne-horizontal-legend":"horizontal_legend"
+    }
+
+    configProp2ClassElt = super.configProp2ClassElt;
+
+    plotConfig = {};  // Plot config that is passed to API
+
+    cloneDisplay(config) {
+        for (const prop in this.configProp2ClassElt) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle order
+        if (config["order"]) {
+            const orderContainer = document.getElementById("order_container");
+            for (const series of config["order"]) {
+                renderOrderSortableSeries(series);
+            }
+
+            document.getElementById("order_section").style.display = "";
+        }
+
+        // Restoring some disabled/checked elements in UI
+        const plotBySeries = document.getElementsByClassName("js-tsne-plot-by-series");
+        const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
+        const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
+        const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
+
+        if (config["colorize_legend_by"]) {
+            const series = config["colorize_legend_by"];
+            for (const targetElt of [...plotBySeries, ...maxColumns, ...horizontalLegend]) {
+                targetElt.disabled = (catColumns.includes(series)) ? false : true;
+            }
+
+            // Handle colors
+            if (config["colors"]) {
+                renderColorPicker(series);
+                for (const group in config["colors"]) {
+                    const color = config["colors"][group];
+                    const colorField = document.getElementById(`${group}_color`);
+                    colorField.value = color;
+                }
+            }
+        }
+
+        if (config["plot_by_group"]) {
+            for (const targetElt of skipGenePlot) {
+                targetElt.disabled = true;
+                targetElt.checked = false;
+            }
+            for (const targetElt of maxColumns) {
+                targetElt.disabled = false;
+            }
+        }
+    }
+
+    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+        let image;
+        try {
+            const data = await fetchTsneImageData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            ({image} = data);
+        } catch (error) {
+            // TODO: Make failure indicator
+            return;
+        }
+
+        const plotContainer = document.getElementById("plot_container");
+        plotContainer.replaceChildren();    // erase plot
+
+        const imgElt = generateElements('<img class="image" id="tsne_preview"></img>');
+        plotContainer.append(imgElt);
+
+        if (image) {
+            document.getElementById("tsne_preview").setAttribute("src", `data:image/png;base64,${image}`);
+        }
+    }
+
+    async loadPlotHtml() {
+        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        const prePlot = "../include/plot_config/pre_plot/tsne_static.html";
+        const preResponse = await fetch(prePlot, {cache: "reload"});
+        const preBody = await preResponse.text();
+        prePlotOptionsElt.innerHTML = preBody;
+
+        const postPlot = "../include/plot_config/post_plot/tsne_static.html"
+        const postResponse = await fetch(postPlot, {cache: "reload"});
+        const postBody = await postResponse.text();
+        postPlotOptionsElt.innerHTML = postBody;
+    }
+
+    populatePlotConfig() {
+        this.plotConfig = {};   // Reset plot config
+
+        for (const classElt in this.classElt2Prop) {
+            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+        }
+
+        // Get order
+        this.plotConfig["order"] = getPlotOrderFromSortable();
+
+        // Get colors
+        const colorElts = document.getElementsByClassName("js-plot-color");
+        const colorSeries = document.getElementById("colorize_legend_by_post").textContent;
+        if (colorSeries && colorElts.length) {
+            this.plotConfig["colors"] = {};
+            [...colorElts].map((field) => {
+                const group = field.id.replace("_color", "");
+                this.plotConfig["colors"][group] = field.value;
+            })
+        }
+
+        // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
+        if (!(colorSeries)) {
+            this.plotConfig["plot_by_group"] = null;
+            this.plotConfig["max_columns"] = null;
+            this.plotConfig["skip_gene_plot"] = false;
+            this.plotConfig["horizontal_legend"] = false;
+        }
+    }
+
+    setupPlotSpecificEvents() {
+        setupScanpyOptions();
+    }
+
+}
+
+// Class for methods that are common to all SVG images
+class SvgHandler extends PlotHandler {
+    constructor() {
+        super();
+    }
+
     // These do not get passed into the API call, but want to keep the same data structure for cloning display
-    "js-svg-low-color":"low_color"
-    , "js-svg-mid-color":"mid_color"
-    , "js-svg'high-color":"high_color"
-}
+    classElt2Prop = {
+        "js-svg-low-color":"low_color"
+        , "js-svg-mid-color":"mid_color"
+        , "js-svg-high-color":"high_color"
+    }
 
-const svgConfigProp2ClassElt = Object.fromEntries(Object.entries(svgClassElt2Prop).map(([key, value]) => [value, key]));
+    configProp2ClassElt = super.configProp2ClassElt;
+
+    plotConfig = {colors: {}};  // Plot config to color SVG
+
+    cloneDisplay(config) {
+        // Props are in a "colors" dict
+        for (const prop in this.configProp2ClassElt) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config.colors[prop]);
+        }
+
+        // If a mid-level color was provided, ensure checkbox to enable it is checked (for aesthetics)
+        if (config.colors["mid_color"]) {
+            for (const elt of document.getElementsByClassName("js-svg-enable-mid")) {
+                elt.checked = true;
+            }
+        }
+
+    }
+
+    async createPlot(datasetId, geneSymbol) {
+        let data;
+        try {
+            data = await fetchSvgData(datasetId, geneSymbol)
+        } catch (error) {
+            // TODO: Make failure indicator
+            return;
+        }
+        colorSVG(data, this.plotConfig["colors"]);
+    }
+
+    async loadPlotHtml() {
+        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        const prePlot = "../include/plot_config/pre_plot/svg.html";
+        const preResponse = await fetch(prePlot, {cache: "reload"});
+        const preBody = await preResponse.text();
+        prePlotOptionsElt.innerHTML = preBody;
+
+        const postPlot = "../include/plot_config/post_plot/svg.html"
+        const postResponse = await fetch(postPlot, {cache: "reload"});
+        const postBody = await postResponse.text();
+        postPlotOptionsElt.innerHTML = postBody;
+    }
+
+    populatePlotConfig() {
+        this.plotConfig["colors"] = {};   // Reset plot config
+
+        this.plotConfig["colors"]["low_color"] = document.getElementById("low_color").value;
+        this.plotConfig["colors"]["mid_color"] = document.getElementById("mid_color").value;
+        this.plotConfig["colors"]["high_color"] = document.getElementById("high_color").value;
+
+        // If user did not choose a mid-color, set it as null instead of to black
+        if (!(document.getElementById("enable_mid_color").checked)) {
+            this.plotConfig["colors"]["mid_color"] = null;
+        }
+    }
+
+    setupPlotSpecificEvents() {
+        setupSVGOptions();
+    }
+
+}
 
 const datasetTree = new DatasetTree({
     element: document.getElementById("dataset_tree")
@@ -86,6 +504,8 @@ const datasetTree = new DatasetTree({
         }
         document.getElementById("current_dataset_c").style.display = "";
         document.getElementById("current_dataset").textContent = e.node.title;
+        document.getElementById("current_dataset_post").textContent = e.node.title;
+
         const newDatasetId = e.node.data.dataset_id;
         organismId = e.node.data.organism_id;
 
@@ -116,7 +536,7 @@ const datasetTree = new DatasetTree({
         analysisObj = null;
         analysisSelect.clear(); // BUG: Figure out why this is triggering gene-population twice (check function in Github)
         geneSelect.clear();
-        plotSelect.clear();
+        plotTypeSelect.clear();
 
         // Fetch dataset information
         let ownerId;
@@ -143,9 +563,7 @@ const datasetTree = new DatasetTree({
     })
 });
 
-const capitalized = (string) => string.charAt(0).toUpperCase() + string.slice(1)
-
-const chooseAnalysis = async () => {
+const chooseAnalysis = async (event) => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const analysisText = analysisId || "Primary Analysis";
@@ -153,6 +571,8 @@ const chooseAnalysis = async () => {
     // Display current selected analysis
     document.getElementById("current_analysis_c").style.display = "";
     document.getElementById("current_analysis").textContent = analysisText;
+    document.getElementById("current_analysis_post").textContent = analysisText;
+
 
     // NOTE: For now, we can just pass analysis id only to tSNE and be fine
     // Any private dataset will belong to our user. Any public datasets can be found by the API "get_analysis" code.
@@ -173,7 +593,7 @@ const chooseAnalysis = async () => {
 }
 
 /* Display has been chosen, so display analysis and plot type options */
-const chooseDisplay = async () => {
+const chooseDisplay = async (event) => {
     document.getElementById('new_display').classList.add("is-loading");
     document.getElementById("analysis_select").disabled = false;
 
@@ -203,13 +623,10 @@ const chooseDisplay = async () => {
         const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, undefined);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
-            if (plotType === "tsne/umap_dynamic") {
-                document.getElementById("tsne_dyna_opt").disabled = !isAllowed;
-            } else {
-                document.getElementById(`${plotType}_opt`).disabled = !isAllowed;
-            }
+            setPlotTypeDisabledState(plotType, isAllowed);
+
         }
-        plotSelect.update();
+        plotTypeSelect.update();
     } catch (error) {
         console.error(error);
         document.getElementById("plot_type_s_failed").style.display = "";
@@ -233,7 +650,7 @@ const chooseDisplay = async () => {
     document.getElementById("plot_type_s").click();
 }
 
-const chooseGene = () => {
+const chooseGene = (event) => {
     if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
 
     document.getElementById("gene_s_success").style.display = "";
@@ -241,16 +658,16 @@ const chooseGene = () => {
     // Display current selected gene
     document.getElementById("current_gene_c").style.display = "";
     document.getElementById("current_gene").textContent = getSelect2Value(geneSelect);
+    document.getElementById("current_gene_post").textContent = getSelect2Value(geneSelect);
 
     document.getElementById("plot_options_s").click();
 }
 
-const choosePlotType = () => {
-    plotConfig = {};    // Reset the plot config parameters
-    if (!plotSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
+const choosePlotType = (event) => {
+    if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
 
     // Do not display if default opt is chosen
-    const plotType = getSelect2Value(plotSelect)
+    const plotType = getSelect2Value(plotTypeSelect)
     if (plotType === "nope") {
         document.getElementById("plot_type_select_c_success").style.display = "none";
         document.getElementById("plot_type_s_success").style.display = "none";
@@ -271,38 +688,94 @@ const choosePlotType = () => {
     document.getElementById("gene_s").click();
 }
 
-const cloneDisplay = async (display) => {
+const cloneDisplay = async (event, display) => {
 
-    // Read clone config to populate analysis, plot type, gnee and plot-specific options
-    // TODO: Complete
-    document.getElementById("gene_select").value = display.plotConfig.gene_symbol
-    geneSelect.update();
+    const cloneId = event.target.id;
+    document.getElementById(cloneId).classList.add("is-loading");
 
-    const plotType = display.plotConfig.plot_type;
-    if (plotlyPlots.includes(plotType)) {
-        // plotly plots
-        for (const prop of plotlyConfigProp2ClassElt) {
+    document.getElementById("analysis_select").disabled = false;
+    document.getElementById("plot_type_select").disabled = false;
 
-        }
-    } else if ((scanpyPlots.includes(plotType))
-        || (plotType.toLowerCase() === "tsne")) {
-        // scanpy plots
 
-        if (plotType.toLowerCase() === "tsne") {
-            // Handle legacy plots
-            display.plotConfig.plot_type = "tsne_static";
-            plotType = "tsne_static";
-        }
-        for (const prop of scanpyConfigProp2ClassElt) {
-
-        }
-    } else {
-        // SVG plots
+    // analyses
+    try {
+        const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
+        updateAnalysesOptions(privateAnalyses, publicAnalyses);
+        analysisSelect.update();
+        document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
+    } catch (error) {
+        console.error(error);
+        // Show failure state things.
+        document.getElementById("plot_type_s_failed").style.display = "";
+        document.getElementById("analysis_type_select_c_failed").style.display = "";
+        document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
+        return;
+    } finally {
+        document.getElementById("load_plot_s_success").style.display = "";
     }
 
 
-    // Open the next step
-    await chooseDisplay();
+    // plot types
+
+    // Read clone config to populate analysis, plot type, gnee and plot-specific options
+    let plotType = display.plot_type;
+
+    // ? Move this to class constructor to handle
+    if (plotType.toLowerCase() === "tsne") {
+        // Handle legacy plots
+        plotType = "tsne_static";
+    } else if (["tsne/umap_dynamic", "tsne_dynamic"].includes(plotType.toLowerCase())) {
+        plotType = "tsne_dyna";
+    }
+
+    try {
+        const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, undefined);
+        for (const plotType in availablePlotTypes) {
+            const isAllowed = availablePlotTypes[plotType];
+            setPlotTypeDisabledState(plotType, isAllowed);
+        }
+
+        setSelectBoxByValue("plot_type_select", plotType);
+        plotTypeSelect.update();    // This should trigger fetching the right "plot" html files
+        trigger(document.getElementById("plot_type_select"), "change");
+    } catch (error) {
+        console.error(error);
+        document.getElementById("plot_type_s_failed").style.display = "";
+        document.getElementById("plot_type_select_c_failed").style.display = "";
+        document.getElementById("plot_type_s_success").style.display = "none";
+        document.getElementById("plot_type_select_c_success").style.display = "none";
+
+        return;
+    } finally {
+        document.getElementById(cloneId).classList.remove("is-loading");
+    }
+
+    // Populate gene select element
+    try {
+        const geneSymbols = await fetchGeneSymbols(datasetId, null);
+        updateGeneSymbolOptions(geneSymbols);
+    } catch (error) {
+        document.getElementById("gene_s_failed").style.display = "";
+    }
+
+    const config = display.plotly_config;
+    setSelectBoxByValue("gene_select", config.gene_symbol);
+    geneSelect.update();
+    trigger(document.getElementById("gene_select"), "change");
+
+
+    if (plotlyPlots.includes(plotType)) {
+        plotStyle = new PlotlyHandler(plotType);
+    } else if (scanpyPlots.includes(plotType)) {
+        plotStyle = new ScanpyHandler(plotType);
+    } else if (plotType === "svg") {
+        plotStyle = new SvgHandler();
+    } else {
+        console.warn(`Plot type ${plotType} not recognized.`)
+        return;
+    }
+
+    plotStyle.cloneDisplay(config);
 }
 
 const colorSVG = (chartData, plotConfig) => {
@@ -364,7 +837,9 @@ const colorSVG = (chartData, plotConfig) => {
         const {data: expression} = chartData;
         const tissues = Object.keys(chartData.data);   // dataframe
         const paths = Snap.selectAll("path, circle");
-        for (const path of paths) {
+
+        // NOTE: This must use the SnapSVG API Set.forEach function to iterate
+        paths.forEach(path => {
             const tissue = path.node.className.baseVal;
             if (tissues.includes(tissue)) {
                 if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
@@ -373,7 +848,7 @@ const colorSVG = (chartData, plotConfig) => {
                     path.attr('fill', color(expression[tissue]));
                 }
             }
-        };
+        });
 
         // TODO: Potentially replicate some of the features in display.js like log-transforms and tooltips
     });
@@ -400,17 +875,9 @@ const createGeneSelectInstance = () => {
 
 const createPlot = async (event) => {
 
-    const plotType = getSelect2Value(plotSelect);
-    const geneSymbol = getSelect2Value(geneSelect);
-    plotConfig["gene_symbol"] = geneSymbol;
+    const plotType = getSelect2Value(plotTypeSelect);
 
     const plotBtns = document.getElementsByClassName("js-plot-btn");
-    const plotContainer = document.getElementById("plot_container");
-
-    plotContainer.replaceChildren();    // erase plot
-
-    // Was fist plot button clicked? (as opposed to post-plot "update" button)
-    const firstPlotBtn = event.target.id === "plot_btn";
 
     // Set loading
     for (const plotBtn of plotBtns) {
@@ -437,141 +904,20 @@ const createPlot = async (event) => {
     }
     */
 
+    plotStyle.populatePlotConfig();
+
+    const geneSymbol = getSelect2Value(geneSelect);
+    plotStyle.plotConfig["gene_symbol"] = geneSymbol;
+
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
-        for (const classElt in plotlyClassElt2Prop) {
-            plotConfig[plotlyClassElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
-        }
-        // For the first plot button click, keep it simple
-        if (! firstPlotBtn) {
-            // Get order
-            plotConfig["order"] = {};
-            for (const param of ["x_axis", "y_axis", "faceet_row", "facet_col"]) {
-                if (document.getElementById(`${param}_order_list`)) {
-                    const series = document.getElementById(`${param}_series`).value;
-                    const serialized = sortable(`#${param}_order_list`, 'serialize')[0].items;
-                    // Sort by "sortable" index position
-                    plotConfig["order"][series] = serialized.map((val) => val.label);
-                }
-            }
-
-            // Get colors
-            const colorElts = document.getElementsByClassName("js-plot-color");
-            const colorSeries = document.getElementById("color_series").value;
-            if (colorSeries && colorElts.length) {
-                // Input is either color mapping or just the series
-                plotConfig["colors"] = {};
-                [...colorElts].map((field) => {
-                    const group = field.id.replace("_color", "");
-                    plotConfig["colors"][group] = field.value;
-                })
-            }
-
-            // Get vlines
-            const vlineFields = document.getElementsByClassName("js-vline-field");
-            plotConfig["vlines"] = [...vlineFields].map((field) => {
-                const vlinePos = field.querySelector(":scope .js-vline-pos").value;
-                const vlineStyle = field.querySelector(":scope .js-vline-style-select select").value;
-                // Return either objects or nothing (which will be filtered out)
-                return vlinePos ?  {"vl_pos":vlinePos, "vl_style":vlineStyle} : null;
-            }).filter(x => x !== null);
-        }
-
-        // Get data and set up the image area
-        let plotJson;
-        try {
-            const data = await fetchPlotlyData(plotConfig, datasetId, plotType, analysisObj, userId, colorblindMode);
-            ({plot_json: plotJson} = data);
-        } catch (error) {
-            // TODO: Make failure indicator
-            return;
-        }
-
-        // NOTE: Plot initially is created to a default width but is responsive.
-        // Noticed container within our "column" will make full-width go beyond the screen
-        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
-        plotContainer.append(divElt);
-        Plotly.purge("plotly_preview"); // clear old Plotly plots
-
-        // TODO: Throw error if "plotJson" is null
-        // Update plot with custom plot config stuff stored in plot_display_config.js
-        const curatorDisplayConf = postPlotlyConfig.curator;
-        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, plotType, "config");
-        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
-        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, plotType, "layout")
-        Plotly.relayout("plotly_preview", custonLayout)
+        plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
 
     } else if (scanpyPlots.includes(plotType)) {
-        for (const classElt in scanpyClassElt2Prop) {
-            plotConfig[scanpyClassElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
-        }
-
-        // For the first plot button click, keep it simple
-        if (! firstPlotBtn) {
-            // Get order
-            plotConfig["order"] = {};
-            for (const param of ["plot_by_series"]) {
-                if (document.getElementById(`${param}_order_list`)) {
-                    const series = document.getElementById(`${param}_series`).value;
-                    const serialized = sortable(`#${param}_order_list`, 'serialize')[0].items;
-                    // Sort by "sortable" index position
-                    plotConfig["order"][series] = serialized.map((val) => val.label);
-                }
-            }
-            // Get colors
-            const colorElts = document.getElementsByClassName("js-plot-color");
-            const colorSeries = document.getElementById("colorize_legend_by").textContent;
-            if (colorSeries && colorElts.length) {
-                plotConfig["colors"] = {};
-                [...colorElts].map((field) => {
-                    const group = field.id.replace("_color", "");
-                    plotConfig["colors"][group] = field.value;
-                })
-            }
-        };
-
-
-        // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
-        if (!(document.getElementById("show_colorized_legend").checked)) {
-            plotConfig["colorize_legend_by"] = null;
-            plotConfig["plot_by_group"] = null;
-            plotConfig["max_columns"] = null;
-            plotConfig["skip_gene_plot"] = false;
-            plotConfig["horizontal_legend"] = false;
-        }
-
-        let image;
-        try {
-            const data = await fetchTsneImageData(plotConfig, datasetId, plotType, analysisObj, userId, colorblindMode);
-            ({image} = data);
-        } catch (error) {
-            // TODO: Make failure indicator
-            return;
-        }
-        const imgElt = generateElements('<img class="image" id="tsne_preview"></img>');
-        plotContainer.append(imgElt);
-
-        if (image) {
-            document.getElementById("tsne_preview").setAttribute("src", `data:image/png;base64,${image}`);
-        }
+        plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
 
     } else if (plotType === "svg") {
-        let data;
-        try {
-            data = await fetchSvgData(geneSymbol, datasetId)
-        } catch (error) {
-            // TODO: Make failure indicator
-            return;
-        }
-        plotConfig["low_color"] = document.getElementById("low_color").value;
-        plotConfig["mid_color"] = document.getElementById("mid_color").value;
-        plotConfig["high_color"] = document.getElementById("high_color").value;
-
-        // If user did not choose a mid-color, set it as null instead of to black
-        if (!(document.getElementById("enable_mid_color").checked)) {
-            plotConfig["mid_color"] = null;
-        }
-        colorSVG(data, plotConfig);
+        plotStyle.createPlot(datasetId, geneSymbol);
     } else {
         console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
         return;
@@ -593,7 +939,7 @@ const createPlot = async (event) => {
 
 const createPlotSelectInstance = () => {
     // Initialize plot types
-    plotSelect = NiceSelect.bind(document.getElementById("plot_type_select"), {
+    plotTypeSelect = NiceSelect.bind(document.getElementById("plot_type_select"), {
         placeholder: 'Choose how to plot',
         minimumResultsForSearch: -1
     });
@@ -620,7 +966,10 @@ const createToast = (msg) => {
 const deleteDisplay = async(user_id, display_id) => {
     const payload = {user_id, display_id};
     try {
-        return await axios.post("/cgi/delete_dataset_display.cgi", payload);
+        await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
+        // Remove display card
+        const displayCard = document.getElementById(`${display_id}_display`);
+        displayCard.remove();
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not delete this display. Please contact the gEAR team."
@@ -789,7 +1138,7 @@ const fetchPlotlyData = async (plotConfig, datasetId, plot_type, analysis, analy
     }
 }
 
-const fetchSvgData = async (geneSymbol, datasetId) => {
+const fetchSvgData = async (datasetId, geneSymbol) => {
     try {
         const { data } = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`);
         if (data?.success < 1) {
@@ -837,6 +1186,18 @@ const getPlotConfigValueFromClassName = (className) => {
     return undefined;
 }
 
+/* Get order of series from sortable lists. Return object */
+const getPlotOrderFromSortable = () => {
+    const order = {};
+    for (const elt of document.getElementById("order_container").children) {
+        const series = elt.querySelector("p").textContent;
+        const serialized = sortable(`#${series}_order_list`, 'serialize')[0].items;
+        // Sort by "sortable" index position
+        order[series] = serialized.map((val) => val.label);
+    }
+    return order;
+}
+
 const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
     // Get updates and additions to plot from the plot_display_config JS object
     let updates = {};
@@ -857,91 +1218,28 @@ const getSelect2Value = (select) => {
 }
 
 const includePlotParamOptions = async () => {
-    const plotType = getSelect2Value(plotSelect);
-
-    const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
-    prePlotOptionsElt.replaceChildren();
-
-    const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
-    postPlotOptionsElt.replaceChildren();
-
-    let plotSpecificParams;
-    let setupPlotSpecificEvents;
+    const plotType = getSelect2Value(plotTypeSelect);
 
     // include plotting backend options
     if (plotlyPlots.includes(plotType)) {
-        const prePlot = "../include/plot_config/pre_plot/single_gene_plotly.html";
-        const preResponse = await fetch(prePlot, {cache: "reload"});
-        const preBody = await preResponse.text();
-        prePlotOptionsElt.innerHTML = preBody;
-
-        const postPlot = "../include/plot_config/post_plot/single_gene_plotly.html"
-        const postResponse = await fetch(postPlot, {cache: "reload"});
-        const postBody = await postResponse.text();
-        postPlotOptionsElt.innerHTML = postBody;
-
-        // populate advanced options for specific plot types
-        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
-        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
-
-        if (["scatter", "tsne_dyna"].includes(plotType)) {
-            const prePlot = "../include/plot_config/pre_plot/advanced_scatter.html";
-            const preResponse = await fetch(prePlot, {cache: "reload"});
-            const preBody = await preResponse.text();
-            prePlotSpecificOptionsElt.innerHTML = preBody;
-
-            const postPlot = "../include/plot_config/post_plot/advanced_scatter.html";
-            const postResponse = await fetch(postPlot, {cache: "reload"});
-            const postBody = await postResponse.text();
-            postPlotSpecificOptionselt.innerHTML = postBody;
-        } else if (plotType == "violin") {
-            const prePlot = "../include/plot_config/pre_plot/advanced_violin.html";
-            const preResponse = await fetch(prePlot, {cache: "reload"});
-            const preBody = await preResponse.text();
-            prePlotSpecificOptionsElt.innerHTML = preBody;
-
-            const postPlot = "../include/plot_config/post_plot/advanced_violin.html";
-            const postResponse = await fetch(postPlot, {cache: "reload"});
-            const postBody = await postResponse.text();
-            postPlotSpecificOptionselt.innerHTML = postBody;
-        }
-
-        plotSpecificParams = Object.keys(plotlyClassElt2Prop);
-        setupPlotSpecificEvents = setupPlotlyOptions;
+        plotStyle = new PlotlyHandler(plotType);
     } else if (scanpyPlots.includes(plotType)) {
-        const prePlot = "../include/plot_config/pre_plot/tsne_static.html";
-        const preResponse = await fetch(prePlot, {cache: "reload"});
-        const preBody = await preResponse.text();
-        prePlotOptionsElt.innerHTML = preBody;
-
-        const postPlot = "../include/plot_config/post_plot/tsne_static.html"
-        const postResponse = await fetch(postPlot, {cache: "reload"});
-        const postBody = await postResponse.text();
-        postPlotOptionsElt.innerHTML = postBody;
-
-        plotSpecificParams = Object.keys(scanpyClassElt2Prop);
-        setupPlotSpecificEvents = setupScanpyOptions;
+        plotStyle = new ScanpyHandler(plotType);
     } else if (plotType === "svg") {
-        const prePlot = "../include/plot_config/pre_plot/svg.html";
-        const preResponse = await fetch(prePlot, {cache: "reload"});
-        const preBody = await preResponse.text();
-        prePlotOptionsElt.innerHTML = preBody;
-
-        const postPlot = "../include/plot_config/post_plot/svg.html"
-        const postResponse = await fetch(postPlot, {cache: "reload"});
-        const postBody = await postResponse.text();
-        postPlotOptionsElt.innerHTML = postBody;
-
-        plotSpecificParams = Object.keys(svgClassElt2Prop);
-        setupPlotSpecificEvents = setupSVGOptions;
+        plotStyle = new SvgHandler();
     } else {
         console.warn(`Plot type ${plotType} not recognized.`)
         return;
     }
 
-    setupParamValueCopyEvents(plotSpecificParams);    // Ensure pre- and post- plot view params are synced up
-    setupPlotSpecificEvents()       // Set up plot-specific events
+    await plotStyle.loadPlotHtml();
+
+    // NOTE: Events are triggered in the order they are regstered.
+    // We want to trigger a param sync event before the plot requirement validation
+    // (since it checks every element in the js-plot-req class)
+    setupParamValueCopyEvents(Object.keys(plotStyle.classElt2Prop));    // Ensure pre- and post- plot view params are synced up
     setupValidationEvents();        // Set up validation events required to plot at a minimum
+    plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
 
 }
 
@@ -1059,116 +1357,17 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
     ownerDisplaysElt.replaceChildren();
 
     for (const display of userDisplays) {
-        let displayUrl = "";
-        try {
-            displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
-        } catch (error) {
-            displayUrl = "/img/dataset_previews/missing.png";
-        }
-        const geneSymbol = display.plotly_config.gene_symbol;
-
-        const label = display.label || "";
-
-        // TODO - Get footer button styles correct
-        const template = `
-                    <div id="${display.id}_display" class="column is-one-quarter">
-                        <div class="box card has-background-primary-light has-text-primary">
-                            <header class="card-header">
-                                <p class="card-header-title has-text-black">${label}</p>
-                            </header>
-                            <div class="card-image">
-                                <figure class="image is-4by3">
-                                    <img src="${displayUrl} " alt="Saved display">
-                                </figure>
-                            </div>
-                            <div class="card-content">
-                                <p class="subtitle">Gene: ${geneSymbol}</p>
-                            </div>
-                            <footer class="card-footer buttons">
-                                <button class="js-display-default card-footer-item is-primary" id="${display.id}_default">Set as Default</button>
-                                <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
-                                <button class="card-footer-item button is-danger" id="${display.id}_delete">Delete</button>
-                            </footer>
-                        </div>
-                    </div>`;
-
-        const htmlCollection = generateElements(template);
-        userDisplaysElt.append(htmlCollection);
-
-        // Edit default properties if this is the default display
-        const defaultElt = document.getElementById(`${display.id}_default`);
-        if (display.id === defaultDisplayId) {
-            defaultElt.textContent = "Default";
-            defaultElt.disabled = true;
-        }
-
-        defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
-        document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(display));
-        document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(userId, display.id));
+        renderUserDisplayCard(display, defaultDisplayId)
     }
 
     for (const display of ownerDisplays) {
-        let displayUrl = "";
-        try {
-            displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
-        } catch (error) {
-            displayUrl = "/img/dataset_previews/missing.png";
-        }
-        const geneSymbol = display.plotly_config.gene_symbol;
-
-        const label = display.label || `Unnamed ${display.plot_type} display`;
-
-        const template = `
-                    <div id="${display.id}_display" class="column is-one-quarter">
-                        <div class="box card has-background-primary-light has-text-primary">
-                            <header class="card-header">
-                                <p class="card-header-title has-text-black">${label}</p>
-                            </header>
-                            <div class="card-image">
-                                <figure class="image is-4by3">
-                                    <img src="${displayUrl} " alt="Saved display">
-                                </figure>
-                            </div>
-                            <div class="card-content">
-                                <p class="subtitle is-6">Gene: ${geneSymbol}</p>
-                            </div>
-                            <footer class="card-footer buttons">
-                                <button class="js-display-default card-footer-item button is-primary" id="${display.id}_default">Set as Default</button>
-                                <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
-                            </footer>
-                        </div>
-                    </div>`;
-
-        const htmlCollection = generateElements(template);
-        ownerDisplaysElt.append(htmlCollection);
-
-        // Edit default properties if this is the default display
-        const defaultElt = document.getElementById(`${display.id}_default`);
-        if (display.id === defaultDisplayId) {
-            defaultElt.textContent = "Default";
-            defaultElt.disabled = true;
-        }
-
-        defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
-        document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(display));
-
+        renderOwnerDisplayCard(display, defaultDisplayId);
     }
 }
 
-const renderOrderSortable = (param, series) => {
+// Render the specific series as a sortable list, if it is not already
+const renderOrderSortableSeries = (series) => {
     const orderContainer = document.getElementById("order_container");
-    const orderSection = document.getElementById("order_section");
-
-    // If param already has HTML defined, remove it
-    const paramOrder = document.getElementById(`${param}_order`);
-    if (paramOrder) {
-        paramOrder.remove();
-    }
-
-    // Pre-emptively hide the container but show it ass
-    if (!orderContainer.children.length) {
-        orderSection.style.display = "none";
-    }
 
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
@@ -1179,12 +1378,12 @@ const renderOrderSortable = (param, series) => {
 
     // Create parent template
     // Designed so the title is a full row and the draggables are 50% width
-    const parentList = `<ul id="${param}_order_list" class="content column is-two-thirds"></ul>`;
+    const parentList = `<ul id="${series}_order_list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
     const template = `
-        <div id="${param}_order" class="columns is-multiline">
-            <p class="has-text-weight-bold column is-full">${param} - <span class="is-underlined" id="${series}_order">${series}</span></p>
-            ${parentList}
-        </div>
+        <div id="${series}_order" class="columns is-multiline">
+        <p id="${series}_order_title" class="has-text-weight-bold column is-full">${series}</p>
+        ${parentList}
+        </div
     `;
 
     const htmlCollection = generateElements(template);
@@ -1194,11 +1393,11 @@ const renderOrderSortable = (param, series) => {
     for (const group of levels[series]) {
         const listElt = `<li class="has-background-grey-lighter has-text-dark">${group}</li>`;
         const listCollection = generateElements(listElt);
-        document.getElementById(`${param}_order_list`).append(listCollection);
+        document.getElementById(`${series}_order_list`).append(listCollection);
     }
 
     // Create sortable for this series
-    sortable(`#${param}_order_list`, {
+    sortable(`#${series}_order_list`, {
         hoverClass: "has-text-weight-bold"
         , itemSerializer(item, container) {
             item.label = item.node.textContent
@@ -1206,8 +1405,104 @@ const renderOrderSortable = (param, series) => {
         },
     });
 
-    orderSection.style.display = "";
+}
 
+const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
+    let displayUrl = "";
+    try {
+        displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
+    } catch (error) {
+        displayUrl = "/img/dataset_previews/missing.png";
+    }
+    const geneSymbol = display.plotly_config.gene_symbol;
+
+    const label = display.label || `Unnamed ${display.plot_type} display`;
+
+    const template = `
+                <div id="${display.id}_display" class="column is-one-quarter">
+                    <div class="box card has-background-primary-light has-text-primary">
+                        <header class="card-header">
+                            <p class="card-header-title has-text-black">${label}</p>
+                        </header>
+                        <div class="card-image">
+                            <figure class="image is-4by3">
+                                <img src="${displayUrl} " alt="Saved display">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <p class="subtitle is-6">Gene: ${geneSymbol}</p>
+                        </div>
+                        <footer class="card-footer buttons">
+                            <button class="js-display-default card-footer-item button is-primary" id="${display.id}_default">Set as Default</button>
+                            <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
+                        </footer>
+                    </div>
+                </div>`;
+
+    const htmlCollection = generateElements(template);
+    const ownerDisplaysElt = document.getElementById("owner_displays");
+    ownerDisplaysElt.append(htmlCollection);
+
+    // Edit default properties if this is the default display
+    const defaultElt = document.getElementById(`${display.id}_default`);
+    if (display.id === defaultDisplayId) {
+        defaultElt.textContent = "Default";
+        defaultElt.disabled = true;
+    }
+
+    defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
+    document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
+}
+
+const renderUserDisplayCard = async (display, defaultDisplayId) => {
+
+    let displayUrl = "";
+    try {
+        displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
+    } catch (error) {
+        displayUrl = "/img/dataset_previews/missing.png";
+    }
+    const geneSymbol = display.plotly_config.gene_symbol;
+
+    const label = display.label || "";
+
+    // TODO - Get footer button styles correct
+    const template = `
+                <div id="${display.id}_display" class="column is-one-quarter">
+                    <div class="box card has-background-primary-light has-text-primary">
+                        <header class="card-header">
+                            <p class="card-header-title has-text-black">${label}</p>
+                        </header>
+                        <div class="card-image">
+                            <figure class="image is-4by3">
+                                <img src="${displayUrl} " alt="Saved display">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <p class="subtitle">Gene: ${geneSymbol}</p>
+                        </div>
+                        <footer class="card-footer buttons">
+                            <button class="js-display-default card-footer-item button is-primary" id="${display.id}_default">Set as Default</button>
+                            <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
+                            <button class="card-footer-item button is-danger" id="${display.id}_delete">Delete</button>
+                        </footer>
+                    </div>
+                </div>`;
+
+    const htmlCollection = generateElements(template);
+    const userDisplaysElt = document.getElementById("user_displays");
+    userDisplaysElt.append(htmlCollection);
+
+    // Edit default properties if this is the default display
+    const defaultElt = document.getElementById(`${display.id}_default`);
+    if (display.id === defaultDisplayId) {
+        defaultElt.textContent = "Default";
+        defaultElt.disabled = true;
+    }
+
+    defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
+    document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
+    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(userId, display.id));
 }
 
 const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
@@ -1222,12 +1517,18 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
             ...plotConfig,  // depending on display type, this object will have different properties
         }),
     };
-
     if (!displayId) delete payload.id;  // Prevent passing in "null" as a string.
 
     try {
         const data = await axios.post("/cgi/save_dataset_display.cgi", convertToFormData(payload));
-        const {display_id} = data;
+        const {display_id, success} = data;
+        if (!success) {
+            throw new Error("Could not save this new display. Please contact the gEAR team.");
+        }
+
+        // Make new display card and make it the default display
+        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: payload.plotly_config}, display_id);
+
         return display_id;
     } catch (error) {
         logErrorInConsole(error);
@@ -1238,9 +1539,12 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
 }
 
 const saveDefaultDisplay = async (displayId) => {
-    const payload = {display_id: displayId};
+    const payload = {display_id: displayId, user_id: userId};
     try {
-        await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload))
+        const {success} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload))
+        if (!success) {
+            throw new Error("Could not save this display as your default. Please contact the gEAR team.");
+        }
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not save this display as your default. Please contact the gEAR team."
@@ -1270,6 +1574,33 @@ const setPlotEltValueFromConfig = (classSelector, confVal) => {
     }
 }
 
+/* Set disabled state for the given plot type. Also normalize plot type labels */
+const setPlotTypeDisabledState = (plotType, isAllowed) => {
+    if (plotType === "tsne/umap_dynamic") {
+        document.getElementById("tsne_dyna_opt").disabled = !isAllowed;
+    } else {
+        document.getElementById(`${plotType}_opt`).disabled = !isAllowed;
+    }
+}
+
+/**
+ * Set Select Box Selection By Value
+ * Modified to set value and "selected" so nice-select2 update() will catch it
+ * Taken from https://stackoverflow.com/a/20662180
+ * @param eid Element ID
+ * @param eval Element value
+ */
+const setSelectBoxByValue = (eid, val) => {
+    const elt = document.getElementById(eid);
+    for (const i in elt.options) {
+        if (elt.options[i].value === val) {
+            elt.value = val;
+            elt.options[i].selected = true;
+            return;
+        }
+    }
+}
+
 /* Ensure all elements in this class have the same value */
 const setupParamValueCopyEvents = (plotSpecificParams) => {
     for (const classSelector of plotSpecificParams) {
@@ -1291,7 +1622,7 @@ const setupParamValueCopyEvents = (plotSpecificParams) => {
 const setupPlotlyOptions = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
-    const plotType = getSelect2Value(plotSelect);
+    const plotType = getSelect2Value(plotTypeSelect);
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
@@ -1315,8 +1646,6 @@ const setupPlotlyOptions = async () => {
         updateSeriesOptions("js-plotly-size", continuousColumns, true);
     }
 
-    //TODO: Add jitter plot requirements (category x-axis or (?) y-axis)
-
     if (["scatter", "tsne_dyna"].includes(plotType)) {
         const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
         const continuousColumns = difference(allColumns, catColumns);
@@ -1324,47 +1653,71 @@ const setupPlotlyOptions = async () => {
         updateSeriesOptions("js-plotly-size", continuousColumns, true);
 
         // If x-axis is continuous show vline stuff, otherwise hide
-        document.getElementById("x_axis_series_post").addEventListener("change", (event) => {
-            const vLinesField = document.getElementById("vlines_container")
-            if (!(catColumns.includes(event.target.value))) {
-                vLinesField.style.display = "none";
-                // Clear all existing vlines
-                const vLineTemplate = document.querySelector(".js-vline-template");
-                const toRemove = document.querySelectorAll(".js-vline-field")
-                for (const elt of toRemove) {
-                    elt.remove();
-                }
-                // Add the first vline back
-                const vLinesBody = document.getElementById("vlines_body");
-                vLinesBody.append(vLineTemplate.cloneNode(true));
-                document.querySelector(".js-vline-pos").value = "";
-                return;
-            }
-            vLinesField.style.display = "";
+        // If x-axis is categorical, enable jitter plots
+        const xAxisSeriesElts = document.getElementsByClassName("js-plotly-x-axis");
+        for (const elt of xAxisSeriesElts) {
+            elt.addEventListener("change", (event) => {
 
-        });
+                const jitterElts = document.getElementsByClassName("js-plotly-add-jitter");
+                const vLinesContainer = document.getElementById("vlines_container")
+
+                if ((catColumns.includes(event.target.value))) {
+                    // categorical x-axis
+                    for (const jitterElt of jitterElts) {
+                        jitterElt.style.display = "";
+                    }
+                    vLinesContainer.style.display = "none";
+                    // Remove all but first existing vline
+                    const toRemove = document.querySelectorAll(".js-plotly-vline-field:not(:first-of-type)");
+                    for (const elt of toRemove) {
+                        elt.remove();
+                    }
+                    // Clear the first vline
+                    document.querySelector(".js-plotly-vline-pos").value = "";
+                    document.querySelector(".js-plotly-vline-style-select").value = "solid";
+                } else {
+                    for (const jitterElt of jitterElts) {
+                        jitterElt.style.display = "none";
+                        jitterElt.checked = false;
+                    }
+
+                    vLinesContainer.style.display = "";
+
+                }
+
+            });
+        }
+
 
         // Vertical line add and remove events
         const vLinesBody = document.getElementById("vlines_body");
-        const vLineTemplate = document.querySelector(".js-vline-template");
+        const vLineField = document.querySelector(".js-plotly-vline-field");
         document.getElementById("vline_add_btn").addEventListener("click", (event) => {
-            vLinesBody.append(vLineTemplate.cloneNode(true));
+            vLinesBody.append(vLineField.cloneNode(true));
+            // clear the values of the clone
+            document.querySelector(".js-plotly-vline-field:last-of-type .js-plotly-vline-pos").value = "";
+            document.querySelector(".js-plotly-vline-field:last-of-type .js-plotly-vline-style-select").value = "solid";
             // NOTE: Currently if original is set before cloning, values are copied to clone
             document.getElementById("vline_remove_btn").disabled = false;
         })
         document.getElementById("vline_remove_btn").addEventListener("click", (event) => {
-            const lastVLine = document.querySelector(".js-vline-template:nth-last-of-type(1)");   // last sibling div
+            // Remove last vline
+            const lastVLine = document.querySelector(".js-plotly-vline-field:last-of-type");
             lastVLine.remove();
-            if (vLineTemplate.length < 2) document.getElementById("vline_remove_btn").disabled = true;
+            if (vLineField.length < 2) document.getElementById("vline_remove_btn").disabled = true;
         })
     }
 
     // If color series is selected, let user choose colors.
-    const colorSeries = document.getElementById("color_series_post");
-    colorSeries.addEventListener("change", (event) => {
-        renderColorPicker(event.target.value);
-        return;
-    })
+    const colorSeriesElts = document.getElementsByClassName("js-plotly-color");
+    for (const elt of colorSeriesElts) {
+        elt.addEventListener("change", (event) => {
+            if ((catColumns.includes(event.target.value))) {
+                renderColorPicker(event.target.value);
+            }
+        })
+    }
+
 
     // Certain elements trigger plot order
     const plotOrderElts = document.getElementsByClassName("js-plot-order");
@@ -1373,7 +1726,7 @@ const setupPlotlyOptions = async () => {
             const paramId = event.target.id;
             const param = paramId.replace("_series", "").replace("_post", "");
             // NOTE: continuous series will be handled in the function
-            renderOrderSortable(param, event.target.value);
+            updateOrderSortable();
         });
     }
 
@@ -1414,7 +1767,7 @@ const setupPlotlyOptions = async () => {
 const setupScanpyOptions = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
-    const plotType = getSelect2Value(plotSelect);
+    const plotType = getSelect2Value(plotTypeSelect);
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
@@ -1444,42 +1797,33 @@ const setupScanpyOptions = async () => {
 
     updateSeriesOptions("js-tsne-x-axis", allColumns, true, xDefaultOption);
     updateSeriesOptions("js-tsne-y-axis", allColumns, true, yDefaultOption);
-    updateSeriesOptions("js-tsne-colorize-legned-by", allColumns, false);
+    updateSeriesOptions("js-tsne-colorize-legend-by", allColumns, false);
+    updateSeriesOptions("js-tsne-plot-by-series", catColumns, false);
 
-    const showColorizedLegend = document.getElementsByClassName("js-tsne-show-colorized-legend");
     const colorizeLegendBy = document.getElementsByClassName("js-tsne-colorize-legend-by");
     const plotBySeries = document.getElementsByClassName("js-tsne-plot-by-series");
     const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
     const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
     const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
 
-    // Disable colorize_legend options if we are not using it
-    for (const elt of showColorizedLegend) {
-        elt.addEventListener("change", (event) => {
-            for (const targetElt of [...colorizeLegendBy, ...plotBySeries, ...maxColumns, ...skipGenePlot, ...horizontalLegend]) {
-                targetElt.disabled = true;
-                if (!event.target.checked) {
-                    continue;
-                }
-                targetElt.disabled = false;
-            }
-        });
-    }
-
-
     // Do certain things if the chosen annotation series is categorical or continuous
     for (const elt of colorizeLegendBy) {
         elt.addEventListener("change", (event) => {
             for (const targetElt of [...plotBySeries, ...maxColumns, ...horizontalLegend]) {
-                targetElt.disabled = false;
+                targetElt.disabled = true;
                 // If colorized legend is continuous, we cannot plot by group
                 // So all dependencies need to be disabled.
                 if ((catColumns.includes(event.target.value))) {
-                    continue;
+                    renderColorPicker(event.target.value);
+                    targetElt.disabled = false;
                 }
-                targetElt.disabled = true;
             }
         });
+
+        elt.addEventListener("change", (event) => {
+            renderColorPicker(event.target.value);
+            return;
+        })
     }
 
     // Plotting by group plots gene expression, so cannot skip gene plots.
@@ -1494,7 +1838,7 @@ const setupScanpyOptions = async () => {
             for (const targetElt of maxColumns) {
                 targetElt.disabled = event.target.value ? false : true;
             }
-            renderOrderSortable("plot_by_group", event.target.value);
+            updateOrderSortable();
 
         });
     }
@@ -1511,14 +1855,28 @@ const setupScanpyOptions = async () => {
 
 /* Set up any SVG options and events for the pre- and post- plot views */
 const setupSVGOptions = () => {
-    const enableMidColor = document.getElementById("enable_mid_color");
-    const midColorField = document.getElementById("mid_color_field");
-    enableMidColor.addEventListener("change", (event) => {
-        midColorField.style.display = "none";
-        if (event.target.checked) {
-            midColorField.style.display = "";
-        }
-    });
+    const enableMidColorElts = document.getElementsByClassName("js-svg-enable-mid");
+    const midColorElts = document.getElementsByClassName("js-svg-mid-color");
+    const midColorFields = document.getElementsByClassName("js-mid-color-field");
+    for (const elt of enableMidColorElts) {
+        elt.addEventListener("change", (event) => {
+            for (const field of midColorFields) {
+                field.style.display = (event.target.checked) ? "" : "none";
+            }
+            for (const midColor of midColorElts) {
+                midColor.disabled = !(event.target.checked);
+            }
+        });
+    }
+
+
+    // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
+    if (document.getElementById("low_color").value) {
+        trigger(document.getElementById("low_color"), "change");
+    }
+    if (document.getElementById("high_color").value) {
+        trigger(document.getElementById("high_color"), "change");
+    }
 }
 
 /* Setup a fail-fast validation trigger. */
@@ -1654,6 +2012,63 @@ const updateGeneSymbolOptions = (geneSymbols) => {
     geneSelect.update();
 }
 
+const updateOrderSortable = () => {
+    // TODO: Need to come up with a way to a) make a set of series, and remove a series if no params use it
+
+    // Get all current plot param series for plotting order and save as a set
+    const plotOrderElts = document.getElementsByClassName("js-plot-order");
+    const seriesSet = new Set();
+    for (const elt of plotOrderElts) {
+        const series = elt.value;
+        // Only include categorical series
+        if (series && (catColumns.includes(series))) {
+            seriesSet.add(series);
+        }
+    }
+
+    // Get all current plotting order series and save as a set
+    const sortableElts = document.querySelectorAll(".js-plot-order-sortable p");
+    const sortableSet = new Set();
+    for (const elt of sortableElts) {
+        const series = elt.value;
+        // These series already are categorical
+        if (series) {
+            sortableSet.add(series);
+        }
+    }
+
+    // Three scenarios:
+    for (const series of seriesSet) {
+        // 1. Series is in both seriesSet and sortableSet, do nothing
+        if (sortableSet.has(series)) {
+            continue;
+        }
+        // 2. Series is in seriesSet but not sortableSet, add <series>_order element
+        renderOrderSortableSeries(series);
+    }
+
+    for (const series of sortableSet) {
+        // 3. Series is in sortableSet but not seriesSet, remove <series>_order element
+        if (!seriesSet.has(series)) {
+            const orderElt = document.getElementById(`${series}_order`);
+            orderElt.remove();
+        }
+    }
+
+
+    const orderContainer = document.getElementById("order_container");
+    const orderSection = document.getElementById("order_section");
+
+    // Pre-emptively hide the container but show it ass
+    if (!orderContainer.children.length) {
+        orderSection.style.display = "none";
+        return;
+    }
+
+    orderSection.style.display = "";
+
+}
+
 // For plotting options, populate select menus with category groups
 const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
 
@@ -1706,18 +2121,19 @@ window.onload = () => {
     loadDatasetTree();
 
     // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-    /*const linkedDatasetId = getUrlParameter("dataset_id");
-    if (linkedDatasetId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("dataset_id")) {
+        const linkedDatasetId = URLSearchParams.get("dataset_id");
         try {
+            // TODO: test this
             // find DatasetTree node and trigger "activate"
             const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
             foundNode.setActive(true);
             datasetId = linkedDatasetId;
-            $("#dataset").val(linkedDatasetId);
         } catch {
             console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
         }
-    }*/
+    }
 
     createAnalysisSelectInstance();
     createPlotSelectInstance();
@@ -1732,11 +2148,10 @@ const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
     plotBtn.addEventListener("click", createPlot);
 }
-/*
+
 document.getElementById("save_json_config").addEventListener("click", () => {
     // Config plot configuration to JSON for sharing (or passing to API by hand)
-    const plotType = getSelect2Value(plotSelect);
-    const blob = new Blob([JSON.stringify({...plotConfig, plot_type:plotType})]);
+    const blob = new Blob([JSON.stringify({...this.plotConfig, plot_type:this.plotType})]);
     const link = document.createElement("a");
     link.download = "gEAR_plot_configuration.json";
     link.href = window.URL.createObjectURL(blob);
@@ -1750,8 +2165,7 @@ document.getElementById("save_json_config").addEventListener("click", () => {
 document.getElementById("save_display_btn").addEventListener("click", async () => {
     // Save new plot display.
     const label = document.getElementById("new_display_label").value;
-    const plotType = getSelect2Value(plotSelect);
-    const displayId = await saveDatasetDisplay(null, datasetId, userId, label, plotType, plotConfig);
+    const displayId = await saveDatasetDisplay(null, datasetId, userId, label, this.plotType, this.plotConfig);
     saveDefaultDisplay(displayId);
     // Give confirmation
     document.getElementById("save_display_btn").classList.add("is-success");
@@ -1760,7 +2174,7 @@ document.getElementById("save_display_btn").addEventListener("click", async () =
     }, 1000);
     // TODO: Reload new displays if user goes back to parameter editing
 });
-*/
+
 document.getElementById("edit_params").addEventListener("click", () => {
     // Hide this view
     document.getElementById("content_c").style.display = "";

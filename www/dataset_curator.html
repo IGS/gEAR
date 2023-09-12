@@ -132,7 +132,7 @@
             </span>
           </h5>
           <div class="js-step-collapsable mt-3" id="load_plot_collapsable">
-            <button id="new_display" class="button is-primary" disabled>
+            <button id="new_display" class="content button is-primary" disabled>
               <span class="icon">
                 <i class="mdi mdi-plus"></i>
               </span>
@@ -278,45 +278,46 @@
       </section>
       <section id="post_plot_content_c" class="m-3 columns" style="display:none;">
         <div id="params_summary" class="column has-background-light">
+          <div id="current_info" class="content">
+            <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
+            <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold"></span></p>
+            <p>Gene: <span id="current_gene_post" class="has-text-weight-semibold"></span></p>
+          </div>
           <div id="params_config_container">
-            <p class="title is-5">Plot configuration</p>
-            <section id="post_plot_adjustments">
+            <p class="title is-4">Plot configuration</p>
+            <section id="post_plot_adjustments" class="content">
             </section>
             <section id="order_and_colors">
               <section id="order_section" class="my-3" style="display:none;">
-                <p class="content subtitle is-5">Order series</p>
+                <p class="content title is-4">Change order</p>
                 <p class="help">Drag-and-drop to determine order of plotting</p>
                 <div id="order_container" class="container"></div>
             </section>
             <section id="colors_section" class="my-3" style="display:none;">
-                <p class="content subtitle is-5">Set colors</p>
+                <p class="content title is-4">Change colors</p>
                 <div id="colors_container" class="container"></div>
             </section>
             </section>
           </div>
           <hr>
-          <div class="my-3">
-            <button id="update_plot" class="button is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
-            <div class="field is-grouped">
-              <p class="content">
-                <button id="edit_params" class="button">
-                  <span class="icon is-pulled-left">
-                    <i class="mdi mdi-arrow-left-thick"></i>
-                  </span>
-                  Go Back
-                </button>
-              </p>
-              <p class="content">
-                <button id="save_json_config" class="button">Download config (JSON)</button>
-              </p>
+          <div id="post_plot_actions_container" class="my-3 columns is-multiline">
+            <div class="column is-full">
+              <button id="update_plot" class="button is-medium is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
+              <button id="save_json_config" class="button is-fullwidth ">Download config (JSON)</button>
+              <button id="edit_params" class="button is-fullwidth">
+                <span class="icon is-pulled-left">
+                  <i class="mdi mdi-arrow-left-thick"></i>
+                </span>
+                <span>Go Back</span>
+              </button>
+            </div>
+            <div id="save_display_container" class="column is-full">
+              <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
+              <button id="save_display_btn" class="button is-fullwidth my-3">Save as new display</button>
             </div>
           </div>
-          <div id="save_display_container" class="is-fullwidth">
-            <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
-            <button id="save_display_btn" class="button my-3">Save as new display</button>
-          </div>
         </div>
-        <div id="plot_container" class="column has-background-white-bis"></div>
+        <div id="plot_container" class="column is-two-thirds has-background-white-bis"></div>
       </section>
     </section>
   </div>

@@ -72,6 +72,7 @@ def main():
         cursor.execute(query, (user_id, dataset_id, display_id, is_multigene))
         result = dict(success=True)
     except mysql.connector.Error as err:
+        print("Something went wrong: {}".format(err), file=sys.stderr)
         result = dict(success=False)
 
     attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene)

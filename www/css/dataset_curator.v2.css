@@ -41,12 +41,28 @@
     text-overflow: ellipsis;
 }
 
+#params_summary {
+    height:92vh;
+}
+
 #params_config_container {
     overflow-y:auto;
     overflow-x:hidden;
-    max-height:75vh;    /* 75% of viewport height */
+    height:60vh;    /* 60% of viewport height */
 }
 
 #order_container li {
     text-overflow: ellipsis;
+}
+
+/* Keep at a reasonable length */
+input[type=number] {
+    width: 4em;
+}
+
+/* fix container at bottom of viewport */
+#post_plot_actions_container {
+    position: absolute;
+    bottom: 0;
+    z-index: 999;
 }

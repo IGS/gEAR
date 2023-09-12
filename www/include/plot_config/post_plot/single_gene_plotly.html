@@ -1,4 +1,4 @@
-<div class="dropdown" id="plotly_param_dropdown">
+<div class="dropdown mb-3" id="plotly_param_dropdown">
     <div class="dropdown-trigger">
         <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
             <span>Select parameters to edit </span>
@@ -31,7 +31,8 @@
     </div>
 </div>
 
-<section id="x_axis_section_post" class="js-plot-config-section" style="display:none;">X-axis
+<section id="x_axis_section_post" class="js-plot-config-section" style="display:none;">
+    <span class="subtitle is-4">X-axis</span>
     <p class="is-flex is-justify-content-space-between">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
@@ -47,17 +48,18 @@
         <input class="js-plotly-hide-x-ticks" id="hide_x_ticks_post" type="checkbox">
     </p>
     <p class="is-flex is-justify-content-space-between">
-        <span class="has-text-weight-medium">Plot min</span>
+        <span class="has-text-weight-medium">Axis min boundary</span>
         <input class="js-x-range js-plotly-x-min" id="xmin_value_post" type="number" />
     </p>
     <p class="is-flex is-justify-content-space-between">
-        <span class="has-text-weight-medium">Plot max</span>
+        <span class="has-text-weight-medium">Axis max boundary</span>
         <input class="js-x-range js-plotly-x-max" id="xmax_value_post" type="number" />
     </p>
     <p class="help">Set X-axis plotting range to display. Both min and max must be filled in to work.</p>
 </section>
 
-<section id="y_axis_section_post" class="js-plot-config-section" style="display:none;">Y-axis
+<section id="y_axis_section_post" class="js-plot-config-section" style="display:none;">
+    <span class="subtitle is-4">Y-axis</span>
     <p class="is-flex is-justify-content-space-between">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
@@ -73,17 +75,18 @@
         <input class="js-plotly-hide-y-ticks" id="hide_y_ticks_post" type="checkbox">
     </p>
     <p class="is-flex is-justify-content-space-between">
-        <span class="has-text-weight-medium">Plot min</span>
+        <span class="has-text-weight-medium">Axis min boundary</span>
         <input class="js-y-range js-plotly-y-min" id="ymin_value_post" type="number" />
     </p>
     <p class="is-flex is-justify-content-space-between">
-        <span class="has-text-weight-medium">Plot max</span>
+        <span class="has-text-weight-medium">Axis max boundary</span>
         <input class="js-y-range js-plotly-y-max" id="ymax_value_post" type="number" />
     </p>
     <p class="help">Set Y-axis plotting range to display. Both min and max must be filled in to work.</p>
 </section>
 
-<section id="color_section_post" class="js-plot-config-section" style="display:none;">Color
+<section id="color_section_post" class="js-plot-config-section" style="display:none;">
+    <span class="subtitle is-4">Color</span>
     <p class="is-flex is-justify-content-space-between">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
@@ -96,7 +99,8 @@
     </p>
 </section>
 
-<section id="size_section_post" class="js-plot-config-section" style="display:none;">Marker size
+<section id="size_section_post" class="js-plot-config-section" style="display:none;">
+    <span class="subtitle is-4">Marker Size</span>
     <p class="is-flex is-justify-content-space-between">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
@@ -110,7 +114,8 @@
     <p class="help">Uniformly increase or decrease size of markers</p>
 </section>
 
-<section id="subplots_section_post" class="js-plot-config-section" style="display:none;">Subplots
+<section id="subplots_section_post" class="js-plot-config-section" style="display:none;">
+    <span class="subtitle is-4">Subplots</span>
     <p class="is-flex is-justify-content-space-between">
         <span class="has-text-weight-medium">Row series</span>
         <span class="select is-small">
@@ -125,9 +130,10 @@
     </p>
 </section>
 
-<section id="misc_section_post" class="js-plot-config-section" style="display:none;">Miscellaneous
+<section id="misc_section_post" class="js-plot-config-section" style="display:none;">
+    <span class="subtitle is-4">Miscellaneous</span>
     <p class="is-flex is-justify-content-space-between">
-        <span class="has-text-weight-medium">Annotation</span>
+        <span class="has-text-weight-medium">Hover annotation</span>
         <span class="select is-small">
             <select class="js-plotly-label" id="label_series_post"></select>
         </span>
