@@ -53,8 +53,12 @@ def make_static_tsne_graph(filename, config, url):
 
     import base64
     img_data = base64.urlsafe_b64decode(decoded_result["image"])
-    with open(filename, "wb") as fh:
-        fh.write(img_data)
+    try:
+        with open(filename, "wb") as fh:
+            fh.write(img_data)
+    except Exception as e:
+        print("Could not write {} for reason: {}".format(filename, str(e)), file=sys.stderr)
+        return False
 
     return True
 
@@ -144,20 +148,24 @@ def main():
     config = json.loads(plotly_config)
     config["plot_type"] = plot_type
 
-    success = False
+    image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
+
+    url = "http://localhost/api/plot/{}".format(dataset_id)
+
+
     try:
         if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
-            success = make_static_plotly_graph(filename, config, url)
+            image_success = make_static_plotly_graph(filename, config, url)
         elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
             url += "/mg_dash"
-            success = make_static_plotly_graph(filename, config, url)
+            image_success = make_static_plotly_graph(filename, config, url)
         elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
             url += "/tsne"
-            success = make_static_tsne_graph(filename, config, url)
+            image_success = make_static_tsne_graph(filename, config, url)
         elif plot_type.lower() in ["svg"]:
             url += "/svg"
-            success = make_static_svg(filename, dataset_id)
+            image_success = make_static_svg(filename, dataset_id)
         elif plot_type.lower() in ["epiviz"]:
             url += "/epiviz"
             pass
@@ -167,7 +175,7 @@ def main():
         print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
         print(str(e), file=sys.stderr)
 
-    if not success:
+    if not image_success:
         print("Could not create static image file for display id {}".format(display_id), file=sys.stderr)
 
     cnx.commit()

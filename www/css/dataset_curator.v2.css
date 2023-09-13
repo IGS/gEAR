@@ -27,7 +27,7 @@
 }
 
 /* Toast-style notifications for actual alerts */
-.notification.is-danger {
+.notification.js-toast {
     position: fixed;
     top: 30px;
     right: 10px;
@@ -48,7 +48,6 @@
 #params_config_container {
     overflow-y:auto;
     overflow-x:hidden;
-    height:60vh;    /* 60% of viewport height */
 }
 
 #order_container li {
@@ -58,11 +57,4 @@
 /* Keep at a reasonable length */
 input[type=number] {
     width: 4em;
-}
-
-/* fix container at bottom of viewport */
-#post_plot_actions_container {
-    position: absolute;
-    bottom: 0;
-    z-index: 999;
 }

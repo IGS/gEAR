@@ -8,7 +8,7 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 
-WEB_IMAGE_ROOT = './img/dataset_previews'
+WEB_IMAGE_ROOT = '../img/dataset_previews'  # origin is cgi script dir
 
 def main():
     original_stdout = sys.stdout
@@ -19,6 +19,8 @@ def main():
     display_id = form.getvalue('display_id')
 
     image_preview_url = os.path.join(WEB_IMAGE_ROOT, "{}.{}.png".format(dataset_id, display_id))
+
+    print(image_preview_url, file=sys.stderr)
 
     if not os.path.exists(image_preview_url):
         image_preview_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)

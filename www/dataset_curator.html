@@ -277,7 +277,7 @@
 
       </section>
       <section id="post_plot_content_c" class="m-3 columns" style="display:none;">
-        <div id="params_summary" class="column has-background-light">
+        <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column is-justify-content-space-between">
           <div id="current_info" class="content">
             <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
             <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold"></span></p>
@@ -299,8 +299,7 @@
             </section>
             </section>
           </div>
-          <hr>
-          <div id="post_plot_actions_container" class="my-3 columns is-multiline">
+          <div id="post_plot_actions_container" class="mt-3 columns is-multiline">
             <div class="column is-full">
               <button id="update_plot" class="button is-medium is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
               <button id="save_json_config" class="button is-fullwidth ">Download config (JSON)</button>
@@ -312,8 +311,24 @@
               </button>
             </div>
             <div id="save_display_container" class="column is-full">
-              <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
-              <button id="save_display_btn" class="button is-fullwidth my-3">Save as new display</button>
+              <div class="field">
+                <div class="control">
+                  <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
+                </div>
+              </div>
+              <div class="field">
+                <div class="control">
+                  <label class="checkbox">
+                    <input type="checkbox" id="make_default_display_check">
+                    Make this my default display
+                  </label>
+                </div>
+              </div>
+              <div class="field">
+                <div class="control">
+                  <button id="save_display_btn" class="button is-fullwidth my-3">Save as new display</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

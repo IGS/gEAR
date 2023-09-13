@@ -49,7 +49,7 @@ class PlotHandler {
 
     // Certain groups like "display order" and "colors" and "vlines" will be custom-handled
     classElt2Prop = {}; // This will be overridden by subclasses
-    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
+    configProp2ClassElt = {};   // This will be overridden by subclasses (note: cannot "super" instance properties)
 
     cloneDisplay() {
         throw new Error("You have to implement the method cloneDisplay!");
@@ -103,7 +103,7 @@ class PlotlyHandler extends PlotHandler {
         , "js-plotly-marker-size":"marker_size"
     }
 
-    configProp2ClassElt = super.configProp2ClassElt;
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
     plotConfig = {};  // Plot config that is passed to API
 
@@ -115,8 +115,7 @@ class PlotlyHandler extends PlotHandler {
 
         // Handle order
         if (config["order"]) {
-            const orderContainer = document.getElementById("order_container");
-            for (const series of config["order"]) {
+            for (const series in config["order"]) {
                 renderOrderSortableSeries(series);
             }
 
@@ -127,12 +126,19 @@ class PlotlyHandler extends PlotHandler {
         if (config["colors"]) {
             // do nothing if color_name is not set
             if (!config["color_name"]) return;
-            const series = config["color_name"];
-            renderColorPicker(series);
-            for (const group in config["colors"]) {
-                const color = config["colors"][group];
-                const colorField = document.getElementById(`${group}_color`);
-                colorField.value = color;
+
+            // BUG: Occasionally the color_name element is not populated yet, which prevents the series from being rendered
+            try {
+                const series = config["color_name"];
+                renderColorPicker(series);
+                for (const group in config["colors"]) {
+                    const color = config["colors"][group];
+                    const colorField = document.getElementById(`${group}_color`);
+                    colorField.value = color;
+                }
+            } catch (error) {
+                console.error(error);
+                // pass
             }
         }
 
@@ -264,8 +270,8 @@ class PlotlyHandler extends PlotHandler {
         }).filter(x => x !== null);
     }
 
-    setupPlotSpecificEvents() {
-        setupPlotlyOptions();
+    async setupPlotSpecificEvents() {
+        await setupPlotlyOptions();
     }
 
 }
@@ -287,7 +293,7 @@ class ScanpyHandler extends PlotHandler {
         , "js-tsne-horizontal-legend":"horizontal_legend"
     }
 
-    configProp2ClassElt = super.configProp2ClassElt;
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
     plotConfig = {};  // Plot config that is passed to API
 
@@ -298,8 +304,7 @@ class ScanpyHandler extends PlotHandler {
 
         // Handle order
         if (config["order"]) {
-            const orderContainer = document.getElementById("order_container");
-            for (const series of config["order"]) {
+            for (const series in config["order"]) {
                 renderOrderSortableSeries(series);
             }
 
@@ -315,7 +320,10 @@ class ScanpyHandler extends PlotHandler {
         if (config["colorize_legend_by"]) {
             const series = config["colorize_legend_by"];
             for (const targetElt of [...plotBySeries, ...maxColumns, ...horizontalLegend]) {
-                targetElt.disabled = (catColumns.includes(series)) ? false : true;
+                targetElt.disabled = true;
+                if (catColumns.includes(series)) {
+                    targetElt.disabled = false;
+                }
             }
 
             // Handle colors
@@ -409,8 +417,8 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
-    setupPlotSpecificEvents() {
-        setupScanpyOptions();
+    async setupPlotSpecificEvents() {
+        await setupScanpyOptions();
     }
 
 }
@@ -428,7 +436,7 @@ class SvgHandler extends PlotHandler {
         , "js-svg-high-color":"high_color"
     }
 
-    configProp2ClassElt = super.configProp2ClassElt;
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
     plotConfig = {colors: {}};  // Plot config to color SVG
 
@@ -455,6 +463,9 @@ class SvgHandler extends PlotHandler {
             // TODO: Make failure indicator
             return;
         }
+        const plotContainer = document.getElementById("plot_container");
+        plotContainer.replaceChildren();    // erase plot
+
         colorSVG(data, this.plotConfig["colors"]);
     }
 
@@ -696,7 +707,6 @@ const cloneDisplay = async (event, display) => {
     document.getElementById("analysis_select").disabled = false;
     document.getElementById("plot_type_select").disabled = false;
 
-
     // analyses
     try {
         const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
@@ -708,7 +718,7 @@ const cloneDisplay = async (event, display) => {
         // Show failure state things.
         document.getElementById("plot_type_s_failed").style.display = "";
         document.getElementById("analysis_type_select_c_failed").style.display = "";
-        document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
+        document.getElementById(cloneId).classList.remove("is-loading"); // Don't give impression display is still loading
         return;
     } finally {
         document.getElementById("load_plot_s_success").style.display = "";
@@ -771,11 +781,21 @@ const cloneDisplay = async (event, display) => {
     } else if (plotType === "svg") {
         plotStyle = new SvgHandler();
     } else {
-        console.warn(`Plot type ${plotType} not recognized.`)
+        console.warn(`Plot type ${plotType} not recognized.`);
+        createToast("Could not populate plot options.");
         return;
     }
-
     plotStyle.cloneDisplay(config);
+
+    // Mark plot params as success
+    document.getElementById("plot_options_s_success").style.display = "";
+
+    // Click "submit" button to load plot
+    //for (const elt of document.getElementsByClassName("js-plot-btn")) {
+    //    elt.disabled = false;
+    //}
+    document.getElementById("plot_btn").click();
+
 }
 
 const colorSVG = (chartData, plotConfig) => {
@@ -946,29 +966,47 @@ const createPlotSelectInstance = () => {
 }
 
 /* Creates a Toast-style message in the upper-corner of the screen. */
-const createToast = (msg) => {
+const createToast = (msg, levelClass="is-danger") => {
     const template = `
-    <div class="notification is-danger animate__animated animate__fadeInUp animate__faster">
+    <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
         <button class="delete"></button>
         ${msg}
     </div>
     `
     const html = generateElements(template);
-    document.getElementById("main_c").prepend(html);
+
+
+    if (document.querySelector(".notification")) {
+        // If notifications are present, append under final notification
+        // This is to prevent overlapping toast notifications
+        document.querySelector(".notification:last-child").insertAdjacentElement("afterend", html);
+    } else {
+        // Otherwise prepend to top of main content
+        document.getElementById("main_c").prepend(html);
+    }
 
     // This should get the newly added notification since it is now the first
     document.querySelector(".notification .delete").addEventListener("click", (event) => {
         const notification = event.target.parentNode;
         notification.parentNode.removeChild(notification);
     });
+
+    // For a success message, remove it after 3 seconds
+    if (levelClass === "is-success") {
+        const notification = document.querySelector(".notification:last-child");
+        notification.classList.remove("animate__fadeInUp");
+        notification.classList.remove("animate__faster");
+        notification.classList.add("animate__fadeOutDown");
+        notification.classList.add("animate__slower");
+    }
 }
 
-const deleteDisplay = async(user_id, display_id) => {
-    const payload = {user_id, display_id};
+const deleteDisplay = async(user_id, displayId) => {
+    const payload = {user_id, id: displayId};
     try {
         await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
         // Remove display card
-        const displayCard = document.getElementById(`${display_id}_display`);
+        const displayCard = document.getElementById(`${displayId}_display`);
         displayCard.remove();
     } catch (error) {
         logErrorInConsole(error);
@@ -1232,6 +1270,7 @@ const includePlotParamOptions = async () => {
         return;
     }
 
+    // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
     await plotStyle.loadPlotHtml();
 
     // NOTE: Events are triggered in the order they are regstered.
@@ -1464,7 +1503,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     }
     const geneSymbol = display.plotly_config.gene_symbol;
 
-    const label = display.label || "";
+    const label = display.label || "Unnamed display"; // Added text to keep "p" tag from collapsing
 
     // TODO - Get footer button styles correct
     const template = `
@@ -1481,7 +1520,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
                         <div class="card-content">
                             <p class="subtitle">Gene: ${geneSymbol}</p>
                         </div>
-                        <footer class="card-footer buttons">
+                        <footer class="card-footer ">
                             <button class="js-display-default card-footer-item button is-primary" id="${display.id}_default">Set as Default</button>
                             <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
                             <button class="card-footer-item button is-danger" id="${display.id}_delete">Delete</button>
@@ -1520,7 +1559,7 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
     if (!displayId) delete payload.id;  // Prevent passing in "null" as a string.
 
     try {
-        const data = await axios.post("/cgi/save_dataset_display.cgi", convertToFormData(payload));
+        const {data} = await axios.post("/cgi/save_dataset_display.cgi", convertToFormData(payload));
         const {display_id, success} = data;
         if (!success) {
             throw new Error("Could not save this new display. Please contact the gEAR team.");
@@ -1539,9 +1578,10 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
 }
 
 const saveDefaultDisplay = async (displayId) => {
-    const payload = {display_id: displayId, user_id: userId};
+    const payload = {display_id: displayId, user_id: userId, dataset_id: datasetId};
     try {
-        const {success} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload))
+        const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
+        const {success} = data;
         if (!success) {
             throw new Error("Could not save this display as your default. Please contact the gEAR team.");
         }
@@ -1566,11 +1606,12 @@ const saveDefaultDisplay = async (displayId) => {
 /* Set HTML element value from the plot config value */
 const setPlotEltValueFromConfig = (classSelector, confVal) => {
     for (const elt of document.getElementsByClassName(classSelector)) {
-        if (elt.type == "checkbox") {
+        if (elt.type === "checkbox") {
             elt.checked = confVal;
-            return;
+            continue;
         }
         elt.value = confVal;
+        trigger(elt, "change");
     }
 }
 
@@ -1638,6 +1679,19 @@ const setupPlotlyOptions = async () => {
     updateSeriesOptions("js-plotly-label", allColumns, true);
     updateSeriesOptions("js-plotly-facet-row", catColumns, false);
     updateSeriesOptions("js-plotly-facet-col", catColumns, false);
+
+    // If plot_type is bar or line, disable the marker size options
+    if (["bar", "line", "violin"].includes(plotType)) {
+        for (const elt of document.getElementsByClassName("js-plotly-size")) {
+            elt.disabled = true;
+            elt.value = "";
+        }
+
+        for (const elt of document.getElementsByClassName("js-plotly-marker-size")) {
+            elt.disabled = true;
+            elt.value = "";
+        }
+    }
 
     if (["scatter", "tsne_dyna"].includes(plotType)) {
         const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
@@ -2162,16 +2216,22 @@ document.getElementById("save_json_config").addEventListener("click", () => {
         document.getElementById("save_json_config").classList.remove("is-success");
     }, 1000);
 });
-document.getElementById("save_display_btn").addEventListener("click", async () => {
+document.getElementById("save_display_btn").addEventListener("click", async (event) => {
     // Save new plot display.
     const label = document.getElementById("new_display_label").value;
-    const displayId = await saveDatasetDisplay(null, datasetId, userId, label, this.plotType, this.plotConfig);
-    saveDefaultDisplay(displayId);
-    // Give confirmation
-    document.getElementById("save_display_btn").classList.add("is-success");
-    setTimeout(() => {
-        document.getElementById("save_display_btn").classList.remove("is-success");
-    }, 1000);
+    event.target.id.classList.add("is-loading");
+    try {
+        const displayId = await saveDatasetDisplay(null, datasetId, userId, label, plotStyle.plotType, plotStyle.plotConfig);
+        createToast("Display saved.", "is-success");
+
+        if (document.getElementById("make_default_display_check").checked) {
+            saveDefaultDisplay(displayId);
+        }
+    } catch (error) {
+        //pass - handled in functions
+    } finally {
+        event.target.id.classList.add("is-loading");
+    }
     // TODO: Reload new displays if user goes back to parameter editing
 });
 
