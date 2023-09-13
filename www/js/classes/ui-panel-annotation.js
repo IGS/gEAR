@@ -80,7 +80,7 @@ class FunctionalAnnotationPanel {
           This really just happens numerically from the organism ID starting at 1 and increasing.
 
           Returns the ID of the selected organism.
-         */
+        */
         this.organism_ids_present.forEach(org_id => {
             if (typeof this.annotation !== 'undefined' && 
                 typeof this.annotation['by_organism'][org_id] !== 'undefined' &&

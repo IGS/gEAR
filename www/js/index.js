@@ -13,7 +13,7 @@ let SCORING_METHOD = 'gene';
 let SELECTED_GENE = null;
 
 let dataset_id = null; //from permalink - dataset share ID
-let layout_id = null; //from permalink - profile grid layout ID
+let layout_id = null; //from permalink - profile grid layout share ID
 let gene_cart_id = null; //from permalink - gene cart share ID
 let multigene = false;  // Is this a multigene search?
 let exact_match = true; // Set on by default
@@ -38,8 +38,6 @@ const search_result_postselection_functions = [];
 $(document).on("handle_page_loading", () => {
     // Ensure "exact match" and "multigene" tooltips work upon page load
     $('#intro_search_div [data-toggle="tooltip"]').tooltip();
-
-    load_annotation_organism_list();
 
     // Was a permalink found?
     dataset_id = getUrlParameter('share_id');
@@ -767,6 +765,10 @@ $("#gene_search_form").submit((event) => {
     set_multigene_plots(multigene, false);
 
     const formData = $("#gene_search_form").serializeArray();
+    // we want to add layout and user information here so we can log the search
+    formData.push({name: 'layout_share_id', value: layout_id});
+    formData.push({name: 'user_id', value: CURRENT_USER.id});
+    formData.push({name: 'is_multi', value: multigene});
 
     // split on combination of space and comma (individually or both together.)
     const gene_symbol_array = $("#search_gene_symbol").val().split(/[\s,]+/);
@@ -796,6 +798,10 @@ $("#gene_search_form").submit((event) => {
     $('#search_results_c').removeClass('search_result_c_DISABLED');
 
     dataset_collection_panel.load_frames({dataset_id, multigene});
+
+    if (! annotation_panel) {
+        load_annotation_organism_list();
+    }
 
     // Add Exact Match param
     formData.push({"name": "exact_match", "value": Number(exact_match)});
@@ -1102,9 +1108,10 @@ $('#intro_search_form').on('submit', (e) => {
     // TODO: It makes sense to remove/destroy those elements we aren't showing after a search
     e.preventDefault();    // Prevents "enter" from being used as a submit trigger
     $('#intro_content').hide();
-
     $("#leftbar_main").show();
     $("#viewport_main").show();
+
+    layout_id = dataset_collection_panel.layout_share_id;
 
     // fire the true search button, to submit the true form
     $("#search_gene_symbol").val( $("#search_gene_symbol_intro").val());

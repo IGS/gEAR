@@ -70,11 +70,21 @@ def reown_dataset(cursor, dataset_id, user_id, include_displays):
                AND dataset_id = %s
                AND display_id = %s
         """
+
+        pref_delete_qry = """
+             DELETE FROM dataset_preference
+             WHERE user_id = %s
+               AND dataset_id = %s
+               AND display_id = %s
+        """
         
         for display_id in display_ids_to_update:
             print("Dataset display:{0} Changing owner to {1}".format(display_id, user_id))
             cursor.execute(display_qry, (user_id, display_id))
 
+            ## remove the preferences, if set, for the target user so this doesn't throw a key error
+            cursor.execute(pref_delete_qry, (user_id, dataset_id, display_id))
+            
             print("Dataset preference: Setting user_id to {0} where user_id was {1}, dataset_id {2} and display_id:{3}".format(user_id, original_owner, dataset_id, display_id))
             cursor.execute(pref_update_qry, (user_id, original_owner, dataset_id, display_id))
     

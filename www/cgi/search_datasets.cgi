@@ -21,6 +21,8 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+from gear.userhistory import UserHistory
+
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 200;
 IMAGE_ROOT = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
@@ -234,6 +236,16 @@ def main():
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
+
+    # Log the search for the user
+    if user and len(search_terms):
+        history = UserHistory()
+        history.add_record(
+            user_id=user.id,
+            entry_category='dataset_search',
+            label="Datasets matching '{0}'".format(' '.join(search_terms)),
+            search_terms=search_terms,
+        )
 
 def get_shared_dataset_id_string(user, cursor):
     qry = "SELECT dataset_id FROM dataset_shares WHERE is_allowed = 1 AND user_id = %s"

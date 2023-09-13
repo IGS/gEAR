@@ -296,6 +296,31 @@ def get_layout_by_id(layout_id):
     conn.close()
     return layout
 
+def get_layout_by_share_id(layout_share_id):
+    """
+    Given a passed layout_share_id returns a Layout object with all attributes
+    populated.  Returns None if no layout is found with that ID.
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+    layout = None
+
+    qry = """
+          SELECT id, user_id, label, is_current, is_domain, share_id
+          FROM layout
+          WHERE share_id = %s
+    """
+    cursor.execute(qry, (layout_share_id,))
+
+    for (id, user_id, label, is_current, is_domain, share_id) in cursor:
+        layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
+                        label=label, is_current=is_current, share_id=share_id)
+        break
+
+    cursor.close()
+    conn.close()
+    return layout
+
 def get_user_count():
     conn = Connection()
     cursor = conn.get_cursor()

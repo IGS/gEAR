@@ -475,6 +475,7 @@ class ProfileTree extends Tree {
         });
 
         // Load profiles into the tree data property
+        // TODO: These IDs are supposed to be configurable in gear.ini. They're there, but not used here
         $.each(this.domainProfiles, (_i, item) => {
             this.addNode(treeData, this.usedIDs, item.value, 101, item.text, this.nodeType, {
                 'profile_label': item.text,

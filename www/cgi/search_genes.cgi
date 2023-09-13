@@ -11,10 +11,13 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+from gear.userhistory import UserHistory
+
 # results will not be shown after this count
 MAX_GENE_SEARCH_LIMIT = 100000
 
 def main():
+    print("DEBUG: search_genes.cgi logged", file=sys.stderr)
     form = cgi.FieldStorage()
 
     ## can search for more than one gene symbol, separated by spaces
@@ -24,6 +27,9 @@ def main():
     search_gene_symbol = search_gene_symbol.replace(',', ' ')
 
     exact_match = form.getvalue('exact_match')
+    layout_share_id = form.getvalue('layout_share_id')
+    user_id = form.getvalue('user_id')
+    is_multi = form.getvalue('is_multi')
 
     # Get list of gene_ids found in miRNA_family table
     # TODO: refactor these to be on gene name rather than int (if they are)
@@ -59,6 +65,25 @@ def main():
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(syms))
+
+    # log the search if user info is available
+    if user_id:
+        layout = geardb.get_layout_by_share_id(layout_share_id)
+
+        ## shorten the gene string if it's silly long
+        if len(search_gene_symbol) > 10:
+            gene_symbol_label = "{0} ...".format(search_gene_symbol[0:50])
+        else:
+            gene_symbol_label = search_gene_symbol
+
+        history = UserHistory()
+        history.add_record(
+            user_id=user_id,
+            entry_category = 'multigene_search' if is_multi == 'true' else 'gene_search',
+            label="\"{0}\" in {1}".format(gene_symbol_label, layout.label),
+            gene_symbol=search_gene_symbol,
+            layout_share_id=layout_share_id
+        )
 
 def get_mirna_family_gene_ids(cursor):
     cached_mirna_ids = {}
