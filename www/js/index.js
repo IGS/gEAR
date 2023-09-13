@@ -252,9 +252,6 @@ function get_index_info() {
     }).done((data) => {
         $('#stats_dataset_count').text(data.dataset_count);
         $('#stats_user_count').text(data.user_count);
-        if (data.projectr_enabled) {
-            $('.tool-launcher[data-tool-name="projection"').show()
-        }
     }).fail((jqXHR, textStatus, errorThrown) => {
         display_error_bar(`${jqXHR.status} ${errorThrown.name}`, 'Error getting index info.');
     });
