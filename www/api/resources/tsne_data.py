@@ -1,7 +1,7 @@
 
 import base64
 import io
-import os, sys
+import os
 import re
 from math import ceil
 from pathlib import Path
@@ -11,7 +11,6 @@ import geardb
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import scanpy as sc
 
 from flask import request
@@ -79,12 +78,11 @@ def calculate_num_legend_cols(group_len):
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
     from matplotlib import cm
-    from matplotlib.colors import ListedColormap
 
     # Create custom colorscale with gray at the 0.0 level
     # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
-    ylorrd = cm.get_cmap(colorscale, 256)
-    newcolors = ylorrd(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
+    cmap = cm.get_cmap(colorscale, 256)
+    newcolors = cmap(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
     gray = np.array([192/256, 192/256, 192/256, 1])
     newcolors[0, :] = gray
     return mcolors.ListedColormap(newcolors)
@@ -101,19 +99,9 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except Exception as e:
-        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
-        # Encountered edge cases were sample indexes had commas in them which
-        # breaks scanpy's read_csv feature (since they split on comma first)
-        import tempfile
-        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
-        df.index = df.index.astype(str).str.replace(",", "/")
-        with tempfile.NamedTemporaryFile() as fp:
-            df.to_csv(fp)
-            try:
-                projection_adata = sc.read_csv(fp.name)
-            except Exception as e:
-                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
-                raise PlotError("Could not create projection AnnData object from CSV.")
+        import sys
+        print(str(e), file=sys.stderr)
+        raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
     # Close dataset adata so that we do not have a stale opened object
     if dataset_adata.isbacked:
@@ -123,12 +111,41 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.filename = projection_adata_path
     return projection_adata
 
+def create_projection_pca_colorscale():
+    """Create a diverging colorscale but with black in the middle range."""
+    from matplotlib.colors import LinearSegmentedColormap
+
+    # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
+    nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
+    colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
+    return LinearSegmentedColormap.from_list("projection_pca", list(zip(nodes, colors)))
+
+
 def get_colorblind_scale(n_colors):
     """Get a colorblind friendly colorscale (Viridis). Return n colors spaced equidistantly."""
     cividis = cm.get_cmap("viridis", n_colors)
     colors = cividis.colors
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
+
+def get_projection_algorithm(dataset_id, projection_id):
+    dataset_projection_json_file = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id, "projections.json")
+    # Projection already exists, so we can just return info we want to return in a message
+    import json
+    with open(dataset_projection_json_file) as projection_fh:
+        projections_dict = json.load(projection_fh)
+    for genecart_id, configs in projections_dict.items():
+        for config in configs:
+            if config["uuid"] == projection_id:
+                # Handle legacy algorithm
+                if "is_pca" in config:
+                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+                return config["algorithm"]
+    raise Exception("Could not find projection ID entry within projection CSV file.")
+
+def is_categorical(series):
+    """Return True if Dataframe series is categorical."""
+    return series.dtype.name == 'category'
 
 def sort_legend(figure, sort_order, horizontal_legend=False):
     """Sort legend of plot."""
@@ -168,12 +185,19 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
+# Rename axes labels to be whatever x and y fields were passed in
+# If axis labels are from an analysis, just use default embedding labels
+def rename_axes_labels(ax, x_axis, y_axis):
+    if not x_axis.startswith("X_"):
+        ax.set_xlabel(x_axis)
+        ax.set_ylabel(y_axis)
+
 class TSNEData(Resource):
     """Resource for retrieving tsne data from an analysis.
 
     Returns
     -------
-      Byte stream image data
+    Byte stream image data
     """
     def post(self, dataset_id):
         req = request.get_json()
@@ -222,6 +246,7 @@ class TSNEData(Resource):
                     'message': str(pe),
                 }
 
+
         gene_symbols = (gene_symbol,)
         if 'gene_symbol' in adata.var.columns:
             gene_filter = adata.var.gene_symbol.isin(gene_symbols)
@@ -239,15 +264,40 @@ class TSNEData(Resource):
 
         # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
         if analysis is None or analysis in ["null", "undefined", dataset_id]:
-            for ds in [x_axis, y_axis]:
-                if ds not in adata.obs:
+            # Valid analysis column names from api/resources/h5ad.py
+            analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
+            analysis_umap_columns = ['X_umap_1', 'X_umap_2']
+            analysis_pca_columns = ['X_pca_1', 'X_pca_2']
+            # Safety check to ensure analysis was populated in adata.obsm if user selects those data series
+            if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
+                if not 'X_tsne' in adata.obsm:
                     return {
                         'success': -1,
-                        'message': 'Dataseries {} was selected but not present in adata.obs'.format(ds)
+                        'message': 'Analysis tSNE columns were selected but values not present in adata.obsm'
                     }
-            adata.obsm['X_tsne'] = adata.obs[[x_axis, y_axis]].values
-            adata.obsm['X_umap'] = adata.obs[[x_axis, y_axis]].values
-            adata.obsm['X_pca'] = adata.obs[[x_axis, y_axis]].values
+            elif x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
+                if not 'X_umap' in adata.obsm:
+                    return {
+                        'success': -1,
+                        'message': 'Analysis UMAP was selected but values not present in adata.obsm'
+                    }
+            elif x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
+                if not 'X_pca' in adata.obsm:
+                    return {
+                        'success': -1,
+                        'message': 'Analysis PCA was selected but values not present in adata.obsm'
+                    }
+            else:
+                # If using user-provided columns, perform safety check and create adata.obsm entry
+                for ds in [x_axis, y_axis]:
+                    if ds not in adata.obs:
+                        return {
+                            'success': -1,
+                            'message': 'Dataseries {} was selected but not present in adata.obs'.format(ds)
+                        }
+                adata.obsm['X_tsne'] = adata.obs[[x_axis, y_axis]].values
+                adata.obsm['X_umap'] = adata.obs[[x_axis, y_axis]].values
+                adata.obsm['X_pca'] = adata.obs[[x_axis, y_axis]].values
 
         # We also need to change the adata's Raw var dataframe
         # We can't explicitly reset its index so we reinitialize it with
@@ -305,40 +355,60 @@ class TSNEData(Resource):
         # Reverse cividis so "light" is at 0 and 'dark' is at incresing expression
         expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else "YlOrRd")
 
+        # In projections, reorder so that the strongest weights (positive or negative) appear in forefront of plot
+        plot_sort_order = True
+        plot_vcenter = None
+        if projection_id:
+            try:
+                algo = get_projection_algorithm(dataset_id, projection_id)
+                if algo == "pca":
+                    median = np.median(adata[:, gene_symbol].X.squeeze())
+                    sort_order = np.argsort(np.abs(median - adata[:, gene_symbol].X.squeeze()))
+                    ordered_obs = adata.obs.iloc[sort_order].index
+                    adata = adata[ordered_obs, :].copy()
+                    plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
+                    plot_vcenter = median
+                    expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
+            except Exception as e:
+                import sys
+                print(str(e), file=sys.stderr)
+
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
         if colorize_by:
-            # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
-            color_idx_name = "{0}_colors".format(colorize_by)
+            color_category = True if is_categorical(adata.obs[colorize_by]) else False
 
-            ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
-            if colors is not None and len(colors) > 2:
-                adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
+            if color_category:
+                # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
+                color_idx_name = "{0}_colors".format(colorize_by)
 
-            elif color_idx_name in adata.obs:
-                # Alternative method.  Associate with hexcodes already stored in the dataframe
-                # Making the assumption that these values are hexcodes
-                grouped = adata.obs.groupby([colorize_by, color_idx_name])
-                # Ensure one-to-one mapping between category and hexcodes
-                if len(adata.obs[colorize_by].unique()) == len(grouped):
-                    # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
-                    color_hex = adata.obs[color_idx_name].unique().tolist()
-                    if re.search(COLOR_HEX_PTRN, color_hex[0]):
-                        color_map = {name[0]:name[1] for name, group in grouped}
-                        adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+                ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
+                if colors is not None and len(colors) > 2:
+                    adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
 
+                elif color_idx_name in adata.obs:
+                    # Alternative method.  Associate with hexcodes already stored in the dataframe
+                    # Making the assumption that these values are hexcodes
+                    grouped = adata.obs.groupby([colorize_by, color_idx_name])
+                    # Ensure one-to-one mapping between category and hexcodes
+                    if len(adata.obs[colorize_by].unique()) == len(grouped):
+                        # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
+                        color_hex = adata.obs[color_idx_name].unique().tolist()
+                        if re.search(COLOR_HEX_PTRN, color_hex[0]):
+                            color_map = {name[0]:name[1] for name, group in grouped}
+                            adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
 
-            if colorblind_mode:
-                # build a cividis color map for the colorblind mode
-                cb_colors = get_colorblind_scale(len(adata.obs[colorize_by].unique()))
-                color_map = {name:cb_colors[idx] for idx, name in enumerate(adata.obs[colorize_by].cat.categories)}
-                adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+                if colorblind_mode:
+                    # build a cividis color map for the colorblind mode
+                    cb_colors = get_colorblind_scale(len(adata.obs[colorize_by].unique()))
+                    color_map = {name:cb_colors[idx] for idx, name in enumerate(adata.obs[colorize_by].cat.categories)}
+                    adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
 
-            # Calculate the number of columns in the legend (if applicable)
-            num_cols = calculate_num_legend_cols(len(adata.obs[colorize_by].unique()))
+                # Calculate the number of columns in the legend (if applicable)
+                num_cols = calculate_num_legend_cols(len(adata.obs[colorize_by].unique()))
 
-            # Get for legend order.
-            colorize_by_order = adata.obs[colorize_by].unique()
+                # Get for legend order.
+                colorize_by_order = adata.obs[colorize_by].unique()
 
             """
             NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
@@ -383,7 +453,8 @@ class TSNEData(Resource):
                     # Filter only expression values for a particular group.
                     adata.obs["split_by_group"] = adata.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression)
+                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    rename_axes_labels(f, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -392,7 +463,8 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False) # Max expression is vmax by default
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
+                    rename_axes_labels(f_gene, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
                     if col_counter % max_cols == 0:
@@ -400,41 +472,54 @@ class TSNEData(Resource):
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
                 sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
-                (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
-                f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                if horizontal_legend:
-                    io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                    f_color.get_legend().remove()  # Remove legend added by scanpy
+                rename_axes_labels(f_color, x_axis, y_axis)
+                if color_category:
+                    (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
+                    f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                    if horizontal_legend:
+                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            f_color.get_legend().remove()  # Remove legend added by scanpy
+
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
                 if skip_gene_plot:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(6, 4))
-                    if len(adata.obs[colorize_by].cat.categories) > 10:
+                    if color_category and len(adata.obs[colorize_by].cat.categories) > 10:
                         io_fig = plt.figure(figsize=(13, 4))
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
-                    f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                    if horizontal_legend:
-                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                        f1.get_legend().remove()  # Remove legend added by scanpy
+                    rename_axes_labels(f1, x_axis, y_axis)
+                    if color_category:
+                        (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
+                        f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                        if horizontal_legend:
+                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            f1.get_legend().remove()  # Remove legend added by scanpy
+
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(13, 4))
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False)
+                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    # BUG: the line below throws error with stacktrace
+                    # ValueError: To copy an AnnData object in backed mode, pass a filename: `.copy(filename='myfilename.h5ad')`. To load the object into memory, use `.to_memory()
                     sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
-                    (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
-                    f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                    if horizontal_legend:
-                        io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                        f2.get_legend().remove()  # Remove legend added by scanpy
+                    rename_axes_labels(f1, x_axis, y_axis)
+                    rename_axes_labels(f2, x_axis, y_axis)
+                    if color_category:
+                        (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
+                        f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                        if horizontal_legend:
+                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            f2.get_legend().remove()  # Remove legend added by scanpy
+
         else:
-            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False)
+            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+            rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
 
         # Close adata so that we do not have a stale opened object
         if adata.isbacked:

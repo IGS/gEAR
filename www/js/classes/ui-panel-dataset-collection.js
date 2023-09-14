@@ -83,10 +83,15 @@ class DatasetCollectionPanel {
             $("#dataset_grid").html(listViewHtml);
 
             // Anytime this happens, the annotation pane needs to be (re-)loaded
-            if (annotation_panel) {
-                annotation_panel = new FunctionalAnnotationPanel();
+            try {
+                if (annotation_panel) {
+                    annotation_panel = new FunctionalAnnotationPanel();
+                }
+            } catch (e) {
+                console.warn(e);
+                //pass
             }
-            
+
         }).fail((jqXHR, textStatus, errorThrown) => {
             display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
         });
@@ -162,7 +167,7 @@ class DatasetCollectionPanel {
                 display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
         }
-        
+
         //Was a search already performed?
         if (this.search_performed && !projection) {
             // User has already searched, automatically update datasets and gene searches

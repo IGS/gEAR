@@ -507,7 +507,13 @@ function select_search_result(elm, draw_display=true) {
         if (! (top_up === undefined)) {
             $("#highly_expressed_genes_card .card-header").text(`Pattern ${pattern}`);
             $("#highly_expressed_genes_card #top_up_genes .card-text").text(top_up);
-            $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
+            // hide the down-regulated genes if NMF algorithm or if there are no negative values
+            if (top_down || !($('[name="projection_algo"]:checked').val() === "nmf") ) {
+                $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
+                $("#top_down_genes").show();
+            } else {
+                $("#top_down_genes").hide();
+            }
             $("#highly_expressed_genes_card").show();
         }
     }
