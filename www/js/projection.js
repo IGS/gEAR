@@ -504,16 +504,10 @@ function select_search_result(elm, draw_display=true) {
         const top_up = $(`.js-projection-pattern-elts-check[data-label=${escaped_pattern}]`).data('top-up') || undefined;
         const top_down = $(`.js-projection-pattern-elts-check[data-label=${escaped_pattern}]`).data('top-down') || undefined;
 
-        if (! (top_up === undefined)) {
+        if (top_up !== undefined) {
             $("#highly_expressed_genes_card .card-header").text(`Pattern ${pattern}`);
             $("#highly_expressed_genes_card #top_up_genes .card-text").text(top_up);
-            // hide the down-regulated genes if NMF algorithm or if there are no negative values
-            if (top_down || !($('[name="projection_algo"]:checked').val() === "nmf") ) {
-                $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
-                $("#top_down_genes").show();
-            } else {
-                $("#top_down_genes").hide();
-            }
+            $("#highly_expressed_genes_card #top_down_genes .card-text").text(top_down);
             $("#highly_expressed_genes_card").show();
         }
     }
@@ -529,6 +523,15 @@ function select_search_result(elm, draw_display=true) {
 function isNumeric(n) {
     return !isNaN(parseFloat(n)) && isFinite(n);
 }
+
+// If projection algorithm changes, remove the downregulated contributors
+$('input[name="projection_algo"]').change(() => {
+    if ($('[name="projection_algo"]:checked').val() === "nmf") {
+        $("#top_down_genes").hide();
+    } else {
+        $("#top_down_genes").show();
+    }
+});
 
 $('#search_results').on("click", "a", function(e) {
     e.preventDefault(); //prevent page scrolling to top
