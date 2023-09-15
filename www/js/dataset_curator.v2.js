@@ -619,12 +619,10 @@ const chooseDisplay = async (event) => {
         analysisSelect.update();
         document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
     } catch (error) {
-        console.error(error);
         // Show failure state things.
         document.getElementById("plot_type_s_failed").style.display = "";
         document.getElementById("analysis_type_select_c_failed").style.display = "";
         document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
-        return;
     } finally {
         document.getElementById("load_plot_s_success").style.display = "";
     }
@@ -716,12 +714,10 @@ const cloneDisplay = async (event, display) => {
         document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
         await chooseAnalysis();
     } catch (error) {
-        console.error(error);
         // Show failure state things.
         document.getElementById("plot_type_s_failed").style.display = "";
         document.getElementById("analysis_type_select_c_failed").style.display = "";
         document.getElementById(cloneId).classList.remove("is-loading"); // Don't give impression display is still loading
-        return;
     } finally {
         document.getElementById("load_plot_s_success").style.display = "";
     }
@@ -995,9 +991,8 @@ const fetchAnalyses = async (datasetId) => {
 
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not fetch saved analyses for this dataset. Please contact the gEAR team."
+        const msg = "Could not fetch saved analyses for this dataset. You can still create a plot but it will be based on the original dataset."
         createToast(msg);
-        //throw new Error(msg, {cause: error}); // ECMAscript 2022 nice-to-have
         throw new Error(msg);
     }
 }
@@ -1010,20 +1005,6 @@ const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch compatible plot types for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasetDisplay = async (display_id) => {
-    const payload = {display_id};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} = await axios.post("/cgi/get_dataset_display.cgi", convertToFormData(payload));
-        return data;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch this saved display for this dataset. Please contact the gEAR team."
         createToast(msg);
         throw new Error(msg);
     }
