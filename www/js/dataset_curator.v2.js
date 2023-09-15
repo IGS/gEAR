@@ -1048,7 +1048,8 @@ const fetchDatasetDisplays = async (user_id, dataset_id) => {
     try {
         // POST due to payload variables being sensitive
         const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
-        return data;
+        // Filter only the single-gene displays
+        return data.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch the saved displays for this dataset. Please contact the gEAR team."
