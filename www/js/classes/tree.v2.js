@@ -96,6 +96,11 @@ class Tree {
 
     }
 
+    // Find first node that matches condition. Implements Wunderbaum's findFirst() method.
+    findFirst(match) {
+        return this.tree.findFirst(match);
+    }
+
 }
 
 /**
@@ -263,6 +268,8 @@ class ProjectionSourceTree extends Tree {
 
     generateTree() { super.generateTree(); }
 
+    findFirst(match) { return super.findFirst(match); }
+
 }
 
 /**
@@ -350,6 +357,9 @@ class GeneCartTree extends Tree {
     }
 
     generateTree() { super.generateTree(); }
+
+    findFirst(match) { return super.findFirst(match); }
+
 }
 
 /**
@@ -447,6 +457,8 @@ class ProfileTree extends Tree {
 
     generateTree() { super.generateTree(); }
 
+    findFirst(match) { return super.findFirst(match); }
+
 }
 
 /**
@@ -533,4 +545,6 @@ class DatasetTree extends Tree {
     }
 
     generateTree() { super.generateTree(); }
+
+    findFirst(match) { return super.findFirst(match); }
 }

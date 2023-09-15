@@ -3,8 +3,6 @@
 
 'use strict';
 
-//TODO  - Create "error" reporting in each step
-
 let plotStyle;  // Plot style object
 
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
@@ -163,7 +161,6 @@ class PlotlyHandler extends PlotHandler {
             const data = await fetchPlotlyData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
             ({plot_json: plotJson} = data);
         } catch (error) {
-            // TODO: Make failure indicator
             return;
         }
 
@@ -176,7 +173,10 @@ class PlotlyHandler extends PlotHandler {
         plotContainer.append(divElt);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
-        // TODO: Throw error if "plotJson" is null
+        if (!plotJson) {
+            createToast("Could not retrieve plot information. Cannot make plot.");
+            return;
+        }
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
@@ -354,7 +354,6 @@ class ScanpyHandler extends PlotHandler {
             const data = await fetchTsneImageData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
             ({image} = data);
         } catch (error) {
-            // TODO: Make failure indicator
             return;
         }
 
@@ -366,6 +365,9 @@ class ScanpyHandler extends PlotHandler {
 
         if (image) {
             document.getElementById("tsne_preview").setAttribute("src", `data:image/png;base64,${image}`);
+        } else {
+            createToast("Could not retrieve plot image. Cannot make plot.");
+            return;
         }
     }
 
@@ -460,7 +462,6 @@ class SvgHandler extends PlotHandler {
         try {
             data = await fetchSvgData(datasetId, geneSymbol)
         } catch (error) {
-            // TODO: Make failure indicator
             return;
         }
         const plotContainer = document.getElementById("plot_container");
@@ -545,7 +546,7 @@ const datasetTree = new DatasetTree({
 
         // Clear (and update) options within nice-select2 structure.
         analysisObj = null;
-        analysisSelect.clear(); // BUG: Figure out why this is triggering gene-population twice (check function in Github)
+        analysisSelect.clear();
         geneSelect.clear();
         plotTypeSelect.clear();
 
@@ -674,7 +675,7 @@ const chooseGene = (event) => {
     document.getElementById("plot_options_s").click();
 }
 
-const choosePlotType = (event) => {
+const choosePlotType = async (event) => {
     if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
 
     // Do not display if default opt is chosen
@@ -695,7 +696,7 @@ const choosePlotType = (event) => {
     document.getElementById("current_plot_type_c").style.display = "";
     document.getElementById("current_plot_type").textContent = plotType;
 
-    includePlotParamOptions();
+    await includePlotParamOptions();
     document.getElementById("gene_s").click();
 }
 
@@ -713,6 +714,7 @@ const cloneDisplay = async (event, display) => {
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
         analysisSelect.update();
         document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
+        await chooseAnalysis();
     } catch (error) {
         console.error(error);
         // Show failure state things.
@@ -746,8 +748,9 @@ const cloneDisplay = async (event, display) => {
         }
 
         setSelectBoxByValue("plot_type_select", plotType);
-        plotTypeSelect.update();    // This should trigger fetching the right "plot" html files
-        trigger(document.getElementById("plot_type_select"), "change");
+        plotTypeSelect.update();
+        await choosePlotType();
+        // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
         console.error(error);
         document.getElementById("plot_type_s_failed").style.display = "";
@@ -771,20 +774,8 @@ const cloneDisplay = async (event, display) => {
     const config = display.plotly_config;
     setSelectBoxByValue("gene_select", config.gene_symbol);
     geneSelect.update();
-    trigger(document.getElementById("gene_select"), "change");
+    chooseGene();
 
-
-    if (plotlyPlots.includes(plotType)) {
-        plotStyle = new PlotlyHandler(plotType);
-    } else if (scanpyPlots.includes(plotType)) {
-        plotStyle = new ScanpyHandler(plotType);
-    } else if (plotType === "svg") {
-        plotStyle = new SvgHandler();
-    } else {
-        console.warn(`Plot type ${plotType} not recognized.`);
-        createToast("Could not populate plot options.");
-        return;
-    }
     plotStyle.cloneDisplay(config);
 
     // Mark plot params as success
@@ -904,26 +895,6 @@ const createPlot = async (event) => {
         plotBtn.classList.add("is-loading");
     }
 
-    // Delete unsupplied parameter configs
-    /*
-    for (const param in plotConfig) {
-        if (!plotConfig[param]) {
-            delete plotConfig[param];
-            continue
-        };
-        if (["object", "array"].includes(typeof(plotConfig[param]))) {
-            if (typeof(plotConfig[param]) === "object" && !Object.keys(plotConfig[param]).length) {
-                delete plotConfig[param];
-                continue
-            }
-            if (typeof(plotConfig[param]) === "array" && !(plotConfig[param].length)) {
-                delete plotConfig[param];
-                continue
-            };
-        }
-    }
-    */
-
     plotStyle.populatePlotConfig();
 
     const geneSymbol = getSelect2Value(geneSelect);
@@ -952,9 +923,6 @@ const createPlot = async (event) => {
     document.getElementById("content_c").style.display = "none";
     // Generate and display "post-plotting" view/container
     document.getElementById("post_plot_content_c").style.display = "";
-
-    // TODO: Add alert for non-success w/ message
-
 }
 
 const createPlotSelectInstance = () => {
@@ -976,17 +944,19 @@ const createToast = (msg, levelClass="is-danger") => {
     const html = generateElements(template);
 
 
-    if (document.querySelector(".notification")) {
-        // If notifications are present, append under final notification
+    if (document.querySelector(".notification:not(#guides_outer_c)")) {
+        // If notifications (not guide) are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".notification:last-child").insertAdjacentElement("afterend", html);
+        document.querySelector(".notification:not(#guides_outer_c):last-child").insertAdjacentElement("afterend", html);
+        // Position new toast under previous toast with CSS
+        html.style.setProperty("top", "unset");
     } else {
         // Otherwise prepend to top of main content
         document.getElementById("main_c").prepend(html);
     }
 
     // This should get the newly added notification since it is now the first
-    document.querySelector(".notification .delete").addEventListener("click", (event) => {
+    document.querySelector(".notification:not(#guides_outer_c) .delete").addEventListener("click", (event) => {
         const notification = event.target.parentNode;
         notification.parentNode.removeChild(notification);
     });
@@ -2066,9 +2036,8 @@ const updateGeneSymbolOptions = (geneSymbols) => {
     geneSelect.update();
 }
 
+// Update the params that will comprise the "order" section in post-plot view
 const updateOrderSortable = () => {
-    // TODO: Need to come up with a way to a) make a set of series, and remove a series if no params use it
-
     // Get all current plot param series for plotting order and save as a set
     const plotOrderElts = document.getElementsByClassName("js-plot-order");
     const seriesSet = new Set();
@@ -2172,22 +2141,26 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
 
 window.onload = () => {
 
-    loadDatasetTree();
+    loadDatasetTree().then(() => {
+        // I don't like to async/await the window.onload function so I use .then instead
 
-    // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has("dataset_id")) {
-        const linkedDatasetId = URLSearchParams.get("dataset_id");
-        try {
-            // TODO: test this
-            // find DatasetTree node and trigger "activate"
-            const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-            foundNode.setActive(true);
-            datasetId = linkedDatasetId;
-        } catch {
-            console.error(`Dataset id ${linkedDatasetId} was not returned as a public/private/shared dataset`);
+        // If brought here by the "gene search results" page, curate on the dataset ID that referred us
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("dataset_id")) {
+            const linkedDatasetId = urlParams.get("dataset_id");
+            try {
+                // find DatasetTree node and trigger "activate"
+                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+                foundNode.setActive(true);
+                datasetId = linkedDatasetId;
+            } catch (error) {
+                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+                throw new Error(error);
+            }
         }
-    }
+    }).catch((error) => {
+        logErrorInConsole(error);
+    });
 
     createAnalysisSelectInstance();
     createPlotSelectInstance();
@@ -2232,7 +2205,6 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     } finally {
         event.target.id.classList.add("is-loading");
     }
-    // TODO: Reload new displays if user goes back to parameter editing
 });
 
 document.getElementById("edit_params").addEventListener("click", () => {
