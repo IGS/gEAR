@@ -170,7 +170,7 @@
           </div>
           <div class="js-step-collapsable mt-3" idi="plot_type_collapsable">
             <div class="columns">
-              <div id="analysis_type_select_c" class="column is-3">
+              <div id="analysis_type_select_c" class="column is-4">
                 <div>Analysis (optional)
                   <span id="analysis_type_select_c_success" class="js-step-success icon has-text-success-dark" style="display:none;">
                     <i class="mdi mdi-check-circle"></i>
@@ -191,7 +191,7 @@
                   </select>
                 </div>
               </div>
-              <div id="plot_type_select_c" class="column is-3">
+              <div id="plot_type_select_c" class="column is-4">
                 <div>Plot type
                   <span id="plot_type_select_c_success" class="js-step-success icon has-text-success-dark" style="display:none;">
                     <i class="mdi mdi-check-circle"></i>
@@ -245,9 +245,9 @@
           </div>
           <div class="js-step-collapsable mt-3" id="gene_collapsable">
             <div class="columns">
-              <div id="gene_select_c" class="column is-3">
+              <div id="gene_select_c" class="column is-4">
                 <div class="select is-fullwidth">
-                  <select id="gene_select"></select>
+                  <select class="js-gene-select" id="gene_select"></select>
                 </div>
               </div>
             </div>
@@ -281,10 +281,17 @@
           <div id="current_info" class="content">
             <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
             <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold"></span></p>
-            <p>Gene: <span id="current_gene_post" class="has-text-weight-semibold"></span></p>
           </div>
           <div id="params_config_container">
             <p class="title is-4">Plot configuration</p>
+            <div class="field">
+              <label class="label has-text-weight-medium">Change gene</label>
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select class="js-gene-select" id="gene_select_post"></select>
+                </div>
+              </div>
+            </div>
             <section id="post_plot_adjustments" class="content">
             </section>
             <section id="order_and_colors">
@@ -302,7 +309,6 @@
           <div id="post_plot_actions_container" class="mt-3 columns is-multiline">
             <div class="column is-full">
               <button id="update_plot" class="button is-medium is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
-              <button id="save_json_config" class="button is-fullwidth ">Download config (JSON)</button>
               <button id="edit_params" class="button is-fullwidth">
                 <span class="icon is-pulled-left">
                   <i class="mdi mdi-arrow-left-thick"></i>
@@ -327,6 +333,11 @@
               <div class="field">
                 <div class="control">
                   <button id="save_display_btn" class="button is-fullwidth my-3">Save as new display</button>
+                </div>
+              </div>
+              <div class="field">
+                <div class="control">
+                  <button id="save_json_config" class="button is-fullwidth ">Download config (JSON)</button>
                 </div>
               </div>
             </div>

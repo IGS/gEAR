@@ -22,9 +22,14 @@
 
 .nice-select-dropdown {
     width: 100%;    /* Override auto-width setting by nice-select */
-    overflow-y: auto;
+}
+
+.nice-select .list {
+    overflow-y: scroll; /* Make it apparent that there are more options */
     overflow-x: hidden;
 }
+
+
 
 /* Toast-style notifications for actual alerts */
 .notification.js-toast {
@@ -48,6 +53,7 @@
 #params_config_container {
     overflow-y:auto;
     overflow-x:hidden;
+    /*flex: 1 0 auto;*/ /* flex-grow, flex-shrink, flex-basis */
 }
 
 #order_container li {
@@ -57,4 +63,21 @@
 /* Keep at a reasonable length */
 input[type=number] {
     width: 4em;
+}
+
+.nice-select .list::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+.nice-select .list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.nice-select .list::-webkit-scrollbar {
+    width: 10px;    /* overwrite nice-select default of 0 */
+}
+
+  /* Track */
+.nice-select .list::-webkit-scrollbar-track {
+    background: #f1f1f1;
 }

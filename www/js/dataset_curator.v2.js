@@ -17,6 +17,8 @@ let analysisObj = null;
 let analysisSelect = null;
 let plotTypeSelect = null;
 let geneSelect = null;
+let geneSelectPost = null;
+let colorscaleSelect = null;
 
 const userId = 622;     // ! It's me
 const sessionId = "ee95e48d-c512-4083-bf05-ca9f65e2c12a"    // ! It's me
@@ -35,6 +37,12 @@ This code uses a lot of "for...in..." and "for...of..." syntax
 "for...of..." is generally used to iterate over array (or collection) values, and will not work on objects
 
 Using "for...of..." over array.forEach means we don't have to transform HTMLCollections into arrays
+
+-- Nice-select2 --
+This code uses the nice-select2 library to style select boxes. The "select" is hidden and replaced with a new "div" element.
+If you select an option from the "select" element, or if you disable the "select" element,
+you must update the nice-select2 instance for it to reflect the change.
+
 */
 
 // Create PlotStyle abstract class and Plotly, Scanpy, SVG subclasses
@@ -99,6 +107,8 @@ class PlotlyHandler extends PlotHandler {
         , "js-plotly-hide-legend":"hide_legend"
         , "js-plotly-add-jitter":"jitter"
         , "js-plotly-marker-size":"marker_size"
+        , "js-plotly-color-palette":"color_palette"
+        , "js-plotly-reverse-palette":"reverse_palette"
     }
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -138,6 +148,11 @@ class PlotlyHandler extends PlotHandler {
                 console.error(error);
                 // pass
             }
+        }
+
+        if (config["color_palette"]) {
+            setSelectBoxByValue("color_palette", config["color_palette"]);
+            colorscaleSelect.update();
         }
 
         // Handle vlines
@@ -184,6 +199,31 @@ class PlotlyHandler extends PlotHandler {
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
 
+        // If any categorical series in ".js_plot_req", and the series has more then 20 groups, display a warning about overcrowding
+        const plotlyReqSeries = document.getElementsByClassName("js_plot_req");
+        const overcrowdedSeries = [...plotlyReqSeries].filter((series) => {
+            const seriesName = series.id.replace("_color", "");
+            const seriesGroups = levels[seriesName];
+            return seriesGroups.length > 20;
+        });
+        if (overcrowdedSeries.length) {
+            const template = `
+                <article class="message is-warning" id="overcrowded_series_warning">
+                    <div class="message-body">
+                        <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
+                    </div>
+                </article>
+            `
+            const elt = generateElements(template);
+            plotContainer.prepend(elt);
+
+            // Add event listener to delete button
+            const deleteButton = document.getElementById("overcrowded_series_warning").querySelector(".delete");
+            deleteButton.addEventListener("click", (event) => {
+                event.target.parentElement.parentElement.remove();
+            });
+        }
+
     }
 
     async loadPlotHtml() {
@@ -206,6 +246,9 @@ class PlotlyHandler extends PlotHandler {
         // populate advanced options for specific plot types
         const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
         const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+
+        // Load color palette select options
+        loadColorscaleSelect(true);
 
         if (["scatter", "tsne_dyna"].includes(this.plotType)) {
             const prePlot = "../include/plot_config/pre_plot/advanced_scatter.html";
@@ -319,12 +362,20 @@ class ScanpyHandler extends PlotHandler {
 
         if (config["colorize_legend_by"]) {
             const series = config["colorize_legend_by"];
-            for (const targetElt of [...plotBySeries, ...maxColumns, ...horizontalLegend]) {
+            for (const targetElt of [...plotBySeries, ...horizontalLegend]) {
                 targetElt.disabled = true;
                 if (catColumns.includes(series)) {
                     targetElt.disabled = false;
                 }
             }
+
+            // The "max columns" parameter is only available for categorical series
+            if (!(catColumns.includes(series))) {
+                for (const targetElt of maxColumns) {
+                    targetElt.disabled = true;
+                }
+            }
+
 
             // Handle colors
             if (config["colors"]) {
@@ -535,20 +586,22 @@ const datasetTree = new DatasetTree({
         document.getElementById("current_analysis_c").style.display = "none";
         document.getElementById("current_plot_type_c").style.display = "none";
 
+        datasetId = newDatasetId;
+
+        // Clear (and update) options within nice-select2 structure.
+        analysisObj = null;
+        createAnalysisSelectInstance();
+        createPlotSelectInstance();
+        createGeneSelectInstance();
+
         // Clear "success/failure" icons
         for (const elt of document.getElementsByClassName("js-step-success")) {
             elt.style.display = "none";
         }
 
-        datasetId = newDatasetId;
-
         document.getElementById("dataset_s_success").style.display = "";
 
-        // Clear (and update) options within nice-select2 structure.
-        analysisObj = null;
-        analysisSelect.clear();
-        geneSelect.clear();
-        plotTypeSelect.clear();
+
 
         // Fetch dataset information
         let ownerId;
@@ -604,8 +657,45 @@ const chooseAnalysis = async (event) => {
 
 }
 
-/* Display has been chosen, so display analysis and plot type options */
-const chooseDisplay = async (event) => {
+const chooseGene = (event) => {
+    if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
+
+    document.getElementById("gene_s_success").style.display = "";
+
+    // Display current selected gene
+    document.getElementById("current_gene_c").style.display = "";
+    document.getElementById("current_gene").textContent = getSelect2Value(geneSelect);
+
+    document.getElementById("plot_options_s").click();
+}
+
+const choosePlotType = async (event) => {
+    if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
+
+    // Do not display if default opt is chosen
+    const plotType = getSelect2Value(plotTypeSelect)
+    if (plotType === "nope") {
+        document.getElementById("plot_type_select_c_success").style.display = "none";
+        document.getElementById("plot_type_s_success").style.display = "none";
+        return;
+    }
+
+    document.getElementById("plot_type_select_c_failed").style.display = "none";
+    document.getElementById("plot_type_select_c_success").style.display = "";
+
+    document.getElementById("plot_type_s_failed").style.display = "none";
+    document.getElementById("plot_type_s_success").style.display = "";
+
+    // Display current selected plot type
+    document.getElementById("current_plot_type_c").style.display = "";
+    document.getElementById("current_plot_type").textContent = plotType;
+
+    await includePlotParamOptions();
+    document.getElementById("gene_s").click();
+}
+
+/* New display has been chosen, so display analysis and plot type options */
+const chooseNewDisplay = async (event) => {
     document.getElementById('new_display').classList.add("is-loading");
     document.getElementById("analysis_select").disabled = false;
 
@@ -649,6 +739,8 @@ const chooseDisplay = async (event) => {
         document.getElementById('new_display').classList.remove("is-loading");
     }
 
+    document.getElementById("plot_type_s").click();
+
     // Populate gene select element
     try {
         const geneSymbols = await fetchGeneSymbols(datasetId, null);
@@ -657,45 +749,6 @@ const chooseDisplay = async (event) => {
         document.getElementById("gene_s_failed").style.display = "";
     }
 
-    document.getElementById("plot_type_s").click();
-}
-
-const chooseGene = (event) => {
-    if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
-
-    document.getElementById("gene_s_success").style.display = "";
-
-    // Display current selected gene
-    document.getElementById("current_gene_c").style.display = "";
-    document.getElementById("current_gene").textContent = getSelect2Value(geneSelect);
-    document.getElementById("current_gene_post").textContent = getSelect2Value(geneSelect);
-
-    document.getElementById("plot_options_s").click();
-}
-
-const choosePlotType = async (event) => {
-    if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
-
-    // Do not display if default opt is chosen
-    const plotType = getSelect2Value(plotTypeSelect)
-    if (plotType === "nope") {
-        document.getElementById("plot_type_select_c_success").style.display = "none";
-        document.getElementById("plot_type_s_success").style.display = "none";
-        return;
-    }
-
-    document.getElementById("plot_type_select_c_failed").style.display = "none";
-    document.getElementById("plot_type_select_c_success").style.display = "";
-
-    document.getElementById("plot_type_s_failed").style.display = "none";
-    document.getElementById("plot_type_s_success").style.display = "";
-
-    // Display current selected plot type
-    document.getElementById("current_plot_type_c").style.display = "";
-    document.getElementById("current_plot_type").textContent = plotType;
-
-    await includePlotParamOptions();
-    document.getElementById("gene_s").click();
 }
 
 const cloneDisplay = async (event, display) => {
@@ -770,6 +823,7 @@ const cloneDisplay = async (event, display) => {
     const config = display.plotly_config;
     setSelectBoxByValue("gene_select", config.gene_symbol);
     geneSelect.update();
+    geneSelectPost.update();
     chooseGene();
 
     plotStyle.cloneDisplay(config);
@@ -863,13 +917,66 @@ const colorSVG = (chartData, plotConfig) => {
 }
 
 const createAnalysisSelectInstance = () => {
+    if (analysisSelect) analysisSelect.destroy();
+
     analysisSelect = NiceSelect.bind(document.getElementById("analysis_select"), {
         placeholder: 'Select an analysis.',
         allowClear: true,
     });
 }
 
+// Create the gradient for the canvas element using a given colorscale's information and the element HTML object
+const createCanvasGradient = (elem) => {
+    // Get ID of canvas element and remove "gradient_" from the name
+    const id = elem.id.replace("gradient_", "");
+    // Get the colorscale info for the given element (object is in plot_display_config.js)
+    const data = paletteInformation[id];
+
+    const ctx = elem.getContext("2d");  // canvas element
+    const grid = ctx.createLinearGradient(0, 0, elem.width, 0);    // Fill across but not down
+    // Add the colors to the gradient
+    for (const color of data) {
+        grid.addColorStop(color[0], color[1]);
+    }
+    // Fill the canvas with the gradient
+    ctx.fillStyle = grid;
+    ctx.fillRect(0, 0, elem.width, 20);
+}
+
+const createCanvasScale = (elem) =>  {
+    // Get ID of canvas element and remove "gradient_" from the name
+    const id = elem.id.replace("gradient_", "");
+    // Get the colorscale info for the given element (object is in plot_display_config.js)
+    const data = paletteInformation[id];
+
+    const elemWidth = elem.width;
+    const ctx = elem.getContext("2d");  // canvas element
+    // Add the colors to the scale
+    const { length } = data;
+    const width = elemWidth/length;   // 150 is length of canvas
+    for (const color of data) {
+        ctx.fillStyle = color[1];
+        // The length/length+1 is to account for the fact that the last color has a value of 1.0
+        // Otherwise the last color would be cut off
+        const x = color[0] * (length/(length+1)) * elemWidth;
+        ctx.fillRect(x, 0, width, 20);
+    }
+}
+
+const createColorscaleSelectInstance = (isContinuous=false) => {
+    if (colorscaleSelect) colorscaleSelect.destroy();
+
+    colorscaleSelect = NiceSelect.bind(document.getElementById("color_palette_post"), {
+        placeholder: 'Choose a color palette',
+        width: '50%',
+        minimumResultsForSearch: -1
+    });
+}
+
 const createGeneSelectInstance = () => {
+    if (geneSelect) geneSelect.destroy();
+    if (geneSelectPost) geneSelectPost.destroy();
+
     geneSelect = NiceSelect.bind(document.getElementById("gene_select"), {
         placeholder: 'To search, start typing a gene name',
         searchtext: 'To search, start typing a gene name',
@@ -877,7 +984,31 @@ const createGeneSelectInstance = () => {
         allowClear: true,
     });
 
-    // BUG: Figure out "scrollbar"
+    geneSelectPost = NiceSelect.bind(document.getElementById("gene_select_post"), {
+        placeholder: 'Select a gene.',
+        searchtext: 'Select a gene',
+        searchable: true,
+        allowClear: true,
+    });
+
+    // Create the event listener for the gene select elements
+    const geneSelects = document.querySelectorAll("select.js-gene-select");
+    for (const geneSelectElt of geneSelects) {
+        // Sync the select values
+        geneSelectElt.addEventListener("change", (event) => {
+            // get Value from the select2 element
+            const selectObj =  (event.target.id == "gene_select_post") ? geneSelectPost : geneSelect;
+            const val = getSelect2Value(selectObj);
+            // Set the value for all select elements
+            for (const elt of geneSelects) {
+                setSelectBoxByValue(elt.id, val);
+            }
+
+            // Update to trigger change in select2 element
+            geneSelect.update();
+            geneSelectPost.update();
+        });
+    }
 }
 
 const createPlot = async (event) => {
@@ -922,7 +1053,9 @@ const createPlot = async (event) => {
 }
 
 const createPlotSelectInstance = () => {
-    // Initialize plot types
+    if (plotTypeSelect) plotTypeSelect.destroy();
+
+    // Initialize fixed plot types
     plotTypeSelect = NiceSelect.bind(document.getElementById("plot_type_select"), {
         placeholder: 'Choose how to plot',
         minimumResultsForSearch: -1
@@ -940,10 +1073,10 @@ const createToast = (msg, levelClass="is-danger") => {
     const html = generateElements(template);
 
 
-    if (document.querySelector(".notification:not(#guides_outer_c)")) {
-        // If notifications (not guide) are present, append under final notification
+    if (document.querySelector(".js-toast.notification")) {
+        // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".notification:not(#guides_outer_c):last-child").insertAdjacentElement("afterend", html);
+        document.querySelector(".js-toast.notification:last-child").insertAdjacentElement("afterend", html);
         // Position new toast under previous toast with CSS
         html.style.setProperty("top", "unset");
     } else {
@@ -952,14 +1085,14 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 
     // This should get the newly added notification since it is now the first
-    document.querySelector(".notification:not(#guides_outer_c) .delete").addEventListener("click", (event) => {
+    document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
         const notification = event.target.parentNode;
         notification.parentNode.removeChild(notification);
     });
 
     // For a success message, remove it after 3 seconds
     if (levelClass === "is-success") {
-        const notification = document.querySelector(".notification:last-child");
+        const notification = document.querySelector(".js-toast.notification:last-child");
         notification.classList.remove("animate__fadeInUp");
         notification.classList.remove("animate__faster");
         notification.classList.add("animate__fadeOutDown");
@@ -1160,6 +1293,31 @@ const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, an
     }
 }
 
+// Create the template for the colorscale select2 option dropdown
+const formatColorscaleOptionText = (option, text, isContinuous=false) => {
+
+    const fragment = document.createDocumentFragment();
+    const canvas = document.createElement("canvas");
+    canvas.id = `gradient_${option.value}`;
+    canvas.width = 100;
+    canvas.height = 20;
+    canvas.classList.add("js-palette-canvas");
+
+    // BUG: Gradient does not show in the nice-select2 rendered option
+    if (isContinuous) {
+        createCanvasGradient(canvas);
+    } else {
+        createCanvasScale(canvas);
+    }
+    fragment.append(canvas);
+
+    const text_span = document.createElement("span");
+    text_span.classList.add("pl-1");
+    text_span.textContent = text;
+    fragment.append(text_span);
+    return fragment;
+}
+
 /* Get HTML element value to save into plot config */
 const getPlotConfigValueFromClassName = (className) => {
     // NOTE: Some elements are only present in certain plot type configurations
@@ -1231,6 +1389,38 @@ const includePlotParamOptions = async () => {
     setupParamValueCopyEvents(Object.keys(plotStyle.classElt2Prop));    // Ensure pre- and post- plot view params are synced up
     setupValidationEvents();        // Set up validation events required to plot at a minimum
     plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
+
+}
+
+// Load colorscale select2 object and populate with data
+const loadColorscaleSelect = (isContinuous=false) => {
+
+    let filteredPalettes = availablePalettes;
+
+    // If plot that uses continuous colorscales is chosen, then filter availablePalettes to only those for continuous plots
+    // If not continuous, then filter to only those for discrete plots
+    filteredPalettes = isContinuous ?
+        availablePalettes.filter((type) => type.continuous) :
+        availablePalettes.filter((type) => !type.continuous);
+
+    for (const palette of filteredPalettes) {
+        const label = palette.label;
+        const optgroup = document.createElement("optgroup");
+        optgroup.setAttribute("label", label);
+        for (const option of palette.options) {
+            const optionElt = document.createElement("option");
+            optionElt.value = option.value;
+            // Add canvas element information to option, which is converted to innerHTML by nice-select2._renderItem
+            optionElt.append(formatColorscaleOptionText(optionElt, option.text, isContinuous));
+            optgroup.append(optionElt);
+        }
+        document.getElementById("color_palette_post").append(optgroup);
+    }
+
+    // set default to purples
+    setSelectBoxByValue("color_palette_post", "purp");
+
+    createColorscaleSelectInstance(isContinuous);
 
 }
 
@@ -1328,7 +1518,7 @@ const renderColorPicker = (seriesName) => {
             : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
         counter++;
         const groupHtml = generateElements(`
-            <p class="is-flex is-justify-content-space-between">
+            <p class="is-flex is-justify-content-space-between pr-3">
                 <span class="has-text-weight-medium">${group}</span>
                 <input class="js-plot-color" id="${group}_color" type="color" value="${groupColor}" aria-label="Select a color" />
             </p>
@@ -1716,11 +1906,23 @@ const setupPlotlyOptions = async () => {
 
     // If color series is selected, let user choose colors.
     const colorSeriesElts = document.getElementsByClassName("js-plotly-color");
+    const colorPaletteElts = document.getElementsByClassName("js-plotly-color-palette");
+    const reversePaletteElts = document.getElementsByClassName("js-plotly-reverse-palette");
     for (const elt of colorSeriesElts) {
         elt.addEventListener("change", (event) => {
             if ((catColumns.includes(event.target.value))) {
                 renderColorPicker(event.target.value);
+                for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
+                    paletteElt.disabled = true;
+                }
+            } else {
+                // Enable the color palette select
+                for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
+                    paletteElt.disabled = false;
+                }
             }
+            // update disabled state of colorscale select2
+            colorscaleSelect.update();
         })
     }
 
@@ -1815,13 +2017,20 @@ const setupScanpyOptions = async () => {
     // Do certain things if the chosen annotation series is categorical or continuous
     for (const elt of colorizeLegendBy) {
         elt.addEventListener("change", (event) => {
-            for (const targetElt of [...plotBySeries, ...maxColumns, ...horizontalLegend]) {
+            for (const targetElt of [...plotBySeries, ...horizontalLegend]) {
                 targetElt.disabled = true;
                 // If colorized legend is continuous, we cannot plot by group
                 // So all dependencies need to be disabled.
                 if ((catColumns.includes(event.target.value))) {
                     renderColorPicker(event.target.value);
                     targetElt.disabled = false;
+                }
+            }
+
+            // The "max columns" parameter should only be disabled if the colorized legend is continuous
+            if (!(catColumns.includes(event.target.value))) {
+                for (const targetElt of maxColumns) {
+                    targetElt.disabled = true;
                 }
             }
         });
@@ -2014,8 +2223,19 @@ const updateGeneSymbolOptions = (geneSymbols) => {
         geneSelectElt.append(option);
     }
 
+    // copy to "#gene_select_post"
+    const geneSelectEltPost = document.getElementById("gene_select_post");
+    geneSelectEltPost.replaceChildren();
+    for (const gene of geneSymbols.sort()) {
+        const option = document.createElement("option");
+        option.textContent = gene;
+        option.value = gene;
+        geneSelectEltPost.append(option);
+    }
+
     // Update the nice-select2 element to reflect this.
     geneSelect.update();
+    geneSelectPost.update();
 }
 
 // Update the params that will comprise the "order" section in post-plot view
@@ -2080,6 +2300,12 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
     for (const elt of document.getElementsByClassName(classSelector)) {
         elt.replaceChildren();
 
+        // Create continuous and categorical optgroups
+        const contOptgroup = document.createElement("optgroup");
+        contOptgroup.setAttribute("label", "Continuous data");
+        const catOptgroup = document.createElement("optgroup");
+        catOptgroup.setAttribute("label", "Categorical data");
+
         // Append empty placeholder element
         const firstOption = document.createElement("option");
         elt.append(firstOption);
@@ -2087,7 +2313,7 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
         // Add an expression option (since expression is not in the categories)
         if (addExpression) {
             const expression = document.createElement("option");
-            elt.append(expression);
+            contOptgroup.append(expression);
             expression.textContent = "expression";
             expression.value = "raw_value";
             if ("raw_value" === defaultOption) {
@@ -2111,12 +2337,21 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
                 option.textContent = `${group} (from selected analysis)`;
             }
             option.value = group;
-            elt.append(option);
+            if (catColumns.includes(group)) {
+                catOptgroup.append(option);
+            } else {
+                contOptgroup.append(option);
+            }
             // NOTE: It is possible for a default option to not be in the list of groups.
             if (group === defaultOption) {
                 option.selected = true;
             }
         }
+
+        // Only append optgroup if it has children
+        if (contOptgroup.children.length) elt.append(contOptgroup);
+        if (catOptgroup.children.length) elt.append(catOptgroup);
+
     }
 
 }
@@ -2143,16 +2378,13 @@ window.onload = () => {
     }).catch((error) => {
         logErrorInConsole(error);
     });
-
-    createAnalysisSelectInstance();
-    createPlotSelectInstance();
-    createGeneSelectInstance();
 };
 
-document.getElementById("new_display").addEventListener("click", chooseDisplay);
+document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
 document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
 document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
 document.getElementById("gene_select").addEventListener("change", chooseGene);
+
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
     plotBtn.addEventListener("click", createPlot);
@@ -2160,7 +2392,7 @@ for (const plotBtn of plotBtns) {
 
 document.getElementById("save_json_config").addEventListener("click", () => {
     // Config plot configuration to JSON for sharing (or passing to API by hand)
-    const blob = new Blob([JSON.stringify({...this.plotConfig, plot_type:this.plotType})]);
+    const blob = new Blob([JSON.stringify({...plotStyle.plotConfig, plot_type:plotStyle.plotType})]);
     const link = document.createElement("a");
     link.download = "gEAR_plot_configuration.json";
     link.href = window.URL.createObjectURL(blob);
@@ -2171,6 +2403,7 @@ document.getElementById("save_json_config").addEventListener("click", () => {
         document.getElementById("save_json_config").classList.remove("is-success");
     }, 1000);
 });
+
 document.getElementById("save_display_btn").addEventListener("click", async (event) => {
     // Save new plot display.
     const label = document.getElementById("new_display_label").value;
