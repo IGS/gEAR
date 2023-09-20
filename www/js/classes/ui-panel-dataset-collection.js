@@ -83,8 +83,13 @@ class DatasetCollectionPanel {
             $("#dataset_grid").html(listViewHtml);
 
             // Anytime this happens, the annotation pane needs to be (re-)loaded
-            if (annotation_panel) {
-                annotation_panel = new FunctionalAnnotationPanel();
+            try {
+                if (annotation_panel) {
+                    annotation_panel = new FunctionalAnnotationPanel();
+                }
+            } catch {
+                //pass
+
             }
             
         }).fail((jqXHR, textStatus, errorThrown) => {
