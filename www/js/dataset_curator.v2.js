@@ -1537,6 +1537,17 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
     userDisplaysElt.replaceChildren();
     ownerDisplaysElt.replaceChildren();
 
+    // Add titles to each section if there are displays
+    if (userDisplays.length) {
+        const userTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Your Displays</p>`);
+        userDisplaysElt.append(userTitle);
+    }
+
+    if (ownerDisplays.length) {
+    const ownerTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Other Displays</p>`);
+    ownerDisplaysElt.append(ownerTitle);
+    }
+
     for (const display of userDisplays) {
         renderUserDisplayCard(display, defaultDisplayId)
     }
@@ -1614,8 +1625,12 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
                             <p class="subtitle is-6">Gene: ${geneSymbol}</p>
                         </div>
                         <footer class="card-footer buttons">
-                            <button class="js-display-default card-footer-item button is-primary" id="${display.id}_default">Set as Default</button>
-                            <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
+                            <p class="card-footer-item is-paddingless">
+                                <button class="js-display-default button is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
+                            </p>
+                            <p class="card-footer-item is-paddingless">
+                                <button class="button is-fullwidth  is-primary" id="${display.id}_clone">Clone</button>
+                            </p>
                         </footer>
                     </div>
                 </div>`;
@@ -1663,9 +1678,15 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
                             <p class="subtitle">Gene: ${geneSymbol}</p>
                         </div>
                         <footer class="card-footer ">
-                            <button class="js-display-default card-footer-item button is-primary" id="${display.id}_default">Set as Default</button>
-                            <button class="card-footer-item button is-primary" id="${display.id}_clone">Clone</button>
-                            <button class="card-footer-item button is-danger" id="${display.id}_delete">Delete</button>
+                            <p class="card-footer-item is-paddingless">
+                                <button class="js-display-default button is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
+                            </p>
+                            <p class="card-footer-item is-paddingless">
+                                <button class="button is-fullwidth  is-primary" id="${display.id}_clone">Clone</button>
+                            </p>
+                            <p class="card-footer-item is-paddingless">
+                                <button class="button is-fullwidth is-danger" id="${display.id}_delete">Delete</button>
+                            </p>
                         </footer>
                     </div>
                 </div>`;
