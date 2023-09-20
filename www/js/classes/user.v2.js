@@ -23,7 +23,7 @@ class User {
         const profileElt = document.getElementById("selected_profile");
         const searchParamElt = document.getElementById("search_param_profile");
 
-        if (!session_id) {
+        if (!this.session_id) {
             //User not logged in.
             if (! this.profile) {
                 //User did not change selected profile

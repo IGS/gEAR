@@ -2385,38 +2385,40 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
 }
 
 window.onload = () => {
+    // I don't like to async/await the window.onload function so I use .then instead
 
-    checkForLogin();
-    userId = CURRENT_USER.id;
-    sessionId = CURRENT_USER.session_id;
-    colorblindMode = CURRENT_USER.colorblind_mode;
-    Cookies.set('gear_session_id', sessionId, { expires: 7 });
-
-    if (! userId ) {
-        createToast("Not logged in so saving displays is disabled.");
-        document.getElementById("save_display_btn").disabled = true;
-    }
-
-    loadDatasetTree().then(() => {
-        // I don't like to async/await the window.onload function so I use .then instead
-
-        // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("dataset_id")) {
-            const linkedDatasetId = urlParams.get("dataset_id");
-            try {
-                // find DatasetTree node and trigger "activate"
-                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true);
-                datasetId = linkedDatasetId;
-            } catch (error) {
-                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                throw new Error(error);
-            }
+    checkForLogin().then(() => {
+        userId = CURRENT_USER.id;
+        sessionId = CURRENT_USER.session_id;
+        colorblindMode = CURRENT_USER.colorblind_mode;
+        Cookies.set('gear_session_id', sessionId, { expires: 7 });
+    }).finally(() => {
+        if (! userId ) {
+            createToast("Not logged in so saving displays is disabled.");
+            document.getElementById("save_display_btn").disabled = true;
         }
-    }).catch((error) => {
-        logErrorInConsole(error);
+
+        loadDatasetTree().then(() => {
+            // If brought here by the "gene search results" page, curate on the dataset ID that referred us
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has("dataset_id")) {
+                const linkedDatasetId = urlParams.get("dataset_id");
+                try {
+                    // find DatasetTree node and trigger "activate"
+                    const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+                    foundNode.setActive(true);
+                    datasetId = linkedDatasetId;
+                } catch (error) {
+                    createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+                    throw new Error(error);
+                }
+            }
+        }).catch((error) => {
+            logErrorInConsole(error);
+        });
+
     });
+
 };
 
 document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
@@ -2446,7 +2448,7 @@ document.getElementById("save_json_config").addEventListener("click", () => {
 document.getElementById("save_display_btn").addEventListener("click", async (event) => {
     // Save new plot display.
     const label = document.getElementById("new_display_label").value;
-    event.target.id.classList.add("is-loading");
+    event.target.classList.add("is-loading");
     try {
         const displayId = await saveDatasetDisplay(null, datasetId, userId, label, plotStyle.plotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
@@ -2457,7 +2459,7 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     } catch (error) {
         //pass - handled in functions
     } finally {
-        event.target.id.classList.add("is-loading");
+        event.target.classList.remove("is-loading");
     }
 });
 

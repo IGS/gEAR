@@ -1,3 +1,6 @@
+let session_id;
+let CURRENT_USER;
+
 document.addEventListener('DOMContentLoaded', () => {
     // Add listeners for any elements which have generic close controls
     // NOTE: ".delete" has Bulma CSS associated, which overwrites mdi icon classes
@@ -13,11 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const checkForLogin = async () => {
-    // success:  returns session_id
-    // failure:  returns null
-    const session_id = Cookies.get('gear_session_id');
+    session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
-
     if (! session_id || session_id === "undefined") {
         // no cookie found, so user is not logged in
         handleLoginUIUpdates();
@@ -34,7 +34,7 @@ const checkForLogin = async () => {
                 handleLoginUIUpdates();
             } else {
                 // session_id is invalid, so remove cookie
-                Cookies.remove('gear_session_id');
+                //Cookies.remove('gear_session_id');
                 throw new Error(`Invalid session_id: ${session_id}`);
             }
         } catch (error) {
@@ -45,7 +45,7 @@ const checkForLogin = async () => {
     // Now that session_id has been obtained, we can trigger events that depend on it
     trigger(document, "build_jstrees");
 
-    return session_id;
+    // NOTE: Initially this returned session_id, but we can grab that from the global CURRENT_USER
 }
 
 
