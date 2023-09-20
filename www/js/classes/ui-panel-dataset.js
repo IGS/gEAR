@@ -420,13 +420,18 @@ class DatasetPanel extends Dataset {
 
             const { id, title, ldesc, schematic_image } = panel;
             const infobox_tmpl = $.templates("#tmpl_infobox");
+
+            // check for any URLs in the description
+            const ldesc_with_urls = ldesc.replace(/https?:\/\/[^\s]+/g, "<a href='$&'>$&</a>");
+            
             const infobox_html = infobox_tmpl.render({
                 dataset_id: id,
                 primary_key,
                 title,
-                ldesc,
+                ldesc_with_urls,
                 schematic_image,
             });
+            
             $("#modals_c").html(infobox_html);
             $(`#dataset_${primary_key}_info`).modal("show");
         });
@@ -582,6 +587,22 @@ class DatasetPanel extends Dataset {
             this.show_error(message);
             throw message
         } finally {
+            // log the search to user history
+            /*
+            $.ajax({
+                type: "POST",
+                url: "./cgi/add_to_user_history.cgi",
+                async: false,
+                data: {
+                    'session_id': session_id,
+                    'entry_category': 'projection_run',
+                    'layout_share_id': 'foo',
+                    'source_id': projection_source,
+                },
+                dataType: "json"
+            })
+            */
+            
             this.performing_projection = false;
         }
     }
