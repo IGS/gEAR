@@ -1840,13 +1840,6 @@ const setupPlotlyOptions = async () => {
         const continuousColumns = difference(allColumns, catColumns);
 
         updateSeriesOptions("js-plotly-size", continuousColumns, true);
-    }
-
-    if (["scatter", "tsne_dyna"].includes(plotType)) {
-        const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
-        const continuousColumns = difference(allColumns, catColumns);
-
-        updateSeriesOptions("js-plotly-size", continuousColumns, true);
 
         // If x-axis is continuous show vline stuff, otherwise hide
         // If x-axis is categorical, enable jitter plots
@@ -1908,6 +1901,7 @@ const setupPlotlyOptions = async () => {
     const colorSeriesElts = document.getElementsByClassName("js-plotly-color");
     const colorPaletteElts = document.getElementsByClassName("js-plotly-color-palette");
     const reversePaletteElts = document.getElementsByClassName("js-plotly-reverse-palette");
+    const hideLegend = document.getElementsByClassName("js-plotly-hide-legend");
     for (const elt of colorSeriesElts) {
         elt.addEventListener("change", (event) => {
             if ((catColumns.includes(event.target.value))) {
@@ -1915,10 +1909,16 @@ const setupPlotlyOptions = async () => {
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
                     paletteElt.disabled = true;
                 }
+                for (const legendElt of hideLegend) {
+                    legendElt.disabled = false;
+                }
             } else {
                 // Enable the color palette select
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
                     paletteElt.disabled = false;
+                }
+                for (const legendElt of hideLegend) {
+                    legendElt.disabled = true;
                 }
             }
             // update disabled state of colorscale select2
@@ -1939,11 +1939,21 @@ const setupPlotlyOptions = async () => {
     }
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
-    if (document.getElementById("x_axis_series").value) {
-        trigger(document.getElementById("x_axis_series"), "change");
+    const xSeries = getSelect2Value(document.getElementById("x_axis_series"));
+    const ySeries = getSelect2Value(document.getElementById("y_axis_series"));
+    if (xSeries.value) {
+        // If value is categorical, disable min and max boundaries
+        for (const elt of [...document.getElementsByClassName("js-plotly-x-min"), ...document.getElementsByClassName("js-plotly-x-max")]) {
+            elt.disabled = catColumns.includes(xSeries.value)
+        }
+        trigger(xSeries, "change");
     }
-    if (document.getElementById("y_axis_series").value) {
-        trigger(document.getElementById("y_axis_series"), "change");
+    if (ySeries.value) {
+        // If value is categorical, disable min and max boundaries
+        for (const elt of [...document.getElementsByClassName("js-plotly-y-min"), ...document.getElementsByClassName("js-plotly-y-max")]) {
+            elt.disabled = catColumns.includes(ySeries.value)
+        }
+        trigger(ySeries, "change");
     }
 
     // Setup the dropdown menu on the post-plot view
