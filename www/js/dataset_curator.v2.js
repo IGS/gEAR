@@ -20,12 +20,9 @@ let geneSelect = null;
 let geneSelectPost = null;
 let colorscaleSelect = null;
 
-const userId = 622;     // ! It's me
-const sessionId = "ee95e48d-c512-4083-bf05-ca9f65e2c12a"    // ! It's me
-const session_id = sessionId;
-const colorblindMode = false;
-
-Cookies.set('gear_session_id', sessionId, { expires: 7 });
+let userId;
+let sessionId;
+let colorblindMode;
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
@@ -1960,8 +1957,8 @@ const setupPlotlyOptions = async () => {
     }
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
-    const xSeries = getSelect2Value(document.getElementById("x_axis_series"));
-    const ySeries = getSelect2Value(document.getElementById("y_axis_series"));
+    const xSeries = document.getElementById("x_axis_series");
+    const ySeries = document.getElementById("y_axis_series");
     if (xSeries.value) {
         // If value is categorical, disable min and max boundaries
         for (const elt of [...document.getElementsByClassName("js-plotly-x-min"), ...document.getElementsByClassName("js-plotly-x-max")]) {
@@ -2388,6 +2385,17 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
 }
 
 window.onload = () => {
+
+    checkForLogin();
+    userId = CURRENT_USER.id;
+    sessionId = CURRENT_USER.session_id;
+    colorblindMode = CURRENT_USER.colorblind_mode;
+    Cookies.set('gear_session_id', sessionId, { expires: 7 });
+
+    if (! userId ) {
+        createToast("Not logged in so saving displays is disabled.");
+        document.getElementById("save_display_btn").disabled = true;
+    }
 
     loadDatasetTree().then(() => {
         // I don't like to async/await the window.onload function so I use .then instead

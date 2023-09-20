@@ -19,7 +19,7 @@ class User {
         this.profile = undefined;
     }
 
-    set_default_profile() {
+    setDefaultProfile() {
         const profileElt = document.getElementById("selected_profile");
         const searchParamElt = document.getElementById("search_param_profile");
 
@@ -32,7 +32,7 @@ class User {
 
             //Set profile to 'Hearing (default)'
             // TODO: Get this UI call out of here.
-            profileElt.textContent = this.profile;
+            //profileElt.textContent = this.profile;
             return;
         }
         //User is logged in.
@@ -46,9 +46,9 @@ class User {
 
         // Selected profile is empty if user has a domain selected as primary.
         // Populate it with that domain
-        if (profileElt.textContent == 'Empty') {
+        /*if (profileElt.textContent == 'Empty') {
             profileElt.textContent = this.profile;
             searchParamElt.textContent = this.profile;
-        }
+        }*/
     }
 }

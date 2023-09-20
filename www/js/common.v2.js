@@ -12,11 +12,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+const checkForLogin = async () => {
+    // success:  returns session_id
+    // failure:  returns null
+    const session_id = Cookies.get('gear_session_id');
+    CURRENT_USER = new User();
+
+    if (! session_id || session_id === "undefined") {
+        // no cookie found, so user is not logged in
+        handleLoginUIUpdates();
+    } else {
+        const payload = { session_id }
+        // we found a cookie, so see if it's a valid session
+        try {
+            const {data} = await axios.post("/cgi/get_session_info.cgi", convertToFormData(payload));
+
+            if (data.success) {
+                CURRENT_USER = new User({session_id, ...data});
+                CURRENT_USER.setDefaultProfile();
+                document.querySelector('#navbarBasicExample > div.navbar-end > div > div.navbar-item.has-dropdown.is-hoverable > a').textContent = CURRENT_USER.user_name;
+                handleLoginUIUpdates();
+            } else {
+                // session_id is invalid, so remove cookie
+                Cookies.remove('gear_session_id');
+                throw new Error(`Invalid session_id: ${session_id}`);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Now that session_id has been obtained, we can trigger events that depend on it
+    trigger(document, "build_jstrees");
+
+    return session_id;
+}
+
+
 /* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
 const generateElements = (html) => {
     const template = document.createElement('template');
     template.innerHTML = html.trim();
     return template.content.children[0];
+}
+
+const handleLoginUIUpdates = () => {
+    // pass
 }
 
 // Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)

@@ -103,7 +103,6 @@ class PlotlyData(Resource):
 
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
-        user = geardb.get_user_from_session_id(session_id)
         req = request.get_json()
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type')
