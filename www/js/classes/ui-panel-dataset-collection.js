@@ -87,11 +87,10 @@ class DatasetCollectionPanel {
                 if (annotation_panel) {
                     annotation_panel = new FunctionalAnnotationPanel();
                 }
-            } catch {
-                //pass
-
+            } catch (e) {
+                console.warn(e);
             }
-            
+
         }).fail((jqXHR, textStatus, errorThrown) => {
             display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
         });
@@ -167,7 +166,7 @@ class DatasetCollectionPanel {
                 display_error_bar(`${jqXHR.status} ${errorThrown.name}`);
             });
         }
-        
+
         //Was a search already performed?
         if (this.search_performed && !projection) {
             // User has already searched, automatically update datasets and gene searches

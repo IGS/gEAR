@@ -37,6 +37,9 @@ def main():
     for col in df.columns[2:]:
         up_genes = df.nlargest(n=5, columns=[col]).iloc[:, 1].tolist()
         down_genes = df.nsmallest(n=5, columns=[col]).iloc[:, 1].tolist()
+        # If smallest value is 0 or greater, then we also unset down_genes
+        if df[col].min() >= 0:
+            down_genes = ["No negative weights"]
 
         result.append({'label': col, "top_up":",".join(up_genes), "top_down":",".join(down_genes)})
 
