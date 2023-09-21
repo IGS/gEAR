@@ -114,7 +114,7 @@ class PlotlyHandler extends PlotHandler {
 
     cloneDisplay(config) {
         // plotly plots
-        for (const prop in this.configProp2ClassElt) {
+        for (const prop in config) {
             setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
         }
 
@@ -148,7 +148,7 @@ class PlotlyHandler extends PlotHandler {
         }
 
         if (config["color_palette"]) {
-            setSelectBoxByValue("color_palette", config["color_palette"]);
+            setSelectBoxByValue("color_palette_post", config["color_palette"]);
             colorscaleSelect.update();
         }
 
@@ -338,7 +338,7 @@ class ScanpyHandler extends PlotHandler {
     plotConfig = {};  // Plot config that is passed to API
 
     cloneDisplay(config) {
-        for (const prop in this.configProp2ClassElt) {
+        for (const prop in config) {
             setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
         }
 
@@ -492,7 +492,7 @@ class SvgHandler extends PlotHandler {
 
     cloneDisplay(config) {
         // Props are in a "colors" dict
-        for (const prop in this.configProp2ClassElt) {
+        for (const prop in config) {
             setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config.colors[prop]);
         }
 
@@ -656,9 +656,9 @@ const chooseAnalysis = async (event) => {
 }
 
 const chooseGene = (event) => {
-
     // If one select element was updated ensure the other is updated as well
     const select2 = event.target.id === "gene_select" ? geneSelect : geneSelectPost;
+    const oppSelect2 = event.target.id === "gene_select" ? geneSelectPost : geneSelect;
     const oppEltId = event.target.id === "gene_select" ? "gene_select_post" : "gene_select";
 
     if (!select2.selectedOptions.length) return;   // Do not trigger after initial population
@@ -669,8 +669,28 @@ const chooseGene = (event) => {
     // but this triggers the "change" event for the regular "select" element, which causes a max stack call error
     setSelectBoxByValue(oppEltId, val);
 
-    // Updating each select2 element after clicking "plot" or "go back"
-    // I believe updating both in the "change" event is causing noticeable slowdown/hanging
+    // copy data from one select2 to the other
+    // Render the dropdown for the other select2
+    oppSelect2.data = select2.data;
+    oppSelect2.options = select2.options;
+    oppSelect2.selectedOptions = select2.selectedOptions;
+
+    // Recreate update() function without the extractData() call, which is causing noticeable slowdown/hanging
+    if (oppSelect2.dropdown) {
+        const open = oppSelect2.dropdown.classList.contains("open");
+        oppSelect2.dropdown.parentNode.removeChild(oppSelect2.dropdown);
+        oppSelect2.create();
+
+        if (open) {
+        triggerClick(oppSelect2.dropdown);
+        }
+    }
+
+    if (oppSelect2.el.getAttribute("disabled")) {
+        oppSelect2.disable();
+    } else {
+        oppSelect2.enable();
+    }
 
     document.getElementById("gene_s_success").style.display = "";
     // Display current selected gene
@@ -835,7 +855,7 @@ const cloneDisplay = async (event, display) => {
     const config = display.plotly_config;
     setSelectBoxByValue("gene_select", config.gene_symbol);
     geneSelect.update();
-    geneSelect.triggerChange("gene_select"); // triggers chooseGene() with the right event target
+    trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to set the other select2
 
     plotStyle.cloneDisplay(config);
 
@@ -1012,10 +1032,6 @@ const createPlot = async (event) => {
     }
 
     plotStyle.populatePlotConfig();
-
-    // Updating gene select value of opposite select2 element to keep in sync
-    const select2 = event.target.id === "update_plot" ? geneSelect : geneSelectPost;
-    select2.update();
 
     const geneSymbol = getSelect2Value(geneSelect);
     plotStyle.plotConfig["gene_symbol"] = geneSymbol;
@@ -1384,7 +1400,7 @@ const includePlotParamOptions = async () => {
     // (since it checks every element in the js-plot-req class)
     setupParamValueCopyEvents(Object.keys(plotStyle.classElt2Prop));    // Ensure pre- and post- plot view params are synced up
     setupValidationEvents();        // Set up validation events required to plot at a minimum
-    plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
+    await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
 
 }
 
@@ -2489,6 +2505,6 @@ document.getElementById("edit_params").addEventListener("click", (event) => {
     document.getElementById("post_plot_content_c").style.display = "none";
 
     // Updating gene select value of 1st view to match 2nd view
-    geneSelect.update();
+    //geneSelect.update();
     event.target.classList.remove("is-loading");
 })
