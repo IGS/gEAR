@@ -587,22 +587,6 @@ class DatasetPanel extends Dataset {
             this.show_error(message);
             throw message
         } finally {
-            // log the search to user history
-            /*
-            $.ajax({
-                type: "POST",
-                url: "./cgi/add_to_user_history.cgi",
-                async: false,
-                data: {
-                    'session_id': session_id,
-                    'entry_category': 'projection_run',
-                    'layout_share_id': 'foo',
-                    'source_id': projection_source,
-                },
-                dataType: "json"
-            })
-            */
-            
             this.performing_projection = false;
         }
     }
