@@ -30,3 +30,17 @@ html, body {
 .step-active .js-step-collapsable {
     display: block;
 }
+
+/* "active step" class has same bg color as default disabled element color */
+.select select[disabled], [disabled].input {
+    border-color: grey;
+    background-color: lightgrey;
+}
+
+.select.is-success select{
+    border-color: #539400;  /* overwrite default success for .select */
+}
+
+.select.is-danger select{
+    border-color: #942400; /* overwrite default success for .select */
+}

@@ -644,25 +644,38 @@ const chooseAnalysis = async (event) => {
 
     if (analysisSelect.data.length < 5) return; // Have not retrieved analyses from API yet
 
-    // Populate gene select element
-    try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
-        updateGeneSymbolOptions(geneSymbols);
-    } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
+    if (analysisId) {
+        // Populate gene select element
+        try {
+            const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
+            updateGeneSymbolOptions(geneSymbols);
+        } catch (error) {
+            document.getElementById("gene_s_failed").style.display = "";
+        }
     }
-
 }
 
 const chooseGene = (event) => {
-    if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
+
+    // If one select element was updated ensure the other is updated as well
+    const select2 = event.target.id === "gene_select" ? geneSelect : geneSelectPost;
+    const oppEltId = event.target.id === "gene_select" ? "gene_select_post" : "gene_select";
+
+    if (!select2.selectedOptions.length) return;   // Do not trigger after initial population
+
+    const val = getSelect2Value(select2);
+
+    // NOTE: I thought about updating the select2 element directly with updateSelectValue()
+    // but this triggers the "change" event for the regular "select" element, which causes a max stack call error
+    setSelectBoxByValue(oppEltId, val);
+
+    // Updating each select2 element after clicking "plot" or "go back"
+    // I believe updating both in the "change" event is causing noticeable slowdown/hanging
 
     document.getElementById("gene_s_success").style.display = "";
-
     // Display current selected gene
     document.getElementById("current_gene_c").style.display = "";
-    document.getElementById("current_gene").textContent = getSelect2Value(geneSelect);
-
+    document.getElementById("current_gene").textContent = val;
     document.getElementById("plot_options_s").click();
 }
 
@@ -703,7 +716,6 @@ const chooseNewDisplay = async (event) => {
     try {
         const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        analysisSelect.update();
         document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
     } catch (error) {
         // Show failure state things.
@@ -753,6 +765,15 @@ const cloneDisplay = async (event, display) => {
     const cloneId = event.target.id;
     document.getElementById(cloneId).classList.add("is-loading");
 
+    // Populate gene select element
+    // Will be overwritten if an analysis was in config
+    try {
+        const geneSymbols = await fetchGeneSymbols(datasetId, null);
+        updateGeneSymbolOptions(geneSymbols);
+    } catch (error) {
+        document.getElementById("gene_s_failed").style.display = "";
+    }
+
     document.getElementById("analysis_select").disabled = false;
     document.getElementById("plot_type_select").disabled = false;
 
@@ -760,8 +781,9 @@ const cloneDisplay = async (event, display) => {
     try {
         const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        analysisSelect.update();
-        document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
+        // TODO update analysis select with config analysis
+
+        document.getElementById("analysis_type_select_c_success").style.display = "";
         await chooseAnalysis();
     } catch (error) {
         // Show failure state things.
@@ -809,19 +831,11 @@ const cloneDisplay = async (event, display) => {
         document.getElementById(cloneId).classList.remove("is-loading");
     }
 
-    // Populate gene select element
-    try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, null);
-        updateGeneSymbolOptions(geneSymbols);
-    } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
-    }
-
+    // Choose gene from config
     const config = display.plotly_config;
     setSelectBoxByValue("gene_select", config.gene_symbol);
     geneSelect.update();
-    geneSelectPost.update();
-    chooseGene();
+    geneSelect.triggerChange("gene_select"); // triggers chooseGene() with the right event target
 
     plotStyle.cloneDisplay(config);
 
@@ -829,10 +843,7 @@ const cloneDisplay = async (event, display) => {
     document.getElementById("plot_options_s_success").style.display = "";
 
     // Click "submit" button to load plot
-    //for (const elt of document.getElementsByClassName("js-plot-btn")) {
-    //    elt.disabled = false;
-    //}
-    document.getElementById("plot_btn").click();
+    document.getElementById("plot_btn").click();    // updates geneSelectPost by triggered "click" event
 
 }
 
@@ -987,25 +998,6 @@ const createGeneSelectInstance = () => {
         searchable: true,
         allowClear: true,
     });
-
-    // Create the event listener for the gene select elements
-    const geneSelects = document.querySelectorAll("select.js-gene-select");
-    for (const geneSelectElt of geneSelects) {
-        // Sync the select values
-        geneSelectElt.addEventListener("change", (event) => {
-            // get Value from the select2 element
-            const selectObj =  (event.target.id == "gene_select_post") ? geneSelectPost : geneSelect;
-            const val = getSelect2Value(selectObj);
-            // Set the value for all select elements
-            for (const elt of geneSelects) {
-                setSelectBoxByValue(elt.id, val);
-            }
-
-            // Update to trigger change in select2 element
-            geneSelect.update();
-            geneSelectPost.update();
-        });
-    }
 }
 
 const createPlot = async (event) => {
@@ -1020,6 +1012,10 @@ const createPlot = async (event) => {
     }
 
     plotStyle.populatePlotConfig();
+
+    // Updating gene select value of opposite select2 element to keep in sync
+    const select2 = event.target.id === "update_plot" ? geneSelect : geneSelectPost;
+    select2.update();
 
     const geneSymbol = getSelect2Value(geneSelect);
     plotStyle.plotConfig["gene_symbol"] = geneSymbol;
@@ -1047,6 +1043,9 @@ const createPlot = async (event) => {
     document.getElementById("content_c").style.display = "none";
     // Generate and display "post-plotting" view/container
     document.getElementById("post_plot_content_c").style.display = "";
+
+
+
 }
 
 const createPlotSelectInstance = () => {
@@ -1321,7 +1320,7 @@ const getPlotConfigValueFromClassName = (className) => {
 
     const classElts = document.getElementsByClassName(className);
 
-    if (classElts) {
+    if (classElts.length) {
         const elt = classElts[0];   // All elements for this class should have their checks and values synced up
         if (elt?.type == "checkbox") {
             return elt.checked;
@@ -1623,10 +1622,10 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
                         </div>
                         <footer class="card-footer buttons">
                             <p class="card-footer-item is-paddingless">
-                                <button class="js-display-default button is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
+                                <button class="js-display-default button is-responsive is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
                             </p>
                             <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth  is-primary" id="${display.id}_clone">Clone</button>
+                                <button class="button is-fullwidth is-responsive is-primary" id="${display.id}_clone">Clone</button>
                             </p>
                         </footer>
                     </div>
@@ -1676,13 +1675,13 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
                         </div>
                         <footer class="card-footer ">
                             <p class="card-footer-item is-paddingless">
-                                <button class="js-display-default button is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
+                                <button class="js-display-default button is-responsive is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
                             </p>
                             <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth  is-primary" id="${display.id}_clone">Clone</button>
+                                <button class="button is-fullwidth is-responsive is-primary" id="${display.id}_clone">Clone</button>
                             </p>
                             <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-danger" id="${display.id}_delete">Delete</button>
+                                <button class="button is-fullwidth is-responsive is-danger" id="${display.id}_delete">Delete</button>
                             </p>
                         </footer>
                     </div>
@@ -1786,7 +1785,7 @@ const setPlotTypeDisabledState = (plotType, isAllowed) => {
 
 /**
  * Set Select Box Selection By Value
- * Modified to set value and "selected" so nice-select2 update() will catch it
+ * Modified to set value and "selected" so nice-select2 extractData() will catch it
  * Taken from https://stackoverflow.com/a/20662180
  * @param eid Element ID
  * @param eval Element value
@@ -1796,7 +1795,7 @@ const setSelectBoxByValue = (eid, val) => {
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
             elt.value = val;
-            elt.options[i].selected = true;
+            elt.options[i].setAttribute("selected", true);
             return;
         }
     }
@@ -1832,9 +1831,17 @@ const setupPlotlyOptions = async () => {
     }
     catColumns = Object.keys(levels);
 
+    const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
+    const continuousColumns = difference(allColumns, catColumns);
+
     // class name, list of columns, add expression, default category
-    updateSeriesOptions("js-plotly-x-axis", allColumns, true);
-    updateSeriesOptions("js-plotly-y-axis", allColumns, true, "raw_value");
+
+    const xColumns = ["bar", "violin"].includes(plotType) ? catColumns : allColumns;
+    const xUseRaw = ["bar", "violin"].includes(plotType) ? false : true;
+    const yColumns = ["bar", "violin"].includes(plotType) ? continuousColumns : allColumns;
+
+    updateSeriesOptions("js-plotly-x-axis", xColumns, xUseRaw);
+    updateSeriesOptions("js-plotly-y-axis", yColumns, true, "raw_value");
     updateSeriesOptions("js-plotly-color", allColumns, true);
     updateSeriesOptions("js-plotly-label", allColumns, true);
     updateSeriesOptions("js-plotly-facet-row", catColumns, false);
@@ -1853,26 +1860,39 @@ const setupPlotlyOptions = async () => {
         }
     }
 
-    if (["scatter", "tsne_dyna"].includes(plotType)) {
-        const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
-        const continuousColumns = difference(allColumns, catColumns);
 
-        updateSeriesOptions("js-plotly-size", continuousColumns, true);
-
-        // If x-axis is continuous show vline stuff, otherwise hide
-        // If x-axis is categorical, enable jitter plots
-        const xAxisSeriesElts = document.getElementsByClassName("js-plotly-x-axis");
+    const xAxisSeriesElts = document.getElementsByClassName("js-plotly-x-axis");
+    // If x-axis is categorical, enable jitter plots
+    if (["violin", "scatter", "tsne_dyna"].includes(plotType)) {
         for (const elt of xAxisSeriesElts) {
             elt.addEventListener("change", (event) => {
-
                 const jitterElts = document.getElementsByClassName("js-plotly-add-jitter");
-                const vLinesContainer = document.getElementById("vlines_container")
-
                 if ((catColumns.includes(event.target.value))) {
                     // categorical x-axis
                     for (const jitterElt of jitterElts) {
                         jitterElt.style.display = "";
                     }
+                } else {
+                    for (const jitterElt of jitterElts) {
+                        jitterElt.style.display = "none";
+                        jitterElt.checked = false;
+                    }
+
+                }
+
+            });
+        }
+    }
+
+
+    if (["scatter", "tsne_dyna"].includes(plotType)) {
+        updateSeriesOptions("js-plotly-size", continuousColumns, true);
+        // If x-axis is continuous show vline stuff, otherwise hide
+        // If x-axis is categorical, enable jitter plots
+        for (const elt of xAxisSeriesElts) {
+            elt.addEventListener("change", (event) => {
+                const vLinesContainer = document.getElementById("vlines_container")
+                if ((catColumns.includes(event.target.value))) {
                     vLinesContainer.style.display = "none";
                     // Remove all but first existing vline
                     const toRemove = document.querySelectorAll(".js-plotly-vline-field:not(:first-of-type)");
@@ -1882,15 +1902,9 @@ const setupPlotlyOptions = async () => {
                     // Clear the first vline
                     document.querySelector(".js-plotly-vline-pos").value = "";
                     document.querySelector(".js-plotly-vline-style-select").value = "solid";
-                } else {
-                    for (const jitterElt of jitterElts) {
-                        jitterElt.style.display = "none";
-                        jitterElt.checked = false;
-                    }
-
-                    vLinesContainer.style.display = "";
-
+                    return;
                 }
+                vLinesContainer.style.display = "";
 
             });
         }
@@ -1930,6 +1944,7 @@ const setupPlotlyOptions = async () => {
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = false;
                 }
+                colorscaleSelect.disable()
             } else {
                 // Enable the color palette select
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
@@ -1938,9 +1953,8 @@ const setupPlotlyOptions = async () => {
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = true;
                 }
+                colorscaleSelect.enable()
             }
-            // update disabled state of colorscale select2
-            colorscaleSelect.update();
         })
     }
 
@@ -2230,7 +2244,7 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
         publicAnalysesElt.append(option);
     }
 
-    // Update seel
+    // Update select2
     analysisSelect.update();
 }
 
@@ -2262,8 +2276,8 @@ const updateGeneSymbolOptions = (geneSymbols) => {
     }
 
     // Update the nice-select2 element to reflect this.
+    // This function is always called in the 1st view, so only update that
     geneSelect.update();
-    geneSelectPost.update();
 }
 
 // Update the params that will comprise the "order" section in post-plot view
@@ -2424,7 +2438,11 @@ window.onload = () => {
 document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
 document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
 document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
-document.getElementById("gene_select").addEventListener("change", chooseGene);
+
+const geneSelectElts = document.querySelectorAll("select.js-gene-select");
+for (const geneSelectElt of geneSelectElts) {
+    geneSelectElt.addEventListener("change", chooseGene);
+}
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
@@ -2463,9 +2481,14 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     }
 });
 
-document.getElementById("edit_params").addEventListener("click", () => {
+document.getElementById("edit_params").addEventListener("click", (event) => {
+    event.target.classList.add("is-loading");
     // Hide this view
     document.getElementById("content_c").style.display = "";
     // Generate and display "post-plotting" view/container
     document.getElementById("post_plot_content_c").style.display = "none";
+
+    // Updating gene select value of 1st view to match 2nd view
+    geneSelect.update();
+    event.target.classList.remove("is-loading");
 })

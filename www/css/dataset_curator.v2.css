@@ -6,12 +6,6 @@
     color: #363636;
 }
 
-/* "active step" class has same bg color as default disabled element color */
-.select select[disabled], [disabled].input {
-    border-color: grey;
-    background-color: lightgrey;
-}
-
 .is-fullwidth .nice-select{
     width:100%;
 }
@@ -29,7 +23,11 @@
     overflow-x: hidden;
 }
 
-
+/* match nice-select disabled state style with select style from common.css */
+.select .nice-select.disabled {
+    border-color: grey;
+    background-color: lightgrey;
+}
 
 /* Toast-style notifications for actual alerts */
 .notification.js-toast {
