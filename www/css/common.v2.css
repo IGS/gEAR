@@ -41,6 +41,14 @@ html, body {
     border-color: #539400;  /* overwrite default success for .select */
 }
 
+.select.is-success:not(:hover)::after {
+    border-color: #539400; /* overwrite default success for .select */
+}
+
 .select.is-danger select{
+    border-color: #942400; /* overwrite default success for .select */
+}
+
+.select.is-danger:not(:hover)::after {
     border-color: #942400; /* overwrite default success for .select */
 }

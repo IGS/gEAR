@@ -364,6 +364,9 @@ class ScanpyHandler extends PlotHandler {
                 if (catColumns.includes(series)) {
                     targetElt.disabled = false;
                 }
+
+                // Applies to horizontal legend
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
             // The "max columns" parameter is only available for categorical series
@@ -389,6 +392,7 @@ class ScanpyHandler extends PlotHandler {
             for (const targetElt of skipGenePlot) {
                 targetElt.disabled = true;
                 targetElt.checked = false;
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             for (const targetElt of maxColumns) {
                 targetElt.disabled = false;
@@ -692,10 +696,24 @@ const chooseGene = (event) => {
         oppSelect2.enable();
     }
 
+    // Cannot plot if no gene is selected
+    if (document.getElementById("gene_select").value === "Please select a gene") {
+        document.getElementById("gene_s_failed").style.display = "";
+        document.getElementById("gene_s_success").style.display = "none";
+        document.getElementById("current_gene").textContent = "";
+        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+            plotBtn.disabled = true;
+        }
+        return;
+    }
+
+    document.getElementById("gene_s_failed").style.display = "none";
     document.getElementById("gene_s_success").style.display = "";
     // Display current selected gene
     document.getElementById("current_gene_c").style.display = "";
     document.getElementById("current_gene").textContent = val;
+    // Force validationcheck to see if plot button should be enabled
+    trigger(document.querySelector(".js-plot-req"), "change");
     document.getElementById("plot_options_s").click();
 }
 
@@ -1124,6 +1142,19 @@ const deleteDisplay = async(user_id, displayId) => {
         const msg = "Could not delete this display. Please contact the gEAR team."
         createToast(msg);
         throw new Error(msg);
+    }
+}
+
+const disableCheckboxLabel = (checkboxElt, state) => {
+    // if parent element is a .checkbox class, disable it too (uses Bulma CSS styling)
+    // Meant for checkboxes where the label is also a clickable element
+    // NOTE: ".disable" attribute only applies to certain elements (https://www.w3schools.com/tags/att_disabled.asp)
+    if (checkboxElt.parentElement.classList.contains("checkbox")) {
+        if (state) {
+            checkboxElt.parentElement.setAttribute("disabled", "");
+        } else {
+            checkboxElt.parentElement.removeAttribute("disabled");
+        }
     }
 }
 
@@ -1828,6 +1859,7 @@ const setupParamValueCopyEvents = (plotSpecificParams) => {
                     // Believe that programmatically changing the value does not trigger "change" (AKA no cascading)
                     classElt.disabled = event.target.disabled;
                     if (event.target.type == "checkbox") classElt.checked = event.target.checked;
+                    disableCheckboxLabel(classElt, classElt.disabled);
                 }
             });
         }
@@ -1886,12 +1918,14 @@ const setupPlotlyOptions = async () => {
                 if ((catColumns.includes(event.target.value))) {
                     // categorical x-axis
                     for (const jitterElt of jitterElts) {
-                        jitterElt.style.display = "";
+                        jitterElt.disabled = false;
+                        disableCheckboxLabel(jitterElt, false);
                     }
                 } else {
                     for (const jitterElt of jitterElts) {
-                        jitterElt.style.display = "none";
+                        jitterElt.disabled = true;
                         jitterElt.checked = false;
+                        disableCheckboxLabel(jitterElt, true);
                     }
 
                 }
@@ -1959,6 +1993,7 @@ const setupPlotlyOptions = async () => {
                 }
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = false;
+                    disableCheckboxLabel(legendElt, false);
                 }
                 colorscaleSelect.disable()
             } else {
@@ -1968,6 +2003,8 @@ const setupPlotlyOptions = async () => {
                 }
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = true;
+                    legendElt.checked = false;
+                    disableCheckboxLabel(legendElt, true);
                 }
                 colorscaleSelect.enable()
             }
@@ -2082,6 +2119,7 @@ const setupScanpyOptions = async () => {
                 if ((catColumns.includes(event.target.value))) {
                     renderColorPicker(event.target.value);
                     targetElt.disabled = false;
+                    disableCheckboxLabel(targetElt, false);
                 }
             }
 
@@ -2089,6 +2127,7 @@ const setupScanpyOptions = async () => {
             if (!(catColumns.includes(event.target.value))) {
                 for (const targetElt of maxColumns) {
                     targetElt.disabled = true;
+                    disableCheckboxLabel(targetElt, true);
                 }
             }
         });
@@ -2106,6 +2145,7 @@ const setupScanpyOptions = async () => {
             for (const targetElt of skipGenePlot) {
                 targetElt.disabled = event.target.value ? true : false;
                 if (event.target.value) targetElt.checked = false;
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             // Must be allowed to specify max columns if series value selected
             for (const targetElt of maxColumns) {
