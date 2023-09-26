@@ -46,6 +46,7 @@ window.onload=() => {
         // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
         await get_dataset_info($("#dataset_id").val());
         load_preliminary_figures($("#dataset_id").val());
+
     });
 
     // This series traps the <enter> key within each form and fires a click event on
@@ -857,7 +858,7 @@ async function get_dataset_info(dataset_id) {
         update_selected_dataset(ds);
         $("#dataset_info").show();
         $("#analysis_list_c").show();
-        analysis_labels = current_analysis.get_saved_analyses_list(ds.id, 0);
+        analysis_labels = current_analysis.get_saved_analyses_list(ds.id, 0, 'sc_workbench');
         done_working();
     }).fail((xhr, status, msg) => {
         report_error("Failed to access dataset");

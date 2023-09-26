@@ -128,7 +128,7 @@ class Analysis {
         });
     }
 
-    get_saved_analyses_list(dataset_id, selected_analysis_id) {
+    get_saved_analyses_list(dataset_id, selected_analysis_id, for_page) {
         $.ajax({
             type: "POST",
             url: "./cgi/get_stored_analysis_list.cgi",
@@ -138,13 +138,33 @@ class Analysis {
                 var empty_analysis_list_html = $('#analyses_list_empty_tmpl').html();
                 var al = new Set();
 
+                /*
+                  'primary' analysis is too vague.  That could include clustering and/or
+                   dimensionality reduction.  The workbench needs clustering to be present,
+                   while the curator can do fine with just UMAP.  Whether 'primary analysis'
+                   is added to the menu needs to take this into effect.
+                */
                 if (data['primary'].length > 0) {
-                    var primary_list_tmpl = $.templates("#analyses_list_tmpl");
-                    var primary_list_html = primary_list_tmpl.render(data['primary']);
-                    $("#analyses_primary").html(primary_list_html);
+                    if (for_page == 'sc_workbench') {
+                        if (data['primary'][0]['louvain']['calculated'] == true) {
+                            var primary_list_tmpl = $.templates("#analyses_list_tmpl");
+                            var primary_list_html = primary_list_tmpl.render(data['primary']);
+                            $("#analyses_primary").html(primary_list_html);
 
-                    for (var anum in data['primary']) {
-                        al.add(data['primary'][anum]['label']);
+                            for (var anum in data['primary']) {
+                                al.add(data['primary'][anum]['label']);
+                            }
+                        } else {
+                            $("#analyses_primary").html(empty_analysis_list_html);
+                        }
+                    } else {
+                        var primary_list_tmpl = $.templates("#analyses_list_tmpl");
+                        var primary_list_html = primary_list_tmpl.render(data['primary']);
+                        $("#analyses_primary").html(primary_list_html);
+
+                        for (var anum in data['primary']) {
+                            al.add(data['primary'][anum]['label']);
+                        }
                     }
                 } else {
                     $("#analyses_primary").html(empty_analysis_list_html);
