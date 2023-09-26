@@ -52,3 +52,7 @@ html, body {
 .select.is-danger:not(:hover)::after {
     border-color: #942400; /* overwrite default success for .select */
 }
+
+.js-tree {
+    max-height: 300px;  /* a) addresses long lists and b) addresses https://github.com/mar10/wunderbaum/issues/57 */
+}

@@ -3,78 +3,14 @@
 
 'use strict';
 
-let plotStyle;  // Plot style object
+const isMultigene = 0;
 
-//let plotConfig = {};  // Plot config that is passed to API or stored in DB
-let allColumns = [];
-let catColumns = [];
-let levels = {};    // categorical columns + groups
-
-let datasetId = null;
-let organismId = null;
-let analysisObj = null;
-
-let analysisSelect = null;
-let plotTypeSelect = null;
 let geneSelect = null;
-let geneSelectPost = null;
-let colorscaleSelect = null;
-
-let userId;
-let sessionId;
-let colorblindMode;
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 
-/*
-! Quick note -
-This code uses a lot of "for...in..." and "for...of..." syntax
-"for...in..." is generally used to iterate over object keys or array indexes
-"for...of..." is generally used to iterate over array (or collection) values, and will not work on objects
-
-Using "for...of..." over array.forEach means we don't have to transform HTMLCollections into arrays
-
--- Nice-select2 --
-This code uses the nice-select2 library to style select boxes. The "select" is hidden and replaced with a new "div" element.
-If you select an option from the "select" element, or if you disable the "select" element,
-you must update the nice-select2 instance for it to reflect the change.
-
-*/
-
-// Create PlotStyle abstract class and Plotly, Scanpy, SVG subclasses
-class PlotHandler {
-    constructor() {
-        // Check if this is an abstract class
-        // (new PlotStyle() will fail)
-        if (new.target === PlotHandler) throw new TypeError("Cannot construct PlotHandler instances directly");
-    }
-
-    // Certain groups like "display order" and "colors" and "vlines" will be custom-handled
-    classElt2Prop = {}; // This will be overridden by subclasses
-    configProp2ClassElt = {};   // This will be overridden by subclasses (note: cannot "super" instance properties)
-
-    cloneDisplay() {
-        throw new Error("You have to implement the method cloneDisplay!");
-    }
-
-    async createPlot() {
-        throw new Error("You have to implement the method createPlot!");
-    }
-
-    async loadPlotHtml() {
-        throw new Error("You have to implement the method loadPlotHtml!");
-    }
-
-    populatePlotConfig() {
-        throw new Error("You have to implement the method populatePlotConfig!");
-    }
-
-    setupPlotSpecificEvents() {
-        throw new Error("You have to implement the method setupPlotSpecificEvents!");
-    }
-
-}
+let geneSelectPost = null;
 
 // Class for methods that are common to all Plotly plot types
 class PlotlyHandler extends PlotHandler {
@@ -559,245 +495,6 @@ class SvgHandler extends PlotHandler {
 
 }
 
-const datasetTree = new DatasetTree({
-    element: document.getElementById("dataset_tree")
-    , searchElement: document.getElementById("dataset_query")
-    , selectCallback: (async (e) => {
-        if (e.node.type !== "dataset") {
-            return;
-        }
-        document.getElementById("current_dataset_c").style.display = "";
-        document.getElementById("current_dataset").textContent = e.node.title;
-        document.getElementById("current_dataset_post").textContent = e.node.title;
-
-        const newDatasetId = e.node.data.dataset_id;
-        organismId = e.node.data.organism_id;
-
-        // We don't want to needless run this if the same dataset was clicked
-        if (newDatasetId === datasetId) {
-            return;
-        }
-
-        // Click to get to next step
-        document.getElementById("load_plot_s").click();
-        document.getElementById('new_display').classList.add("is-loading");
-
-        // Clear "current <whatever>" text
-        document.getElementById("current_gene_c").style.display = "none";
-        document.getElementById("current_analysis_c").style.display = "none";
-        document.getElementById("current_plot_type_c").style.display = "none";
-
-        datasetId = newDatasetId;
-
-        // Clear (and update) options within nice-select2 structure.
-        analysisObj = null;
-        createAnalysisSelectInstance();
-        createPlotSelectInstance();
-        createGeneSelectInstance();
-
-        // Clear "success/failure" icons
-        for (const elt of document.getElementsByClassName("js-step-success")) {
-            elt.style.display = "none";
-        }
-
-        document.getElementById("dataset_s_success").style.display = "";
-
-
-
-        // Fetch dataset information
-        let ownerId;
-        try {
-            // Must wrap in parentheses - https://stackoverflow.com/a/48714713
-            ({owner_id: ownerId} = await fetchDatasetInfo(datasetId));
-        } catch (error) {
-            ownerId = -1;   // Owner displays wont be fetched regardless
-        }
-
-        // displays
-        const userDisplays = await fetchDatasetDisplays(userId, datasetId);
-        const ownerDisplays = userId === ownerId ? [] : await fetchDatasetDisplays(ownerId, datasetId);
-        let defaultDisplayId;
-        try {
-            defaultDisplayId = await fetchDefaultDisplay(userId, datasetId);
-        } catch (error) {
-            defaultDisplayId = -1;  // Cannot make any display a default.
-        }
-        renderDisplayCards(userDisplays, ownerDisplays, defaultDisplayId);
-        document.getElementById('new_display').classList.remove("is-loading");
-        document.getElementById('new_display').disabled = false;
-
-    })
-});
-
-const chooseAnalysis = async (event) => {
-    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
-    const analysisText = analysisId || "Primary Analysis";
-
-    // Display current selected analysis
-    document.getElementById("current_analysis_c").style.display = "";
-    document.getElementById("current_analysis").textContent = analysisText;
-    document.getElementById("current_analysis_post").textContent = analysisText;
-
-
-    // NOTE: For now, we can just pass analysis id only to tSNE and be fine
-    // Any private dataset will belong to our user. Any public datasets can be found by the API "get_analysis" code.
-    if (analysisId) {
-        analysisObj = {id: analysisId};
-    }
-
-    if (analysisSelect.data.length < 5) return; // Have not retrieved analyses from API yet
-
-    if (analysisId) {
-        // Populate gene select element
-        try {
-            const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
-            updateGeneSymbolOptions(geneSymbols);
-        } catch (error) {
-            document.getElementById("gene_s_failed").style.display = "";
-        }
-    }
-}
-
-const chooseGene = (event) => {
-    // If one select element was updated ensure the other is updated as well
-    const select2 = event.target.id === "gene_select" ? geneSelect : geneSelectPost;
-    const oppSelect2 = event.target.id === "gene_select" ? geneSelectPost : geneSelect;
-    const oppEltId = event.target.id === "gene_select" ? "gene_select_post" : "gene_select";
-
-    if (!select2.selectedOptions.length) return;   // Do not trigger after initial population
-
-    const val = getSelect2Value(select2);
-
-    // NOTE: I thought about updating the select2 element directly with updateSelectValue()
-    // but this triggers the "change" event for the regular "select" element, which causes a max stack call error
-    setSelectBoxByValue(oppEltId, val);
-
-    // copy data from one select2 to the other
-    // Render the dropdown for the other select2
-    oppSelect2.data = select2.data;
-    oppSelect2.options = select2.options;
-    oppSelect2.selectedOptions = select2.selectedOptions;
-
-    // Recreate update() function without the extractData() call, which is causing noticeable slowdown/hanging
-    if (oppSelect2.dropdown) {
-        const open = oppSelect2.dropdown.classList.contains("open");
-        oppSelect2.dropdown.parentNode.removeChild(oppSelect2.dropdown);
-        oppSelect2.create();
-
-        if (open) {
-        triggerClick(oppSelect2.dropdown);
-        }
-    }
-
-    if (oppSelect2.el.getAttribute("disabled")) {
-        oppSelect2.disable();
-    } else {
-        oppSelect2.enable();
-    }
-
-    // Cannot plot if no gene is selected
-    if (document.getElementById("gene_select").value === "Please select a gene") {
-        document.getElementById("gene_s_failed").style.display = "";
-        document.getElementById("gene_s_success").style.display = "none";
-        document.getElementById("current_gene").textContent = "";
-        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-            plotBtn.disabled = true;
-        }
-        return;
-    }
-
-    document.getElementById("gene_s_failed").style.display = "none";
-    document.getElementById("gene_s_success").style.display = "";
-    // Display current selected gene
-    document.getElementById("current_gene_c").style.display = "";
-    document.getElementById("current_gene").textContent = val;
-    // Force validationcheck to see if plot button should be enabled
-    trigger(document.querySelector(".js-plot-req"), "change");
-    document.getElementById("plot_options_s").click();
-}
-
-const choosePlotType = async (event) => {
-    if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
-
-    // Do not display if default opt is chosen
-    const plotType = getSelect2Value(plotTypeSelect)
-    if (plotType === "nope") {
-        document.getElementById("plot_type_select_c_success").style.display = "none";
-        document.getElementById("plot_type_s_success").style.display = "none";
-        return;
-    }
-
-    document.getElementById("plot_type_select_c_failed").style.display = "none";
-    document.getElementById("plot_type_select_c_success").style.display = "";
-
-    document.getElementById("plot_type_s_failed").style.display = "none";
-    document.getElementById("plot_type_s_success").style.display = "";
-
-    // Display current selected plot type
-    document.getElementById("current_plot_type_c").style.display = "";
-    document.getElementById("current_plot_type").textContent = plotType;
-
-    await includePlotParamOptions();
-    document.getElementById("gene_s").click();
-}
-
-/* New display has been chosen, so display analysis and plot type options */
-const chooseNewDisplay = async (event) => {
-    document.getElementById('new_display').classList.add("is-loading");
-    document.getElementById("analysis_select").disabled = false;
-
-    document.getElementById("plot_type_select").disabled = false;
-
-
-    // analyses
-    try {
-        const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
-        updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
-    } catch (error) {
-        // Show failure state things.
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("analysis_type_select_c_failed").style.display = "";
-        document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
-    } finally {
-        document.getElementById("load_plot_s_success").style.display = "";
-    }
-
-    // plot types
-    // NOTE: Believe updating "disabled" properties triggers the plotSelect "change" element
-    try {
-        const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, undefined);
-        for (const plotType in availablePlotTypes) {
-            const isAllowed = availablePlotTypes[plotType];
-            setPlotTypeDisabledState(plotType, isAllowed);
-
-        }
-        plotTypeSelect.update();
-    } catch (error) {
-        console.error(error);
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("plot_type_select_c_failed").style.display = "";
-        document.getElementById("plot_type_s_success").style.display = "none";
-        document.getElementById("plot_type_select_c_success").style.display = "none";
-
-        return;
-    } finally {
-        document.getElementById('new_display').classList.remove("is-loading");
-    }
-
-    document.getElementById("plot_type_s").click();
-
-    // Populate gene select element
-    try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, null);
-        updateGeneSymbolOptions(geneSymbols);
-    } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
-    }
-
-}
-
 const cloneDisplay = async (event, display) => {
 
     const cloneId = event.target.id;
@@ -807,7 +504,7 @@ const cloneDisplay = async (event, display) => {
     // Will be overwritten if an analysis was in config
     try {
         const geneSymbols = await fetchGeneSymbols(datasetId, null);
-        updateGeneSymbolOptions(geneSymbols);
+        updateGeneOptions(geneSymbols);
     } catch (error) {
         document.getElementById("gene_s_failed").style.display = "";
     }
@@ -816,21 +513,8 @@ const cloneDisplay = async (event, display) => {
     document.getElementById("plot_type_select").disabled = false;
 
     // analyses
-    try {
-        const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
-        updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        // TODO update analysis select with config analysis
-
-        document.getElementById("analysis_type_select_c_success").style.display = "";
-        await chooseAnalysis();
-    } catch (error) {
-        // Show failure state things.
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("analysis_type_select_c_failed").style.display = "";
-        document.getElementById(cloneId).classList.remove("is-loading"); // Don't give impression display is still loading
-    } finally {
-        document.getElementById("load_plot_s_success").style.display = "";
-    }
+    await analysisSelectUpdate();
+    // TODO update analysis select with config analysis
 
 
     // plot types
@@ -962,98 +646,59 @@ const colorSVG = (chartData, plotConfig) => {
 
 }
 
-const createAnalysisSelectInstance = () => {
-    if (analysisSelect) analysisSelect.destroy();
+const curatorSpecifcChooseGene = (event) => {
+    // If one select element was updated ensure the other is updated as well
+    const select2 = event.target.id === "gene_select" ? geneSelect : geneSelectPost;
+    const oppSelect2 = event.target.id === "gene_select" ? geneSelectPost : geneSelect;
+    const oppEltId = event.target.id === "gene_select" ? "gene_select_post" : "gene_select";
 
-    analysisSelect = NiceSelect.bind(document.getElementById("analysis_select"), {
-        placeholder: 'Select an analysis.',
-        allowClear: true,
-    });
-}
+    if (!select2.selectedOptions.length) return;   // Do not trigger after initial population
 
-// Create the gradient for the canvas element using a given colorscale's information and the element HTML object
-const createCanvasGradient = (elem) => {
-    // Get ID of canvas element and remove "gradient_" from the name
-    const id = elem.id.replace("gradient_", "");
-    // Get the colorscale info for the given element (object is in plot_display_config.js)
-    const data = paletteInformation[id];
+    const val = getSelect2Value(select2);
 
-    const ctx = elem.getContext("2d");  // canvas element
-    const grid = ctx.createLinearGradient(0, 0, elem.width, 0);    // Fill across but not down
-    // Add the colors to the gradient
-    for (const color of data) {
-        grid.addColorStop(color[0], color[1]);
-    }
-    // Fill the canvas with the gradient
-    ctx.fillStyle = grid;
-    ctx.fillRect(0, 0, elem.width, 20);
-}
+    // NOTE: I thought about updating the select2 element directly with updateSelectValue()
+    // but this triggers the "change" event for the regular "select" element, which causes a max stack call error
+    setSelectBoxByValue(oppEltId, val);
 
-const createCanvasScale = (elem) =>  {
-    // Get ID of canvas element and remove "gradient_" from the name
-    const id = elem.id.replace("gradient_", "");
-    // Get the colorscale info for the given element (object is in plot_display_config.js)
-    const data = paletteInformation[id];
+    // copy data from one select2 to the other
+    // Render the dropdown for the other select2
+    oppSelect2.data = select2.data;
+    oppSelect2.options = select2.options;
+    oppSelect2.selectedOptions = select2.selectedOptions;
 
-    const elemWidth = elem.width;
-    const ctx = elem.getContext("2d");  // canvas element
-    // Add the colors to the scale
-    const { length } = data;
-    const width = elemWidth/length;   // 150 is length of canvas
-    for (const color of data) {
-        ctx.fillStyle = color[1];
-        // The length/length+1 is to account for the fact that the last color has a value of 1.0
-        // Otherwise the last color would be cut off
-        const x = color[0] * (length/(length+1)) * elemWidth;
-        ctx.fillRect(x, 0, width, 20);
-    }
-}
+    // Recreate update() function without the extractData() call, which is causing noticeable slowdown/hanging
+    if (oppSelect2.dropdown) {
+        const open = oppSelect2.dropdown.classList.contains("open");
+        oppSelect2.dropdown.parentNode.removeChild(oppSelect2.dropdown);
+        oppSelect2.create();
 
-const createColorscaleSelectInstance = (isContinuous=false) => {
-    if (colorscaleSelect) colorscaleSelect.destroy();
-
-    colorscaleSelect = NiceSelect.bind(document.getElementById("color_palette_post"), {
-        placeholder: 'Choose a color palette',
-        width: '50%',
-        minimumResultsForSearch: -1
-    });
-}
-
-const createGeneSelectInstance = () => {
-    if (geneSelect) geneSelect.destroy();
-    if (geneSelectPost) geneSelectPost.destroy();
-
-    geneSelect = NiceSelect.bind(document.getElementById("gene_select"), {
-        placeholder: 'To search, start typing a gene name',
-        searchtext: 'To search, start typing a gene name',
-        searchable: true,
-        allowClear: true,
-    });
-
-    geneSelectPost = NiceSelect.bind(document.getElementById("gene_select_post"), {
-        placeholder: 'Select a gene.',
-        searchtext: 'Select a gene',
-        searchable: true,
-        allowClear: true,
-    });
-}
-
-const createPlot = async (event) => {
-
-    const plotType = getSelect2Value(plotTypeSelect);
-
-    const plotBtns = document.getElementsByClassName("js-plot-btn");
-
-    // Set loading
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.add("is-loading");
+        if (open) {
+        triggerClick(oppSelect2.dropdown);
+        }
     }
 
-    plotStyle.populatePlotConfig();
+    // Cannot plot if no gene is selected
+    if (document.getElementById("gene_select").value === "Please select a gene") {
+        document.getElementById("gene_s_failed").style.display = "";
+        document.getElementById("gene_s_success").style.display = "none";
+        document.getElementById("current_gene").textContent = "";
+        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+            plotBtn.disabled = true;
+        }
+        return;
+    }
 
-    const geneSymbol = getSelect2Value(geneSelect);
-    plotStyle.plotConfig["gene_symbol"] = geneSymbol;
+    document.getElementById("gene_s_failed").style.display = "none";
+    document.getElementById("gene_s_success").style.display = "";
+    // Display current selected gene
+    document.getElementById("current_gene_c").style.display = "";
+    document.getElementById("current_gene").textContent = val;
+    // Force validationcheck to see if plot button should be enabled
+    trigger(document.querySelector(".js-plot-req"), "change");
+    document.getElementById("plot_options_s").click();
+}
 
+const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
         plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
@@ -1068,66 +713,31 @@ const createPlot = async (event) => {
         return;
     }
 
-    // Stop loader
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.remove("is-loading");
-    }
+}
 
-    // Hide this view
-    document.getElementById("content_c").style.display = "none";
-    // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").style.display = "";
+const curatorSpecifcDatasetTreeCallback = () => {
 
-
+    // Create gene select2 elements for both views
+    geneSelect = createGeneSelectInstance(geneSelect);
+    geneSelectPost = createGeneSelectInstance(geneSelectPost);
 
 }
 
-const createPlotSelectInstance = () => {
-    if (plotTypeSelect) plotTypeSelect.destroy();
-
-    // Initialize fixed plot types
-    plotTypeSelect = NiceSelect.bind(document.getElementById("plot_type_select"), {
-        placeholder: 'Choose how to plot',
-        minimumResultsForSearch: -1
-    });
+const curatorSpecificOnLoad = async () => {
+    // pass
 }
 
-/* Creates a Toast-style message in the upper-corner of the screen. */
-const createToast = (msg, levelClass="is-danger") => {
-    const template = `
-    <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
-        <button class="delete"></button>
-        ${msg}
-    </div>
-    `
-    const html = generateElements(template);
-
-
-    if (document.querySelector(".js-toast.notification")) {
-        // If .js-toast notifications are present, append under final notification
-        // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-child").insertAdjacentElement("afterend", html);
-        // Position new toast under previous toast with CSS
-        html.style.setProperty("top", "unset");
-    } else {
-        // Otherwise prepend to top of main content
-        document.getElementById("main_c").prepend(html);
+const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
+    // copy to "#gene_select_post"
+    const geneSelectEltPost = document.getElementById("gene_select_post");
+    geneSelectEltPost.replaceChildren();
+    for (const gene of geneSymbols.sort()) {
+        const option = document.createElement("option");
+        option.textContent = gene;
+        option.value = gene;
+        geneSelectEltPost.append(option);
     }
 
-    // This should get the newly added notification since it is now the first
-    document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.parentNode;
-        notification.parentNode.removeChild(notification);
-    });
-
-    // For a success message, remove it after 3 seconds
-    if (levelClass === "is-success") {
-        const notification = document.querySelector(".js-toast.notification:last-child");
-        notification.classList.remove("animate__fadeInUp");
-        notification.classList.remove("animate__faster");
-        notification.classList.add("animate__fadeOutDown");
-        notification.classList.add("animate__slower");
-    }
 }
 
 const deleteDisplay = async(user_id, displayId) => {
@@ -1145,34 +755,6 @@ const deleteDisplay = async(user_id, displayId) => {
     }
 }
 
-const disableCheckboxLabel = (checkboxElt, state) => {
-    // if parent element is a .checkbox class, disable it too (uses Bulma CSS styling)
-    // Meant for checkboxes where the label is also a clickable element
-    // NOTE: ".disable" attribute only applies to certain elements (https://www.w3schools.com/tags/att_disabled.asp)
-    if (checkboxElt.parentElement.classList.contains("checkbox")) {
-        if (state) {
-            checkboxElt.parentElement.setAttribute("disabled", "");
-        } else {
-            checkboxElt.parentElement.removeAttribute("disabled");
-        }
-    }
-}
-
-const fetchAnalyses = async (datasetId) => {
-    try {
-        const { data } = await axios.get(`./api/h5ad/${datasetId}/analyses`);
-
-        const { public: publicAnalyses, private: privateAnalyses } = data;
-        return {publicAnalyses, privateAnalyses};
-
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch saved analyses for this dataset. You can still create a plot but it will be based on the original dataset."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
 const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis_id) => {
     const payload = {user_id, session_id, dataset_id, analysis_id};
     try {
@@ -1181,107 +763,6 @@ const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch compatible plot types for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasetDisplayImage = async (dataset_id, display_id) => {
-    const payload = {dataset_id, display_id};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} = await axios.post("/cgi/get_dataset_display_image.cgi", convertToFormData(payload));
-        return data
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch the image preview for this dataset display. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasetDisplays = async (user_id, dataset_id) => {
-    const payload = {user_id, dataset_id};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
-        // Filter only the single-gene displays
-        return data.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch the saved displays for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        return [];  // Send an empty list of displays
-    }
-}
-
-const fetchDatasetInfo = async (dataset_id) => {
-    const payload = {dataset_id};
-    try {
-        const {data} = await axios.post("/cgi/get_dataset_info.cgi", convertToFormData(payload));
-        const {title, is_public, owner_id} = data;
-        return {title, is_public, owner_id};
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch metadata for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasets = async (session_id) => {
-    const payload = {session_id}
-    try {
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
-        return data;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch datasets. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDefaultDisplay = async (user_id, dataset_id) => {
-    const payload = {user_id, dataset_id};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} =  await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
-        const {default_display_id} = data;
-        return default_display_id;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch default display for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchGeneSymbols = async (datasetId, analysisId) => {
-    let url = `./api/h5ad/${datasetId}/genes`;
-    if (analysisId) url += `?analysis_id=${analysisId}`;
-
-    try {
-        const { data } = await axios.get(url);
-        return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        return [];
-    }
-}
-
-const fetchH5adInfo = async (datasetId, analysisId) => {
-    let url = `/api/h5ad/${datasetId}`
-    if (analysisId) url += `?analysis_id=${analysisId}`;
-    try {
-        const {data} = await axios.get(url);
-        const { obs_columns, obs_levels } = data;
-        return { obs_columns, obs_levels };
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch H5AD observation data for this dataset. Please contact the gEAR team."
         createToast(msg);
         throw new Error(msg);
     }
@@ -1336,31 +817,6 @@ const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, an
     }
 }
 
-// Create the template for the colorscale select2 option dropdown
-const formatColorscaleOptionText = (option, text, isContinuous=false) => {
-
-    const fragment = document.createDocumentFragment();
-    const canvas = document.createElement("canvas");
-    canvas.id = `gradient_${option.value}`;
-    canvas.width = 100;
-    canvas.height = 20;
-    canvas.classList.add("js-palette-canvas");
-
-    // BUG: Gradient does not show in the nice-select2 rendered option
-    if (isContinuous) {
-        createCanvasGradient(canvas);
-    } else {
-        createCanvasScale(canvas);
-    }
-    fragment.append(canvas);
-
-    const text_span = document.createElement("span");
-    text_span.classList.add("pl-1");
-    text_span.textContent = text;
-    fragment.append(text_span);
-    return fragment;
-}
-
 /* Get HTML element value to save into plot config */
 const getPlotConfigValueFromClassName = (className) => {
     // NOTE: Some elements are only present in certain plot type configurations
@@ -1403,11 +859,6 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
     return updates;
 }
 
-const getSelect2Value = (select) => {
-    // Get value from select2 element
-    return select.selectedOptions[0].data.value;
-}
-
 const includePlotParamOptions = async () => {
     const plotType = getSelect2Value(plotTypeSelect);
 
@@ -1435,101 +886,6 @@ const includePlotParamOptions = async () => {
 
 }
 
-// Load colorscale select2 object and populate with data
-const loadColorscaleSelect = (isContinuous=false) => {
-
-    let filteredPalettes = availablePalettes;
-
-    // If plot that uses continuous colorscales is chosen, then filter availablePalettes to only those for continuous plots
-    // If not continuous, then filter to only those for discrete plots
-    filteredPalettes = isContinuous ?
-        availablePalettes.filter((type) => type.continuous) :
-        availablePalettes.filter((type) => !type.continuous);
-
-    for (const palette of filteredPalettes) {
-        const label = palette.label;
-        const optgroup = document.createElement("optgroup");
-        optgroup.setAttribute("label", label);
-        for (const option of palette.options) {
-            const optionElt = document.createElement("option");
-            optionElt.value = option.value;
-            // Add canvas element information to option, which is converted to innerHTML by nice-select2._renderItem
-            optionElt.append(formatColorscaleOptionText(optionElt, option.text, isContinuous));
-            optgroup.append(optionElt);
-        }
-        document.getElementById("color_palette_post").append(optgroup);
-    }
-
-    // set default to purples
-    setSelectBoxByValue("color_palette_post", "purp");
-
-    createColorscaleSelectInstance(isContinuous);
-
-}
-
-const logErrorInConsole = (error) => {
-    if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error(error.response.data);
-        console.error(error.response.status);
-        console.error(error.response.headers);
-    } else if (error.request) {
-        // The request was made but no response was received
-        // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-        // http.ClientRequest in node.js
-        console.error(error.request);
-    } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('Error', error.message);
-    }
-    console.error(error.config);
-}
-
-
-/* Transform and load dataset data into a "tree" format */
-const loadDatasetTree = async () => {
-    const userDatasets = [];
-    const sharedDatasets = [];
-    const domainDatasets = [];
-    try {
-        const datasetData = await fetchDatasets(sessionId);
-
-        let counter = 0;
-
-        // Populate select box with dataset information owned by the user
-        if (datasetData.user.datasets.length > 0) {
-            // User has some profiles
-            for (const item of datasetData.user.datasets) {
-                if (item) {
-                    userDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
-                }
-            };
-        }
-        // Next, add datasets shared with the user
-        if (datasetData.shared_with_user.datasets.length > 0) {
-            for (const item of datasetData.shared_with_user.datasets) {
-                if (item) {
-                    sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
-                }
-            };
-        }
-        // Now, add public datasets
-        if (datasetData.public.datasets.length > 0) {
-            for (const item of datasetData.public.datasets) {
-                if (item) {
-                    domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
-                }
-            };
-        }
-    } catch (error) {
-        document.getElementById("dataset_s_failed").style.display = "";
-    }
-    datasetTree.userDatasets = userDatasets;
-    datasetTree.sharedDatasets = sharedDatasets;
-    datasetTree.domainDatasets = domainDatasets;
-    datasetTree.generateTree();
-}
 
 const renderColorPicker = (seriesName) => {
     const colorsContainer = document.getElementById("colors_container");
@@ -1570,34 +926,6 @@ const renderColorPicker = (seriesName) => {
     }
 
     colorsSection.style.display = "";
-}
-
-const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId) => {
-    const userDisplaysElt = document.getElementById("user_displays");
-    const ownerDisplaysElt = document.getElementById("owner_displays");
-
-    // Empty existing displays
-    userDisplaysElt.replaceChildren();
-    ownerDisplaysElt.replaceChildren();
-
-    // Add titles to each section if there are displays
-    if (userDisplays.length) {
-        const userTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Your Displays</p>`);
-        userDisplaysElt.append(userTitle);
-    }
-
-    if (ownerDisplays.length) {
-    const ownerTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Other Displays</p>`);
-    ownerDisplaysElt.append(ownerTitle);
-    }
-
-    for (const display of userDisplays) {
-        renderUserDisplayCard(display, defaultDisplayId)
-    }
-
-    for (const display of ownerDisplays) {
-        renderOwnerDisplayCard(display, defaultDisplayId);
-    }
 }
 
 // Render the specific series as a sortable list, if it is not already
@@ -1642,173 +970,6 @@ const renderOrderSortableSeries = (series) => {
 
 }
 
-const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
-    let displayUrl = "";
-    try {
-        displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
-    } catch (error) {
-        displayUrl = "/img/dataset_previews/missing.png";
-    }
-    const geneSymbol = display.plotly_config.gene_symbol;
-
-    const label = display.label || `Unnamed ${display.plot_type} display`;
-
-    const template = `
-                <div id="${display.id}_display" class="column is-one-quarter">
-                    <div class="box card has-background-primary-light has-text-primary">
-                        <header class="card-header">
-                            <p class="card-header-title has-text-black">${label}</p>
-                        </header>
-                        <div class="card-image">
-                            <figure class="image is-4by3">
-                                <img src="${displayUrl} " alt="Saved display">
-                            </figure>
-                        </div>
-                        <div class="card-content">
-                            <p class="subtitle is-6">Gene: ${geneSymbol}</p>
-                        </div>
-                        <footer class="card-footer buttons">
-                            <p class="card-footer-item is-paddingless">
-                                <button class="js-display-default button is-responsive is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
-                            </p>
-                            <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-responsive is-primary" id="${display.id}_clone">Clone</button>
-                            </p>
-                        </footer>
-                    </div>
-                </div>`;
-
-    const htmlCollection = generateElements(template);
-    const ownerDisplaysElt = document.getElementById("owner_displays");
-    ownerDisplaysElt.append(htmlCollection);
-
-    // Edit default properties if this is the default display
-    const defaultElt = document.getElementById(`${display.id}_default`);
-    if (display.id === defaultDisplayId) {
-        defaultElt.textContent = "Default";
-        defaultElt.disabled = true;
-    }
-
-    defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
-    document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
-}
-
-const renderUserDisplayCard = async (display, defaultDisplayId) => {
-
-    let displayUrl = "";
-    try {
-        displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
-    } catch (error) {
-        displayUrl = "/img/dataset_previews/missing.png";
-    }
-    const geneSymbol = display.plotly_config.gene_symbol;
-
-    const label = display.label || "Unnamed display"; // Added text to keep "p" tag from collapsing
-
-    // TODO - Get footer button styles correct
-    const template = `
-                <div id="${display.id}_display" class="column is-one-quarter">
-                    <div class="box card has-background-primary-light has-text-primary">
-                        <header class="card-header">
-                            <p class="card-header-title has-text-black">${label}</p>
-                        </header>
-                        <div class="card-image">
-                            <figure class="image is-4by3">
-                                <img src="${displayUrl} " alt="Saved display">
-                            </figure>
-                        </div>
-                        <div class="card-content">
-                            <p class="subtitle">Gene: ${geneSymbol}</p>
-                        </div>
-                        <footer class="card-footer ">
-                            <p class="card-footer-item is-paddingless">
-                                <button class="js-display-default button is-responsive is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
-                            </p>
-                            <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-responsive is-primary" id="${display.id}_clone">Clone</button>
-                            </p>
-                            <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-responsive is-danger" id="${display.id}_delete">Delete</button>
-                            </p>
-                        </footer>
-                    </div>
-                </div>`;
-
-    const htmlCollection = generateElements(template);
-    const userDisplaysElt = document.getElementById("user_displays");
-    userDisplaysElt.append(htmlCollection);
-
-    // Edit default properties if this is the default display
-    const defaultElt = document.getElementById(`${display.id}_default`);
-    if (display.id === defaultDisplayId) {
-        defaultElt.textContent = "Default";
-        defaultElt.disabled = true;
-    }
-
-    defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
-    document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
-    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(userId, display.id));
-}
-
-const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
-    // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
-    const payload = {
-        id: displayId,
-        dataset_id,
-        user_id,
-        label,
-        plot_type,
-        plotly_config: JSON.stringify({
-            ...plotConfig,  // depending on display type, this object will have different properties
-        }),
-    };
-    if (!displayId) delete payload.id;  // Prevent passing in "null" as a string.
-
-    try {
-        const {data} = await axios.post("/cgi/save_dataset_display.cgi", convertToFormData(payload));
-        const {display_id, success} = data;
-        if (!success) {
-            throw new Error("Could not save this new display. Please contact the gEAR team.");
-        }
-
-        // Make new display card and make it the default display
-        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: payload.plotly_config}, display_id);
-
-        return display_id;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not save this new display. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const saveDefaultDisplay = async (displayId) => {
-    const payload = {display_id: displayId, user_id: userId, dataset_id: datasetId};
-    try {
-        const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
-        const {success} = data;
-        if (!success) {
-            throw new Error("Could not save this display as your default. Please contact the gEAR team.");
-        }
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not save this display as your default. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    };
-
-    //Update labels of displays... this becomes "Default", others become "Make Default"
-    for (const elt of document.getElementsByClassName("js-display-default")) {
-        elt.disabled = false;
-        elt.textContent = "Set as Default";
-    }
-
-    const currentDefaultElt = document.getElementById(`${displayId}_default`);
-    currentDefaultElt.disabled = true;
-    currentDefaultElt.textContent = "Default";
-}
-
 /* Set HTML element value from the plot config value */
 const setPlotEltValueFromConfig = (classSelector, confVal) => {
     for (const elt of document.getElementsByClassName(classSelector)) {
@@ -1818,15 +979,6 @@ const setPlotEltValueFromConfig = (classSelector, confVal) => {
         }
         elt.value = confVal;
         trigger(elt, "change");
-    }
-}
-
-/* Set disabled state for the given plot type. Also normalize plot type labels */
-const setPlotTypeDisabledState = (plotType, isAllowed) => {
-    if (plotType === "tsne/umap_dynamic") {
-        document.getElementById("tsne_dyna_opt").disabled = !isAllowed;
-    } else {
-        document.getElementById(`${plotType}_opt`).disabled = !isAllowed;
     }
 }
 
@@ -2258,84 +1410,6 @@ const showPostPlotlyParamSubsection = (event) => {
     event.preventDefault(); // Prevent "link" clicking from "a" elements
 }
 
-const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
-    const privateAnalysesElt = document.getElementById("private_analyses");
-    const publicAnalysesElt = document.getElementById("public_analyses");
-
-    // Empty the old optgroups
-    privateAnalysesElt.replaceChildren();
-    publicAnalysesElt.replaceChildren();
-
-    // Show message that no analyses are present if none exist
-    if (!privateAnalyses?.length) {
-        const option = document.createElement("option");
-        option.text = "You have no saved analyses for this dataset.";
-        option.disabled = true;
-        privateAnalysesElt.append(option);
-    }
-
-    if (!publicAnalyses?.length) {
-        const option = document.createElement("option");
-        option.text = "There are no public analyses for this dataset.";
-        option.disabled = true;
-        publicAnalysesElt.append(option);
-    }
-
-    // Load each analysis as an option
-    // NOTE: For now, we can just pass analysis id only to tSNE and be fine
-    for (const analysis of privateAnalyses) {
-        const option = document.createElement("option");
-        option.textContent = analysis.label;
-        option.value = analysis.id;
-        //option.dataset.type = analysis.type;
-        //option.dataset.owner_id = analysis.user_id;
-        privateAnalysesElt.append(option);
-    }
-    for (const analysis of publicAnalyses) {
-        const option = document.createElement("option");
-        option.textContent = analysis.label;
-        option.value = analysis.id;
-        //option.dataset.type = analysis.type;
-        //option.dataset.owner_id = analysis.user_id;
-        publicAnalysesElt.append(option);
-    }
-
-    // Update select2
-    analysisSelect.update();
-}
-
-const updateGeneSymbolOptions = (geneSymbols) => {
-    const geneSelectElt = document.getElementById("gene_select");
-
-    geneSelectElt.replaceChildren();
-
-    // Append empty placeholder element
-    const firstOption = document.createElement("option");
-    firstOption.textContent = "Please select a gene";
-    geneSelectElt.append(firstOption);
-
-    for (const gene of geneSymbols.sort()) {
-        const option = document.createElement("option");
-        option.textContent = gene;
-        option.value = gene;
-        geneSelectElt.append(option);
-    }
-
-    // copy to "#gene_select_post"
-    const geneSelectEltPost = document.getElementById("gene_select_post");
-    geneSelectEltPost.replaceChildren();
-    for (const gene of geneSymbols.sort()) {
-        const option = document.createElement("option");
-        option.textContent = gene;
-        option.value = gene;
-        geneSelectEltPost.append(option);
-    }
-
-    // Update the nice-select2 element to reflect this.
-    // This function is always called in the 1st view, so only update that
-    geneSelect.update();
-}
-
 // Update the params that will comprise the "order" section in post-plot view
 const updateOrderSortable = () => {
     // Get all current plot param series for plotting order and save as a set
@@ -2453,98 +1527,3 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
     }
 
 }
-
-window.onload = () => {
-    // I don't like to async/await the window.onload function so I use .then instead
-
-    checkForLogin().then(() => {
-        userId = CURRENT_USER.id;
-        sessionId = CURRENT_USER.session_id;
-        colorblindMode = CURRENT_USER.colorblind_mode;
-        Cookies.set('gear_session_id', sessionId, { expires: 7 });
-    }).finally(() => {
-        if (! userId ) {
-            createToast("Not logged in so saving displays is disabled.");
-            document.getElementById("save_display_btn").disabled = true;
-        }
-
-        loadDatasetTree().then(() => {
-            // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has("dataset_id")) {
-                const linkedDatasetId = urlParams.get("dataset_id");
-                try {
-                    // find DatasetTree node and trigger "activate"
-                    const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                    foundNode.setActive(true);
-                    datasetId = linkedDatasetId;
-                } catch (error) {
-                    createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                    throw new Error(error);
-                }
-            }
-        }).catch((error) => {
-            logErrorInConsole(error);
-        });
-
-    });
-
-};
-
-document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
-document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
-document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
-
-const geneSelectElts = document.querySelectorAll("select.js-gene-select");
-for (const geneSelectElt of geneSelectElts) {
-    geneSelectElt.addEventListener("change", chooseGene);
-}
-
-const plotBtns = document.getElementsByClassName("js-plot-btn");
-for (const plotBtn of plotBtns) {
-    plotBtn.addEventListener("click", createPlot);
-}
-
-document.getElementById("save_json_config").addEventListener("click", () => {
-    // Config plot configuration to JSON for sharing (or passing to API by hand)
-    const blob = new Blob([JSON.stringify({...plotStyle.plotConfig, plot_type:plotStyle.plotType})]);
-    const link = document.createElement("a");
-    link.download = "gEAR_plot_configuration.json";
-    link.href = window.URL.createObjectURL(blob);
-    link.click()
-    // Give confirmation
-    document.getElementById("save_json_config").classList.add("is-success");
-    setTimeout(() => {
-        document.getElementById("save_json_config").classList.remove("is-success");
-    }, 1000);
-});
-
-document.getElementById("save_display_btn").addEventListener("click", async (event) => {
-    // Save new plot display.
-    const label = document.getElementById("new_display_label").value;
-    event.target.classList.add("is-loading");
-    try {
-        const displayId = await saveDatasetDisplay(null, datasetId, userId, label, plotStyle.plotType, plotStyle.plotConfig);
-        createToast("Display saved.", "is-success");
-
-        if (document.getElementById("make_default_display_check").checked) {
-            saveDefaultDisplay(displayId);
-        }
-    } catch (error) {
-        //pass - handled in functions
-    } finally {
-        event.target.classList.remove("is-loading");
-    }
-});
-
-document.getElementById("edit_params").addEventListener("click", (event) => {
-    event.target.classList.add("is-loading");
-    // Hide this view
-    document.getElementById("content_c").style.display = "";
-    // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").style.display = "none";
-
-    // Updating gene select value of 1st view to match 2nd view
-    //geneSelect.update();
-    event.target.classList.remove("is-loading");
-})

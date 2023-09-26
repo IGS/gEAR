@@ -11,8 +11,8 @@ class Tree {
      * @param {Object} - Tree data.
      */
     constructor({
-        element
-        , searchElement
+        element // element node, not ID
+        , searchElement // same as above
         , selectCallback
     } = {}) {
         this.element = element; // Element to generate the tree structure on
@@ -312,7 +312,7 @@ class GeneCartTree extends Tree {
             [null, [], {key: "group_node", title: `Group gene carts (${this.groupGeneCarts.length})`, type: "folder"}],
             [null, [], {key: "shared_node", title: `Gene carts shared with you (${this.sharedGeneCarts.length})`, type: "folder"}],
             [null, [], {key: "public_node", title: `Public carts from other users (${this.publicGeneCarts.length})`, type: "folder"}],
-        ]
+        ];
 
         // Add all the folders first
         /*this.folders.forEach( (item) => {
