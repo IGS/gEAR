@@ -1,5 +1,6 @@
 import geardb
 import re
+import sys
 import urllib
 
 class UserHistory:
@@ -28,6 +29,7 @@ class UserHistory:
             'projection_run' -> patterns, algo, gene_cart, multi, layout_share_id
 
         """
+        print("DEBUG: UserHistory.add_record called, entry_category:{0}".format(entry_category), file=sys.stderr)
         match entry_category:
             case 'dataset_search':
                 if 'search_terms' in kwargs:
@@ -84,11 +86,21 @@ class UserHistory:
                 url += "&g={0}&multi=1&gsem=1".format(gene_string)
 
             case 'projection_run':
-                # looks like: https://nemoanalytics.org/p?p=p&multi=0&l=4e8f6c00&c=00be4b21&algo=pca
+                # looks like: https://nemoanalytics.org/p?p=p&multi=0&l=4e8f6c00& c=00be4b21 &algo=pca
                 if 'layout_share_id' in kwargs:
                     url = "/p?p=p&l={0}".format(kwargs['layout_share_id'])
                 else:
-                    raise Exception("ERROR: If recording a layout_added category, 'layout_share_id' must be passsed")
+                    raise Exception("ERROR: If recording a projection_run category, 'layout_share_id' must be passsed")
+
+                if 'multi' in kwargs:
+                    url += "&multi={0}".format(kwargs['multi'])
+                else:
+                    raise Exception("ERROR: If recording a projection_run category, 'multi' must be passsed")
+
+                if 'gene_cart' in kwargs:
+                    url += "&c={0}".format(kwargs['gene_cart'])
+                else:
+                    raise Exception("ERROR: If recording a projection_run category, 'gene_cart' must be passsed")
                 
             case _ :
                 raise Exception("ERROR: Invalid entry_category when calling UserHistory.add_record()")

@@ -610,6 +610,25 @@ $("#projection_search_form").submit((event) => {
         dataset_collection_panel.datasets.map((dataset) => {
             run_projection(dataset, projection_source, projection_algorithm, gctype, selected_projections, first_thing);
         });
+
+        // TODO, build the 'label' and add it here.
+        const history_label = 'Projection of ' + layout_id + ' into ' + projection_source + ' for datasets in profile <profilename>'
+
+        $.ajax({
+             type: "POST",
+             url: "./cgi/add_to_user_history.cgi",
+             async: false,
+             data: {
+                 'session_id': session_id,
+                 'entry_category': 'projection_run',
+                 'label': history_label,
+                 'layout_share_id': layout_id,
+                 'gene_cart': projection_source,
+                 'multi': multipattern ? 1 : 0
+             },
+             dataType: "json"
+         })
+        
         return false;  // keeps the page from not refreshing
     }
 
