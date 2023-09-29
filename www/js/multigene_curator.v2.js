@@ -178,16 +178,31 @@ class GenesAsDataHandler extends PlotHandler {
         // Split compare series and groups
         const refCondition = this.plotConfig["ref_condition"];
         const [combineSeries, refGroup] = refCondition.split(this.compareSeparator);
+        for (const classElt in document.getElementsByClassName("js-dash-compare")) {
+            classElt.value = combineSeries;
+        }
+        for (const classElt in document.getElementsByClassName("js-dash-reference")) {
+            classElt.value = refGroup;
+        }
 
         if (this.plotType === "volcano") {
             const queryCondition = this.plotConfig["query_condition"];
             const queryGroup = queryCondition.split(this.compareSeparator)[1];
+            for (const classElt in document.getElementsByClassName("js-dash-query")) {
+                classElt.value = queryGroup;
+            }
         }
         if (this.plotType === "quadrant") {
             const compare1Condition = this.plotConfig["compare1_condition"];
             const compare1Group = compare1Condition.split(this.compareSeparator)[1];
             const compare2Condition = this.plotConfig["compare2_condition"];
             const compare2Group = compare2Condition.split(this.compareSeparator)[1];
+            for (const classElt in document.getElementsByClassName("js-dash-compare1")) {
+                classElt.value = compare1Group;
+            }
+            for (const classElt in document.getElementsByClassName("js-dash-compare2")) {
+                classElt.value = compare2Group;
+            }
         }
     }
 
@@ -282,10 +297,9 @@ class GenesAsDataHandler extends PlotHandler {
 
         // These plot parameters do not directly correlate to a plot config property
         // So
-        for (const classElt in ["js-dash-compare", "js-dash-reference", "js-dash-query", "js-dash-compare1", "js-dash-compare2"]) {
+        for (const classElt of ["js-dash-compare", "js-dash-reference", "js-dash-query", "js-dash-compare1", "js-dash-compare2"]) {
             setupParamValueCopyEvent(classElt)
         }
-
 
         catColumns = await getCategoryColumns();
 
