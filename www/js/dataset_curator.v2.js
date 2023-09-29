@@ -6,11 +6,10 @@
 const isMultigene = 0;
 
 let geneSelect = null;
+let geneSelectPost = null;
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
-
-let geneSelectPost = null;
 
 // Class for methods that are common to all Plotly plot types
 class PlotlyHandler extends PlotHandler {
@@ -18,8 +17,6 @@ class PlotlyHandler extends PlotHandler {
         super();
         this.plotType = plotType;
     }
-
-    // TODO: Add color palette for continuous colors
 
     classElt2Prop = {
         "js-plotly-x-axis":"x_axis"
@@ -166,15 +163,8 @@ class PlotlyHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        const prePlot = "../include/plot_config/pre_plot/single_gene_plotly.html";
-        const preResponse = await fetch(prePlot, {cache: "reload"});
-        const preBody = await preResponse.text();
-        prePlotOptionsElt.innerHTML = preBody;
-
-        const postPlot = "../include/plot_config/post_plot/single_gene_plotly.html"
-        const postResponse = await fetch(postPlot, {cache: "reload"});
-        const postBody = await postResponse.text();
-        postPlotOptionsElt.innerHTML = postBody;
+        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/single_gene_plotly.html");
+        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/single_gene_plotly.html");
 
         // populate advanced options for specific plot types
         const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
@@ -184,27 +174,13 @@ class PlotlyHandler extends PlotHandler {
         loadColorscaleSelect(true);
 
         if (["scatter", "tsne_dyna"].includes(this.plotType)) {
-            const prePlot = "../include/plot_config/pre_plot/advanced_scatter.html";
-            const preResponse = await fetch(prePlot, {cache: "reload"});
-            const preBody = await preResponse.text();
-            prePlotSpecificOptionsElt.innerHTML = preBody;
-
-            const postPlot = "../include/plot_config/post_plot/advanced_scatter.html";
-            const postResponse = await fetch(postPlot, {cache: "reload"});
-            const postBody = await postResponse.text();
-            postPlotSpecificOptionselt.innerHTML = postBody;
+            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_scatter.html");
+            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_scatter.html");
             return;
         }
         if (this.plotType === "violin") {
-            const prePlot = "../include/plot_config/pre_plot/advanced_violin.html";
-            const preResponse = await fetch(prePlot, {cache: "reload"});
-            const preBody = await preResponse.text();
-            prePlotSpecificOptionsElt.innerHTML = preBody;
-
-            const postPlot = "../include/plot_config/post_plot/advanced_violin.html";
-            const postResponse = await fetch(postPlot, {cache: "reload"});
-            const postBody = await postResponse.text();
-            postPlotSpecificOptionselt.innerHTML = postBody;
+            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_violin.html");
+            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_violin.html");
             return;
         }
     }
@@ -366,15 +342,8 @@ class ScanpyHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        const prePlot = "../include/plot_config/pre_plot/tsne_static.html";
-        const preResponse = await fetch(prePlot, {cache: "reload"});
-        const preBody = await preResponse.text();
-        prePlotOptionsElt.innerHTML = preBody;
-
-        const postPlot = "../include/plot_config/post_plot/tsne_static.html"
-        const postResponse = await fetch(postPlot, {cache: "reload"});
-        const postBody = await postResponse.text();
-        postPlotOptionsElt.innerHTML = postBody;
+        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/tsne_static.html");
+        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/tsne_static.html");
     }
 
     populatePlotConfig() {
@@ -465,15 +434,8 @@ class SvgHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        const prePlot = "../include/plot_config/pre_plot/svg.html";
-        const preResponse = await fetch(prePlot, {cache: "reload"});
-        const preBody = await preResponse.text();
-        prePlotOptionsElt.innerHTML = preBody;
-
-        const postPlot = "../include/plot_config/post_plot/svg.html"
-        const postResponse = await fetch(postPlot, {cache: "reload"});
-        const postBody = await postResponse.text();
-        postPlotOptionsElt.innerHTML = postBody;
+        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/svg.html");
+        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/svg.html");
     }
 
     populatePlotConfig() {
@@ -718,13 +680,26 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 const curatorSpecifcDatasetTreeCallback = () => {
 
     // Create gene select2 elements for both views
-    geneSelect = createGeneSelectInstance(geneSelect);
-    geneSelectPost = createGeneSelectInstance(geneSelectPost);
+    geneSelect = createGeneSelectInstance("gene_select");
+    geneSelectPost = createGeneSelectInstance("gene_select_post");
 
 }
 
 const curatorSpecificOnLoad = async () => {
     // pass
+}
+
+const curatorSpecificPlotStyle = (plotType) => {
+    // include plotting backend options
+    if (plotlyPlots.includes(plotType)) {
+        return new PlotlyHandler(plotType);
+    } else if (scanpyPlots.includes(plotType)) {
+        return new ScanpyHandler(plotType);
+    } else if (plotType === "svg") {
+        return new SvgHandler();
+    } else {
+        return null;
+    }
 }
 
 const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
@@ -740,30 +715,17 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
 
 }
 
-const deleteDisplay = async(user_id, displayId) => {
-    const payload = {user_id, id: displayId};
-    try {
-        await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
-        // Remove display card
-        const displayCard = document.getElementById(`${displayId}_display`);
-        displayCard.remove();
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not delete this display. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
 const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis_id) => {
     const payload = {user_id, session_id, dataset_id, analysis_id};
     try {
         const {data} = await axios.post(`/api/h5ad/${dataset_id}/availableDisplayTypes`, payload);
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
+        }
         return data;
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not fetch compatible plot types for this dataset. Please contact the gEAR team."
-        createToast(msg);
+        createToast(error.message);
         throw new Error(msg);
     }
 }
@@ -817,34 +779,6 @@ const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, an
     }
 }
 
-/* Get HTML element value to save into plot config */
-const getPlotConfigValueFromClassName = (className) => {
-    // NOTE: Some elements are only present in certain plot type configurations
-
-    const classElts = document.getElementsByClassName(className);
-
-    if (classElts.length) {
-        const elt = classElts[0];   // All elements for this class should have their checks and values synced up
-        if (elt?.type == "checkbox") {
-            return elt.checked;
-        }
-        return elt.value || undefined;
-    }
-    return undefined;
-}
-
-/* Get order of series from sortable lists. Return object */
-const getPlotOrderFromSortable = () => {
-    const order = {};
-    for (const elt of document.getElementById("order_container").children) {
-        const series = elt.querySelector("p").textContent;
-        const serialized = sortable(`#${series}_order_list`, 'serialize')[0].items;
-        // Sort by "sortable" index position
-        order[series] = serialized.map((val) => val.label);
-    }
-    return order;
-}
-
 const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
     // Get updates and additions to plot from the plot_display_config JS object
     let updates = {};
@@ -857,33 +791,6 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
         }
     }
     return updates;
-}
-
-const includePlotParamOptions = async () => {
-    const plotType = getSelect2Value(plotTypeSelect);
-
-    // include plotting backend options
-    if (plotlyPlots.includes(plotType)) {
-        plotStyle = new PlotlyHandler(plotType);
-    } else if (scanpyPlots.includes(plotType)) {
-        plotStyle = new ScanpyHandler(plotType);
-    } else if (plotType === "svg") {
-        plotStyle = new SvgHandler();
-    } else {
-        console.warn(`Plot type ${plotType} not recognized.`)
-        return;
-    }
-
-    // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
-    await plotStyle.loadPlotHtml();
-
-    // NOTE: Events are triggered in the order they are regstered.
-    // We want to trigger a param sync event before the plot requirement validation
-    // (since it checks every element in the js-plot-req class)
-    setupParamValueCopyEvents(Object.keys(plotStyle.classElt2Prop));    // Ensure pre- and post- plot view params are synced up
-    setupValidationEvents();        // Set up validation events required to plot at a minimum
-    await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
-
 }
 
 
@@ -926,96 +833,6 @@ const renderColorPicker = (seriesName) => {
     }
 
     colorsSection.style.display = "";
-}
-
-// Render the specific series as a sortable list, if it is not already
-const renderOrderSortableSeries = (series) => {
-    const orderContainer = document.getElementById("order_container");
-
-    // If continouous series, cannot sort.
-    if (!catColumns.includes(series)) return;
-
-    // If series is used in another param, also return
-    // NOTE: if the original series is removed, the param will not simply be switch over to the new one.
-    if (document.getElementById(`${series}_order`)) return;
-
-    // Create parent template
-    // Designed so the title is a full row and the draggables are 50% width
-    const parentList = `<ul id="${series}_order_list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
-    const template = `
-        <div id="${series}_order" class="columns is-multiline">
-        <p id="${series}_order_title" class="has-text-weight-bold column is-full">${series}</p>
-        ${parentList}
-        </div
-    `;
-
-    const htmlCollection = generateElements(template);
-    orderContainer.append(htmlCollection);
-
-    // Add in list elements
-    for (const group of levels[series]) {
-        const listElt = `<li class="has-background-grey-lighter has-text-dark">${group}</li>`;
-        const listCollection = generateElements(listElt);
-        document.getElementById(`${series}_order_list`).append(listCollection);
-    }
-
-    // Create sortable for this series
-    sortable(`#${series}_order_list`, {
-        hoverClass: "has-text-weight-bold"
-        , itemSerializer(item, container) {
-            item.label = item.node.textContent
-            return item
-        },
-    });
-
-}
-
-/* Set HTML element value from the plot config value */
-const setPlotEltValueFromConfig = (classSelector, confVal) => {
-    for (const elt of document.getElementsByClassName(classSelector)) {
-        if (elt.type === "checkbox") {
-            elt.checked = confVal;
-            continue;
-        }
-        elt.value = confVal;
-        trigger(elt, "change");
-    }
-}
-
-/**
- * Set Select Box Selection By Value
- * Modified to set value and "selected" so nice-select2 extractData() will catch it
- * Taken from https://stackoverflow.com/a/20662180
- * @param eid Element ID
- * @param eval Element value
- */
-const setSelectBoxByValue = (eid, val) => {
-    const elt = document.getElementById(eid);
-    for (const i in elt.options) {
-        if (elt.options[i].value === val) {
-            elt.value = val;
-            elt.options[i].setAttribute("selected", true);
-            return;
-        }
-    }
-}
-
-/* Ensure all elements in this class have the same value */
-const setupParamValueCopyEvents = (plotSpecificParams) => {
-    for (const classSelector of plotSpecificParams) {
-        const classElts = document.getElementsByClassName(classSelector)
-        for (const elt of classElts) {
-            elt.addEventListener("change", (event) => {
-                for (const classElt of classElts) {
-                    classElt.value = event.target.value;
-                    // Believe that programmatically changing the value does not trigger "change" (AKA no cascading)
-                    classElt.disabled = event.target.disabled;
-                    if (event.target.type == "checkbox") classElt.checked = event.target.checked;
-                    disableCheckboxLabel(classElt, classElt.disabled);
-                }
-            });
-        }
-    }
 }
 
 /* Set up any Plotly-based plot options and events for the pre- and post- plot views */
@@ -1344,44 +1161,6 @@ const setupSVGOptions = () => {
     }
 }
 
-/* Setup a fail-fast validation trigger. */
-const setupValidationEvents = () => {
-    const validationElts = document.getElementsByClassName("js-plot-req");
-    for (const elt of validationElts ) {
-        elt.addEventListener("change", () => {
-            // Reset "status" classes
-            elt.classList.remove("is-success", "is-danger");
-            if (elt.value) {
-                elt.parentElement.classList.remove("is-danger");
-                elt.parentElement.classList.add("is-success");
-
-                // If every validation param has been filled out, it's OK to plot
-                // NOTE: need to ensure pre- and post- param elements are filled before this function is called
-                if ([...validationElts].every(element => element.value)) {
-                    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                        plotBtn.disabled = false;
-                    }
-                    document.getElementById("plot_options_s_success").style.display = "";
-                    document.getElementById("plot_options_s_failed").style.display = "none";
-                }
-
-                return;
-            }
-
-            // Required paramater has no value. Indicate it and disable plot buttons
-            elt.parentElement.classList.add("is-danger");
-            elt.parentElement.classList.remove("is-success");
-
-            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                plotBtn.disabled = true;
-            }
-            document.getElementById("plot_options_s_success").style.display = "none";
-            document.getElementById("plot_options_s_failed").style.display = "";
-        })
-    }
-
-}
-
 const showPostPlotlyParamSubsection = (event) => {
     for (const subsection of document.getElementsByClassName("js-plot-config-section")) {
         subsection.style.display = "none";
@@ -1408,122 +1187,4 @@ const showPostPlotlyParamSubsection = (event) => {
             break;
     }
     event.preventDefault(); // Prevent "link" clicking from "a" elements
-}
-
-// Update the params that will comprise the "order" section in post-plot view
-const updateOrderSortable = () => {
-    // Get all current plot param series for plotting order and save as a set
-    const plotOrderElts = document.getElementsByClassName("js-plot-order");
-    const seriesSet = new Set();
-    for (const elt of plotOrderElts) {
-        const series = elt.value;
-        // Only include categorical series
-        if (series && (catColumns.includes(series))) {
-            seriesSet.add(series);
-        }
-    }
-
-    // Get all current plotting order series and save as a set
-    const sortableElts = document.querySelectorAll(".js-plot-order-sortable p");
-    const sortableSet = new Set();
-    for (const elt of sortableElts) {
-        const series = elt.value;
-        // These series already are categorical
-        if (series) {
-            sortableSet.add(series);
-        }
-    }
-
-    // Three scenarios:
-    for (const series of seriesSet) {
-        // 1. Series is in both seriesSet and sortableSet, do nothing
-        if (sortableSet.has(series)) {
-            continue;
-        }
-        // 2. Series is in seriesSet but not sortableSet, add <series>_order element
-        renderOrderSortableSeries(series);
-    }
-
-    for (const series of sortableSet) {
-        // 3. Series is in sortableSet but not seriesSet, remove <series>_order element
-        if (!seriesSet.has(series)) {
-            const orderElt = document.getElementById(`${series}_order`);
-            orderElt.remove();
-        }
-    }
-
-
-    const orderContainer = document.getElementById("order_container");
-    const orderSection = document.getElementById("order_section");
-
-    // Pre-emptively hide the container but show it ass
-    if (!orderContainer.children.length) {
-        orderSection.style.display = "none";
-        return;
-    }
-
-    orderSection.style.display = "";
-
-}
-
-// For plotting options, populate select menus with category groups
-const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
-
-    for (const elt of document.getElementsByClassName(classSelector)) {
-        elt.replaceChildren();
-
-        // Create continuous and categorical optgroups
-        const contOptgroup = document.createElement("optgroup");
-        contOptgroup.setAttribute("label", "Continuous data");
-        const catOptgroup = document.createElement("optgroup");
-        catOptgroup.setAttribute("label", "Categorical data");
-
-        // Append empty placeholder element
-        const firstOption = document.createElement("option");
-        elt.append(firstOption);
-
-        // Add an expression option (since expression is not in the categories)
-        if (addExpression) {
-            const expression = document.createElement("option");
-            contOptgroup.append(expression);
-            expression.textContent = "expression";
-            expression.value = "raw_value";
-            if ("raw_value" === defaultOption) {
-                expression.selected = true;
-            }
-        }
-
-        // Add categories
-        for (const group of seriesArray.sort()) {
-            // Skip columns listed as "_colors" as they just provide colors for another series
-            if (group.includes("_colors")) continue;
-
-            const option = document.createElement("option");
-            option.textContent = group;
-            // Change X_pca/X_tsne/X_umap text content to be more user_friendly
-            if (group.includes("X_") && (
-                group.includes("pca")
-                || group.includes("tsne")
-                || group.includes("umap")
-            )) {
-                option.textContent = `${group} (from selected analysis)`;
-            }
-            option.value = group;
-            if (catColumns.includes(group)) {
-                catOptgroup.append(option);
-            } else {
-                contOptgroup.append(option);
-            }
-            // NOTE: It is possible for a default option to not be in the list of groups.
-            if (group === defaultOption) {
-                option.selected = true;
-            }
-        }
-
-        // Only append optgroup if it has children
-        if (contOptgroup.children.length) elt.append(contOptgroup);
-        if (catOptgroup.children.length) elt.append(catOptgroup);
-
-    }
-
 }

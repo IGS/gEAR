@@ -71,8 +71,19 @@ class MGAvailableDisplayTypes(Resource):
         if "replicate" in columns:
           columns.remove('replicate')
 
+        for col in columns:
+          if "_colors" in col:
+            columns.remove(col)
+
         # Filter only categorical columns
         categorical_columns = list(filter(lambda x: adata.obs[x].dtype.name == 'category', columns))
+
+        # If there are no categorical columns, then we can't draw any plots so return error
+        if len(categorical_columns) == 0:
+          return {
+            "success": -1,
+            'message': "No categorical columns found in this dataset, so plots cannot be drawn."
+          }
 
         # Volcano plots must have at least 2 distinct categorical columns
         if len(categorical_columns) < 2:

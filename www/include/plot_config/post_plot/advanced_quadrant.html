@@ -1,0 +1,43 @@
+<p class="is-flex is-justify-content-space-between pr-3">
+  <span class="has-text-weight-medium">Series to compare</span>
+  <span class="select is-small">
+      <select class="js-plot-req js-dash-compare" id="compare_series_post"></select>
+  </span>
+</p>
+
+<p class="is-flex is-justify-content-space-between pr-3">
+    <span class="has-text-weight-medium">1st comparison</span>
+    <span class="select is-small">
+        <select class="js-plot-req js-compare-groups js-dash-compare1" id="compare1_group_post"></select>
+    </span>
+</p>
+
+<p class="is-flex is-justify-content-space-between pr-3">
+    <span class="has-text-weight-medium">2nd comparison</span>
+    <span class="select is-small">
+        <select class="js-plot-req js-compare-groups js-dash-compare2" id="compare2_group_post"></select>
+    </span>
+</p>
+<p class="is-flex is-justify-content-space-between pr-3">
+    <span class="has-text-weight-medium">Reference</span>
+    <span class="select is-small">
+        <select class="js-plot-req js-compare-groups js-dash-reference" id="reference_group_post"></select>
+    </span>
+</p>
+<p class="help">All conditions must come from the same category.</p>
+
+<p class="is-flex is-justify-content-space-between pr-3 checkbox">
+  <span class="has-text-weight-medium">Fold-change cutoff</span>
+  <input class="js-dash-fc-cutoff" id="fc_cutoff_post" type="number" value="2" min="0" />
+</p>
+<p class="help">Choose the fold-change threshold that a query/reference comparison must exceed to be included. This value will be log2-transformed in plot.</p>
+<p class="is-flex is-justify-content-space-between pr-3 checkbox">
+  <span class="has-text-weight-medium">FDR cutoff</span>
+  <input class="js-dash-fdr-cutoff" id="fdr_cutoff_post" type="number" value="0.05" min="0" max="1" />
+</p>
+<p class="help">Choose the FDR (or qval) threshold a query/reference comparison must be under to be considered. Used in tandem with FDR cutoff.</p>
+<p class="is-flex is-justify-content-space-between pr-3 checkbox">
+  <span class="has-text-weight-medium">Include genes with FC of 0</span>
+  <input class="js-dash-include-zero-fc" id="include_zero_fc_post" type="checkbox" checked>
+</p>
+<p class="help">Include genes where the query and reference fold change ratio is 1 (log2FC = 0). This condition supercedes the fold-change threshold and adds these genes to that filtered set.</p>

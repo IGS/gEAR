@@ -153,7 +153,7 @@
             <span class="icon">
               <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
             </span>
-            <span>Select dataset analysis type and plot type</span>
+            <span>Select dataset plot type and analysis type</span>
             <span id="plot_type_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
               <i class="mdi mdi-check-circle"></i>
             </span>
@@ -258,7 +258,7 @@
               <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
               <div id="gene_tags" class="tags"></div>
             </div>
-            <button id="clear_genes_btn" class="content button is-secondary"> Clear selection</button>
+            <button id="clear_genes_btn" class="content button is-primary is-outlined"> Clear selection</button>
             <div id="continue_to_plot_options" class="content has-text-weight-semibold" style="display:none;">
               You can click on the "Select plotting options" section at any time
             </div>
@@ -295,7 +295,24 @@
           </div>
           <div id="params_config_container">
             <p class="title is-4">Plot configuration</p>
-            <section id="post_plot_adjustments" class="content">
+            <section id="post_plot_adjustments" class="content"></section>
+
+            <section id="plot_plot_global_adjustments" class="content">
+              <p class="is-flex is-justify-content-space-between pr-3">
+                <span class="has-text-weight-medium">Plot title</span>
+                <input class="js-dash-plot-title" id="plot_title_post" class="input" type="text" placeholder="Enter title of plot">
+              </p>
+              <p class="help">If left blank, plot will have a default title or no title.</p>
+              <p class="is-flex is-justify-content-space-between pr-3">
+                <span class="has-text-weight-medium">Legend title</span>
+                <input class="js-dash-legend-title" id="legend_title_post" class="input" type="text" placeholder="Enter title of legend">
+              </p>
+              <p class="help">If left blank, legend will have a default title.</p>
+            </section>
+            <section id="order_section" class="my-3" style="display:none;">
+              <p class="content title is-4">Change order</p>
+              <p class="help">Drag-and-drop to determine order of plotting</p>
+              <div id="order_container" class="container"></div>
             </section>
           </div>
           <div id="post_plot_actions_container" class="mt-3 columns is-multiline">

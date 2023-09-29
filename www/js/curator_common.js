@@ -127,8 +127,8 @@ const datasetTree = new DatasetTree({
 
         // Clear (and update) options within nice-select2 structure.
         analysisObj = null;
-        analysisSelect = createAnalysisSelectInstance(analysisSelect);
-        plotTypeSelect = createPlotTypeSelectInstance(plotTypeSelect);
+        analysisSelect = createAnalysisSelectInstance("analysis_select");
+        plotTypeSelect = createPlotTypeSelectInstance("plot_type_select");
 
         // Call any curator-specific callbacks
         curatorSpecifcDatasetTreeCallback();
@@ -171,8 +171,10 @@ const chooseAnalysis = async (event) => {
     if (analysisSelect.data.length < 5) return; // Have not retrieved analyses from API yet
 
     if (analysisId) {
-        await plotTypeSelectUpdate(analysisId);
-        await geneSelectUpdate(analysisId);
+        await Promise.all([
+            plotTypeSelectUpdate(analysisId)
+            , geneSelectUpdate(analysisId)
+        ]);
     }
 }
 
@@ -188,20 +190,16 @@ const chooseNewDisplay = async (event) => {
 
     document.getElementById("plot_type_select").disabled = false;
 
+    // update genes, analysis, and plot type selects in parallel
+    await Promise.all([
+        geneSelectUpdate(),
+        analysisSelectUpdate(),
+        plotTypeSelectUpdate()      // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
 
-    // analyses
-    await analysisSelectUpdate();
+    ]);
 
-    // plot types
-    // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
-    await plotTypeSelectUpdate();
     document.getElementById('new_display').classList.remove("is-loading");
-
     document.getElementById("plot_type_s").click();
-
-    // Populate gene select element
-    await geneSelectUpdate();
-
 }
 
 const choosePlotType = async (event) => {
@@ -229,14 +227,14 @@ const choosePlotType = async (event) => {
     document.getElementById("gene_s").click();
 }
 
-const createAnalysisSelectInstance = (analysisSelect) => {
+const createAnalysisSelectInstance = (idSelector, analysisSelect=null) => {
     // If object exists, just update it with the revised data and return
     if (analysisSelect) {
         analysisSelect.update();
         return analysisSelect;
     }
 
-    return NiceSelect.bind(document.getElementById("analysis_select"), {
+    return NiceSelect.bind(document.getElementById(idSelector), {
         placeholder: 'Select an analysis.',
         allowClear: true,
     });
@@ -280,21 +278,21 @@ const createCanvasScale = (elem) => {
     }
 }
 
-const createColorscaleSelectInstance = (colorscaleSelect) => {
+const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
     // If object exists, just update it with the revised data and return
     if (colorscaleSelect) {
         colorscaleSelect.update();
         return colorscaleSelect;
     }
 
-    return NiceSelect.bind(document.getElementById("color_palette_post"), {
+    return NiceSelect.bind(document.getElementById(idSelector), {
         placeholder: 'Choose a color palette',
         width: '50%',
         minimumResultsForSearch: -1
     });
 }
 
-const createGeneSelectInstance = (geneSelect) => {
+const createGeneSelectInstance = (idSelector, geneSelect=null) => {
     // NOTE: Updating the list of genes can be memory-intensive if there are a lot of genes
     // and (I've noticed) if multiple select2 elements for genes are present.
 
@@ -304,7 +302,7 @@ const createGeneSelectInstance = (geneSelect) => {
         return geneSelect;
     }
 
-    return NiceSelect.bind(document.getElementById("gene_select"), {
+    return NiceSelect.bind(document.getElementById(idSelector), {
         placeholder: 'To search, start typing a gene name',
         searchtext: 'To search, start typing a gene name',
         searchable: true,
@@ -312,7 +310,7 @@ const createGeneSelectInstance = (geneSelect) => {
     });
 }
 
-const createPlotTypeSelectInstance = (plotTypeSelect) => {
+const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
     // If object exists, just update it with the revised data and return
     if (plotTypeSelect) {
         plotTypeSelect.update();
@@ -320,7 +318,7 @@ const createPlotTypeSelectInstance = (plotTypeSelect) => {
     }
 
     // Initialize fixed plot types
-    return NiceSelect.bind(document.getElementById("plot_type_select"), {
+    return NiceSelect.bind(document.getElementById(idSelector), {
         placeholder: 'Choose how to plot',
         minimumResultsForSearch: -1
     });
@@ -392,6 +390,21 @@ const createToast = (msg, levelClass="is-danger") => {
         notification.classList.remove("animate__faster");
         notification.classList.add("animate__fadeOutDown");
         notification.classList.add("animate__slower");
+    }
+}
+
+const deleteDisplay = async(user_id, displayId) => {
+    const payload = {user_id, id: displayId};
+    try {
+        await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
+        // Remove display card
+        const displayCard = document.getElementById(`${displayId}_display`);
+        displayCard.remove();
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not delete this display. Please contact the gEAR team."
+        createToast(msg);
+        throw new Error(msg);
     }
 }
 
@@ -562,9 +575,76 @@ const geneSelectUpdate = async (analysisId=null) => {
     }
 }
 
+/* Get HTML element value to save into plot config */
+const getPlotConfigValueFromClassName = (className) => {
+    // NOTE: Some elements are only present in certain plot type configurations
+
+    const classElts = document.getElementsByClassName(className);
+
+    if (classElts.length) {
+        const elt = classElts[0];   // All elements for this class should have their checks and values synced up
+        if (elt?.type == "checkbox") {
+            return elt.checked;
+        }
+        return elt.value || undefined;
+    }
+    return undefined;
+}
+
+/* Get order of series from sortable lists. Return object */
+const getPlotOrderFromSortable = () => {
+    const order = {};
+    for (const elt of document.getElementById("order_container").children) {
+        const series = elt.querySelector("p").textContent;
+        const serialized = sortable(`#${series}_order_list`, 'serialize')[0].items;
+        // Sort by "sortable" index position
+        order[series] = serialized.map((val) => val.label);
+    }
+    return order;
+}
+
 const getSelect2Value = (select) => {
     // Get value from select2 element
     return select.selectedOptions[0].data.value;
+}
+
+const includeHtml = async (url) => {
+    const preResponse = await fetch(url, {cache: "reload"});
+    return await preResponse.text();
+}
+
+/* Load custom plot options */
+const includePlotParamOptions = async () => {
+    const plotType = getSelect2Value(plotTypeSelect);
+
+    // New plot... so disable plot button
+    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+        plotBtn.disabled = true;
+    }
+
+    plotStyle = curatorSpecificPlotStyle(plotType);
+    if (!plotStyle) {
+        console.warn(`Plot type ${plotType} not recognized.`)
+        document.getElementById("plot_type_s_failed").style.display = "";
+        document.getElementById("plot_type_s_success").style.display = "none";
+        return;
+    }
+    document.getElementById("plot_type_s_failed").style.display = "none";
+
+
+    // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
+    await plotStyle.loadPlotHtml();
+
+    // NOTE: Events are triggered in the order they are regstered.
+    // We want to trigger a param sync event before the plot requirement validation
+    // (since it checks every element in the js-plot-req class)
+    for (const classSelector of Object.keys(plotStyle.classElt2Prop)) {
+        // Ensure pre- and post- plot view params are synced up
+        setupParamValueCopyEvent(classSelector);
+    }
+    setupValidationEvents();        // Set up validation events required to plot at a minimum
+    await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
+
 }
 
 // Load colorscale select2 object and populate with data
@@ -595,7 +675,7 @@ const loadColorscaleSelect = (isContinuous=false) => {
     // set default to purples
     setSelectBoxByValue("color_palette_post", "purp");
 
-    colorscaleSelect = createColorscaleSelectInstance(colorscaleSelect);
+    colorscaleSelect = createColorscaleSelectInstance("color_palette_post");
 
 }
 
@@ -678,7 +758,7 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
     }
 
     if (ownerDisplays.length) {
-    const ownerTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Other Displays</p>`);
+    const ownerTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Displays by Dataset Owner</p>`);
     ownerDisplaysElt.append(ownerTitle);
     }
 
@@ -689,6 +769,48 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
     for (const display of ownerDisplays) {
         renderOwnerDisplayCard(display, defaultDisplayId);
     }
+}
+
+// Render the specific series as a sortable list, if it is not already
+const renderOrderSortableSeries = (series) => {
+    const orderContainer = document.getElementById("order_container");
+
+    // If continouous series, cannot sort.
+    if (!catColumns.includes(series)) return;
+
+    // If series is used in another param, also return
+    // NOTE: if the original series is removed, the param will not simply be switch over to the new one.
+    if (document.getElementById(`${series}_order`)) return;
+
+    // Create parent template
+    // Designed so the title is a full row and the draggables are 50% width
+    const parentList = `<ul id="${series}_order_list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
+    const template = `
+        <div id="${series}_order" class="columns is-multiline">
+        <p id="${series}_order_title" class="has-text-weight-bold column is-full">${series}</p>
+        ${parentList}
+        </div
+    `;
+
+    const htmlCollection = generateElements(template);
+    orderContainer.append(htmlCollection);
+
+    // Add in list elements
+    for (const group of levels[series]) {
+        const listElt = `<li class="has-background-grey-lighter has-text-dark">${group}</li>`;
+        const listCollection = generateElements(listElt);
+        document.getElementById(`${series}_order_list`).append(listCollection);
+    }
+
+    // Create sortable for this series
+    sortable(`#${series}_order_list`, {
+        hoverClass: "has-text-weight-bold"
+        , itemSerializer(item, container) {
+            item.label = item.node.textContent
+            return item
+        },
+    });
+
 }
 
 const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
@@ -780,7 +902,6 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
         </div>`
     }
 
-    // TODO - Get footer button styles correct
     const template = `
                 <div id="${display.id}_display" class="column is-one-quarter">
                     <div class="box card has-background-primary-light has-text-primary">
@@ -822,7 +943,6 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
     document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(userId, display.id));
 }
-
 
 const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
     // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
@@ -883,12 +1003,94 @@ const saveDefaultDisplay = async (displayId) => {
     currentDefaultElt.textContent = "Default";
 }
 
+/* Set HTML element value from the plot config value */
+const setPlotEltValueFromConfig = (classSelector, confVal) => {
+    for (const elt of document.getElementsByClassName(classSelector)) {
+        if (elt.type === "checkbox") {
+            elt.checked = confVal;
+            continue;
+        }
+        elt.value = confVal;
+        trigger(elt, "change");
+    }
+}
+
 /* Set disabled state for the given plot type. Also normalize plot type labels */
 const setPlotTypeDisabledState = (plotType, isAllowed) => {
     if (plotType === "tsne/umap_dynamic") {
         document.getElementById("tsne_dyna_opt").disabled = !isAllowed;
     } else {
         document.getElementById(`${plotType}_opt`).disabled = !isAllowed;
+    }
+}
+
+/**
+ * Set Select Box Selection By Value
+ * Modified to set value and "selected" so nice-select2 extractData() will catch it
+ * Taken from https://stackoverflow.com/a/20662180
+ * @param eid Element ID
+ * @param eval Element value
+ */
+const setSelectBoxByValue = (eid, val) => {
+    const elt = document.getElementById(eid);
+    for (const i in elt.options) {
+        if (elt.options[i].value === val) {
+            elt.value = val;
+            elt.options[i].setAttribute("selected", true);
+            return;
+        }
+    }
+}
+
+/* Ensure all elements in this class have the same value */
+const setupParamValueCopyEvent = (classSelector) => {
+    const classElts = document.getElementsByClassName(classSelector)
+    for (const elt of classElts) {
+        elt.addEventListener("change", (event) => {
+            for (const classElt of classElts) {
+                classElt.value = event.target.value;
+                // Believe that programmatically changing the value does not trigger "change" (AKA no cascading)
+                classElt.disabled = event.target.disabled;
+                if (event.target.type == "checkbox") classElt.checked = event.target.checked;
+                disableCheckboxLabel(classElt, classElt.disabled);
+            }
+        });
+    }
+}
+
+/* Setup a fail-fast validation trigger. */
+const setupValidationEvents = () => {
+    const validationElts = document.getElementsByClassName("js-plot-req");
+    for (const elt of validationElts ) {
+        elt.addEventListener("change", () => {
+            // Reset "status" classes
+            elt.classList.remove("is-success", "is-danger");
+            if (elt.value) {
+                elt.parentElement.classList.remove("is-danger");
+                elt.parentElement.classList.add("is-success");
+
+                // If every validation param has been filled out, it's OK to plot
+                // NOTE: need to ensure pre- and post- param elements are filled before this function is called
+                if ([...validationElts].every(element => element.value)) {
+                    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+                        plotBtn.disabled = false;
+                    }
+                    document.getElementById("plot_options_s_success").style.display = "";
+                    document.getElementById("plot_options_s_failed").style.display = "none";
+                }
+                return;
+            }
+
+            // Required paramater has no value. Indicate it and disable plot buttons
+            elt.parentElement.classList.add("is-danger");
+            elt.parentElement.classList.remove("is-success");
+
+            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+                plotBtn.disabled = true;
+            }
+            document.getElementById("plot_options_s_success").style.display = "none";
+            document.getElementById("plot_options_s_failed").style.display = "";
+        })
     }
 }
 
@@ -960,6 +1162,124 @@ const updateGeneOptions = (geneSymbols) => {
     // Update the nice-select2 element to reflect this.
     // This function is always called in the 1st view, so only update that
     geneSelect.update();
+
+}
+
+// Update the params that will comprise the "order" section in post-plot view
+const updateOrderSortable = () => {
+    // Get all current plot param series for plotting order and save as a set
+    const plotOrderElts = document.getElementsByClassName("js-plot-order");
+    const seriesSet = new Set();
+    for (const elt of plotOrderElts) {
+        const series = elt.value;
+        // Only include categorical series
+        if (series && (catColumns.includes(series))) {
+            seriesSet.add(series);
+        }
+    }
+
+    // Get all current plotting order series and save as a set
+    const sortableElts = document.querySelectorAll(".js-plot-order-sortable p");
+    const sortableSet = new Set();
+    for (const elt of sortableElts) {
+        const series = elt.value;
+        // These series already are categorical
+        if (series) {
+            sortableSet.add(series);
+        }
+    }
+
+    // Three scenarios:
+    for (const series of seriesSet) {
+        // 1. Series is in both seriesSet and sortableSet, do nothing
+        if (sortableSet.has(series)) {
+            continue;
+        }
+        // 2. Series is in seriesSet but not sortableSet, add <series>_order element
+        renderOrderSortableSeries(series);
+    }
+
+    for (const series of sortableSet) {
+        // 3. Series is in sortableSet but not seriesSet, remove <series>_order element
+        if (!seriesSet.has(series)) {
+            const orderElt = document.getElementById(`${series}_order`);
+            orderElt.remove();
+        }
+    }
+
+
+    const orderContainer = document.getElementById("order_container");
+    const orderSection = document.getElementById("order_section");
+
+    // Pre-emptively hide the container but show it ass
+    if (!orderContainer.children.length) {
+        orderSection.style.display = "none";
+        return;
+    }
+
+    orderSection.style.display = "";
+
+}
+
+// For plotting options, populate select menus with category groups
+const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
+
+    for (const elt of document.getElementsByClassName(classSelector)) {
+        elt.replaceChildren();
+
+        // Create continuous and categorical optgroups
+        const contOptgroup = document.createElement("optgroup");
+        contOptgroup.setAttribute("label", "Continuous data");
+        const catOptgroup = document.createElement("optgroup");
+        catOptgroup.setAttribute("label", "Categorical data");
+
+        // Append empty placeholder element
+        const firstOption = document.createElement("option");
+        elt.append(firstOption);
+
+        // Add an expression option (since expression is not in the categories)
+        if (addExpression) {
+            const expression = document.createElement("option");
+            contOptgroup.append(expression);
+            expression.textContent = "expression";
+            expression.value = "raw_value";
+            if ("raw_value" === defaultOption) {
+                expression.selected = true;
+            }
+        }
+
+        // Add categories
+        for (const group of seriesArray.sort()) {
+            // Skip columns listed as "_colors" as they just provide colors for another series
+            if (group.includes("_colors")) continue;
+
+            const option = document.createElement("option");
+            option.textContent = group;
+            // Change X_pca/X_tsne/X_umap text content to be more user_friendly
+            if (group.includes("X_") && (
+                group.includes("pca")
+                || group.includes("tsne")
+                || group.includes("umap")
+            )) {
+                option.textContent = `${group} (from selected analysis)`;
+            }
+            option.value = group;
+            if (catColumns.includes(group)) {
+                catOptgroup.append(option);
+            } else {
+                contOptgroup.append(option);
+            }
+            // NOTE: It is possible for a default option to not be in the list of groups.
+            if (group === defaultOption) {
+                option.selected = true;
+            }
+        }
+
+        // Only append optgroup if it has children
+        if (contOptgroup.children.length) elt.append(contOptgroup);
+        if (catOptgroup.children.length) elt.append(catOptgroup);
+
+    }
 
 }
 

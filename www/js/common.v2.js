@@ -145,6 +145,9 @@ const resetSteps = (event) => {
         // Collapse all "non-header" parts of step (see common.css)
     }
 
+    // NOTE: If manually clicked and then click event fires the element will collapse, which is not user-friendly.
+    // So ensure all triggered click event happens after all API stuff is done.
+
     // Modify this step to look active
     currentStep.classList.remove("has-background-white-bis");
     currentStep.classList.add("has-background-light");

@@ -18,3 +18,6 @@ One of the class functions `loadPlotHtml` loads HTML with plot options for the b
 
 There is a function in `common.js` called `logErrorInConsole` which checks various error scenarios and logs the error with `console.error`. Occasionally an error may trigger the `createToast` function from `curator_common.js` which creates a Toast-like notiification in the upper-right of the screen to inform the user.
 
+## Element naming structures
+
+Many of the elements responsible for the plotting options are duplicated... once for the pre-plot view and again for the post-plot view.  To keep things in sync, I assign each related element the same class under the name format `js-<backend>-<option>`.  A "change" event listener is also added to sync the values based on the event.target value. In addition, any element in the post-plot view will have "_post" added to their ID name.

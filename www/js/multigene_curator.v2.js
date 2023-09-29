@@ -1,16 +1,35 @@
 const isMultigene = 1;
 
-let geneSelect;
+let geneSelect = null;
 
-class DashHandler extends PlotHandler {
+const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
+const genesAsDataPlots = ["quadrant", "volcano"];
+
+class GenesAsAxisHandler extends PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
     }
 
     classElt2Prop = {
-        //pass
-    };
+        "js-dash-primary":"primary_col"
+        , "js-dash-secondary":"secondary_col"
+        , "js-dash-color-palette":"colorscale"
+        , "js-dash-reverse-palette":"reverse_colorscale"
+        , "js-dash-distance-metric":"distance_metric"
+        , "js-dash-matrixplot":"matrixplot"
+        , "js-dash-center-mean": "center_around_zero"
+        , "js-dash-cluster-obs": "cluster_obs"
+        , "js-dash-cluster-genes": "cluster_genes"
+        , "js-dash-flip-axes": "flip_axes"
+        , "js-dash-hide-obs-labels": "hide_obs_labels"
+        , "js-dash-hide-gene-labels": "hide_genes_labels"
+        , "js-dash-add-jitter": "violin_add_points"
+        , "js-dash-stacked-violin": "stacked_violin"
+        , "js-dash-plot-title": "plot_title"
+        , "js-dash-legend-title": "legend_title"
+    }
+
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
     plotConfig = {};  // Plot config that is passed to API
@@ -19,22 +38,301 @@ class DashHandler extends PlotHandler {
         //pass
     }
 
-    async createPlot() {
-        //pass
+    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+        // Get data and set up the image area
+        let plotJson;
+        try {
+            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            ({plot_json: plotJson} = data);
+        } catch (error) {
+            return;
+        }
+
+        const plotContainer = document.getElementById("plot_container");
+        plotContainer.replaceChildren();    // erase plot
+
+        // NOTE: Plot initially is created to a default width but is responsive.
+        // Noticed container within our "column" will make full-width go beyond the screen
+        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
+        plotContainer.append(divElt);
+        Plotly.purge("plotly_preview"); // clear old Plotly plots
+
+        if (!plotJson) {
+            createToast("Could not retrieve plot information. Cannot make plot.");
+            return;
+        }
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const curatorDisplayConf = postPlotlyConfig.curator;
+        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
+        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
+        Plotly.relayout("plotly_preview", custonLayout)
+
     }
 
     async loadPlotHtml() {
-        //pass
+        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/multi_gene_as_axis.html");
+        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/multi_gene_as_axis.html");
+
+        // populate advanced options for specific plot types
+        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
+        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+
+        // Load color palette select options
+        const isContinuous = ["dotplot", "heatmap"].includes(this.plotType) ? true : false;
+        loadColorscaleSelect(isContinuous);
+
+
+        if (this.plotType === "heatmap") {
+            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_heatmap.html");
+            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_heatmap.html");
+            return;
+        }
+        if (this.plotType === "mg_violin") {
+            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
+            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
+            return;
+        }
     }
 
     populatePlotConfig() {
-        //pass
+        this.plotConfig = {};   // Reset plot config
+
+        for (const classElt in this.classElt2Prop) {
+            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+        }
+
+        // Filtered observation groups
+
+        // Get order
+
+        // Get colors
     }
 
-    setupPlotSpecificEvents() {
-        //pass
+    async setupPlotSpecificEvents() {
+        catColumns = await getCategoryColumns();
+
+        updateSeriesOptions("js-dash-primary", catColumns, false);
+        updateSeriesOptions("js-dash-secondary", catColumns, false);
+
+        // If primary series changes, disable chosen option in secondary series
+        for (const classElt of document.getElementsByClassName("js-dash-primary")) {
+            classElt.addEventListener("change", (event) => {
+                const primarySeries = event.target.value;
+                for (const secondaryClassElt of document.getElementsByClassName("js-dash-secondary")) {
+                    // enable all series
+                    for (const opt of secondaryClassElt.options) {
+                        opt.removeAttribute("disabled");
+                    }
+                    // disable primary series in secondary series
+                    const opt = secondaryClassElt.querySelector(`option[value="${primarySeries}"]`);
+                    opt.setAttribute("disabled", "disabled");
+                    // If this option was selected, unselect it
+                    if (secondaryClassElt.value === primarySeries) {
+                        secondaryClassElt.value = "";
+                    }
+                }
+            })
+        }
+
     }
 
+}
+
+class GenesAsDataHandler extends PlotHandler {
+    constructor(plotType) {
+        super();
+        this.plotType = plotType;
+    }
+
+    compareSeparator = ";-;";
+
+    classElt2Prop = {
+        "js-dash-de-test": "de_test_algo"
+        , "js-dash-fold-change-cutoff": "fold_change_cutoff"
+        , "js-dash-fdu-cutoff": "fdr_cutoff"
+        , "js-dash-include-zero-fc": "include_zero_fc"
+        , "js-dash-annot-nonsig": "annot_nonsignificant"
+        , "js-dash-pvalue-threshold": "pvalue_threshold"
+        , "js-dash-use-adj-pvalues": "adj_pvals"
+        , "js-dash-lower-logfc-threshold": "lower_logfc_threshold"
+        , "js-dash-upper-logfc-threshold": "upper_logfc_threshold"
+        , "js-dash-plot-title": "plot_title"
+        , "js-dash-legend-title": "legend_title"
+    };
+    // Deal with js-dash-query/reference/compare1/compare2 separately since they combine with js-dash-compare
+
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
+
+    plotConfig = {};  // Plot config that is passed to API
+
+    cloneDisplay() {
+        //pass
+
+        // Split compare series and groups
+        const refCondition = this.plotConfig["ref_condition"];
+        const [combineSeries, refGroup] = refCondition.split(this.compareSeparator);
+
+        if (this.plotType === "volcano") {
+            const queryCondition = this.plotConfig["query_condition"];
+            const queryGroup = queryCondition.split(this.compareSeparator)[1];
+        }
+        if (this.plotType === "quadrant") {
+            const compare1Condition = this.plotConfig["compare1_condition"];
+            const compare1Group = compare1Condition.split(this.compareSeparator)[1];
+            const compare2Condition = this.plotConfig["compare2_condition"];
+            const compare2Group = compare2Condition.split(this.compareSeparator)[1];
+        }
+    }
+
+    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+        // Get data and set up the image area
+        let plotJson;
+        try {
+            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            ({plot_json: plotJson} = data);
+        } catch (error) {
+            return;
+        }
+
+        const plotContainer = document.getElementById("plot_container");
+        plotContainer.replaceChildren();    // erase plot
+
+        // NOTE: Plot initially is created to a default width but is responsive.
+        // Noticed container within our "column" will make full-width go beyond the screen
+        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
+        plotContainer.append(divElt);
+        Plotly.purge("plotly_preview"); // clear old Plotly plots
+
+        if (!plotJson) {
+            createToast("Could not retrieve plot information. Cannot make plot.");
+            return;
+        }
+        // Update plot with custom plot config stuff stored in plot_display_config.js
+        const curatorDisplayConf = postPlotlyConfig.curator;
+        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
+        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
+        Plotly.relayout("plotly_preview", custonLayout)
+
+    }
+
+    async loadPlotHtml() {
+        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/multi_gene_as_data.html");
+        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/multi_gene_as_data.html");
+
+        // populate advanced options for specific plot types
+        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
+        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+
+        // For quadrants and volcanos we load the "series" options in the plot-specific HTML, so that should come first
+        if (this.plotType === "quadrant") {
+            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_quadrant.html");
+            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_quadrant.html");
+            return;
+        }
+        if (this.plotType === "volcano") {
+            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_volcano.html");
+            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_volcano.html");
+            return;
+        }
+    }
+
+    populatePlotConfig() {
+        this.plotConfig = {};   // Reset plot config
+
+        for (const classElt in this.classElt2Prop) {
+            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+        }
+
+        // Get compare series and groups and combine
+        const combineSeries = document.querySelector(".js-dash-compare").value;
+        this.plotConfig["ref_condition"] = combineSeries + this.compareSeparator + document.querySelector(".js-dash-reference").value;
+        if (this.plotType === "volcano") {
+            const queryGroup = document.querySelector(".js-dash-query").value;
+            this.plotConfig["query_condition"] = combineSeries + this.compareSeparator + queryGroup;
+        }
+        if (this.plotType === "quadrant") {
+            const compare1Group = document.querySelector(".js-dash-compare1").value;
+            const compare2Group = document.querySelector(".js-dash-compare2").value;
+            this.plotConfig["compare1_condition"] = combineSeries + this.compareSeparator + compare1Group;
+            this.plotConfig["compare2_condition"] = combineSeries + this.compareSeparator + compare2Group;
+        }
+
+        // Filtered observation groups
+
+        // Get order
+
+
+    }
+
+    async setupPlotSpecificEvents() {
+
+        // These plot parameters do not directly correlate to a plot config property
+        // So
+        for (const classElt in ["js-dash-compare", "js-dash-reference", "js-dash-query", "js-dash-compare1", "js-dash-compare2"]) {
+            setupParamValueCopyEvent(classElt)
+        }
+
+
+        catColumns = await getCategoryColumns();
+
+        updateSeriesOptions("js-dash-compare", catColumns, false);
+
+        // When compare series changes, update the compare groups
+        for (const classElt of document.getElementsByClassName("js-dash-compare")) {
+            classElt.addEventListener("change", async (event) => {
+                const compareSeries = event.target.value;
+                updateGroupOptions("js-dash-reference", levels[compareSeries]);
+                if (this.plotType === "quadrant") {
+                    updateGroupOptions("js-dash-compare1", levels[compareSeries]);
+                    updateGroupOptions("js-dash-compare2", levels[compareSeries]);
+                }
+                if (this.plotType === "volcano") {
+                    updateGroupOptions("js-dash-query", levels[compareSeries]);
+                }
+            })
+        }
+
+        // When compare groups change, prevent the same group from being selected in the other compare groups
+        for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+            classElt.addEventListener("change", (event) => {
+                const compareGroups = [...document.getElementsByClassName("js-compare-groups")].map((elt) => elt.value);
+                // Filter out empty values and duplicates
+                const uniqueGroups = [...new Set(compareGroups)].filter(x => x);
+                // Get all unselected groups
+                const series = document.querySelector(".js-dash-compare").value;
+                const unselectedGroups = levels[series].filter((group) => !uniqueGroups.includes(group));
+
+                for (const innerClassElt of document.getElementsByClassName("js-compare-groups")) {
+                    // enable all unselected groups
+                    for (const group of unselectedGroups) {
+                        const opt = innerClassElt.querySelector(`option[value="${group}"]`);
+                        opt.removeAttribute("disabled");
+                    }
+                    // disable unique groups in other compare groups
+                    for (const group of uniqueGroups) {
+                        if (innerClassElt.id !== event.target.id) {
+                            const opt = innerClassElt.querySelector(`option[value="${group}"]`);
+                            opt.setAttribute("disabled", "disabled");
+                        }
+                    }
+                }
+            })
+        }
+    }
 }
 
 const geneCartTree = new GeneCartTree({
@@ -98,6 +396,8 @@ const appendGeneTagButton = (geneTagElt) => {
         geneSelect.update();
         trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
     });
+
+    // ? Should i add ellipses for too many genes? Should I make the box collapsable?
 }
 
 const clearGenes = (event) => {
@@ -141,6 +441,29 @@ const curatorSpecifcChooseGene = (event) => {
         return;
     }
 
+    // If more than 10 tags, hide the rest and add a "show more" button
+    if (geneSelect.selectedOptions.length > 10) {
+        const geneTags = geneTagsElt.querySelectorAll("span.tag");
+        for (let i = 10; i < geneTags.length; i++) {
+            geneTags[i].style.display = "none";
+        }
+        // Add show more button
+        const showMoreBtnElt = document.createElement("button");
+        showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
+        const numToDisplay = geneSelect.selectedOptions.length - 10;
+        showMoreBtnElt.textContent = `+${numToDisplay} more`;
+        showMoreBtnElt.addEventListener("click", (event) => {
+            const geneTags = geneTagsElt.querySelectorAll("span.tag");
+            for (let i = 10; i < geneTags.length; i++) {
+                geneTags[i].style.display = "";
+            }
+            event.target.remove();
+        });
+        geneTagsElt.appendChild(showMoreBtnElt);
+
+    }
+
+
     document.getElementById("gene_s_failed").style.display = "none";
     document.getElementById("gene_s_success").style.display = "";
 
@@ -157,12 +480,23 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 
 const curatorSpecifcDatasetTreeCallback = () => {
     // Creates gene select instance that allows for multiple selection
-    geneSelect = createGeneSelectInstance(geneSelect, true)
+    geneSelect = createGeneSelectInstance("gene_select")
 }
 
 const curatorSpecificOnLoad = async () => {
     // Load gene carts
     await loadGeneCarts();
+}
+
+const curatorSpecificPlotStyle = (plotType) => {
+    // include plotting backend options
+    if (genesAsAxisPlots.includes(plotType)) {
+        return new GenesAsAxisHandler(plotType);
+    } else if (genesAsDataPlots.includes(plotType)) {
+        return new GenesAsDataHandler(plotType);
+    } else {
+        return null;
+    }
 }
 
 const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
@@ -177,10 +511,29 @@ const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis
     const payload = {user_id, session_id, dataset_id, analysis_id};
     try {
         const {data} = await axios.post(`/api/h5ad/${dataset_id}/mg_availableDisplayTypes`, payload);
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
+        }
         return data;
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.";
+        createToast(error.message);
+        throw new Error(msg);
+    }
+}
+
+const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode)  => {
+    // NOTE: gene_symbol already passed to plotConfig
+    const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
+    try {
+        const { data } = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload);
+        if (data?.success < 1) {
+            throw new Error (data?.message || "Unknown error.")
+        }
+        return data
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not create Plotly plot for this dataset and parameters. Please contact the gEAR team."
         createToast(msg);
         throw new Error(msg);
     }
@@ -218,8 +571,21 @@ const fetchGeneCartMwembers = async (session_id, geneCartId) => {
     }
 }
 
-const includePlotParamOptions = async () => {
+const getCategoryColumns = async () => {
+    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
+    try {
+        ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
+    } catch (error) {
+        document.getElementById("plot_options_s_failed").style.display = "";
+        return;
+    }
+    return Object.keys(levels);
+}
 
+// Invert a log function
+function invertLogFunction(value, base=10) {
+    return base ** value;
 }
 
 /* Transform and load gene collection data into a "tree" format */
@@ -260,4 +626,24 @@ const loadGeneCarts = async () => {
 
 }
 
+// For a given categorical series (e.g. "celltype"), update the "group" options
+const updateGroupOptions = (classSelector, levels) => {
+
+    for (const elt of document.getElementsByClassName(classSelector)) {
+        elt.replaceChildren();
+
+        // Append empty placeholder element
+        const firstOption = document.createElement("option");
+        elt.append(firstOption);
+
+        // Add categories
+        for (const group of levels.sort()) {
+            const option = document.createElement("option");
+            option.textContent = group;
+            option.value = group;
+            elt.append(option);
+        }
+    }
+
+}
 document.getElementById("clear_genes_btn").addEventListener("click", clearGenes);
