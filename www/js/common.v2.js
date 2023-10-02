@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
             $notification.parentNode.removeChild($notification);
         });
     });
+
+    checkForLogin();
 });
 
 const checkForLogin = async () => {
