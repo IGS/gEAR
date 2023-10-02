@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkForLogin();
 });
 
+// ! Subject to change
 const checkForLogin = async () => {
     session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
@@ -75,6 +76,26 @@ const trigger = (el, eventType) => {
     }
 }
 
+const logErrorInConsole = (error) => {
+    if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error(error.response.data);
+        console.error(error.response.status);
+        console.error(error.response.headers);
+    } else if (error.request) {
+        // The request was made but no response was received
+        // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+        // http.ClientRequest in node.js
+        console.error(error.request);
+    } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error', error.message);
+    }
+    console.error(error.config);
+}
+
+
 // Convert POST payload to FormData so that POSTing to CGI scripts that use cgi.FieldStorage will work
 const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
@@ -87,32 +108,47 @@ const convertToFormData = (object) => {
     return formData;
 }
 
+const collapseJsStep = (stepElt) => {
+        // Reset active step
+        stepElt.classList.remove("step-active");
+
+        // Reset the bg color
+        stepElt.classList.remove("has-background-light");
+        stepElt.classList.add("has-background-white-bis");
+
+        // Reset the rightmost arrow
+        const rightIcon = stepElt.querySelector("span.is-pulled-right i");
+        rightIcon.classList.remove("mdi-chevron-up");
+        rightIcon.classList.add("mdi-chevron-down");
+}
+
 // If "step" sections are clicked, expand that section and collaps the others
 const jsSteps = document.getElementsByClassName("js-step");
 const resetSteps = (event) => {
     // If clicked area has no parentNode (i.e. clicked target is destroyed and recreated), just leave be
     if (! event.target.parentNode) return;
 
-    // If clicked on existing section, leave it
+    // If clicked on existing section, collapse it
     const currentStep = event.target.closest(".js-step");
-    if (currentStep.classList.contains("step-active")) return;
+    if (currentStep.classList.contains("step-active")) {
+        // If collapsable contents were clicked, do nothing
+        if (event.target.closest(".js-step-collapsable")) {
+            return;
+        }
+
+        // Otherwise, collapse the section
+        collapseJsStep(currentStep);
+        return
+    };
 
     // Make every step uniform
     for (const jsStep of jsSteps) {
-        // Reset active step
-        jsStep.classList.remove("step-active");
-
-        // Reset the bg color
-        jsStep.classList.remove("has-background-light");
-        jsStep.classList.add("has-background-white-bis");
-
-        // Reset the rightmost arrow
-        const rightIcon = jsStep.querySelector("span.is-pulled-right i");
-        rightIcon.classList.remove("mdi-chevron-up");
-        rightIcon.classList.add("mdi-chevron-down");
-
-        // Collapse all "non-header" parts of step (in CSS file)
+        collapseJsStep(jsStep);
+        // Collapse all "non-header" parts of step (see common.css)
     }
+
+    // NOTE: If manually clicked and then click event fires the element will collapse, which is not user-friendly.
+    // So ensure all triggered click event happens after all API stuff is done.
 
     // Modify this step to look active
     currentStep.classList.remove("has-background-white-bis");

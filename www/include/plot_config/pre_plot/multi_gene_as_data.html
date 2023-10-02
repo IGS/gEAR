@@ -1,0 +1,21 @@
+<p class="help">More customization options will be available once the plot has been created.</p>
+<section id="genes_as_axis_arguments" class="columns">
+    <section id="main_options" class="column is-half">
+
+        <!-- Include plot-specific HTML here -->
+        <section class="js-plot-specific-options field" id="plot_specific_options"></section>
+
+        <div class="field">
+            <label class="label">Differential expression test</label>
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select class="js-dash-de-test" id="de_test">
+                        <option value="t-test" selected="selected">Welch's t-test</option>
+                        <option value="rank">Wilcoxon rank-sum test</option>
+                    </select>
+                </div>
+            </div>
+            <p class="help">Select the differential expression testing algorithm to determine significance.</p>
+        </div>
+    </section>
+</section>

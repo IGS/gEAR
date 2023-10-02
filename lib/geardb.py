@@ -2572,6 +2572,10 @@ class GeneCartCollection:
                     folder_parent_id=row['parent_id'],
                     folder_label=row['folder_label']
                 )
+
+        # Extra info
+        cart.get_genes()
+        cart.num_genes = len(cart.genes)
         return cart
 
     def get_by_cart_ids(self, ids=None):

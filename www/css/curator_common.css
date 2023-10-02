@@ -1,0 +1,81 @@
+/* reflecting gEAR "select" form CSS to "nice-select" elements */
+.select .nice-select {
+    background-color: #EFEDF7;
+    border-color: #544A8E;
+    border-radius: 5px;
+    color: #363636;
+}
+
+.is-fullwidth .nice-select{
+    width:100%;
+}
+
+.nice-select::after {
+    content: unset;     /* remove their version of dropdown arrow (behind the Bulma select arrow) */
+}
+
+.nice-select-dropdown {
+    width: 100%;    /* Override auto-width setting by nice-select */
+}
+
+.nice-select .list {
+    overflow-y: scroll; /* Make it apparent that there are more options */
+    overflow-x: hidden;
+}
+
+/* match nice-select disabled state style with select style from common.css */
+.select .nice-select.disabled {
+    border-color: grey;
+    background-color: lightgrey;
+}
+
+/* Toast-style notifications for actual alerts */
+.notification.js-toast {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    z-index:999;
+}
+
+#post_plot_adjustments select {
+    width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#params_summary {
+    height:92vh;
+}
+
+#params_config_container {
+    overflow-y:auto;
+    overflow-x:hidden;
+    flex: 0 1 auto; /* flex-grow, flex-shrink, flex-basis */
+}
+
+#order_container li {
+    text-overflow: ellipsis;
+}
+
+/* Keep at a reasonable length */
+input[type=number] {
+    width: 4em;
+}
+
+.nice-select .list::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+.nice-select .list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.nice-select .list::-webkit-scrollbar {
+    width: 10px;    /* overwrite nice-select default of 0 */
+}
+
+  /* Track */
+.nice-select .list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
