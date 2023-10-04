@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
             $notification.parentNode.removeChild($notification);
         });
     });
+
+    checkForLogin();
 });
 
 // ! Subject to change
@@ -53,6 +55,21 @@ const checkForLogin = async () => {
     // NOTE: Initially this returned session_id, but we can grab that from the global CURRENT_USER
 }
 
+const hideLoggedInElements = () => {
+    document.querySelectorAll('.logged-in').forEach(element => element.style.display = 'none');
+}
+
+const hideNotLoggedInElements = () => {
+    document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = 'none');
+}
+
+const showLoggedInElements = () => {
+    document.querySelectorAll('.logged-in').forEach(element => element.style.display = '');
+}
+
+const showNotLoggedInElements = () => {
+    document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = '');
+}
 
 /* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
 const generateElements = (html) => {
@@ -62,7 +79,16 @@ const generateElements = (html) => {
 }
 
 const handleLoginUIUpdates = () => {
-    // pass
+    // So that all elements don't initially show while login is checked, we
+    //  show/hide elements first then parent container
+    if (session_id) {
+        hideNotLoggedInElements();
+        showLoggedInElements();
+    } else {
+        hideLoggedInElements();
+        showNotLoggedInElements();
+    }
+    document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
 }
 
 // Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
