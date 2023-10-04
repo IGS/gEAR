@@ -6,12 +6,11 @@ const datasetId = "3b3410d0-26cd-6d5c-0d99-0a20b8288d26";
 // Class for the faceted search widget
 // SAdkins - I let Github Copilot write this class for me (with minor adjustments)
 class FacetWidget {
-    constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsContainer, selectedFacetsTags}) {
+    constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags}) {
         this.aggregations = aggregations || {}; // Counts of all categories (filter)
         this.filters = filters || {};   // Selected categories and values
         this.onFilterChange = onFilterChange || {}; // Callback function when a filter is changed
         this.facetContainer =  facetContainer || document.getElementById('facet_c');
-        this.selectedFacetsContainer = selectedFacetsContainer || document.getElementById('selected_facets');
         this.selectedFacetsTags = selectedFacetsTags || document.getElementById('selected_facets_tags');
         this.init();
     }
@@ -38,8 +37,6 @@ class FacetWidget {
         // Update counts
         for (const filter of this.aggregations) {
             const escapedFilterName = CSS.escape(filter.name);
-            const filterCount = document.querySelector(`#filter-${escapedFilterName} .filter-count`);
-            filterCount.innerHTML = filter.count;
 
             for (const item of filter.items) {
                 const escapedItemName = CSS.escape(item.name);
@@ -73,7 +70,7 @@ class FacetWidget {
         facetWidget.innerHTML = '';
         const facetWidgetContent = document.createElement('div');
         facetWidgetContent.id = 'facet-widget-content';
-        facetWidgetContent.className = 'facet-widget-content panel';
+        facetWidgetContent.className = 'facet-widget-content panel is-primary'; // I find this a bit too dark
         facetWidget.appendChild(facetWidgetContent);
         this.renderFilters();
     }
@@ -102,7 +99,7 @@ class FacetWidget {
         filterElement.innerHTML = `
             <div class="filter-header panel-heading is-clickable">
                 <span class="filter-name has-text-weight-semibold is-underlined">${filter.name}</span>
-                <span class="filter-count tag is-rounded">${filter.count}</span>
+                <span class="loader is-hidden is-inline-flex"></span>
                 <span class="filter-toggle-icon icon is-pulled-right">
                     <i class="mdi mdi-chevron-down"></i>
                 </span>
@@ -142,6 +139,7 @@ class FacetWidget {
                 <input type="checkbox">
                 <span class="filter-item-name has-text-weight-medium">${item.name}</span>
                 <span class="filter-item-count tag is-rounded">${item.count}</span>
+                <span class="loader is-hidden"></span>
             </label>
         `;
 
@@ -175,10 +173,12 @@ class FacetWidget {
 
     async onFilterItemClick(item, filterName) {
         this.toggleFilterItem(item, filterName);
-        this.selectedFacetsContainer.classList.add("is-loading")
+        const escapedFilterName = CSS.escape(filterName);
+        const loadingSelector = document.querySelector(`#filter-${escapedFilterName} .loader`);
+        loadingSelector.classList.remove("is-hidden")
         await this.onFilterChange(this.filters);
         this.toggleSelectedTag(item.name, filterName);
-        this.selectedFacetsContainer.classList.remove("is-loading")
+        loadingSelector.classList.add("is-hidden")
 
     }
 
@@ -225,24 +225,31 @@ class FacetWidget {
 
 
 const createFacetWidget = async () => {
-    document.getElementById("selected_facets").classList.add("is-loading")
+    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
 
-    const {aggregations} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    document.getElementById("num_selected").textContent = totalCount;
+
 
     const facetWidget = new FacetWidget({
         aggregations,
         filters,
         onFilterChange: async (filters) => {
             if (filters) {
-                const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
-                facetWidget.updateAggregations(aggregations);
+                try {
+                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+                    facetWidget.updateAggregations(aggregations);
+                    document.getElementById("num_selected").textContent = totalCount;
+                } catch (error) {
+                    logErrorInConsole(error);
+                }
             } else {
                 // Save an extra API call
                 facetWidget.updateAggregations(facetWidget.aggregations);
             }
         }
     });
-    document.getElementById("selected_facets").classList.remove("is-loading")
+    document.getElementById("selected_facets_loader").classList.add("is-hidden")
 
 }
 
