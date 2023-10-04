@@ -1,6 +1,28 @@
+/* -------------------- */
+/* -= General layout =- */
+
 html, body {
     height: 100vh;
 }
+
+#main_layout_c {
+    height: 100vh;
+}
+
+/* ---------------- */
+/* -= Typography =- */
+
+
+
+/* -------------------- */
+/* -= Header section =- */
+
+#header_bar {
+    border-bottom: 1px solid rgb(200, 200, 200);
+}
+/* ------------------ */
+/* -= Other styles =- */
+
 .card-content {
     font-size: 70%;
 }
@@ -9,12 +31,6 @@ html, body {
 }
 #citation_c {
     max-width: 200px;
-}
-#header_bar {
-    border-bottom: 1px solid rgb(200, 200, 200);
-}
-#main_layout_c {
-    height: 100vh;
 }
 .menu-list a {
     border-radius: 10px;
