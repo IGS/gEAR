@@ -64,6 +64,10 @@ class PlotHandler {
         throw new Error("You have to implement the method populatePlotConfig!");
     }
 
+    async setupParamValueCopyEvent() {
+        throw new Error("You have to implement the method setupParamValueCopyEvent!");
+    }
+
     setupPlotSpecificEvents() {
         throw new Error("You have to implement the method setupPlotSpecificEvents!");
     }
@@ -77,7 +81,7 @@ const datasetTree = new DatasetTree({
         if (e.node.type !== "dataset") {
             return;
         }
-        document.getElementById("current_dataset_c").style.display = "";
+        document.getElementById("current_dataset_c").classList.remove("is-hidden");
         document.getElementById("current_dataset").textContent = e.node.title;
         document.getElementById("current_dataset_post").textContent = e.node.title;
 
@@ -97,10 +101,10 @@ const datasetTree = new DatasetTree({
 
         // Clear "success/failure" icons
         for (const elt of document.getElementsByClassName("js-step-success")) {
-            elt.style.display = "none";
+            elt.classList.add("is-hidden");
         }
 
-        document.getElementById("dataset_s_success").style.display = "";
+        document.getElementById("dataset_s_success").classList.remove("is-hidden");
 
 
         // Fetch dataset information
@@ -126,9 +130,10 @@ const datasetTree = new DatasetTree({
         document.getElementById('new_display').disabled = false;
 
         // Clear (and update) options within nice-select2 structure.
+        // Not providing the object will duplicate the nice-select2 structure
         analysisObj = null;
-        analysisSelect = createAnalysisSelectInstance("analysis_select");
-        plotTypeSelect = createPlotTypeSelectInstance("plot_type_select");
+        analysisSelect = createAnalysisSelectInstance("analysis_select", analysisSelect);
+        plotTypeSelect = createPlotTypeSelectInstance("plot_type_select", plotTypeSelect);
 
         // Call any curator-specific callbacks
         curatorSpecifcDatasetTreeCallback();
@@ -139,14 +144,14 @@ const analysisSelectUpdate = async () => {
     try {
         const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
+        document.getElementById("analysis_type_select_c_success").classList.remove("is-hidden");   // Default analysis is good
     } catch (error) {
         // Show failure state things.
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("analysis_type_select_c_failed").style.display = "";
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("analysis_type_select_c_failed").classList.remove("is-hidden");
         document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
     } finally {
-        document.getElementById("load_plot_s_success").style.display = "";
+        document.getElementById("load_plot_s_success").classList.remove("is-hidden");
     }
 
 }
@@ -157,7 +162,7 @@ const chooseAnalysis = async (event) => {
     const analysisText = analysisId || "Primary Analysis";
 
     // Display current selected analysis
-    document.getElementById("current_analysis_c").style.display = "";
+    document.getElementById("current_analysis_c").classList.remove("is-hidden");
     document.getElementById("current_analysis").textContent = analysisText;
     document.getElementById("current_analysis_post").textContent = analysisText;
 
@@ -208,19 +213,22 @@ const choosePlotType = async (event) => {
     // Do not display if default opt is chosen
     const plotType = getSelect2Value(plotTypeSelect)
     if (plotType === "nope") {
-        document.getElementById("plot_type_select_c_success").style.display = "none";
-        document.getElementById("plot_type_s_success").style.display = "none";
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
         return;
     }
 
-    document.getElementById("plot_type_select_c_failed").style.display = "none";
-    document.getElementById("plot_type_select_c_success").style.display = "";
+    document.getElementById("plot_type_select_c_failed").classList.add("is-hidden");
+    document.getElementById("plot_type_select_c_success").classList.remove("is-hidden");
 
-    document.getElementById("plot_type_s_failed").style.display = "none";
-    document.getElementById("plot_type_s_success").style.display = "";
+    document.getElementById("plot_type_s_failed").classList.add("is-hidden");
+    document.getElementById("plot_type_s_success").classList.remove("is-hidden");
+
+    document.getElementById("plot_options_s_failed").classList.add("is-hidden");
+    document.getElementById("plot_options_s_success").classList.add("is-hidden");
 
     // Display current selected plot type
-    document.getElementById("current_plot_type_c").style.display = "";
+    document.getElementById("current_plot_type_c").classList.remove("is-hidden");
     document.getElementById("current_plot_type").textContent = plotType;
 
     await includePlotParamOptions();
@@ -337,10 +345,14 @@ const createPlot = async (event) => {
 
     plotStyle.populatePlotConfig();
 
-    const geneSymbol = getSelect2Value(geneSelect);
-    plotStyle.plotConfig["gene_symbol"] = geneSymbol;
+    // Add gene or genes to plot config
+    if (isMultigene) {
+        plotStyle.plotConfig["gene_symbols"] = geneSelect.selectedOptions.map(e => e.data.value);
+    } else {
+        plotStyle.plotConfig["gene_symbol"] = getSelect2Value(geneSelect);
+    }
 
-    curatorSpecifcCreatePlot(plotType);
+    await curatorSpecifcCreatePlot(plotType);
 
 
     // Stop loader
@@ -349,9 +361,9 @@ const createPlot = async (event) => {
     }
 
     // Hide this view
-    document.getElementById("content_c").style.display = "none";
+    document.getElementById("content_c").classList.add("is-hidden");
     // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").style.display = "";
+    document.getElementById("post_plot_content_c").classList.remove("is-hidden");
 
 }
 
@@ -540,6 +552,21 @@ const fetchH5adInfo = async (datasetId, analysisId) => {
     }
 }
 
+const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
+    const payload = {session_id, dataset_id, analysis_id, filters};
+    try {
+        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, convertToFormData(payload));
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
+        }
+        return data.aggregations;
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast(error.message);
+        throw new Error(msg);
+    }
+}
+
 // Create the template for the colorscale select2 option dropdown
 const formatColorscaleOptionText = (option, text, isContinuous=false) => {
 
@@ -571,8 +598,22 @@ const geneSelectUpdate = async (analysisId=null) => {
         const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
         updateGeneOptions(geneSymbols); // Come from curator specific code
     } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
+}
+
+const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
+    // Get updates and additions to plot from the plot_display_config JS object
+    let updates = {};
+    for (const idx in plotConfObj) {
+        const conf = plotConfObj[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == "all" || conf.plot_type == plotType) {
+            const update = category in conf ? conf[category] : {};
+            updates = {...updates, ...update};    // Merge updates
+        }
+    }
+    return updates;
 }
 
 /* Get HTML element value to save into plot config */
@@ -596,7 +637,7 @@ const getPlotOrderFromSortable = () => {
     const order = {};
     for (const elt of document.getElementById("order_container").children) {
         const series = elt.querySelector("p").textContent;
-        const serialized = sortable(`#${series}_order_list`, 'serialize')[0].items;
+        const serialized = sortable(`#${CSS.escape(series)}_order_list`, 'serialize')[0].items;
         // Sort by "sortable" index position
         order[series] = serialized.map((val) => val.label);
     }
@@ -625,11 +666,11 @@ const includePlotParamOptions = async () => {
     plotStyle = curatorSpecificPlotStyle(plotType);
     if (!plotStyle) {
         console.warn(`Plot type ${plotType} not recognized.`)
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("plot_type_s_success").style.display = "none";
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
         return;
     }
-    document.getElementById("plot_type_s_failed").style.display = "none";
+    document.getElementById("plot_type_s_failed").classList.add("is-hidden");
 
 
     // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
@@ -642,6 +683,7 @@ const includePlotParamOptions = async () => {
         // Ensure pre- and post- plot view params are synced up
         setupParamValueCopyEvent(classSelector);
     }
+    plotStyle.setupParamValueCopyEvent();   // handle some copy events that could not be handled in the loop above
     setupValidationEvents();        // Set up validation events required to plot at a minimum
     await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
 
@@ -672,10 +714,13 @@ const loadColorscaleSelect = (isContinuous=false) => {
         document.getElementById("color_palette_post").append(optgroup);
     }
 
+
     // set default to purples
     setSelectBoxByValue("color_palette_post", "purp");
 
-    colorscaleSelect = createColorscaleSelectInstance("color_palette_post");
+    return;
+
+    colorscaleSelect = createColorscaleSelectInstance("color_palette_post", colorscaleSelect);
 
 }
 
@@ -719,7 +764,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
-        document.getElementById("dataset_s_failed").style.display = "";
+        document.getElementById("dataset_s_failed").classList.remove("is-hidden");
     }
 
 }
@@ -729,17 +774,17 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
     try {
         plotTypeSelect.clear();
-        const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, analysisId);
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, analysisId);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
         }
         plotTypeSelect.update();
     } catch (error) {
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("plot_type_select_c_failed").style.display = "";
-        document.getElementById("plot_type_s_success").style.display = "none";
-        document.getElementById("plot_type_select_c_success").style.display = "none";;
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");;
     }
 }
 
@@ -1062,35 +1107,7 @@ const setupParamValueCopyEvent = (classSelector) => {
 const setupValidationEvents = () => {
     const validationElts = document.getElementsByClassName("js-plot-req");
     for (const elt of validationElts ) {
-        elt.addEventListener("change", () => {
-            // Reset "status" classes
-            elt.classList.remove("is-success", "is-danger");
-            if (elt.value) {
-                elt.parentElement.classList.remove("is-danger");
-                elt.parentElement.classList.add("is-success");
-
-                // If every validation param has been filled out, it's OK to plot
-                // NOTE: need to ensure pre- and post- param elements are filled before this function is called
-                if ([...validationElts].every(element => element.value)) {
-                    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                        plotBtn.disabled = false;
-                    }
-                    document.getElementById("plot_options_s_success").style.display = "";
-                    document.getElementById("plot_options_s_failed").style.display = "none";
-                }
-                return;
-            }
-
-            // Required paramater has no value. Indicate it and disable plot buttons
-            elt.parentElement.classList.add("is-danger");
-            elt.parentElement.classList.remove("is-success");
-
-            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                plotBtn.disabled = true;
-            }
-            document.getElementById("plot_options_s_success").style.display = "none";
-            document.getElementById("plot_options_s_failed").style.display = "";
-        })
+        elt.addEventListener("change", validateRequirements);
     }
 }
 
@@ -1213,74 +1230,45 @@ const updateOrderSortable = () => {
 
     // Pre-emptively hide the container but show it ass
     if (!orderContainer.children.length) {
-        orderSection.style.display = "none";
+        orderSection.classList.add("is-hidden");
         return;
     }
 
-    orderSection.style.display = "";
+    orderSection.classList.remove("is-hidden");
 
 }
 
-// For plotting options, populate select menus with category groups
-const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
+const validateRequirements = (event) => {
+    const elt = event.target;
+    // Reset "status" classes
+    elt.classList.remove("is-success", "is-danger");
+    if (elt.value) {
+        elt.parentElement.classList.remove("is-danger");
+        elt.parentElement.classList.add("is-success");
 
-    for (const elt of document.getElementsByClassName(classSelector)) {
-        elt.replaceChildren();
+        const validationElts = document.getElementsByClassName("js-plot-req");
 
-        // Create continuous and categorical optgroups
-        const contOptgroup = document.createElement("optgroup");
-        contOptgroup.setAttribute("label", "Continuous data");
-        const catOptgroup = document.createElement("optgroup");
-        catOptgroup.setAttribute("label", "Categorical data");
-
-        // Append empty placeholder element
-        const firstOption = document.createElement("option");
-        elt.append(firstOption);
-
-        // Add an expression option (since expression is not in the categories)
-        if (addExpression) {
-            const expression = document.createElement("option");
-            contOptgroup.append(expression);
-            expression.textContent = "expression";
-            expression.value = "raw_value";
-            if ("raw_value" === defaultOption) {
-                expression.selected = true;
+        // If every validation param has been filled out, it's OK to plot
+        // NOTE: need to ensure pre- and post- param elements are filled before this function is called
+        if ([...validationElts].every(element => element.value)) {
+            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+                plotBtn.disabled = false;
             }
+            document.getElementById("plot_options_s_success").classList.remove("is-hidden");
+            document.getElementById("plot_options_s_failed").classList.add("is-hidden");
         }
-
-        // Add categories
-        for (const group of seriesArray.sort()) {
-            // Skip columns listed as "_colors" as they just provide colors for another series
-            if (group.includes("_colors")) continue;
-
-            const option = document.createElement("option");
-            option.textContent = group;
-            // Change X_pca/X_tsne/X_umap text content to be more user_friendly
-            if (group.includes("X_") && (
-                group.includes("pca")
-                || group.includes("tsne")
-                || group.includes("umap")
-            )) {
-                option.textContent = `${group} (from selected analysis)`;
-            }
-            option.value = group;
-            if (catColumns.includes(group)) {
-                catOptgroup.append(option);
-            } else {
-                contOptgroup.append(option);
-            }
-            // NOTE: It is possible for a default option to not be in the list of groups.
-            if (group === defaultOption) {
-                option.selected = true;
-            }
-        }
-
-        // Only append optgroup if it has children
-        if (contOptgroup.children.length) elt.append(contOptgroup);
-        if (catOptgroup.children.length) elt.append(catOptgroup);
-
+        return;
     }
 
+    // Required paramater has no value. Indicate it and disable plot buttons
+    elt.parentElement.classList.add("is-danger");
+    elt.parentElement.classList.remove("is-success");
+
+    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+        plotBtn.disabled = true;
+    }
+    document.getElementById("plot_options_s_success").classList.add("is-hidden");
+    document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
 }
 
 // ? Put this in the separate curator pages instead?
@@ -1373,9 +1361,9 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
 document.getElementById("edit_params").addEventListener("click", (event) => {
     event.target.classList.add("is-loading");
     // Hide this view
-    document.getElementById("content_c").style.display = "";
+    document.getElementById("content_c").classList.remove("is-hidden");
     // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").style.display = "none";
+    document.getElementById("post_plot_content_c").classList.add("is-hidden");
 
     event.target.classList.remove("is-loading");
 })

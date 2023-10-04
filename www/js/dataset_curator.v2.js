@@ -57,7 +57,7 @@ class PlotlyHandler extends PlotHandler {
                 renderOrderSortableSeries(series);
             }
 
-            document.getElementById("order_section").style.display = "";
+            document.getElementById("order_section").classList.remove("is-hidden");
         }
 
         // Handle colors
@@ -222,6 +222,10 @@ class PlotlyHandler extends PlotHandler {
         }).filter(x => x !== null);
     }
 
+    async setupParamValueCopyEvent() {
+        //pass
+    }
+
     async setupPlotSpecificEvents() {
         await setupPlotlyOptions();
     }
@@ -260,7 +264,7 @@ class ScanpyHandler extends PlotHandler {
                 renderOrderSortableSeries(series);
             }
 
-            document.getElementById("order_section").style.display = "";
+            document.getElementById("order_section").classList.remove("is-hidden");
         }
 
         // Restoring some disabled/checked elements in UI
@@ -376,6 +380,10 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
+    async setupParamValueCopyEvent() {
+        //pass
+    }
+
     async setupPlotSpecificEvents() {
         await setupScanpyOptions();
     }
@@ -451,6 +459,10 @@ class SvgHandler extends PlotHandler {
         }
     }
 
+    async setupParamValueCopyEvent() {
+        this.setupParamValueCopyEvent("js-svg-enable-mid");
+    }
+
     setupPlotSpecificEvents() {
         setupSVGOptions();
     }
@@ -468,7 +480,7 @@ const cloneDisplay = async (event, display) => {
         const geneSymbols = await fetchGeneSymbols(datasetId, null);
         updateGeneOptions(geneSymbols);
     } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
 
     document.getElementById("analysis_select").disabled = false;
@@ -493,7 +505,7 @@ const cloneDisplay = async (event, display) => {
     }
 
     try {
-        const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, undefined);
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
@@ -505,10 +517,10 @@ const cloneDisplay = async (event, display) => {
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
         console.error(error);
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("plot_type_select_c_failed").style.display = "";
-        document.getElementById("plot_type_s_success").style.display = "none";
-        document.getElementById("plot_type_select_c_success").style.display = "none";
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
 
         return;
     } finally {
@@ -524,7 +536,7 @@ const cloneDisplay = async (event, display) => {
     plotStyle.cloneDisplay(config);
 
     // Mark plot params as success
-    document.getElementById("plot_options_s_success").style.display = "";
+    document.getElementById("plot_options_s_success").classList.remove("is-hidden");
 
     // Click "submit" button to load plot
     document.getElementById("plot_btn").click();    // updates geneSelectPost by triggered "click" event
@@ -641,8 +653,8 @@ const curatorSpecifcChooseGene = (event) => {
 
     // Cannot plot if no gene is selected
     if (document.getElementById("gene_select").value === "Please select a gene") {
-        document.getElementById("gene_s_failed").style.display = "";
-        document.getElementById("gene_s_success").style.display = "none";
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+        document.getElementById("gene_s_success").classList.add("is-hidden");
         document.getElementById("current_gene").textContent = "";
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
             plotBtn.disabled = true;
@@ -650,10 +662,10 @@ const curatorSpecifcChooseGene = (event) => {
         return;
     }
 
-    document.getElementById("gene_s_failed").style.display = "none";
-    document.getElementById("gene_s_success").style.display = "";
+    document.getElementById("gene_s_failed").classList.add("is-hidden");
+    document.getElementById("gene_s_success").classList.remove("is-hidden");
     // Display current selected gene
-    document.getElementById("current_gene_c").style.display = "";
+    document.getElementById("current_gene_c").classList.remove("is-hidden");
     document.getElementById("current_gene").textContent = val;
     // Force validationcheck to see if plot button should be enabled
     trigger(document.querySelector(".js-plot-req"), "change");
@@ -663,13 +675,13 @@ const curatorSpecifcChooseGene = (event) => {
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
-        plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
+        await plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
 
     } else if (scanpyPlots.includes(plotType)) {
-        plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
+        await plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
 
     } else if (plotType === "svg") {
-        plotStyle.createPlot(datasetId, geneSymbol);
+        await plotStyle.createPlot(datasetId, geneSymbol);
     } else {
         console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
         return;
@@ -680,8 +692,9 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 const curatorSpecifcDatasetTreeCallback = () => {
 
     // Create gene select2 elements for both views
-    geneSelect = createGeneSelectInstance("gene_select");
-    geneSelectPost = createGeneSelectInstance("gene_select_post");
+    // Not providing the object in the argument could duplicate the nice-select2 structure if called multiple times
+    geneSelect = createGeneSelectInstance("gene_select", geneSelect);
+    geneSelectPost = createGeneSelectInstance("gene_select_post", geneSelectPost);
 
 }
 
@@ -715,8 +728,8 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
 
 }
 
-const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis_id) => {
-    const payload = {user_id, session_id, dataset_id, analysis_id};
+const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
+    const payload = {session_id, dataset_id, analysis_id};
     try {
         const {data} = await axios.post(`/api/h5ad/${dataset_id}/availableDisplayTypes`, payload);
         if (data.hasOwnProperty("success") && data.success < 1) {
@@ -779,26 +792,12 @@ const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, an
     }
 }
 
-const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
-    // Get updates and additions to plot from the plot_display_config JS object
-    let updates = {};
-    for (const idx in plotConfObj) {
-        const conf = plotConfObj[idx];
-        // Get config (data and/or layout info) for the plot type chosen, if it exists
-        if (conf.plot_type == "all" || conf.plot_type == plotType) {
-            const update = category in conf ? conf[category] : {};
-            updates = {...updates, ...update};    // Merge updates
-        }
-    }
-    return updates;
-}
-
 
 const renderColorPicker = (seriesName) => {
     const colorsContainer = document.getElementById("colors_container");
     const colorsSection = document.getElementById("colors_section");
 
-    colorsSection.style.display = "none";
+    colorsSection.classList.add("is-hidden");
     colorsContainer.replaceChildren();
     if (!seriesName) {
         return;
@@ -832,7 +831,7 @@ const renderColorPicker = (seriesName) => {
         colorsContainer.append(groupHtml)
     }
 
-    colorsSection.style.display = "";
+    colorsSection.classList.remove("is-hidden");
 }
 
 /* Set up any Plotly-based plot options and events for the pre- and post- plot views */
@@ -843,10 +842,18 @@ const setupPlotlyOptions = async () => {
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
-        document.getElementById("plot_options_s_failed").style.display = "";
+        document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
         return;
     }
+    // Filter out values we don't want of "levels", like "colors"
+    for (const key in levels) {
+        if (key.includes("_colors")) {
+            delete levels[key];
+        }
+    }
+
     catColumns = Object.keys(levels);
+
 
     const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
     const continuousColumns = difference(allColumns, catColumns);
@@ -912,7 +919,7 @@ const setupPlotlyOptions = async () => {
             elt.addEventListener("change", (event) => {
                 const vLinesContainer = document.getElementById("vlines_container")
                 if ((catColumns.includes(event.target.value))) {
-                    vLinesContainer.style.display = "none";
+                    vLinesContainer.classList.add("is-hidden");
                     // Remove all but first existing vline
                     const toRemove = document.querySelectorAll(".js-plotly-vline-field:not(:first-of-type)");
                     for (const elt of toRemove) {
@@ -923,7 +930,7 @@ const setupPlotlyOptions = async () => {
                     document.querySelector(".js-plotly-vline-style-select").value = "solid";
                     return;
                 }
-                vLinesContainer.style.display = "";
+                vLinesContainer.classList.remove("is-hidden");
 
             });
         }
@@ -964,7 +971,8 @@ const setupPlotlyOptions = async () => {
                     legendElt.disabled = false;
                     disableCheckboxLabel(legendElt, false);
                 }
-                colorscaleSelect.disable()
+                document.getElementById("color_palette_post").disabled = true;
+                //colorscaleSelect.disable()
             } else {
                 // Enable the color palette select
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
@@ -975,7 +983,8 @@ const setupPlotlyOptions = async () => {
                     legendElt.checked = false;
                     disableCheckboxLabel(legendElt, true);
                 }
-                colorscaleSelect.enable()
+                document.getElementById("color_palette_post").disabled = false;
+                //colorscaleSelect.enable()
             }
         })
     }
@@ -1043,8 +1052,15 @@ const setupScanpyOptions = async () => {
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
-        document.getElementById("plot_options_s_failed").style.display = "";
+        document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
         return;
+    }
+
+    // Filter out values we don't want of "levels", like "colors"
+    for (const key in levels) {
+        if (key.includes("_colors")) {
+            delete levels[key];
+        }
     }
     catColumns = Object.keys(levels);
 
@@ -1163,28 +1179,87 @@ const setupSVGOptions = () => {
 
 const showPostPlotlyParamSubsection = (event) => {
     for (const subsection of document.getElementsByClassName("js-plot-config-section")) {
-        subsection.style.display = "none";
+        subsection.classList.add("is-hidden");
     }
 
     switch (event.target.textContent.trim()) {
         case "X-axis":
-            document.getElementById("x_axis_section_post").style.display = "";
+            document.getElementById("x_axis_section_post").classList.remove("is-hidden");
             break;
         case "Y-axis":
-            document.getElementById("y_axis_section_post").style.display = "";
+            document.getElementById("y_axis_section_post").classList.remove("is-hidden");
             break;
         case "Color":
-            document.getElementById("color_section_post").style.display = "";
+            document.getElementById("color_section_post").classList.remove("is-hidden");
             break;
         case "Marker Size":
-            document.getElementById("size_section_post").style.display = "";
+            document.getElementById("size_section_post").classList.remove("is-hidden");
             break;
         case "Subplots":
-            document.getElementById("subplots_section_post").style.display = "";
+            document.getElementById("subplots_section_post").classList.remove("is-hidden");
             break;
         default:
-            document.getElementById("misc_section_post").style.display = "";
+            document.getElementById("misc_section_post").classList.remove("is-hidden");
             break;
     }
     event.preventDefault(); // Prevent "link" clicking from "a" elements
+}
+
+// For plotting options, populate select menus with category groups
+const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
+
+    for (const elt of document.getElementsByClassName(classSelector)) {
+        elt.replaceChildren();
+
+        // Create continuous and categorical optgroups
+        const contOptgroup = document.createElement("optgroup");
+        contOptgroup.setAttribute("label", "Continuous data");
+        const catOptgroup = document.createElement("optgroup");
+        catOptgroup.setAttribute("label", "Categorical data");
+
+        // Append empty placeholder element
+        const firstOption = document.createElement("option");
+        elt.append(firstOption);
+
+        // Add an expression option (since expression is not in the categories)
+        if (addExpression) {
+            const expression = document.createElement("option");
+            contOptgroup.append(expression);
+            expression.textContent = "expression";
+            expression.value = "raw_value";
+            if ("raw_value" === defaultOption) {
+                expression.selected = true;
+            }
+        }
+
+        // Add categories
+        for (const group of seriesArray.sort()) {
+
+            const option = document.createElement("option");
+            option.textContent = group;
+            // Change X_pca/X_tsne/X_umap text content to be more user_friendly
+            if (group.includes("X_") && (
+                group.includes("pca")
+                || group.includes("tsne")
+                || group.includes("umap")
+            )) {
+                option.textContent = `${group} (from selected analysis)`;
+            }
+            option.value = group;
+            if (catColumns.includes(group)) {
+                catOptgroup.append(option);
+            } else {
+                contOptgroup.append(option);
+            }
+            // NOTE: It is possible for a default option to not be in the list of groups.
+            if (group === defaultOption) {
+                option.selected = true;
+            }
+        }
+
+        // Only append optgroup if it has children
+        if (contOptgroup.children.length) elt.append(contOptgroup);
+        if (catOptgroup.children.length) elt.append(catOptgroup);
+
+    }
 }

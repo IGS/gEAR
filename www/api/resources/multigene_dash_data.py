@@ -95,6 +95,9 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
+def create_composite_index_column(df, columns):
+    return df.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
@@ -200,6 +203,9 @@ class MultigeneDashData(Resource):
 
         if 'replicate' in columns:
             columns.remove('replicate')
+
+        # remove _colors columns
+        columns = [col for col in columns if not col.endswith('_colors')]
 
         if not columns:
             return {
@@ -310,7 +316,7 @@ class MultigeneDashData(Resource):
                     pass
 
         # Make a composite index of all categorical types
-        selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+        selected.obs['composite_index'] = create_composite_index_column(selected, columns)
         selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
         columns.append("composite_index")
 
@@ -323,7 +329,7 @@ class MultigeneDashData(Resource):
                     filters[field] = sort_order[field]
 
             # Create a special composite index for the specified filters
-            selected.obs['filters_composite'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
+            selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
             selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
             columns.append("filters_composite")
             unique_composite_indexes = selected.obs["filters_composite"].unique()
@@ -474,7 +480,7 @@ class MultigeneDashData(Resource):
             # Create a composite to groupby
             if filters and matrixplot:
                 union_fields = mg.union(list(filters.keys()), clusterbar_fields)
-                selected.obs['groupby_composite'] = selected.obs[union_fields].apply(lambda x: ';'.join(map(str,x)), axis=1)
+                selected.obs['groupby_composite'] = create_composite_index_column(selected, union_fields)
                 selected.obs['groupby_composite'] = selected.obs['groupby_composite'].astype('category')
                 columns.append("groupby_composite")
                 groupby_index = "groupby_composite"
@@ -639,7 +645,9 @@ class MultigeneDashData(Resource):
         if legend_title:
             fig.update_layout(
                 legend={
-                    "text":legend_title
+                    "title":{
+                        "text":legend_title
+                    }
                 }
             )
 

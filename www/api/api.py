@@ -23,6 +23,7 @@ from resources.h5ad import H5ad
 from resources.svg_data import SvgData
 from resources.top_pca_genes import TopPCAGenes
 from resources.available_display_types import AvailableDisplayTypes, MGAvailableDisplayTypes
+from resources.aggregations import Aggregations
 from resources.analyses import Analyses
 from resources.dataset_display import DatasetDisplay
 from resources.gene_symbols import GeneSymbols
@@ -44,6 +45,7 @@ api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')
+api.add_resource(Aggregations, '/h5ad/<dataset_id>/aggregations')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')

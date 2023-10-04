@@ -288,14 +288,14 @@ function scaleBetween(unscaledNum, minAllowed, maxAllowed, min, max) {
 // Truncate axis labels to a fixed length. Add a hover property to the label to show the full label. Edits inplace.
 function truncateAxisLabels() {
     const selector = document.querySelectorAll('.xaxislayer-above text');
-    selector.forEach((el, i) => {
+    for (const el of selector) {
         const elText = el.textContent;
         const sublabel = elText.length > TICK_LABEL_MAX_LEN_ALLOWED
             ? `${elText.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`
             : elText;
 
         el.innerHTML(`<a style="fill:inherit;">${sublabel}</a>`);
-    })
+    }
     /*
     const axis_ticktexts = {}
 

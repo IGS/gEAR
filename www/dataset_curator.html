@@ -97,17 +97,17 @@
               <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select a dataset</span>
-            <span id="dataset_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+            <span id="dataset_s_success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="dataset_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+            <span id="dataset_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-up"></i>
             </span>
           </h5>
-          <div id="current_dataset_c" style="display:none;">
+          <div id="current_dataset_c" class="is-hidden">
             Current dataset:
             <span id="current_dataset"></span>
           </div>
@@ -124,10 +124,10 @@
               <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Create new or load existing curation</span>
-            <span id="load_plot_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+            <span id="load_plot_s_success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="load_plot_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+            <span id="load_plot_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
@@ -153,21 +153,21 @@
               <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select dataset plot type and analysis type</span>
-            <span id="plot_type_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+            <span id="plot_type_s_success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="plot_type_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+            <span id="plot_type_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div id="current_analysis_c" style="display:none;">
+          <div id="current_analysis_c" class="is-hidden">
             Current analysis:
             <span id="current_analysis"></span>
           </div>
-          <div id="current_plot_type_c" style="display:none;">
+          <div id="current_plot_type_c" class="is-hidden">
             Current plot type:
             <span id="current_plot_type"></span>
           </div>
@@ -175,10 +175,10 @@
             <div class="columns">
               <div id="plot_type_select_c" class="column is-4">
                 <div>Plot type
-                  <span id="plot_type_select_c_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+                  <span id="plot_type_select_c_success" class="js-step-success icon has-text-success-dark is-hidden">
                     <i class="mdi mdi-check-circle"></i>
                   </span>
-                  <span id="plot_type_select_c_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+                  <span id="plot_type_select_c_failed" class="js-step-success icon has-text-danger-dark is-hidden">
                     <i class="mdi mdi-close-circle"></i>
                   </span>
                 </div>
@@ -203,10 +203,10 @@
               </div>
               <div id="analysis_type_select_c" class="column is-4">
                 <div>Analysis (optional)
-                  <span id="analysis_type_select_c_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+                  <span id="analysis_type_select_c_success" class="js-step-success icon has-text-success-dark is-hidden">
                     <i class="mdi mdi-check-circle"></i>
                   </span>
-                  <span id="analysis_type_select_c_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+                  <span id="analysis_type_select_c_failed" class="js-step-success icon has-text-danger-dark is-hidden">
                     <i class="mdi mdi-close-circle"></i>
                   </span>
                 </div>
@@ -232,17 +232,17 @@
               <i class="mdi mdi-dna"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select gene</span>
-            <span id="gene_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+            <span id="gene_s_success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="gene_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+            <span id="gene_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div id="current_gene_c" style="display:none;">
+          <div id="current_gene_c" class="is-hidden">
             Current gene:
             <span id="current_gene"></span>
           </div>
@@ -262,10 +262,10 @@
               <i class="mdi mdi-tune"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select plotting options</span>
-            <span id="plot_options_s_success" class="js-step-success icon has-text-success-dark" style="display:none;">
+            <span id="plot_options_s_success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="plot_options_s_failed" class="js-step-success icon has-text-danger-dark" style="display:none;">
+            <span id="plot_options_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
@@ -278,7 +278,7 @@
         <button id="plot_btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
 
       </section>
-      <section id="post_plot_content_c" class="m-3 columns" style="display:none;">
+      <section id="post_plot_content_c" class="m-3 columns is-hidden">
         <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column is-justify-content-space-between">
           <div id="current_info" class="content">
             <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
@@ -296,12 +296,12 @@
             </div>
             <section id="post_plot_adjustments" class="content"></section>
             <section id="order_and_colors">
-              <section id="order_section" class="my-3" style="display:none;">
+              <section id="order_section" class="my-3 is-hidden">
                 <p class="content title is-4">Change order</p>
                 <p class="help">Drag-and-drop to determine order of plotting</p>
                 <div id="order_container" class="container"></div>
               </section>
-              <section id="colors_section" class="my-3" style="display:none;">
+              <section id="colors_section" class="my-3 is-hidden">
                   <p class="content title is-4">Change colors</p>
                   <div id="colors_container" class="container"></div>
               </section>
