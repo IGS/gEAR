@@ -42,13 +42,45 @@
                       </a>
                     </div><!-- end .navbar-dropdown -->
                   </div>
-                  
-                  <!-- toggle display depending on whether user is logged in -->
-                  <div class="buttons not-logged-in">
-                    <a class="button is-light">
-                      Sign in
+
+                  <div class="navbar-item not-logged-in has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                      Log in
                     </a>
+
+                    <div id="navbar-login" class="navbar-dropdown is-right pl-3 pr-3">
+                      <div class="navbar-item">
+                        <p>
+                          Don't have an account yet?</br>
+                          <a href="./create_account.html">Sign up</a>
+                        </p>
+                      </div>
+                      <hr class="dropdown-divider">
+                      <div class="navbar-item">
+                        <!-- Add your login and password form here -->
+                        <form id="login-form">
+                          <div class="field">
+                            <label class="label">E-mail address</label>
+                            <div class="control">
+                              <input name="user-email" class="input is-small" type="text" placeholder="Your e-mail">
+                            </div>
+                            <p id="user-email-help" class="help has-text-danger-dark is-hidden">User name not found</p>
+                          </div>
+                          <div class="field">
+                            <label class="label">Password</label>
+                            <div class="control">
+                              <input name="user-password" class="input is-small" type="password" placeholder="Your password">
+                            </div>
+                            <p id="user-password-help" class="help has-text-danger-dark is-hidden">Incorrect password</p>
+                          </div>
+                          <div class="control">
+                            <button id="submit-login" class="button is-primary is-small is-fullwidth">Log in</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
                   </div>
+                  
                 </div>
               </div>
             </div>

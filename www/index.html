@@ -25,7 +25,7 @@
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
         
         <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
       <div id="main_layout_c" class="columns is-fullheight">
@@ -241,6 +241,14 @@
                   <td>Dec 17, 2022</td>
                 </tr>
               </tbody>
+              <template id="user-history-row">
+                <tr>
+                  <td>&nbsp;</td>
+                  <td class="category"></td>
+                  <td class="action-label"></td>
+                  <td class="date"></td>
+                </tr>
+              </template>
             </table>
           </section><!-- end #content_c -->
         </section> <!-- end #main_c -->
@@ -255,9 +263,11 @@
       <script src="js/vendor/jsrender.20181003.min.js"></script>
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
       <!-- Page-specific JS file here -->
-
+      <script>document.write('<script src="js/index.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
     </body>
 </html>

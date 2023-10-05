@@ -20,6 +20,11 @@ html, body {
 #header_bar {
     border-bottom: 1px solid rgb(200, 200, 200);
 }
+
+#navbar-login input {
+    width: 15em;
+}
+
 /* ------------------ */
 /* -= Other styles =- */
 

@@ -29,8 +29,8 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    user_email = form.getvalue('user_email')
-    user_pass = form.getvalue('user_pass')
+    user_email = form.getvalue('user-email')
+    user_pass = form.getvalue('user-password')
     encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
 
     result = {'session_id': 0, 'is_admin': 0}

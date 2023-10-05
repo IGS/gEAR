@@ -17,7 +17,21 @@ document.addEventListener('DOMContentLoaded', () => {
     checkForLogin();
 });
 
-// ! Subject to change
+/*************************************************************************************
+ Code related to the login process, which is available in the header across all pages.
+*************************************************************************************/
+
+document.getElementById('submit-login').addEventListener('click', function(event) {
+    event.preventDefault(); // Prevent the default form submission
+
+    // reset any UI elements
+    document.getElementById('user-email-help').classList.add('is-hidden');
+    document.getElementById('user-password-help').classList.add('is-hidden');
+
+    // try to log in
+    doLogin();
+});
+
 const checkForLogin = async () => {
     session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
@@ -51,6 +65,31 @@ const checkForLogin = async () => {
     // NOTE: Initially this returned session_id, but we can grab that from the global CURRENT_USER
 }
 
+const doLogin = async () => {
+    const formdata = new FormData(document.getElementById("login-form"));
+    const payload = new URLSearchParams(formdata);
+    const {data} = await axios.post("/cgi/login.cgi", payload);
+
+    console.log("Login result:");
+    console.log(data);
+
+    if (data.session_id == 0) {
+        // user name wasn't found at all
+        document.getElementById('user-email-help').classList.remove('is-hidden');
+
+    } else if (data.session_id == -1) {
+        // User was found, password was incorrect
+        document.getElementById('user-password-help').classList.remove('is-hidden');
+
+    } else if (data.session_id.toString().length > 10) {
+        // Looks like we got a session ID
+
+    } else {
+        // Something went muy wrong
+
+    }
+}
+
 const hideLoggedInElements = () => {
     document.querySelectorAll('.logged-in').forEach(element => element.style.display = 'none');
 }
@@ -67,13 +106,6 @@ const showNotLoggedInElements = () => {
     document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = '');
 }
 
-/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
-const generateElements = (html) => {
-    const template = document.createElement('template');
-    template.innerHTML = html.trim();
-    return template.content.children[0];
-}
-
 const handleLoginUIUpdates = () => {
     // So that all elements don't initially show while login is checked, we
     //  show/hide elements first then parent container
@@ -85,6 +117,17 @@ const handleLoginUIUpdates = () => {
         showNotLoggedInElements();
     }
     document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
+}
+
+/*************************************************************************************
+   End of login-related code
+*************************************************************************************/
+
+/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
+const generateElements = (html) => {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content.children[0];
 }
 
 // Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
