@@ -1,7 +1,3 @@
-const filters = {};
-const sessionId = 'ee95e48d-c512-4083-bf05-ca9f65e2c12a';
-const analysisId = null;
-const datasetId = "3b3410d0-26cd-6d5c-0d99-0a20b8288d26";
 
 // Class for the faceted search widget
 // SAdkins - I let Github Copilot write this class for me (with minor adjustments)
@@ -16,6 +12,11 @@ class FacetWidget {
     }
 
     init() {
+        // Remove any existing facet widget
+        const facetWidget = document.getElementById('facet-widget');
+        if (facetWidget !== null) {
+            facetWidget.remove();
+        }
         if (this.aggregations.length > 0 ) {
             this.createFacetWidget();
         } else {
@@ -26,7 +27,7 @@ class FacetWidget {
     createFacetWidget() {
         const facetWidget = document.createElement('div');
         facetWidget.id = 'facet-widget';
-        facetWidget.className = 'facet-widget';
+        facetWidget.className = 'facet-widget content is-small columns';
 
         this.facetContainer.append(facetWidget);
         this.render();
@@ -70,7 +71,7 @@ class FacetWidget {
         facetWidget.innerHTML = '';
         const facetWidgetContent = document.createElement('div');
         facetWidgetContent.id = 'facet-widget-content';
-        facetWidgetContent.className = 'facet-widget-content panel is-primary'; // I find this a bit too dark
+        facetWidgetContent.className = 'facet-widget-content column is-two-thirds';
         facetWidget.appendChild(facetWidgetContent);
         this.renderFilters();
     }
@@ -97,7 +98,7 @@ class FacetWidget {
         filterElement.id = `filter-${filter.name}`;
         filterElement.className = 'filter';
         filterElement.innerHTML = `
-            <div class="filter-header panel-heading is-clickable">
+            <div class="filter-header panel-heading is-clickable has-background-primary-dark has-text-primary-light">
                 <span class="filter-name has-text-weight-semibold is-underlined">${filter.name}</span>
                 <span class="loader is-hidden is-inline-flex"></span>
                 <span class="filter-toggle-icon icon is-pulled-right">
@@ -113,7 +114,7 @@ class FacetWidget {
     createFilterContent(filter) {
         const filterContent = document.createElement('div');
         filterContent.id = `filter-content-${filter.name}`;
-        filterContent.className = 'filter-content is-hidden';
+        filterContent.className = 'filter-content is-hidden has-background-white';
         const filterItems = this.createFilterItems(filter);
         filterContent.appendChild(filterItems);
         return filterContent;
@@ -222,49 +223,3 @@ class FacetWidget {
     }
 
 }
-
-
-const createFacetWidget = async () => {
-    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
-
-    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
-    document.getElementById("num_selected").textContent = totalCount;
-
-
-    const facetWidget = new FacetWidget({
-        aggregations,
-        filters,
-        onFilterChange: async (filters) => {
-            if (filters) {
-                try {
-                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
-                    facetWidget.updateAggregations(aggregations);
-                    document.getElementById("num_selected").textContent = totalCount;
-                } catch (error) {
-                    logErrorInConsole(error);
-                }
-            } else {
-                // Save an extra API call
-                facetWidget.updateAggregations(facetWidget.aggregations);
-            }
-        }
-    });
-    document.getElementById("selected_facets_loader").classList.add("is-hidden")
-
-}
-
-const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
-    const payload = {session_id, dataset_id, analysis_id, filters};
-    try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
-        if (data.hasOwnProperty("success") && data.success < 1) {
-            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
-        }
-        const {aggregations, total_count} = data;
-        return {aggregations, total_count};
-    } catch (error) {
-        logErrorInConsole(error);
-    }
-}
-
-window.onload = () => createFacetWidget();

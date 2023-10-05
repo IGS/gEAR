@@ -55,9 +55,9 @@
         <header class="columns section">
           <div id="tool_desc_c" class="column is-3">
           <h3 class="title is-3">
-            View new multi-gene displays for a dataset
+            View new multigene displays for a dataset
           </h3>
-          <p>The multi-gene viewer tool is used to create new multi-gene expression displays, as well as editing existing ones. You can choose from variety of plots, such as heatmaps, violin, and volcano plots.</p>
+          <p>The multigene viewer tool is used to create new multi-gene expression displays, as well as editing existing ones. You can choose from variety of plots, such as heatmaps, violin, and volcano plots.</p>
           </div>
           <div id="guides_outer_c" class="column is-offset-3 has-background-white-bis notification">
             <h3 class="mt-4 mb-4">
@@ -164,13 +164,13 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div id="current_analysis_c" class="is-hidden">
-            Current analysis:
-            <span id="current_analysis"></span>
-          </div>
           <div id="current_plot_type_c" class="is-hidden">
             Current plot type:
             <span id="current_plot_type"></span>
+          </div>
+          <div id="current_analysis_c" class="is-hidden">
+            Current analysis:
+            <span id="current_analysis"></span>
           </div>
           <div class="js-step-collapsable mt-3" idi="plot_type_collapsable">
             <div class="columns">
@@ -292,29 +292,36 @@
           <div id="current_info" class="content">
             <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
             <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold"></span></p>
+            <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
           </div>
-          <div id="params_config_container">
-            <p class="title is-4">Plot configuration</p>
-            <section id="post_plot_adjustments" class="content"></section>
+          <div id="post_plot_customize">
+            <div id="facet_c" class="content">
+              <p class="title is-4">Filters</p>
+            </div>
+            <div id="params_config_container">
+              <p class="title is-4">Plot configuration</p>
+              <section id="post_plot_adjustments" class="content"></section>
 
-            <section id="plot_plot_global_adjustments" class="content">
-              <p class="is-flex is-justify-content-space-between pr-3">
-                <span class="has-text-weight-medium">Plot title</span>
-                <input class="js-dash-plot-title" id="plot_title_post" class="input" type="text" placeholder="Enter title of plot">
-              </p>
-              <p class="help">If left blank, plot will have a default title or no title.</p>
-              <p class="is-flex is-justify-content-space-between pr-3" id="legend_title_container">
-                <span class="has-text-weight-medium">Legend title</span>
-                <input class="js-dash-legend-title" id="legend_title_post" class="input" type="text" placeholder="Enter title of legend">
-              </p>
-              <p class="help">If left blank, legend will have a default title.</p>
-            </section>
-            <section id="order_section" class="my-3 is-hidden">
-              <p class="content title is-4">Change order</p>
-              <p class="help">Drag-and-drop to determine order of plotting</p>
-              <div id="order_container" class="container"></div>
-            </section>
+              <section id="plot_plot_global_adjustments" class="content">
+                <p class="is-flex is-justify-content-space-between pr-3">
+                  <span class="has-text-weight-medium">Plot title</span>
+                  <input class="js-dash-plot-title" id="plot_title_post" class="input" type="text" placeholder="Enter title of plot">
+                </p>
+                <p class="help">If left blank, plot will have a default title or no title.</p>
+                <p class="is-flex is-justify-content-space-between pr-3" id="legend_title_container">
+                  <span class="has-text-weight-medium">Legend title</span>
+                  <input class="js-dash-legend-title" id="legend_title_post" class="input" type="text" placeholder="Enter title of legend">
+                </p>
+                <p class="help">If left blank, legend will have a default title.</p>
+              </section>
+              <section id="order_section" class="my-3 is-hidden">
+                <p class="content title is-4">Change order</p>
+                <p class="help">Drag-and-drop to determine order of plotting</p>
+                <div id="order_container" class="container"></div>
+              </section>
+            </div>
           </div>
+
           <div id="post_plot_actions_container" class="mt-3 columns is-multiline">
             <div class="column is-full">
               <button id="update_plot" class="button is-medium is-responsive is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
@@ -352,7 +359,15 @@
             </div>
           </div>
         </div>
-        <div id="plot_container" class="column is-two-thirds has-background-white-bis"></div>
+        <div class="column is-two-thirds has-background-white-bis">
+          <div class="box" id="selected_facets">
+            <p> Selected facets:
+                <span class="loader is-hidden is-inline-flex" id="selected_facets_loader"></span>
+            </p>
+            <span class="tags" id="selected_facets_tags"></span>
+          </div>
+          <div id="plot_container"></div>
+        </div>
       </section>
     </section>
   </div>
@@ -374,6 +389,7 @@
   <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+  <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/tree.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/plot_display_config.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>

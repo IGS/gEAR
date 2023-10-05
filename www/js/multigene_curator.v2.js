@@ -1,6 +1,7 @@
 const isMultigene = 1;
 
 let geneSelect = null;
+let facetWidget = null;
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
@@ -135,10 +136,11 @@ class GenesAsAxisHandler extends PlotHandler {
         }
 
         // Filtered observation groups
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
 
         // Get order
+        this.plotConfig["order"] = getPlotOrderFromSortable();
 
-        // Get colors
     }
 
     async setupParamValueCopyEvent() {
@@ -150,18 +152,6 @@ class GenesAsAxisHandler extends PlotHandler {
 
         updateSeriesOptions("js-dash-primary", catColumns);
         updateSeriesOptions("js-dash-secondary", catColumns);
-
-        if (this.plotType === "heatmap") {
-            // Primary series is not required for heatmaps
-            for (const classElt of document.getElementsByClassName("js-dash-primary")) {
-                classElt.classList.remove("js-plot-req");
-                classElt.removeEventListener("change", validateRequirements);
-            }
-            // Remove the "Required" text
-            const primarySeriesElt = document.getElementById("primary_series");
-            const requiredSpanElt = primarySeriesElt.closest(".field").querySelector("label span");
-            requiredSpanElt.remove();
-        }
 
         // If primary series changes, disable chosen option in secondary series
         for (const classElt of document.getElementsByClassName("js-dash-primary")) {
@@ -371,9 +361,7 @@ class GenesAsDataHandler extends PlotHandler {
         }
 
         // Filtered observation groups
-
-        // Get order
-
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
 
     }
 
@@ -504,6 +492,35 @@ const clearGenes = (event) => {
     document.getElementById("clear_genes_btn").classList.remove("is-loading");
 }
 
+const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
+    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
+
+    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    document.getElementById("num_selected").textContent = totalCount;
+
+
+    const facetWidget = new FacetWidget({
+        aggregations,
+        filters,
+        onFilterChange: async (filters) => {
+            if (filters) {
+                try {
+                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+                    facetWidget.updateAggregations(aggregations);
+                    document.getElementById("num_selected").textContent = totalCount;
+                } catch (error) {
+                    logErrorInConsole(error);
+                }
+            } else {
+                // Save an extra API call
+                facetWidget.updateAggregations(facetWidget.aggregations);
+            }
+        }
+    });
+    document.getElementById("selected_facets_loader").classList.add("is-hidden")
+    return facetWidget;
+}
+
 const curatorSpecifcChooseGene = (event) => {
     // Triggered when a gene is selected
 
@@ -577,9 +594,12 @@ const curatorSpecifcCreatePlot = async (plotType) => {
     await plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
 }
 
-const curatorSpecifcDatasetTreeCallback = () => {
+const curatorSpecifcDatasetTreeCallback = async () => {
     // Creates gene select instance that allows for multiple selection
-    geneSelect = createGeneSelectInstance("gene_select", geneSelect)
+    geneSelect = createGeneSelectInstance("gene_select", geneSelect);
+
+    // Create facet widget
+    facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
 }
 
 const curatorSpecificOnLoad = async () => {

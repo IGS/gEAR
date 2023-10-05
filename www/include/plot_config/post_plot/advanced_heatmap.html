@@ -1,62 +1,71 @@
-<p class="pr-3">
-    <span class="has-text-weight-medium is-underlined">Clusterbar groups</span>
-    <div class="control js-dash-clusterbar" id="clusterbar_c_post">
-        <!-- Add clusterbar group checkboxes here -->
-    </div>
-</p>
+<section id="clustering_section_post" class="js-plot-config-section py-3">
+    <span class="subtitle is-4 is-underlined">Clustering</span>
+    <p class="is-flex is-justify-content-space-between pr-3">
+        <span class="has-text-weight-medium">Distance metric</span>
+        <span class="select is-small">
+            <select class="js-dash-distance-metric" id="distance_select_post">
+                    <!--<option value="braycurtis">Bray-Curtis</option>-->
+                    <option value="euclidean" selected="selected">Euclidean</option>
+                    <option value="cityblock">Manhattan (Cityblock)</option>
+                    <option value="minkowski">Minkowski</option>
+            </select>
+        </span>
+    </p>
+    <p class="help">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3">
-    <span class="has-text-weight-medium">Distance metric</span>
-    <span class="select is-small">
-        <select class="js-dash-distance-metric" id="distance_select_post">
-                <!--<option value="braycurtis">Bray-Curtis</option>-->
-                <option value="euclidean" selected="selected">Euclidean</option>
-                <option value="cityblock">Manhattan (Cityblock)</option>
-                <option value="minkowski">Minkowski</option>
-        </select>
-    </span>
-</p>
-<p class="help">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Cluster observation samples</span>
+        <input class="js-dash-cluster-obs" id="cluster_obs_post" type="checkbox">
+    </label>
+    <div class="alert alert-warning is-hidden" id="cluster_obs_warning">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
+    <p class="help">NOTE: Disables sorting by primary and secondary categories.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Create matrixplot</span>
-    <input class="js-dash-matrixplot" id="matrixplot_post" type="checkbox">
-</p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Cluster genes</span>
+        <input class="js-dash-cluster-genes" id="cluster_genes_post" type="checkbox">
+    </label>
+    <p class="help">NOTE: Disables sorting by genes</p>
+</section>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Center mean expression around zero</span>
-    <input class="js-dash-center-mean" id="center_around_zero_post" type="checkbox">
-</p>
-<p class="help">Choosing a diverging colorscale is recommended when enabling this option, and a sequential colorscale when disabling this option.</p>
+<section id="misc_section_post" class="js-plot-config-section py-3">
+    <span class="subtitle is-4 is-underlined">Miscellaneous</span>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Cluster observation samples</span>
-    <input class="js-dash-cluster-obs" id="cluster_obs_post" type="checkbox">
-</p>
-<div class="alert alert-warning" id="cluster_obs_warning" style="display:none;">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
-<p class="help">NOTE: Disables sorting by primary and secondary categories.</p>
+    <p class="pr-3">
+        <span class="has-text-weight-medium is-underlined">Add clusterbar groups</span>
+        <div class="control js-dash-clusterbar" id="clusterbar_c_post">
+            <!-- Add clusterbar group checkboxes here -->
+        </div>
+    </p>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Cluster genes</span>
-    <input class="js-dash-cluster-genes" id="cluster_genes_post" type="checkbox">
-</p>
-<p class="help">NOTE: Disables sorting by genes</p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Create matrixplot</span>
+        <input class="js-dash-matrixplot" id="matrixplot_post" type="checkbox">
+    </label>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Flip genes and observation axes</span>
-    <input class="js-dash-flip-axes" id="flip_axes_post" type="checkbox">
-</p>
-<p class="help">Genes as columns, observations as rows.</p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Center mean expression around zero</span>
+        <input class="js-dash-center-mean" id="center_around_zero_post" type="checkbox">
+    </label>
+    <p class="help">Choosing a diverging colorscale is recommended when enabling this option, and a sequential colorscale when disabling this option.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Hide observation labels</span>
-    <input class="js-dash-hide-obs-labels" id="hide_obs_labels_post" type="checkbox">
-</p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Flip genes and observation axes</span>
+        <input class="js-dash-flip-axes" id="flip_axes_post" type="checkbox">
+    </label>
+    <p class="help">Genes as columns, observations as rows.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Hide gene labels</span>
-    <input class="js-dash-hide-gene-labels" id="hide_gene_labels_post" type="checkbox">
-</p>
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Hide observation labels</span>
+        <input class="js-dash-hide-obs-labels" id="hide_obs_labels_post" type="checkbox">
+    </label>
+
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Hide gene labels</span>
+        <input class="js-dash-hide-gene-labels" id="hide_gene_labels_post" type="checkbox">
+    </label>
+
+</section>
+
 
 <!-- TODO: Add subsampling -->
 <!-- https://github.com/IGS/gEAR/blob/2b9e705994988e8413bea059cecac0d1ec1eea1d/www/js/multigene_curator.js#L750 -->

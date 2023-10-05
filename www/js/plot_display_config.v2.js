@@ -226,6 +226,11 @@ const postPlotlyConfig = {
             , layout:{
                 "height": 800
             }
+        }, {
+            plot_type: "heatmap"
+            , layout:{
+                "height": 800
+            }
         }
     ]
 }

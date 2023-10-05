@@ -136,7 +136,7 @@ const datasetTree = new DatasetTree({
         plotTypeSelect = createPlotTypeSelectInstance("plot_type_select", plotTypeSelect);
 
         // Call any curator-specific callbacks
-        curatorSpecifcDatasetTreeCallback();
+        await curatorSpecifcDatasetTreeCallback();
     })
 });
 
@@ -159,7 +159,7 @@ const analysisSelectUpdate = async () => {
 const chooseAnalysis = async (event) => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
-    const analysisText = analysisId || "Primary Analysis";
+    const analysisText = (analysisId.length) ? analysisId : "Primary Analysis";
 
     // Display current selected analysis
     document.getElementById("current_analysis_c").classList.remove("is-hidden");
@@ -555,17 +555,17 @@ const fetchH5adInfo = async (datasetId, analysisId) => {
 const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
     const payload = {session_id, dataset_id, analysis_id, filters};
     try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, convertToFormData(payload));
+        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
         if (data.hasOwnProperty("success") && data.success < 1) {
             throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
         }
-        return data.aggregations;
+        const {aggregations, total_count} = data;
+        return {aggregations, total_count};
     } catch (error) {
         logErrorInConsole(error);
-        createToast(error.message);
-        throw new Error(msg);
     }
 }
+
 
 // Create the template for the colorscale select2 option dropdown
 const formatColorscaleOptionText = (option, text, isContinuous=false) => {
@@ -720,7 +720,7 @@ const loadColorscaleSelect = (isContinuous=false) => {
 
     return;
 
-    colorscaleSelect = createColorscaleSelectInstance("color_palette_post", colorscaleSelect);
+    //colorscaleSelect = createColorscaleSelectInstance("color_palette_post", colorscaleSelect);
 
 }
 

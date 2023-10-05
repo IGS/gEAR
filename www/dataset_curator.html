@@ -163,13 +163,13 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div id="current_analysis_c" class="is-hidden">
-            Current analysis:
-            <span id="current_analysis"></span>
-          </div>
           <div id="current_plot_type_c" class="is-hidden">
             Current plot type:
             <span id="current_plot_type"></span>
+          </div>
+          <div id="current_analysis_c" class="is-hidden">
+            Current analysis:
+            <span id="current_analysis"></span>
           </div>
           <div class="js-step-collapsable mt-3" id="plot_type_collapsable">
             <div class="columns">
@@ -284,29 +284,32 @@
             <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
             <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold"></span></p>
           </div>
-          <div id="params_config_container">
-            <p class="title is-4">Plot configuration</p>
-            <div class="field">
-              <label class="label has-text-weight-medium">Change gene</label>
-              <div class="control">
-                <div class="select is-fullwidth">
-                  <select class="js-gene-select" id="gene_select_post"></select>
+          <div id="post_plot_customize">
+            <div id="params_config_container">
+              <p class="title is-4">Plot configuration</p>
+              <div class="field">
+                <label class="label has-text-weight-medium">Change gene</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select class="js-gene-select" id="gene_select_post"></select>
+                  </div>
                 </div>
               </div>
+              <section id="post_plot_adjustments" class="content"></section>
+              <section id="order_and_colors">
+                <section id="order_section" class="my-3 is-hidden">
+                  <p class="content title is-4">Change order</p>
+                  <p class="help">Drag-and-drop to determine order of plotting</p>
+                  <div id="order_container" class="container"></div>
+                </section>
+                <section id="colors_section" class="my-3 is-hidden">
+                    <p class="content title is-4">Change colors</p>
+                    <div id="colors_container" class="container"></div>
+                </section>
+              </section>
             </div>
-            <section id="post_plot_adjustments" class="content"></section>
-            <section id="order_and_colors">
-              <section id="order_section" class="my-3 is-hidden">
-                <p class="content title is-4">Change order</p>
-                <p class="help">Drag-and-drop to determine order of plotting</p>
-                <div id="order_container" class="container"></div>
-              </section>
-              <section id="colors_section" class="my-3 is-hidden">
-                  <p class="content title is-4">Change colors</p>
-                  <div id="colors_container" class="container"></div>
-              </section>
-            </section>
           </div>
+
           <div id="post_plot_actions_container" class="mt-3 columns is-multiline">
             <div class="column is-full">
               <button id="update_plot" class="button is-medium is-responsive is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
