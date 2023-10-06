@@ -197,6 +197,9 @@ class PlotlyHandler extends PlotHandler {
             this.plotType = "tsne/umap_dynamic";
         }
 
+        // Filtered observation groups
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+
         // Get order
         this.plotConfig["order"] = getPlotOrderFromSortable();
 
@@ -360,6 +363,9 @@ class ScanpyHandler extends PlotHandler {
         // Get order
         this.plotConfig["order"] = getPlotOrderFromSortable();
 
+        // Filtered observation groups
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
         const colorSeries = document.getElementById("colorize_legend_by_post").textContent;
@@ -436,6 +442,8 @@ class SvgHandler extends PlotHandler {
     }
 
     async loadPlotHtml() {
+        document.getElementById("facet_c").classList.add("is-hidden");
+
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
         prePlotOptionsElt.replaceChildren();
 
@@ -457,6 +465,7 @@ class SvgHandler extends PlotHandler {
         if (!(document.getElementById("enable_mid_color").checked)) {
             this.plotConfig["colors"]["mid_color"] = null;
         }
+
     }
 
     async setupParamValueCopyEvent() {
@@ -846,6 +855,7 @@ const setupPlotlyOptions = async () => {
         return;
     }
     // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
     for (const key in levels) {
         if (key.includes("_colors")) {
             delete levels[key];
@@ -1057,6 +1067,7 @@ const setupScanpyOptions = async () => {
     }
 
     // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
     for (const key in levels) {
         if (key.includes("_colors")) {
             delete levels[key];

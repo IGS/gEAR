@@ -215,21 +215,7 @@ const postPlotlyConfig = {
                     orientation: "v"
                 }
                 , dragMode: "select"
-            }
-        }, {
-            plot_type: "volcano"
-            , layout:{
-                "height": 800
-            }
-        }, {
-            plot_type: "quadrant"
-            , layout:{
-                "height": 800
-            }
-        }, {
-            plot_type: "heatmap"
-            , layout:{
-                "height": 800
+                , "height": window.innerHeight * 0.8
             }
         }
     ]

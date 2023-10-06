@@ -167,9 +167,9 @@
             Current plot type:
             <span id="current_plot_type"></span>
           </div>
-          <div id="current_analysis_c" class="is-hidden">
+          <div id="current_analysis_c">
             Current analysis:
-            <span id="current_analysis"></span>
+            <span id="current_analysis">Primary analysis</span>
           </div>
           <div class="js-step-collapsable mt-3" id="plot_type_collapsable">
             <div class="columns">
@@ -282,9 +282,13 @@
         <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column is-justify-content-space-between">
           <div id="current_info" class="content">
             <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
-            <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold"></span></p>
+            <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold">Primary analysis</span></p>
+            <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
           </div>
           <div id="post_plot_customize">
+            <div id="facet_c" class="content">
+              <p class="title is-4">Filters</p>
+            </div>
             <div id="params_config_container">
               <p class="title is-4">Plot configuration</p>
               <div class="field">
@@ -347,7 +351,15 @@
             </div>
           </div>
         </div>
-        <div id="plot_container" class="column is-two-thirds has-background-white-bis"></div>
+        <div class="column is-two-thirds has-background-white-bis">
+          <div class="box" id="selected_facets">
+            <p> Selected facets:
+                <span class="loader is-hidden is-inline-flex" id="selected_facets_loader"></span>
+            </p>
+            <span class="tags" id="selected_facets_tags"></span>
+          </div>
+          <div id="plot_container"></div>
+        </div>
       </section>
     </section>
   </div>
@@ -370,6 +382,7 @@
   <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+  <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/tree.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/plot_display_config.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>

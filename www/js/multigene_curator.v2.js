@@ -1,7 +1,6 @@
 const isMultigene = 1;
 
 let geneSelect = null;
-let facetWidget = null;
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
@@ -139,7 +138,7 @@ class GenesAsAxisHandler extends PlotHandler {
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
 
         // Get order
-        this.plotConfig["order"] = getPlotOrderFromSortable();
+        this.plotConfig["sort_order"] = getPlotOrderFromSortable();
 
     }
 
@@ -214,6 +213,17 @@ class GenesAsAxisHandler extends PlotHandler {
                     }
                 }
             })
+        }
+
+        // Certain elements trigger plot order
+        const plotOrderElts = document.getElementsByClassName("js-plot-order");
+        for (const elt of plotOrderElts) {
+            elt.addEventListener("change", (event) => {
+                const paramId = event.target.id;
+                const param = paramId.replace("_series", "").replace("_post", "");
+                // NOTE: continuous series will be handled in the function
+                updateOrderSortable();
+            });
         }
     }
 
@@ -313,6 +323,7 @@ class GenesAsDataHandler extends PlotHandler {
     }
 
     async loadPlotHtml() {
+
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
         prePlotOptionsElt.replaceChildren();
 
@@ -492,35 +503,6 @@ const clearGenes = (event) => {
     document.getElementById("clear_genes_btn").classList.remove("is-loading");
 }
 
-const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
-    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
-
-    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
-    document.getElementById("num_selected").textContent = totalCount;
-
-
-    const facetWidget = new FacetWidget({
-        aggregations,
-        filters,
-        onFilterChange: async (filters) => {
-            if (filters) {
-                try {
-                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
-                    facetWidget.updateAggregations(aggregations);
-                    document.getElementById("num_selected").textContent = totalCount;
-                } catch (error) {
-                    logErrorInConsole(error);
-                }
-            } else {
-                // Save an extra API call
-                facetWidget.updateAggregations(facetWidget.aggregations);
-            }
-        }
-    });
-    document.getElementById("selected_facets_loader").classList.add("is-hidden")
-    return facetWidget;
-}
-
 const curatorSpecifcChooseGene = (event) => {
     // Triggered when a gene is selected
 
@@ -597,9 +579,6 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 const curatorSpecifcDatasetTreeCallback = async () => {
     // Creates gene select instance that allows for multiple selection
     geneSelect = createGeneSelectInstance("gene_select", geneSelect);
-
-    // Create facet widget
-    facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
 }
 
 const curatorSpecificOnLoad = async () => {

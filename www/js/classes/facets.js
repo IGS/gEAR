@@ -17,6 +17,10 @@ class FacetWidget {
         if (facetWidget !== null) {
             facetWidget.remove();
         }
+
+        // Remove any existing selected tags
+        this.selectedFacetsTags.replaceChildren();
+
         if (this.aggregations.length > 0 ) {
             this.createFacetWidget();
         } else {

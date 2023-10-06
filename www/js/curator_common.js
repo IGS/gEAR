@@ -2,6 +2,8 @@
 
 let plotStyle;  // Plot style object
 
+let facetWidget = null;
+
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
 let allColumns = [];
 let catColumns = [];
@@ -162,7 +164,6 @@ const chooseAnalysis = async (event) => {
     const analysisText = (analysisId.length) ? analysisId : "Primary Analysis";
 
     // Display current selected analysis
-    document.getElementById("current_analysis_c").classList.remove("is-hidden");
     document.getElementById("current_analysis").textContent = analysisText;
     document.getElementById("current_analysis_post").textContent = analysisText;
 
@@ -180,6 +181,9 @@ const chooseAnalysis = async (event) => {
             plotTypeSelectUpdate(analysisId)
             , geneSelectUpdate(analysisId)
         ]);
+
+        // Create facet widget
+        facetWidget = await createFacetWidget(sessionId, datasetId, analysisId, {});
     }
 }
 
@@ -230,6 +234,15 @@ const choosePlotType = async (event) => {
     // Display current selected plot type
     document.getElementById("current_plot_type_c").classList.remove("is-hidden");
     document.getElementById("current_plot_type").textContent = plotType;
+
+    // Create facet widget, which will refresh filters
+    facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
+    document.getElementById("facet_c").classList.remove("is-hidden");
+
+    // Reset sortable lists
+    document.getElementById("order_section").classList.add("is-hidden");
+    document.getElementById("order_container").replaceChildren();
+
 
     await includePlotParamOptions();
     document.getElementById("gene_s").click();
@@ -298,6 +311,37 @@ const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
         width: '50%',
         minimumResultsForSearch: -1
     });
+}
+
+const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
+    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
+
+    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    document.getElementById("num_selected").textContent = totalCount;
+
+
+    const facetWidget = new FacetWidget({
+        aggregations,
+        filters,
+        onFilterChange: async (filters) => {
+            if (filters) {
+                try {
+                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+                    facetWidget.updateAggregations(aggregations);
+                    document.getElementById("num_selected").textContent = totalCount;
+                } catch (error) {
+                    logErrorInConsole(error);
+                }
+            } else {
+                // Save an extra API call
+                facetWidget.updateAggregations(facetWidget.aggregations);
+            }
+            // Sortable lists need to reflect groups filtered out or unfiltered
+            updateOrderSortable();
+        }
+    });
+    document.getElementById("selected_facets_loader").classList.add("is-hidden")
+    return facetWidget;
 }
 
 const createGeneSelectInstance = (idSelector, geneSelect=null) => {
@@ -823,9 +867,11 @@ const renderOrderSortableSeries = (series) => {
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
 
-    // If series is used in another param, also return
-    // NOTE: if the original series is removed, the param will not simply be switch over to the new one.
-    if (document.getElementById(`${series}_order`)) return;
+    // Start with a fresh template
+    const orderElt = document.getElementById(`${series}_order`);
+    if (orderElt) {
+        orderElt.remove();
+    }
 
     // Create parent template
     // Designed so the title is a full row and the draggables are 50% width
@@ -842,6 +888,9 @@ const renderOrderSortableSeries = (series) => {
 
     // Add in list elements
     for (const group of levels[series]) {
+        // If filters are present and group is not in filters, skip
+        if (facetWidget.filters.hasOwnProperty(series) && !facetWidget.filters[series].includes(group)) continue;
+
         const listElt = `<li class="has-background-grey-lighter has-text-dark">${group}</li>`;
         const listCollection = generateElements(listElt);
         document.getElementById(`${series}_order_list`).append(listCollection);
@@ -1206,13 +1255,8 @@ const updateOrderSortable = () => {
         }
     }
 
-    // Three scenarios:
     for (const series of seriesSet) {
-        // 1. Series is in both seriesSet and sortableSet, do nothing
-        if (sortableSet.has(series)) {
-            continue;
-        }
-        // 2. Series is in seriesSet but not sortableSet, add <series>_order element
+        // If series already exists, it will be removed before rendered
         renderOrderSortableSeries(series);
     }
 
