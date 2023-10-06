@@ -238,6 +238,7 @@ const choosePlotType = async (event) => {
     // Create facet widget, which will refresh filters
     facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
     document.getElementById("facet_c").classList.remove("is-hidden");
+    document.getElementById("selected_facets").classList.remove("is-hidden");
 
     // Reset sortable lists
     document.getElementById("order_section").classList.add("is-hidden");
@@ -246,6 +247,89 @@ const choosePlotType = async (event) => {
 
     await includePlotParamOptions();
     document.getElementById("gene_s").click();
+}
+
+
+const cloneDisplay = async (event, display) => {
+
+    const cloneId = event.target.id;
+    document.getElementById(cloneId).classList.add("is-loading");
+
+    // Populate gene select element
+    // Will be overwritten if an analysis was in config
+    try {
+        const geneSymbols = await fetchGeneSymbols(datasetId, null);
+        updateGeneOptions(geneSymbols);
+    } catch (error) {
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+    }
+
+    document.getElementById("analysis_select").disabled = false;
+    document.getElementById("plot_type_select").disabled = false;
+
+    // analyses
+    await analysisSelectUpdate();
+    // TODO update analysis select with config analysis
+
+
+    // plot types
+
+    // Read clone config to populate analysis, plot type, gnee and plot-specific options
+    let plotType = display.plot_type;
+    plotType = curatorSpecificPlotTypeAdjustments(plotType);
+
+    try {
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined);
+        for (const plotType in availablePlotTypes) {
+            const isAllowed = availablePlotTypes[plotType];
+            setPlotTypeDisabledState(plotType, isAllowed);
+        }
+
+        setSelectBoxByValue("plot_type_select", plotType);
+        plotTypeSelect.update();
+        await choosePlotType();
+        // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
+    } catch (error) {
+        console.error(error);
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
+
+        return;
+    } finally {
+        document.getElementById(cloneId).classList.remove("is-loading");
+    }
+
+    // Choose gene from config
+    const config = display.plotly_config;
+    if (isMultigene) {
+        // Update gene_select with genes from config
+        const geneSymbols = config.gene_symbols;
+        for (const geneSymbol of geneSymbols) {
+            setSelectBoxByValue("gene_select", geneSymbol);
+        }
+    } else {
+        setSelectBoxByValue("gene_select", config.gene_symbol);
+    }
+    geneSelect.update();
+    trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to set the other select2 (single-gene only)
+
+    try {
+        plotStyle.cloneDisplay(config);
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not clone this display. Please contact the gEAR team."
+        createToast(msg);
+        return;
+    }
+
+    // Mark plot params as success
+    document.getElementById("plot_options_s_success").classList.remove("is-hidden");
+
+    // Click "submit" button to load plot
+    document.getElementById("plot_btn").click();    // updates geneSelectPost by triggered "click" event
+
 }
 
 const createAnalysisSelectInstance = (idSelector, analysisSelect=null) => {
@@ -1129,7 +1213,7 @@ const setSelectBoxByValue = (eid, val) => {
     const elt = document.getElementById(eid);
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
-            elt.value = val;
+            // By using "selected" instead of "value", we can account for the "multiple" property
             elt.options[i].setAttribute("selected", true);
             return;
         }

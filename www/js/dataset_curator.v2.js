@@ -54,10 +54,18 @@ class PlotlyHandler extends PlotHandler {
         // Handle order
         if (config["order"]) {
             for (const series in config["order"]) {
+                const order = config["sort_order"][series];
+                // sort "levels" series by order
+                levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 renderOrderSortableSeries(series);
             }
 
             document.getElementById("order_section").classList.remove("is-hidden");
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            facetWidget.filters = config["obs_filters"];
         }
 
         // Handle colors
@@ -82,7 +90,7 @@ class PlotlyHandler extends PlotHandler {
 
         if (config["color_palette"]) {
             setSelectBoxByValue("color_palette_post", config["color_palette"]);
-            colorscaleSelect.update();
+            //colorscaleSelect.update();
         }
 
         // Handle vlines
@@ -264,10 +272,18 @@ class ScanpyHandler extends PlotHandler {
         // Handle order
         if (config["order"]) {
             for (const series in config["order"]) {
+                const order = config["sort_order"][series];
+                // sort "levels" series by order
+                levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 renderOrderSortableSeries(series);
             }
 
             document.getElementById("order_section").classList.remove("is-hidden");
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            facetWidget.filters = config["obs_filters"];
         }
 
         // Restoring some disabled/checked elements in UI
@@ -443,6 +459,7 @@ class SvgHandler extends PlotHandler {
 
     async loadPlotHtml() {
         document.getElementById("facet_c").classList.add("is-hidden");
+        document.getElementById("selected_facets").classList.add("is-hidden");
 
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
         prePlotOptionsElt.replaceChildren();
@@ -475,80 +492,6 @@ class SvgHandler extends PlotHandler {
     setupPlotSpecificEvents() {
         setupSVGOptions();
     }
-
-}
-
-const cloneDisplay = async (event, display) => {
-
-    const cloneId = event.target.id;
-    document.getElementById(cloneId).classList.add("is-loading");
-
-    // Populate gene select element
-    // Will be overwritten if an analysis was in config
-    try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, null);
-        updateGeneOptions(geneSymbols);
-    } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-    }
-
-    document.getElementById("analysis_select").disabled = false;
-    document.getElementById("plot_type_select").disabled = false;
-
-    // analyses
-    await analysisSelectUpdate();
-    // TODO update analysis select with config analysis
-
-
-    // plot types
-
-    // Read clone config to populate analysis, plot type, gnee and plot-specific options
-    let plotType = display.plot_type;
-
-    // ? Move this to class constructor to handle
-    if (plotType.toLowerCase() === "tsne") {
-        // Handle legacy plots
-        plotType = "tsne_static";
-    } else if (["tsne/umap_dynamic", "tsne_dynamic"].includes(plotType.toLowerCase())) {
-        plotType = "tsne_dyna";
-    }
-
-    try {
-        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined);
-        for (const plotType in availablePlotTypes) {
-            const isAllowed = availablePlotTypes[plotType];
-            setPlotTypeDisabledState(plotType, isAllowed);
-        }
-
-        setSelectBoxByValue("plot_type_select", plotType);
-        plotTypeSelect.update();
-        await choosePlotType();
-        // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
-    } catch (error) {
-        console.error(error);
-        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_s_success").classList.add("is-hidden");
-        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
-
-        return;
-    } finally {
-        document.getElementById(cloneId).classList.remove("is-loading");
-    }
-
-    // Choose gene from config
-    const config = display.plotly_config;
-    setSelectBoxByValue("gene_select", config.gene_symbol);
-    geneSelect.update();
-    trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to set the other select2
-
-    plotStyle.cloneDisplay(config);
-
-    // Mark plot params as success
-    document.getElementById("plot_options_s_success").classList.remove("is-hidden");
-
-    // Click "submit" button to load plot
-    document.getElementById("plot_btn").click();    // updates geneSelectPost by triggered "click" event
 
 }
 
@@ -722,6 +665,17 @@ const curatorSpecificPlotStyle = (plotType) => {
     } else {
         return null;
     }
+}
+
+const curatorSpecificPlotTypeAdjustments = (plotType) => {
+    // ? Move this to class constructor to handle
+    if (plotType.toLowerCase() === "tsne") {
+        // Handle legacy plots
+        plotType = "tsne_static";
+    } else if (["tsne/umap_dynamic", "tsne_dynamic"].includes(plotType.toLowerCase())) {
+        plotType = "tsne_dyna";
+    }
+    return plotType
 }
 
 const curatorSpecificUpdateGeneOptions = (geneSymbols) => {

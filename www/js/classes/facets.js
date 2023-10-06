@@ -188,12 +188,20 @@ class FacetWidget {
     }
 
     toggleFilterItem(item, filterName) {
+
+        // Add or remove the filter item from the selected filters
         if (this.filters.hasOwnProperty(filterName)) {
             if (this.filters[filterName].includes(item.name)) {
                 this.filters[filterName] = this.filters[filterName].filter((value) => value !== item.name);
+
+                // If no filters are selected, remove the filter
+                if (this.filters[filterName].length === 0) {
+                    delete this.filters[filterName];
+                }
             } else {
                 this.filters[filterName].push(item.name);
             }
+
         } else {
             this.filters[filterName] = [item.name];
         }
@@ -203,10 +211,6 @@ class FacetWidget {
             delete this.filters[filterName];
         }
 
-        // If no filters are selected, remove the filter
-        if (this.filters[filterName].length === 0) {
-            delete this.filters[filterName];
-        }
     }
 
     // Add a tag to the selected filter items list

@@ -36,8 +36,43 @@ class GenesAsAxisHandler extends PlotHandler {
 
     plotConfig = {};  // Plot config that is passed to API
 
-    cloneDisplay() {
-        //pass
+    cloneDisplay(config) {
+        // load plot values
+        for (const prop in config) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle order
+        if (config["sort_order"]) {
+            for (const series in config["sort_order"]) {
+                const order = config["sort_order"][series];
+                // sort "levels" series by order
+                levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                renderOrderSortableSeries(series);
+            }
+
+            document.getElementById("order_section").classList.remove("is-hidden");
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            facetWidget.filters = config["obs_filters"];
+        }
+
+        // handle colors
+        if (config["color_palette"]) {
+            setSelectBoxByValue("color_palette_post", config["color_palette"]);
+            //colorscaleSelect.update();
+        }
+
+        // handle clusterbar values
+        if (config["clusterbar_fields"]) {
+            for (const field of config["clusterbar_fields"]) {
+                const elt = document.querySelector(`#clusterbar_c .js-dash-clusterbar-checkbox[value="${field}"]`);
+                elt.checked = true;
+            }
+        }
+
     }
 
     async createPlot(datasetId, analysisObj, userId, colorblindMode) {
@@ -256,23 +291,31 @@ class GenesAsDataHandler extends PlotHandler {
 
     plotConfig = {};  // Plot config that is passed to API
 
-    cloneDisplay() {
-        //pass
+    cloneDisplay(config) {
+        // load plot values
+        for (const prop in config) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            facetWidget.filters = config["obs_filters"];
+        }
 
         // Split compare series and groups
         const refCondition = this.plotConfig["ref_condition"];
         const [combineSeries, refGroup] = refCondition.split(this.compareSeparator);
-        for (const classElt in document.getElementsByClassName("js-dash-compare")) {
+        for (const classElt of document.getElementsByClassName("js-dash-compare")) {
             classElt.value = combineSeries;
         }
-        for (const classElt in document.getElementsByClassName("js-dash-reference")) {
+        for (const classElt of document.getElementsByClassName("js-dash-reference")) {
             classElt.value = refGroup;
         }
 
         if (this.plotType === "volcano") {
             const queryCondition = this.plotConfig["query_condition"];
             const queryGroup = queryCondition.split(this.compareSeparator)[1];
-            for (const classElt in document.getElementsByClassName("js-dash-query")) {
+            for (const classElt of document.getElementsByClassName("js-dash-query")) {
                 classElt.value = queryGroup;
             }
         }
@@ -281,10 +324,10 @@ class GenesAsDataHandler extends PlotHandler {
             const compare1Group = compare1Condition.split(this.compareSeparator)[1];
             const compare2Condition = this.plotConfig["compare2_condition"];
             const compare2Group = compare2Condition.split(this.compareSeparator)[1];
-            for (const classElt in document.getElementsByClassName("js-dash-compare1")) {
+            for (const classElt of document.getElementsByClassName("js-dash-compare1")) {
                 classElt.value = compare1Group;
             }
-            for (const classElt in document.getElementsByClassName("js-dash-compare2")) {
+            for (const classElt of document.getElementsByClassName("js-dash-compare2")) {
                 classElt.value = compare2Group;
             }
         }
@@ -595,6 +638,10 @@ const curatorSpecificPlotStyle = (plotType) => {
     } else {
         return null;
     }
+}
+
+const curatorSpecificPlotTypeAdjustments = (plotType) => {
+    return plotType;
 }
 
 const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
