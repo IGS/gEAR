@@ -1062,6 +1062,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     } catch (error) {
         displayUrl = "/img/dataset_previews/missing.png";
     }
+
     const geneSymbol = display.plotly_config.gene_symbol;
 
     const label = display.label || "Unnamed display"; // Added text to keep "p" tag from collapsing
@@ -1144,7 +1145,7 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
         }
 
         // Make new display card and make it the default display
-        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: payload.plotly_config}, display_id);
+        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: plotConfig}, display_id);
 
         return display_id;
     } catch (error) {
