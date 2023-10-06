@@ -465,14 +465,14 @@ CREATE TABLE dataset_group_membership (
 CREATE TABLE submission (
        id               VARCHAR(50) PRIMARY KEY,
        user_id                     INT NOT NULL,
-       layout_id                   INT
+       layout_id                   INT,
        is_finished                 TINYINT DEFAULT 0,
        is_restricted               TINYINT DEFAULT 0, /* if one dataset is restricted, then the whole submission must be */
        date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
        email_updates               TINYINT DEFAULT 0,
-       FOREIGN KEY (user_id) REFERENCES guser(id)
+       FOREIGN KEY (user_id) REFERENCES guser(id),
        FOREIGN KEY (layout_id) REFERENCES layout(id)
-)
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 
 CREATE TABLE submission_dataset (
        id                          INT PRIMARY KEY AUTO_INCREMENT,
@@ -482,10 +482,12 @@ CREATE TABLE submission_dataset (
        convert_metadata_status   VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
        convert_to_h5ad_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
        make_tsne_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
-       log_message                 TEXT
+       log_message                 TEXT,
        is_restricted               TINYINT DEFAULT 0,
        FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE
-)
+) ENGINE=INNODB DEFAULT CHARSET=latin1;
+/* For some reason the collation of "dataset" table is "latin1_swedish_ci", and modifying it to "latin1_general_ci" would need to cascade elsewhere
+So for now I am just removing the COLLATE part of the ENGINE syntax */
 
 CREATE TABLE submission_member (
        id                          INT PRIMARY KEY AUTO_INCREMENT,
@@ -493,4 +495,4 @@ CREATE TABLE submission_member (
        submission_dataset_id       INT NOT NULL,
        FOREIGN KEY (submission_id) REFERENCES submission(id) ON DELETE CASCADE,
        FOREIGN KEY (submission_dataset_id) REFERENCES submission_dataset(id) ON DELETE CASCADE
-)
+) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;

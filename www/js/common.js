@@ -305,12 +305,14 @@ function does_page_need_login() {
         document.URL.includes("gene_cart_manager.html") ||
         document.URL.includes("multigene_curator.html") ||
         document.URL.includes("epiviz_panel_designer.html") ||
-        document.URL.includes("dataset_explorer.html")
+        document.URL.includes("dataset_explorer.html") ||
+        document.URL.includes("nemoarchive_import/import.html")
         );
 }
 
 function handle_login_ui_updates() {
     if (CURRENT_USER.session_id == null) {
+        // these are the pages which require a login
         if (does_page_need_login()) {
             $('div#login_warning').show();
             $('div#login_checking').hide();
@@ -367,11 +369,8 @@ function handle_login_ui_updates() {
 
     }
 
-    if (does_page_need_login()) {
-        $('div#login_warning').hide();
-        $('div#login_checking').hide();
-        $('div#main_content').show();
-        $('input#session_id').val(CURRENT_USER.session_id);
+    if (!does_page_need_login()) {
+        return;
     }
     $('div#login_warning').hide();
     $('div#login_checking').hide();
