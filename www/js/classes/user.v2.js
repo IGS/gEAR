@@ -1,10 +1,10 @@
 "use strict";
 
 class User {
-    constructor ({id, name, email, institution, colorblind_mode, updates_wanted, is_admin,
+    constructor ({id, user_name, email, institution, colorblind_mode, updates_wanted, is_admin,
                   help_id, date_created, session_id} = {}) {
         this.id = id;
-        this.user_name = name;
+        this.user_name = user_name;
         this.email = email;
         this.institution = institution;
         this.colorblind_mode = colorblind_mode === 1;
