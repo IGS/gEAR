@@ -237,7 +237,7 @@ const choosePlotType = async (event) => {
 
     // Create facet widget, which will refresh filters
     facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
-    document.getElementById("facet_c").classList.remove("is-hidden");
+    document.getElementById("facet_content").classList.remove("is-hidden");
     document.getElementById("selected_facets").classList.remove("is-hidden");
 
     // Reset sortable lists
@@ -1496,3 +1496,21 @@ document.getElementById("edit_params").addEventListener("click", (event) => {
 
     event.target.classList.remove("is-loading");
 })
+
+// Set up .js-post-plot-collapsable to collapse and uncollapse the content element
+const collapsableElts = document.getElementsByClassName("js-collapsable-trigger");
+for (const classElt of collapsableElts) {
+    classElt.addEventListener("click", (event) => {
+        // find the sibling .is-collapsable element and toggle its "is-hidden" class
+        const contentElt = event.target.parentElement.querySelector(".js-collapsable-content");
+        contentElt.classList.toggle("is-hidden");
+
+        // switch toggle icon to up or down
+        const iconElt = event.target.querySelector("span.icon.is-pulled-right");
+        if (iconElt.innerHTML.trim() === '<i class="mdi mdi-chevron-down"></i>') {
+            iconElt.innerHTML = '<i class="mdi mdi-chevron-up"></i>';
+        } else {
+            iconElt.innerHTML = '<i class="mdi mdi-chevron-down"></i>';
+        }
+    });
+}

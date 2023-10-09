@@ -295,31 +295,54 @@
             <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
           </div>
           <div id="post_plot_customize">
-            <div id="facet_c" class="content">
-              <p class="title is-4">Filters</p>
+            <div id="facet_content" class="content">
+              <h4 class="title is-4 is-clickable js-collapsable-trigger">
+                <span>Filters</span>
+                <span class="icon is-pulled-right">
+                  <i class="mdi mdi-chevron-down"></i>
+                </span>
+              </h4>
+              <div id="facet_c" class="content is-hidden js-collapsable-content"></div>
             </div>
-            <div id="params_config_container">
-              <p class="title is-4">Plot configuration</p>
-              <section id="post_plot_adjustments" class="content"></section>
 
-              <section id="plot_plot_global_adjustments" class="content">
-                <p class="is-flex is-justify-content-space-between pr-3">
-                  <span class="has-text-weight-medium">Plot title</span>
-                  <input class="js-dash-plot-title" id="plot_title_post" class="input" type="text" placeholder="Enter title of plot">
-                </p>
-                <p class="help">If left blank, plot will have a default title or no title.</p>
-                <p class="is-flex is-justify-content-space-between pr-3" id="legend_title_container">
-                  <span class="has-text-weight-medium">Legend title</span>
-                  <input class="js-dash-legend-title" id="legend_title_post" class="input" type="text" placeholder="Enter title of legend">
-                </p>
-                <p class="help">If left blank, legend will have a default title.</p>
-              </section>
-              <section id="order_section" class="my-3 is-hidden">
-                <p class="content title is-4">Change order</p>
+
+            <section id="params_config_container">
+              <h4 class="title is-4 is-clickable js-collapsable-trigger">
+                <span>Plot configuration</span>
+                <span class="icon is-pulled-right">
+                  <i class="mdi mdi-chevron-down"></i>
+                </span>
+              </h4>
+              <div class="is-hidden js-collapsable-content">
+                <section id="post_plot_adjustments" class="content"></section>
+
+                <section id="plot_plot_global_adjustments" class="content">
+                  <p class="is-flex is-justify-content-space-between pr-3">
+                    <span class="has-text-weight-medium">Plot title</span>
+                    <input class="js-dash-plot-title" id="plot_title_post" class="input" type="text" placeholder="Enter title of plot">
+                  </p>
+                  <p class="help">If left blank, plot will have a default title or no title.</p>
+                  <p class="is-flex is-justify-content-space-between pr-3" id="legend_title_container">
+                    <span class="has-text-weight-medium">Legend title</span>
+                    <input class="js-dash-legend-title" id="legend_title_post" class="input" type="text" placeholder="Enter title of legend">
+                  </p>
+                  <p class="help">If left blank, legend will have a default title.</p>
+                </section>
+              </div>
+            </section>
+
+            <section id="order_section" class="my-3 is-hidden">
+              <h4 class="title is-4 is-clickable js-collapsable-trigger">
+                <span>Change sort order</span>
+                <span class="icon is-pulled-right">
+                  <i class="mdi mdi-chevron-down"></i>
+                </span>
+              </h4>
+              <div class="is-hidden js-collapsable-content">
                 <p class="help">Drag-and-drop to determine order of plotting</p>
                 <div id="order_container" class="container"></div>
-              </section>
-            </div>
+              </div>
+            </section>
           </div>
 
           <div id="post_plot_actions_container" class="mt-3 columns is-multiline">

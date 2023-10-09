@@ -298,7 +298,7 @@ class GenesAsDataHandler extends PlotHandler {
         }
 
         // Handle filters
-        if (config["obs_filters"]) {
+        if (config.hasOwnProperty("obs_filters")) {
             facetWidget.filters = config["obs_filters"];
         }
 

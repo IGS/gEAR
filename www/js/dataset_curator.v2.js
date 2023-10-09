@@ -54,7 +54,7 @@ class PlotlyHandler extends PlotHandler {
         // Handle order
         if (config["order"]) {
             for (const series in config["order"]) {
-                const order = config["sort_order"][series];
+                const order = config["order"][series];
                 // sort "levels" series by order
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 renderOrderSortableSeries(series);
@@ -272,7 +272,7 @@ class ScanpyHandler extends PlotHandler {
         // Handle order
         if (config["order"]) {
             for (const series in config["order"]) {
-                const order = config["sort_order"][series];
+                const order = config["order"][series];
                 // sort "levels" series by order
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 renderOrderSortableSeries(series);
@@ -458,7 +458,7 @@ class SvgHandler extends PlotHandler {
     }
 
     async loadPlotHtml() {
-        document.getElementById("facet_c").classList.add("is-hidden");
+        document.getElementById("facet_content").classList.add("is-hidden");
         document.getElementById("selected_facets").classList.add("is-hidden");
 
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
