@@ -60,11 +60,9 @@ const printTblMessage = (datasetId, msg, level) => {
 
 /* Add this dataset to this layout */
 const addDatasetToLayout = async (datasetId, layoutId) => {
-    const response = await fetch("./cgi/add_dataset_to_layout.cgi", {
-        method: "POST",
-        body: convertToFormData({session_id, dataset_id: datasetId, layout_id: layoutId})
-        });
-    return await response.json();
+    const payload = {dataset_id: datasetId, layout_id: layoutId}
+    const {data} = await axios.post("./cgi/add_dataset_to_layout.cgi", convertToFormData(payload));
+    return data
 }
 
 /* Create a dataset permalink URL from the stored share ID */
@@ -105,71 +103,85 @@ const generateElements = (html) => {
 const getDatasetDisplay = async (displayId) => {
     const params = new URLSearchParams({"display_id": displayId});
 
-    const response = await fetch(`./cgi/get_dataset_display.cgi?${params}`);
-    return await response.json();
+    const {data} = await axios.get(`./cgi/get_dataset_display.cgi?${params}`);
+    return data;
 }
 
 /* Get a saved default display for the given dataset and user */
 const getDefaultDisplay = async (datasetId) => {
     const params = new URLSearchParams({"user_id":CURRENT_USER.id, "dataset_id": datasetId});
+    try {
+        // POST due to payload variables being sensitive
+        const {data} =  await axios.get(`/cgi/get_default_display.cgi?${params}`);
+        const {default_display_id: defaultDisplayId} = data;
+        return defaultDisplayId;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = `Could not fetch default display for dataset ${datasetId}.`
+        throw new Error(msg);
+    }
 
-    const response = await fetch(`./cgi/get_default_display.cgi?${params}`);
-    const jsonRes = await response.json();
-    const {default_display_id: defaultDisplayId} = jsonRes;
-    return defaultDisplayId;
 }
 
 /* Retrieve existing submission */
 const getSubmission = async (submissionId) => {
     // Going to attempt to get existing submission
-    const response = await fetch(`/api/submissions/${submissionId}`);
-    // NOTE: This is actually OK for situations where we want to check the submission exists before creating a new one
-    if (!response?.ok) throw new Error(response.statusText);
-    const jsonRes = await response.json();
-    if (!jsonRes.success) throw new Error(jsonRes.message);
-
-    // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
-    return jsonRes;
+    try {
+        const {data} = await axios.get(`/api/submissions/${submissionId}`);
+        if (!data.success) throw new Error(data.message);
+        // Still want to show table even with a saving failure to indicate something went awry with at least one dataset
+        return data;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch submission."
+        throw new Error(msg);
+    }
 }
 
 /* Retrieve existing submission_dataset */
 const getSubmissionDataset = async (href) => {
     // ? Should I use submission_id and dataset_id as args instead?
-    const response = await fetch(href);
-    if (!response?.ok) {
-        throw new Error(response.statusText);
+    try {
+        const {data} = await axios.get(href);
+        if (!data.success) throw new Error(data.message);
+        return data;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch submission dataset."
+        throw new Error(msg);
     }
-    const jsonRes = await response.json();
-    if (!jsonRes.success) {
-        throw new Error(jsonRes.message);
-    }
-    return jsonRes;
 }
 
 /* Create new submission-related entries in database */
 const initializeNewSubmission = async (fileEntities, submissionId) => {
     const { datasets } = await processSubmission(fileEntities, submissionId);
 
+    const payload = {"action": "reset_steps"}
+
     for (const datasetId in datasets) {
         // Reset any non-complete, non-loading steps to pending
-        const putResponse = await fetch(`${datasets[datasetId].href}/status`, {
-            method: "PUT"
-            , headers: {"Content-Type": "application/json"}
-            , body: JSON.stringify({"action":"reset_steps"})
-        })
-        if (!putResponse?.ok) {
-            throw new Error(putResponse.statusText);
-        }
+        try {
+            await axios.put(`${datasets[datasetId].href}/status`, payload, {
+                headers: {"Content-Type": "application/json"}
+            })
 
-        // Set up the dataset row in the submission table
-        // ? Consider pagination
-        initializeDatasetRow(datasets[datasetId]);
+            // Set up the dataset row in the submission table
+            // ? Consider pagination
+            initializeDatasetRow(datasets[datasetId]);
 
-        // Log info about any dataset that could not be initialized
-        if (datasets[datasetId].failed_datasets) {
-            printTblMessage(datasetId, datasets[datasetId].failed_datasets, "danger")
+            // Log info about any dataset that could not be initialized
+            if (datasets[datasetId].failed_datasets) {
+                printTblMessage(datasetId, datasets[datasetId].failed_datasets, "danger")
+            }
+        } catch (error) {
+            logErrorInConsole(error);
+
+            const msg = `Could not initialize new submission for dataset ${datasetId}.`;
+            throw new Error(msg);
+
         }
     }
+
 }
 
 /* Set up the dataset row in the submission table */
@@ -219,21 +231,25 @@ const populateNonSupportedElement = () => {
 /* Populate select dropdown of observation categorical metadata */
 const populateObsDropdown = async (datasetId) => {
     const parent = document.getElementById(`${datasetId}-obslevels`);
-    const response = await fetch(`/api/h5ad/${datasetId}`);
-    const jsonData = await response.json();
-    const obsLevels = Object.keys(jsonData.obs_levels);
-    if (!obsLevels.length) {
-        const parent = document.getElementById(`${datasetId}-obslevels`);
-        parent.textContent = "Not applicable.";
-        return
+    try {
+        const {data} = await axios.get(`/api/h5ad/${datasetId}`);
+        const obsLevels = Object.keys(data.obs_levels);
+        if (!obsLevels.length) {
+            const parent = document.getElementById(`${datasetId}-obslevels`);
+            parent.textContent = "Not applicable.";
+            return
+        }
+        parent.classList.add("is-loading", "select");
+        const optionElts = obsLevels.map(cat => `<option>${cat}</option>`);
+        const template = `<select>${optionElts.join("")}</select>`;
+        const htmlCollection = generateElements(template);
+        parent.append(htmlCollection);
+        parent.classList.remove("is-loading");
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = `Could not fetch categorical observations for dataset ${datasetId}.`;
+        console.warn(msg);
     }
-    parent.classList.add("is-loading", "select");
-    const optionElts = obsLevels.map(cat => `<option>${cat}</option>`);
-    const template = `<select>${optionElts.join("")}</select>`;
-    const htmlCollection = generateElements(template);
-    parent.append(htmlCollection);
-    parent.classList.remove("is-loading");
-
 }
 
 /* Populate submission ID in DOM */
@@ -248,53 +264,38 @@ const processSubmission = async (fileEntities, submissionId) => {
 
     try {
         // Going to attempt to get existing submission (and resume)
-        const getResponse = await fetch(`/api/submissions/${submissionId}`)
-        if (!getResponse?.ok) {
-            throw new Error(getResponse.statusText);
-        }
-        const getJsonRes = await getResponse.json();
-        if (!getJsonRes.success) {
-            throw new Error(getJsonRes.message);
-        }
+        const {data} = await axios.get(`/api/submissions/${submissionId}`)
+        if (!data.success) throw new Error(data.message);
 
         // Append extra dataset information
-        for (const datasetId in getJsonRes.datasets) {
-            getJsonRes.datasets[datasetId] = await getSubmissionDataset(getJsonRes.datasets[datasetId].href);
+        for (const datasetId in data.datasets) {
+            data.datasets[datasetId] = await getSubmissionDataset(data.datasets[datasetId].href);
         }
 
         // Prepopulate collection name if previously added
-        if (getJsonRes.collection_name) {
-            document.getElementById("collection_name").value = getJsonRes.collection_name;
+        if (data.collection_name) {
+            document.getElementById("collection_name").value = data.collection_name;
         }
         // If this is a different user viewing the submission, disable naming the layout
-        if (! getJsonRes.is_submitter) {
+        if (! data.is_submitter) {
             document.getElementById("collection_name").disabled = "disabled";
         }
 
-        submissionElt.dataset.layout_share_id = getJsonRes.layout_share_id; // Store layout_share_id for future retrieval
+        submissionElt.dataset.layout_share_id = data.layout_share_id; // Store layout_share_id for future retrieval
 
-        return getJsonRes
+        return data
 
     } catch {
         const isRestricted = 0;    // hardcoded for now
 
         // If existing submission does not exist, create new submission
         const postParams = {"submission_id": submissionId, "is_restricted": isRestricted };
-        const postResponse = await fetch("/api/submissions", {
-            method: "POST",
+        const {data} = await axios.post("/api/submissions", postParams, {
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(postParams)
-            });
-        if (!postResponse?.ok) {
-            throw new Error(postResponse.statusText);
-        }
+        });
+        if (!data.success) throw new Error(data.message);
 
-        const postJsonRes = await postResponse.json();
-        if (!postJsonRes.success) {
-            throw new Error(postJsonRes.message);
-        }
-
-        submissionElt.dataset.layout_share_id = postJsonRes.layout_share_id; // Store layout_share_id for future retrieval
+        submissionElt.dataset.layout_share_id = data.layout_share_id; // Store layout_share_id for future retrieval
 
 
         // NOTE: at this point we have no routes for our submission
@@ -310,65 +311,57 @@ const processSubmission = async (fileEntities, submissionId) => {
 
             // GET route first
             try {
-                postJsonRes.datasets[datasetId] = await getSubmissionDataset(href);
+                data.datasets[datasetId] = await getSubmissionDataset(href);
             } catch {
                 // Submission dataset did not already exist... create it
-                const sdPostResponse = await fetch(`/api/submissions/${submissionId}/datasets`, {
-                    method:"POST"
-                    , headers: {"Content-Type": "application/json"}
-                    , body: JSON.stringify(sdParams)
-                });
-                if (! sdPostResponse?.ok) {
-                    postJsonRes.datasets[datasetId].failed_datasets = sdPostResponse.statusText;
-                }
-                const sdPostJsonRes = await sdPostResponse.json();
-                if (sdPostJsonRes.success) {
-                    postJsonRes.datasets[datasetId] = sdPostJsonRes
-                } else {
-                    postJsonRes.datasets[datasetId].failed_datasets = sdPostResponse.message;
+                try {
+                    const {data: sdData} = await axios.post(`/api/submissions/${submissionId}/datasets`, sdParams, {
+                        headers: {"Content-Type": "application/json"}
+                    });
+                    if (sdData.success) {
+                        data.datasets[datasetId] = sdData
+                    } else {
+                        data.datasets[datasetId].failed_datasets = sdData.message;
+                    }
+
+                } catch (error) {
+                    data.datasets[datasetId].failed_datasets = sdData.statusText;
                 }
             }
 
             // Save dataset as a new SubmissionMember
-            await fetch(`${postJsonRes.datasets[datasetId].href}/members`, {
-                method:"PUT"
-                , headers: {"Content-Type": "application/json"}
+            await axios.put(`${postJsonRes.datasets[datasetId].href}/members`, {
+                headers: {"Content-Type": "application/json"}
             })
             // TODO: Create a rollback script in case of failure of submission or datasets;
         }));
-        return postJsonRes;
+        return data;
     }
 }
 
 const saveNewDisplay = async (datasetId, plotConfig, plotType, label) => {
-    const response = await fetch("./cgi/save_dataset_display.cgi", {
-        method: "POST",
-        body: convertToFormData({user_id: CURRENT_USER.id
-            , dataset_id: datasetId
-            , plotly_config: plotConfig
-            , plot_type: plotType
-            , label
-            })
-        });
-    const jsonRes = await response.json();
-    return jsonRes.display_id;
+    const payload = {user_id: CURRENT_USER.id
+        , dataset_id: datasetId
+        , plotly_config: plotConfig
+        , plot_type: plotType
+        , label
+        }
+
+    const {data} = await axios.post("./cgi/save_dataset_display.cgi", convertToFormData(payload));
+    return data.display_id;
 }
 
 const saveDefaultDisplay = async (datasetId, displayId) => {
-    const response = await fetch("./cgi/save_default_display.cgi", {
-        method: "POST",
-        body: convertToFormData({user_id: CURRENT_USER.id, dataset_id: datasetId, display_id: displayId})
-        });
-    const jsonRes = await response.json();
-    return jsonRes.default_display_id;
+
+    const payload = {user_id: CURRENT_USER.id, dataset_id: datasetId, display_id: displayId}
+    const {data} = await axios.post("./cgi/save_default_display.cgi", convertToFormData(payload));
+    return data.default_display_id;
 }
 
 const updateLayoutName = async (submissionId, collectionName) => {
-    const response = await fetch("./cgi/nemoarchive_update_submission_layout_name.cgi", {
-        method: "POST",
-        body: convertToFormData({submission_id: submissionId, layout_name: collectionName})
-        });
-    return await response.json();
+    const payload = {submission_id: submissionId, layout_name: collectionName}
+    const {data} = await axios.post("./cgi/nemoarchive_update_submission_layout_name.cgi", convertToFormData(payload));
+    return data;
 }
 
 const showDatasetPermalink = (datasetId) => {
@@ -532,19 +525,18 @@ const createSubmission = async (jsonUrl) => {
     }
 
     // https://github.github.io/fetch
-    const urlResponse = await fetch(jsonUrl);
-    //const urlResponse = await fetch("nemoarchive_import/test.json");
-    const jsonData = await urlResponse.json();
+    const {data} = await axios.get(jsonUrl);
+    //const {data} = await axios.get("nemoarchive_import/test.json");
 
-    const submissionId = await grabSubmissionId(jsonData);
+    const submissionId = await grabSubmissionId(data);
     populateSubmissionId(submissionId);
     const submissionElt = document.getElementById("submission_title");
     submissionElt.dataset.submission_id = submissionId;
     submissionElt.addEventListener("click", () => handleSubmissionLink());
     populateNonSupportedElement();
 
-    const fileEntities = getFileEntities(jsonData);
-    const sampleEntities = getSampleEntities(jsonData);
+    const fileEntities = getFileEntities(data);
+    const sampleEntities = getSampleEntities(data);
 
     // Initialize db information about this submission
     // Check db if datasets were loaded in previous submissions
@@ -562,10 +554,8 @@ const createSubmission = async (jsonUrl) => {
 
     // Launch off the new submission import. Since we are polling for status, we do not need to block here.
     const params = { "file_metadata": fileEntities, "sample_metadata":sampleEntities, "action":"import"};
-    const response = fetch(`/api/submissions/${submissionId}`, {
-        method: "POST",
+    axios.post(`/api/submissions/${submissionId}`, params, {
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(params)
         });
 
     // Poll datasets for updates. Function calls itself until importing is finished.
@@ -598,14 +588,16 @@ const viewSubmission = async (submissionParam) => {
 
         // Set up the rows
         for (const datasetId in datasets) {
-            const response = await fetch(datasets[datasetId].href);
-            if (!response?.ok) {
-                throw new Error(response.statusText);
+            try {
+                const {data} = await axios.get(datasets[datasetId].href);
+                // Set up the dataset row in the submission table
+                initializeDatasetRow(data);
+            } catch (error) {
+                logErrorInConsole(error);
+                const msg = `Could not fetch submission dataset ${datasetId}.`;
+                throw new Error(msg);
             }
-            const datasetInfo = await response.json();
 
-            // Set up the dataset row in the submission table
-            initializeDatasetRow(datasetInfo);
         }
 
         submissionElt.dataset.layout_share_id = layoutShareId; // Store layout_share_id for future retrieval
@@ -675,14 +667,12 @@ const handleEmailButton = async () => {
     const submissionElt = document.getElementById("submission_title");
     const submissionId = submissionElt.dataset.submission_id;
 
-    const response = await fetch(`/api/submissions/${submissionId}/email`, {
-        method: "PUT",
+    const {data} = await axios.put(`/api/submissions/${submissionId}/email`, {
         headers: {"Content-Type": "application/json"},
         });
 
-    const jsonRes = await response.json();
 
-    if (jsonRes.success) {
+    if (data.success) {
         notify("A email will be sent when importing has finished. It is safe to close the tab or browser.");
         return;
     }
