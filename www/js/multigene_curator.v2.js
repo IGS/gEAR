@@ -75,11 +75,11 @@ class GenesAsAxisHandler extends PlotHandler {
 
     }
 
-    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+    async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -333,11 +333,11 @@ class GenesAsDataHandler extends PlotHandler {
         }
     }
 
-    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+    async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -616,7 +616,7 @@ const curatorSpecifcChooseGene = (event) => {
 
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
-    await plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
+    await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
 }
 
 const curatorSpecifcDatasetTreeCallback = async () => {
@@ -667,9 +667,9 @@ const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
     }
 }
 
-const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode)  => {
+const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
     // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
+    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
     try {
         const { data } = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload);
         if (data?.success < 1) {

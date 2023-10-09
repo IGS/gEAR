@@ -107,11 +107,11 @@ class PlotlyHandler extends PlotHandler {
         }
     }
 
-    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+    async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchPlotlyData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            const data = await fetchPlotlyData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -335,10 +335,10 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
-    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+    async createPlot(datasetId, analysisObj, colorblindMode) {
         let image;
         try {
-            const data = await fetchTsneImageData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            const data = await fetchTsneImageData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
             ({image} = data);
         } catch (error) {
             return;
@@ -627,10 +627,10 @@ const curatorSpecifcChooseGene = (event) => {
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
-        await plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
+        await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
 
     } else if (scanpyPlots.includes(plotType)) {
-        await plotStyle.createPlot(datasetId, analysisObj, userId, colorblindMode);
+        await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
 
     } else if (plotType === "svg") {
         await plotStyle.createPlot(datasetId, geneSymbol);
@@ -706,9 +706,9 @@ const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
     }
 }
 
-const fetchPlotlyData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode)  => {
+const fetchPlotlyData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
     // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
+    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
     try {
         const { data } = await axios.post(`/api/plot/${datasetId}`, payload);
         if (data?.success < 1) {
@@ -738,9 +738,9 @@ const fetchSvgData = async (datasetId, geneSymbol) => {
     }
 };
 
-const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode) => {
+const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode) => {
     // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
+    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
     try {
         const { data } = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
         if (data?.success < 1) {

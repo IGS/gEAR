@@ -17,7 +17,6 @@ let analysisSelect = null;
 let plotTypeSelect = null;
 let colorscaleSelect = null;
 
-let userId;
 let sessionId;
 let colorblindMode;
 
@@ -108,22 +107,11 @@ const datasetTree = new DatasetTree({
 
         document.getElementById("dataset_s_success").classList.remove("is-hidden");
 
-
-        // Fetch dataset information
-        let ownerId;
-        try {
-            // Must wrap in parentheses - https://stackoverflow.com/a/48714713
-            ({owner_id: ownerId} = await fetchDatasetInfo(datasetId));
-        } catch (error) {
-            ownerId = -1;   // Owner displays wont be fetched regardless
-        }
-
         // displays
-        const userDisplays = await fetchDatasetDisplays(userId, datasetId);
-        const ownerDisplays = userId === ownerId ? [] : await fetchDatasetDisplays(ownerId, datasetId);
+        const {userDisplays, ownerDisplays} = await fetchDatasetDisplays(sessionId, datasetId);
         let defaultDisplayId;
         try {
-            defaultDisplayId = await fetchDefaultDisplay(userId, datasetId);
+            defaultDisplayId = await fetchDefaultDisplay(sessionId, datasetId);
         } catch (error) {
             defaultDisplayId = -1;  // Cannot make any display a default.
         }
@@ -533,8 +521,8 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 }
 
-const deleteDisplay = async(user_id, displayId) => {
-    const payload = {user_id, id: displayId};
+const deleteDisplay = async (session_id, displayId) => {
+    const payload = {session_id, id: displayId};
     try {
         await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
         // Remove display card
@@ -603,16 +591,21 @@ const fetchDatasetDisplayImage = async (dataset_id, display_id) => {
     }
 }
 
-const fetchDatasetDisplays = async (user_id, dataset_id) => {
-    const payload = {user_id, dataset_id};
+const fetchDatasetDisplays = async (session_id, dataset_id) => {
+    const payload = {session_id, dataset_id};
     try {
         // POST due to payload variables being sensitive
-        const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
+        let {user, owner} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
+
         // Filter only the single-gene displays
         if (isMultigene) {
-            return data.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            return {userDisplays, ownerDisplays};
         }
-        return data.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        return {userDisplays, ownerDisplays};
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch the saved displays for this dataset. Please contact the gEAR team."
@@ -621,22 +614,8 @@ const fetchDatasetDisplays = async (user_id, dataset_id) => {
     }
 }
 
-const fetchDatasetInfo = async (dataset_id) => {
-    const payload = {dataset_id};
-    try {
-        const {data} = await axios.post("/cgi/get_dataset_info.cgi", convertToFormData(payload));
-        const {title, is_public, owner_id} = data;
-        return {title, is_public, owner_id};
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch metadata for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDefaultDisplay = async (user_id, dataset_id) => {
-    const payload = {user_id, dataset_id, is_multigene: isMultigene};
+const fetchDefaultDisplay = async (session_id, dataset_id) => {
+    const payload = {session_id, dataset_id, is_multigene: isMultigene};
     try {
         // POST due to payload variables being sensitive
         const {data} =  await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
@@ -1120,15 +1099,15 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
     document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
-    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(userId, display.id));
+    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(sessionId, display.id));
 }
 
-const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
+const saveDatasetDisplay = async(displayId, dataset_id, session_id, label, plot_type, plotConfig) => {
     // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
     const payload = {
         id: displayId,
         dataset_id,
-        user_id,
+        session_id,
         label,
         plot_type,
         plotly_config: JSON.stringify({
@@ -1157,7 +1136,7 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
 }
 
 const saveDefaultDisplay = async (displayId) => {
-    const payload = {display_id: displayId, user_id: userId, dataset_id: datasetId, is_multigene: isMultigene};
+    const payload = {display_id: displayId, session_id: sessionId, dataset_id: datasetId, is_multigene: isMultigene};
     try {
         const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
         const {success} = data;
@@ -1405,12 +1384,11 @@ window.onload = () => {
     // I don't like to async/await the window.onload function so I use .then instead
 
     checkForLogin().then(() => {
-        userId = CURRENT_USER.id;
         sessionId = CURRENT_USER.session_id;
-        colorblindMode = CURRENT_USER.colorblind_mode;
+        colorblindMode = CURRENT_USER.colorblind_mode || false;
         Cookies.set('gear_session_id', sessionId, { expires: 7 });
     }).finally(() => {
-        if (! userId ) {
+        if (! sessionId ) {
             createToast("Not logged in so saving displays is disabled.");
             document.getElementById("save_display_btn").disabled = true;
         }
@@ -1474,7 +1452,7 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     const label = document.getElementById("new_display_label").value;
     event.target.classList.add("is-loading");
     try {
-        const displayId = await saveDatasetDisplay(null, datasetId, userId, label, plotStyle.plotType, plotStyle.plotConfig);
+        const displayId = await saveDatasetDisplay(null, datasetId, sessionId, label, plotStyle.plotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make_default_display_check").checked) {

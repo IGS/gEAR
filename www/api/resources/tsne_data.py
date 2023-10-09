@@ -41,12 +41,13 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
+        user = geardb.get_user_from_session_id(session_id)
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         if 'type' in analysis:
             ana.type = analysis['type']
@@ -217,7 +218,6 @@ class TSNEData(Resource):
         filters = req.get('obs_filters', {})    # dict of lists
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
-        analysis_owner_id = req.get('analysis_owner_id')
         projection_id = req.get('projection_id', None)    # projection id of csv output
         colorblind_mode = req.get('colorblind_mode', False)
         sc.settings.figdir = '/tmp/'
@@ -229,7 +229,7 @@ class TSNEData(Resource):
             }
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(analysis, dataset_id, session_id)
         except PlotError as pe:
             return {
                 "success": -1,

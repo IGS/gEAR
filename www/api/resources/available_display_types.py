@@ -48,7 +48,6 @@ class MGAvailableDisplayTypes(Resource):
 
         # Have a public dataset or user_saved dataset
         if analysis_id:
-            # session_id = request.cookies.get('gear_session_id')
             user = geardb.get_user_from_session_id(session_id)
 
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)

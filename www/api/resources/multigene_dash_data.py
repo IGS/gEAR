@@ -73,17 +73,17 @@ def order_by_time_point(obs_df):
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
+        user = geardb.get_user_from_session_id(session_id)
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         try:
             ana.type = analysis['type']
         except:
-            user = geardb.get_user_from_session_id(session_id)
             ana.discover_type(current_user_id=user.id)
     else:
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
@@ -141,7 +141,6 @@ class MultigeneDashData(Resource):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         analysis = req.get('analysis', None)
-        analysis_owner_id = req.get('analysis_owner_id', None)
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
@@ -186,7 +185,7 @@ class MultigeneDashData(Resource):
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(analysis, dataset_id, session_id)
         except PlotError as pe:
             return {
                 'success': -1,

@@ -44,12 +44,13 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.filename = projection_adata_path
     return projection_adata
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
+        user = geardb.get_user_from_session_id(session_id)
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         if 'type' in analysis:
             ana.type = analysis['type']
@@ -126,7 +127,6 @@ class PlotlyData(Resource):
         facet_col = req.get('facet_col')
         order = req.get('order', {})
         analysis = req.get('analysis', None)
-        analysis_owner_id = req.get('analysis_owner_id', None)
         size_by_group = req.get('size_by_group')
         markersize = req.get('marker_size', 3)  # 3 is default in lib/gear/plotting.py
         jitter = req.get('jitter', False)
@@ -183,7 +183,7 @@ class PlotlyData(Resource):
             return return_dict
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(analysis, dataset_id, session_id)
         except PlotError as pe:
             return_dict["success"] = -1
             return_dict["message"] = str(pe)

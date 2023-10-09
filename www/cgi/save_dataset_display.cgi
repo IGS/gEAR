@@ -82,7 +82,7 @@ def main():
 
     form = cgi.FieldStorage()
     display_id = form.getvalue('id')
-    user_id = form.getvalue('user_id')
+    session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
     label = form.getvalue('label')
     plot_type = form.getvalue('plot_type')
@@ -90,6 +90,9 @@ def main():
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
+
+    user = geardb.get_user_from_session_id(session_id=session_id)
+    user_id = user.id
 
     if display_id:
         # display_id exists, so update
