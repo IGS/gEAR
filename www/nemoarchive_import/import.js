@@ -524,7 +524,6 @@ const createSubmission = async (jsonUrl) => {
         throw("Must be logged in to import a new submission");
     }
 
-    // https://github.github.io/fetch
     const {data} = await axios.get(jsonUrl);
     //const {data} = await axios.get("nemoarchive_import/test.json");
 
