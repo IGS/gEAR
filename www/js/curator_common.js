@@ -497,7 +497,7 @@ const createToast = (msg, levelClass="is-danger") => {
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-child").insertAdjacentElement("afterend", html);
+        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
         // Position new toast under previous toast with CSS
         html.style.setProperty("top", "unset");
     } else {
@@ -513,7 +513,7 @@ const createToast = (msg, levelClass="is-danger") => {
 
     // For a success message, remove it after 3 seconds
     if (levelClass === "is-success") {
-        const notification = document.querySelector(".js-toast.notification:last-child");
+        const notification = document.querySelector(".js-toast.notification:last-of-type");
         notification.classList.remove("animate__fadeInUp");
         notification.classList.remove("animate__faster");
         notification.classList.add("animate__fadeOutDown");
@@ -595,8 +595,8 @@ const fetchDatasetDisplays = async (session_id, dataset_id) => {
     const payload = {session_id, dataset_id};
     try {
         // POST due to payload variables being sensitive
-        let {user, owner} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
-
+        const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
+        const {user, owner} = data;
         // Filter only the single-gene displays
         if (isMultigene) {
             const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
