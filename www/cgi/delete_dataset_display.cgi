@@ -13,7 +13,16 @@ def main():
 
     form = cgi.FieldStorage()
     display_id = form.getvalue('id')
-    session_id = int(form.getvalue('session_id'))
+    session_id = form.getvalue('session_id')
+
+    # Exit if no display_id or session_id
+    if not display_id or not session_id:
+        # log this
+        print("No display_id or session_id", file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False)))
+        return
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
