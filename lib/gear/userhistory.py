@@ -4,7 +4,11 @@ import sys
 import urllib
 
 class UserHistory:
-    def __init__(self, connection=False):
+    """
+    Represents a single entry in a user's activity history
+    """
+    def __init__(self, connection=False, user_id=None, entry_category=None,
+                 entry_date=None, label=None, url=None):
         """
         If you pass a geardb.Connection object it will be used to perform the query
         and committed but NOT closed. Otherwise a connection will be created automatically.
@@ -13,6 +17,12 @@ class UserHistory:
 
         if not self.connection:
             self.connection = geardb.Connection()
+
+        self.user_id = user_id
+        self.entry_category = entry_category
+        self.entry_date = entry_date
+        self.label = label
+        self.url = url
 
     def add_record(self, user_id=None, entry_category=None, label=None, **kwargs):
         """
@@ -112,5 +122,48 @@ class UserHistory:
         cursor = self.connection.get_cursor()
         cursor.execute(qry, (user_id, entry_category, label, url))
         self.connection.commit()
+
+    def get_latest_entries(self, entry_category=None, entry_count=5, **kwargs):
+        """
+        Returns a list of UserHistory objects, usually for the purpose of populating something
+        like a 'most recent activities' table.
+
+        Can filter on category and/or number of entries to be returned.
+        """
+        cursor = self.connection.get_cursor()
+        qry_args = [self.user_id]
+        qry = """
+                 SELECT entry_date, entry_category, label, url
+                   FROM user_history
+                  WHERE user_id = %s
+        """
+
+        if entry_category:
+            qry += " AND entry_category = %s"
+            qry_args.append(self.entry_category)
+
+        qry += " LIMIT %s"
+        qry_args.append(entry_count)
+
+        cursor.execute(qry, qry_args)
+        entries = list()
+
+        for row in cursor:
+            entry = UserHistory(user_id=user_id, entry_category=row[1],
+                                entry_date=row[0], label=row[2], url=row[3]
+            )
+            entries.append(entry)
+
+        return entries
+        
+                    
+
+
+
+
+
+
+
+
 
         
