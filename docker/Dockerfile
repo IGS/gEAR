@@ -106,12 +106,12 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 # Upgrade pip and install requirements from file
 # This set of modules will be used by the main Python install and scripts that call it (like CGI ones)
 # numpy is installed before requirements.txt because of dependency requirement issues
-# NOTE: Installing custom version of diffxpy that I forked and fixed a function to work
+# NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time)
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ./pip3 install --upgrade pip \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  && ./python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@0464d2ab1faa0947d90e29f93018ec678e050585 \
+  && ./python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea \
   && apt-get -qq update \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 

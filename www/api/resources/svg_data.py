@@ -93,7 +93,7 @@ class SvgData(Resource):
                 "message": "The h5ad is missing gene_symbol.",
             }
 
-        selected = adata[:, gene_filter]
+        selected = adata[:, gene_filter].to_memory()
 
         df = selected.to_df()
 
@@ -154,6 +154,10 @@ class SvgData(Resource):
             df = pd.concat([df, selected.obs], axis=1)
 
         df = df.rename(columns={df.columns[0]: "data"})
+
+        # Close adata so that we do not have a stale opened object
+        if selected.isbacked:
+            selected.file.close()
 
         return {
             "success": success,

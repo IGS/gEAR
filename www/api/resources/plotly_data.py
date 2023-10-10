@@ -44,12 +44,13 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.filename = projection_adata_path
     return projection_adata
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
+        user = geardb.get_user_from_session_id(session_id)
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         if 'type' in analysis:
             ana.type = analysis['type']
@@ -126,7 +127,6 @@ class PlotlyData(Resource):
         facet_col = req.get('facet_col')
         order = req.get('order', {})
         analysis = req.get('analysis', None)
-        analysis_owner_id = req.get('analysis_owner_id', None)
         size_by_group = req.get('size_by_group')
         markersize = req.get('marker_size', 3)  # 3 is default in lib/gear/plotting.py
         jitter = req.get('jitter', False)
@@ -137,6 +137,7 @@ class PlotlyData(Resource):
         x_title = req.get('x_title')
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
+        filters = req.get('obs_filters', {})   # Dict of lists
         projection_id = req.get('projection_id', None)    # projection id of csv output
         colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
@@ -172,6 +173,7 @@ class PlotlyData(Resource):
             "plot_colors": color_map if isinstance(color_map, dict) else None,
             "plot_palette": palette,
             "reverse_palette":reverse_palette,
+            "obs_filters": filters,
             "plot_order": None,
         }
 
@@ -181,7 +183,7 @@ class PlotlyData(Resource):
             return return_dict
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(analysis, dataset_id, session_id)
         except PlotError as pe:
             return_dict["success"] = -1
             return_dict["message"] = str(pe)
@@ -210,16 +212,6 @@ class PlotlyData(Resource):
         if 'replicate' in columns:
             columns.remove('replicate')
 
-        order_res = dict()
-        for col in columns:
-            try:
-                # Some columns might be numeric, therefore
-                # we don't want to reorder these
-                if col in [x_axis, color_name, facet_col, facet_row]:
-                    order_res[col] = adata.obs[col].cat.categories.tolist()
-            except:
-                pass
-
         if projection_id:
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_id)
@@ -244,7 +236,27 @@ class PlotlyData(Resource):
 
         # Filter genes and slice the adata to get a dataframe
         # with expression and its observation metadata
-        selected = adata[:, gene_filter]
+        selected = adata[:, gene_filter].to_memory()
+
+        # Filter by obs filters
+        if filters:
+            for col, values in filters.items():
+                selected_filter = selected.obs[col].isin(values)
+                selected = selected[selected_filter, :]
+
+        order_res = dict()
+        for col in columns:
+            try:
+                # Some columns might be numeric, therefore
+                # we don't want to reorder these
+                if col in [x_axis, color_name, facet_col, facet_row]:
+                    order_res[col] = selected.obs[col].cat.categories.tolist()
+            except:
+                pass
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
 
         df = selected.to_df()
 
@@ -258,6 +270,8 @@ class PlotlyData(Resource):
         df2 = pd.concat([df,selected.obs], axis=1)
         df = df2.rename(columns={df.columns[0]: "raw_value"})
 
+        print()
+
         # Valid analysis column names from api/resources/h5ad.py
         analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
         analysis_umap_columns = ['X_umap_1', 'X_umap_2']
@@ -265,25 +279,25 @@ class PlotlyData(Resource):
         X, Y = (0, 1)
 
         # If analysis was performed on dataset, attempt to get coordinates from the obsm table
-        if hasattr(adata, 'obsm'):
-            if 'X_tsne' in adata.obsm:
+        if hasattr(selected, 'obsm'):
+            if 'X_tsne' in selected.obsm:
                 if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
                     # A filtered AnnData object is an 'ArrayView' object and must
                     # be accessed as selected.obsm["X_tsne"] rather than selected.obsm.X_tsne
                     df[x_axis] = selected.obsm["X_tsne"].transpose()[X]
                     df[y_axis] = selected.obsm["X_tsne"].transpose()[Y]
-            elif 'X_umap' in adata.obsm:
+            elif 'X_umap' in selected.obsm:
                 if x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
                     df[x_axis] = selected.obsm["X_umap"].transpose()[X]
                     df[y_axis] = selected.obsm["X_umap"].transpose()[Y]
-            elif 'X_pca' in adata.obsm:
+            elif 'X_pca' in selected.obsm:
                 if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
                     df[x_axis] = selected.obsm["X_pca"].transpose()[X]
                     df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
 
         # Close adata so that we do not have a stale opened object
-        if adata.isbacked:
-            adata.file.close()
+        if selected.isbacked:
+            selected.file.close()
 
         if color_map and color_name:
             # Validate if all color map keys are in the dataframe columns
@@ -462,5 +476,6 @@ class PlotlyData(Resource):
             "plot_colors": chosen_color_map if isinstance(chosen_color_map, dict) else None,
             "plot_palette": chosen_palette,
             "reverse_palette":reverse_palette,
+            "obs_filters": filters,
             "plot_order": order_res,
         }

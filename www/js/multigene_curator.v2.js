@@ -23,26 +23,63 @@ class GenesAsAxisHandler extends PlotHandler {
         , "js-dash-cluster-genes": "cluster_genes"
         , "js-dash-flip-axes": "flip_axes"
         , "js-dash-hide-obs-labels": "hide_obs_labels"
-        , "js-dash-hide-gene-labels": "hide_genes_labels"
+        , "js-dash-hide-gene-labels": "hide_gene_labels"
         , "js-dash-add-jitter": "violin_add_points"
         , "js-dash-stacked-violin": "stacked_violin"
         , "js-dash-plot-title": "plot_title"
         , "js-dash-legend-title": "legend_title"
     }
 
+    // deal with clusterbar separately since it is an array of selected options
+
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
     plotConfig = {};  // Plot config that is passed to API
 
-    cloneDisplay() {
-        //pass
+    cloneDisplay(config) {
+        // load plot values
+        for (const prop in config) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle order
+        if (config["sort_order"]) {
+            for (const series in config["sort_order"]) {
+                const order = config["sort_order"][series];
+                // sort "levels" series by order
+                levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                renderOrderSortableSeries(series);
+            }
+
+            document.getElementById("order_section").classList.remove("is-hidden");
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            facetWidget.filters = config["obs_filters"];
+        }
+
+        // handle colors
+        if (config["color_palette"]) {
+            setSelectBoxByValue("color_palette_post", config["color_palette"]);
+            //colorscaleSelect.update();
+        }
+
+        // handle clusterbar values
+        if (config["clusterbar_fields"]) {
+            for (const field of config["clusterbar_fields"]) {
+                const elt = document.querySelector(`#clusterbar_c .js-dash-clusterbar-checkbox[value="${field}"]`);
+                elt.checked = true;
+            }
+        }
+
     }
 
-    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+    async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -61,12 +98,24 @@ class GenesAsAxisHandler extends PlotHandler {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
+
+        if (this.plotType === 'heatmap') {
+            setHeatmapHeightBasedOnGenes(plotJson.layout, this.plotConfig.gene_symbols);
+        } else if (this.plotType === "mg_violin" && this.plotConfig.stacked_violin){
+            adjustStackedViolinHeight(plotJson.layout);
+        }
+
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
+
+        document.getElementById("legend_title_container").classList.remove("is-hidden");
+        if (this.plotType === "dotplot") {
+            document.getElementById("legend_title_container").classList.add("is-hidden");
+        }
 
     }
 
@@ -108,18 +157,35 @@ class GenesAsAxisHandler extends PlotHandler {
             this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
         }
 
+        // Get checked clusterbar values
+        if (this.plotType === "heatmap") {
+            const clusterbarValues = [];
+            // They should be synced so just grab the first set of clusterbar values
+            for (const elt of document.querySelectorAll("#clusterbar_c .js-dash-clusterbar-checkbox")) {
+                if (elt.checked) {
+                    clusterbarValues.push(elt.value);
+                }
+            }
+            this.plotConfig["clusterbar_fields"] = clusterbarValues;
+        }
+
         // Filtered observation groups
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
 
         // Get order
+        this.plotConfig["sort_order"] = getPlotOrderFromSortable();
 
-        // Get colors
+    }
+
+    async setupParamValueCopyEvent() {
+        //pass
     }
 
     async setupPlotSpecificEvents() {
         catColumns = await getCategoryColumns();
 
-        updateSeriesOptions("js-dash-primary", catColumns, false);
-        updateSeriesOptions("js-dash-secondary", catColumns, false);
+        updateSeriesOptions("js-dash-primary", catColumns);
+        updateSeriesOptions("js-dash-secondary", catColumns);
 
         // If primary series changes, disable chosen option in secondary series
         for (const classElt of document.getElementsByClassName("js-dash-primary")) {
@@ -141,6 +207,59 @@ class GenesAsAxisHandler extends PlotHandler {
             })
         }
 
+        // For clusterbar options, create checkboxes for all catColumns
+        for (const classElt of document.getElementsByClassName("js-dash-clusterbar")) {
+            for (const catColumn of catColumns) {
+
+                const template = `<div class="control">
+                    <label class="checkbox">
+                        <input type="checkbox" value="${catColumn}" class="js-dash-clusterbar-checkbox" />
+                        ${catColumn}
+                    </label>
+                <div>`
+
+                const html = generateElements(template);
+                classElt.append(html);
+            }
+        }
+
+        // Add event listener to sync checkboxes with same value
+        for (const inputElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+            inputElt.addEventListener("change", (event) => {
+                const checked = event.target.checked;
+                const value = event.target.value;
+                for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                    if (innerClassElt.value === value) {
+                        innerClassElt.checked = checked;
+                    }
+                }
+            })
+        }
+
+        // If stacked violin is checked, disable legend title (since there is no legend)
+        for (const classElt of document.getElementsByClassName("js-dash-stacked-violin")) {
+            classElt.addEventListener("change", (event) => {
+                const checked = event.target.checked;
+                for (const legendTitleElt of document.getElementsByClassName("js-dash-legend-title")) {
+                    if (checked) {
+                        legendTitleElt.setAttribute("disabled", "disabled");
+                    } else {
+                        legendTitleElt.removeAttribute("disabled");
+                    }
+                }
+            })
+        }
+
+        // Certain elements trigger plot order
+        const plotOrderElts = document.getElementsByClassName("js-plot-order");
+        for (const elt of plotOrderElts) {
+            elt.addEventListener("change", (event) => {
+                const paramId = event.target.id;
+                const param = paramId.replace("_series", "").replace("_post", "");
+                // NOTE: continuous series will be handled in the function
+                updateOrderSortable();
+            });
+        }
     }
 
 }
@@ -172,23 +291,31 @@ class GenesAsDataHandler extends PlotHandler {
 
     plotConfig = {};  // Plot config that is passed to API
 
-    cloneDisplay() {
-        //pass
+    cloneDisplay(config) {
+        // load plot values
+        for (const prop in config) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle filters
+        if (config.hasOwnProperty("obs_filters")) {
+            facetWidget.filters = config["obs_filters"];
+        }
 
         // Split compare series and groups
         const refCondition = this.plotConfig["ref_condition"];
         const [combineSeries, refGroup] = refCondition.split(this.compareSeparator);
-        for (const classElt in document.getElementsByClassName("js-dash-compare")) {
+        for (const classElt of document.getElementsByClassName("js-dash-compare")) {
             classElt.value = combineSeries;
         }
-        for (const classElt in document.getElementsByClassName("js-dash-reference")) {
+        for (const classElt of document.getElementsByClassName("js-dash-reference")) {
             classElt.value = refGroup;
         }
 
         if (this.plotType === "volcano") {
             const queryCondition = this.plotConfig["query_condition"];
             const queryGroup = queryCondition.split(this.compareSeparator)[1];
-            for (const classElt in document.getElementsByClassName("js-dash-query")) {
+            for (const classElt of document.getElementsByClassName("js-dash-query")) {
                 classElt.value = queryGroup;
             }
         }
@@ -197,20 +324,20 @@ class GenesAsDataHandler extends PlotHandler {
             const compare1Group = compare1Condition.split(this.compareSeparator)[1];
             const compare2Condition = this.plotConfig["compare2_condition"];
             const compare2Group = compare2Condition.split(this.compareSeparator)[1];
-            for (const classElt in document.getElementsByClassName("js-dash-compare1")) {
+            for (const classElt of document.getElementsByClassName("js-dash-compare1")) {
                 classElt.value = compare1Group;
             }
-            for (const classElt in document.getElementsByClassName("js-dash-compare2")) {
+            for (const classElt of document.getElementsByClassName("js-dash-compare2")) {
                 classElt.value = compare2Group;
             }
         }
     }
 
-    async createPlot(datasetId, analysisObj, userId, colorblindMode) {
+    async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, userId, colorblindMode);
+            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -239,6 +366,7 @@ class GenesAsDataHandler extends PlotHandler {
     }
 
     async loadPlotHtml() {
+
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
         prePlotOptionsElt.replaceChildren();
 
@@ -287,23 +415,21 @@ class GenesAsDataHandler extends PlotHandler {
         }
 
         // Filtered observation groups
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
 
-        // Get order
+    }
 
-
+    async setupParamValueCopyEvent() {
+        // These plot parameters do not directly correlate to a plot config property
+        for (const classElt of ["js-dash-compare", "js-dash-reference", "js-dash-query", "js-dash-compare1", "js-dash-compare2"]) {
+            setupParamValueCopyEvent(classElt)
+        }
     }
 
     async setupPlotSpecificEvents() {
 
-        // These plot parameters do not directly correlate to a plot config property
-        // So
-        for (const classElt of ["js-dash-compare", "js-dash-reference", "js-dash-query", "js-dash-compare1", "js-dash-compare2"]) {
-            setupParamValueCopyEvent(classElt)
-        }
-
         catColumns = await getCategoryColumns();
-
-        updateSeriesOptions("js-dash-compare", catColumns, false);
+        updateSeriesOptions("js-dash-compare", catColumns);
 
         // When compare series changes, update the compare groups
         for (const classElt of document.getElementsByClassName("js-dash-compare")) {
@@ -439,19 +565,19 @@ const curatorSpecifcChooseGene = (event) => {
         geneTagsElt.appendChild(geneTagElt);
     }
 
-    document.getElementById("gene_tags_c").style.display = "";
+    document.getElementById("gene_tags_c").classList.remove("is-hidden");
     if (!geneSelect.selectedOptions.length) {
-        document.getElementById("gene_tags_c").style.display = "none";
+        document.getElementById("gene_tags_c").classList.add("is-hidden");
     }
 
     // Cannot plot if 2+ genes are not selected
     if (geneSelect.selectedOptions.length < 2) {
-        document.getElementById("gene_s_failed").style.display = "";
-        document.getElementById("gene_s_success").style.display = "none";
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+        document.getElementById("gene_s_success").classList.add("is-hidden");
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
             plotBtn.disabled = true;
         }
-        document.getElementById("continue_to_plot_options").style.display = "none";
+        document.getElementById("continue_to_plot_options").classList.add("is-hidden");
         return;
     }
 
@@ -459,7 +585,7 @@ const curatorSpecifcChooseGene = (event) => {
     if (geneSelect.selectedOptions.length > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
-            geneTags[i].style.display = "none";
+            geneTags[i].classList.add("is-hidden");
         }
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
@@ -469,7 +595,7 @@ const curatorSpecifcChooseGene = (event) => {
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
             for (let i = 10; i < geneTags.length; i++) {
-                geneTags[i].style.display = "";
+                geneTags[i].classList.remove("is-hidden");
             }
             event.target.remove();
         });
@@ -478,23 +604,24 @@ const curatorSpecifcChooseGene = (event) => {
     }
 
 
-    document.getElementById("gene_s_failed").style.display = "none";
-    document.getElementById("gene_s_success").style.display = "";
+    document.getElementById("gene_s_failed").classList.add("is-hidden");
+    document.getElementById("gene_s_success").classList.remove("is-hidden");
 
     // Force validation check to see if plot button should be enabled
     //trigger(document.querySelector(".js-plot-req"), "change");
 
-    document.getElementById("continue_to_plot_options").style.display = "";
+    document.getElementById("continue_to_plot_options").classList.remove("is-hidden");
 
 }
 
 const curatorSpecifcCreatePlot = async (plotType) => {
-
+    // Call API route by plot type
+    await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
 }
 
-const curatorSpecifcDatasetTreeCallback = () => {
+const curatorSpecifcDatasetTreeCallback = async () => {
     // Creates gene select instance that allows for multiple selection
-    geneSelect = createGeneSelectInstance("gene_select")
+    geneSelect = createGeneSelectInstance("gene_select", geneSelect);
 }
 
 const curatorSpecificOnLoad = async () => {
@@ -513,16 +640,20 @@ const curatorSpecificPlotStyle = (plotType) => {
     }
 }
 
+const curatorSpecificPlotTypeAdjustments = (plotType) => {
+    return plotType;
+}
+
 const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
     //pass
 }
 
-const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis_id) => {
+const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
     // Plot types will depend on the number of comparabie categorical conditions
     // Volcano plots must have at least two conditions
     // Quadrant plots must have at least three conditions
 
-    const payload = {user_id, session_id, dataset_id, analysis_id};
+    const payload = {session_id, dataset_id, analysis_id};
     try {
         const {data} = await axios.post(`/api/h5ad/${dataset_id}/mg_availableDisplayTypes`, payload);
         if (data.hasOwnProperty("success") && data.success < 1) {
@@ -536,9 +667,9 @@ const fetchAvailablePlotTypes = async (user_id, session_id, dataset_id, analysis
     }
 }
 
-const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, analysis_owner_id, colorblind_mode)  => {
+const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
     // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, analysis_owner_id, colorblind_mode };
+    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
     try {
         const { data } = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload);
         if (data?.success < 1) {
@@ -547,7 +678,7 @@ const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, analysi
         return data
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not create Plotly plot for this dataset and parameters. Please contact the gEAR team."
+        const msg = "Could not create plot for this dataset and parameters. Please contact the gEAR team."
         createToast(msg);
         throw new Error(msg);
     }
@@ -591,8 +722,14 @@ const getCategoryColumns = async () => {
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
-        document.getElementById("plot_options_s_failed").style.display = "";
+        document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
         return;
+    }
+    // Filter out values we don't want of "levels", like "colors"
+    for (const key in levels) {
+        if (key.includes("_colors")) {
+            delete levels[key];
+        }
     }
     return Object.keys(levels);
 }
@@ -635,10 +772,32 @@ const loadGeneCarts = async () => {
         }*/
 
     } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
 
 }
+
+// For plotting options, populate select menus with category groups
+const updateSeriesOptions = (classSelector, seriesArray) => {
+
+    for (const elt of document.getElementsByClassName(classSelector)) {
+        elt.replaceChildren();
+
+        // Append empty placeholder element
+        const firstOption = document.createElement("option");
+        elt.append(firstOption);
+
+        // Add categories
+        for (const group of seriesArray.sort()) {
+
+            const option = document.createElement("option");
+            option.textContent = group;
+            option.value = group;
+            elt.append(option);
+        }
+    }
+}
+
 
 // For a given categorical series (e.g. "celltype"), update the "group" options
 const updateGroupOptions = (classSelector, levels) => {

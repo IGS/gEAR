@@ -73,17 +73,17 @@ def order_by_time_point(obs_df):
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
+        user = geardb.get_user_from_session_id(session_id)
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         try:
             ana.type = analysis['type']
         except:
-            user = geardb.get_user_from_session_id(session_id)
             ana.discover_type(current_user_id=user.id)
     else:
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
@@ -94,6 +94,9 @@ def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
             raise PlotError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
+
+def create_composite_index_column(df, columns):
+    return df.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
@@ -138,7 +141,6 @@ class MultigeneDashData(Resource):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         analysis = req.get('analysis', None)
-        analysis_owner_id = req.get('analysis_owner_id', None)
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
@@ -183,7 +185,7 @@ class MultigeneDashData(Resource):
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+            ana = get_analysis(analysis, dataset_id, session_id)
         except PlotError as pe:
             return {
                 'success': -1,
@@ -200,6 +202,9 @@ class MultigeneDashData(Resource):
 
         if 'replicate' in columns:
             columns.remove('replicate')
+
+        # remove _colors columns
+        columns = [col for col in columns if not col.endswith('_colors')]
 
         if not columns:
             return {
@@ -310,7 +315,7 @@ class MultigeneDashData(Resource):
                     pass
 
         # Make a composite index of all categorical types
-        selected.obs['composite_index'] = selected.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+        selected.obs['composite_index'] = create_composite_index_column(selected, columns)
         selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
         columns.append("composite_index")
 
@@ -323,7 +328,7 @@ class MultigeneDashData(Resource):
                     filters[field] = sort_order[field]
 
             # Create a special composite index for the specified filters
-            selected.obs['filters_composite'] = selected.obs[filters.keys()].apply(lambda x: ';'.join(map(str,x)), axis=1)
+            selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
             selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
             columns.append("filters_composite")
             unique_composite_indexes = selected.obs["filters_composite"].unique()
@@ -474,7 +479,7 @@ class MultigeneDashData(Resource):
             # Create a composite to groupby
             if filters and matrixplot:
                 union_fields = mg.union(list(filters.keys()), clusterbar_fields)
-                selected.obs['groupby_composite'] = selected.obs[union_fields].apply(lambda x: ';'.join(map(str,x)), axis=1)
+                selected.obs['groupby_composite'] = create_composite_index_column(selected, union_fields)
                 selected.obs['groupby_composite'] = selected.obs['groupby_composite'].astype('category')
                 columns.append("groupby_composite")
                 groupby_index = "groupby_composite"
@@ -639,7 +644,9 @@ class MultigeneDashData(Resource):
         if legend_title:
             fig.update_layout(
                 legend={
-                    "text":legend_title
+                    "title":{
+                        "text":legend_title
+                    }
                 }
             )
 

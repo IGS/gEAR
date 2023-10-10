@@ -62,7 +62,6 @@ parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required
 parser.add_argument('scope', type=str, required=False)
 parser.add_argument('algorithm', help="An algorithm needs to be provided", type=str,  required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
-parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used at the moment
 
 run_projectr_parser = parser.copy()
 run_projectr_parser.add_argument('projection_id', type=str, required=False)
@@ -92,12 +91,13 @@ def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
+        user = geardb.get_user_from_session_id(session_id)
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         try:
             ana.type = analysis['type']

@@ -75,8 +75,8 @@ Scanpy (or dependencies) assumes it can write in several directories which the w
     $ cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/scanpy
     $ find ./ -name __pycache__ -exec chmod 777 {} \;
 
-Diffxpy (v0.7.4) is used in the multigene curator, but their version does not allow for free-ordering of conditions (for volcano plots).  I forked their code (adkinsrs/diffxpy), made the fix, and installed
-    $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/adkinsrs/diffxpy.git@b2ebeb0fb7c6c215d51264cd258edf9d013ff021
+NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time). It does not have a release tag, but fixes a NumPy bug occurs with older diffxpy commits and newer numpy releases.
+    $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
 
 The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
     $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c

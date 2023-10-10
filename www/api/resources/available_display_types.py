@@ -13,12 +13,12 @@ class MGAvailableDisplayTypes(Resource):
 
     Parameters
     ----------
-    user_id: str
-      User ID
     dataset_id: str
       Dataset ID
     session_id: str
       Session ID
+    analysis_id: str
+      Analysis ID
 
     Returns
     -------
@@ -48,7 +48,6 @@ class MGAvailableDisplayTypes(Resource):
 
         # Have a public dataset or user_saved dataset
         if analysis_id:
-            # session_id = request.cookies.get('gear_session_id')
             user = geardb.get_user_from_session_id(session_id)
 
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
@@ -71,9 +70,7 @@ class MGAvailableDisplayTypes(Resource):
         if "replicate" in columns:
           columns.remove('replicate')
 
-        for col in columns:
-          if "_colors" in col:
-            columns.remove(col)
+        columns = [col for col in columns if not col.endswith('_colors')]
 
         # Filter only categorical columns
         categorical_columns = list(filter(lambda x: adata.obs[x].dtype.name == 'category', columns))
@@ -108,12 +105,12 @@ class AvailableDisplayTypes(Resource):
 
     Parameters
     ----------
-    user_id: str
-      User ID
     dataset_id: str
       Dataset ID
     session_id: str
       Session ID
+    analysis_id: str
+      Analysis ID
 
     Returns
     -------
@@ -122,7 +119,6 @@ class AvailableDisplayTypes(Resource):
     """
     def post(self, dataset_id):
         req = request.get_json()
-        user_id = req.get('user_id')
         dataset_id = req.get('dataset_id')
         session_id = req.get('session_id')
         analysis_id = req.get('analysis_id')
@@ -180,6 +176,9 @@ class AvailableDisplayTypes(Resource):
 
         if "replicate" in columns:
           columns.remove('replicate')
+
+        columns = [col for col in columns if not col.endswith('_colors')]
+
 
         for col in columns:
           # If any of the columns are of numerical type,

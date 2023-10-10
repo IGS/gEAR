@@ -24,7 +24,7 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     help_id = form.getvalue('help_id')
-    user_id = form.getvalue('user_id')
+    sesison_id = form.getvalue('session_id')
     new_password = form.getvalue('new_password')
     email = form.getvalue('email')
     institution = form.getvalue('institution')
@@ -32,6 +32,9 @@ def main():
     updates_wanted = form.getvalue('wantUpdates', "off")   # Either "on" or "off" because it's a checkbox
     scope = form.getvalue('scope') # 'password'
     result = {}
+
+    user = geardb.get_user_from_session_id(session_id=sesison_id)
+    user_id = user.id
 
     # Password is being changed
     if scope == 'password':

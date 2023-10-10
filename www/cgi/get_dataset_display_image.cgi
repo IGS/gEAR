@@ -20,7 +20,7 @@ def main():
 
     image_preview_url = os.path.join(WEB_IMAGE_ROOT, "{}.{}.png".format(dataset_id, display_id))
 
-    print(image_preview_url, file=sys.stderr)
+    #print(image_preview_url, file=sys.stderr)
 
     if not os.path.exists(image_preview_url):
         image_preview_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)

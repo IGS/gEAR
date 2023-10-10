@@ -2,6 +2,8 @@
 
 let plotStyle;  // Plot style object
 
+let facetWidget = null;
+
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
 let allColumns = [];
 let catColumns = [];
@@ -15,7 +17,6 @@ let analysisSelect = null;
 let plotTypeSelect = null;
 let colorscaleSelect = null;
 
-let userId;
 let sessionId;
 let colorblindMode;
 
@@ -64,6 +65,10 @@ class PlotHandler {
         throw new Error("You have to implement the method populatePlotConfig!");
     }
 
+    async setupParamValueCopyEvent() {
+        throw new Error("You have to implement the method setupParamValueCopyEvent!");
+    }
+
     setupPlotSpecificEvents() {
         throw new Error("You have to implement the method setupPlotSpecificEvents!");
     }
@@ -77,7 +82,7 @@ const datasetTree = new DatasetTree({
         if (e.node.type !== "dataset") {
             return;
         }
-        document.getElementById("current_dataset_c").style.display = "";
+        document.getElementById("current_dataset_c").classList.remove("is-hidden");
         document.getElementById("current_dataset").textContent = e.node.title;
         document.getElementById("current_dataset_post").textContent = e.node.title;
 
@@ -97,27 +102,16 @@ const datasetTree = new DatasetTree({
 
         // Clear "success/failure" icons
         for (const elt of document.getElementsByClassName("js-step-success")) {
-            elt.style.display = "none";
+            elt.classList.add("is-hidden");
         }
 
-        document.getElementById("dataset_s_success").style.display = "";
-
-
-        // Fetch dataset information
-        let ownerId;
-        try {
-            // Must wrap in parentheses - https://stackoverflow.com/a/48714713
-            ({owner_id: ownerId} = await fetchDatasetInfo(datasetId));
-        } catch (error) {
-            ownerId = -1;   // Owner displays wont be fetched regardless
-        }
+        document.getElementById("dataset_s_success").classList.remove("is-hidden");
 
         // displays
-        const userDisplays = await fetchDatasetDisplays(userId, datasetId);
-        const ownerDisplays = userId === ownerId ? [] : await fetchDatasetDisplays(ownerId, datasetId);
+        const {userDisplays, ownerDisplays} = await fetchDatasetDisplays(sessionId, datasetId);
         let defaultDisplayId;
         try {
-            defaultDisplayId = await fetchDefaultDisplay(userId, datasetId);
+            defaultDisplayId = await fetchDefaultDisplay(sessionId, datasetId);
         } catch (error) {
             defaultDisplayId = -1;  // Cannot make any display a default.
         }
@@ -126,12 +120,13 @@ const datasetTree = new DatasetTree({
         document.getElementById('new_display').disabled = false;
 
         // Clear (and update) options within nice-select2 structure.
+        // Not providing the object will duplicate the nice-select2 structure
         analysisObj = null;
-        analysisSelect = createAnalysisSelectInstance("analysis_select");
-        plotTypeSelect = createPlotTypeSelectInstance("plot_type_select");
+        analysisSelect = createAnalysisSelectInstance("analysis_select", analysisSelect);
+        plotTypeSelect = createPlotTypeSelectInstance("plot_type_select", plotTypeSelect);
 
         // Call any curator-specific callbacks
-        curatorSpecifcDatasetTreeCallback();
+        await curatorSpecifcDatasetTreeCallback();
     })
 });
 
@@ -139,14 +134,14 @@ const analysisSelectUpdate = async () => {
     try {
         const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        document.getElementById("analysis_type_select_c_success").style.display = "";   // Default analysis is good
+        document.getElementById("analysis_type_select_c_success").classList.remove("is-hidden");   // Default analysis is good
     } catch (error) {
         // Show failure state things.
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("analysis_type_select_c_failed").style.display = "";
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("analysis_type_select_c_failed").classList.remove("is-hidden");
         document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
     } finally {
-        document.getElementById("load_plot_s_success").style.display = "";
+        document.getElementById("load_plot_s_success").classList.remove("is-hidden");
     }
 
 }
@@ -154,10 +149,9 @@ const analysisSelectUpdate = async () => {
 const chooseAnalysis = async (event) => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
-    const analysisText = analysisId || "Primary Analysis";
+    const analysisText = (analysisId.length) ? analysisId : "Primary Analysis";
 
     // Display current selected analysis
-    document.getElementById("current_analysis_c").style.display = "";
     document.getElementById("current_analysis").textContent = analysisText;
     document.getElementById("current_analysis_post").textContent = analysisText;
 
@@ -175,6 +169,9 @@ const chooseAnalysis = async (event) => {
             plotTypeSelectUpdate(analysisId)
             , geneSelectUpdate(analysisId)
         ]);
+
+        // Create facet widget
+        facetWidget = await createFacetWidget(sessionId, datasetId, analysisId, {});
     }
 }
 
@@ -208,23 +205,119 @@ const choosePlotType = async (event) => {
     // Do not display if default opt is chosen
     const plotType = getSelect2Value(plotTypeSelect)
     if (plotType === "nope") {
-        document.getElementById("plot_type_select_c_success").style.display = "none";
-        document.getElementById("plot_type_s_success").style.display = "none";
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
         return;
     }
 
-    document.getElementById("plot_type_select_c_failed").style.display = "none";
-    document.getElementById("plot_type_select_c_success").style.display = "";
+    document.getElementById("plot_type_select_c_failed").classList.add("is-hidden");
+    document.getElementById("plot_type_select_c_success").classList.remove("is-hidden");
 
-    document.getElementById("plot_type_s_failed").style.display = "none";
-    document.getElementById("plot_type_s_success").style.display = "";
+    document.getElementById("plot_type_s_failed").classList.add("is-hidden");
+    document.getElementById("plot_type_s_success").classList.remove("is-hidden");
+
+    document.getElementById("plot_options_s_failed").classList.add("is-hidden");
+    document.getElementById("plot_options_s_success").classList.add("is-hidden");
 
     // Display current selected plot type
-    document.getElementById("current_plot_type_c").style.display = "";
+    document.getElementById("current_plot_type_c").classList.remove("is-hidden");
     document.getElementById("current_plot_type").textContent = plotType;
+
+    // Create facet widget, which will refresh filters
+    facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
+    document.getElementById("facet_content").classList.remove("is-hidden");
+    document.getElementById("selected_facets").classList.remove("is-hidden");
+
+    // Reset sortable lists
+    document.getElementById("order_section").classList.add("is-hidden");
+    document.getElementById("order_container").replaceChildren();
+
 
     await includePlotParamOptions();
     document.getElementById("gene_s").click();
+}
+
+
+const cloneDisplay = async (event, display) => {
+
+    const cloneId = event.target.id;
+    document.getElementById(cloneId).classList.add("is-loading");
+
+    // Populate gene select element
+    // Will be overwritten if an analysis was in config
+    try {
+        const geneSymbols = await fetchGeneSymbols(datasetId, null);
+        updateGeneOptions(geneSymbols);
+    } catch (error) {
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+    }
+
+    document.getElementById("analysis_select").disabled = false;
+    document.getElementById("plot_type_select").disabled = false;
+
+    // analyses
+    await analysisSelectUpdate();
+    // TODO update analysis select with config analysis
+
+
+    // plot types
+
+    // Read clone config to populate analysis, plot type, gnee and plot-specific options
+    let plotType = display.plot_type;
+    plotType = curatorSpecificPlotTypeAdjustments(plotType);
+
+    try {
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined);
+        for (const plotType in availablePlotTypes) {
+            const isAllowed = availablePlotTypes[plotType];
+            setPlotTypeDisabledState(plotType, isAllowed);
+        }
+
+        setSelectBoxByValue("plot_type_select", plotType);
+        plotTypeSelect.update();
+        await choosePlotType();
+        // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
+    } catch (error) {
+        console.error(error);
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
+
+        return;
+    } finally {
+        document.getElementById(cloneId).classList.remove("is-loading");
+    }
+
+    // Choose gene from config
+    const config = display.plotly_config;
+    if (isMultigene) {
+        // Update gene_select with genes from config
+        const geneSymbols = config.gene_symbols;
+        for (const geneSymbol of geneSymbols) {
+            setSelectBoxByValue("gene_select", geneSymbol);
+        }
+    } else {
+        setSelectBoxByValue("gene_select", config.gene_symbol);
+    }
+    geneSelect.update();
+    trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to set the other select2 (single-gene only)
+
+    try {
+        plotStyle.cloneDisplay(config);
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not clone this display. Please contact the gEAR team."
+        createToast(msg);
+        return;
+    }
+
+    // Mark plot params as success
+    document.getElementById("plot_options_s_success").classList.remove("is-hidden");
+
+    // Click "submit" button to load plot
+    document.getElementById("plot_btn").click();    // updates geneSelectPost by triggered "click" event
+
 }
 
 const createAnalysisSelectInstance = (idSelector, analysisSelect=null) => {
@@ -292,6 +385,37 @@ const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
     });
 }
 
+const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
+    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
+
+    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    document.getElementById("num_selected").textContent = totalCount;
+
+
+    const facetWidget = new FacetWidget({
+        aggregations,
+        filters,
+        onFilterChange: async (filters) => {
+            if (filters) {
+                try {
+                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+                    facetWidget.updateAggregations(aggregations);
+                    document.getElementById("num_selected").textContent = totalCount;
+                } catch (error) {
+                    logErrorInConsole(error);
+                }
+            } else {
+                // Save an extra API call
+                facetWidget.updateAggregations(facetWidget.aggregations);
+            }
+            // Sortable lists need to reflect groups filtered out or unfiltered
+            updateOrderSortable();
+        }
+    });
+    document.getElementById("selected_facets_loader").classList.add("is-hidden")
+    return facetWidget;
+}
+
 const createGeneSelectInstance = (idSelector, geneSelect=null) => {
     // NOTE: Updating the list of genes can be memory-intensive if there are a lot of genes
     // and (I've noticed) if multiple select2 elements for genes are present.
@@ -337,10 +461,14 @@ const createPlot = async (event) => {
 
     plotStyle.populatePlotConfig();
 
-    const geneSymbol = getSelect2Value(geneSelect);
-    plotStyle.plotConfig["gene_symbol"] = geneSymbol;
+    // Add gene or genes to plot config
+    if (isMultigene) {
+        plotStyle.plotConfig["gene_symbols"] = geneSelect.selectedOptions.map(e => e.data.value);
+    } else {
+        plotStyle.plotConfig["gene_symbol"] = getSelect2Value(geneSelect);
+    }
 
-    curatorSpecifcCreatePlot(plotType);
+    await curatorSpecifcCreatePlot(plotType);
 
 
     // Stop loader
@@ -349,9 +477,9 @@ const createPlot = async (event) => {
     }
 
     // Hide this view
-    document.getElementById("content_c").style.display = "none";
+    document.getElementById("content_c").classList.add("is-hidden");
     // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").style.display = "";
+    document.getElementById("post_plot_content_c").classList.remove("is-hidden");
 
 }
 
@@ -369,7 +497,7 @@ const createToast = (msg, levelClass="is-danger") => {
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-child").insertAdjacentElement("afterend", html);
+        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
         // Position new toast under previous toast with CSS
         html.style.setProperty("top", "unset");
     } else {
@@ -385,7 +513,7 @@ const createToast = (msg, levelClass="is-danger") => {
 
     // For a success message, remove it after 3 seconds
     if (levelClass === "is-success") {
-        const notification = document.querySelector(".js-toast.notification:last-child");
+        const notification = document.querySelector(".js-toast.notification:last-of-type");
         notification.classList.remove("animate__fadeInUp");
         notification.classList.remove("animate__faster");
         notification.classList.add("animate__fadeOutDown");
@@ -393,8 +521,8 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 }
 
-const deleteDisplay = async(user_id, displayId) => {
-    const payload = {user_id, id: displayId};
+const deleteDisplay = async (session_id, displayId) => {
+    const payload = {session_id, id: displayId};
     try {
         await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
         // Remove display card
@@ -463,16 +591,21 @@ const fetchDatasetDisplayImage = async (dataset_id, display_id) => {
     }
 }
 
-const fetchDatasetDisplays = async (user_id, dataset_id) => {
-    const payload = {user_id, dataset_id};
+const fetchDatasetDisplays = async (session_id, dataset_id) => {
+    const payload = {session_id, dataset_id};
     try {
         // POST due to payload variables being sensitive
         const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
+        const {user, owner} = data;
         // Filter only the single-gene displays
         if (isMultigene) {
-            return data.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            return {userDisplays, ownerDisplays};
         }
-        return data.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        return {userDisplays, ownerDisplays};
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch the saved displays for this dataset. Please contact the gEAR team."
@@ -481,22 +614,8 @@ const fetchDatasetDisplays = async (user_id, dataset_id) => {
     }
 }
 
-const fetchDatasetInfo = async (dataset_id) => {
-    const payload = {dataset_id};
-    try {
-        const {data} = await axios.post("/cgi/get_dataset_info.cgi", convertToFormData(payload));
-        const {title, is_public, owner_id} = data;
-        return {title, is_public, owner_id};
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch metadata for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDefaultDisplay = async (user_id, dataset_id) => {
-    const payload = {user_id, dataset_id, is_multigene: isMultigene};
+const fetchDefaultDisplay = async (session_id, dataset_id) => {
+    const payload = {session_id, dataset_id, is_multigene: isMultigene};
     try {
         // POST due to payload variables being sensitive
         const {data} =  await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
@@ -540,6 +659,21 @@ const fetchH5adInfo = async (datasetId, analysisId) => {
     }
 }
 
+const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
+    const payload = {session_id, dataset_id, analysis_id, filters};
+    try {
+        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
+        }
+        const {aggregations, total_count} = data;
+        return {aggregations, total_count};
+    } catch (error) {
+        logErrorInConsole(error);
+    }
+}
+
+
 // Create the template for the colorscale select2 option dropdown
 const formatColorscaleOptionText = (option, text, isContinuous=false) => {
 
@@ -571,8 +705,22 @@ const geneSelectUpdate = async (analysisId=null) => {
         const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
         updateGeneOptions(geneSymbols); // Come from curator specific code
     } catch (error) {
-        document.getElementById("gene_s_failed").style.display = "";
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
+}
+
+const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
+    // Get updates and additions to plot from the plot_display_config JS object
+    let updates = {};
+    for (const idx in plotConfObj) {
+        const conf = plotConfObj[idx];
+        // Get config (data and/or layout info) for the plot type chosen, if it exists
+        if (conf.plot_type == "all" || conf.plot_type == plotType) {
+            const update = category in conf ? conf[category] : {};
+            updates = {...updates, ...update};    // Merge updates
+        }
+    }
+    return updates;
 }
 
 /* Get HTML element value to save into plot config */
@@ -596,7 +744,7 @@ const getPlotOrderFromSortable = () => {
     const order = {};
     for (const elt of document.getElementById("order_container").children) {
         const series = elt.querySelector("p").textContent;
-        const serialized = sortable(`#${series}_order_list`, 'serialize')[0].items;
+        const serialized = sortable(`#${CSS.escape(series)}_order_list`, 'serialize')[0].items;
         // Sort by "sortable" index position
         order[series] = serialized.map((val) => val.label);
     }
@@ -625,11 +773,11 @@ const includePlotParamOptions = async () => {
     plotStyle = curatorSpecificPlotStyle(plotType);
     if (!plotStyle) {
         console.warn(`Plot type ${plotType} not recognized.`)
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("plot_type_s_success").style.display = "none";
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
         return;
     }
-    document.getElementById("plot_type_s_failed").style.display = "none";
+    document.getElementById("plot_type_s_failed").classList.add("is-hidden");
 
 
     // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
@@ -642,6 +790,7 @@ const includePlotParamOptions = async () => {
         // Ensure pre- and post- plot view params are synced up
         setupParamValueCopyEvent(classSelector);
     }
+    plotStyle.setupParamValueCopyEvent();   // handle some copy events that could not be handled in the loop above
     setupValidationEvents();        // Set up validation events required to plot at a minimum
     await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
 
@@ -672,10 +821,13 @@ const loadColorscaleSelect = (isContinuous=false) => {
         document.getElementById("color_palette_post").append(optgroup);
     }
 
+
     // set default to purples
     setSelectBoxByValue("color_palette_post", "purp");
 
-    colorscaleSelect = createColorscaleSelectInstance("color_palette_post");
+    return;
+
+    //colorscaleSelect = createColorscaleSelectInstance("color_palette_post", colorscaleSelect);
 
 }
 
@@ -719,7 +871,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
-        document.getElementById("dataset_s_failed").style.display = "";
+        document.getElementById("dataset_s_failed").classList.remove("is-hidden");
     }
 
 }
@@ -729,17 +881,17 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
     try {
         plotTypeSelect.clear();
-        const availablePlotTypes = await fetchAvailablePlotTypes(userId, sessionId, datasetId, analysisId);
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, analysisId);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
         }
         plotTypeSelect.update();
     } catch (error) {
-        document.getElementById("plot_type_s_failed").style.display = "";
-        document.getElementById("plot_type_select_c_failed").style.display = "";
-        document.getElementById("plot_type_s_success").style.display = "none";
-        document.getElementById("plot_type_select_c_success").style.display = "none";;
+        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
+        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");;
     }
 }
 
@@ -778,9 +930,11 @@ const renderOrderSortableSeries = (series) => {
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
 
-    // If series is used in another param, also return
-    // NOTE: if the original series is removed, the param will not simply be switch over to the new one.
-    if (document.getElementById(`${series}_order`)) return;
+    // Start with a fresh template
+    const orderElt = document.getElementById(`${series}_order`);
+    if (orderElt) {
+        orderElt.remove();
+    }
 
     // Create parent template
     // Designed so the title is a full row and the draggables are 50% width
@@ -797,6 +951,9 @@ const renderOrderSortableSeries = (series) => {
 
     // Add in list elements
     for (const group of levels[series]) {
+        // If filters are present and group is not in filters, skip
+        if (facetWidget.filters.hasOwnProperty(series) && !facetWidget.filters[series].includes(group)) continue;
+
         const listElt = `<li class="has-background-grey-lighter has-text-dark">${group}</li>`;
         const listCollection = generateElements(listElt);
         document.getElementById(`${series}_order_list`).append(listCollection);
@@ -884,6 +1041,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     } catch (error) {
         displayUrl = "/img/dataset_previews/missing.png";
     }
+
     const geneSymbol = display.plotly_config.gene_symbol;
 
     const label = display.label || "Unnamed display"; // Added text to keep "p" tag from collapsing
@@ -941,15 +1099,15 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
     document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
-    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(userId, display.id));
+    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(sessionId, display.id));
 }
 
-const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_type, plotConfig) => {
+const saveDatasetDisplay = async(displayId, dataset_id, session_id, label, plot_type, plotConfig) => {
     // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
     const payload = {
         id: displayId,
         dataset_id,
-        user_id,
+        session_id,
         label,
         plot_type,
         plotly_config: JSON.stringify({
@@ -966,7 +1124,7 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
         }
 
         // Make new display card and make it the default display
-        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: payload.plotly_config}, display_id);
+        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: plotConfig}, display_id);
 
         return display_id;
     } catch (error) {
@@ -978,7 +1136,7 @@ const saveDatasetDisplay = async(displayId, dataset_id, user_id, label, plot_typ
 }
 
 const saveDefaultDisplay = async (displayId) => {
-    const payload = {display_id: displayId, user_id: userId, dataset_id: datasetId, is_multigene: isMultigene};
+    const payload = {display_id: displayId, session_id: sessionId, dataset_id: datasetId, is_multigene: isMultigene};
     try {
         const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
         const {success} = data;
@@ -1035,7 +1193,7 @@ const setSelectBoxByValue = (eid, val) => {
     const elt = document.getElementById(eid);
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
-            elt.value = val;
+            // By using "selected" instead of "value", we can account for the "multiple" property
             elt.options[i].setAttribute("selected", true);
             return;
         }
@@ -1062,35 +1220,7 @@ const setupParamValueCopyEvent = (classSelector) => {
 const setupValidationEvents = () => {
     const validationElts = document.getElementsByClassName("js-plot-req");
     for (const elt of validationElts ) {
-        elt.addEventListener("change", () => {
-            // Reset "status" classes
-            elt.classList.remove("is-success", "is-danger");
-            if (elt.value) {
-                elt.parentElement.classList.remove("is-danger");
-                elt.parentElement.classList.add("is-success");
-
-                // If every validation param has been filled out, it's OK to plot
-                // NOTE: need to ensure pre- and post- param elements are filled before this function is called
-                if ([...validationElts].every(element => element.value)) {
-                    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                        plotBtn.disabled = false;
-                    }
-                    document.getElementById("plot_options_s_success").style.display = "";
-                    document.getElementById("plot_options_s_failed").style.display = "none";
-                }
-                return;
-            }
-
-            // Required paramater has no value. Indicate it and disable plot buttons
-            elt.parentElement.classList.add("is-danger");
-            elt.parentElement.classList.remove("is-success");
-
-            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                plotBtn.disabled = true;
-            }
-            document.getElementById("plot_options_s_success").style.display = "none";
-            document.getElementById("plot_options_s_failed").style.display = "";
-        })
+        elt.addEventListener("change", validateRequirements);
     }
 }
 
@@ -1189,13 +1319,8 @@ const updateOrderSortable = () => {
         }
     }
 
-    // Three scenarios:
     for (const series of seriesSet) {
-        // 1. Series is in both seriesSet and sortableSet, do nothing
-        if (sortableSet.has(series)) {
-            continue;
-        }
-        // 2. Series is in seriesSet but not sortableSet, add <series>_order element
+        // If series already exists, it will be removed before rendered
         renderOrderSortableSeries(series);
     }
 
@@ -1213,74 +1338,45 @@ const updateOrderSortable = () => {
 
     // Pre-emptively hide the container but show it ass
     if (!orderContainer.children.length) {
-        orderSection.style.display = "none";
+        orderSection.classList.add("is-hidden");
         return;
     }
 
-    orderSection.style.display = "";
+    orderSection.classList.remove("is-hidden");
 
 }
 
-// For plotting options, populate select menus with category groups
-const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
+const validateRequirements = (event) => {
+    const elt = event.target;
+    // Reset "status" classes
+    elt.classList.remove("is-success", "is-danger");
+    if (elt.value) {
+        elt.parentElement.classList.remove("is-danger");
+        elt.parentElement.classList.add("is-success");
 
-    for (const elt of document.getElementsByClassName(classSelector)) {
-        elt.replaceChildren();
+        const validationElts = document.getElementsByClassName("js-plot-req");
 
-        // Create continuous and categorical optgroups
-        const contOptgroup = document.createElement("optgroup");
-        contOptgroup.setAttribute("label", "Continuous data");
-        const catOptgroup = document.createElement("optgroup");
-        catOptgroup.setAttribute("label", "Categorical data");
-
-        // Append empty placeholder element
-        const firstOption = document.createElement("option");
-        elt.append(firstOption);
-
-        // Add an expression option (since expression is not in the categories)
-        if (addExpression) {
-            const expression = document.createElement("option");
-            contOptgroup.append(expression);
-            expression.textContent = "expression";
-            expression.value = "raw_value";
-            if ("raw_value" === defaultOption) {
-                expression.selected = true;
+        // If every validation param has been filled out, it's OK to plot
+        // NOTE: need to ensure pre- and post- param elements are filled before this function is called
+        if ([...validationElts].every(element => element.value)) {
+            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+                plotBtn.disabled = false;
             }
+            document.getElementById("plot_options_s_success").classList.remove("is-hidden");
+            document.getElementById("plot_options_s_failed").classList.add("is-hidden");
         }
-
-        // Add categories
-        for (const group of seriesArray.sort()) {
-            // Skip columns listed as "_colors" as they just provide colors for another series
-            if (group.includes("_colors")) continue;
-
-            const option = document.createElement("option");
-            option.textContent = group;
-            // Change X_pca/X_tsne/X_umap text content to be more user_friendly
-            if (group.includes("X_") && (
-                group.includes("pca")
-                || group.includes("tsne")
-                || group.includes("umap")
-            )) {
-                option.textContent = `${group} (from selected analysis)`;
-            }
-            option.value = group;
-            if (catColumns.includes(group)) {
-                catOptgroup.append(option);
-            } else {
-                contOptgroup.append(option);
-            }
-            // NOTE: It is possible for a default option to not be in the list of groups.
-            if (group === defaultOption) {
-                option.selected = true;
-            }
-        }
-
-        // Only append optgroup if it has children
-        if (contOptgroup.children.length) elt.append(contOptgroup);
-        if (catOptgroup.children.length) elt.append(catOptgroup);
-
+        return;
     }
 
+    // Required paramater has no value. Indicate it and disable plot buttons
+    elt.parentElement.classList.add("is-danger");
+    elt.parentElement.classList.remove("is-success");
+
+    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+        plotBtn.disabled = true;
+    }
+    document.getElementById("plot_options_s_success").classList.add("is-hidden");
+    document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
 }
 
 // ? Put this in the separate curator pages instead?
@@ -1288,12 +1384,11 @@ window.onload = () => {
     // I don't like to async/await the window.onload function so I use .then instead
 
     checkForLogin().then(() => {
-        userId = CURRENT_USER.id;
         sessionId = CURRENT_USER.session_id;
-        colorblindMode = CURRENT_USER.colorblind_mode;
+        colorblindMode = CURRENT_USER.colorblind_mode || false;
         Cookies.set('gear_session_id', sessionId, { expires: 7 });
     }).finally(() => {
-        if (! userId ) {
+        if (! sessionId ) {
             createToast("Not logged in so saving displays is disabled.");
             document.getElementById("save_display_btn").disabled = true;
         }
@@ -1357,7 +1452,7 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     const label = document.getElementById("new_display_label").value;
     event.target.classList.add("is-loading");
     try {
-        const displayId = await saveDatasetDisplay(null, datasetId, userId, label, plotStyle.plotType, plotStyle.plotConfig);
+        const displayId = await saveDatasetDisplay(null, datasetId, sessionId, label, plotStyle.plotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make_default_display_check").checked) {
@@ -1373,9 +1468,27 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
 document.getElementById("edit_params").addEventListener("click", (event) => {
     event.target.classList.add("is-loading");
     // Hide this view
-    document.getElementById("content_c").style.display = "";
+    document.getElementById("content_c").classList.remove("is-hidden");
     // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").style.display = "none";
+    document.getElementById("post_plot_content_c").classList.add("is-hidden");
 
     event.target.classList.remove("is-loading");
 })
+
+// Set up .js-post-plot-collapsable to collapse and uncollapse the content element
+const collapsableElts = document.getElementsByClassName("js-collapsable-trigger");
+for (const classElt of collapsableElts) {
+    classElt.addEventListener("click", (event) => {
+        // find the sibling .is-collapsable element and toggle its "is-hidden" class
+        const contentElt = event.target.parentElement.querySelector(".js-collapsable-content");
+        contentElt.classList.toggle("is-hidden");
+
+        // switch toggle icon to up or down
+        const iconElt = event.target.querySelector("span.icon.is-pulled-right");
+        if (iconElt.innerHTML.trim() === '<i class="mdi mdi-chevron-down"></i>') {
+            iconElt.innerHTML = '<i class="mdi mdi-chevron-up"></i>';
+        } else {
+            iconElt.innerHTML = '<i class="mdi mdi-chevron-down"></i>';
+        }
+    });
+}

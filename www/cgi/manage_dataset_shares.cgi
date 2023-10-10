@@ -4,6 +4,11 @@
 Given a dataset_id, returns a list of users that dataset has been shared with.
 """
 
+try:
+    import cgi
+except:
+    import legacy_cgi as cgi
+
 import cgi, json
 import sys, os
 
@@ -19,13 +24,14 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
-    user_id = int(form.getvalue('user_id'))
-    to_share = int(form.getvalue('to_share'))
+    print(form)
+    to_share = int(form.getvalue('to_share'))   # 1 = share, 0 = unshare
 
-    current_user_id = get_user_id_from_session_id(cursor, session_id)
+    user = geardb.get_user_from_session_id(session_id=session_id)
+    user_id = user.id
 
     # Does user own the dataset...
-    owns_dataset = check_dataset_ownership(cursor, current_user_id, dataset_id)
+    owns_dataset = check_dataset_ownership(cursor, user_id, dataset_id)
 
     if owns_dataset == True:
         result = { 'user_list':[] }
@@ -33,9 +39,6 @@ def main():
         #update dataset_shares
         update_dataset_shares(cursor, dataset_id, user_id, to_share)
 
-        #remove from user profiles if dataset has been unshared
-        #if to_share == 0:
-        #    remove_dataset_from_layout_members(cursor, dataset_id)
 
     	# get the shared user_list
         result['user_list'].extend(get_shared_dataset_list(cursor, dataset_id, user_id))
@@ -64,13 +67,6 @@ def update_dataset_shares(cursor, dataset_id, user_id, to_share):
     """
     cursor.execute(qry, (to_share, dataset_id, user_id,))
 
-def remove_dataset_from_layout_members(cursor, dataset_id):
-    qry = """
-        DELETE FROM layout_members
-        WHERE dataset_id = %s
-    """
-    cursor.execute(qry, (dataset_id,))
-
 def get_shared_dataset_list(cursor, dataset_id, user_id):
     qry = """
         SELECT s.dataset_id, s.user_id, g.user_name, s.is_allowed
@@ -90,8 +86,6 @@ def get_shared_dataset_list(cursor, dataset_id, user_id):
         })
     return shared_with_list
 
-
-
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
     qry = """
        SELECT d.id, d.owner_id
@@ -109,16 +103,6 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
             user_owns_dataset = True
 
     return user_owns_dataset
-
-def get_user_id_from_session_id(cursor, session_id):
-    qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
-    cursor.execute(qry, (session_id, ) )
-    user_id = None
-
-    for (uid,) in cursor:
-        user_id = uid
-
-    return user_id
 
 if __name__ == '__main__':
     main()

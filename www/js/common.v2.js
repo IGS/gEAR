@@ -47,8 +47,12 @@ const checkForLogin = async () => {
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
                 CURRENT_USER.setDefaultProfile();
-                document.querySelector('#navbarBasicExample > div.navbar-end > div > div.navbar-item.has-dropdown.is-hoverable > a').textContent = CURRENT_USER.user_name;
                 handleLoginUIUpdates();
+                try {
+                    document.querySelector('#navbarBasicExample > div.navbar-end > div > div.navbar-item.has-dropdown.is-hoverable > a').textContent = CURRENT_USER.user_name;
+                } catch (error) {
+                    throw new Error("Could not update user name in navbar. Seems server-side includes are not working.");
+                }
             } else {
                 // session_id is invalid, so remove cookie
                 //Cookies.remove('gear_session_id');
@@ -197,11 +201,13 @@ const collapseJsStep = (stepElt) => {
         rightIcon.classList.add("mdi-chevron-down");
 }
 
-// If "step" sections are clicked, expand that section and collaps the others
+// If "step" sections are clicked, expand that section and collapse the others
 const jsSteps = document.getElementsByClassName("js-step");
 const resetSteps = (event) => {
     // If clicked area has no parentNode (i.e. clicked target is destroyed and recreated), just leave be
     if (! event.target.parentNode) return;
+
+    // ? Instead of adding and removing ".step-active", should we toggle ".is-hidden" on the collapsable parts?
 
     // If clicked on existing section, collapse it
     const currentStep = event.target.closest(".js-step");
