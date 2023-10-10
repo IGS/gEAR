@@ -68,7 +68,7 @@ const checkForLogin = async () => {
 const doLogin = async () => {
     const formdata = new FormData(document.getElementById("login-form"));
     const payload = new URLSearchParams(formdata);
-    const {data} = await axios.post("/cgi/login.cgi", payload);
+    const {data} = await axios.post("/cgi/login.v2.cgi", payload);
 
     console.log("Login result:");
     console.log(data);
@@ -83,10 +83,18 @@ const doLogin = async () => {
 
     } else if (data.session_id.toString().length > 10) {
         // Looks like we got a session ID
+        document.getElementById('current-user-name').textContent = data.name;
+        hideNotLoggedInElements();
+        showLoggedInElements();
+
+        // create the user object
+        
+
+        // set the cookie
 
     } else {
         // Something went muy wrong
-
+        
     }
 }
 
