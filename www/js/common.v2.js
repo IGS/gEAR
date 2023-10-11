@@ -63,11 +63,6 @@ const checkForLogin = async () => {
             console.error(error);
         }
     }
-
-    // Now that session_id has been obtained, we can trigger events that depend on it
-    trigger(document, "build_jstrees");
-
-    // NOTE: Initially this returned session_id, but we can grab that from the global CURRENT_USER
 }
 
 const doLogin = async () => {
@@ -131,6 +126,8 @@ const handleLoginUIUpdates = () => {
         showNotLoggedInElements();
     }
     document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
+
+    $(document).trigger("handlePageSpecificLoginUIUpdates");
 }
 
 /*************************************************************************************
