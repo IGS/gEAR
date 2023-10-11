@@ -42,11 +42,12 @@ const checkForLogin = async () => {
         const payload = { session_id }
         // we found a cookie, so see if it's a valid session
         try {
-            const {data} = await axios.post("/cgi/get_session_info.cgi", convertToFormData(payload));
+            const {data} = await axios.post("/cgi/get_session_info.v2.cgi", convertToFormData(payload));
 
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
-                CURRENT_USER.setDefaultProfile();
+                //CURRENT_USER.setDefaultProfile();
+                document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
                 try {
                     document.querySelector('#navbarBasicExample > div.navbar-end > div > div.navbar-item.has-dropdown.is-hoverable > a').textContent = CURRENT_USER.user_name;
@@ -87,14 +88,15 @@ const doLogin = async () => {
 
     } else if (data.session_id.toString().length > 10) {
         // Looks like we got a session ID
-        document.getElementById('current-user-name').textContent = data.name;
+        document.getElementById('current-user-name').textContent = data.user_name;
         hideNotLoggedInElements();
         showLoggedInElements();
 
         // create the user object
-        
+        CURRENT_USER = new User({...data});
 
         // set the cookie
+        Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
 
     } else {
         // Something went muy wrong

@@ -43,7 +43,7 @@ def main():
     password_correct = False
 
     session_qry = "SELECT session_id FROM user_session WHERE user_id = %s"
-    profile_qry = "SELECT label FROM layout where user_id = %s and is_current = 1"  # Should either be 1 or 0 results
+    profile_qry = "SELECT label, share_id FROM layout where user_id = %s and is_current = 1"  # Should either be 1 or 0 results
     add_session_qry = "INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)"
 
     cursor.execute(user_qry, (user_email,))
@@ -76,15 +76,17 @@ def main():
             # Check for default profile
             cursor.execute(profile_qry, (user_id,))
             profile = "Hearing (site default)"
+            profile_share_id = 0
+            
             for row in cursor:
                 profile = row[0]
+                profile_share_id = row[1]
 
-            #result['user_id'] = user_id
             result['session_id'] = session_id
             result['user_name'] = user_name
             result['is_admin'] = is_admin
-            if profile:
-                result['gear_default_domain']  = profile
+            result['gear_default_domain']  = profile
+            result['default_profile_share_id']  = profile_share_id
             print(json.dumps(result))
         else:
             # If the password was invalid, return -1

@@ -2,7 +2,7 @@
 
 class User {
     constructor ({id, user_name, email, institution, colorblind_mode, updates_wanted, is_admin,
-                  help_id, date_created, session_id} = {}) {
+                  help_id, date_created, session_id, default_profile_share_id} = {}) {
         this.id = id;
         this.user_name = user_name;
         this.email = email;
@@ -17,6 +17,7 @@ class User {
 
         // derived
         this.profile = undefined;
+        this.default_profile_share_id = default_profile_share_id
     }
 
     setDefaultProfile() {
