@@ -13,6 +13,6 @@ const populateUserHistoryTable = async (el, eventType) => {
     console.log(data);
 }
 
-const handlePageSpecificLoginUIUpdates = () => {
+const handlePageSpecificLoginUIUpdates = async (event) => {
     console.log("Page-specific updates here");
 }
