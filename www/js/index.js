@@ -9,10 +9,9 @@ const populateUserHistoryTable = async (el, eventType) => {
                       'entries': 5
                     }
     const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
-
     console.log(data);
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
-    console.log("Page-specific updates here");
+    // nothing here yet
 }
