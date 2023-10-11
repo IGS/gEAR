@@ -1,4 +1,3 @@
-let session_id;
 let CURRENT_USER;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,8 +32,9 @@ document.getElementById('submit-login').addEventListener('click', function(event
 });
 
 const checkForLogin = async () => {
-    session_id = Cookies.get('gear_session_id');
+    const session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
+    
     if (! session_id || session_id === "undefined") {
         // no cookie found, so user is not logged in
         handleLoginUIUpdates();
@@ -49,15 +49,11 @@ const checkForLogin = async () => {
                 //CURRENT_USER.setDefaultProfile();
                 document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
-                try {
-                    document.querySelector('#navbarBasicExample > div.navbar-end > div > div.navbar-item.has-dropdown.is-hoverable > a').textContent = CURRENT_USER.user_name;
-                } catch (error) {
-                    throw new Error("Could not update user name in navbar. Seems server-side includes are not working.");
-                }
+               
             } else {
                 // session_id is invalid, so remove cookie
-                //Cookies.remove('gear_session_id');
-                throw new Error(`Invalid session_id: ${session_id}`);
+                Cookies.remove('gear_session_id');
+                throw new Error(`Invalid session_id`);
             }
         } catch (error) {
             console.error(error);
@@ -118,7 +114,7 @@ const showNotLoggedInElements = () => {
 const handleLoginUIUpdates = () => {
     // So that all elements don't initially show while login is checked, we
     //  show/hide elements first then parent container
-    if (session_id) {
+    if (CURRENT_USER.session_id) {
         hideNotLoggedInElements();
         showLoggedInElements();
     } else {
@@ -127,7 +123,7 @@ const handleLoginUIUpdates = () => {
     }
     document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
 
-    $(document).trigger("handlePageSpecificLoginUIUpdates");
+    trigger(document, "handlePageSpecificLoginUIUpdates");
 }
 
 /*************************************************************************************
