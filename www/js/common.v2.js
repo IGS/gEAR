@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkForLogin();
 });
 
+
+
 /*************************************************************************************
  Code related to the login process, which is available in the header across all pages.
 *************************************************************************************/
@@ -29,6 +31,13 @@ document.getElementById('submit-login').addEventListener('click', function(event
 
     // try to log in
     doLogin();
+});
+
+document.getElementById('submit-logout').addEventListener('click', function(event) {
+    // Clear session information and redirect to home page
+    Cookies.remove('gear_session_id');
+    CURRENT_USER = undefined;
+    window.location.replace('./index.html');
 });
 
 const checkForLogin = async () => {
@@ -123,7 +132,7 @@ const handleLoginUIUpdates = () => {
     }
     document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
 
-    trigger(document, "handlePageSpecificLoginUIUpdates");
+    trigger(document, handlePageSpecificLoginUIUpdates);
 }
 
 /*************************************************************************************
@@ -139,8 +148,11 @@ const generateElements = (html) => {
 
 // Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
 const trigger = (el, eventType) => {
+
     if (typeof eventType === 'string' && typeof el[eventType] === 'function') {
         el[eventType]();
+    } else if (typeof eventType === 'function') {
+        eventType();
     } else {
         const event =
         typeof eventType === 'string'
