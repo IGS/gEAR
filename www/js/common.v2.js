@@ -75,9 +75,6 @@ const doLogin = async () => {
     const payload = new URLSearchParams(formdata);
     const {data} = await axios.post("/cgi/login.v2.cgi", payload);
 
-    console.log("Login result:");
-    console.log(data);
-
     if (data.session_id == 0) {
         // user name wasn't found at all
         document.getElementById('user-email-help').classList.remove('is-hidden');
