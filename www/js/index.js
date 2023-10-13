@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    if (CURRENT_USER) {
-        populateUserHistoryTable();
-    }
+    // Nothing here yet
 });
 
 const populateUserHistoryTable = async (el, eventType) => {
@@ -9,9 +7,19 @@ const populateUserHistoryTable = async (el, eventType) => {
                       'entries': 5
                     }
     const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
-    console.log(data);
+    const template = document.querySelector('#user-history-row');
+
+    data.forEach(function (entry, idx) {
+        const row = template.content.cloneNode(true);
+        row.querySelector('.category').textContent = entry.entry_category;
+        row.querySelector('.action-label').textContent = entry.label;
+        row.querySelector('.date').textContent = entry.entry_date;
+        document.querySelector('#user-history-table-tbody').appendChild(row);
+    });
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
-    // nothing here yet
+    if (CURRENT_USER) {
+        populateUserHistoryTable();
+    }
 }
