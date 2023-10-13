@@ -1,4 +1,3 @@
-let session_id;
 let CURRENT_USER;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,10 +50,32 @@ function closeAllModals() {
     });
 }
 
-// ! Subject to change
+/*************************************************************************************
+ Code related to the login process, which is available in the header across all pages.
+*************************************************************************************/
+
+document.getElementById('submit-login').addEventListener('click', function(event) {
+    event.preventDefault(); // Prevent the default form submission
+
+    // reset any UI elements
+    document.getElementById('user-email-help').classList.add('is-hidden');
+    document.getElementById('user-password-help').classList.add('is-hidden');
+
+    // try to log in
+    doLogin();
+});
+
+document.getElementById('submit-logout').addEventListener('click', function(event) {
+    // Clear session information and redirect to home page
+    Cookies.remove('gear_session_id');
+    CURRENT_USER = undefined;
+    window.location.replace('./index.html');
+});
+
 const checkForLogin = async () => {
-    session_id = Cookies.get('gear_session_id');
+    const session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
+
     if (! session_id || session_id === "undefined") {
         // no cookie found, so user is not logged in
         handleLoginUIUpdates();
@@ -62,31 +83,54 @@ const checkForLogin = async () => {
         const payload = { session_id }
         // we found a cookie, so see if it's a valid session
         try {
-            const {data} = await axios.post("/cgi/get_session_info.cgi", convertToFormData(payload));
+            const {data} = await axios.post("/cgi/get_session_info.v2.cgi", convertToFormData(payload));
 
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
-                CURRENT_USER.setDefaultProfile();
+                //CURRENT_USER.setDefaultProfile();
+                document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
-                try {
-                    document.querySelector('#navbarBasicExample > div.navbar-end > div > div.navbar-item.has-dropdown.is-hoverable > a').textContent = CURRENT_USER.user_name;
-                } catch (error) {
-                    throw new Error("Could not update user name in navbar. Seems server-side includes are not working.");
-                }
+
             } else {
                 // session_id is invalid, so remove cookie
-                //Cookies.remove('gear_session_id');
-                throw new Error(`Invalid session_id: ${session_id}`);
+                Cookies.remove('gear_session_id');
+                throw new Error(`Invalid session_id`);
             }
         } catch (error) {
             console.error(error);
         }
     }
+}
 
-    // Now that session_id has been obtained, we can trigger events that depend on it
-    trigger(document, "build_jstrees");
+const doLogin = async () => {
+    const formdata = new FormData(document.getElementById("login-form"));
+    const payload = new URLSearchParams(formdata);
+    const {data} = await axios.post("/cgi/login.v2.cgi", payload);
 
-    // NOTE: Initially this returned session_id, but we can grab that from the global CURRENT_USER
+    if (data.session_id == 0) {
+        // user name wasn't found at all
+        document.getElementById('user-email-help').classList.remove('is-hidden');
+
+    } else if (data.session_id == -1) {
+        // User was found, password was incorrect
+        document.getElementById('user-password-help').classList.remove('is-hidden');
+
+    } else if (data.session_id.toString().length > 10) {
+        // Looks like we got a session ID
+        document.getElementById('current-user-name').textContent = data.user_name;
+        hideNotLoggedInElements();
+        showLoggedInElements();
+
+        // create the user object
+        CURRENT_USER = new User({...data});
+
+        // set the cookie
+        Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
+
+    } else {
+        // Something went muy wrong
+
+    }
 }
 
 const hideLoggedInElements = () => {
@@ -105,17 +149,10 @@ const showNotLoggedInElements = () => {
     document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = '');
 }
 
-/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
-const generateElements = (html) => {
-    const template = document.createElement('template');
-    template.innerHTML = html.trim();
-    return template.content.children[0];
-}
-
 const handleLoginUIUpdates = () => {
     // So that all elements don't initially show while login is checked, we
     //  show/hide elements first then parent container
-    if (session_id) {
+    if (CURRENT_USER.session_id) {
         hideNotLoggedInElements();
         showLoggedInElements();
     } else {
@@ -123,12 +160,28 @@ const handleLoginUIUpdates = () => {
         showNotLoggedInElements();
     }
     document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
+
+    trigger(document, handlePageSpecificLoginUIUpdates);
+}
+
+/*************************************************************************************
+   End of login-related code
+*************************************************************************************/
+
+/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
+const generateElements = (html) => {
+    const template = document.createElement('template');
+    template.innerHTML = html.trim();
+    return template.content.children[0];
 }
 
 // Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
 const trigger = (el, eventType) => {
+
     if (typeof eventType === 'string' && typeof el[eventType] === 'function') {
         el[eventType]();
+    } else if (typeof eventType === 'function') {
+        eventType();
     } else {
         const event =
         typeof eventType === 'string'

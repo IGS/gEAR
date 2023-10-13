@@ -25,7 +25,7 @@
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
         
         <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
       <div id="main_layout_c" class="columns is-fullheight">
@@ -215,32 +215,15 @@
                   <td>Date</td>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="user-history-table-tbody"></tbody>
+              <template id="user-history-row">
                 <tr>
                   <td>&nbsp;</td>
-                  <td>Gene expression search</td>
-                  <td>"fgf8 tbx2 shtn1 nefl fam19a3" in Hearing</td>
-                  <td>Mar 3, 2023</td>
+                  <td class="category"></td>
+                  <td class="action-label"></td>
+                  <td class="date"></td>
                 </tr>
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Dataset search</td>
-                  <td>"mouse" in all datasets with Bulk RNASeq type</td>
-                  <td>Feb 26, 2023</td>
-                </tr>
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Dataset opened</td>
-                  <td>scRNAseq, embryonic mouse spiral ganglion neurons, by timepoint (Sanders & Kelly 2022)</td>
-                  <td>Feb 22, 2023</td>
-                </tr>
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Saved Analysis</td>
-                  <td>5dpf, homeostatic neuromast, zebrafish, scRNAseq (Piotrowski)</td>
-                  <td>Dec 17, 2022</td>
-                </tr>
-              </tbody>
+              </template>
             </table>
           </section><!-- end #content_c -->
         </section> <!-- end #main_c -->
@@ -255,9 +238,11 @@
       <script src="js/vendor/jsrender.20181003.min.js"></script>
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
       <!-- Page-specific JS file here -->
-
+      <script>document.write('<script src="js/index.' + (new Date()).getTime() + '.js"><\/script>');</script>
     </body>
 </html>
