@@ -2,6 +2,19 @@ import geardb
 import re
 import sys
 import urllib
+from json import JSONEncoder
+
+# Overrides the json module so JSONEncoder.default() automatically checks for to_json()
+#  in any class to be directly serializable.
+#  Ref: https://stackoverflow.com/a/38764817/1368079
+def _default(self, obj):
+    try:
+        return getattr(obj.__class__, "_serialize_json", _default.default)(obj)
+    except:
+        return str(obj)
+
+_default.default = JSONEncoder().default
+JSONEncoder.default = _default
 
 class UserHistory:
     """
@@ -24,6 +37,10 @@ class UserHistory:
         self.label = label
         self.url = url
 
+    def _serialize_json(self):
+        # Called when json modules attempts to serialize
+        return self.__dict__
+        
     def add_record(self, user_id=None, entry_category=None, label=None, **kwargs):
         """
         Adds a history record for a user action to the DB. Arguments needed for all types:
@@ -39,7 +56,6 @@ class UserHistory:
             'projection_run' -> patterns, algo, gene_cart, multi, layout_share_id
 
         """
-        print("DEBUG: UserHistory.add_record called, entry_category:{0}".format(entry_category), file=sys.stderr)
         match entry_category:
             case 'dataset_search':
                 if 'search_terms' in kwargs:
@@ -149,7 +165,7 @@ class UserHistory:
         entries = list()
 
         for row in cursor:
-            entry = UserHistory(user_id=user_id, entry_category=row[1],
+            entry = UserHistory(user_id=self.user_id, entry_category=row[1],
                                 entry_date=row[0], label=row[2], url=row[3]
             )
             entries.append(entry)
