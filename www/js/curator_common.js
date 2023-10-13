@@ -1,3 +1,5 @@
+'use strict';
+
 /* These are functions that are common to the "curator" pages, (i.e. single-gene, multi-gene) */
 
 let plotStyle;  // Plot style object
@@ -493,13 +495,14 @@ const createToast = (msg, levelClass="is-danger") => {
     `
     const html = generateElements(template);
 
+    const numToasts = document.querySelectorAll(".js-toast.notification").length;
 
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
         document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
         // Position new toast under previous toast with CSS
-        html.style.setProperty("top", "unset");
+        html.style.setProperty("top", `${(numToasts * 70) + 30}px`);
     } else {
         // Otherwise prepend to top of main content
         document.getElementById("main_c").prepend(html);
@@ -507,8 +510,8 @@ const createToast = (msg, levelClass="is-danger") => {
 
     // This should get the newly added notification since it is now the first
     document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.parentNode;
-        notification.parentNode.removeChild(notification);
+        const notification = event.target.closet(".js-toast.notification");
+        notification.remove(notification);
     });
 
     // For a success message, remove it after 3 seconds
@@ -1480,11 +1483,13 @@ const collapsableElts = document.getElementsByClassName("js-collapsable-trigger"
 for (const classElt of collapsableElts) {
     classElt.addEventListener("click", (event) => {
         // find the sibling .is-collapsable element and toggle its "is-hidden" class
-        const contentElt = event.target.parentElement.querySelector(".js-collapsable-content");
+        // Since the user could click the icon, we get closest parent element with class .js-collapsable-trigger
+        const elt = event.target.closest(".js-collapsable-trigger")
+        const contentElt = elt.parentElement.querySelector(".js-collapsable-content");
         contentElt.classList.toggle("is-hidden");
 
         // switch toggle icon to up or down
-        const iconElt = event.target.querySelector("span.icon.is-pulled-right");
+        const iconElt = elt.querySelector("span.icon.is-pulled-right");
         if (iconElt.innerHTML.trim() === '<i class="mdi mdi-chevron-down"></i>') {
             iconElt.innerHTML = '<i class="mdi mdi-chevron-up"></i>';
         } else {

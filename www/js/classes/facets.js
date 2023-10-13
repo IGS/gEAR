@@ -103,7 +103,7 @@ class FacetWidget {
         filterElement.className = 'filter';
         filterElement.innerHTML = `
             <div class="filter-header panel-heading is-clickable has-background-primary-dark has-text-primary-light">
-                <span class="filter-name has-text-weight-semibold is-underlined">${filter.name}</span>
+                <span class="filter-name has-text-weight-semibold">${filter.name}</span>
                 <span class="loader is-hidden is-inline-flex"></span>
                 <span class="filter-toggle-icon icon is-pulled-right">
                     <i class="mdi mdi-chevron-down"></i>

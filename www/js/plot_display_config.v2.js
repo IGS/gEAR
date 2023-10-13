@@ -211,11 +211,8 @@ const postPlotlyConfig = {
                     "resetViewMapbox"
                 ]
             }, layout:{
-                modebar: {
-                    orientation: "v"
-                }
-                , dragMode: "select"
-                , "height": window.innerHeight * 0.8
+                dragMode: "select"
+                , height: window.innerHeight * 0.8
             }
         }
     ]

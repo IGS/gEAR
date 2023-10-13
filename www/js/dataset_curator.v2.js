@@ -486,7 +486,7 @@ class SvgHandler extends PlotHandler {
     }
 
     async setupParamValueCopyEvent() {
-        this.setupParamValueCopyEvent("js-svg-enable-mid");
+        setupParamValueCopyEvent("js-svg-enable-mid");
     }
 
     setupPlotSpecificEvents() {

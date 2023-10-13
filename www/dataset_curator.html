@@ -279,68 +279,69 @@
 
       </section>
       <section id="post_plot_content_c" class="m-3 columns is-hidden">
-        <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column is-justify-content-space-between">
-          <div id="current_info" class="content">
-            <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
-            <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold">Primary analysis</span></p>
-            <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
-          </div>
-          <div id="post_plot_customize">
-            <div id="facet_content" class="content">
-              <h4 class="title is-4 is-clickable js-collapsable-trigger">
-                <span>Filters</span>
-                <span class="icon is-pulled-right">
-                  <i class="mdi mdi-chevron-down"></i>
-                </span>
-              </h4>
-              <div id="facet_c" class="content is-hidden js-collapsable-content"></div>
+        <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column">
+          <div class="is-flex is-flex-direction-column">
+            <div id="current_info" class="content">
+              <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
+              <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold">Primary analysis</span></p>
+              <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
             </div>
-            <section id="params_config_container">
-              <h4 class="title is-4 is-clickable js-collapsable-trigger">
-                <span>Plot configuration</span>
-                <span class="icon is-pulled-right">
-                  <i class="mdi mdi-chevron-down"></i>
-                </span>
-              </h4>
-              <div class="is-hidden js-collapsable-content">
-              <div class="field">
-                <label class="label has-text-weight-medium">Change gene</label>
-                <div class="control">
-                  <div class="select is-fullwidth">
-                    <select class="js-gene-select" id="gene_select_post"></select>
-                  </div>
-                </div>
-              </div>
-              <section id="post_plot_adjustments" class="content"></section>
-              </div>
-            </section>
-
-            <section id="order_and_colors">
-              <section id="order_section" class="my-3 is-hidden">
+            <div id="post_plot_customize">
+              <div id="facet_content" class="content">
                 <h4 class="title is-4 is-clickable js-collapsable-trigger">
-                  <span>Change sort order</span>
+                  <span>Filters</span>
+                  <span class="icon is-pulled-right">
+                    <i class="mdi mdi-chevron-down"></i>
+                  </span>
+                </h4>
+                <div id="facet_c" class="content is-hidden js-collapsable-content"></div>
+              </div>
+              <section id="params_config_container">
+                <h4 class="title is-4 is-clickable js-collapsable-trigger">
+                  <span>Plot configuration</span>
                   <span class="icon is-pulled-right">
                     <i class="mdi mdi-chevron-down"></i>
                   </span>
                 </h4>
                 <div class="is-hidden js-collapsable-content">
-                  <p class="help">Drag-and-drop to determine order of plotting</p>
-                  <div id="order_container" class="container"></div>
+                <div class="field">
+                  <label class="label has-text-weight-medium">Change gene</label>
+                  <div class="control">
+                    <div class="select is-fullwidth">
+                      <select class="js-gene-select" id="gene_select_post"></select>
+                    </div>
+                  </div>
+                </div>
+                <section id="post_plot_adjustments" class="content"></section>
                 </div>
               </section>
-              <section id="colors_section" class="my-3 is-hidden">
-                <h4 class="title is-4 is-clickable js-collapsable-trigger">
-                  <span>Change colors</span>
-                  <span class="icon is-pulled-right">
-                    <i class="mdi mdi-chevron-down"></i>
-                  </span>
-                </h4>
-                <div id="colors_container" class="container is-hidden js-collapsable-content"></div>
-              </section>
-            </section>
-          </div>
 
-          <div id="post_plot_actions_container" class="mt-3 columns is-multiline">
+              <section id="order_and_colors">
+                <section id="order_section" class="my-3 is-hidden">
+                  <h4 class="title is-4 is-clickable js-collapsable-trigger">
+                    <span>Change sort order</span>
+                    <span class="icon is-pulled-right">
+                      <i class="mdi mdi-chevron-down"></i>
+                    </span>
+                  </h4>
+                  <div class="is-hidden js-collapsable-content">
+                    <p class="help">Drag-and-drop to determine order of plotting</p>
+                    <div id="order_container" class="container"></div>
+                  </div>
+                </section>
+                <section id="colors_section" class="my-3 is-hidden">
+                  <h4 class="title is-4 is-clickable js-collapsable-trigger">
+                    <span>Change colors</span>
+                    <span class="icon is-pulled-right">
+                      <i class="mdi mdi-chevron-down"></i>
+                    </span>
+                  </h4>
+                  <div id="colors_container" class="container is-hidden js-collapsable-content"></div>
+                </section>
+              </section>
+            </div>
+          </div>
+          <div id="post_plot_actions_container" class="mt-3 columns is-multiline is-flex-grow-1 is-align-content-end">
             <div class="column is-full">
               <button id="update_plot" class="button is-medium is-responsive is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
               <button id="edit_params" class="button is-responsive is-fullwidth">
@@ -405,7 +406,7 @@
   <script src="js/vendor/js.cookie.js"></script>
   <script src="js/vendor/snap.svg-min.js"></script>
   <script src="https://d3js.org/d3.v5.min.js"></script>
-  <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
   <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>

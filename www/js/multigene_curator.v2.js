@@ -1,6 +1,10 @@
+'use strict';
+
 const isMultigene = 1;
 
 let geneSelect = null;
+
+let selectedGenes = []; // genes selected from plot "select" utility
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
@@ -25,6 +29,7 @@ class GenesAsAxisHandler extends PlotHandler {
         , "js-dash-hide-obs-labels": "hide_obs_labels"
         , "js-dash-hide-gene-labels": "hide_gene_labels"
         , "js-dash-add-jitter": "violin_add_points"
+        , "js-dash-subsampling-limit": "subsample_limit"
         , "js-dash-stacked-violin": "stacked_violin"
         , "js-dash-plot-title": "plot_title"
         , "js-dash-legend-title": "legend_title"
@@ -35,6 +40,8 @@ class GenesAsAxisHandler extends PlotHandler {
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
     plotConfig = {};  // Plot config that is passed to API
+
+    plotJson = null;  // Plotly plot JSON
 
     cloneDisplay(config) {
         // load plot values
@@ -73,14 +80,20 @@ class GenesAsAxisHandler extends PlotHandler {
             }
         }
 
+        // restore subsample limit
+        if (config["subsample_limit"]) {
+            for (const classElt of document.getElementsByClassName("js-dash-enable-subsampling")) {
+                classElt.checked = true;
+            }
+        }
+
     }
 
     async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
-        let plotJson;
         try {
             const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
-            ({plot_json: plotJson} = data);
+            ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
         }
@@ -94,21 +107,21 @@ class GenesAsAxisHandler extends PlotHandler {
         plotContainer.append(divElt);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
-        if (!plotJson) {
+        if (!this.plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
 
         if (this.plotType === 'heatmap') {
-            setHeatmapHeightBasedOnGenes(plotJson.layout, this.plotConfig.gene_symbols);
+            setHeatmapHeightBasedOnGenes(this.plotJson.layout, this.plotConfig.gene_symbols);
         } else if (this.plotType === "mg_violin" && this.plotConfig.stacked_violin){
-            adjustStackedViolinHeight(plotJson.layout);
+            adjustStackedViolinHeight(this.plotJson.layout);
         }
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
 
@@ -167,6 +180,13 @@ class GenesAsAxisHandler extends PlotHandler {
                 }
             }
             this.plotConfig["clusterbar_fields"] = clusterbarValues;
+
+
+            // if subsampling is checked, add subsampling limit to plot config
+            this.plotConfig["subsample_limit"] = 0;
+            if (document.querySelector(".js-dash-enable-subsampling").checked) {
+                this.plotConfig["subsample_limit"] = Number(document.querySelector(".js-dash-subsampling-limit").value);
+            }
         }
 
         // Filtered observation groups
@@ -178,7 +198,8 @@ class GenesAsAxisHandler extends PlotHandler {
     }
 
     async setupParamValueCopyEvent() {
-        //pass
+        // These plot parameters do not directly correlate to a plot config property
+        //setupParamValueCopyEvent("js-dash-enable-subsampling")
     }
 
     async setupPlotSpecificEvents() {
@@ -203,6 +224,16 @@ class GenesAsAxisHandler extends PlotHandler {
                     if (secondaryClassElt.value === primarySeries) {
                         secondaryClassElt.value = "";
                     }
+                }
+            })
+        }
+
+        // if subsampling is checked, enable subsampling limit
+        for (const classElt of document.getElementsByClassName("js-dash-enable-subsampling")) {
+            classElt.addEventListener("change", (event) => {
+                const checked = event.target.checked;
+                for (const innerClassElt of document.getElementsByClassName("js-dash-subsampling-limit")) {
+                    innerClassElt.disabled = !(checked);
                 }
             })
         }
@@ -291,6 +322,8 @@ class GenesAsDataHandler extends PlotHandler {
 
     plotConfig = {};  // Plot config that is passed to API
 
+    plotJson = null;  // Plotly plot JSON
+
     cloneDisplay(config) {
         // load plot values
         for (const prop in config) {
@@ -298,31 +331,40 @@ class GenesAsDataHandler extends PlotHandler {
         }
 
         // Handle filters
-        if (config.hasOwnProperty("obs_filters")) {
+        if (config["obs_filters"]) {
             facetWidget.filters = config["obs_filters"];
         }
 
         // Split compare series and groups
-        const refCondition = this.plotConfig["ref_condition"];
-        const [combineSeries, refGroup] = refCondition.split(this.compareSeparator);
+        const refCondition = config["ref_condition"];
+        const [compareSeries, refGroup] = refCondition.split(this.compareSeparator);
         for (const classElt of document.getElementsByClassName("js-dash-compare")) {
-            classElt.value = combineSeries;
+            classElt.value = compareSeries;
         }
+
+        // populate group options
+        updateGroupOptions("js-dash-reference", levels[compareSeries]);
         for (const classElt of document.getElementsByClassName("js-dash-reference")) {
             classElt.value = refGroup;
         }
 
         if (this.plotType === "volcano") {
-            const queryCondition = this.plotConfig["query_condition"];
+            updateGroupOptions("js-dash-query", levels[compareSeries]);
+            const queryCondition = config["query_condition"];
             const queryGroup = queryCondition.split(this.compareSeparator)[1];
             for (const classElt of document.getElementsByClassName("js-dash-query")) {
                 classElt.value = queryGroup;
             }
+            trigger(document.querySelector(".js-dash-query"), "change"); // trigger change event to start validation
+
         }
         if (this.plotType === "quadrant") {
-            const compare1Condition = this.plotConfig["compare1_condition"];
+            updateGroupOptions("js-dash-compare1", levels[compareSeries]);
+            updateGroupOptions("js-dash-compare2", levels[compareSeries]);
+
+            const compare1Condition = config["compare1_condition"];
             const compare1Group = compare1Condition.split(this.compareSeparator)[1];
-            const compare2Condition = this.plotConfig["compare2_condition"];
+            const compare2Condition = config["compare2_condition"];
             const compare2Group = compare2Condition.split(this.compareSeparator)[1];
             for (const classElt of document.getElementsByClassName("js-dash-compare1")) {
                 classElt.value = compare1Group;
@@ -330,15 +372,18 @@ class GenesAsDataHandler extends PlotHandler {
             for (const classElt of document.getElementsByClassName("js-dash-compare2")) {
                 classElt.value = compare2Group;
             }
+
+            trigger(document.querySelector(".js-dash-compare1"), "change"); // trigger change event to start validation
         }
+
+        // for some reason triggering .js-dash-compare did not populate the compare groups into the plot config
     }
 
     async createPlot(datasetId, analysisObj, colorblindMode) {
         // Get data and set up the image area
-        let plotJson;
         try {
             const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
-            ({plot_json: plotJson} = data);
+            ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
         }
@@ -352,16 +397,58 @@ class GenesAsDataHandler extends PlotHandler {
         plotContainer.append(divElt);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
-        if (!plotJson) {
+        if (!this.plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
+
+        // Show button to add genes to gene cart
+        document.getElementById("gene_cart_btn_c").classList.remove("is-hidden");
+
+        const plotlyPreview = document.getElementById("plotly_preview");
+
+        // Append small note about using the Plotly selection utilities
+        const plotlyNote = generateElements(`
+        <div class="notification is-info is-light">
+            <p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
+        </div>`);
+        plotlyPreview.append(plotlyNote);
+
+        // If plot data is selected, create the right-column table and do other misc things
+        plotlyPreview.on("plotly_selected", async (data) => {
+
+            // Hide selected genes table and disable unweighted radio button if no genes are selected
+            document.getElementById("tbl_selected_genes").classList.add("is-hidden");
+            document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
+            if (data?.points.length) {
+                document.getElementById("tbl_selected_genes").classList.remove("is-hidden");
+                document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
+            }
+
+            adjustGeneTableLabels(this.plotType);
+            populateGeneTable(data, this.plotType);
+
+            // Highlight table rows that match searched genes
+            const searchedGenes = this.plotConfig.gene_symbols;
+            if (searchedGenes) {
+                const geneTableBody = document.getElementById("gene_table_body");
+                // Select the first column (gene_symbols) in each row
+                for (const row of geneTableBody.children) {
+                    const tableGene = row.children[0].textContent;
+                    for (const gene of searchedGenes) {
+                        if (gene.toLowerCase() === tableGene.toLowerCase() ) {
+                            row.classList.add("has-background-success-light");
+                        }
+                    };
+                }
+            }
+        });
 
     }
 
@@ -400,18 +487,32 @@ class GenesAsDataHandler extends PlotHandler {
             this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
         }
 
+        // convert numerical inputs from plotConfig into Number type
+        for (const prop of ["fold_change_cutoff", "fdr_cutoff", "pvalue_threshold", "lower_logfc_threshold", "upper_logfc_threshold"]) {
+            if (this.plotConfig[prop]) {
+                this.plotConfig[prop] = Number(this.plotConfig[prop]);
+            }
+        }
+
         // Get compare series and groups and combine
         const combineSeries = document.querySelector(".js-dash-compare").value;
-        this.plotConfig["ref_condition"] = combineSeries + this.compareSeparator + document.querySelector(".js-dash-reference").value;
+        facetWidget.filters[combineSeries] = [];
+        const refGroup = document.querySelector(".js-dash-reference").value;
+        this.plotConfig["ref_condition"] = combineSeries + this.compareSeparator + refGroup
+        facetWidget.filters[combineSeries].push(refGroup);
+
         if (this.plotType === "volcano") {
             const queryGroup = document.querySelector(".js-dash-query").value;
             this.plotConfig["query_condition"] = combineSeries + this.compareSeparator + queryGroup;
+            facetWidget.filters[combineSeries].push(queryGroup);
         }
         if (this.plotType === "quadrant") {
             const compare1Group = document.querySelector(".js-dash-compare1").value;
             const compare2Group = document.querySelector(".js-dash-compare2").value;
             this.plotConfig["compare1_condition"] = combineSeries + this.compareSeparator + compare1Group;
             this.plotConfig["compare2_condition"] = combineSeries + this.compareSeparator + compare2Group;
+            facetWidget.filters[combineSeries].push(compare1Group);
+            facetWidget.filters[combineSeries].push(compare2Group);
         }
 
         // Filtered observation groups
@@ -521,6 +622,22 @@ const geneCartTree = new GeneCartTree({
         trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
     })
 });
+
+const adjustGeneTableLabels = (plotType) => {
+    const geneX = document.getElementById("tbl_gene_x");
+    const geneY = document.getElementById("tbl_gene_y");
+
+    // Adjust headers to the plot type
+    if (plotType === "quadrant") {
+        geneX.innerHTML = 'X Log2 FC <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
+        geneY.innerHTML = 'Y Log2 FC <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
+    } else {
+        // volcano
+        geneX.innerHTML = 'Log2 FC <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
+        geneY.innerHTML = 'P-value <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
+    }
+}
+
 
 const appendGeneTagButton = (geneTagElt) => {
     // Add delete button
@@ -648,6 +765,58 @@ const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
     //pass
 }
 
+const downloadSelectedGenes = (event) => {
+    event.preventDefault();
+
+	// Builds a file in memory for the user to download.  Completely client-side.
+	// plot_data contains three keys: x, y and symbols
+	// build the file string from this
+
+    const plotType = plotStyle.plotType;
+    const plotConfig = plotStyle.plotConfig;
+
+    // Adjust headers to the plot type
+    let xLabel;
+    let yLabel;
+
+    if (plotType === "quadrant") {
+        const query1 = plotConfig.compare1_condition.split(';-;')[1];
+        const query2 = plotConfig.compare2_condition.split(';-;')[1];
+        const ref = plotConfig.ref_condition.split(';-;')[1];
+        xLabel = `${query1} vs ${ref} Log2FC`;
+        yLabel = `${query2} vs ${ref} Log2FC`;
+    } else {
+        const query = plotConfig.query_condition.split(';-;')[1];
+        let ref = plotConfig.ref_condition.split(';-;')[1];
+
+        ref = ref === "Union of the rest of the groups" ? "rest" : ref;
+
+        // volcano
+        xLabel = `${query} vs ${ref} Log2FC`;
+        yLabel = `${query} vs ${ref} p-value`;
+    }
+	let fileContents = `gene_symbol\t${xLabel}\t${yLabel}\n`;
+
+    // Entering genes and info now.
+    selectedGenes.forEach((gene) => {
+        fileContents +=
+            `${gene.gene_symbol}\t`
+            + `${gene.x}\t`
+            + `${gene.y}\n`
+	});
+
+	const element = document.createElement("a");
+	element.setAttribute(
+		"href",
+		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
+	);
+	element.setAttribute("download", "selected_genes.tsv");
+	element.style.display = "none";
+	document.body.appendChild(element);
+	element.click();
+	document.body.removeChild(element);
+}
+
 const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
     // Plot types will depend on the number of comparabie categorical conditions
     // Volcano plots must have at least two conditions
@@ -686,7 +855,7 @@ const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, colorbl
 
 /* Fetch gene collections */
 const fetchGeneCarts = async (session_id) => {
-    const payload = {session_id};
+    const payload = {session_id, "cart_type":"unweighted-list" };
     try {
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
@@ -735,7 +904,7 @@ const getCategoryColumns = async () => {
 }
 
 // Invert a log function
-function invertLogFunction(value, base=10) {
+const invertLogFunction = (value, base=10) => {
     return base ** value;
 }
 
@@ -777,6 +946,220 @@ const loadGeneCarts = async () => {
 
 }
 
+const populateGeneTable = (data, plotType) => {
+    selectedGenes = [];
+
+    for (const pt of data.points) {
+        selectedGenes.push({
+            gene_symbol: pt.data.text[pt.pointNumber],
+            ensembl_id: pt.data.customdata[pt.pointNumber], // Ensembl ID stored in "customdata" property
+            x: pt.data.x[pt.pointNumber].toFixed(1),
+            y: plotType === "volcano" ? invertLogFunction(-pt.data.y[pt.pointNumber]).toExponential(2) : pt.data.y[pt.pointNumber].toFixed(2),
+        });
+    };
+
+    // Sort in alphabetical order
+    selectedGenes.sort();
+
+
+    const geneTableBody = document.getElementById("gene_table_body");
+    geneTableBody.replaceChildren();
+
+    for (const gene of selectedGenes) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.x}</td><td>${gene.y}</td>`;
+        geneTableBody.appendChild(row);
+    }
+}
+
+const saveGeneCart = () => {
+    // must have access to USER_SESSION_ID
+    const gc = new GeneCart({
+        session_id
+        , label: document.getElementById("new_genecart_label").value
+        , gctype: "unweighted-list"
+        , organism_id:  organismId
+        , is_public: 0
+    });
+
+    for (const sg of selectedGenes) {
+        const gene = new Gene({
+            id: sg.ensembl_id, // Ensembl ID stored in "customdata" property
+            gene_symbol: sg.gene_symbol,
+        });
+        gc.addGene(gene);
+    }
+
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+const saveWeightedGeneCart = () => {
+	// must have access to USER_SESSION_ID
+    const plotType = plotStyle.plotType;
+    const plotConfig = plotStyle.plotConfig;
+
+	const foldchangeLabel = "FC"
+
+    let weight_labels = [foldchangeLabel];
+
+
+    if (plotType === "quadrant") {
+        const query1 = plotConfig.compare1_condition.split(';-;')[1];
+        const query2 = plotConfig.compare2_condition.split(';-;')[1];
+        const ref = plotConfig.ref_condition.split(';-;')[1];
+        const xLabel = `${query1}-vs-${ref}`;
+        const yLabel = `${query2}-vs-${ref}`;
+
+        const fcl1 = `${xLabel}-${foldchangeLabel}`
+        const fcl2 = `${yLabel}-${foldchangeLabel}`
+
+        weight_labels = [fcl1, fcl2];
+    }
+
+	const gc = new WeightedGeneCart({
+		session_id
+		, label:  document.getElementById("new_genecart_label").value
+		, gctype: 'weighted-list'
+		, organism_id: organismId
+		, is_public: 0
+	}, weight_labels);
+
+    // Volcano and Quadrant plots have multiple traces of genes, broken into groups.
+    // Loop through these to get the info we need.
+    for (const trace of plotStyle.plotJson.data) {
+        for (const pt in trace.x) {
+
+            const foldchange = Number(trace.x[pt].toFixed(1));
+            const weights = [foldchange];
+
+            // If quadrant plot was specified, there are fold changes in x and y axis
+            if (plotType === "quadrant") {
+                const foldchange2 = Number(trace.y[pt].toFixed(1));
+                weights.push(foldchange2);
+            }
+
+            const gene = new WeightedGene({
+                id: trace.customdata[pt], // Ensembl ID stored in "customdata" property
+                gene_symbol: trace.text[pt]
+            }, weights);
+            gc.addGene(gene);
+        }
+    };
+
+	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+// Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
+const sortGeneTable = (mode) => {
+	let table;
+	let rows;
+	let switching;
+	let i;
+	let x;
+	let y;
+	let shouldSwitch;
+	let dir;
+	let switchcount = 0;
+	table = document.getElementById("tbl_selected_genes");
+
+	switching = true;
+	// Set the sorting direction to ascending:
+	dir = "asc";
+	/* Make a loop that will continue until
+		no switching has been done: */
+	while (switching) {
+		// Start by saying: no switching is done:
+		switching = false;
+		rows = table.rows;
+		/* Loop through all table rows (except the
+		first, which contains table headers): */
+		for (i = 1; i < rows.length - 1; i++) {
+            // Start by saying there should be no switching:
+            shouldSwitch = false;
+            /* Get the two elements you want to compare,
+                one from current row and one from the next: */
+            x = rows[i].getElementsByTagName("td")[mode];
+            y = rows[i + 1].getElementsByTagName("td")[mode];
+            /* Check if the two rows should switch place,
+                based on the direction, asc or desc: */
+            if (dir == "asc") {
+                // First column is gene_symbol... rest are numbers
+                if (mode === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                    // If so, mark as a switch and break the loop:
+                    shouldSwitch = true;
+                    break;
+                }
+                if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            } else if (dir == "desc") {
+                if (mode === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                    // If so, mark as a switch and break the loop:
+                    shouldSwitch = true;
+                    break;
+                }
+                if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            }
+		}
+		if (shouldSwitch) {
+            /* If a switch has been marked, make the switch
+                and mark that a switch has been done: */
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            // Each time a switch is done, increase this count by 1:
+            switchcount++;
+
+		} else {
+            /* If no switching has been done AND the direction is "asc",
+                set the direction to "desc" and run the while loop again. */
+            if (switchcount == 0 && dir == "asc") {
+                dir = "desc";
+                switching = true;
+            }
+		}
+	}
+
+    // Reset other sort icons to "ascending" state, to show what direction they will sort when clicked
+    const otherTblHeaders = document.querySelectorAll(`.js-tbl-gene-header:not(:nth-child(${mode + 1}))`);
+    for (const tblHeader of otherTblHeaders) {
+        const currIcon = tblHeader.querySelector("i");
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-descending");
+            currIcon.classList.add("mdi-sort-alphabetical-ascending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-descending");
+            currIcon.classList.add("mdi-sort-numeric-ascending");
+        }
+    }
+
+    // toggle the mdi icons between ascending / descending
+    // icon needs to reflect the current state of the sort
+    const selectedTblHeader = document.querySelector(`.js-tbl-gene-header:nth-child(${mode + 1})`);
+    const currIcon = selectedTblHeader.querySelector("i");
+    if (dir == "asc") {
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-descending");
+            currIcon.classList.add("mdi-sort-alphabetical-ascending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-descending");
+            currIcon.classList.add("mdi-sort-numeric-ascending");
+        }
+    } else {
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-ascending");
+            currIcon.classList.add("mdi-sort-alphabetical-descending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-ascending");
+            currIcon.classList.add("mdi-sort-numeric-descending");
+        }
+    }
+}
+
+
 // For plotting options, populate select menus with category groups
 const updateSeriesOptions = (classSelector, seriesArray) => {
 
@@ -800,7 +1183,7 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
 
 
 // For a given categorical series (e.g. "celltype"), update the "group" options
-const updateGroupOptions = (classSelector, levels) => {
+const updateGroupOptions = (classSelector, groupsArray) => {
 
     for (const elt of document.getElementsByClassName(classSelector)) {
         elt.replaceChildren();
@@ -810,7 +1193,7 @@ const updateGroupOptions = (classSelector, levels) => {
         elt.append(firstOption);
 
         // Add categories
-        for (const group of levels.sort()) {
+        for (const group of groupsArray.sort()) {
             const option = document.createElement("option");
             option.textContent = group;
             option.value = group;
@@ -819,4 +1202,43 @@ const updateGroupOptions = (classSelector, levels) => {
     }
 
 }
+
+const updateUIAfterGeneCartSaveSuccess = (gc) => {
+}
+
+const updateUIAfterGeneCartSaveFailure = (gc, message) => {
+    createToast(message);
+}
+
 document.getElementById("clear_genes_btn").addEventListener("click", clearGenes);
+
+// code from Bulma documentation to handle modals
+document.getElementById("gene_cart_btn").addEventListener("click", ($trigger) => {
+    const closestButton = $trigger.target.closest(".button");
+    const modal = closestButton.dataset.target;
+    const $target = document.getElementById(modal);
+    openModal($target);
+
+});
+
+document.getElementById("new_genecart_label").addEventListener("input", (event) => {
+    const saveBtn = document.getElementById("save_genecart_btn");
+    saveBtn.disabled = event.target.value ? false : true;
+});
+
+document.getElementById("save_genecart_btn").addEventListener("click", (event) => {
+    event.preventDefault();
+    event.target.classList.add("is-loading");
+    // get value of genecart radio button group
+    const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
+    if (CURRENT_USER) {
+        if (geneCartName === "unweighted") {
+            saveGeneCart();
+        } else {
+            saveWeightedGeneCart();
+        }
+    }
+    event.target.classList.remove("is-loading");
+});
+
+document.getElementById("download_selected_genes_btn").addEventListener("click", downloadSelectedGenes);
