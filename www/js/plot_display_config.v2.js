@@ -274,7 +274,7 @@ function scaleBetween(unscaledNum, minAllowed, maxAllowed, min, max) {
 }
 
 // Truncate axis labels to a fixed length. Add a hover property to the label to show the full label. Edits inplace.
-function truncateAxisLabels() {
+function truncateAxisLabels(plotLayout) {
     const selector = document.querySelectorAll('.xaxislayer-above text');
     for (const el of selector) {
         const elText = el.textContent;
@@ -282,9 +282,9 @@ function truncateAxisLabels() {
             ? `${elText.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`
             : elText;
 
-        el.innerHTML(`<a style="fill:inherit;">${sublabel}</a>`);
+        el.innerHTML = `<a style="fill:inherit;">${sublabel}</a>`;
     }
-    /*
+
     const axis_ticktexts = {}
 
     for (const element in plotLayout) {
@@ -303,7 +303,6 @@ function truncateAxisLabels() {
             }
         }
     }
-    */
 
     /*
     Issues with modifying before plot generation - Cannot store both full and shortened name.  Plotly is very restrictive about what goes in the tick text
