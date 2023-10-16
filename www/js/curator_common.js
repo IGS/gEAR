@@ -1382,46 +1382,6 @@ const validateRequirements = (event) => {
     document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
 }
 
-// ? Put this in the separate curator pages instead?
-window.onload = () => {
-    // I don't like to async/await the window.onload function so I use .then instead
-
-    checkForLogin().then(() => {
-        sessionId = CURRENT_USER.session_id;
-        colorblindMode = CURRENT_USER.colorblind_mode || false;
-        Cookies.set('gear_session_id', sessionId, { expires: 7 });
-    }).finally(() => {
-        if (! sessionId ) {
-            createToast("Not logged in so saving displays is disabled.");
-            document.getElementById("save_display_btn").disabled = true;
-        }
-
-        loadDatasetTree().then(() => {
-            // If brought here by the "gene search results" page, curate on the dataset ID that referred us
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has("dataset_id")) {
-                const linkedDatasetId = urlParams.get("dataset_id");
-                try {
-                    // find DatasetTree node and trigger "activate"
-                    const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                    foundNode.setActive(true);
-                    datasetId = linkedDatasetId;
-                } catch (error) {
-                    createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                    throw new Error(error);
-                }
-            }
-        }).catch((error) => {
-            logErrorInConsole(error);
-        });
-
-        // Load any script-specific code
-        curatorSpecificOnLoad();
-
-    });
-
-};
-
 document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
 document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
 document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
@@ -1497,3 +1457,39 @@ for (const classElt of collapsableElts) {
         }
     });
 }
+
+/* --- Entry point --- */
+const handlePageSpecificLoginUIUpdates = async (event) => {
+    // I don't like to async/await the window.onload function so I use .then instead
+
+    sessionId = CURRENT_USER.session_id;
+    colorblindMode = CURRENT_USER.colorblind_mode || false;
+    Cookies.set('gear_session_id', sessionId, { expires: 7 });
+    if (! sessionId ) {
+        createToast("Not logged in so saving displays is disabled.");
+        document.getElementById("save_display_btn").disabled = true;
+    }
+
+    loadDatasetTree().then(() => {
+        // If brought here by the "gene search results" page, curate on the dataset ID that referred us
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("dataset_id")) {
+            const linkedDatasetId = urlParams.get("dataset_id");
+            try {
+                // find DatasetTree node and trigger "activate"
+                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+                foundNode.setActive(true);
+                datasetId = linkedDatasetId;
+            } catch (error) {
+                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+                throw new Error(error);
+            }
+        }
+    }).catch((error) => {
+        logErrorInConsole(error);
+    });
+
+    // Load any script-specific code
+    curatorSpecificOnLoad();
+
+};
