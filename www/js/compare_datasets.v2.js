@@ -445,6 +445,13 @@ const plotDataToGraph = (data) => {
 	}
 
 	const layout = {
+		title: "Dataset Comparison",
+		xaxis: {
+			title: data.condition_x
+		},
+		yaxis: {
+			title: data.condition_y,
+		},
 		annotations: [],
 		hovermode: "closest",
 		dragmode: "select",
