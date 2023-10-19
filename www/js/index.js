@@ -14,10 +14,12 @@ const populateUserHistoryTable = async (el, eventType) => {
 
         let formatted_category = entry.entry_category.replaceAll('_', ' ');
         formatted_category = formatted_category.charAt(0).toUpperCase() + formatted_category.slice(1);
-        
+
         row.querySelector('.category').textContent = formatted_category;
         row.querySelector('.action-label').textContent = entry.label;
         row.querySelector('.date').textContent = entry.entry_date;
+        row.querySelector('.url').setAttribute('href', entry.url);
+
         document.querySelector('#user-history-table-tbody').appendChild(row);
     });
 }
