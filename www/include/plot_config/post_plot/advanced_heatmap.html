@@ -64,6 +64,19 @@
         <input class="js-dash-hide-gene-labels" id="hide_gene_labels_post" type="checkbox">
     </label>
 
+    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+        <span class="has-text-weight-medium">Enable subsampling of observations</span>
+        <input class="js-dash-enable-subsampling" id="enable_subsampling_post" type="checkbox">
+    </label>
+
+    <p class="is-flex is-justify-content-space-between pr-3">
+        <span class="has-text-weight-medium">Subsampling limit</span>
+        <input class="js-dash-subsampling-limit" id="subsampling_limit_post" type="number" value="0" min="0" disabled/>
+    </p>
+    <p class="help">Select a number of random observation samples from the total set to use. Saves on computation resources.</p>
+    <p class="help">NOTE: If clustering is enabled, and the number of selected observations is >5000, subsampling will be auto-enabled at a 5000 sample limit (or less).</p>
+
+
 </section>
 
 

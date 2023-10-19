@@ -13,10 +13,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // modal code from https://bulma.io/documentation/components/modal/
+
+    // Add a click event on various child elements to close the parent modal
+    (document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button') || []).forEach(($close) => {
+        const $target = $close.closest('.modal');
+
+        $close.addEventListener('click', () => {
+            closeModal($target);
+        });
+    });
+
+    // Add a keyboard event to close all modals
+    document.addEventListener('keydown', (event) => {
+        if (event.code === 'Escape') {
+            closeAllModals();
+        }
+    });
+
+
     checkForLogin();
 });
 
+// Functions to open and close a modal
+function openModal($el) {
+    $el.classList.add('is-active');
+}
 
+function closeModal($el) {
+    $el.classList.remove('is-active');
+}
+
+function closeAllModals() {
+    (document.querySelectorAll('.modal') || []).forEach(($modal) => {
+        closeModal($modal);
+    });
+}
 
 /*************************************************************************************
  Code related to the login process, which is available in the header across all pages.
@@ -43,7 +75,7 @@ document.getElementById('submit-logout').addEventListener('click', function(even
 const checkForLogin = async () => {
     const session_id = Cookies.get('gear_session_id');
     CURRENT_USER = new User();
-    
+
     if (! session_id || session_id === "undefined") {
         // no cookie found, so user is not logged in
         handleLoginUIUpdates();
@@ -58,7 +90,7 @@ const checkForLogin = async () => {
                 //CURRENT_USER.setDefaultProfile();
                 document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
-               
+
             } else {
                 // session_id is invalid, so remove cookie
                 Cookies.remove('gear_session_id');
@@ -97,7 +129,7 @@ const doLogin = async () => {
 
     } else {
         // Something went muy wrong
-        
+
     }
 }
 

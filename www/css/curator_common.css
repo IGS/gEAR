@@ -51,7 +51,7 @@
 #post_plot_customize {
     overflow-y:auto;
     overflow-x:hidden;
-    flex: 0 1 auto; /* flex-grow, flex-shrink, flex-basis */
+    /*flex: 0 1 auto;*/ /* flex-grow, flex-shrink, flex-basis */
 }
 
 #order_container li {
