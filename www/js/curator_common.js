@@ -106,6 +106,9 @@ const datasetTree = new DatasetTree({
         for (const elt of document.getElementsByClassName("js-step-success")) {
             elt.classList.add("is-hidden");
         }
+        for (const elt of document.getElementsByClassName("js-step-failure")) {
+            elt.classList.add("is-hidden");
+        }
 
         document.getElementById("dataset_s_success").classList.remove("is-hidden");
 
@@ -552,6 +555,20 @@ const disableCheckboxLabel = (checkboxElt, state) => {
     }
 }
 
+const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
+    const payload = {session_id, dataset_id, analysis_id, filters};
+    try {
+        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
+        }
+        const {aggregations, total_count} = data;
+        return {aggregations, total_count};
+    } catch (error) {
+        logErrorInConsole(error);
+    }
+}
+
 const fetchAnalyses = async (datasetId) => {
     try {
         const { data } = await axios.get(`./api/h5ad/${datasetId}/analyses`);
@@ -661,21 +678,6 @@ const fetchH5adInfo = async (datasetId, analysisId) => {
         throw new Error(msg);
     }
 }
-
-const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
-    const payload = {session_id, dataset_id, analysis_id, filters};
-    try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
-        if (data.hasOwnProperty("success") && data.success < 1) {
-            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
-        }
-        const {aggregations, total_count} = data;
-        return {aggregations, total_count};
-    } catch (error) {
-        logErrorInConsole(error);
-    }
-}
-
 
 // Create the template for the colorscale select2 option dropdown
 const formatColorscaleOptionText = (option, text, isContinuous=false) => {
@@ -1460,7 +1462,8 @@ for (const classElt of collapsableElts) {
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
-    // I don't like to async/await the window.onload function so I use .then instead
+
+    curatorSpecificNavbarUpdates();
 
     sessionId = CURRENT_USER.session_id;
     colorblindMode = CURRENT_USER.colorblind_mode || false;
@@ -1470,7 +1473,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("save_display_btn").disabled = true;
     }
 
-    loadDatasetTree().then(() => {
+	try {
+		await loadDatasetTree()
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has("dataset_id")) {
@@ -1485,9 +1489,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 throw new Error(error);
             }
         }
-    }).catch((error) => {
-        logErrorInConsole(error);
-    });
+	} catch (error) {
+		logErrorInConsole(error);
+	}
 
     // Load any script-specific code
     curatorSpecificOnLoad();

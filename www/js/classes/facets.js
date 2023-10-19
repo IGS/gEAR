@@ -2,12 +2,13 @@
 // Class for the faceted search widget
 // SAdkins - I let Github Copilot write this class for me (with minor adjustments)
 class FacetWidget {
-    constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags}) {
+    constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags, filterHeaderExtraClasses}) {
         this.aggregations = aggregations || {}; // Counts of all categories (filter)
         this.filters = filters || {};   // Selected categories and values
         this.onFilterChange = onFilterChange || {}; // Callback function when a filter is changed
         this.facetContainer =  facetContainer || document.getElementById('facet_c');
         this.selectedFacetsTags = selectedFacetsTags || document.getElementById('selected_facets_tags');
+        this.filterHeaderExtraClasses = filterHeaderExtraClasses || 'has-background-primary-dark has-text-primary-light';
         this.init();
     }
 
@@ -102,7 +103,7 @@ class FacetWidget {
         filterElement.id = `filter-${filter.name}`;
         filterElement.className = 'filter';
         filterElement.innerHTML = `
-            <div class="filter-header panel-heading is-clickable has-background-primary-dark has-text-primary-light">
+            <div class="filter-header panel-heading is-clickable ${this.filterHeaderExtraClasses} }">
                 <span class="filter-name has-text-weight-semibold">${filter.name}</span>
                 <span class="loader is-hidden is-inline-flex"></span>
                 <span class="filter-toggle-icon icon is-pulled-right">

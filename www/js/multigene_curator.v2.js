@@ -741,6 +741,17 @@ const curatorSpecifcDatasetTreeCallback = async () => {
     geneSelect = createGeneSelectInstance("gene_select", geneSelect);
 }
 
+const curatorSpecificNavbarUpdates = () => {
+	// Update with current page info
+	document.querySelector("#header_bar .navbar-item").textContent = "Multi-gene Displays";
+
+    for (const elt of document.querySelectorAll("#primary_nav > aside > ul > li > span > span > a")) {
+        elt.classList.remove("is-active");
+    }
+
+    document.querySelector("a[tool='mg_displays'").classList.add("is-active");
+}
+
 const curatorSpecificOnLoad = async () => {
     // Load gene carts
     await loadGeneCarts();

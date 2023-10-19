@@ -1,0 +1,4 @@
+/* Keep at a reasonable length */
+input[type=number] {
+    width: 6em;
+}

@@ -650,6 +650,17 @@ const curatorSpecifcDatasetTreeCallback = () => {
 
 }
 
+const curatorSpecificNavbarUpdates = () => {
+	// Update with current page info
+	document.querySelector("#header_bar .navbar-item").textContent = "Single-gene Curator";
+
+    for (const elt of document.querySelectorAll("#primary_nav > aside > ul > li > span > span > a")) {
+        elt.classList.remove("is-active");
+    }
+
+    document.querySelector("a[tool='sg_curator'").classList.add("is-active");
+}
+
 const curatorSpecificOnLoad = async () => {
     // pass
 }
