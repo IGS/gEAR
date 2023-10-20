@@ -51,6 +51,7 @@ let datasetId;
 let organismId;	// Used for saving as gene cart
 let compareData;;
 let selectedData;
+let geneSelect;
 
 const datasetTree = new DatasetTree({
     element: document.getElementById("dataset_tree")
@@ -87,6 +88,12 @@ const datasetTree = new DatasetTree({
 		const compareSeriesElt = document.getElementById("compare_series");
 		compareSeriesElt.parentElement.classList.add("is-loading");
 
+    	// Creates gene select instance that allows for multiple selection
+		geneSelect = createGeneSelectInstance("gene_select", geneSelect);
+		// Populate gene select element
+		geneSelectUpdate()
+
+
 		// Create facet widget, which will refresh filters
 		facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
 		document.getElementById("facet_content").classList.remove("is-hidden");
@@ -100,6 +107,127 @@ const datasetTree = new DatasetTree({
 
     })
 });
+
+const geneCartTree = new GeneCartTree({
+    element: document.getElementById("genecart_tree")
+    , searchElement: document.getElementById("genecart_query")
+    , selectCallback: (async (e) => {
+        if (e.node.type !== "genecart") {
+            return;
+        }
+
+        // Get gene symbols from gene cart
+        const geneCartId = e.node.data.orig_id;
+        const geneCartMembers = await fetchGeneCartMwembers(sessionId, geneCartId);
+        const geneCartSymbols = geneCartMembers.map((item) => item.label);
+
+        // Normalize gene symbols to lowercase
+        const geneSelectSymbols = geneSelect.data.map((opt) => opt.value);
+        const geneCartSymbolsLowerCase = geneCartSymbols.map((x) => x.toLowerCase());
+
+        const geneSelectedOptions = geneSelect.selectedOptions.map((opt) => opt.data.value);
+
+        // Get genes from gene cart that are present in dataset's genes.  Preserve casing of dataset's genes.
+        const geneCartIntersection = geneSelectSymbols.filter((x) => geneCartSymbolsLowerCase.includes(x.toLowerCase()));
+        // Add in already selected genes (union)
+        const geneSelectIntersection = [...new Set(geneCartIntersection.concat(geneSelectedOptions))];
+
+        // change all options to be unselected
+        const origSelect = document.getElementById("gene_select");
+        for (const opt of origSelect.options) {
+            opt.removeAttribute("selected");
+        }
+
+        // Assign intersection genes to geneSelect "selected" options
+        for (const gene of geneSelectIntersection) {
+            const opt = origSelect.querySelector(`option[value="${gene}"]`);
+            try {
+                opt.setAttribute("selected", "selected");
+            } catch (error) {
+                // sanity check
+                const msg = `Could not add gene ${gene} to gene select.`;
+                console.warn(msg);
+            }
+        }
+
+        geneSelect.update();
+        trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
+    })
+});
+
+const appendGeneTagButton = (geneTagElt) => {
+    // Add delete button
+    const deleteBtnElt = document.createElement("button");
+    deleteBtnElt.classList.add("delete", "is-small");
+    geneTagElt.appendChild(deleteBtnElt);
+    deleteBtnElt.addEventListener("click", (event) => {
+        // Remove gene from geneSelect
+        const gene = event.target.parentNode.textContent;
+        const geneSelectElt = document.getElementById("gene_select");
+        geneSelectElt.querySelector(`option[value="${gene}"]`).removeAttribute("selected");
+
+        geneSelect.update();
+        trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
+    });
+
+    // ? Should i add ellipses for too many genes? Should I make the box collapsable?
+}
+
+const chooseGene = (event) => {
+    // Triggered when a gene is selected
+
+    // Delete existing tags
+    const geneTagsElt = document.getElementById("gene_tags");
+    geneTagsElt.replaceChildren();
+
+    if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
+
+    // Update list of gene tags
+    const sortedGenes = geneSelect.selectedOptions.map((opt) => opt.data.value).sort();
+    for (const opt in sortedGenes) {
+        const geneTagElt = document.createElement("span");
+        geneTagElt.classList.add("tag", "is-primary", "mx-1");
+        geneTagElt.textContent = sortedGenes[opt];
+        appendGeneTagButton(geneTagElt);
+        geneTagsElt.appendChild(geneTagElt);
+    }
+
+    document.getElementById("gene_tags_c").classList.remove("is-hidden");
+    if (!geneSelect.selectedOptions.length) {
+        document.getElementById("gene_tags_c").classList.add("is-hidden");
+    }
+
+    // If more than 10 tags, hide the rest and add a "show more" button
+    if (geneSelect.selectedOptions.length > 10) {
+        const geneTags = geneTagsElt.querySelectorAll("span.tag");
+        for (let i = 10; i < geneTags.length; i++) {
+            geneTags[i].classList.add("is-hidden");
+        }
+        // Add show more button
+        const showMoreBtnElt = document.createElement("button");
+        showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
+        const numToDisplay = geneSelect.selectedOptions.length - 10;
+        showMoreBtnElt.textContent = `+${numToDisplay} more`;
+        showMoreBtnElt.addEventListener("click", (event) => {
+            const geneTags = geneTagsElt.querySelectorAll("span.tag");
+            for (let i = 10; i < geneTags.length; i++) {
+                geneTags[i].classList.remove("is-hidden");
+            }
+            event.target.remove();
+        });
+        geneTagsElt.appendChild(showMoreBtnElt);
+    }
+
+	updatePlotAnnotations(sortedGenes);
+
+}
+
+const clearGenes = (event) => {
+    document.getElementById("clear_genes_btn").classList.add("is-loading");
+    geneSelect.clear();
+	updatePlotAnnotations([]);
+    document.getElementById("clear_genes_btn").classList.remove("is-loading");
+}
 
 const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
     document.getElementById("selected_facets_loader").classList.remove("is-hidden")
@@ -129,6 +257,24 @@ const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
     });
     document.getElementById("selected_facets_loader").classList.add("is-hidden")
     return facetWidget;
+}
+
+const createGeneSelectInstance = (idSelector, geneSelect=null) => {
+    // NOTE: Updating the list of genes can be memory-intensive if there are a lot of genes
+    // and (I've noticed) if multiple select2 elements for genes are present.
+
+    // If object exists, just update it with the revised data and return
+    if (geneSelect) {
+        geneSelect.update();
+        return geneSelect;
+    }
+
+    return NiceSelect.bind(document.getElementById(idSelector), {
+        placeholder: 'To search, start typing a gene name',
+        searchtext: 'To search, start typing a gene name',
+        searchable: true,
+        allowClear: true,
+    });
 }
 
 /* Creates a Toast-style message in the upper-corner of the screen. */
@@ -184,8 +330,8 @@ const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) =
     }
 }
 
-const fetchDatasetComparison = async (dataset_id, obs_filters, condition_x, condition_y, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test) => {
-	const payload = {dataset_id, obs_filters, condition_x, condition_y, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test};
+const fetchDatasetComparison = async (dataset_id, obs_filters, compare_key, condition_x, condition_y, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test) => {
+	const payload = {dataset_id, obs_filters, condition_x, compare_key, condition_y, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test};
 	try {
 		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
 		return data;
@@ -210,6 +356,63 @@ const fetchDatasets = async (session_id) => {
     }
 }
 
+/* Fetch gene collection members */
+const fetchGeneCartMwembers = async (session_id, geneCartId) => {
+    const payload = { session_id, gene_cart_id: geneCartId };
+    try {
+        const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
+        const {gene_symbols, success} = data;
+        if (!success) {
+            throw new Error("Could not fetch gene collection members. You can still enter genes manually.");
+        }
+        return gene_symbols;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch gene collection members. You can still enter genes manually.";
+        createToast(msg);
+        throw new Error(msg);
+    }
+}
+
+/* Fetch gene collections */
+const fetchGeneCarts = async (session_id) => {
+    const payload = {session_id, "cart_type":"unweighted-list" };
+    try {
+        const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
+        return data;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch gene collections. You can still enter genes manually.";
+        createToast(msg);
+        throw new Error(msg);
+    }
+}
+
+const fetchGeneSymbols = async (datasetId, analysisId) => {
+    let url = `./api/h5ad/${datasetId}/genes`;
+    if (analysisId) url += `?analysis_id=${analysisId}`;
+
+    try {
+        const { data } = await axios.get(url);
+        return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
+        createToast(msg);
+        return [];
+    }
+}
+
+const geneSelectUpdate = async (analysisId=null) => {
+    // Populate gene select element
+    try {
+        const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
+        updateGeneOptions(geneSymbols); // Come from curator specific code
+    } catch (error) {
+		logErrorInConsole(error);
+	}
+}
+
 const getComparisons = async (event) => {
 
 	// set loading icon
@@ -218,11 +421,10 @@ const getComparisons = async (event) => {
 	const filters = JSON.stringify(facetWidget.filters);
 
 	const compareSeries = document.getElementById("compare_series").value
-	const xSeries = document.getElementById("compare_x_series").value
-	const ySeries = document.getElementById("compare_y_series").value
 
-	const xCondition = `${compareSeries};-;${xSeries}`;
-	const yCondition = `${compareSeries};-;${ySeries}`;
+	// Get all checked x and y series
+	const checkedX = JSON.stringify([...document.querySelectorAll("#compare_x input:checked")].map((elt) => elt.value));
+	const checkedY = JSON.stringify([...document.querySelectorAll("#compare_y input:checked")].map((elt) => elt.value));
 
 	const foldChangeCutoff = document.getElementById("fc_cutoff").value;
 	const stdDevNumCutoff = document.getElementById("standard_deviation").value;
@@ -230,7 +432,7 @@ const getComparisons = async (event) => {
 	const statisticalTest = document.getElementById("statistical_test").value;
 
 	try {
-		const data = await fetchDatasetComparison(datasetId, filters, xCondition, yCondition, foldChangeCutoff, stdDevNumCutoff, logTransformation, statisticalTest);
+		const data = await fetchDatasetComparison(datasetId, filters, compareSeries, checkedX, checkedY, foldChangeCutoff, stdDevNumCutoff, logTransformation, statisticalTest);
 		if (data?.success < 1) {
 			throw new Error(data?.message || "Could not fetch dataset comparison. Please contact the gEAR team.");
 		}
@@ -325,7 +527,43 @@ const loadDatasetTree = async () => {
     } catch (error) {
         document.getElementById("dataset_s_failed").classList.remove("is-hidden");
     }
+}
 
+/* Transform and load gene collection data into a "tree" format */
+const loadGeneCarts = async () => {
+    try {
+        const geneCartData = await fetchGeneCarts(sessionId);
+        const carts = {};
+        const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
+        let cartsFound = false;
+
+        // Loop through the different types of gene collections and add them to the carts object
+        for (const ctype of cartTypes) {
+            carts[ctype] = [];
+
+            if (geneCartData[`${ctype}_carts`].length > 0) {
+                cartsFound = true;
+
+                for (const item of geneCartData[`${ctype}_carts`]) {
+                    carts[ctype].push({value: item.id, text: item.label });
+                };
+            }
+        }
+
+        geneCartTree.domainGeneCarts = carts.domain;
+        geneCartTree.userGeneCarts = carts.user;
+        geneCartTree.groupGeneCarts = carts.group;
+        geneCartTree.sharedGeneCarts = carts.shared;
+        geneCartTree.publicGeneCarts = carts.public;
+        geneCartTree.generateTree();
+        /*if (!cartsFound ) {
+            // ? Put some warning if carts not found
+            $('#gene_cart_container').show();
+        }*/
+
+    } catch (error) {
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+    }
 }
 
 const plotDataToGraph = (data) => {
@@ -447,56 +685,15 @@ const plotDataToGraph = (data) => {
 	const layout = {
 		title: "Dataset Comparison",
 		xaxis: {
-			title: data.condition_x
+			title: data.condition_x.join(", "),
 		},
 		yaxis: {
-			title: data.condition_y,
+			title: data.condition_y.join(", "),
 		},
 		annotations: [],
 		hovermode: "closest",
 		dragmode: "select",
 	};
-
-	/*
-	// Take genes to search for and highlight their datapoint in the plot
-
-	const annotationColor = CURRENT_USER.colorblind_mode ? 'rgb(125, 124, 118)' : "crimson";
-
-	const highlightedGenes = document.getElementById("highlighted_genes").value;
-	const genesNotFound = [];
-	if (highlightedGenes) {
-		const searchedGenes = highlightedGenes.replace(/,?\s/g, ",").split(",");
-		searchedGenes.forEach((gene) => {
-		let found = false;
-		plots:
-		for (i = 0; i < plotdata.length; i++) {
-			genes:
-			for (j = 0; j < plotdata[i].id.length; j++) {
-				if (gene.toLowerCase() === plotdata[i].id[j].toLowerCase() ) {
-					// If gene is found add an annotation arrow
-					layout.annotations.push({
-					xref: "x",
-					yref: "y",
-					x: plotdata[i].x[j],
-					y: plotdata[i].y[j],
-					text:plotdata[i].id[j],
-					font: {
-						color: annotationColor,
-					},
-					showarrow: true,
-					arrowcolor: annotationColor,
-
-					});
-					found = true;
-					break plots;
-				}
-			}
-		}
-		if (! found)
-			genesNotFound.push(gene);
-		});
-	}
-	*/
 
 
 	const config = {
@@ -515,17 +712,6 @@ const plotDataToGraph = (data) => {
 
 	Plotly.newPlot("plotly_preview", plotData, layout, config);
 
-
-	// If searched-for genes were not found, display under plot
-	/*
-	if (genesNotFound.length) {
-		const genesNotFoundString = genesNotFound.join(", ");
-		$("#genes_not_found").text(`Searched genes not found: ${genesNotFoundString}`);
-		$("#genes_not_found").show();
-	} else {
-		$("#genes_not_found").hide();
-	}
-	*/
 
 	const plotlyPreview = document.getElementById("plotly_preview");
 
@@ -576,28 +762,34 @@ const plotDataToGraph = (data) => {
 	};*/
 
 	const plotlyNote = generateElements(`
-		<div id="editable_tip" class="message is-info is-light">
-			<div class="message-body">
-	  			<p><strong>Tip:</strong> You can click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>
-			</div>
-  		</div>`);
+		<div id="tip_on_editing" class="notification is-info is-light">
+			<p><strong>Tip:</strong> You can click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>
+		</div>`);
 	plotlyPreview.append(plotlyNote);
 }
 
-const populatePostCompareBox = (scope, series, group) => {
+const populatePostCompareBox = (scope, series, groups) => {
 	// Find box
 	const boxElt = document.querySelector(`#${scope}_post_c .notification`);
 	boxElt.replaceChildren();
+
 	// Add series as mini-subtitle and group as tag
 	const seriesElt = document.createElement("div");
 	seriesElt.classList.add("has-text-weight-semibold", "mb-2");
 	seriesElt.textContent = series;
 	boxElt.append(seriesElt);
-	const groupElt = document.createElement("span");
-	groupElt.classList.add("tag", "is-light", "is-primary");
-	groupElt.textContent = group;
-	boxElt.append(groupElt);
 
+	const tagsElt = document.createElement("div");
+	tagsElt.classList.add("tags");
+	boxElt.append(tagsElt);
+
+	for (const group of groups) {
+
+		const groupElt = document.createElement("span");
+		groupElt.classList.add("tag", "is-light", "is-primary");
+		groupElt.textContent = group;
+		tagsElt.append(groupElt);
+	}
 }
 
 const sanitizeCondition = (condition) => {
@@ -609,6 +801,104 @@ const sanitizeCondition = (condition) => {
 		}
 	}
 	return sanitized_condition;
+}
+
+const updateGeneOptions = (geneSymbols) => {
+
+    const geneSelectElt = document.getElementById("gene_select");
+    geneSelectElt.replaceChildren();
+
+    // Append empty placeholder element
+    const firstOption = document.createElement("option");
+    firstOption.textContent = "Please select a gene";
+    geneSelectElt.append(firstOption);
+
+    for (const gene of geneSymbols.sort()) {
+        const option = document.createElement("option");
+        option.textContent = gene;
+        option.value = gene;
+        geneSelectElt.append(option);
+    }
+
+    // Update the nice-select2 element to reflect this.
+    // This function is always called in the 1st view, so only update that
+    geneSelect.update();
+
+}
+
+// Update the plotly graph with the selected genes
+const updatePlotAnnotations = (genes) => {
+	// Take genes to search for and highlight their datapoint in the plot
+
+	const plotlyPreview = document.getElementById("plotly_preview");
+	const plotData = plotlyPreview.data;
+	const layout = plotlyPreview.layout;
+
+	const annotationColor = CURRENT_USER.colorblind_mode ? 'rgb(125, 124, 118)' : "crimson";
+
+	layout.annotations = [];
+
+	genes.forEach((gene) => {
+		let found = false;
+		for (const trace of plotData) {
+			trace.id.forEach((element, i) => {
+				if (gene.toLowerCase() !== element.toLowerCase() ) {
+					return;
+				}
+				// If gene is found add an annotation arrow
+				layout.annotations.push({
+					xref: "x",
+					yref: "y",
+					x: trace.x[i],
+					y: trace.y[i],
+					text:element,
+					font: {
+						color: annotationColor,
+					},
+					showarrow: true,
+					arrowcolor: annotationColor,
+
+				});
+				found = true;
+			});
+		}
+	});
+
+	// update the Plotly layout
+	Plotly.relayout(plotlyPreview, layout);
+}
+
+// For a given categorical series (e.g. "celltype"), add checkboxes for each category
+const updateGroupOptions = (selectorId, groupsArray) => {
+
+	const elt = document.getElementById(selectorId);
+
+	elt.replaceChildren();
+	elt.classList.remove("is-hidden");
+
+	// Add categories
+	for (const group of groupsArray.sort()) {
+
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.id = `${selectorId}_${group}`;
+		checkbox.name = group;
+		checkbox.value = group;
+
+		const label = document.createElement("label");
+		label.classList.add("checkbox");
+		label.htmlFor = `${selectorId}_${group}`;
+		label.textContent = ` ${group}`;
+		label.prepend(checkbox);
+
+
+		// create .control div to ensure checkboxs are vertically aligned
+		const control = document.createElement("div");
+		control.classList.add("control", "m-1");
+		control.append(label);
+
+		elt.append(control);
+	}
 }
 
 // For plotting options, populate select menus with category groups
@@ -632,48 +922,24 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
     }
 }
 
-// For a given categorical series (e.g. "celltype"), update the "group" options
-const updateGroupOptions = (classSelector, groupsArray) => {
-
-    for (const elt of document.getElementsByClassName(classSelector)) {
-        elt.replaceChildren();
-
-        // Append empty placeholder element
-        const firstOption = document.createElement("option");
-        elt.append(firstOption);
-
-        // Add categories
-        for (const group of groupsArray.sort()) {
-            const option = document.createElement("option");
-            option.textContent = group;
-            option.value = group;
-            elt.append(option);
-        }
-    }
-}
-
 const validateCompareGroups = (event) => {
-	const compareGroups = [...document.getElementsByClassName("js-compare-groups")].map((elt) => elt.value);
-	// Filter out empty values and duplicates
-	const uniqueGroups = [...new Set(compareGroups)].filter(x => x);
-	// Get all unselected groups
-	const series = document.querySelector(".js-compare").value;
-	const seriesItems = getSeriesItems(series);
-	const seriesNames = getSeriesNames(seriesItems);
-	const unselectedGroups = seriesNames.filter((group) => !uniqueGroups.includes(group));
+
+	const group = event.target.value;
+	const checked = event.target.checked;
 
 	for (const innerClassElt of document.getElementsByClassName("js-compare-groups")) {
-		// enable all unselected groups
-		for (const group of unselectedGroups) {
-			const opt = innerClassElt.querySelector(`option[value="${group}"]`);
-			opt.removeAttribute("disabled");
-		}
-		// disable unique groups in other compare groups
-		for (const group of uniqueGroups) {
-			if (innerClassElt.id !== event.target.id) {
-				const opt = innerClassElt.querySelector(`option[value="${group}"]`);
-				opt.setAttribute("disabled", "disabled");
+		// BUG: Checking via label click enables X compare group
+		if (checked) {
+			// disable unique groups in other compare groups
+			if (innerClassElt.closest(".js-compare-groups").id !== event.target.closest(".js-compare-groups").id) {
+				const checkbox = innerClassElt.querySelector(`input[value="${group}"]`);
+				checkbox.setAttribute("disabled", "disabled");
+				checkbox.parentElement.setAttribute("disabled", "disabled");
 			}
+		} else {
+			const checkbox = innerClassElt.querySelector(`input[value="${group}"]`);
+			checkbox.removeAttribute("disabled");
+			checkbox.parentElement.removeAttribute("disabled");
 		}
 	}
 }
@@ -682,33 +948,26 @@ const validatePlotRequirements = (event) => {
     const elt = event.target;
     // Reset "status" classes
     elt.classList.remove("is-success", "is-danger");
-    if (elt.value) {
-        elt.parentElement.classList.remove("is-danger");
-        elt.parentElement.classList.add("is-success");
-
-        const validationElts = document.getElementsByClassName("js-plot-req");
-
-        // If every validation param has been filled out, it's OK to plot
-        // NOTE: need to ensure pre- and post- param elements are filled before this function is called
-        if ([...validationElts].every(element => element.value)) {
-            for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-                plotBtn.disabled = false;
-            }
-            document.getElementById("condition_compare_s_success").classList.remove("is-hidden");
-            document.getElementById("condition_compare_s_failed").classList.add("is-hidden");
-        }
-        return;
-    }
-
-    // Required paramater has no value. Indicate it and disable plot buttons
-    elt.parentElement.classList.add("is-danger");
-    elt.parentElement.classList.remove("is-success");
 
     for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
         plotBtn.disabled = true;
     }
+
+	// We need at least one compare-x and one compare-y checkbox checked
+	const checkedX = [...document.querySelectorAll(".js-compare-x input:checked")].map((elt) => elt.value);
+	const checkedY = [...document.querySelectorAll(".js-compare-y input:checked")].map((elt) => elt.value);
+
+	if (checkedX.length && checkedY.length) {
+		// Enable plot button
+		for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+			plotBtn.disabled = false;
+
+			document.getElementById("condition_compare_s_failed").classList.add("is-hidden");
+		}
+		return;
+	}
+
     document.getElementById("condition_compare_s_success").classList.add("is-hidden");
-    document.getElementById("condition_compare_s_failed").classList.remove("is-hidden");
 }
 
 /* --- Event listeners --- */
@@ -720,41 +979,43 @@ document.getElementById("statistical_test").addEventListener("change", (event) =
 	cutoffFilterAction.disabled = event.target.value ? false : true;
 });
 
-const validationElts = document.getElementsByClassName("js-plot-req");
-for (const classElt of validationElts ) {
-	classElt.addEventListener("change", validatePlotRequirements);
-}
-
 // When compare series changes, update the compare groups
 for (const classElt of document.getElementsByClassName("js-compare")) {
 	classElt.addEventListener("change", async (event) => {
 		const compareSeries = event.target.value;
+		document.getElementById("select_compare_series_notification").classList.remove("is-hidden");
+		if (!compareSeries) return;
+
 		const seriesItems = getSeriesItems(compareSeries);
 		const seriesNames = getSeriesNames(seriesItems);
 
-		updateGroupOptions("js-compare-x", seriesNames);
-		updateGroupOptions("js-compare-y", seriesNames);
+		document.getElementById("select_compare_series_notification").classList.add("is-hidden");
+
+		updateGroupOptions("compare_x", seriesNames);
+		updateGroupOptions("compare_y", seriesNames);
 	})
 }
 
 // When compare groups change, prevent the same group from being selected in the other compare groups
 for (const classElt of document.getElementsByClassName("js-compare-groups")) {
 	classElt.addEventListener("change", validateCompareGroups);
+	classElt.addEventListener("change", validatePlotRequirements);
 }
 
 for (const classElt of document.getElementsByClassName("js-compare-x")) {
 	classElt.addEventListener("change", (event) => {
-		const compareX = event.target.value;
+	// We need at least one compare-x and one compare-y checkbox checked
+		const checkedX = [...document.querySelectorAll(".js-compare-x input:checked")].map((elt) => elt.value);
 		const compareSeries = document.getElementById("compare_series").value;
-		populatePostCompareBox("compare_x", compareSeries, compareX);
+		populatePostCompareBox("compare_x", compareSeries, checkedX);
 	})
 }
 
 for (const classElt of document.getElementsByClassName("js-compare-y")) {
 	classElt.addEventListener("change", (event) => {
-		const compareX = event.target.value;
+		const checkedY = [...document.querySelectorAll(".js-compare-y input:checked")].map((elt) => elt.value);
 		const compareSeries = document.getElementById("compare_series").value;
-		populatePostCompareBox("compare_y", compareSeries, compareX);
+		populatePostCompareBox("compare_y", compareSeries, checkedY);
 	})
 }
 
@@ -772,6 +1033,13 @@ document.getElementById("edit_params").addEventListener("click", (event) => {
     event.target.classList.remove("is-loading");
 })
 
+document.getElementById("clear_genes_btn").addEventListener("click", clearGenes);
+
+const geneSelectElts = document.querySelectorAll("select.js-gene-select");
+for (const geneSelectElt of geneSelectElts) {
+    geneSelectElt.addEventListener("change", chooseGene);
+}
+
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
@@ -788,7 +1056,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     Cookies.set('gear_session_id', sessionId, { expires: 7 });
 
 	try {
-		await loadDatasetTree()
+		await Promise.all([
+			loadDatasetTree(),
+			loadGeneCarts()
+		]);
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has("dataset_id")) {
@@ -806,5 +1077,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
+
 
 };

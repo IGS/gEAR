@@ -27,8 +27,9 @@ def main():
     dataset_id = form.getvalue('dataset_id')
     filters = form.getvalue('obs_filters', "")    # Dict of lists
 
-    condition1 = form.getvalue('condition_x')
-    condition2 = form.getvalue('condition_y')
+    compare_key = form.getvalue('compare_key')
+    x_compare = form.getvalue('condition_x')    # list of conditions
+    y_compare = form.getvalue('condition_y')
     std_dev_num_cutoff = form.getvalue('std_dev_num_cutoff')
     std_dev_num_cutoff = float(std_dev_num_cutoff) if std_dev_num_cutoff else None
     fold_change_cutoff = form.getvalue('fold_change_cutoff')
@@ -43,11 +44,11 @@ def main():
         msg = "No h5 file found for this dataset"
         return_error_response(msg)
 
-    if not condition1 or not condition2:
+    if not x_compare or not y_compare:
         msg = "Please select a condition for both the X and Y axis"
         return_error_response(msg)
 
-    if condition1 == condition2:
+    if x_compare == y_compare:
         msg = "Selected conditions are identical. Please select different conditions."
         return_error_response(msg)
 
@@ -65,11 +66,22 @@ def main():
             selected_filter = adata.obs[col].isin(values)
             adata = adata[selected_filter, :]
 
-    (compare_key, x_compare) = condition1.split(';-;')
-    (compare2_key, y_compare) = condition2.split(';-;')
-    if compare_key != compare2_key:
-        msg = "Selected conditions are not comparable. Please select conditions with the same column."
+    x_compare = json.loads(x_compare)
+    y_compare = json.loads(y_compare)
+
+    # Error if any condition in x matches any condition in y
+    intersection_conditions = intersection(x_compare, y_compare)
+    if intersection_conditions:
+        msg = f"The follwing conditions were found in both X and Y: {intersection_conditions}. Please select unique conditions."
         return_error_response(msg)
+
+    condition_x_repls_filter = adata.obs[compare_key].isin(x_compare)
+    condition_y_repls_filter = adata.obs[compare_key].isin(y_compare)
+
+    # Assign categorical values if sample is in x_compare or y_compare
+    adata.obs['compare'] = 'neither'
+    adata.obs.loc[condition_x_repls_filter, 'compare'] = 'x'
+    adata.obs.loc[condition_y_repls_filter, 'compare'] = 'y'
 
     # add the composite column for ranked grouping
     if perform_ranking == True:
@@ -77,7 +89,8 @@ def main():
         sc.pp.filter_genes(adata, min_cells=1)
 
         try:
-            sc.tl.rank_genes_groups(adata, compare_key, groups=[x_compare], reference=y_compare, n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
+            #sc.tl.rank_genes_groups(adata, compare_key, groups=[x_compare], reference=y_compare[0], n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
+            sc.tl.rank_genes_groups(adata, "compare", groups=["x"], reference="y", n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
         except Exception as e:
             msg = "scanpy.rank_genes_groups failed.\n{}".format(str(e))
             return_error_response(msg)
@@ -89,8 +102,7 @@ def main():
     # Match the condition (ex. A1;ADULT;F) to all
     # the rows in obs, and use this to aggregate the mean
     # SAdkins - This works with and without replicates
-    condition_x_repls_filter = adata.obs[compare_key] == x_compare
-    condition_y_repls_filter = adata.obs[compare_key] == y_compare
+
     adata_x_subset = adata[condition_x_repls_filter, :]
     adata_y_subset = adata[condition_y_repls_filter, :]
 

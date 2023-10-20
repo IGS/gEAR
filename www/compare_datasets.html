@@ -154,7 +154,7 @@
                   <label class="label">Series to compare <span class="has-text-success-dark is-pulled-right">Required</span></label>
                   <div class="control">
                       <div class="select is-fullwidth">
-                          <select class="js-plot-req js-compare" id="compare_series"></select>
+                          <select class="js-compare" id="compare_series"></select>
                       </div>
                   </div>
                 </div>
@@ -162,23 +162,18 @@
 
               <div class="columns">
                 <div class="field column is-one-third">
-                  <label class="label">X condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
-                  <div class="control">
-                      <div class="select is-fullwidth">
-                          <select class="js-plot-req js-compare-groups js-compare-x" id="compare_x_series"></select>
-                      </div>
+                  <label class="label">X-axis (query) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
+                  <div id="compare_x" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-x">
                   </div>
                 </div>
 
                 <div class="field column is-one-third">
-                    <label class="label">Y condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select class="js-plot-req js-compare-groups js-compare-y" id="compare_y_series"></select>
-                        </div>
+                    <label class="label">Y-axis (reference) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
+                    <div id="compare_y" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-y">
                     </div>
                 </div>
               </div>
+              <p id="select_compare_series_notification" class="notification is-warning is-light"> Please select a series to compare first</p>
             </div>
 
           </div>
@@ -367,7 +362,7 @@
           </div>
           <div id="post_plot_actions_container" class="mt-3 columns is-multiline is-flex-grow-1 is-align-content-end">
             <div class="column is-full">
-              <button id="edit_params" class="button is-medium is-responsive is-fullwidth is-primary js-plot-btn">
+              <button id="edit_params" class="button is-medium is-responsive is-fullwidth is-primary">
                 <span class="icon is-pulled-left">
                   <i class="mdi mdi-arrow-left-thick"></i>
                 </span>
@@ -377,7 +372,30 @@
           </div>
         </div>
         <div class="column is-three-quarters has-background-white-bis">
-          <div id="plot_container"></div>
+          <div id="plot_container" class="content"></div>
+          <div id="gene_annotation_container" class="content">
+            <div class="title is-5">Highlight specific genes</div>
+
+            <!-- BUG: https://github.com/mar10/wunderbaum/issues/57 -->
+            <div class="columns">
+              <div class="column is-6">
+                <input class="input" id="genecart_query" type="text" placeholder="Enter a gene collection" autofocus="" />
+                <div id="genecart_tree" class="wb-skeleton wb-initializing js-tree"></div>
+                <p class="help">These will be added to the selection of genes if in the dataset.</p>
+              </div>
+              <div id="gene_select_c" class="column is-4">
+                <div class="select is-fullwidth">
+                  <select class="js-gene-select" id="gene_select" multiple></select>
+                </div>
+              </div>
+            </div>
+            <div id="gene_tags_c" class="box is-hidden">
+              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
+              <div id="gene_tags" class="tags"></div>
+            </div>
+            <button id="clear_genes_btn" class="content button is-primary is-outlined"> Clear selection</button>
+
+          </div>
         </div>
       </section>
     </section>
