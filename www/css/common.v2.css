@@ -25,6 +25,18 @@ html, body {
     width: 15em;
 }
 
+/* -------------------- */
+/* -= Left navbar section =- */
+
+.menu-list .icon-text-part {
+    transition: transform 0.3s, width 0.3s;
+}
+
+.menu-list .icon-text-part.is-collapsed {
+    transform: translateX(-240px);
+    width: 0;
+}
+
 /* ------------------ */
 /* -= Other styles =- */
 

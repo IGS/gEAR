@@ -31,6 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Add click event for collapsable left navbar text
+    const navbar_toggler = document.querySelector('#navbar-toggler');
+    navbar_toggler.addEventListener('click', (event) => {
+
+        // toggle is-collapsed on all span elements of class icon-text-part
+        (document.querySelectorAll('.icon-text-part') || []).forEach(($menuLabel) => {
+            $menuLabel.classList.toggle('is-collapsed');
+        });
+
+        // hide the citation element
+        document.querySelector("#citation_c").classList.add("is-hidden")
+    });
+
+
 
     checkForLogin();
 });
