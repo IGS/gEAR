@@ -51,3 +51,15 @@ input[type=number] {
 .nice-select .list::-webkit-scrollbar-track {
     background: #f1f1f1;
 }
+
+#post_plot_content_c {
+    height:92vh;
+}
+
+/* Toast-style notifications for actual alerts */
+.notification.js-toast {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    z-index:999;
+}
