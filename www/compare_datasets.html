@@ -55,7 +55,7 @@
           <h3 class="title is-3">
             Compare expression across conditions
           </h3>
-          <p>The condition comparison tool allows for comparing the differences of expression for a dataset's genes over two conditions.</p>
+          <p>The condition comparison tool allows for simple and quick comparisons of gene expression differences across two conditions within a dataset.</p>
           </div>
           <div id="guides_outer_c" class="column is-offset-3 has-background-white-bis notification">
             <h3 class="mt-4 mb-4">
@@ -173,7 +173,7 @@
                     </div>
                 </div>
               </div>
-              <p id="select_compare_series_notification" class="notification is-warning is-light"> Please select a series to compare first</p>
+              <p id="select_compare_series_notification" class="notification is-light"> </p>
             </div>
 
           </div>
@@ -376,6 +376,11 @@
           <div id="gene_annotation_container" class="content">
             <div class="title is-5">Highlight specific genes</div>
 
+            <div id="gene_tags_c" class="box is-hidden">
+              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
+              <div id="gene_tags" class="tags"></div>
+            </div>
+
             <!-- BUG: https://github.com/mar10/wunderbaum/issues/57 -->
             <div class="columns">
               <div class="column is-6">
@@ -389,18 +394,85 @@
                 </div>
               </div>
             </div>
-            <div id="gene_tags_c" class="box is-hidden">
-              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
-              <div id="gene_tags" class="tags"></div>
-            </div>
             <button id="clear_genes_btn" class="content button is-primary is-outlined"> Clear selection</button>
 
+          </div>
+
+          <!-- Gene cart button -->
+          <div id="gene_cart_btn_c" class="is-hidden is-flex is-justify-content-end is-flex-grow-1 is-align-items-end">
+            <button id="gene_cart_btn" class="button is-large is-primary is-outlined" data-target="gene_table_modal">
+              <span class="icon">
+                <i class="mdi mdi-file-table-box-multiple"></i>
+              </span>
+              <span>View and save genes</span>
+            </button>
           </div>
         </div>
       </section>
     </section>
   </div>
 
+
+  <!-- Modal -->
+  <div id="gene_table_modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head has-background-primary">
+        <p class="modal-card-title has-text-white">Gene collection</p>
+      </header>
+      <section class="modal-card-body">
+        <div id="gene_table_container" class="container">
+          <table class="table is-fullwidth is-hidden" id="tbl_selected_genes">
+            <thead>
+              <tr>
+                <th class="is-clickable js-tbl-gene-header" id="tbl_gene_names" onclick="sortGeneTable(0);">Gene <span class="icon"><i class="mdi mdi-sort-alphabetical-ascending" aria-hidden="true"></i></span></th>
+                <th class="is-clickable js-tbl-gene-header" id="tbl_gene_pvalues" onclick="sortGeneTable(1);">P-value <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span></th>
+                <th class="is-clickable js-tbl-gene-header" id="tbl_gene_foldchanges" onclick="sortGeneTable(2);">Fold Change</th>
+              </tr>
+            </thead>
+            <tbody id="gene_table_body">
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <footer class="modal-card-foot is-block">
+        <div class="field">
+          <div class="control">
+            <input id="new_genecart_label" class="input" type="text" placeholder="Enter name of collection" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Collection type</label>
+          <div class="field-body">
+            <div class="field is-narrow">
+              <div class="control">
+                <label class="radio" disabled>
+                  <input type="radio" name="genecart_type" value="unweighted" disabled>
+                  Unweighted (saves selected genes)
+                </label>
+              </div>
+              <div class="control">
+                <label class="radio">
+                  <input type="radio" name="genecart_type" value="weighted" checked>
+                  Weighted (saves all genes in dataset)
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-grouped">
+          <div class="control">
+            <button id="save_genecart_btn" class="button is-primary" disabled>Save</button>
+          </div>
+          <div class="control">
+            <button id="download_selected_genes_btn" class="button is-text has-text-primary is-hidden">Download selected</button>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
 
   <!-- fancy select elements -->
   <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>

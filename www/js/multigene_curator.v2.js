@@ -421,18 +421,22 @@ class GenesAsDataHandler extends PlotHandler {
         plotlyPreview.append(plotlyNote);
 
         // If plot data is selected, create the right-column table and do other misc things
-        plotlyPreview.on("plotly_selected", async (data) => {
+        plotlyPreview.on("plotly_selected", async (eventData) => {
 
             // Hide selected genes table and disable unweighted radio button if no genes are selected
             document.getElementById("tbl_selected_genes").classList.add("is-hidden");
+            document.getElementById("download_selected_genes_btn").classList.add("is-hidden");
             document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
-            if (data?.points.length) {
+            document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
+            if (eventData?.points.length) {
                 document.getElementById("tbl_selected_genes").classList.remove("is-hidden");
+                document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
                 document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
+                document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
             }
 
             adjustGeneTableLabels(this.plotType);
-            populateGeneTable(data, this.plotType);
+            populateGeneTable(eventData, this.plotType);
 
             // Highlight table rows that match searched genes
             const searchedGenes = this.plotConfig.gene_symbols;
@@ -828,25 +832,6 @@ const downloadSelectedGenes = (event) => {
 	document.body.removeChild(element);
 }
 
-const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
-    // Plot types will depend on the number of comparabie categorical conditions
-    // Volcano plots must have at least two conditions
-    // Quadrant plots must have at least three conditions
-
-    const payload = {session_id, dataset_id, analysis_id};
-    try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/mg_availableDisplayTypes`, payload);
-        if (data.hasOwnProperty("success") && data.success < 1) {
-            throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
-        }
-        return data;
-    } catch (error) {
-        logErrorInConsole(error);
-        createToast(error.message);
-        throw new Error(msg);
-    }
-}
-
 const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
     // NOTE: gene_symbol already passed to plotConfig
     const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
@@ -986,7 +971,7 @@ const populateGeneTable = (data, plotType) => {
 const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id
+        session_id: sessionId
         , label: document.getElementById("new_genecart_label").value
         , gctype: "unweighted-list"
         , organism_id:  organismId
@@ -1009,9 +994,9 @@ const saveWeightedGeneCart = () => {
     const plotType = plotStyle.plotType;
     const plotConfig = plotStyle.plotConfig;
 
+	// Saving raw FC by default so it is easy to transform weight as needed
 	const foldchangeLabel = "FC"
-
-    let weight_labels = [foldchangeLabel];
+    let weightLabels = [foldchangeLabel];
 
 
     if (plotType === "quadrant") {
@@ -1024,16 +1009,16 @@ const saveWeightedGeneCart = () => {
         const fcl1 = `${xLabel}-${foldchangeLabel}`
         const fcl2 = `${yLabel}-${foldchangeLabel}`
 
-        weight_labels = [fcl1, fcl2];
+        weightLabels = [fcl1, fcl2];
     }
 
 	const gc = new WeightedGeneCart({
-		session_id
+		session_id: sessionId
 		, label:  document.getElementById("new_genecart_label").value
 		, gctype: 'weighted-list'
 		, organism_id: organismId
 		, is_public: 0
-	}, weight_labels);
+	}, weightLabels);
 
     // Volcano and Quadrant plots have multiple traces of genes, broken into groups.
     // Loop through these to get the info we need.

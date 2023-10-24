@@ -272,7 +272,7 @@ const cloneDisplay = async (event, display) => {
     plotType = curatorSpecificPlotTypeAdjustments(plotType);
 
     try {
-        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined);
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
@@ -584,6 +584,29 @@ const fetchAnalyses = async (datasetId) => {
     }
 }
 
+const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id, isMultigene=false) => {
+
+    const flavor = isMultigene ? "mg_availableDisplayTypes" : "availableDisplayTypes";
+
+    const payload = {session_id, dataset_id, analysis_id};
+    try {
+        const {data} = await axios.post(`/api/h5ad/${dataset_id}/${flavor} `, payload);
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
+        }
+
+        // Multigene plot types will depend on the number of comparabie categorical conditions
+        // Volcano plots must have at least two conditions
+        // Quadrant plots must have at least three conditions
+
+        return data;
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast(error.message);
+        throw new Error(msg);
+    }
+}
+
 const fetchDatasets = async (session_id) => {
     const payload = {session_id}
     try {
@@ -886,7 +909,7 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
     try {
         plotTypeSelect.clear();
-        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, analysisId);
+        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, analysisId, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);

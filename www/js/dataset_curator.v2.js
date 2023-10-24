@@ -702,21 +702,6 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
 
 }
 
-const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id) => {
-    const payload = {session_id, dataset_id, analysis_id};
-    try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/availableDisplayTypes`, payload);
-        if (data.hasOwnProperty("success") && data.success < 1) {
-            throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
-        }
-        return data;
-    } catch (error) {
-        logErrorInConsole(error);
-        createToast(error.message);
-        throw new Error(msg);
-    }
-}
-
 const fetchPlotlyData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
     // NOTE: gene_symbol already passed to plotConfig
     const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };

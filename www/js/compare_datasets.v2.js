@@ -50,7 +50,7 @@ let facetWidget;
 let datasetId;
 let organismId;	// Used for saving as gene cart
 let compareData;;
-let selectedData;
+let selectedGeneData;
 let geneSelect;
 
 const datasetTree = new DatasetTree({
@@ -91,7 +91,7 @@ const datasetTree = new DatasetTree({
     	// Creates gene select instance that allows for multiple selection
 		geneSelect = createGeneSelectInstance("gene_select", geneSelect);
 		// Populate gene select element
-		geneSelectUpdate()
+		await geneSelectUpdate()
 
 
 		// Create facet widget, which will refresh filters
@@ -154,6 +154,17 @@ const geneCartTree = new GeneCartTree({
         trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
     })
 });
+
+const adjustGeneTableLabels = () => {
+    const geneFoldchanges = document.getElementById("tbl_gene_foldchanges");
+	const log_base = document.getElementById("log_base").value;
+
+	if (log_base === "raw") {
+		geneFoldchanges.innerHTML = 'Fold Change <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
+		return;
+	}
+	geneFoldchanges.innerHTML = `Log${log_base} Fold Change <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>`;
+}
 
 const appendGeneTagButton = (geneTagElt) => {
     // Add delete button
@@ -316,6 +327,54 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 }
 
+const downloadSelectedGenes = (event) => {
+    event.preventDefault();
+
+	// Builds a file in memory for the user to download.  Completely client-side.
+	// plot_data contains three keys: x, y and symbols
+	// build the file string from this
+
+    // Adjust headers to the plot type
+	const xLabel = JSON.stringify([...document.querySelectorAll("#compare_x input:checked")].map((elt) => elt.value));
+	const yLabel = JSON.stringify([...document.querySelectorAll("#compare_y input:checked")].map((elt) => elt.value));
+
+	const logBase = document.getElementById("log_base").value;
+
+	let fileContents =
+		logBase === "raw"
+		? "gene_symbol\tp-value\traw fold change\t"
+		+ xLabel + "\t"
+		+ yLabel + "\n"
+		: "gene_symbol\tp-value\traw fold change\t"
+		+ xLabel + " (log" + logBase +")\t"
+		+ yLabel + " (log" + logBase +")\n";
+
+
+	selectedGeneData.forEach((gene) => {
+		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+		fileContents +=
+			`${gene.gene_symbol}\t`
+			+ `${gene.pval}\t`
+			+ `${gene.foldchange}\t`
+			+ `${gene.x}\t`
+			+ `${gene.y}\n`;
+	});
+
+	const element = document.createElement("a");
+	element.setAttribute(
+		"href",
+		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
+	);
+	element.setAttribute("download", "selected_genes.tsv");
+	element.style.display = "none";
+	document.body.appendChild(element);
+	element.click();
+	document.body.removeChild(element);
+
+
+}
+
+
 const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
     const payload = {session_id, dataset_id, analysis_id, filters};
     try {
@@ -438,6 +497,13 @@ const getComparisons = async (event) => {
 		}
 		compareData = data;
 		plotDataToGraph(compareData);
+
+		// If any genes selected, update plot annotations (since plot was previously purged)
+		const sortedGenes = geneSelect.selectedOptions.map((opt) => opt.data.value).sort();
+		updatePlotAnnotations(sortedGenes);
+
+        // Show button to add genes to gene cart
+        document.getElementById("gene_cart_btn_c").classList.remove("is-hidden");
 
 		// Hide this view
 		document.getElementById("content_c").classList.add("is-hidden");
@@ -717,55 +783,95 @@ const plotDataToGraph = (data) => {
 
 	// If plot data is selected, create the right-column table and do other misc things
 	plotlyPreview.on("plotly_selected", (eventData) => {
-		selectedData = eventData;
-		const selectedGeneData = [];
 
-		eventData.points.forEach((pt) => {
-			// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-			// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
-			selectedGeneData.push({
-				gene_symbol: pt.data.id[pt.pointNumber],
-				pvals: statisticalTest ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
-				foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
-			});
-		});
+		// Hide selected genes table and disable unweighted radio button if no genes are selected
+		document.getElementById("tbl_selected_genes").classList.add("is-hidden");
+		document.getElementById("download_selected_genes_btn").classList.add("is-hidden");
+		document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
+		document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
 
-		// Sort by adjusted p-value in descending order either by fold change or p-values
-		selectedGeneData.sort((a, b) => b.foldchange - a.foldchange);
-		if (statisticalTest)
-			selectedGeneData.sort((a, b) => a.pvals - b.pvals);
+		if (eventData?.points.length) {
+			document.getElementById("tbl_selected_genes").classList.remove("is-hidden");
+			document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
+			document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
+			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
+		}
 
-		/*
-		const template = $.templates("#selected_genes_tmpl");
-		const htmlOutput = template.render(selectedGeneData);
-		$("#selected_genes_c").html(htmlOutput);
+		adjustGeneTableLabels();
+		populateGeneTable(eventData);
+
+		// Get genes from gene tags
+		const geneTags = document.querySelectorAll("#gene_tags span.tag");
+		const searchedGenes = [];
+		for (const tag of geneTags) {
+			searchedGenes.push(tag.textContent);
+		}
 
 		// Highlight table rows that match searched genes
-		if ($('#highlighted_genes').val()) {
-			const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
+		if (searchedGenes) {
+			const geneTableBody = document.getElementById("gene_table_body");
 			// Select the first column (gene_symbols) in each row
-			$("#selected_genes_c tr td:first-child").each(function() {
-				const table_gene = $(this).text();
-				searched_genes.forEach((gene) => {
-					if (gene.toLowerCase() === table_gene.toLowerCase() ) {
-						$(this).parent().addClass("table-success");
+			for (const row of geneTableBody.children) {
+				const tableGene = row.children[0].textContent;
+				for (const gene of searchedGenes) {
+					if (gene.toLowerCase() === tableGene.toLowerCase() ) {
+						row.classList.add("has-background-success-light");
 					}
-				});
-			})
+				};
+			}
 		}
-		*/
-
 	});
-
-	/*window.onresize = () => {
-		Plotly.Plots.resize(graphDiv);
-	};*/
 
 	const plotlyNote = generateElements(`
 		<div id="tip_on_editing" class="notification is-info is-light">
 			<p><strong>Tip:</strong> You can click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>
 		</div>`);
 	plotlyPreview.append(plotlyNote);
+}
+
+
+const populateGeneTable = (data) => {
+	const statisticalTest = document.getElementById("statistical_test").value;
+
+	selectedGeneData = [];
+
+	data.points.forEach((pt) => {
+		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+		// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
+		selectedGeneData.push({
+			gene_symbol: pt.data.id[pt.pointNumber],
+			pval: statisticalTest ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
+			foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
+			x: pt.data.x[pt.pointNumber].toFixed(1),
+			y: pt.data.y[pt.pointNumber].toFixed(1)
+		});
+	});
+
+	// Sort by adjusted p-value in descending order either by fold change or p-values
+	selectedGeneData.sort((a, b) => b.foldchange - a.foldchange);
+	if (statisticalTest)
+		selectedGeneData.sort((a, b) => a.pval - b.pval);
+
+
+    const geneTableBody = document.getElementById("gene_table_body");
+    geneTableBody.replaceChildren();
+
+    for (const gene of selectedGeneData) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.pval}</td><td>${gene.foldchange}</td>`;
+        geneTableBody.appendChild(row);
+    }
+
+	// If not statistical test, delete p-value column
+	if (!statisticalTest) {
+		const pvalColumn = document.querySelector("#tbl_selected_genes thead tr th:nth-child(2)");
+		pvalColumn.remove();
+		for (const pvalCell of document.querySelectorAll("#tbl_selected_genes tbody tr td:nth-child(2)")) {
+			pvalCell.remove();
+		}
+	}
+	// Should be sorted by logFC now
+
 }
 
 const populatePostCompareBox = (scope, series, groups) => {
@@ -803,6 +909,166 @@ const sanitizeCondition = (condition) => {
 	return sanitized_condition;
 }
 
+const saveGeneCart = () => {
+    // must have access to USER_SESSION_ID
+    const gc = new GeneCart({
+        session_id: sessionId
+        , label: document.getElementById("new_genecart_label").value
+        , gctype: "unweighted-list"
+        , organism_id:  organismId
+        , is_public: 0
+    });
+
+    for (const sg of selectedGeneData) {
+        const gene = new Gene({
+            id: sg.ensembl_id, // Ensembl ID stored in "customdata" property
+            gene_symbol: sg.gene_symbol,
+        });
+        gc.addGene(gene);
+    }
+
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+const saveWeightedGeneCart = () => {
+
+	// must have access to USER_SESSION_ID
+
+
+	// Saving raw FC by default so it is easy to transform weight as needed
+	const weightLabels = ["FC"];
+
+	const gc = new WeightedGeneCart({
+		session_id: sessionId
+		, label:  document.getElementById("new_genecart_label").value
+		, gctype: 'weighted-list'
+		, organism_id: organismId
+		, is_public: 0
+	}, weightLabels);
+
+	compareData.gene_ids.forEach((gene_id, i) => {
+		const weights = [compareData.fold_changes[i]];
+
+		const gene = new WeightedGene({
+			id: gene_id,
+			gene_symbol: compareData.symbols[i]
+		}, weights);
+		gc.addGene(gene);
+	});
+
+	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+// Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
+const sortGeneTable = (mode) => {
+	let table;
+	let rows;
+	let switching;
+	let i;
+	let x;
+	let y;
+	let shouldSwitch;
+	let dir;
+	let switchcount = 0;
+	table = document.getElementById("tbl_selected_genes");
+
+	switching = true;
+	// Set the sorting direction to ascending:
+	dir = "asc";
+	/* Make a loop that will continue until
+		no switching has been done: */
+	while (switching) {
+		// Start by saying: no switching is done:
+		switching = false;
+		rows = table.rows;
+		/* Loop through all table rows (except the
+		first, which contains table headers): */
+		for (i = 1; i < rows.length - 1; i++) {
+            // Start by saying there should be no switching:
+            shouldSwitch = false;
+            /* Get the two elements you want to compare,
+                one from current row and one from the next: */
+            x = rows[i].getElementsByTagName("td")[mode];
+            y = rows[i + 1].getElementsByTagName("td")[mode];
+            /* Check if the two rows should switch place,
+                based on the direction, asc or desc: */
+            if (dir == "asc") {
+                // First column is gene_symbol... rest are numbers
+                if (mode === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                    // If so, mark as a switch and break the loop:
+                    shouldSwitch = true;
+                    break;
+                }
+                if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            } else if (dir == "desc") {
+                if (mode === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                    // If so, mark as a switch and break the loop:
+                    shouldSwitch = true;
+                    break;
+                }
+                if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            }
+		}
+		if (shouldSwitch) {
+            /* If a switch has been marked, make the switch
+                and mark that a switch has been done: */
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            // Each time a switch is done, increase this count by 1:
+            switchcount++;
+
+		} else {
+            /* If no switching has been done AND the direction is "asc",
+                set the direction to "desc" and run the while loop again. */
+            if (switchcount == 0 && dir == "asc") {
+                dir = "desc";
+                switching = true;
+            }
+		}
+	}
+
+    // Reset other sort icons to "ascending" state, to show what direction they will sort when clicked
+    const otherTblHeaders = document.querySelectorAll(`.js-tbl-gene-header:not(:nth-child(${mode + 1}))`);
+    for (const tblHeader of otherTblHeaders) {
+        const currIcon = tblHeader.querySelector("i");
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-descending");
+            currIcon.classList.add("mdi-sort-alphabetical-ascending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-descending");
+            currIcon.classList.add("mdi-sort-numeric-ascending");
+        }
+    }
+
+    // toggle the mdi icons between ascending / descending
+    // icon needs to reflect the current state of the sort
+    const selectedTblHeader = document.querySelector(`.js-tbl-gene-header:nth-child(${mode + 1})`);
+    const currIcon = selectedTblHeader.querySelector("i");
+    if (dir == "asc") {
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-descending");
+            currIcon.classList.add("mdi-sort-alphabetical-ascending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-descending");
+            currIcon.classList.add("mdi-sort-numeric-ascending");
+        }
+    } else {
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-ascending");
+            currIcon.classList.add("mdi-sort-alphabetical-descending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-ascending");
+            currIcon.classList.add("mdi-sort-numeric-descending");
+        }
+    }
+}
+
 const updateGeneOptions = (geneSymbols) => {
 
     const geneSelectElt = document.getElementById("gene_select");
@@ -824,6 +1090,45 @@ const updateGeneOptions = (geneSymbols) => {
     // This function is always called in the 1st view, so only update that
     geneSelect.update();
 
+}
+
+// For a given categorical series (e.g. "celltype"), add checkboxes for each category
+const updateGroupOptions = (selectorId, groupsArray, series) => {
+
+	const elt = document.getElementById(selectorId);
+
+	elt.replaceChildren();
+	elt.classList.remove("is-hidden");
+
+	// Add categories
+	for (const group of groupsArray.sort()) {
+
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.id = `${selectorId}_${group}`;
+		checkbox.name = group;
+		checkbox.value = group;
+
+		const label = document.createElement("label");
+		label.classList.add("checkbox");
+		label.htmlFor = `${selectorId}_${group}`;
+		label.textContent = ` ${group}`;
+		label.prepend(checkbox);
+
+		// If group has aggregations count of 0 (no data after filtering), disable checkbox and label
+		if (facetWidget.aggregations.find((agg) => agg.name === series).items.find((item) => item.name === group).count === 0) {
+			checkbox.disabled = true;
+			label.setAttribute("disabled", "disabled");
+		}
+
+
+		// create .control div to ensure checkboxs are vertically aligned
+		const control = document.createElement("div");
+		control.classList.add("control", "m-1");
+		control.append(label);
+
+		elt.append(control);
+	}
 }
 
 // Update the plotly graph with the selected genes
@@ -868,39 +1173,6 @@ const updatePlotAnnotations = (genes) => {
 	Plotly.relayout(plotlyPreview, layout);
 }
 
-// For a given categorical series (e.g. "celltype"), add checkboxes for each category
-const updateGroupOptions = (selectorId, groupsArray) => {
-
-	const elt = document.getElementById(selectorId);
-
-	elt.replaceChildren();
-	elt.classList.remove("is-hidden");
-
-	// Add categories
-	for (const group of groupsArray.sort()) {
-
-		const checkbox = document.createElement("input");
-		checkbox.type = "checkbox";
-		checkbox.id = `${selectorId}_${group}`;
-		checkbox.name = group;
-		checkbox.value = group;
-
-		const label = document.createElement("label");
-		label.classList.add("checkbox");
-		label.htmlFor = `${selectorId}_${group}`;
-		label.textContent = ` ${group}`;
-		label.prepend(checkbox);
-
-
-		// create .control div to ensure checkboxs are vertically aligned
-		const control = document.createElement("div");
-		control.classList.add("control", "m-1");
-		control.append(label);
-
-		elt.append(control);
-	}
-}
-
 // For plotting options, populate select menus with category groups
 const updateSeriesOptions = (classSelector, seriesArray) => {
 
@@ -920,6 +1192,13 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
             elt.append(option);
         }
     }
+}
+
+const updateUIAfterGeneCartSaveSuccess = (gc) => {
+}
+
+const updateUIAfterGeneCartSaveFailure = (gc, message) => {
+    createToast(message);
 }
 
 const validateCompareGroups = (event) => {
@@ -981,18 +1260,30 @@ document.getElementById("statistical_test").addEventListener("change", (event) =
 
 // When compare series changes, update the compare groups
 for (const classElt of document.getElementsByClassName("js-compare")) {
+	const compareSeriesNotification = document.getElementById("select_compare_series_notification");
 	classElt.addEventListener("change", async (event) => {
 		const compareSeries = event.target.value;
-		document.getElementById("select_compare_series_notification").classList.remove("is-hidden");
+		compareSeriesNotification.classList.remove("is-hidden", "is-danger");
+		compareSeriesNotification.classList.add("is-warning");
+		compareSeriesNotification.textContent = "Please select a series to compare first";
 		if (!compareSeries) return;
 
 		const seriesItems = getSeriesItems(compareSeries);
 		const seriesNames = getSeriesNames(seriesItems);
 
-		document.getElementById("select_compare_series_notification").classList.add("is-hidden");
+		// at least 2 of the series items must have 1+ aggregation total, or else we can't compare
+		const seriesAggCountsFiltered = seriesItems.filter((item) => item.count > 0);
+		if (seriesAggCountsFiltered.length < 2) {
+			compareSeriesNotification.classList.remove("is-warning");
+			compareSeriesNotification.classList.add("is-danger");
+			compareSeriesNotification.textContent = `At least 2 groups within ${compareSeries} must each have one or more observations (after filtering) to compare`;
+			return;
+		}
 
-		updateGroupOptions("compare_x", seriesNames);
-		updateGroupOptions("compare_y", seriesNames);
+		compareSeriesNotification.classList.add("is-hidden");
+
+		updateGroupOptions("compare_x", seriesNames, compareSeries);
+		updateGroupOptions("compare_y", seriesNames, compareSeries);
 	})
 }
 
@@ -1039,6 +1330,35 @@ const geneSelectElts = document.querySelectorAll("select.js-gene-select");
 for (const geneSelectElt of geneSelectElts) {
     geneSelectElt.addEventListener("change", chooseGene);
 }
+
+// code from Bulma documentation to handle modals
+document.getElementById("gene_cart_btn").addEventListener("click", ($trigger) => {
+    const closestButton = $trigger.target.closest(".button");
+    const modal = closestButton.dataset.target;
+    const $target = document.getElementById(modal);
+    openModal($target);
+
+});
+
+document.getElementById("new_genecart_label").addEventListener("input", (event) => {
+    const saveBtn = document.getElementById("save_genecart_btn");
+    saveBtn.disabled = event.target.value ? false : true;
+});
+
+document.getElementById("save_genecart_btn").addEventListener("click", (event) => {
+    event.preventDefault();
+    event.target.classList.add("is-loading");
+    // get value of genecart radio button group
+    const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
+    if (CURRENT_USER) {
+        if (geneCartName === "unweighted") {
+            saveGeneCart();
+        } else {
+            saveWeightedGeneCart();
+        }
+    }
+    event.target.classList.remove("is-loading");
+});
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
