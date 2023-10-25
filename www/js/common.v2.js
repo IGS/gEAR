@@ -34,14 +34,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add click event for collapsable left navbar text
     const navbar_toggler = document.querySelector('#navbar-toggler');
     navbar_toggler.addEventListener('click', (event) => {
+        const isCollapsed = navbar_toggler.classList.contains('is-collapsed');
 
         // toggle is-collapsed on all span elements of class icon-text-part
         (document.querySelectorAll('.icon-text-part') || []).forEach(($menuLabel) => {
+            console.log("looping over a text label");
             $menuLabel.classList.toggle('is-collapsed');
+
+            // now after the collapse finishes, toggle is-hidden
+            $menuLabel.addEventListener('transitionend', () => {
+                if (isCollapsed) {
+                    // Sidebar is collapsed
+                    console.log('Sidebar is expanded');
+                    // Perform actions for when the sidebar is collapsed
+
+                } else {
+                    // Sidebar is expanded
+                    console.log('Sidebar is collapsed');
+                    // Perform actions for when the sidebar is expanded
+                }
+                $menuLabel.classList.toggle('is-hidden');
+            });
         });
 
         // hide the citation element
         document.querySelector("#citation_c").classList.add("is-hidden")
+
+        // also toggle the main site icon
     });
 
 

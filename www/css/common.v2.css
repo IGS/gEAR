@@ -29,12 +29,12 @@ html, body {
 /* -= Left navbar section =- */
 
 .menu-list .icon-text-part {
-    transition: transform 0.3s, width 0.3s;
+    max-width: 240px;
+    transition: transform 0.3s;
 }
 
 .menu-list .icon-text-part.is-collapsed {
-    transform: translateX(-240px);
-    width: 0;
+    transform: translateX(-100%);
 }
 
 /* ------------------ */
