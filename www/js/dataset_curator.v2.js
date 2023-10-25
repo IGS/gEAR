@@ -107,11 +107,11 @@ class PlotlyHandler extends PlotHandler {
         }
     }
 
-    async createPlot(datasetId, analysisObj, colorblindMode) {
+    async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchPlotlyData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
+            const data = await fetchPlotlyData(datasetId, analysisObj, this.plotType, this.plotConfig);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -335,10 +335,10 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
-    async createPlot(datasetId, analysisObj, colorblindMode) {
+    async createPlot(datasetId, analysisObj) {
         let image;
         try {
-            const data = await fetchTsneImageData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
+            const data = await fetchTsneImageData(datasetId, analysisObj, this.plotType, this.plotConfig);
             ({image} = data);
         } catch (error) {
             return;
@@ -497,6 +497,7 @@ class SvgHandler extends PlotHandler {
 
 const colorSVG = (chartData, plotConfig) => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
+    const colorblindMode = CURRENT_USER.colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
@@ -627,10 +628,10 @@ const curatorSpecifcChooseGene = (event) => {
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
-        await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
+        await plotStyle.createPlot(datasetId, analysisObj);
 
     } else if (scanpyPlots.includes(plotType)) {
-        await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
+        await plotStyle.createPlot(datasetId, analysisObj);
 
     } else if (plotType === "svg") {
         await plotStyle.createPlot(datasetId, geneSymbol);
@@ -702,11 +703,10 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
 
 }
 
-const fetchPlotlyData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
+const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
     // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
     try {
-        const { data } = await axios.post(`/api/plot/${datasetId}`, payload);
+        const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -721,7 +721,7 @@ const fetchPlotlyData = async (plotConfig, datasetId, plot_type, analysis, color
 
 const fetchSvgData = async (datasetId, geneSymbol) => {
     try {
-        const { data } = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`);
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -734,11 +734,10 @@ const fetchSvgData = async (datasetId, geneSymbol) => {
     }
 };
 
-const fetchTsneImageData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode) => {
+const fetchTsneImageData = async (datasetId, analysis, plotType, plotConfig) => {
     // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
     try {
-        const { data } = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
+        const data = await apiCallsMixin.fetchTsneImageData(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -799,7 +798,7 @@ const setupPlotlyOptions = async () => {
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const plotType = getSelect2Value(plotTypeSelect);
     try {
-        ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
+        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
         return;
@@ -1010,7 +1009,7 @@ const setupScanpyOptions = async () => {
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const plotType = getSelect2Value(plotTypeSelect);
     try {
-        ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
+        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
         return;

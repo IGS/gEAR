@@ -45,7 +45,6 @@ const LOG10_TRANSFORMED_DATASETS = [
 ];
 
 let sessionId;
-let colorblindMode;
 let facetWidget;
 let datasetId;
 let organismId;	// Used for saving as gene cart
@@ -88,6 +87,14 @@ const datasetTree = new DatasetTree({
 		const compareSeriesElt = document.getElementById("compare_series");
 		compareSeriesElt.parentElement.classList.add("is-loading");
 
+		// Clear selected gene tags
+		document.getElementById("gene_tags").replaceChildren();
+
+		// Clear compare groups
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.replaceChildren();
+		}
+
     	// Creates gene select instance that allows for multiple selection
 		geneSelect = createGeneSelectInstance("gene_select", geneSelect);
 		// Populate gene select element
@@ -95,7 +102,7 @@ const datasetTree = new DatasetTree({
 
 
 		// Create facet widget, which will refresh filters
-		facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
+		facetWidget = await createFacetWidget(datasetId, null, {});
 		document.getElementById("facet_content").classList.remove("is-hidden");
 		document.getElementById("selected_facets").classList.remove("is-hidden");
 
@@ -118,7 +125,7 @@ const geneCartTree = new GeneCartTree({
 
         // Get gene symbols from gene cart
         const geneCartId = e.node.data.orig_id;
-        const geneCartMembers = await fetchGeneCartMwembers(sessionId, geneCartId);
+        const geneCartMembers = await fetchGeneCartMembers(geneCartId);
         const geneCartSymbols = geneCartMembers.map((item) => item.label);
 
         // Normalize gene symbols to lowercase
@@ -240,10 +247,10 @@ const clearGenes = (event) => {
     document.getElementById("clear_genes_btn").classList.remove("is-loading");
 }
 
-const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
+const createFacetWidget = async (datasetId, analysisId, filters) => {
     document.getElementById("selected_facets_loader").classList.remove("is-hidden")
 
-    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
     document.getElementById("num_selected").textContent = totalCount;
 
 
@@ -253,7 +260,7 @@ const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
         onFilterChange: async (filters) => {
             if (filters) {
                 try {
-                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+                    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
                     facetWidget.updateAggregations(aggregations);
                     document.getElementById("num_selected").textContent = totalCount;
                 } catch (error) {
@@ -313,7 +320,7 @@ const createToast = (msg, levelClass="is-danger") => {
 
     // This should get the newly added notification since it is now the first
     document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.closet(".js-toast.notification");
+        const notification = event.target.closest(".js-toast.notification");
         notification.remove(notification);
     });
 
@@ -375,10 +382,9 @@ const downloadSelectedGenes = (event) => {
 }
 
 
-const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
-    const payload = {session_id, dataset_id, analysis_id, filters};
+const fetchAggregations = async (datasetId, analysisId, filters) => {
     try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
+        const data = await apiCallsMixin.fetchAggregations(datasetId, analysisId, filters)
         if (data.hasOwnProperty("success") && data.success < 1) {
             throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
         }
@@ -389,10 +395,9 @@ const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) =
     }
 }
 
-const fetchDatasetComparison = async (dataset_id, obs_filters, compare_key, condition_x, condition_y, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test) => {
-	const payload = {dataset_id, obs_filters, condition_x, compare_key, condition_y, fold_change_cutoff, std_dev_num_cutoff, log_transformation, statistical_test};
+const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction) => {
 	try {
-		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
+		return await apiCallsMixin.fetchDatasetComparison(datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction);
 		return data;
 	} catch (error) {
 		logErrorInConsole(error);
@@ -402,11 +407,9 @@ const fetchDatasetComparison = async (dataset_id, obs_filters, compare_key, cond
 	}
 }
 
-const fetchDatasets = async (session_id) => {
-    const payload = {session_id}
+const fetchDatasets = async () => {
     try {
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
-        return data;
+        return await apiCallsMixin.fetchDatasets();
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch datasets. Please contact the gEAR team."
@@ -416,11 +419,9 @@ const fetchDatasets = async (session_id) => {
 }
 
 /* Fetch gene collection members */
-const fetchGeneCartMwembers = async (session_id, geneCartId) => {
-    const payload = { session_id, gene_cart_id: geneCartId };
+const fetchGeneCartMembers = async (geneCartId) => {
     try {
-        const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
-        const {gene_symbols, success} = data;
+        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
         if (!success) {
             throw new Error("Could not fetch gene collection members. You can still enter genes manually.");
         }
@@ -434,11 +435,10 @@ const fetchGeneCartMwembers = async (session_id, geneCartId) => {
 }
 
 /* Fetch gene collections */
-const fetchGeneCarts = async (session_id) => {
-    const payload = {session_id, "cart_type":"unweighted-list" };
+const fetchGeneCarts = async () => {
+    const cartType = "unweighted-list";
     try {
-        const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
-        return data;
+        return await apiCallsMixin.fetchGeneCarts(cartType);
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch gene collections. You can still enter genes manually.";
@@ -448,18 +448,15 @@ const fetchGeneCarts = async (session_id) => {
 }
 
 const fetchGeneSymbols = async (datasetId, analysisId) => {
-    let url = `./api/h5ad/${datasetId}/genes`;
-    if (analysisId) url += `?analysis_id=${analysisId}`;
-
-    try {
-        const { data } = await axios.get(url);
-        return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        return [];
-    }
+	try {
+		const data = await apiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
+		return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
+	} catch (error) {
+		logErrorInConsole(error);
+		const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
+		createToast(msg);
+		return [];
+	}
 }
 
 const geneSelectUpdate = async (analysisId=null) => {
@@ -557,7 +554,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await fetchDatasets(sessionId);
+        const datasetData = await fetchDatasets();
 
         let counter = 0;
 
@@ -598,7 +595,7 @@ const loadDatasetTree = async () => {
 /* Transform and load gene collection data into a "tree" format */
 const loadGeneCarts = async () => {
     try {
-        const geneCartData = await fetchGeneCarts(sessionId);
+        const geneCartData = await fetchGeneCarts();
         const carts = {};
         const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
         let cartsFound = false;
@@ -686,8 +683,8 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: passing.labels,
 					marker: {
-					color: passColor,
-					size: 4,
+						color: passColor,
+						size: 4,
 					},
 				}
 			const failingObj = {
@@ -701,8 +698,8 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: failing.labels,
 					marker: {
-					color: failColor,
-					size: 4,
+						color: failColor,
+						size: 4,
 					},
 				}
 			plotData.push(passingObj);
@@ -719,8 +716,8 @@ const plotDataToGraph = (data) => {
 				type: "scatter",
 				text: passing.labels,
 				marker: {
-				color: "#2F103E",
-				size: 4,
+					color: "#2F103E",
+					size: 4,
 				},
 			}
 			plotData.push(passingObj);
@@ -732,19 +729,19 @@ const plotDataToGraph = (data) => {
 		}
 
 		const dataObj = {
-				id: data.symbols,
-				pvals: data.pvals_adj,
-				x: data.x,
-				y: data.y,
-				foldchange: data.fold_changes,
-				mode: "markers",
-				type: "scatter",
-				text: pointLabels,
-				marker: {
+			id: data.symbols,
+			pvals: data.pvals_adj,
+			x: data.x,
+			y: data.y,
+			foldchange: data.fold_changes,
+			mode: "markers",
+			type: "scatter",
+			text: pointLabels,
+			marker: {
 				color: "#2F103E",
 				size: 4,
-				},
-			}
+			},
+		}
 		plotData.push(dataObj);
 	}
 
@@ -795,10 +792,10 @@ const plotDataToGraph = (data) => {
 			document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
 			document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
 			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
-		}
 
-		adjustGeneTableLabels();
-		populateGeneTable(eventData);
+			adjustGeneTableLabels();
+			populateGeneTable(eventData);
+		}
 
 		// Get genes from gene tags
 		const geneTags = document.querySelectorAll("#gene_tags span.tag");
@@ -1096,8 +1093,6 @@ const updateGeneOptions = (geneSymbols) => {
 const updateGroupOptions = (selectorId, groupsArray, series) => {
 
 	const elt = document.getElementById(selectorId);
-
-	elt.replaceChildren();
 	elt.classList.remove("is-hidden");
 
 	// Add categories
@@ -1139,7 +1134,16 @@ const updatePlotAnnotations = (genes) => {
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
-	const annotationColor = CURRENT_USER.colorblind_mode ? 'rgb(125, 124, 118)' : "crimson";
+	// get invert of scatterpoint colors for annotation color
+	const invertColor = (hex) => {
+		return (Number(`0x1${hex}`) ^ 0xFFFFFF).toString(16).substr(1).toUpperCase()
+	}
+
+	const cutoffAction = document.getElementById("cutoff_filter_action").value
+	const defaultColor = cutoffAction === "colorize" ? invertColor("FF0000"): invertColor("2F103E");
+	const colorblindColor = cutoffAction === "colorize" ? invertColor("00224e"): invertColor("7d7c76");
+
+	const annotationColor = CURRENT_USER.colorblind_mode ? colorblindColor : defaultColor;
 
 	layout.annotations = [];
 
@@ -1150,6 +1154,7 @@ const updatePlotAnnotations = (genes) => {
 				if (gene.toLowerCase() !== element.toLowerCase() ) {
 					return;
 				}
+
 				// If gene is found add an annotation arrow
 				layout.annotations.push({
 					xref: "x",
@@ -1157,11 +1162,10 @@ const updatePlotAnnotations = (genes) => {
 					x: trace.x[i],
 					y: trace.y[i],
 					text:element,
-					font: {
-						color: annotationColor,
-					},
+					bgcolor: annotationColor,
 					showarrow: true,
 					arrowcolor: annotationColor,
+					opacity: 0.8,
 
 				});
 				found = true;
@@ -1266,6 +1270,12 @@ for (const classElt of document.getElementsByClassName("js-compare")) {
 		compareSeriesNotification.classList.remove("is-hidden", "is-danger");
 		compareSeriesNotification.classList.add("is-warning");
 		compareSeriesNotification.textContent = "Please select a series to compare first";
+
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.classList.add("is-hidden");
+			classElt.replaceChildren();
+		}
+
 		if (!compareSeries) return;
 
 		const seriesItems = getSeriesItems(compareSeries);
@@ -1372,8 +1382,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.querySelector("a[tool='compare'").classList.add("is-active");
 
     sessionId = CURRENT_USER.session_id;
-    colorblindMode = CURRENT_USER.colorblind_mode || false;
-    Cookies.set('gear_session_id', sessionId, { expires: 7 });
+
+	if (! sessionId ) {
+		// TODO: Add master override to prevent other triggers from enabling saving
+        createToast("Not logged in so saving gene carts is disabled.");
+        document.getElementById("gene_cart_btn").disabled = true;
+    }
+
 
 	try {
 		await Promise.all([

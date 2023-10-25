@@ -19,9 +19,6 @@ let analysisSelect = null;
 let plotTypeSelect = null;
 let colorscaleSelect = null;
 
-let sessionId;
-let colorblindMode;
-
 /*
 ! Quick note -
 This code uses a lot of "for...in..." and "for...of..." syntax
@@ -77,6 +74,196 @@ class PlotHandler {
 
 }
 
+/* API Mixin */
+
+const curatorApiCallsMixin = {
+
+    async deleteDisplay(displayId) {
+        try {
+            await super.deleteDisplay(displayId);
+            // Remove display card
+            const displayCard = document.getElementById(`${displayId}_display`);
+            displayCard.remove();
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not delete this display. Please contact the gEAR team."
+            createToast(msg);
+            throw new Error(msg);
+        }
+    },
+    async fetchAggregations(datasetId, analysisId, filters){
+        try {
+            const data = await super.fetchAggregations(datasetId, analysisId, filters);
+            if (data.hasOwnProperty("success") && data.success < 1) {
+                throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
+            }
+            const {aggregations, total_count} = data;
+            return {aggregations, total_count};
+        } catch (error) {
+            logErrorInConsole(error);
+        }
+    },
+
+    async fetchAnalyses (datasetId) {
+        try {
+            const { public: publicAnalyses, private: privateAnalyses } = await super.fetchAnalyses(datasetId);
+            return {publicAnalyses, privateAnalyses};
+
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch saved analyses for this dataset. You can still create a plot but it will be based on the original dataset."
+            createToast(msg);
+            throw new Error(msg);
+        }
+    },
+
+    async fetchAvailablePlotTypes(datasetId, analysisId, isMultigene=false){
+        try {
+            const data = await super.fetchAvailablePlotTypes(datasetId, analysisId, isMultigene);
+            if (data.hasOwnProperty("success") && data.success < 1) {
+                throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
+            }
+
+            // Multigene plot types will depend on the number of comparabie categorical conditions
+            // Volcano plots must have at least two conditions
+            // Quadrant plots must have at least three conditions
+
+            return data;
+        } catch (error) {
+            logErrorInConsole(error);
+            createToast(error.message);
+            throw new Error(msg);
+        }
+    },
+
+    async fetchDatasets() {
+        try {
+            return await super.fetchDatasets();
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch datasets. Please contact the gEAR team."
+            createToast(msg);
+            throw new Error(msg);
+        }
+    },
+
+    async fetchDatasetDisplayImage(datasetId, displayId) {
+        try {
+            return await super.fetchDatasetDisplayImage(datasetId, displayId);
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch the image preview for this dataset display. Please contact the gEAR team."
+            createToast(msg);
+            throw new Error(msg);
+        }
+    },
+
+    async fetchDatasetDisplays(datasetId) {
+        try {
+            // POST due to payload variables being sensitive
+            const {user, owner} = await super.fetchDatasetDisplays(datasetId);
+            // Filter only the single-gene displays
+            if (isMultigene) {
+                const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+                const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+                return {userDisplays, ownerDisplays};
+            }
+            const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+            const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+            return {userDisplays, ownerDisplays};
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch the saved displays for this dataset. Please contact the gEAR team."
+            createToast(msg);
+            return [];  // Send an empty list of displays
+        }
+    },
+
+    async fetchDefaultDisplay(datasetId) {
+        try {
+            // POST due to payload variables being sensitive
+            const {default_display_id} =  await super.fetchDefaultDisplay(datasetId);
+            return default_display_id;
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch default display for this dataset. Please contact the gEAR team."
+            createToast(msg);
+            throw new Error(msg);
+        }
+    },
+
+    async fetchGeneSymbols(datasetId, analysisId) {
+        try {
+            const data = await super.fetchGeneSymbols(datasetId, analysisId);
+            return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
+            createToast(msg);
+            return [];
+        }
+    },
+
+    async fetchH5adInfo(datasetId, analysisId) {
+        try {
+            const {obs_columns, obs_levels} = await super.fetchH5adInfo(datasetId, analysisId);
+            return { obs_columns, obs_levels };
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not fetch H5AD observation data for this dataset. Please contact the gEAR team."
+            createToast(msg);
+            throw new Error(msg);
+        }
+    },
+
+    async saveDatasetDisplay(datasetId, displayId, label, plotType, plotConfig){
+        // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
+        try {
+            const {display_id, success} = await super.saveDatasetDisplay(datasetId, displayId, label, plotType, plotConfig);
+            if (!success) {
+                throw new Error("Could not save this new display. Please contact the gEAR team.");
+            }
+
+            // Make new display card and make it the default display
+            renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: plotConfig}, display_id);
+
+            return display_id;
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not save this new display. Please contact the gEAR team."
+            createToast(error);
+            throw new Error(msg);
+        }
+    },
+
+    async saveDefaultDisplay(displayId) {
+        try {
+            const {success} = await super.saveDefaultDisplay(datasetId, displayId, isMultigene);
+            if (!success) {
+                throw new Error("Could not save this display as your default. Please contact the gEAR team.");
+            }
+        } catch (error) {
+            logErrorInConsole(error);
+            const msg = "Could not save this display as your default. Please contact the gEAR team."
+            createToast(msg);
+            throw new Error(msg);
+        };
+
+        //Update labels of displays... this becomes "Default", others become "Make Default"
+        for (const elt of document.getElementsByClassName("js-display-default")) {
+            elt.disabled = false;
+            elt.textContent = "Set as Default";
+        }
+
+        const currentDefaultElt = document.getElementById(`${displayId}_default`);
+        currentDefaultElt.disabled = true;
+        currentDefaultElt.textContent = "Default";
+    }
+
+}
+Object.setPrototypeOf(curatorApiCallsMixin, apiCallsMixin);
+
+
 const datasetTree = new DatasetTree({
     element: document.getElementById("dataset_tree")
     , searchElement: document.getElementById("dataset_query")
@@ -113,10 +300,10 @@ const datasetTree = new DatasetTree({
         document.getElementById("dataset_s_success").classList.remove("is-hidden");
 
         // displays
-        const {userDisplays, ownerDisplays} = await fetchDatasetDisplays(sessionId, datasetId);
+        const {userDisplays, ownerDisplays} = await curatorApiCallsMixin.fetchDatasetDisplays(datasetId);
         let defaultDisplayId;
         try {
-            defaultDisplayId = await fetchDefaultDisplay(sessionId, datasetId);
+            defaultDisplayId = await fetchDefaultDisplay(datasetId);
         } catch (error) {
             defaultDisplayId = -1;  // Cannot make any display a default.
         }
@@ -137,7 +324,7 @@ const datasetTree = new DatasetTree({
 
 const analysisSelectUpdate = async () => {
     try {
-        const {publicAnalyses, privateAnalyses} = await fetchAnalyses(datasetId);
+        const {publicAnalyses, privateAnalyses} = await curatorApiCallsMixin.fetchAnalyses(datasetId);
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
         document.getElementById("analysis_type_select_c_success").classList.remove("is-hidden");   // Default analysis is good
     } catch (error) {
@@ -176,7 +363,7 @@ const chooseAnalysis = async (event) => {
         ]);
 
         // Create facet widget
-        facetWidget = await createFacetWidget(sessionId, datasetId, analysisId, {});
+        facetWidget = await createFacetWidget(datasetId, analysisId, {});
     }
 }
 
@@ -229,7 +416,7 @@ const choosePlotType = async (event) => {
     document.getElementById("current_plot_type").textContent = plotType;
 
     // Create facet widget, which will refresh filters
-    facetWidget = await createFacetWidget(sessionId, datasetId, null, {});
+    facetWidget = await createFacetWidget(datasetId, null, {});
     document.getElementById("facet_content").classList.remove("is-hidden");
     document.getElementById("selected_facets").classList.remove("is-hidden");
 
@@ -251,7 +438,7 @@ const cloneDisplay = async (event, display) => {
     // Populate gene select element
     // Will be overwritten if an analysis was in config
     try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, null);
+        const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, null);
         updateGeneOptions(geneSymbols);
     } catch (error) {
         document.getElementById("gene_s_failed").classList.remove("is-hidden");
@@ -272,7 +459,7 @@ const cloneDisplay = async (event, display) => {
     plotType = curatorSpecificPlotTypeAdjustments(plotType);
 
     try {
-        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, undefined, isMultigene);
+        const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, undefined, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
@@ -390,10 +577,10 @@ const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
     });
 }
 
-const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
+const createFacetWidget = async (datasetId, analysisId, filters) => {
     document.getElementById("selected_facets_loader").classList.remove("is-hidden")
 
-    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+    const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
     document.getElementById("num_selected").textContent = totalCount;
 
 
@@ -403,7 +590,7 @@ const createFacetWidget = async (sessionId, datasetId, analysisId, filters) => {
         onFilterChange: async (filters) => {
             if (filters) {
                 try {
-                    const {aggregations, total_count:totalCount} = await fetchAggregations(sessionId, datasetId, analysisId, filters);
+                    const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
                     facetWidget.updateAggregations(aggregations);
                     document.getElementById("num_selected").textContent = totalCount;
                 } catch (error) {
@@ -513,7 +700,7 @@ const createToast = (msg, levelClass="is-danger") => {
 
     // This should get the newly added notification since it is now the first
     document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.closet(".js-toast.notification");
+        const notification = event.target.closest(".js-toast.notification");
         notification.remove(notification);
     });
 
@@ -527,21 +714,6 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 }
 
-const deleteDisplay = async (session_id, displayId) => {
-    const payload = {session_id, id: displayId};
-    try {
-        await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
-        // Remove display card
-        const displayCard = document.getElementById(`${displayId}_display`);
-        displayCard.remove();
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not delete this display. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
 const disableCheckboxLabel = (checkboxElt, state) => {
     // if parent element is a .checkbox class, disable it too (uses Bulma CSS styling)
     // Meant for checkboxes where the label is also a clickable element
@@ -552,153 +724,6 @@ const disableCheckboxLabel = (checkboxElt, state) => {
         } else {
             checkboxElt.parentElement.removeAttribute("disabled");
         }
-    }
-}
-
-const fetchAggregations = async (session_id, dataset_id, analysis_id, filters) => {
-    const payload = {session_id, dataset_id, analysis_id, filters};
-    try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/aggregations`, payload);
-        if (data.hasOwnProperty("success") && data.success < 1) {
-            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
-        }
-        const {aggregations, total_count} = data;
-        return {aggregations, total_count};
-    } catch (error) {
-        logErrorInConsole(error);
-    }
-}
-
-const fetchAnalyses = async (datasetId) => {
-    try {
-        const { data } = await axios.get(`./api/h5ad/${datasetId}/analyses`);
-
-        const { public: publicAnalyses, private: privateAnalyses } = data;
-        return {publicAnalyses, privateAnalyses};
-
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch saved analyses for this dataset. You can still create a plot but it will be based on the original dataset."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchAvailablePlotTypes = async (session_id, dataset_id, analysis_id, isMultigene=false) => {
-
-    const flavor = isMultigene ? "mg_availableDisplayTypes" : "availableDisplayTypes";
-
-    const payload = {session_id, dataset_id, analysis_id};
-    try {
-        const {data} = await axios.post(`/api/h5ad/${dataset_id}/${flavor} `, payload);
-        if (data.hasOwnProperty("success") && data.success < 1) {
-            throw new Error(data?.message || "Could not fetch compatible plot types for this dataset. Please contact the gEAR team.");
-        }
-
-        // Multigene plot types will depend on the number of comparabie categorical conditions
-        // Volcano plots must have at least two conditions
-        // Quadrant plots must have at least three conditions
-
-        return data;
-    } catch (error) {
-        logErrorInConsole(error);
-        createToast(error.message);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasets = async (session_id) => {
-    const payload = {session_id}
-    try {
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
-        return data;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch datasets. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasetDisplayImage = async (dataset_id, display_id) => {
-    const payload = {dataset_id, display_id};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} = await axios.post("/cgi/get_dataset_display_image.cgi", convertToFormData(payload));
-        return data
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch the image preview for this dataset display. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchDatasetDisplays = async (session_id, dataset_id) => {
-    const payload = {session_id, dataset_id};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
-        const {user, owner} = data;
-        // Filter only the single-gene displays
-        if (isMultigene) {
-            const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
-            const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
-            return {userDisplays, ownerDisplays};
-        }
-        const userDisplays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
-        const ownerDisplays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
-        return {userDisplays, ownerDisplays};
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch the saved displays for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        return [];  // Send an empty list of displays
-    }
-}
-
-const fetchDefaultDisplay = async (session_id, dataset_id) => {
-    const payload = {session_id, dataset_id, is_multigene: isMultigene};
-    try {
-        // POST due to payload variables being sensitive
-        const {data} =  await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
-        const {default_display_id} = data;
-        return default_display_id;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch default display for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchGeneSymbols = async (datasetId, analysisId) => {
-    let url = `./api/h5ad/${datasetId}/genes`;
-    if (analysisId) url += `?analysis_id=${analysisId}`;
-
-    try {
-        const { data } = await axios.get(url);
-        return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        return [];
-    }
-}
-
-const fetchH5adInfo = async (datasetId, analysisId) => {
-    let url = `/api/h5ad/${datasetId}`
-    if (analysisId) url += `?analysis_id=${analysisId}`;
-    try {
-        const {data} = await axios.get(url);
-        const { obs_columns, obs_levels } = data;
-        return { obs_columns, obs_levels };
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch H5AD observation data for this dataset. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
     }
 }
 
@@ -730,7 +755,7 @@ const formatColorscaleOptionText = (option, text, isContinuous=false) => {
 const geneSelectUpdate = async (analysisId=null) => {
     // Populate gene select element
     try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
+        const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
         updateGeneOptions(geneSymbols); // Come from curator specific code
     } catch (error) {
         document.getElementById("gene_s_failed").classList.remove("is-hidden");
@@ -865,7 +890,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await fetchDatasets(sessionId);
+        const datasetData = await curatorApiCallsMixin.fetchDatasets();
 
         let counter = 0;
 
@@ -909,7 +934,7 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
     try {
         plotTypeSelect.clear();
-        const availablePlotTypes = await fetchAvailablePlotTypes(sessionId, datasetId, analysisId, isMultigene);
+        const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisId, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
@@ -1001,7 +1026,7 @@ const renderOrderSortableSeries = (series) => {
 const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     let displayUrl = "";
     try {
-        displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
+        displayUrl = await curatorApiCallsMixin.fetchDatasetDisplayImage(datasetId, display.id);
     } catch (error) {
         displayUrl = "/img/dataset_previews/missing.png";
     }
@@ -1065,7 +1090,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     let displayUrl = "";
     try {
-        displayUrl = await fetchDatasetDisplayImage(datasetId, display.id);
+        displayUrl = await curatorApiCallsMixin.fetchDatasetDisplayImage(datasetId, display.id);
     } catch (error) {
         displayUrl = "/img/dataset_previews/missing.png";
     }
@@ -1127,66 +1152,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
     document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
-    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => deleteDisplay(sessionId, display.id));
-}
-
-const saveDatasetDisplay = async(displayId, dataset_id, session_id, label, plot_type, plotConfig) => {
-    // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
-    const payload = {
-        id: displayId,
-        dataset_id,
-        session_id,
-        label,
-        plot_type,
-        plotly_config: JSON.stringify({
-            ...plotConfig,  // depending on display type, this object will have different properties
-        }),
-    };
-    if (!displayId) delete payload.id;  // Prevent passing in "null" as a string.
-
-    try {
-        const {data} = await axios.post("/cgi/save_dataset_display.cgi", convertToFormData(payload));
-        const {display_id, success} = data;
-        if (!success) {
-            throw new Error("Could not save this new display. Please contact the gEAR team.");
-        }
-
-        // Make new display card and make it the default display
-        renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: plotConfig}, display_id);
-
-        return display_id;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not save this new display. Please contact the gEAR team."
-        createToast(error);
-        throw new Error(msg);
-    }
-}
-
-const saveDefaultDisplay = async (displayId) => {
-    const payload = {display_id: displayId, session_id: sessionId, dataset_id: datasetId, is_multigene: isMultigene};
-    try {
-        const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
-        const {success} = data;
-        if (!success) {
-            throw new Error("Could not save this display as your default. Please contact the gEAR team.");
-        }
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not save this display as your default. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    };
-
-    //Update labels of displays... this becomes "Default", others become "Make Default"
-    for (const elt of document.getElementsByClassName("js-display-default")) {
-        elt.disabled = false;
-        elt.textContent = "Set as Default";
-    }
-
-    const currentDefaultElt = document.getElementById(`${displayId}_default`);
-    currentDefaultElt.disabled = true;
-    currentDefaultElt.textContent = "Default";
+    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => curatorApiCallsMixin.deleteDisplay(display.id));
 }
 
 /* Set HTML element value from the plot config value */
@@ -1440,7 +1406,7 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     const label = document.getElementById("new_display_label").value;
     event.target.classList.add("is-loading");
     try {
-        const displayId = await saveDatasetDisplay(null, datasetId, sessionId, label, plotStyle.plotType, plotStyle.plotConfig);
+        const displayId = await curatorApiCallsMixin.saveDatasetDisplay(datasetId, null, label, plotStyle.plotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make_default_display_check").checked) {
@@ -1488,9 +1454,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    sessionId = CURRENT_USER.session_id;
-    colorblindMode = CURRENT_USER.colorblind_mode || false;
-    Cookies.set('gear_session_id', sessionId, { expires: 7 });
+    const sessionId = CURRENT_USER.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.");
         document.getElementById("save_display_btn").disabled = true;

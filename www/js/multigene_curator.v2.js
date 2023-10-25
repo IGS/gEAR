@@ -89,10 +89,10 @@ class GenesAsAxisHandler extends PlotHandler {
 
     }
 
-    async createPlot(datasetId, analysisObj, colorblindMode) {
+    async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
+            const data = await fetchDashData(datasetId, analysisObj,  this.plotType, this.plotConfig);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
@@ -379,10 +379,10 @@ class GenesAsDataHandler extends PlotHandler {
         // for some reason triggering .js-dash-compare did not populate the compare groups into the plot config
     }
 
-    async createPlot(datasetId, analysisObj, colorblindMode) {
+    async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(this.plotConfig, datasetId, this.plotType, analysisObj, colorblindMode);
+            const data = await fetchDashData(datasetId, analysisObj,  this.plotType, this.plotConfig);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
@@ -433,10 +433,10 @@ class GenesAsDataHandler extends PlotHandler {
                 document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
                 document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
                 document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
-            }
 
-            adjustGeneTableLabels(this.plotType);
-            populateGeneTable(eventData, this.plotType);
+                adjustGeneTableLabels(this.plotType);
+                populateGeneTable(eventData, this.plotType);
+            }
 
             // Highlight table rows that match searched genes
             const searchedGenes = this.plotConfig.gene_symbols;
@@ -590,7 +590,7 @@ const geneCartTree = new GeneCartTree({
 
         // Get gene symbols from gene cart
         const geneCartId = e.node.data.orig_id;
-        const geneCartMembers = await fetchGeneCartMwembers(sessionId, geneCartId);
+        const geneCartMembers = await fetchGeneCartMembers(geneCartId);
         const geneCartSymbols = geneCartMembers.map((item) => item.label);
 
         // Normalize gene symbols to lowercase
@@ -737,7 +737,7 @@ const curatorSpecifcChooseGene = (event) => {
 
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
-    await plotStyle.createPlot(datasetId, analysisObj, colorblindMode);
+    await plotStyle.createPlot(datasetId, analysisObj);
 }
 
 const curatorSpecifcDatasetTreeCallback = async () => {
@@ -832,11 +832,9 @@ const downloadSelectedGenes = (event) => {
 	document.body.removeChild(element);
 }
 
-const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, colorblind_mode)  => {
-    // NOTE: gene_symbol already passed to plotConfig
-    const payload = { ...plotConfig, plot_type, analysis, colorblind_mode };
+const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
     try {
-        const { data } = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload);
+        const data = await apiCallsMixin.fetchDashData(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message || "Unknown error.")
         }
@@ -850,11 +848,10 @@ const fetchDashData = async (plotConfig, datasetId, plot_type, analysis, colorbl
 }
 
 /* Fetch gene collections */
-const fetchGeneCarts = async (session_id) => {
-    const payload = {session_id, "cart_type":"unweighted-list" };
+const fetchGeneCarts = async () => {
+    const cartType = "unweighted-list";
     try {
-        const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
-        return data;
+        return await apiCallsMixin.fetchGeneCarts(cartType);
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch gene collections. You can still enter genes manually.";
@@ -864,11 +861,9 @@ const fetchGeneCarts = async (session_id) => {
 }
 
 /* Fetch gene collection members */
-const fetchGeneCartMwembers = async (session_id, geneCartId) => {
-    const payload = { session_id, gene_cart_id: geneCartId };
+const fetchGeneCartMembers = async (geneCartId) => {
     try {
-        const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
-        const {gene_symbols, success} = data;
+        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
         if (!success) {
             throw new Error("Could not fetch gene collection members. You can still enter genes manually.");
         }
@@ -885,7 +880,7 @@ const getCategoryColumns = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     try {
-        ({obs_columns: allColumns, obs_levels: levels} = await fetchH5adInfo(datasetId, analysisId));
+        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
         return;
@@ -907,7 +902,7 @@ const invertLogFunction = (value, base=10) => {
 /* Transform and load gene collection data into a "tree" format */
 const loadGeneCarts = async () => {
     try {
-        const geneCartData = await fetchGeneCarts(sessionId);
+        const geneCartData = await fetchGeneCarts();
         const carts = {};
         const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
         let cartsFound = false;
