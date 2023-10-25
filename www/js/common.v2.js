@@ -408,7 +408,7 @@ const apiCallsMixin = {
         return data;
     },
     async fetchUserHistoryEntries(entries) {
-        const payload = { session_id: CURRENT_USER.sessionId, entries };
+        const payload = { session_id: this.sessionId, entries };
         const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
         return data;
     },
