@@ -302,11 +302,15 @@ for (const jsStep of jsSteps) {
 
 /* API Calls Mixin */
 
+/* NOTES
+Any axios methods that impolement these calls, must provide their own success/error handling
+? Some "classes" JS files like "genecart" are already abstracted away... should we keep their methods or move them here?
+*/
+
 const apiCallsMixin = {
     sessionId: null,
     colorblindMode: null,
 
-    // Any methods that impolement these calls, must provide their own success/error handling
     async deleteDisplay(displayId) {
         const payload = {session_id: this.sessionId, id: displayId};
         await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));

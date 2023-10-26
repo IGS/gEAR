@@ -214,6 +214,8 @@ class TSNEData(Resource):
         order = req.get('order', {})
         x_axis = req.get('x_axis', 'tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
         y_axis = req.get('y_axis', 'tSNE_2')
+        flip_x = req.get('flip_x', False)
+        flip_y = req.get('flip_y', False)
         horizontal_legend = req.get('horizontal_legend', False)
         filters = req.get('obs_filters', {})    # dict of lists
         session_id = request.cookies.get('gear_session_id')
@@ -299,6 +301,14 @@ class TSNEData(Resource):
                 adata.obsm['X_tsne'] = adata.obs[[x_axis, y_axis]].values
                 adata.obsm['X_umap'] = adata.obs[[x_axis, y_axis]].values
                 adata.obsm['X_pca'] = adata.obs[[x_axis, y_axis]].values
+
+        # Flip x or y axis if requested
+        for key in ['X_tsne', 'X_umap', 'X_pca']:
+            if key in adata.obsm:
+                if flip_x:
+                    adata.obsm[key][:,0] = -1 * adata.obsm[key][:,0]
+                if flip_y:
+                    adata.obsm[key][:,1] = -1 * adata.obsm[key][:,1]
 
         # We also need to change the adata's Raw var dataframe
         # We can't explicitly reset its index so we reinitialize it with

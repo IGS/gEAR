@@ -253,6 +253,8 @@ class ScanpyHandler extends PlotHandler {
     classElt2Prop = {
         "js-tsne-x-axis":"x_axis"
         , "js-tsne-y-axis":"y_axis"
+        , "js-tsne-flip-x":"flip_x"
+        , "js-tsne-flip-y":"flip_y"
         , "js-tsne-colorize-legend-by":"colorize_legend_by"
         , "js-tsne-plot-by-series":"plot_by_group"
         , "js-tsne-max-columns":"max_columns"
@@ -338,7 +340,7 @@ class ScanpyHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         let image;
         try {
-            const data = await fetchTsneImageData(datasetId, analysisObj, this.plotType, this.plotConfig);
+            const data = await fetchTsneImage(datasetId, analysisObj, this.plotType, this.plotConfig);
             ({image} = data);
         } catch (error) {
             return;
@@ -734,10 +736,10 @@ const fetchSvgData = async (datasetId, geneSymbol) => {
     }
 };
 
-const fetchTsneImageData = async (datasetId, analysis, plotType, plotConfig) => {
+const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
     // NOTE: gene_symbol already passed to plotConfig
     try {
-        const data = await apiCallsMixin.fetchTsneImageData(datasetId, analysis, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
