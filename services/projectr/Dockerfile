@@ -13,6 +13,14 @@ RUN apt-get -qq update \
     # Required for rpy2
     r-base-dev \
     r-base \
+    # Required for R-package devtools (which is required for SJD)
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libgit2-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
     # Cleanup
     && apt -qq clean autoclean \
     && apt -qq autoremove -y \
@@ -20,7 +28,9 @@ RUN apt-get -qq update \
 
 # ProjectR install.  Must be done before rpy2 is installed
 # NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
-COPY ./install_bioc.sh /tmp/.
+COPY ./install_bioc.sh /tmp/
+COPY ./install_bioc.R /tmp/
+WORKDIR /tmp
 RUN /tmp/install_bioc.sh
 
 # Install production dependencies.
