@@ -467,3 +467,15 @@ const apiCallsMixin = {
         return data;
     }
 }
+
+// First-class function to handle API calls
+// ? Still deciding if we should do this or leave it up to the individual scripts
+/*const runApiCall = async (apiCall, successFunction, errorFunction, ...args) => {
+    try {
+        const data = await apiCall(...args);
+        return successFunction(data);
+    } catch (error) {
+        logErrorInConsole(error);
+        return errorFunction(error);
+    }
+}*/

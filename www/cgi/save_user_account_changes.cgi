@@ -24,16 +24,25 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     help_id = form.getvalue('help_id')
-    sesison_id = form.getvalue('session_id')
+    session_id = form.getvalue('session_id')
     new_password = form.getvalue('new_password')
     email = form.getvalue('email')
     institution = form.getvalue('institution')
-    colorblind_mode = form.getvalue('colorblind_mode', "off")  # checkbox
-    updates_wanted = form.getvalue('wantUpdates', "off")   # Either "on" or "off" because it's a checkbox
+    colorblind_mode = form.getvalue('colorblind_mode', False)  # string true/false
+    updates_wanted = form.getvalue('want_updates', False)  # string true/false
     scope = form.getvalue('scope') # 'password'
     result = {}
 
-    user = geardb.get_user_from_session_id(session_id=sesison_id)
+    if not session_id:
+        result = { 'error':[], 'success': 0 }
+
+        error = "No session id provided, so cannot find user."
+        result['error'] = error
+
+        print(json.dumps(result))
+        exit()
+
+    user = geardb.get_user_from_session_id(session_id=session_id)
     user_id = user.id
 
     # Password is being changed
@@ -71,12 +80,12 @@ def main():
             field_values.append(institution)
 
         if colorblind_mode:
-            colorblind_mode = 1 if colorblind_mode == 'on' else 0
+            colorblind_mode = 1 if colorblind_mode == 'true' else 0
         mid_query_settings.append(" colorblind_mode = %s")
         field_values.append(colorblind_mode)
 
         if updates_wanted:
-            updates_wanted = 1 if updates_wanted == 'on' else 0
+            updates_wanted = 1 if updates_wanted == 'true' else 0
         mid_query_settings.append(" updates_wanted = %s")
         field_values.append(updates_wanted)
 

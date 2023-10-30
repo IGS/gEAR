@@ -70,7 +70,7 @@ html, body {
     background-color: lightgrey;
 }
 
-.select.is-success select{
+.select.is-success select, .input.is-success{
     border-color: #539400;  /* overwrite default success for .select */
 }
 
@@ -78,7 +78,7 @@ html, body {
     border-color: #539400; /* overwrite default success for .select */
 }
 
-.select.is-danger select{
+.select.is-danger select, .input.is-danger{
     border-color: #942400; /* overwrite default success for .select */
 }
 
