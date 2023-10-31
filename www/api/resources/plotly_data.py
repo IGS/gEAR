@@ -36,6 +36,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     except:
         raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
+    projection_adata.obsm = dataset_adata.obsm
     # Close dataset adata so that we do not have a stale opened object
     if dataset_adata.isbacked:
         dataset_adata.file.close()
