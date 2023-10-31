@@ -13,7 +13,7 @@ import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
 from rpy2.robjects.conversion import localconverter
-from rpy2.robjects.vectors import ListVector, StrVector
+from rpy2.robjects.vectors import StrVector
 
 class RError(Exception):
     """Error based on issues that would manifest in any particular R-language call."""
@@ -36,7 +36,7 @@ def convert_r_matrix_to_r_df(mtx):
     r_df = ro.r["as.data.frame"]
     return r_df(mtx)
 
-def run_projectR_cmd(target_df, loading_df):
+def run_projectR_cmd(target_df, loading_df, algorithm):
     """
     Convert input Pandas dataframes to R matrix.
     Pass the inputs into the projectR function written in R.
@@ -65,8 +65,18 @@ def run_projectR_cmd(target_df, loading_df):
 
     # Run project R command.  Get projectionPatterns matrix
     try:
-        projectR = importr('projectR')
-        projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
+        if algorithm == "nmf":
+            projectR = importr('projectR')
+            projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, featureLoadings=loading_r_matrix, full=False)
+        elif algorithm == "fixednmf":
+            sjd = importr('SJD')
+            """
+            projectionX=projectNMF(proj_dataset=ExpressionMatrix, proj_group=TRUE, list_component=WeightedGeneCart)$proj_score_list
+            """
+            projection_patterns_r_matrix = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_r_matrix)
+            print(projection_patterns_r_matrix, file=sys.stderr)
+        else:
+            raise ValueError("Algorithm {} is not supported".format(algorithm))
     except Exception as e:
         raise RError("Error: Could not run projectR command.\tReason: {}".format(str(e)))
 

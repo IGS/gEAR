@@ -52,9 +52,13 @@ def index():
             return jsonify(do_pca_projection(target_df,loading_df).to_json(orient="split"))
         elif algorithm == "binary":
             return jsonify(do_binary_projection(target_df, loading_df).to_json(orient="split"))
-
-        from rfuncs import run_projectR_cmd
-        projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+        elif algorithm == "2silca":
+            pass
+        elif algorithm in ["nmf", "fixednmf"]:
+            from rfuncs import run_projectR_cmd
+            projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm).transpose()
+        else:
+            raise ValueError("Algorithm {} is not supported".format(algorithm))
     except Exception as e:
         abort(500, description=str(e))
 

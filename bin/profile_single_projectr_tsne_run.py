@@ -172,12 +172,12 @@ def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         try:
             ana.type = analysis['type']
@@ -573,7 +573,7 @@ def run_projection(dataset_id=None):
 
     # NOTE Currently no analyses are supported yet.
     try:
-        ana = get_analysis(None, dataset_id, session_id, None)
+        ana = get_analysis(None, dataset_id, session_id)
     except Exception as e:
         print(str(e), file=sys.stderr)
         return {
@@ -743,7 +743,7 @@ def run_projection(dataset_id=None):
         , "num_dataset_genes": num_target_genes
     }
 
-def run_tsne():
+def run_tsne(dataset_id):
     if not gene_symbol or not dataset_id:
         return {
             "success": -1,
@@ -751,7 +751,7 @@ def run_tsne():
         }
 
     try:
-        ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        ana = get_analysis(analysis, dataset_id, session_id)
     except PlotError as pe:
         return {
             "success": -1,
@@ -1008,7 +1008,7 @@ def main():
         print(res.get("message", "No error message"))
         sys.exit(1)
     print("running tSNE", file=sys.stderr)
-    res2 = run_tsne()
+    res2 = run_tsne(None)
     if res2.get("success", 0) == 0:
         print(res2.get("message", "No error message"))
         sys.exit(1)
@@ -1019,6 +1019,7 @@ def run_multi_datasets():
     for dataset_id in dataset_ids:
         run_projection_prestep(dataset_id)
         res = run_projection(dataset_id)
+        res2 = run_tsne(dataset_id)
 
 if __name__ == "__main__":
     #main()

@@ -54,6 +54,19 @@ RUN apt-get -qq update \
   python3-tk \
   openssh-server \
   llvm \
+  # Required for R
+	gfortran \
+  # Required for rpy2
+  r-base-dev \
+  r-base \
+  # Required for R-package devtools (which is required for SJD)
+  libharfbuzz-dev \
+  libfribidi-dev \
+  libfreetype6-dev \
+  libgit2-dev \
+  libpng-dev \
+  libtiff5-dev \
+  libjpeg-dev \
   # Apache2 and PHP
   libapache2-mod-wsgi-py3 \
   apache2-dev \
@@ -80,6 +93,13 @@ RUN wget $CMAKE_URL \
   && ./bootstrap \
   && make install \
   && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
+
+# ProjectR install.  Must be done before rpy2 is installed
+# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
+COPY ./install_bioc.sh /tmp/
+COPY ./install_bioc.R /tmp/
+WORKDIR /tmp
+RUN /tmp/install_bioc.sh
 
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed

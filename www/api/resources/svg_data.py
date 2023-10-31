@@ -93,7 +93,12 @@ class SvgData(Resource):
                 "message": "The h5ad is missing gene_symbol.",
             }
 
-        selected = adata[:, gene_filter].to_memory()
+        try:
+            selected = adata[:, gene_filter].to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata[:, gene_filter]
+
 
         df = selected.to_df()
 

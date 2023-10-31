@@ -59,11 +59,11 @@ class DatasetPanel extends Dataset {
         return axios.get(`${base}${query}`, other_opts);
     }
 
-    get_dataset_displays(user_id, dataset_id) {
+    get_dataset_displays(session_id, dataset_id) {
         return $.ajax({
             url: "./cgi/get_dataset_displays.cgi",
             type: "POST",
-            data: { user_id, dataset_id },
+            data: { session_id, dataset_id },
             dataType: "json",
         });
     }
@@ -77,11 +77,11 @@ class DatasetPanel extends Dataset {
         });
     }
 
-    get_default_display(user_id, dataset_id, is_multigene = 0) {
+    get_default_display(session_id, dataset_id, is_multigene = 0) {
         return $.ajax({
             url: "./cgi/get_default_display.cgi",
             type: "POST",
-            data: { user_id, dataset_id, is_multigene },
+            data: { session_id, dataset_id, is_multigene },
             dataType: "json",
         });
     }
@@ -180,7 +180,7 @@ class DatasetPanel extends Dataset {
         } else {
             // first time searching gene and displays have not been loaded
             const { default_display_id } = await this.get_default_display(
-                CURRENT_USER.id,
+                CURRENT_USER.session_id,
                 this.id
             );
 
@@ -243,7 +243,7 @@ class DatasetPanel extends Dataset {
         } else {
             // first time searching gene and displays have not been loaded
             const { default_display_id } = await this.get_default_display(
-                CURRENT_USER.id,
+                CURRENT_USER.session_id,
                 this.id,
                 1
             );
@@ -266,16 +266,15 @@ class DatasetPanel extends Dataset {
     async cache_displays(){
         // cache all owner/user displays for this panel;
         // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-        let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
-            .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
-        ).then((res) => res.map((r) => r.value));
+        const [owner_displays, user_displays] = await this.get_dataset_displays(CURRENT_USER.session_id, this.id)
 
-        if (CURRENT_USER.id === this.user_id) {
-            owner_displays = [];
+        // Filter only the single-gene displays
+        if (this.is_multigene) {
+            this.user_displays = user_displays.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            this.owner_displays = owner_displays.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
         }
-
-        this.owner_displays = owner_displays;
-        this.user_displays = user_displays;
+        this.user_displays = user_displays.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        this.owner_displays = owner_displays.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
 
         this.register_events();
     }

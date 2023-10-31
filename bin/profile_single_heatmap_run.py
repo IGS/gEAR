@@ -136,12 +136,12 @@ def order_by_time_point(obs_df):
         obs_df = obs_df.drop(['time_point_order'], axis=1)
     return obs_df
 
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
+def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
         ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
+                                session_id=session_id, user_id=user.id)
 
         try:
             ana.type = analysis['type']
@@ -162,7 +162,7 @@ def create_heatmap(dataset_id):
 
     """
     try:
-        ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
+        ana = get_analysis(analysis, dataset_id, session_id)
     except PlotError as pe:
         return {
             'success': -1,

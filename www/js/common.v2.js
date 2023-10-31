@@ -388,7 +388,7 @@ const apiCallsMixin = {
         return data;
     },
     async fetchDefaultDisplay(datasetId, isMultigene=false) {
-        const payload = {session_id: this.sessionId, dataset_id:datasetId, is_multigene: isMultigene};
+        const payload = {session_id: this.sessionId, dataset_id: datasetId, is_multigene: isMultigene};
         const {data} = await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
         return data;
     },

@@ -335,7 +335,11 @@ class TSNEData(Resource):
 
         # Filter genes and slice the adata to get a dataframe
         # with expression and its observation metadata
-        selected = adata[:, gene_filter].to_memory()
+        try:
+            selected = adata[:, gene_filter].to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata[:, gene_filter]
 
         # Filter by obs filters
         if filters:
