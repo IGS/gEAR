@@ -218,6 +218,7 @@ class TSNEData(Resource):
         flip_x = req.get('flip_x', False)
         flip_y = req.get('flip_y', False)
         horizontal_legend = req.get('horizontal_legend', False)
+        marker_size = req.get("marker_size", None)
         filters = req.get('obs_filters', {})    # dict of lists
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
@@ -381,6 +382,9 @@ class TSNEData(Resource):
         if plot_by_group:
             skip_gene_plot = None
 
+        if marker_size:
+            marker_size = int(marker_size)
+
         # Reverse cividis so "light" is at 0 and 'dark' is at incresing expression
         expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else "YlOrRd")
 
@@ -482,7 +486,7 @@ class TSNEData(Resource):
                     # Filter only expression values for a particular group.
                     selected.obs["split_by_group"] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(selected, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    sc.pl.embedding(selected, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     rename_axes_labels(f, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -492,7 +496,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
+                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
                     rename_axes_labels(f_gene, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -500,7 +504,7 @@ class TSNEData(Resource):
                         row_counter += 1
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
+                sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False, size=marker_size)
                 rename_axes_labels(f_color, x_axis, y_axis)
                 if color_category:
                     (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
@@ -518,7 +522,7 @@ class TSNEData(Resource):
                         io_fig = plt.figure(figsize=(13, 4))
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
-                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
+                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False, size=marker_size)
                     rename_axes_labels(f1, x_axis, y_axis)
                     if color_category:
                         (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
@@ -533,10 +537,10 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     # BUG: the line below throws error with stacktrace
                     # ValueError: To copy an AnnData object in backed mode, pass a filename: `.copy(filename='myfilename.h5ad')`. To load the object into memory, use `.to_memory()
-                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
+                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False, size=marker_size)
                     rename_axes_labels(f1, x_axis, y_axis)
                     rename_axes_labels(f2, x_axis, y_axis)
                     if color_category:
@@ -547,7 +551,7 @@ class TSNEData(Resource):
                             f2.get_legend().remove()  # Remove legend added by scanpy
 
         else:
-            io_fig = sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+            io_fig = sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
             rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
 
         # Close adata so that we do not have a stale opened object

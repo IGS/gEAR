@@ -50,3 +50,13 @@
     <span class="has-text-weight-medium">Move legend under plot</span>
     <input class="js-tsne-horizontal-legend" id="horizontal_legend_post" type="checkbox" disabled>
 </label>
+
+<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <span class="has-text-weight-medium">Override marker size auto-scaling</span>
+    <input class="js-tsne-override-marker-size" id="override_marker_size_post" type="checkbox">
+</label>
+<p class="help">If unchecked, marker size will scale based on the number of samples present.</p>
+<p class="is-flex is-justify-content-space-between pr-3">
+    <span class="has-text-weight-medium">Choose marker size</span>
+    <input class="js-tsne-marker-size" id="marker_size_post" type="range" min="1" max="100" value="25" disabled/>
+</p>

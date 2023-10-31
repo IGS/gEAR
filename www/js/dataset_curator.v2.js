@@ -260,6 +260,7 @@ class ScanpyHandler extends PlotHandler {
         , "js-tsne-max-columns":"max_columns"
         , "js-tsne-skip-gene-plot":"skip_gene_plot"
         , "js-tsne-horizontal-legend":"horizontal_legend"
+        , "js-tsne-marker-size":"marker_size"
     }
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -335,6 +336,16 @@ class ScanpyHandler extends PlotHandler {
                 targetElt.disabled = false;
             }
         }
+
+        // If marker size is present, enable the override option
+        if (config["marker_size"]) {
+            for (const classElt of document.getElementsByClassName("js-tsne-marker-size")) {
+                classElt.disabled = false;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-override-marker-size")) {
+                classElt.checked = true;
+            }
+        }
     }
 
     async createPlot(datasetId, analysisObj) {
@@ -401,6 +412,11 @@ class ScanpyHandler extends PlotHandler {
             this.plotConfig["max_columns"] = null;
             this.plotConfig["skip_gene_plot"] = false;
             this.plotConfig["horizontal_legend"] = false;
+        }
+
+        // If override marker size is not checked, ensure it does not get passed to the scanpy code
+        if (!(document.getElementById("override_marker_size_post").checked)) {
+            this.plotConfig["marker_size"] = null;
         }
     }
 
@@ -1109,6 +1125,17 @@ const setupScanpyOptions = async () => {
     }
     if (document.getElementById("y_axis_series").value) {
         trigger(document.getElementById("y_axis_series"), "change");
+    }
+
+    // If override marker size is checked, enable the marker size field
+    const overrideMarkerSize = document.getElementsByClassName("js-tsne-override-marker-size");
+    const markerSize = document.getElementsByClassName("js-tsne-marker-size");
+    for (const elt of overrideMarkerSize) {
+        elt.addEventListener("change", (event) => {
+            for (const targetElt of markerSize) {
+                targetElt.disabled = event.target.checked ? false : true;
+            }
+        });
     }
 
 }
