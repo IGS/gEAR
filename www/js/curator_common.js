@@ -699,7 +699,8 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 
     // This should get the newly added notification since it is now the first
-    document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
+    html.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
+        console.log(event.target);
         const notification = event.target.closest(".js-toast.notification");
         notification.remove(notification);
     });

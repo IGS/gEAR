@@ -678,7 +678,7 @@ const curatorSpecificNavbarUpdates = () => {
 	// Update with current page info
 	document.querySelector("#header_bar .navbar-item").textContent = "Single-gene Curator";
 
-    for (const elt of document.querySelectorAll("#primary_nav > aside > ul > li > span > span > a")) {
+    for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
         elt.classList.remove("is-active");
     }
 

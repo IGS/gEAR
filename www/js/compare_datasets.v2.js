@@ -1375,7 +1375,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.querySelector("#header_bar .navbar-item").textContent = "Comparison Tool";
-	for (const elt of document.querySelectorAll("#primary_nav > aside > ul > li > span > span > a")) {
+	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
 

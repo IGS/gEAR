@@ -44,7 +44,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// User settings has no "active" state for the sidebar
 	document.querySelector("#header_bar .navbar-item").textContent = "User Profile";
-	for (const elt of document.querySelectorAll("#primary_nav > aside > ul > li > a")) {
+	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
 
