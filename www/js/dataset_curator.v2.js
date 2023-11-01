@@ -73,14 +73,19 @@ class PlotlyHandler extends PlotHandler {
             // do nothing if color_name is not set
             if (!config["color_name"]) return;
 
-            // BUG: Occasionally the color_name element is not populated yet, which prevents the series from being rendered
             try {
                 const series = config["color_name"];
                 renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${group}_color`);
-                    colorField.value = color;
+                    const colorField = document.getElementById(`${CSS.escape(group)}_color`);
+                    try {
+                        // Found a case where the group in config was truncated compared to the (older) dataset's actual group
+                        colorField.value = color;
+                    } catch (error) {
+                        console.warn(`Could not set color for ${group} to ${color}.`);
+                        // pass
+                    }
                 }
             } catch (error) {
                 console.error(error);
@@ -320,7 +325,7 @@ class ScanpyHandler extends PlotHandler {
                 renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${group}_color`);
+                    const colorField = document.getElementById(`${CSS.escape(group)}_color`);
                     colorField.value = color;
                 }
             }
