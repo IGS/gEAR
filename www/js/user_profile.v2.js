@@ -39,30 +39,6 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 }
 
-/* --- Entry point --- */
-const handlePageSpecificLoginUIUpdates = async (event) => {
-
-	// User settings has no "active" state for the sidebar
-	document.querySelector("#header_bar .navbar-item").textContent = "User Profile";
-	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
-		elt.classList.remove("is-active");
-	}
-
-    const sessionId = CURRENT_USER.session_id;
-
-	if (! sessionId ) {
-        document.getElementById("not_logged_in_msg").classList.remove("is-hidden");
-        return;
-    }
-
-    // Get the user's settings from the server
-    document.getElementById("email").value = CURRENT_USER.email;
-    document.getElementById("institution").value = CURRENT_USER.institution;
-    document.getElementById("colorblind_mode").checked = CURRENT_USER.colorblind_mode;
-    document.getElementById("want_updates").checked = CURRENT_USER.updates_wanted;
-
-};
-
 // When password and repeated password are not the same, add a tooltip
 for (const classElt of document.getElementsByClassName("js-password")) {
     classElt.addEventListener("keyup", () => {
@@ -129,3 +105,27 @@ document.getElementById("submit_preferences").addEventListener("click", async (e
     }
 
 });
+
+/* --- Entry point --- */
+const handlePageSpecificLoginUIUpdates = async (event) => {
+
+	// User settings has no "active" state for the sidebar
+	document.querySelector("#header_bar .navbar-item").textContent = "User Profile";
+	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+		elt.classList.remove("is-active");
+	}
+
+    const sessionId = CURRENT_USER.session_id;
+
+	if (! sessionId ) {
+        document.getElementById("not_logged_in_msg").classList.remove("is-hidden");
+        return;
+    }
+
+    // Get the user's settings from the server
+    document.getElementById("email").value = CURRENT_USER.email;
+    document.getElementById("institution").value = CURRENT_USER.institution;
+    document.getElementById("colorblind_mode").checked = CURRENT_USER.colorblind_mode;
+    document.getElementById("want_updates").checked = CURRENT_USER.updates_wanted;
+
+};

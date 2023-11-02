@@ -52,6 +52,11 @@ let compareData;;
 let selectedGeneData;
 let geneSelect;
 
+// Storing user's plot text edits, so they can be restored if user replots
+let titleText = null;
+let xaxisText = null;
+let yaxisText = null;
+
 const datasetTree = new DatasetTree({
     element: document.getElementById("dataset_tree")
     , searchElement: document.getElementById("dataset_query")
@@ -525,7 +530,7 @@ const getComparisons = async (event) => {
 			value = `log${value}`
 		}
 
-		if (elt == "standard_deviation") {
+		if (elt == "standard_deviation" && !(value === "0" )) {
 			value = `±${value}`
 		}
 
@@ -716,7 +721,7 @@ const plotDataToGraph = (data) => {
 				type: "scatter",
 				text: passing.labels,
 				marker: {
-					color: "#2F103E",
+					color: "#000000",
 					size: 4,
 				},
 			}
@@ -738,7 +743,7 @@ const plotDataToGraph = (data) => {
 			type: "scatter",
 			text: pointLabels,
 			marker: {
-				color: "#2F103E",
+				color: "#000000",
 				size: 4,
 			},
 		}
@@ -746,12 +751,12 @@ const plotDataToGraph = (data) => {
 	}
 
 	const layout = {
-		title: "Dataset Comparison",
+		title: titleText || "Dataset Comparison",
 		xaxis: {
-			title: data.condition_x.join(", "),
+			title: xaxisText || data.condition_x.join(", "),
 		},
 		yaxis: {
-			title: data.condition_y.join(", "),
+			title: yaxisText || data.condition_y.join(", "),
 		},
 		annotations: [],
 		hovermode: "closest",
@@ -785,13 +790,13 @@ const plotDataToGraph = (data) => {
 		document.getElementById("tbl_selected_genes").classList.add("is-hidden");
 		document.getElementById("download_selected_genes_btn").classList.add("is-hidden");
 		document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
-		document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
+		document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
 
 		if (eventData?.points.length) {
 			document.getElementById("tbl_selected_genes").classList.remove("is-hidden");
 			document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
 			document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
-			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
+			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
 
 			adjustGeneTableLabels();
 			populateGeneTable(eventData);
@@ -819,9 +824,25 @@ const plotDataToGraph = (data) => {
 		}
 	});
 
+	// Handler for when plot text is edited
+	plotlyPreview.on("plotly_relayout", (eventData) => {
+		// If plot title, x-axis or y-axis is edited, save the text
+		if (eventData?.["title.text"]) {
+			titleText = eventData["title.text"];
+		}
+		if (eventData?.["xaxis.title.text"]) {
+			xaxisText = eventData["xaxis.title.text"];
+		}
+		if (eventData?.["yaxis.title.text"]) {
+			yaxisText = eventData["yaxis.title.text"];
+		}
+	});
+
 	const plotlyNote = generateElements(`
-		<div id="tip_on_editing" class="notification is-info is-light">
-			<p><strong>Tip:</strong> You can click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>
+		<div id="tip_on_editing" class="notification content is-info is-light">
+		<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
+
+		<p>You can also click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>
 		</div>`);
 	plotlyPreview.append(plotlyNote);
 }
@@ -889,7 +910,7 @@ const populatePostCompareBox = (scope, series, groups) => {
 	for (const group of groups) {
 
 		const groupElt = document.createElement("span");
-		groupElt.classList.add("tag", "is-light", "is-primary");
+		groupElt.classList.add("tag", "is-dark", "is-rounded");
 		groupElt.textContent = group;
 		tagsElt.append(groupElt);
 	}
@@ -1134,16 +1155,7 @@ const updatePlotAnnotations = (genes) => {
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
-	// get invert of scatterpoint colors for annotation color
-	const invertColor = (hex) => {
-		return (Number(`0x1${hex}`) ^ 0xFFFFFF).toString(16).substr(1).toUpperCase()
-	}
-
-	const cutoffAction = document.getElementById("cutoff_filter_action").value
-	const defaultColor = cutoffAction === "colorize" ? invertColor("FF0000"): invertColor("2F103E");
-	const colorblindColor = cutoffAction === "colorize" ? invertColor("00224e"): invertColor("7d7c76");
-
-	const annotationColor = CURRENT_USER.colorblind_mode ? colorblindColor : defaultColor;
+	const annotationColor = CURRENT_USER.colorblind_mode ? "orange" : "cyan";
 
 	layout.annotations = [];
 
@@ -1168,10 +1180,28 @@ const updatePlotAnnotations = (genes) => {
 					opacity: 0.8,
 
 				});
+
+				// change trace dot to match annotation
+				//trace.marker.color[i] = annotationColor;
+
 				found = true;
 			});
 		}
 	});
+
+	// If no annotations, add warning text that all genes were filtered out
+	if (!layout.annotations.length && genes.length) {
+		layout.annotations.push({
+			xref: "paper",
+			yref: "paper",
+			x: 0,
+			y: 1,
+			text: "No selected genes were found in this plot.",
+			bgcolor: "lightyellow",
+			showarrow: false,
+			opacity: 0.8,
+		});
+	}
 
 	// update the Plotly layout
 	Plotly.relayout(plotlyPreview, layout);
@@ -1369,6 +1399,8 @@ document.getElementById("save_genecart_btn").addEventListener("click", (event) =
     }
     event.target.classList.remove("is-loading");
 });
+
+document.getElementById("download_selected_genes_btn").addEventListener("click", downloadSelectedGenes);
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {

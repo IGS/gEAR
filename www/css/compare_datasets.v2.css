@@ -63,3 +63,8 @@ input[type=number] {
     right: 10px;
     z-index:999;
 }
+
+/* override loader from the themed CSS */
+.button.is-loading::after, .loader, .select.is-loading::after, .control.is-loading::after {
+    border-color: black;
+}
