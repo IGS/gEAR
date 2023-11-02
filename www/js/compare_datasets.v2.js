@@ -688,7 +688,7 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: passing.labels,
 					marker: {
-						color: passColor,
+						color: [].fill(passColor, 0, passing.x.length),
 						size: 4,
 					},
 				}
@@ -703,7 +703,7 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: failing.labels,
 					marker: {
-						color: failColor,
+						color: [].fill(failColor, 0, failing.x.length),
 						size: 4,
 					},
 				}
@@ -721,7 +721,7 @@ const plotDataToGraph = (data) => {
 				type: "scatter",
 				text: passing.labels,
 				marker: {
-					color: "#000000",
+					color: [].fill("#000000" , 0, passing.x.length),
 					size: 4,
 				},
 			}
@@ -743,7 +743,7 @@ const plotDataToGraph = (data) => {
 			type: "scatter",
 			text: pointLabels,
 			marker: {
-				color: "#000000",
+				color: [].fill("#000000", 0, data.x.length),
 				size: 4,
 			},
 		}
@@ -1182,7 +1182,7 @@ const updatePlotAnnotations = (genes) => {
 				});
 
 				// change trace dot to match annotation
-				//trace.marker.color[i] = annotationColor;
+				trace.marker.color[i] = annotationColor;
 
 				found = true;
 			});
