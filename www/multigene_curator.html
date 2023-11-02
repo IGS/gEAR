@@ -240,13 +240,14 @@
             </span>
           </h5>
           <div class="js-step-collapsable mt-3" id="gene_collapsable">
+            <p>Please select a collection of genes (left dropdown) or an individual gene (right dropdown) to add to list of selected genes</p>
 
             <!-- BUG: https://github.com/mar10/wunderbaum/issues/57 -->
             <div class="columns">
               <div class="column is-6">
                 <input class="input" id="genecart_query" type="text" placeholder="Enter a gene collection" autofocus="" />
                 <div id="genecart_tree" class="wb-skeleton wb-initializing js-tree"></div>
-                <p class="help">These will be added to the selection of genes if in the dataset.</p>
+                <p class="help">Only genes also found in the dataset will be added to the selection of genes.</p>
               </div>
               <div id="gene_select_c" class="column is-4">
                 <div class="select is-fullwidth">
