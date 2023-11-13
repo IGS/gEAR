@@ -2,6 +2,8 @@ import os, sys
 import pandas as pd
 from flask import Flask, abort, jsonify, request
 
+debug = os.environ.get('DEBUG', False)
+
 app = Flask(__name__)
 
 ### Each projection needs to return samples as rows, pattern weights as columns.
@@ -65,4 +67,4 @@ def index():
     return jsonify(projection_patterns_df.to_json(orient="split"))
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    app.run(debug=debug, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

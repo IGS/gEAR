@@ -1,12 +1,14 @@
 # Include our lib directory on system path
 # so we have access to modules
 from pathlib import Path
-import sys
+import sys, os
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
 # abs_path_lib is a Path object so we need to convert to string
 sys.path.insert(0, str(abs_path_lib))
+
+debug = os.environ.get('DEBUG', False)
 
 # Prevent matplotlib backend rendering errors
 # when imporing scanpy in resource modules
@@ -89,5 +91,5 @@ if __name__ == '__main__':
     # api.add_resource(PlotlyData, '/api/plot/<dataset_id>')
     # api.add_resource(H5ad, '/api/h5ad/<dataset_id>')
     # app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
-    app.run(debug=True, threaded=True)
+    app.run(debug=debug, threaded=True)
 
