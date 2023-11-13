@@ -26,7 +26,10 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # ? Does it make sense to put this in the geardb/Analysis class?
     import scanpy as sc
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+    # Sanitize input to prevent path traversal
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id)).resolve()
+    if not str(projection_adata_path).startswith(str(projection_dir)):
+        raise ValueError("Not allowed.")
     if projection_adata_path.is_file():
         return sc.read_h5ad(projection_adata_path)  # , backed="r")
 
