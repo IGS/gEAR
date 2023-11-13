@@ -81,3 +81,6 @@ NOTE: Installing custom version of diffxpy that is based on the latest commit on
 The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
     $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
 
+## Note about Flask
+
+The Flask server is set to run with debug mode as False by default, but by setting the DEBUG environment variable to "True" you can change this (since the value is read from os.environ)
