@@ -64,7 +64,7 @@ jobs:
 
     - name: Rename all CGI files to have Python extension
       shell: bash
-      run: rename 's/\.cgi/\.py/' *.cgi
+      run: rename 's/\.cgi/\.py/' www/cgi/*.cgi
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
