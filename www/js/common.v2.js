@@ -68,16 +68,26 @@ document.addEventListener('DOMContentLoaded', () => {
     checkForLogin();
 });
 
-// Functions to open and close a modal
-function openModal($el) {
+/**
+ * Opens a modal by adding the 'is-active' class to the specified element.
+ * @param {HTMLElement} $el - The element to open as a modal.
+ */
+const openModal = ($el) => {
     $el.classList.add('is-active');
 }
 
-function closeModal($el) {
+/**
+ * Closes the modal by removing the 'is-active' class from the specified element.
+ * @param {HTMLElement} $el - The element representing the modal.
+ */
+const closeModal = ($el) => {
     $el.classList.remove('is-active');
 }
 
-function closeAllModals() {
+/**
+ * Closes all modals on the page.
+ */
+const closeAllModals = () => {
     (document.querySelectorAll('.modal') || []).forEach(($modal) => {
         closeModal($modal);
     });
@@ -105,6 +115,10 @@ document.getElementById('submit-logout').addEventListener('click', (event) => {
     window.location.replace('./index.html');
 });
 
+/**
+ * Checks if the user is logged in and performs necessary UI updates.
+ * @returns {Promise<void>} A promise that resolves once the login check is complete.
+ */
 const checkForLogin = async () => {
     const session_id = Cookies.get('gear_session_id');
     apiCallsMixin.sessionId = session_id;
@@ -137,6 +151,12 @@ const checkForLogin = async () => {
     }
 }
 
+/**
+ * Performs the login process.
+ * @async
+ * @function doLogin
+ * @returns {Promise<void>}
+ */
 const doLogin = async () => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
@@ -169,22 +189,37 @@ const doLogin = async () => {
     }
 }
 
+/**
+ * Hides elements with the class 'logged-in'.
+ */
 const hideLoggedInElements = () => {
     document.querySelectorAll('.logged-in').forEach(element => element.style.display = 'none');
 }
 
+/**
+ * Hides elements with the class 'not-logged-in'.
+ */
 const hideNotLoggedInElements = () => {
     document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = 'none');
 }
 
+/**
+ * Shows the logged-in elements by setting their display property to an empty string.
+ */
 const showLoggedInElements = () => {
     document.querySelectorAll('.logged-in').forEach(element => element.style.display = '');
 }
 
+/**
+ * Shows the elements that are only visible when the user is not logged in.
+ */
 const showNotLoggedInElements = () => {
     document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = '');
 }
 
+/**
+ * Handles the UI updates for the login functionality.
+ */
 const handleLoginUIUpdates = () => {
     // So that all elements don't initially show while login is checked, we
     //  show/hide elements first then parent container
@@ -204,16 +239,25 @@ const handleLoginUIUpdates = () => {
    End of login-related code
 *************************************************************************************/
 
-/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection that can be appended to a parent HTML */
+/**
+ * Generates an element from the provided HTML string.
+ *
+ * @param {string} html - The HTML string to generate the element from.
+ * @returns {Element} - The generated element.
+ */
 const generateElements = (html) => {
     const template = document.createElement('template');
     template.innerHTML = html.trim();
-    return template.content.children[0];
+    return template.content.children[0];    // htmlCollection that can be appended to a parent HTML
 }
 
-// Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
+/**
+ * Triggers an event on the given element.
+ * @param {HTMLElement} el - The element on which to trigger the event.
+ * @param {string|Function|Event} eventType - The type of event to trigger, or a function to execute as an event handler, or a custom event object.
+ */
 const trigger = (el, eventType) => {
-
+    // Equivalent to jQuery "trigger" (https://youmightnotneedjquery.com/#trigger_native)
     if (typeof eventType === 'string' && typeof el[eventType] === 'function') {
         el[eventType]();
     } else if (typeof eventType === 'function') {
@@ -227,27 +271,57 @@ const trigger = (el, eventType) => {
     }
 }
 
+/**
+ * Logs the error details to the console.
+ * @param {Error} error - The error object.
+ */
 const logErrorInConsole = (error) => {
     if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
-        console.error(error.response.data);
-        console.error(error.response.status);
-        console.error(error.response.headers);
+        console.error('Response Error:', {
+            data: error.response.data,
+            status: error.response.status,
+            headers: error.response.headers,
+        });
     } else if (error.request) {
         // The request was made but no response was received
         // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
         // http.ClientRequest in node.js
-        console.error(error.request);
+        console.error('Request Error:', error.request);
     } else {
         // Something happened in setting up the request that triggered an Error
-        console.error('Error', error.message);
+        console.error('Setup Error:', error.message);
     }
-    console.error(error.config);
+
+    if (error.config) {
+        console.error('Config:', error.config);
+    }
+
+    console.error('Stack Trace:', error);
 }
 
+/**
+ * Copies the specified text to the clipboard.
+ * @param {string} text - The text to be copied.
+ * @returns {Promise<boolean>} - A promise that resolves to true if the text was successfully copied, false otherwise.
+ */
+const copyToClipboard = async (text) => {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (ex) {
+        console.warn("Copy to clipboard failed.", ex);
+        return false;
+    }
+}
 
 // Convert POST payload to FormData so that POSTing to CGI scripts that use cgi.FieldStorage will work
+/**
+ * Converts an object into FormData.
+ * @param {Object} object - The object to be converted.
+ * @returns {FormData} - The converted FormData object.
+ */
 const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
     // NOTE: When using FormData do not set headers to application/json
@@ -259,6 +333,11 @@ const convertToFormData = (object) => {
     return formData;
 }
 
+/**
+ * Collapses a JS step element.
+ *
+ * @param {HTMLElement} stepElt - The step element to collapse.
+ */
 const collapseJsStep = (stepElt) => {
         // Reset active step
         stepElt.classList.remove("step-active");
@@ -275,8 +354,16 @@ const collapseJsStep = (stepElt) => {
 
 // If "step" sections are clicked, expand that section and collapse the others
 const jsSteps = document.getElementsByClassName("js-step");
+/**
+ * Resets the steps and collapses the sections based on the event target.
+ * If the clicked area has no parentNode, the function will exit.
+ * If the clicked target is an existing section, it will collapse the section.
+ * If the clicked target is a collapsable content, it will do nothing.
+ * Otherwise, it will collapse all steps and make the clicked step active.
+ *
+ * @param {Event} event - The event object triggered by the click.
+ */
 const resetSteps = (event) => {
-    // If clicked area has no parentNode (i.e. clicked target is destroyed and recreated), just leave be
     if (! event.target.parentNode) return;
 
     // ? Instead of adding and removing ".step-active", should we toggle ".is-hidden" on the collapsable parts?

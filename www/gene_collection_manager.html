@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>gEAR gene collection manager</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+        to be changed for any hosts where gEAR is not at the webserver root.
+    -->
+    <base href="/" />
+
+    <link rel="stylesheet" href="css/gear-theme-purple.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+
+    <!-- Fancy animation effects -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+    <!--Page-specific CSS here -->
+    <script>document.write('<link rel="stylesheet" href="css/gene_collection_manager.' + (new Date()).getTime() + '.css" />');</script>
+</head>
+<body>
+    <!--[if lt IE 7]>
+        <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+
+    <div id="main_layout_c" class="columns is-fullheight">
+        <!--#include virtual="/include/primary_nav.html" -->
+        <section id="main_c" class="column pl-0">
+            <!--#include virtual="/include/header_bar.html" -->
+            <section id="content_c" class="m-3 container">
+                <article id="not_logged_in_msg" class="message is-danger is-hidden">
+                    <div class="message-body">
+                        You must be logged in as a user to change your user settings.
+                    </div>
+                </article>
+
+                <div class="columns">
+                    <div class="column is-fifth">
+                        <!-- Create new gene cart button -->
+                        <div class="field">
+                            <div class="control">
+                                <button id="create_new_gene_collection" class="button is-primary is-fullwidth">
+                                    <span class="icon">
+                                        <i class="mdi mdi-plus"></i>
+                                    </span>
+                                    <span>Create new gene collection</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- search field -->
+                        <div class="field">
+                            <label class="label">Find gene collections</label>
+                            <div class="control has-icons-right">
+                                <input id="search_terms" class="input" type="text" placeholder="Keyword search">
+                                <span class="icon is-hidden is-right is-clickable" id="search_clear">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- filter options -->
+                        <div id="controls_ownership" class="js-filter-subsection is-clickable">
+                            <p class="has-text-weight-semibold js-expandable-control">
+                                <span>Ownership</span>
+                                <span class="icon is-pulled-right">
+                                    <i class="mdi mdi-minus"></i>
+                                </span>
+                            </p>
+                            <ul class="js-expandable-target">
+                                <li class="js-all-selector js-selected">All</li>
+                                <li id="your_gene_cart_filter" data-dbval="yours">Your collections</li>
+                                <li data-dbval="group">Group-affiliated collections</li>
+                                <li data-dbval="shared">Collections shared with you</li>
+                                <li data-dbval="public">Public collections</li>
+                            </ul>
+                        </div>
+
+                        <div id="controls_organism" class="js-filter-subsection is-clickable">
+                            <p class="has-text-weight-semibold  js-expandable-control">
+                                <span>Organism</span>
+                                <span class="icon is-pulled-right">
+                                    <i class="mdi mdi-minus"></i>
+                                </span>
+                            </p>
+                            <ul class="js-expandable-target">
+                                <li class="js-all-selector js-selected">All</li>
+                                <!-- list built by js -->
+                            </ul>
+                        </div>
+
+                        <div id="controls_date_added" class="js-filter-subsection is-clickable">
+                            <p class="has-text-weight-semibold  js-expandable-control">
+                                <span>Date added</span>
+                                <span class="icon is-pulled-right">
+                                    <i class="mdi mdi-minus"></i>
+                                </span>
+                            </p>
+                            <ul class="js-expandable-target js-choose-only-one">
+                                <li class="js-all-selector js-selected">Any time</li>
+                                <li data-dbval="week">Within last week</li>
+                                <li data-dbval="month">Within last month</li>
+                                <li data-dbval="year">Within last year</li>
+                            </ul>
+                        </div>
+
+                    </div>
+
+                    <div class="column is-four-fifths">
+
+                        <!-- create collection view -->
+                        <section id="create_collection_container" class="columns is-hidden">
+                            <div class="card column has-background-light">
+                                <header class="card-header">
+                                    <p class="card-header-title has-text-dark">
+                                        Unweighted gene collection
+                                    </p>
+                                </header>
+                                <div class="card-content">
+                                    <div class="content has-text-dark">
+                                        This is a list of gene symbols only, possibly the most common form of gene carts.
+                                    </div>
+                                </div>
+                                <footer class="card-footer">
+                                    <div class="buttons card-footer-item">
+                                        <button class="button is-link" id="btn_gc_paste_unweighted_list">Paste list of genes</button>
+                                        <button class="button is-link" id="btn_gc_upload_unweighted_list">Upload file</button>
+                                    </div>
+                                </footer>
+                            </div>
+
+                            <div class="card column has-background-light">
+                                <header class="card-header">
+                                    <p class="card-header-title has-text-dark">
+                                        Weighted gene collection
+                                    </p>
+                                </header>
+                                <div class="card-content">
+                                    <div class="content has-text-dark">
+                                        Upload a gene list with associated weights, for example from a principal component analysis
+                                    </div>
+                                </div>
+                                <footer class="card-footer">
+                                    <div class="buttons card-footer-item">
+                                        <button class="button is-link" id="btn_gc_upload_weighted_list">Upload file</button>
+                                    </div>
+                                </footer>
+                            </div>
+
+                            <div class="card column has-background-light">
+                                <header class="card-header">
+                                    <p class="card-header-title has-text-dark">
+                                        Labeled gene collection
+                                    </p>
+                                </header>
+                                <div class="card-content">
+                                    <div class="content has-text-dark">
+                                        Upload a file containing a list of genes and associated labels, for example marker genes for cell types
+                                    </div>
+                                </div>
+                                <footer class="card-footer">
+                                    <div class="buttons card-footer-item">
+                                        <button class="button is-link" id="btn_gc_upload_labeled_list">Upload file</button>
+                                    </div>
+                                </footer>
+                            </div>
+
+                            <!-- New gene cart form -->
+                            <div class="columns is-hidden" id="new_cart_form_c">
+                                <div class="column is-full">
+                                    <div class="card">
+                                        <div class="card-header">New gene collection information</div>
+                                        <div class="card-content">
+                                            <input type="hidden" id="new_cart_upload_type" name="new_cart_upload_type" value="" />
+                                            <div class="columns">
+                                                <div class="column is-5">
+                                                    <div class="field">
+                                                        <label for="new_cart_label">Label</label>
+                                                        <div class="control">
+                                                            <input type="text" class="input" id="new_cart_label" name="new_cart_label" placeholder="" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="column is-4">
+                                                <div class="field">
+                                                        <label for="new_cart_organism_id">Organism</label>
+                                                        <div class="control">
+                                                            <select class="select" id="new_cart_organism_id" name="new_cart_organism_id"></select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="column is-3">
+                                                    <div class="filed">
+                                                        <label for="new_cart_is_public">Visibility</label><br />
+                                                        <div class="control">
+                                                            <input type="checkbox" name="new_cart_is_public" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-toggle="toggle" data-on="Public" data-off="Private" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="field">
+                                                <label for="new_cart_ldesc">Longer description</label>
+                                                <div class="control">
+                                                    <textarea class="textarea" id="new_cart_ldesc" name="new_cart_ldesc" rows="3"></textarea>
+                                                </div>
+                                            </div>
+                                            <div id="file_upload_c" class="file">
+                                                <label for="new_cart_file" class="file-label">File upload:</label>
+                                                <input class="file-input" name="new_cart_file" type="file" id="new_cart_file"/>
+                                                <span class="file-cta">
+                                                    <span class="file-icon">
+                                                        <i class="mdi mdi-upload"></i>
+                                                    </span>
+                                                    <span class="file-label">
+                                                        Choose a file…
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <div class="field">
+                                                <div class="control">
+                                                    <a id="cart_upload_reqs" tabindex="0" class="button is-small is-link" role="button" data-toggle="popover" data-trigger="focus" title="Requirements" data-content="<p>CSV, TAB, or Excel-format files only.<br/><br/>Header row required.<br/><br/>First column must be unique gene identifiers.<br/>Second column must be gene symbols.<br/>Extra columns must be numeric weights.<p>">Click for requirements</a>
+                                                </div>
+                                            </div>
+                                            <div class="field is-hidden" id="new_cart_pasted_genes_c">
+                                                <label for="new_cart_pasted_genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
+                                                <div class="control">
+                                                    <textarea class="textarea" id="new_cart_pasted_genes" name="new_cart_pasted_genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="field is-grouped">
+                                                <p class="control">
+                                                    <button class="button is-small is-primary" id="btn_new_cart_save">Save</button>
+                                                </p>
+                                                <p class="control">
+                                                    <button class="button is-small is-primary" id="btn_new_cart_cancel">Cancel</button>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </section>
+
+                        <!-- Count and view control -->
+                        <section id="view_controls" class="level">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <div class="field is-horizontal">
+                                        <div class="field-label">
+                                            <label class="label_by_buttons">View:</label>
+                                        </div>
+                                        <div class="buttons has-addons" role="group" aria-label="Gene cart list view preference">
+                                            <button type="button" id="btn_list_view_compact" class="button is-small is-dark active" aria-label="Compact view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Compact view">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-format-list-bulleted"></i>
+                                                </span>
+                                            </button>
+                                            <button type="button" id="btn_list_view_expanded" class="button is-small is-dark" aria-label="Expanded view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Expanded view">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-window-maximize"></i>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="level-item">
+                                    <div class="field is-horizontal">
+                                        <label class="field-label" for="sort_by">Sort by:</label>
+                                        <div class="select is-small">
+                                            <select name="sort_by" id="sort_by">
+                                                <option value="relevance">Relevance</option>
+                                                <option value="title">Gene cart title</option>
+                                                <option value="date_added" selected>Date created</option>
+                                                <option value="owner">Owner</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="level-right">
+                                <div class="level-item">
+                                    <div id="gc_count_label_c" class="is-hidden">
+                                        <span id="gc_count_label">Showing <span id="result_range"></span> of <span id="result_count"></span> <span id="result_label"></span></span>
+                                    </div>
+                                </div>
+                                <div class="level-item">
+                                    <!-- ? May change to numbers if genecarts get too numerous -->
+                                    <nav id="pagination_container" class="pagination is-small" role="navigation" aria-label="pagination">
+                                    </nav>
+                                </div>
+                            </div>
+
+                        </section> <!-- #view_controls -->
+
+                        <!-- results view -->
+                        <section id="results_container">
+                            <!-- filled in by js -->
+                        </section>
+                        <nav id="below_pagination_container" class="pagination is-small is-pulled-right" role="navigation" aria-label="pagination">
+                        </nav>
+
+
+                    </div>
+                </div>
+
+            </section>
+        </section>
+    </div>
+
+
+    <!-- Promise based HTTP client for the browser  -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script src="js/vendor/js.cookie.js"></script>
+
+    <!-- Floating UI for tooltips, popovers, etc -->
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Page-specific JS file here -->
+    <script>document.write('<script src="js/gene_collection_manager.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-59916932-1');
+    </script>
+</body>
+</html>

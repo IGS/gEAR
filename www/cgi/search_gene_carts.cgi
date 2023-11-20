@@ -9,19 +9,20 @@ import cgi
 import json
 import os, sys
 import re
+from math import ceil
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
 # limits the number of matches returned
-DEFAULT_MAX_RESULTS = 200;
+DEFAULT_MAX_RESULTS = 200
 DEBUG_MODE = False
 
 def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
-    
+
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     custom_list = form.getvalue('custom_list')
@@ -29,9 +30,24 @@ def main():
     organism_ids = form.getvalue('organism_ids')
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
+    page = form.getvalue('page')    # page starts at 1
+    limit = form.getvalue('limit')
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'gene_carts': []}
+
+    if page and not page.isdigit():
+        raise ValueError("Page must be a number")
+
+    if page and int(page) < 1:
+        raise ValueError("Page must be greater than 0")
+
+    if limit and not limit.isdigit():
+        raise ValueError("Limit must be a number")
+
+    if limit and int(limit) < 1:
+        raise ValueError("Limit must be greater than 0")
+
 
     gene_carts = list()
     qry_params = []
@@ -69,7 +85,7 @@ def main():
         else:
             wheres.append("AND (gc.is_public = 1 OR gc.user_id = %s)")
             qry_params.extend([user.id])
-        
+
         if search_terms:
             selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
             wheres.append(' AND MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
@@ -100,12 +116,12 @@ def main():
             orders_by.append(" g.user_name")
         else:
             orders_by.append(" gc.date_added DESC")
-            
+
         # build query
         qry = """
         SELECT {0}
-         FROM {1}
-         WHERE {2}
+        FROM {1}
+        WHERE {2}
         ORDER BY {3}
         """.format(
             ", ".join(selects),
@@ -114,12 +130,21 @@ def main():
             " ".join(orders_by)
         )
 
+        # if a limit is defined, add it to the query
+        if int(limit):
+            qry += " LIMIT {0}".format(limit)
+
+        # if a page is defined, add it to the query
+        if int(page):
+            offset = int(page) - 1
+            qry += " OFFSET {0}".format(offset * int(limit))
+
     if DEBUG_MODE:
         ofh = open('/tmp/debug', 'wt')
         ofh.write("QRY:\n{0}\n".format(qry))
         ofh.write("QRY_params:\n{0}\n".format(qry_params))
         ofh.close()
-        
+
     cursor.execute(qry, qry_params)
 
     for row in cursor:
@@ -129,6 +154,31 @@ def main():
         gc.gene_count = len(gc.genes)
         gc.organism = "{0} {1}".format(row[8], row[9])
         gene_carts.append(gc)
+
+    # Get count of total results
+    qry_count = """
+        SELECT COUNT(*)
+        FROM {0}
+        WHERE {1}
+        """.format(
+            ", ".join(froms),
+            " ".join(wheres)
+        )
+
+    # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
+    if search_terms:
+        qry_params.pop(0)
+
+    cursor.execute(qry_count, qry_params)
+
+    # compile pagination information
+    result["pagination"] = {}
+    result["pagination"]['total_results'] = cursor.fetchone()[0]
+    result["pagination"]['current_page'] = page if page else 1
+    result["pagination"]['limit'] = limit if limit else DEFAULT_MAX_RESULTS
+    result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
+    result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
+    result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
 
     result['gene_carts'] = gene_carts
     result['success'] = 1

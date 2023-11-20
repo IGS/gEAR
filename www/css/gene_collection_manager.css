@@ -1,0 +1,14 @@
+/* Initial CSS for Floating UI (https://floating-ui.com/docs/migration#positioning-function-change) */
+.floating {
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+hr.gc-list-element-divider {
+    width: 90%;
+    background-color: #000000;
+    margin-left: auto;
+    margin-right: auto;
+}
