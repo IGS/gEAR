@@ -26,11 +26,20 @@ def main():
     
     args = parser.parse_args()
 
+    # Helps track what we've seen so far so duplicate files aren't processed
+    expression_file_found = False
+    rowmeta_file_found = False
+    colmeta_file_found = False
+
     for infile in os.listdir(args.input_directory):
         filepath = "{0}/{1}".format(args.input_directory, infile)
         
         # Read each file as pandas dataframes
         if infile == 'expression.tab' or os.path.basename(filepath)== 'expression.tab' or 'DataMTX.tab' in infile:
+            if expression_file_found:
+                print("WARN: Skipping this file since expression data file already found: {0}".format(infile), file=sys.stderr)
+                continue
+            
             # Get columns and rows of expression data in list form.
             exp = pd.read_table(filepath, sep='\t', index_col=0, header=0)
             exp_obs = list(exp.columns)
@@ -38,10 +47,23 @@ def main():
 
             # Read in expressions as AnnData object
             adata = sc.read(filepath, first_column_names=True, cache=False).transpose()
+            expression_file_found = True
+            
         elif infile == 'observations.tab' or os.path.basename(filepath)== 'observations.tab' or 'COLmeta.tab' in infile:
+            if colmeta_file_found:
+                print("WARN: Skipping this file since colmeta data file already found: {0}".format(infile), file=sys.stderr)
+                continue
+            
             obs = pd.read_table(filepath, sep='\t', index_col=0, header=0)
+            colmeta_file_found = True
+            
         elif infile == 'genes.tab' or os.path.basename(filepath)== 'genes.tab' or 'ROWmeta.tab' in infile:
+            if rowmeta_file_found:
+                print("WARN: Skipping this file since rowmeta data file already found: {0}".format(infile), file=sys.stderr)
+                continue
+            
             var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
+            rowmeta_file_found = True
 
     for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
         if str_type in obs.columns:
