@@ -6,9 +6,12 @@ let isAddFormOpen = false;
 const resultsPerPage = 20;
 
 // TODO - Add transformation code for quick gene collection transformations
-// TODO - Finish pagination code which appeared incomplete in the original code
 // TODO - Add "labeled" gene collection type (i.e. marker genes) and integrate into other code snippets
-// TODO - Add tooltips for each "action" button
+
+// TODO - Add public/private toggle button code
+// TODO - Fix "edit genecart" button code
+// TODO - Add "new genecart" code back from old version
+// TODO - Get filter properties working
 
 // Floating UI function alias. See https://floating-ui.com/docs/getting-started#umd
 // Subject to change if we ever need these common names for other things.
@@ -28,16 +31,16 @@ const addGeneCollectionEventListeners = () => {
     // Show genes when button is clicked & adjust button styling
     for (const classElt of document.getElementsByClassName("js-gc-unweighted-gene-list-toggle")) {
         classElt.addEventListener("click", (e) => {
-            const gcId = e.target.dataset.gcId;
+            const gcId = e.currentTarget.dataset.gcId;
             const geneList = document.getElementById(`${gcId}_gene_list`);
 
             // see if the gene_list is visible and toggle
             if (geneList.classList.contains("is-hidden")) {
                 geneList.classList.remove("is-hidden");
-                e.target.classList.remove("is-outlined");
+                e.currentTarget.classList.remove("is-outlined");
             } else {
                 geneList.classList.add("is-hidden");
-                e.target.classList.add("is-outlined");
+                e.currentTarget.classList.add("is-outlined");
             }
 
         });
@@ -45,9 +48,8 @@ const addGeneCollectionEventListeners = () => {
 
     for (const classElt of document.getElementsByClassName("js-gc-weighted-gene-list-toggle")) {
         classElt.addEventListener("click", async (e) => {
-            const gcId = e.target.dataset.gcId;
-            const geneTable = document.getElementById(`${gcId}_gene_table`);
-            const shareId = e.target.dataset.gcShareId;
+            const gcId = e.currentTarget.dataset.gcId;
+            const shareId = e.currentTarget.dataset.gcShareId;
 
             document.getElementById(`btn_gc_${gcId}_preview`).classList.add("is-hidden");
             document.getElementById(`btn_gc_${gcId}_loading`).classList.remove("is-hidden");
@@ -67,7 +69,7 @@ const addGeneCollectionEventListeners = () => {
     // Hide gene collection view
     for (const classElt of document.getElementsByClassName("js-gc-weighted-gene-list-hider")) {
         classElt.addEventListener("click", (e) => {
-            const gcId = e.target.dataset.gcId;
+            const gcId = e.currentTarget.dataset.gcId;
             document.getElementById(`${gcId}_gene_table`).classList.add("is-hidden");   // TODO: add animate CSS with fade out
             document.getElementById(`btn_gc_${gcId}_hider`).classList.add("is-hidden");
             document.getElementById(`btn_gc_${gcId}_preview`).classList.remove("is-hidden");
@@ -98,8 +100,11 @@ const addGeneCollectionEventListeners = () => {
     // Reformats the <ul> containing the gene symbols into a text file with one gene per row
     for (const classElt of document.getElementsByClassName("js-download-gc")) {
         classElt.addEventListener("click", (e) => {
-            const gcId = e.target.dataset.gcId;
-            const fileContents = document.getElementById(`${gcId}_gene_list`).innerText;
+            const gcId = e.currentTarget.dataset.gcId;
+
+            // Take the list elements, separate them, and put them in a text file
+            const geneListElt = document.getElementById(`${gcId}_gene_list`);
+            const fileContents = Array.from(geneListElt.children).map(li => li.innerText).join("\n");
 
             const element = document.createElement("a");
             element.setAttribute(
@@ -107,7 +112,7 @@ const addGeneCollectionEventListeners = () => {
                 `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
             );
 
-            element.setAttribute("download", `gene_cart.${e.target.dataset.gcShareId}.tsv`);
+            element.setAttribute("download", `gene_cart.${e.currentTarget.dataset.gcShareId}.tsv`);
             element.style.display = "none";
             document.body.appendChild(element);
             element.click();
@@ -118,11 +123,11 @@ const addGeneCollectionEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-share-gc")) {
         classElt.addEventListener("click", (e) => {
 
-            const shareId = e.target.value;
+            const shareId = e.currentTarget.value;
             const currentUrl = window.location.href;
             const currentPage = currentUrl.lastIndexOf("gene_collection_manager.html");
             const shareUrl = `${currentUrl.substring(0, currentPage)}p?c=${shareId}`;
-            const gcId = e.target.dataset.gcId;
+            const gcId = e.currentTarget.dataset.gcId;
 
             if (copyToClipboard(shareUrl)) {
                 showGcActionNote(gcId, "URL copied to clipboard");
@@ -136,7 +141,7 @@ const addGeneCollectionEventListeners = () => {
     // Cancel button for editing a gene collection
     for (const classElt of document.getElementsByClassName("js-edit-gc-cancel")) {
         classElt.addEventListener("click", (e) => {
-            const gcId = e.target.dataset.gcId;
+            const gcId = e.currentTarget.dataset.gcId;
             const selectorBase = `#result_gc_id_${gcId}`;
 
             // Show editable versions where there are some and hide the display versions
@@ -158,7 +163,7 @@ const addGeneCollectionEventListeners = () => {
     // Save button for editing a gene collection
     for (const classElt of document.getElementsByClassName("js-edit-gc-save")) {
         classElt.addEventListener("click", async (e) => {
-            const gcId = e.target.dataset.gcId;
+            const gcId = e.currentTarget.dataset.gcId;
             const selectorBase = `#result_gc_id_${gcId}`;
             const newVisibility = document.querySelector(`${selectorBase}_editable_visibility`).value;
             const newTitle = document.querySelector(`${selectorBase}_editable_title`).value;
@@ -211,7 +216,7 @@ const addGeneCollectionEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-edit-gc")) {
         classElt.addEventListener("click", async (e) => {
 
-            const gcId = e.target.dataset.gcId;
+            const gcId = e.currentTarget.dataset.gcId;
             const selectorBase = `#result_gc_id_${gcId}`;
 
             // copy the organism selection list for this row
@@ -244,7 +249,7 @@ const addGeneCollectionEventListeners = () => {
     // Redirect to gene expression search
     for (const classElt of document.getElementsByClassName("js-view-gc")) {
         classElt.addEventListener("click", (e) => {
-            window.location = `./p?c=${e.target.value}`;
+            window.location = `./p?c=${e.currentTarget.value}`;
         });
     }
 }
@@ -350,6 +355,50 @@ const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
 }
 
 /**
+ * Creates a tooltip for a reference element.
+ *
+ * @param {HTMLElement} referenceElement - The reference element to attach the tooltip to.
+ * @param {HTMLElement} tooltip - The tooltip element.
+ */
+const applyTooltip = (referenceElement, tooltip) => {
+
+    const hideTooltip = (event) => {
+        tooltip.classList.add("is-hidden");
+    }
+
+    const showTooltip = (event) => {
+        // Compute position
+        computePosition(event.currentTarget, tooltip, {
+            placement: 'top', // Change this to your preferred placement
+            middleware: [
+                flip(), // flip to bottom if there is not enough space on top
+                shift(), // shift the popover to the right if there is not enough space on the left
+                offset(5), // offset relative to the button
+            ]
+        }).then(({ x, y }) => {
+            // Position the popover
+            Object.assign(tooltip.style, {
+                left: `${x}px`,
+                top: `${y}px`,
+            });
+        });
+
+        tooltip.classList.remove("is-hidden");
+    }
+
+    [
+        ['mouseenter', showTooltip],
+        ['mouseleave', hideTooltip],
+        ['focus', showTooltip],
+        ['blur', hideTooltip],
+    ].forEach(([event, listener]) => {
+
+        referenceElement.addEventListener(event, listener);
+    });
+
+}
+
+/**
  * Builds a comma-separated string of selected database values for a given group name.
  * @param {string} groupName - The ID of the group to retrieve selected values from.
  * @returns {string} A comma-separated string of selected database values.
@@ -400,7 +449,6 @@ const createDeleteConfirmationPopover = () => {
                 </div>
                 <div id="arrow"></div>
             `;
-            popoverContent.style.position = 'absolute'; // float above everything else to not disrupt layout
 
             // append element to DOM to get its dimensions
             document.body.appendChild(popoverContent);
@@ -408,9 +456,8 @@ const createDeleteConfirmationPopover = () => {
             const arrowElement = document.getElementById('arrow');
 
             // Create popover (help from https://floating-ui.com/docs/tutorial)
-            const popover = computePosition(button, popoverContent, {
+            computePosition(button, popoverContent, {
                 placement: 'top',
-                strategy: 'fixed',
                 middleware: [
                     flip(), // flip to bottom if there is not enough space on top
                     shift(), // shift the popover to the right if there is not enough space on the left
@@ -448,7 +495,7 @@ const createDeleteConfirmationPopover = () => {
             document.body.appendChild(popoverContent);
 
             // Store the gene collection ID to delete
-            const gcIdToDelete = e.target.value;
+            const gcIdToDelete = e.currentTarget.value;
 
             // Add event listener to cancel button
             document.getElementById('cancel_gc_delete').addEventListener('click', () => {
@@ -456,24 +503,23 @@ const createDeleteConfirmationPopover = () => {
             });
 
             // Add event listener to confirm button
-            document.getElementById('confirm_gc_delete').addEventListener('click', () => {
+            document.getElementById('confirm_gc_delete').addEventListener('click', async () => {
 
                 try {
-                    const {data} = axios.post('./cgi/remove_gene_cart.cgi', convertToFormData({
+                    const {data} = await axios.post('./cgi/remove_gene_cart.cgi', convertToFormData({
                         'session_id': CURRENT_USER.session_id,
                         'gene_cart_id': gcIdToDelete
                     }));
 
                     if (data['success'] == 1) {
-                        const resultElement = document.getElementById('result_gc_id_' + gcIdToDelete);
+                        const resultElement = document.getElementById(`result_gc_id_${gcIdToDelete}`);
                         resultElement.style.transition = 'opacity 1s';
                         resultElement.style.opacity = 0;
+                        resultElement.remove();
 
-                        setTimeout(function() {
-                            const resultCountElement = document.getElementById('result_count');
-                            resultCountElement.textContent = parseInt(resultCountElement.textContent) - 1;
-                            resultElement.remove();
-                        }, 1000);
+                        // This can affect page counts, so we need to re-run the search
+                        submitSearch();
+
                     } else {
                         throw new Error(data['error']);
                     }
@@ -524,111 +570,20 @@ const createPaginationEllipsis = () => {
 }
 
 /**
- * Creates a popover element and appends it to the body.
- * @param {HTMLElement} referenceElement - The element that triggers the popover.
- * @returns {void}
- */
-const createPopover = (referenceElement) => {
-   // Create popover element
-    const popover = document.createElement('div');
-    popover.className = 'message';
-    popover.classList.add("is-hidden");
-
-    // Create message body
-    const messageBody = document.createElement('div');
-    messageBody.className = 'message-body';
-    messageBody.innerText = referenceElement.dataset.popoverContent;
-
-    // Append message body to popover
-    popover.appendChild(messageBody);
-
-    // Append popover to body
-    document.body.appendChild(popover);
-
-    // Compute position
-    const { x, y } = computePosition(referenceElement, popover, {
-        placement: 'top', // Change this to your preferred placement
-        strategy: 'fixed',
-        middleware: [
-            flip(), // flip to bottom if there is not enough space on top
-            shift(), // shift the popover to the right if there is not enough space on the left
-            offset(5), // offset relative to the button
-        ]
-    }).then(({ x, y }) => {
-        // Position the popover
-        Object.assign(popover.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-        });
-    });
-
-    const hideTooltip = () => {
-        popover.classList.add("is-hidden");
-    }
-
-    const showTooltip = () => {
-        popover.classList.remove("is-hidden");
-    }
-
-    [
-        ['mouseenter', showTooltip],
-        ['mouseleave', hideTooltip],
-        ['focus', showTooltip],
-        ['blur', hideTooltip],
-    ].forEach(([event, listener]) => {
-        popover.addEventListener(event, listener);
-    });
-}
-
-/**
  * Creates a tooltip element and appends it to the body.
- * @param {HTMLElement} referenceElement - The element that the tooltip is referencing.
- * @returns {void}
+ * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
+ * @returns {HTMLElement} The created tooltip element.
  */
-const createTooltip = (referenceElement) => {
+const createActionTooltips = (referenceElement) => {
     // Create tooltip element
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
     tooltip.innerText = referenceElement.dataset.tooltipContent;
-    tooltip.classList.add("has-background-dark", "is-hidden");
+    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
 
     // Append tooltip to body
     document.body.appendChild(tooltip);
-
-    // Compute position
-    const { x, y } = computePosition(referenceElement, tooltip, {
-        placement: 'top', // Change this to your preferred placement
-        strategy: 'fixed',
-        middleware: [
-            flip(), // flip to bottom if there is not enough space on top
-            shift(), // shift the popover to the right if there is not enough space on the left
-            offset(5), // offset relative to the button
-        ]
-    }).then(({ x, y }) => {
-        // Position the popover
-        Object.assign(tooltip.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-        });
-    });
-
-    const hideTooltip = () => {
-        tooltip.classList.add("is-hidden");
-    }
-
-    const showTooltip = () => {
-        tooltip.classList.remove("is-hidden");
-    }
-
-    [
-        ['mouseenter', showTooltip],
-        ['mouseleave', hideTooltip],
-        ['focus', showTooltip],
-        ['blur', hideTooltip],
-    ].forEach(([event, listener]) => {
-        tooltip.addEventListener(event, listener);
-    });
-
+    return tooltip;
 }
 
 // Callbacks after attempting to save a gene collection
@@ -710,7 +665,8 @@ const processSearchResults = (data) => {
         const genes = gc.genes;
         const geneCount = gc.gene_count;
         const userName = gc.user_name;
-        const organism = gc.organism; // ?
+        const organism = gc.organism;
+        const isOwner = gc.is_owner;
 
 
         // Build results view and add to DOM
@@ -720,39 +676,47 @@ const processSearchResults = (data) => {
                 <div class="column is-full">
                     <!-- title section -->
                     <div class="columns">
-                        <div class="column is-11 js-readonly-version">
-                            <p class="has-text-weight-bold" id="result_gc_id_${geneCollectionId}_display_title">${label}</p>
-                        </div>
-                        <div id="editable_title_c" class="column is-11 js-editable-version is-hidden">
-                            <div class="form-group">
-                                <span class="has-text-weight-semibold">Title</span>
-                                <input type="text" class="input js-editable-title" id="result_gc_id_${geneCollectionId}_editable_title" data-original-val="${label}" value="${label}"/>
+                        <div class="column is-11">
+                            <div class="js-readonly-version">
+                                <p class="has-text-weight-bold" id="result_gc_id_${geneCollectionId}_display_title">${label}</p>
+                            </div>
+                            <div id="editable_title_c" class="js-editable-version is-hidden">
+                                <div class="field">
+                                    <span class="has-text-weight-semibold">Title</span>
+                                    <input type="text" class="input js-editable-title" id="result_gc_id_${geneCollectionId}_editable_title" data-original-val="${label}" value="${label}"/>
+                                </div>
                             </div>
                         </div>
+
                         <div class="column is-1">
                             <span class="is-clickable is-pulled-right js-expand-box icon" data-gc-id="${geneCollectionId}"><i class="mdi mdi-arrow-expand"></i></span>
                         </div>
                     </div>
                     <!-- visibility/other metadata section -->
                     <div class="columns is-size-7">
-                        <div class="column is-3 pl-2 js-readonly-version" id="${geneCollectionId}_display_container"></div>
-                        <div class="column is-3 pl-2 js-editable-version is-hidden">
-                            <div class="form-group">
-                                <label class="label" for="result_gc_id_${geneCollectionId}_editable_visibility">Visibility</label><br />
-                                <!-- toggle switch --->
-                                <input type="checkbox" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
-                                    data-is-public="${isPublic}" data-size="small" data-offstyle="danger" data-width="100" data-toggle="toggle"
-                                    data-on="Public" data-off="Private" />
+                        <div class="column is-3">
+                            <div class="js-readonly-version" id="${geneCollectionId}_display_container"></div>
+                            <div class="js-editable-version is-hidden">
+                                <div class="field">
+                                    <label class="label" for="result_gc_id_${geneCollectionId}_editable_visibility">Visibility</label><br />
+                                    <!-- toggle switch --->
+                                    <input type="checkbox" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
+                                        data-is-public="${isPublic}" data-on="Public" data-off="Private" />
+                                </div>
                             </div>
                         </div>
+
                         <!-- organism section -->
-                        <div class="column is-3 js-readonly-version"><span class="has-text-weight-semibold">Organism</span> <span id="result_gc_id_${geneCollectionId}_display_organism">${organism}</span></div>
-                        <div class="column is-3 js-editable-version is-hidden">
-                        <div class="form-group">
-                            <label for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
-                            <select class="form-control" id="result_gc_id_${geneCollectionId}_editable_organism_id" data-original-val="${organismId}"></select>
+                        <div class="column is-3">
+                            <div class="js-readonly-version"><span class="has-text-weight-semibold">Organism</span> <span id="result_gc_id_${geneCollectionId}_display_organism">${organism}</span></div>
+                            <div class="js-editable-version is-hidden">
+                                <div class="field">
+                                    <label for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
+                                    <select class="form-control" id="result_gc_id_${geneCollectionId}_editable_organism_id" data-original-val="${organismId}"></select>
+                                </div>
+                            </div>
                         </div>
-                        </div>
+
 
                         <div class="column is-3"><span class="has-text-weight-semibold">Owner</span> ${userName}</div>
                         <div class="column is-3"><span class="has-text-weight-semibold">Added</span> ${dateAdded}</div>
@@ -765,14 +729,14 @@ const processSearchResults = (data) => {
                         <div class="column is-9">
                             <div class="columns">
                                 <div class="column is-two-thirds">
-                                    <div class="field has-addons" role="group">
+                                    <div class="field has-addons js-action-links" role="group">
                                         <p class="control">
                                             <button class="button is-small is-outlined is-dark js-view-gc" value="${shareId}" data-tooltip-content="View on front page">
                                                 <span class="icon is-small"><i class="mdi mdi-eye"></i></span>
                                             </button>
                                         </p>
                                         <p class="control">
-                                            <button class="button is-small is-outlined is-danger js-delete-gc" value="${geneCollectionId}" data-owner-id="${userId}" data-tooltip-content="Delete collection">
+                                            <button class="button is-small is-outlined is-danger js-delete-gc" value="${geneCollectionId}" data-is-owner="${isOwner}" data-tooltip-content="Delete collection">
                                                 <span class="icon is-small"><i class="mdi mdi-delete"></i></span>
                                             </button>
                                         </p>
@@ -847,12 +811,31 @@ const processSearchResults = (data) => {
         ldescContainer.appendChild(ldescElt);
     }
 
+    // Hide some buttons if user is not owner
     updateGeneCollectionListButtons();
 
-    // Create tooltips for all elements with the data-tooltip-content attribute
-    for (const classElt of document.querySelectorAll("[data-tooltip-content]")) {
-        createTooltip(classElt);
+    for (const tooltipElt of document.getElementsByClassName("tooltip")) {
+        // Remove any existing tooltips
+        tooltipElt.remove();
     }
+
+    // Create tooltips for all elements with the data-tooltip-content attribute
+    // Only creating one set so that they can be reused
+    const actionGroupElt = document.querySelector(".js-action-links");
+    const tooltips = []
+    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+        tooltips.push(createActionTooltips(classElt))
+    }
+
+    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+
+    for (const actionElt of document.querySelectorAll(".js-action-links")) {
+        const loopTooltips = [...tooltips];
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+
 
     // Initiialize delete gene collection popover for each delete button
     createDeleteConfirmationPopover();
@@ -948,10 +931,8 @@ const setupPagination = (pagination) => {
         document.getElementById("result_label").textContent = pagination.total_results == 1 ? " result" : " results";
         document.getElementById("gc_count_label_c").classList.remove("is-hidden");
 
-        const maxPageResults = Math.min(pagination.total_results, resultsPerPage);
-
         const firstResult = (pagination.current_page - 1) * resultsPerPage + 1;
-        const lastResult = firstResult + maxPageResults - 1;
+        const lastResult = Math.min(pagination.current_page * resultsPerPage, pagination.total_results);
         document.getElementById("result_range").textContent = `${firstResult} - ${lastResult}`;
 
         // Update pagination buttons
@@ -1060,7 +1041,7 @@ const submitSearch = async (page) => {
  * @returns {void}
  */
 const updateGeneCollectionListButtons = () => {
-    const gcListElements = document.getElementsByClassName(".js-gc-list-element");
+    const gcListElements = document.getElementsByClassName("js-gc-list-element");
 
     for (const classElt of gcListElements) {
 
@@ -1068,13 +1049,9 @@ const updateGeneCollectionListButtons = () => {
         const deleteButton = classElt.querySelector("button.js-delete-gc");
         const editButton = classElt.querySelector("button.js-edit-gc");
 
-        // TODO: Alternative compare method since user_id is not passed in the JSON anymore
-        if (CURRENT_USER.id == deleteButton.dataset.ownerId) {
-            deleteButton.classList.remove("is-hidden");
-            editButton.classList.remove("is-hidden");
-        } else {
-            deleteButton.classList.add("is-hidden");
-            editButton.classList.add("is-hidden");
+        if (deleteButton.dataset.isOwner === "false") {
+            deleteButton.parentElement.remove();    // remove .control element to prevent heavy line where button was
+            editButton.parentElement.remove()
         }
     };
 }

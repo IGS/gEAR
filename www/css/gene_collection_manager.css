@@ -12,3 +12,31 @@ hr.gc-list-element-divider {
     margin-left: auto;
     margin-right: auto;
 }
+
+/* CSS for Floating UI components */
+
+#delete_gc_popover {
+    width: max-content;
+    position: absolute; /* float above everything else to not disrupt layout */
+    top: 0;
+    left: 0;
+}
+
+#arrow {
+    position: absolute;
+    background: inherit;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+}
+
+.tooltip {
+    font-weight: bold;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 90%;
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
