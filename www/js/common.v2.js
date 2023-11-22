@@ -413,36 +413,86 @@ Any axios methods that impolement these calls, must provide their own success/er
 ? Some "classes" JS files like "genecart" are already abstracted away... should we keep their methods or move them here?
 */
 
+/**
+ * Mixin containing various API calls for interacting with datasets, displays, and analyses.
+ * @mixin
+ */
 const apiCallsMixin = {
     sessionId: null,
     colorblindMode: null,
 
+    /**
+     * Deletes a display.
+     * @param {string} displayId - The ID of the display to be deleted.
+     * @returns {Promise<null>} - A promise that resolves to null.
+     */
     async deleteDisplay(displayId) {
         const payload = {session_id: this.sessionId, id: displayId};
         await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
         return null;
     },
+    /**
+     * Fetches aggregations for a given dataset and analysis.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis.
+     * @param {object} filters - The filters to apply to the aggregations.
+     * @returns {Promise<object>} - The aggregated data.
+     */
     async fetchAggregations(datasetId, analysisId, filters) {
         const payload = {session_id: this.sessionId, dataset_id: datasetId, analysis_id: analysisId, filters};
         const {data} = await axios.post(`/api/h5ad/${datasetId}/aggregations`, payload);
         return data;
     },
+    /**
+     * Fetches analyses for a given dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
     async fetchAnalyses(datasetId) {
         const {data} = await axios.get(`./api/h5ad/${datasetId}/analyses`)
         return data;
     },
+    /**
+     * Fetches the available plot types for a given dataset and analysis.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis.
+     * @param {boolean} [isMultigene=false] - Indicates whether the plot types are for a multigene analysis.
+     * @returns {Promise<any>} - A promise that resolves to the available plot types data.
+     */
     async fetchAvailablePlotTypes(datasetId, analysisId, isMultigene=false){
         const flavor = isMultigene ? "mg_availableDisplayTypes" : "availableDisplayTypes";
         const payload = {session_id: this.sessionId, dataset_id: datasetId, analysis_id: analysisId};
         const {data} = await axios.post(`/api/h5ad/${datasetId}/${flavor}`, payload);
         return data;
     },
+    /**
+     * Fetches dashboard data from the server.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The type of analysis.
+     * @param {string} plotType - The type of plot.
+     * @param {object} plotConfig - The configuration for the plot.
+     * @returns {Promise<object>} - The fetched data.
+     */
     async fetchDashData(datasetId, analysis, plotType, plotConfig) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload);
         return data;
     },
+    /**
+     * Fetches dataset comparison data.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {object} filters - The filters to apply to the dataset.
+     * @param {string} compareKey - The key to compare the dataset.
+     * @param {string} conditionX - The X condition for comparison.
+     * @param {string} conditionY - The Y condition for comparison.
+     * @param {number} foldChangeCutoff - The fold change cutoff value.
+     * @param {number} stDevNumCutoff - The standard deviation number cutoff value.
+     * @param {number} logBase - The base for logarithmic transformation.
+     * @param {string} statisticalTestAction - The statistical test action to perform.
+     * @returns {Promise<any>} The dataset comparison data.
+     */
     async fetchDatasetComparison(datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction) {
         const payload = {
             dataset_id: datasetId,
@@ -458,80 +508,168 @@ const apiCallsMixin = {
 		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
 		return data;
     },
+    /**
+     * Fetches datasets asynchronously.
+     * @returns {Promise<any>} The fetched data.
+     */
     async fetchDatasets() {
         const payload = {session_id: this.sessionId};
         const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches the display image for a dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} displayId - The ID of the display.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
     async fetchDatasetDisplayImage(datasetId, displayId) {
         // POST due to payload variables being sensitive
         const payload = {dataset_id: datasetId, display_id: displayId};
         const {data} = await axios.post("/cgi/get_dataset_display_image.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches dataset displays.
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
     async fetchDatasetDisplays(datasetId) {
         const payload = {session_id: this.sessionId, dataset_id: datasetId};
         const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches the default display for a dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {boolean} [isMultigene=false] - Indicates if the dataset is multigene.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
     async fetchDefaultDisplay(datasetId, isMultigene=false) {
         const payload = {session_id: this.sessionId, dataset_id: datasetId, is_multigene: isMultigene};
         const {data} = await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches the members of a gene cart.
+     * @param {string} geneCartId - The ID of the gene cart.
+     * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
+     */
     async fetchGeneCartMembers(geneCartId) {
         const payload = { session_id: this.sessionId, gene_cart_id: geneCartId };
         const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches gene carts based on the specified cart type.
+     * @param {string} cartType - The type of gene cart to fetch.
+     * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
+     */
     async fetchGeneCarts(cartType) {
         const payload = {session_id: this.sessionId, cart_type: cartType};
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches gene symbols for a given dataset and analysis.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis (optional).
+     * @returns {Promise<Array<string>>} - A promise that resolves to an array of gene symbols.
+     */
     async fetchGeneSymbols(datasetId, analysisId) {
         let url = `./api/h5ad/${datasetId}/genes`;
         if (analysisId) url += `?analysis_id=${analysisId}`;
         const {data} = await axios.get(url);
         return data;
     },
+    /**
+     * Fetches H5ad info from the server.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} [analysisId] - The ID of the analysis (optional).
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
     async fetchH5adInfo(datasetId, analysisId) {
         let url = `/api/h5ad/${datasetId}`
         if (analysisId) url += `?analysis_id=${analysisId}`;
         const {data} = await axios.get(url);
         return data;
     },
+    /**
+     * Fetches Plotly data for a given dataset, analysis, plot type, and plot configuration.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The analysis type.
+     * @param {string} plotType - The type of plot.
+     * @param {object} plotConfig - The configuration object for the plot.
+     * @returns {Promise<object>} - The fetched Plotly data.
+     */
     async fetchPlotlyData(datasetId, analysis, plotType, plotConfig) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}`, payload);
         return data;
     },
+    /**
+     * Fetches SVG data for a given dataset ID and gene symbol.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} geneSymbol - The symbol of the gene.
+     * @returns {Promise<any>} - A promise that resolves to the fetched SVG data.
+     */
     async fetchSvgData(datasetId, geneSymbol) {
         const {data} = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`);
         return data;
     },
+    /**
+     * Fetches the TSNE image for a given dataset, analysis, plot type, and plot configuration.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The analysis type.
+     * @param {string} plotType - The type of plot.
+     * @param {Object} plotConfig - The configuration for the plot.
+     * @returns {Promise<any>} - A promise that resolves with the fetched TSNE image data.
+     */
     async fetchTsneImage(datasetId, analysis, plotType, plotConfig) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
         return data;
     },
+    /**
+     * Fetches user history entries.
+     * @param {Array} entries - The entries to fetch.
+     * @returns {Promise} - A promise that resolves with the fetched data.
+     */
     async fetchUserHistoryEntries(entries) {
         const payload = { session_id: this.sessionId, entries };
         const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Retrieves session information.
+     * @returns {Promise<Object>} The session information.
+     */
     async getSessionInfo() {
         const payload = {session_id: this.sessionId};
         const {data} = await axios.post("/cgi/get_session_info.v2.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Logs in the user.
+     * @param {FormData} formData - The form data containing the login credentials.
+     * @returns {Promise<any>} - A promise that resolves to the login response data.
+     */
     async login(formData) {
         const payload = new URLSearchParams(formData);
         const {data} = await axios.post("/cgi/login.v2.cgi", payload);
         return data;
     },
+    /**
+     * Saves the dataset display with the specified parameters.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} displayId - The ID of the display.
+     * @param {string} label - The label for the display.
+     * @param {string} plotType - The type of plot for the display.
+     * @param {object} plotConfig - The configuration object for the plot.
+     * @returns {Promise<any>} - A promise that resolves to the saved data.
+     */
     async saveDatasetDisplay(datasetId, displayId, label, plotType, plotConfig) {
         const payload = {
             id: displayId,
@@ -548,6 +686,13 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/save_dataset_display.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Saves the default display for a dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} displayId - The ID of the display.
+     * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
+     * @returns {Promise<any>} - A promise that resolves to the saved data.
+     */
     async saveDefaultDisplay(datasetId, displayId, isMultigene=false) {
         const payload = {display_id: displayId, session_id: this.sessionId, dataset_id: datasetId, is_multigene: isMultigene};
         const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));

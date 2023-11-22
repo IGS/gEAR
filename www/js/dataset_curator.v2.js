@@ -11,7 +11,11 @@ let geneSelectPost = null;
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 
-// Class for methods that are common to all Plotly plot types
+/**
+ * Represents a PlotlyHandler, a class that handles Plotly plots.
+ * @class
+ * @extends PlotHandler
+ */
 class PlotlyHandler extends PlotHandler {
     constructor(plotType) {
         super();
@@ -45,6 +49,11 @@ class PlotlyHandler extends PlotHandler {
 
     plotConfig = {};  // Plot config that is passed to API
 
+    /**
+     * Clones the display based on the provided configuration.
+     *
+     * @param {Object} config - The configuration object.
+     */
     cloneDisplay(config) {
         // plotly plots
         for (const prop in config) {
@@ -112,6 +121,12 @@ class PlotlyHandler extends PlotHandler {
         }
     }
 
+    /**
+     * Creates a plot using the provided dataset ID and analysis object.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {Object} analysisObj - The analysis object.
+     * @returns {void}
+     */
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         let plotJson;
@@ -169,6 +184,11 @@ class PlotlyHandler extends PlotHandler {
 
     }
 
+    /**
+     * Loads the plot HTML by replacing the content of prePlotOptionsElt and postPlotOptionsElt elements.
+     * Populates advanced options for specific plot types.
+     * @returns {Promise<void>} A promise that resolves when the plot HTML is loaded.
+     */
     async loadPlotHtml() {
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
         prePlotOptionsElt.replaceChildren();
@@ -198,6 +218,9 @@ class PlotlyHandler extends PlotHandler {
         }
     }
 
+    /**
+     * Populates the plot configuration based on the current state of the dataset curator.
+     */
     populatePlotConfig() {
         this.plotConfig = {};   // Reset plot config
 
@@ -238,17 +261,32 @@ class PlotlyHandler extends PlotHandler {
         }).filter(x => x !== null);
     }
 
+    /**
+     * Sets up the event for copying parameter values.
+     * @async
+     * @function setupParamValueCopyEvent
+     * @returns {Promise<void>}
+     */
     async setupParamValueCopyEvent() {
         //pass
     }
 
+    /**
+     * Sets up plot-specific events.
+     * @async
+     * @function setupPlotSpecificEvents
+     * @returns {Promise<void>}
+     */
     async setupPlotSpecificEvents() {
         await setupPlotlyOptions();
     }
 
 }
 
-// Class for methods that are common to all Scanpy plot types
+/**
+ * Represents a ScanpyHandler class that extends PlotHandler.
+ * This class is responsible for creating and manipulating plots for a given dataset using the Scanpy analysis object.
+ */
 class ScanpyHandler extends PlotHandler {
     constructor(plotType) {
         super();
@@ -272,6 +310,10 @@ class ScanpyHandler extends PlotHandler {
 
     plotConfig = {};  // Plot config that is passed to API
 
+    /**
+     * Clones the display based on the given configuration.
+     * @param {Object} config - The configuration object.
+     */
     cloneDisplay(config) {
         for (const prop in config) {
             setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
@@ -353,6 +395,12 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
+    /**
+     * Creates a plot for a given dataset using the provided analysis object.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {Object} analysisObj - The analysis object.
+     * @returns {void}
+     */
     async createPlot(datasetId, analysisObj) {
         let image;
         try {
@@ -376,6 +424,10 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
+    /**
+     * Loads the plot HTML by replacing the content of prePlotOptionsElt and postPlotOptionsElt elements.
+     * @returns {Promise<void>} A promise that resolves when the plot HTML is loaded.
+     */
     async loadPlotHtml() {
         const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
         prePlotOptionsElt.replaceChildren();
@@ -387,6 +439,9 @@ class ScanpyHandler extends PlotHandler {
         postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/tsne_static.html");
     }
 
+    /**
+     * Populates the plot configuration based on various elements and values.
+     */
     populatePlotConfig() {
         this.plotConfig = {};   // Reset plot config
 
@@ -425,17 +480,28 @@ class ScanpyHandler extends PlotHandler {
         }
     }
 
+    /**
+     * Sets up the event for copying parameter values.
+     * @returns {Promise<void>} A promise that resolves when the event setup is complete.
+     */
     async setupParamValueCopyEvent() {
         //pass
     }
 
+    /**
+     * Sets up plot-specific events.
+     * @returns {Promise<void>} A promise that resolves when the setup is complete.
+     */
     async setupPlotSpecificEvents() {
         await setupScanpyOptions();
     }
 
 }
 
-// Class for methods that are common to all SVG images
+/**
+ * Represents a SvgHandler, a class that handles SVG plots.
+ * @extends PlotHandler
+ */
 class SvgHandler extends PlotHandler {
     constructor() {
         super();
@@ -452,6 +518,10 @@ class SvgHandler extends PlotHandler {
 
     plotConfig = {colors: {}};  // Plot config to color SVG
 
+    /**
+     * Clones the display based on the provided configuration.
+     * @param {Object} config - The configuration object.
+     */
     cloneDisplay(config) {
         // Props are in a "colors" dict
         for (const prop in config) {
@@ -467,6 +537,12 @@ class SvgHandler extends PlotHandler {
 
     }
 
+    /**
+     * Creates a plot for a given dataset and gene symbol.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} geneSymbol - The gene symbol.
+     * @returns {void}
+     */
     async createPlot(datasetId, geneSymbol) {
         let data;
         try {
@@ -480,6 +556,10 @@ class SvgHandler extends PlotHandler {
         colorSVG(data, this.plotConfig["colors"]);
     }
 
+    /**
+     * Loads the plot HTML and updates the DOM elements accordingly.
+     * @returns {Promise<void>} A promise that resolves once the plot HTML is loaded and the DOM elements are updated.
+     */
     async loadPlotHtml() {
         document.getElementById("facet_content").classList.add("is-hidden");
         document.getElementById("selected_facets").classList.add("is-hidden");
@@ -494,6 +574,9 @@ class SvgHandler extends PlotHandler {
         postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/svg.html");
     }
 
+    /**
+     * Populates the plot configuration with color values based on user input.
+     */
     populatePlotConfig() {
         this.plotConfig["colors"] = {};   // Reset plot config
 
@@ -508,16 +591,28 @@ class SvgHandler extends PlotHandler {
 
     }
 
+    /**
+     * Sets up an event listener for copying parameter values.
+     * @returns {Promise<void>} A promise that resolves when the event listener is set up.
+     */
     async setupParamValueCopyEvent() {
         setupParamValueCopyEvent("js-svg-enable-mid");
     }
 
+    /**
+     * Sets up plot-specific events.
+     */
     setupPlotSpecificEvents() {
         setupSVGOptions();
     }
 
 }
 
+/**
+ * Applies color to an SVG chart based on the provided data and plot configuration.
+ * @param {Object} chartData - The data used to color the chart.
+ * @param {Object} plotConfig - The configuration settings for the chart.
+ */
 const colorSVG = (chartData, plotConfig) => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
     const colorblindMode = CURRENT_USER.colorblind_mode;
@@ -596,6 +691,13 @@ const colorSVG = (chartData, plotConfig) => {
 
 }
 
+/**
+ * Handles the event when a select element is updated in the curatorSpecifcChooseGene function.
+ * If one select element was updated, it ensures the other is updated as well.
+ * It copies data from one select2 to the other and renders the dropdown for the other select2.
+ * If no gene is selected, it disables the plot button and displays an error message.
+ * @param {Event} event - The event object triggered by the select element update.
+ */
 const curatorSpecifcChooseGene = (event) => {
     // If one select element was updated ensure the other is updated as well
     const select2 = event.target.id === "gene_select" ? geneSelect : geneSelectPost;
@@ -648,6 +750,11 @@ const curatorSpecifcChooseGene = (event) => {
     document.getElementById("plot_options_s").click();
 }
 
+/**
+ * Creates a plot based on the specified plot type.
+ * @param {string} plotType - The type of plot to create.
+ * @returns {Promise<void>} - A promise that resolves when the plot is created.
+ */
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
@@ -665,17 +772,23 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 
 }
 
+/**
+ * Callback function for curator specific dataset tree.
+ * Creates gene select2 elements for both views.
+ * @returns {void}
+ */
 const curatorSpecifcDatasetTreeCallback = () => {
 
-    // Create gene select2 elements for both views
     // Not providing the object in the argument could duplicate the nice-select2 structure if called multiple times
     geneSelect = createGeneSelectInstance("gene_select", geneSelect);
     geneSelectPost = createGeneSelectInstance("gene_select_post", geneSelectPost);
 
 }
 
+/**
+ * Updates the curator-specific navbar with the current page information.
+ */
 const curatorSpecificNavbarUpdates = () => {
-	// Update with current page info
 	document.querySelector("#header_bar .navbar-item").textContent = "Single-gene Curator";
 
     for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
@@ -689,6 +802,11 @@ const curatorSpecificOnLoad = async () => {
     // pass
 }
 
+/**
+ * Returns a specific plot style handler based on the given plot type.
+ * @param {string} plotType - The type of plot.
+ * @returns {PlotlyHandler|ScanpyHandler|SvgHandler|null} - The plot style handler.
+ */
 const curatorSpecificPlotStyle = (plotType) => {
     // include plotting backend options
     if (plotlyPlots.includes(plotType)) {
@@ -702,6 +820,11 @@ const curatorSpecificPlotStyle = (plotType) => {
     }
 }
 
+/**
+ * Adjusts the plot type for the dataset curator.
+ * @param {string} plotType - The original plot type.
+ * @returns {string} - The adjusted plot type.
+ */
 const curatorSpecificPlotTypeAdjustments = (plotType) => {
     // ? Move this to class constructor to handle
     if (plotType.toLowerCase() === "tsne") {
@@ -713,6 +836,11 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
     return plotType
 }
 
+/**
+ * Updates the gene options in the curator specific section.
+ *
+ * @param {Array<string>} geneSymbols - The array of gene symbols to update the options with.
+ */
 const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
     // copy to "#gene_select_post"
     const geneSelectEltPost = document.getElementById("gene_select_post");
@@ -726,6 +854,15 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
 
 }
 
+/**
+ * Fetches Plotly data for a given dataset, analysis, plot type, and plot configuration.
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysis - The analysis to perform.
+ * @param {string} plotType - The type of plot to create.
+ * @param {object} plotConfig - The configuration options for the plot.
+ * @returns {Promise<object>} - The fetched Plotly data.
+ * @throws {Error} - If the data fetch fails or an error occurs.
+ */
 const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
     // NOTE: gene_symbol already passed to plotConfig
     try {
@@ -742,6 +879,13 @@ const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
     }
 }
 
+/**
+ * Fetches SVG data for a given dataset and gene symbol.
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} geneSymbol - The gene symbol.
+ * @returns {Promise<Object>} - The fetched SVG data.
+ * @throws {Error} - If there is an error fetching the SVG data.
+ */
 const fetchSvgData = async (datasetId, geneSymbol) => {
     try {
         const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol);
@@ -757,6 +901,16 @@ const fetchSvgData = async (datasetId, geneSymbol) => {
     }
 };
 
+/**
+ * Fetches the TSNE image for a given dataset, analysis, plot type, and plot configuration.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysis - The analysis type.
+ * @param {string} plotType - The type of plot.
+ * @param {object} plotConfig - The configuration for the plot.
+ * @returns {Promise<object>} - The fetched data.
+ * @throws {Error} - If there is an error fetching the data or creating the plot image.
+ */
 const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
     // NOTE: gene_symbol already passed to plotConfig
     try {
@@ -774,6 +928,11 @@ const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
 }
 
 
+/**
+ * Renders the color picker for a given series name.
+ *
+ * @param {string} seriesName - The name of the series.
+ */
 const renderColorPicker = (seriesName) => {
     const colorsContainer = document.getElementById("colors_container");
     const colorsSection = document.getElementById("colors_section");
@@ -815,7 +974,10 @@ const renderColorPicker = (seriesName) => {
     colorsSection.classList.remove("is-hidden");
 }
 
-/* Set up any Plotly-based plot options and events for the pre- and post- plot views */
+/**
+ * Sets up the options for Plotly.
+ * @returns {Promise<void>} A promise that resolves when the options are set up.
+ */
 const setupPlotlyOptions = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
@@ -1026,7 +1188,10 @@ const setupPlotlyOptions = async () => {
 
 }
 
-/* Set up any Scanpy-based plot options and events for the pre- and post- plot views */
+/**
+ * Sets up the options for Scanpy analysis.
+ * @returns {Promise<void>} A promise that resolves when the setup is complete.
+ */
 const setupScanpyOptions = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
@@ -1145,7 +1310,9 @@ const setupScanpyOptions = async () => {
 
 }
 
-/* Set up any SVG options and events for the pre- and post- plot views */
+/**
+ * Sets up SVG options for dataset curator.
+ */
 const setupSVGOptions = () => {
     const enableMidColorElts = document.getElementsByClassName("js-svg-enable-mid");
     const midColorElts = document.getElementsByClassName("js-svg-mid-color");
@@ -1171,6 +1338,10 @@ const setupSVGOptions = () => {
     }
 }
 
+/**
+ * Shows the corresponding subsection based on the selected option in the plot configuration menu.
+ * @param {Event} event - The event triggered by the user's selection.
+ */
 const showPostPlotlyParamSubsection = (event) => {
     for (const subsection of document.getElementsByClassName("js-plot-config-section")) {
         subsection.classList.add("is-hidden");
@@ -1199,7 +1370,14 @@ const showPostPlotlyParamSubsection = (event) => {
     event.preventDefault(); // Prevent "link" clicking from "a" elements
 }
 
-// For plotting options, populate select menus with category groups
+/**
+ * Updates the series options in a select element based on the provided parameters.
+ *
+ * @param {string} classSelector - The class selector for the select elements to update.
+ * @param {Array<string>} seriesArray - An array of series names.
+ * @param {boolean} addExpression - Indicates whether to add an expression option.
+ * @param {string} defaultOption - The default option to select.
+ */
 const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultOption) => {
 
     for (const elt of document.getElementsByClassName(classSelector)) {

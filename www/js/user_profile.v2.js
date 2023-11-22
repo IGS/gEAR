@@ -1,7 +1,12 @@
 'use strict';
 
-/* Creates a Toast-style message in the upper-corner of the screen. */
+/**
+ * Creates a toast notification with the given message and level class.
+ * @param {string} msg - The message to display in the toast notification.
+ * @param {string} [levelClass="is-danger"] - The level class to apply to the toast notification. Defaults to "is-danger".
+ */
 const createToast = (msg, levelClass="is-danger") => {
+    // TODO: Merge all the "createToast" functions into one in common.js
     const template = `
     <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
         <button class="delete"></button>
@@ -107,6 +112,12 @@ document.getElementById("submit_preferences").addEventListener("click", async (e
 });
 
 /* --- Entry point --- */
+/**
+ * Handles page-specific login UI updates.
+ *
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the UI updates are complete.
+ */
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// User settings has no "active" state for the sidebar

@@ -35,8 +35,10 @@ To make it a "multiple" select object, add "multiple" to the original "select" e
 
 */
 
-
-// Create PlotStyle abstract class and Plotly, Scanpy, SVG subclasses
+/**
+ * Represents a base class for handling plots.
+ * @class
+ */
 class PlotHandler {
     constructor() {
         // Check if this is an abstract class
@@ -48,36 +50,75 @@ class PlotHandler {
     classElt2Prop = {}; // This will be overridden by subclasses
     configProp2ClassElt = {};   // This will be overridden by subclasses (note: cannot "super" instance properties)
 
+    /**
+     * Creates a clone of the plot display.
+     * @abstract
+     * @throws {Error} You have to implement the method cloneDisplay!
+     */
     cloneDisplay() {
         throw new Error("You have to implement the method cloneDisplay!");
     }
 
+    /**
+     * Asynchronously creates the plot.
+     * @abstract
+     * @throws {Error} You have to implement the method createPlot!
+     */
     async createPlot() {
         throw new Error("You have to implement the method createPlot!");
     }
 
+    /**
+     * Asynchronously loads the plot HTML.
+     * @abstract
+     * @throws {Error} You have to implement the method loadPlotHtml!
+     */
     async loadPlotHtml() {
         throw new Error("You have to implement the method loadPlotHtml!");
     }
 
+    /**
+     * Populates the plot configuration.
+     * @abstract
+     * @throws {Error} You have to implement the method populatePlotConfig!
+     */
     populatePlotConfig() {
         throw new Error("You have to implement the method populatePlotConfig!");
     }
 
+    /**
+     * Sets up the event for copying parameter values.
+     * @abstract
+     * @throws {Error} You have to implement the method setupParamValueCopyEvent!
+     */
     async setupParamValueCopyEvent() {
         throw new Error("You have to implement the method setupParamValueCopyEvent!");
     }
 
+    /**
+     * Sets up plot-specific events.
+     * @abstract
+     * @throws {Error} You have to implement the method setupPlotSpecificEvents!
+     */
     setupPlotSpecificEvents() {
         throw new Error("You have to implement the method setupPlotSpecificEvents!");
     }
-
 }
 
 /* API Mixin */
 
+/**
+ * Mixin containing various API call methods for the curator module.
+ * @mixin
+ */
 const curatorApiCallsMixin = {
 
+    /**
+     * Deletes a display by its ID.
+     *
+     * @param {string} displayId - The ID of the display to delete.
+     * @throws {Error} If the display cannot be deleted.
+     */
     async deleteDisplay(displayId) {
         try {
             await super.deleteDisplay(displayId);
@@ -91,6 +132,14 @@ const curatorApiCallsMixin = {
             throw new Error(msg);
         }
     },
+
+    /**
+     * Fetches aggregations for a dataset and analysis.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis.
+     * @param {object} filters - The filters to apply to the aggregations.
+     * @returns {Promise<{aggregations: object, total_count: number}>} The fetched aggregations and total count.
+     */
     async fetchAggregations(datasetId, analysisId, filters){
         try {
             const data = await super.fetchAggregations(datasetId, analysisId, filters);
@@ -104,6 +153,12 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches the analyses for a given dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<{publicAnalyses: Array, privateAnalyses: Array}>} - The fetched public and private analyses.
+     * @throws {Error} - If the analyses cannot be fetched.
+     */
     async fetchAnalyses (datasetId) {
         try {
             const { public: publicAnalyses, private: privateAnalyses } = await super.fetchAnalyses(datasetId);
@@ -117,6 +172,15 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches the available plot types for a given dataset and analysis.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis.
+     * @param {boolean} [isMultigene=false] - Flag indicating if the plot types are for multigene analysis.
+     * @returns {Promise<Object>} - A promise that resolves to the available plot types data.
+     * @throws {Error} - If there is an error fetching the plot types.
+     */
     async fetchAvailablePlotTypes(datasetId, analysisId, isMultigene=false){
         try {
             const data = await super.fetchAvailablePlotTypes(datasetId, analysisId, isMultigene);
@@ -136,6 +200,11 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches datasets.
+     * @returns {Promise<any>} A promise that resolves with the fetched datasets.
+     * @throws {Error} If the datasets cannot be fetched.
+     */
     async fetchDatasets() {
         try {
             return await super.fetchDatasets();
@@ -147,6 +216,14 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches the display image for a dataset.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} displayId - The ID of the display.
+     * @returns {Promise} - A promise that resolves with the fetched display image.
+     * @throws {Error} - If the image preview cannot be fetched.
+     */
     async fetchDatasetDisplayImage(datasetId, displayId) {
         try {
             return await super.fetchDatasetDisplayImage(datasetId, displayId);
@@ -158,6 +235,13 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches the dataset displays for a given dataset ID.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<{userDisplays: Array, ownerDisplays: Array}>} - The user displays and owner displays.
+     * @throws {Error} - If there is an error fetching the displays.
+     */
     async fetchDatasetDisplays(datasetId) {
         try {
             // POST due to payload variables being sensitive
@@ -179,6 +263,13 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches the default display for a dataset.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<string>} The ID of the default display.
+     * @throws {Error} If the default display cannot be fetched.
+     */
     async fetchDefaultDisplay(datasetId) {
         try {
             // POST due to payload variables being sensitive
@@ -192,6 +283,12 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches gene symbols for a given dataset and analysis.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis.
+     * @returns {Array<string>} - An array of unique gene symbols.
+     */
     async fetchGeneSymbols(datasetId, analysisId) {
         try {
             const data = await super.fetchGeneSymbols(datasetId, analysisId);
@@ -204,6 +301,13 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Fetches H5AD information for a dataset and analysis.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysisId - The ID of the analysis.
+     * @returns {Promise<{obs_columns: any, obs_levels: any}>} The observation columns and levels.
+     * @throws {Error} If the H5AD observation data cannot be fetched.
+     */
     async fetchH5adInfo(datasetId, analysisId) {
         try {
             const {obs_columns, obs_levels} = await super.fetchH5adInfo(datasetId, analysisId);
@@ -216,6 +320,17 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Saves a dataset display as a new display.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} displayId - The ID of the display.
+     * @param {string} label - The label of the display.
+     * @param {string} plotType - The type of plot for the display.
+     * @param {object} plotConfig - The configuration for the plot.
+     * @returns {string} The ID of the saved display.
+     * @throws {Error} If the new display could not be saved.
+     */
     async saveDatasetDisplay(datasetId, displayId, label, plotType, plotConfig){
         // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
         try {
@@ -236,6 +351,13 @@ const curatorApiCallsMixin = {
         }
     },
 
+    /**
+     * Saves the default display with the specified displayId.
+     *
+     * @param {string} displayId - The ID of the display to be saved as default.
+     * @returns {Promise<void>} - A promise that resolves when the default display is saved successfully.
+     * @throws {Error} - If the default display cannot be saved.
+     */
     async saveDefaultDisplay(displayId) {
         try {
             const {success} = await super.saveDefaultDisplay(datasetId, displayId, isMultigene);
@@ -264,6 +386,16 @@ const curatorApiCallsMixin = {
 Object.setPrototypeOf(curatorApiCallsMixin, apiCallsMixin);
 
 
+/**
+ * Represents a dataset tree.
+ *
+ * @class
+ * @constructor
+ * @param {Object} options - The options for the dataset tree.
+ * @param {HTMLElement} options.element - The element to render the dataset tree.
+ * @param {HTMLElement} options.searchElement - The element for searching the dataset tree.
+ * @param {Function} options.selectCallback - The callback function to be called when a dataset is selected.
+ */
 const datasetTree = new DatasetTree({
     element: document.getElementById("dataset_tree")
     , searchElement: document.getElementById("dataset_query")
@@ -322,6 +454,10 @@ const datasetTree = new DatasetTree({
     })
 });
 
+/**
+ * Updates the analysis select options based on the fetched public and private analyses.
+ * @returns {Promise<void>} A promise that resolves when the analysis select options are updated.
+ */
 const analysisSelectUpdate = async () => {
     try {
         const {publicAnalyses, privateAnalyses} = await curatorApiCallsMixin.fetchAnalyses(datasetId);
@@ -338,6 +474,11 @@ const analysisSelectUpdate = async () => {
 
 }
 
+/**
+ * Chooses an analysis based on the selected options and updates the UI accordingly.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the analysis is chosen and the UI is updated.
+ */
 const chooseAnalysis = async (event) => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
@@ -367,12 +508,22 @@ const chooseAnalysis = async (event) => {
     }
 }
 
+/**
+ * Chooses a gene based on the given event.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the gene is chosen.
+ */
 const chooseGene = async (event) => {
     // Each page will deal with this separately
     curatorSpecifcChooseGene(event);
 }
 
 /* New display has been chosen, so display analysis and plot type options */
+/**
+ * Updates the display by enabling the analysis and plot type selects, and updating the gene, analysis, and plot type selects in parallel.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the display is updated.
+ */
 const chooseNewDisplay = async (event) => {
     document.getElementById('new_display').classList.add("is-loading");
     document.getElementById("analysis_select").disabled = false;
@@ -391,6 +542,12 @@ const chooseNewDisplay = async (event) => {
     document.getElementById("plot_type_s").click();
 }
 
+/**
+ * Handles the selection of a plot type.
+ *
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves once the plot type is chosen.
+ */
 const choosePlotType = async (event) => {
     if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
 
@@ -430,6 +587,12 @@ const choosePlotType = async (event) => {
 }
 
 
+/**
+ * Clones a display based on the event and display object.
+ * @param {Event} event - The event object.
+ * @param {Object} display - The display object to be cloned.
+ * @returns {Promise<void>} - A promise that resolves when the display is cloned.
+ */
 const cloneDisplay = async (event, display) => {
 
     const cloneId = event.target.id;
@@ -512,6 +675,12 @@ const cloneDisplay = async (event, display) => {
 
 }
 
+/**
+ * Creates an instance of the analysis select.
+ * @param {string} idSelector - The ID of the HTML element to bind the select to.
+ * @param {object} analysisSelect - Optional. The existing analysis select object to update.
+ * @returns {object} - The analysis select instance.
+ */
 const createAnalysisSelectInstance = (idSelector, analysisSelect=null) => {
     // If object exists, just update it with the revised data and return
     if (analysisSelect) {
@@ -525,7 +694,11 @@ const createAnalysisSelectInstance = (idSelector, analysisSelect=null) => {
     });
 }
 
-// Create the gradient for the canvas element using a given colorscale's information and the element HTML object
+/**
+ * Creates a canvas gradient for the given element.
+ *
+ * @param {HTMLCanvasElement} elem - The canvas element.
+ */
 const createCanvasGradient = (elem) => {
     // Get ID of canvas element and remove "gradient_" from the name
     const id = elem.id.replace("gradient_", "");
@@ -543,6 +716,10 @@ const createCanvasGradient = (elem) => {
     ctx.fillRect(0, 0, elem.width, 20);
 }
 
+/**
+ * Creates a color scale on a canvas element based on the given data.
+ * @param {HTMLCanvasElement} elem - The canvas element to create the color scale on.
+ */
 const createCanvasScale = (elem) => {
     // Get ID of canvas element and remove "gradient_" from the name
     const id = elem.id.replace("gradient_", "");
@@ -563,8 +740,15 @@ const createCanvasScale = (elem) => {
     }
 }
 
+/**
+ * Creates a color scale select instance.
+ * If the colorscaleSelect object exists, it updates it with the revised data and returns it.
+ * Otherwise, it creates a new NiceSelect instance with the provided options.
+ * @param {string} idSelector - The ID of the HTML element to bind the NiceSelect instance to.
+ * @param {object} colorscaleSelect - The existing colorscaleSelect object to update (optional).
+ * @returns {object} - The NiceSelect instance.
+ */
 const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
-    // If object exists, just update it with the revised data and return
     if (colorscaleSelect) {
         colorscaleSelect.update();
         return colorscaleSelect;
@@ -577,6 +761,13 @@ const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
     });
 }
 
+/**
+ * Creates a facet widget for filtering data based on the provided dataset ID, analysis ID, and filters.
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysisId - The ID of the analysis.
+ * @param {object} filters - The filters to apply to the data.
+ * @returns {FacetWidget} The created facet widget.
+ */
 const createFacetWidget = async (datasetId, analysisId, filters) => {
     document.getElementById("selected_facets_loader").classList.remove("is-hidden")
 
@@ -608,6 +799,12 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     return facetWidget;
 }
 
+/**
+ * Creates a gene select instance.
+ * @param {string} idSelector - The ID of the element to bind the gene select instance to.
+ * @param {object} geneSelect - The gene select instance to update (optional).
+ * @returns {object} - The gene select instance.
+ */
 const createGeneSelectInstance = (idSelector, geneSelect=null) => {
     // NOTE: Updating the list of genes can be memory-intensive if there are a lot of genes
     // and (I've noticed) if multiple select2 elements for genes are present.
@@ -626,6 +823,12 @@ const createGeneSelectInstance = (idSelector, geneSelect=null) => {
     });
 }
 
+/**
+ * Creates a plot type select instance.
+ * @param {string} idSelector - The ID of the selector element.
+ * @param {object} plotTypeSelect - The plot type select object (optional).
+ * @returns {object} - The plot type select instance.
+ */
 const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
     // If object exists, just update it with the revised data and return
     if (plotTypeSelect) {
@@ -640,6 +843,11 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
     });
 }
 
+/**
+ * Creates a plot based on the selected plot type and gene(s).
+ * @param {Event} event - The event that triggered the plot creation.
+ * @returns {Promise<void>} - A promise that resolves when the plot creation is complete.
+ */
 const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
@@ -675,7 +883,11 @@ const createPlot = async (event) => {
 
 }
 
-/* Creates a Toast-style message in the upper-corner of the screen. */
+/**
+ * Creates a toast notification with the given message and level class.
+ * @param {string} msg - The message to display in the toast notification.
+ * @param {string} [levelClass="is-danger"] - The level class for the toast notification. Defaults to "is-danger".
+ */
 const createToast = (msg, levelClass="is-danger") => {
     const template = `
     <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
@@ -715,9 +927,13 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 }
 
+/**
+ * Disables or enables a checkbox and its associated label.
+ * If the parent element is a .checkbox class, it will also be disabled or enabled.
+ * @param {HTMLElement} checkboxElt - The checkbox element.
+ * @param {boolean} state - The state to set for the checkbox and its label. True to disable, false to enable.
+ */
 const disableCheckboxLabel = (checkboxElt, state) => {
-    // if parent element is a .checkbox class, disable it too (uses Bulma CSS styling)
-    // Meant for checkboxes where the label is also a clickable element
     // NOTE: ".disable" attribute only applies to certain elements (https://www.w3schools.com/tags/att_disabled.asp)
     if (checkboxElt.parentElement.classList.contains("checkbox")) {
         if (state) {
@@ -728,7 +944,14 @@ const disableCheckboxLabel = (checkboxElt, state) => {
     }
 }
 
-// Create the template for the colorscale select2 option dropdown
+/**
+ * Formats the option text for a colorscale.
+ *
+ * @param {Object} option - The option object.
+ * @param {string} text - The text to be displayed.
+ * @param {boolean} [isContinuous=false] - Indicates if the colorscale is continuous.
+ * @returns {DocumentFragment} - The formatted option text.
+ */
 const formatColorscaleOptionText = (option, text, isContinuous=false) => {
 
     const fragment = document.createDocumentFragment();
@@ -753,8 +976,12 @@ const formatColorscaleOptionText = (option, text, isContinuous=false) => {
     return fragment;
 }
 
+/**
+ * Updates the gene select element with gene symbols.
+ * @param {string|null} analysisId - The analysis ID (optional).
+ * @returns {Promise<void>} - A promise that resolves when the gene select element is updated.
+ */
 const geneSelectUpdate = async (analysisId=null) => {
-    // Populate gene select element
     try {
         const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
         updateGeneOptions(geneSymbols); // Come from curator specific code
@@ -763,8 +990,15 @@ const geneSelectUpdate = async (analysisId=null) => {
     }
 }
 
+/**
+ * Retrieves updates and additions to the plot from the plot_display_config JS object.
+ *
+ * @param {Object[]} plotConfObj - The plot configuration object.
+ * @param {string} plotType - The type of plot.
+ * @param {string} category - The category of updates to retrieve.
+ * @returns {Object} - The updates and additions to the plot.
+ */
 const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
-    // Get updates and additions to plot from the plot_display_config JS object
     let updates = {};
     for (const idx in plotConfObj) {
         const conf = plotConfObj[idx];
@@ -777,7 +1011,12 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
     return updates;
 }
 
-/* Get HTML element value to save into plot config */
+/**
+ * Retrieves the value of a plot configuration element based on its class name.
+ *
+ * @param {string} className - The class name of the plot configuration element.
+ * @returns {boolean|string|undefined} - The value of the plot configuration element, or undefined if not found.
+ */
 const getPlotConfigValueFromClassName = (className) => {
     // NOTE: Some elements are only present in certain plot type configurations
 
@@ -793,7 +1032,10 @@ const getPlotConfigValueFromClassName = (className) => {
     return undefined;
 }
 
-/* Get order of series from sortable lists. Return object */
+/**
+ * Retrieves the plot order from the sortable container.
+ * @returns {Object} The plot order object.
+ */
 const getPlotOrderFromSortable = () => {
     const order = {};
     for (const elt of document.getElementById("order_container").children) {
@@ -805,17 +1047,30 @@ const getPlotOrderFromSortable = () => {
     return order;
 }
 
+/**
+ * Retrieves the value from a select2 element.
+ * @param {HTMLSelectElement} select - The select2 element.
+ * @returns {string} - The value of the selected option.
+ */
 const getSelect2Value = (select) => {
-    // Get value from select2 element
     return select.selectedOptions[0].data.value;
 }
 
+/**
+ * Fetches the content of an HTML file from the specified URL.
+ *
+ * @param {string} url - The URL of the HTML file to fetch.
+ * @returns {Promise<string>} - A promise that resolves with the content of the HTML file as a string.
+ */
 const includeHtml = async (url) => {
     const preResponse = await fetch(url, {cache: "reload"});
     return await preResponse.text();
 }
 
-/* Load custom plot options */
+/**
+ * Includes plot parameter options and performs necessary setup for plotting.
+ * @returns {Promise<void>} A promise that resolves once the plot parameter options are included and setup is complete.
+ */
 const includePlotParamOptions = async () => {
     const plotType = getSelect2Value(plotTypeSelect);
 
@@ -850,7 +1105,12 @@ const includePlotParamOptions = async () => {
 
 }
 
-// Load colorscale select2 object and populate with data
+/**
+ * Loads the colorscale select options based on the given plot type.
+ *
+ * @param {boolean} isContinuous - Indicates whether the plot type is continuous or discrete.
+ * @returns {void}
+ */
 const loadColorscaleSelect = (isContinuous=false) => {
 
     let filteredPalettes = availablePalettes;
@@ -885,7 +1145,12 @@ const loadColorscaleSelect = (isContinuous=false) => {
 
 }
 
-/* Transform and load dataset data into a "tree" format */
+/**
+ * Loads the dataset tree by fetching dataset information from the curator API.
+ * Populates the userDatasets, sharedDatasets, and domainDatasets arrays with dataset information.
+ * Generates the dataset tree using the generateTree method of the datasetTree object.
+ * @throws {Error} If there is an error fetching the dataset information.
+ */
 const loadDatasetTree = async () => {
     const userDatasets = [];
     const sharedDatasets = [];
@@ -895,7 +1160,7 @@ const loadDatasetTree = async () => {
 
         let counter = 0;
 
-        // Populate select box with dataset information owned by the user
+        // Create data structure with  dataset information owned by the user
         if (datasetData.user.datasets.length > 0) {
             // User has some profiles
             for (const item of datasetData.user.datasets) {
@@ -930,7 +1195,11 @@ const loadDatasetTree = async () => {
 
 }
 
-// Update the options within the plot type select element, specifically the disabled state
+/**
+ * Updates the plot type select element based on the available plot types.
+ * @param {string|null} analysisId - The ID of the analysis (optional).
+ * @returns {Promise<void>} - A promise that resolves when the plot type select is updated.
+ */
 const plotTypeSelectUpdate = async (analysisId=null) => {
     // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
     try {
@@ -949,6 +1218,14 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     }
 }
 
+/**
+ * Renders display cards for user and owner displays.
+ *
+ * @param {Array} userDisplays - The array of user displays.
+ * @param {Array} ownerDisplays - The array of owner displays.
+ * @param {string} defaultDisplayId - The default display ID.
+ * @returns {Promise<void>} - A promise that resolves when the display cards are rendered.
+ */
 const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId) => {
     const userDisplaysElt = document.getElementById("user_displays");
     const ownerDisplaysElt = document.getElementById("owner_displays");
@@ -977,7 +1254,11 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
     }
 }
 
-// Render the specific series as a sortable list, if it is not already
+/**
+ * Renders the order sortable series.
+ *
+ * @param {string} series - The series to render.
+ */
 const renderOrderSortableSeries = (series) => {
     const orderContainer = document.getElementById("order_container");
 
@@ -1024,6 +1305,13 @@ const renderOrderSortableSeries = (series) => {
 
 }
 
+/**
+ * Renders the owner display card.
+ *
+ * @param {Object} display - The display object.
+ * @param {string} defaultDisplayId - The ID of the default display.
+ * @returns {Promise<void>} - A promise that resolves when the display card is rendered.
+ */
 const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     let displayUrl = "";
     try {
@@ -1087,6 +1375,12 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
 }
 
+/**
+ * Renders a user display card with the given display and default display ID.
+ * @param {Object} display - The display object.
+ * @param {string} defaultDisplayId - The ID of the default display.
+ * @returns {Promise<void>} - A promise that resolves when the display card is rendered.
+ */
 const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     let displayUrl = "";
@@ -1156,7 +1450,11 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => curatorApiCallsMixin.deleteDisplay(display.id));
 }
 
-/* Set HTML element value from the plot config value */
+/**
+ * Sets the value of plot elements based on the provided configuration value.
+ * @param {string} classSelector - The class selector for the plot elements.
+ * @param {boolean|string|number} confVal - The configuration value to set.
+ */
 const setPlotEltValueFromConfig = (classSelector, confVal) => {
     for (const elt of document.getElementsByClassName(classSelector)) {
         if (elt.type === "checkbox") {
@@ -1168,7 +1466,11 @@ const setPlotEltValueFromConfig = (classSelector, confVal) => {
     }
 }
 
-/* Set disabled state for the given plot type. Also normalize plot type labels */
+/**
+ * Sets the disabled state of a plot type option.
+ * @param {string} plotType - The plot type.
+ * @param {boolean} isAllowed - Whether the plot type is allowed or not.
+ */
 const setPlotTypeDisabledState = (plotType, isAllowed) => {
     if (plotType === "tsne/umap_dynamic") {
         document.getElementById("tsne_dyna_opt").disabled = !isAllowed;
@@ -1178,13 +1480,13 @@ const setPlotTypeDisabledState = (plotType, isAllowed) => {
 }
 
 /**
- * Set Select Box Selection By Value
- * Modified to set value and "selected" so nice-select2 extractData() will catch it
- * Taken from https://stackoverflow.com/a/20662180
- * @param eid Element ID
- * @param eval Element value
+ * Sets the selected option in a select box by its value.
+ * @param {string} eid - The ID of the select box element.
+ * @param {string} val - The value of the option to be selected.
  */
 const setSelectBoxByValue = (eid, val) => {
+    // Modified to set value and "selected" so nice-select2 extractData() will catch it
+    // Taken from https://stackoverflow.com/a/20662180
     const elt = document.getElementById(eid);
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
@@ -1195,7 +1497,12 @@ const setSelectBoxByValue = (eid, val) => {
     }
 }
 
-/* Ensure all elements in this class have the same value */
+/**
+ * Sets up an event listener on elements with the specified class selector.
+ * When the value of any element changes, it copies the new value to all other elements with the same class selector.
+ * Additionally, it updates the disabled state and checked state of the elements based on the triggering element.
+ * @param {string} classSelector - The class selector for the elements to attach the event listener to.
+ */
 const setupParamValueCopyEvent = (classSelector) => {
     const classElts = document.getElementsByClassName(classSelector)
     for (const elt of classElts) {
@@ -1211,7 +1518,10 @@ const setupParamValueCopyEvent = (classSelector) => {
     }
 }
 
-/* Setup a fail-fast validation trigger. */
+/**
+ * Sets up validation events for elements with the class "js-plot-req".
+ * @returns {void}
+ */
 const setupValidationEvents = () => {
     const validationElts = document.getElementsByClassName("js-plot-req");
     for (const elt of validationElts ) {
@@ -1219,6 +1529,12 @@ const setupValidationEvents = () => {
     }
 }
 
+/**
+ * Updates the options for the private and public analyses select elements.
+ *
+ * @param {Array} privateAnalyses - The array of private analyses.
+ * @param {Array} publicAnalyses - The array of public analyses.
+ */
 const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
     const privateAnalysesElt = document.getElementById("private_analyses");
     const publicAnalysesElt = document.getElementById("public_analyses");
@@ -1265,6 +1581,11 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
     analysisSelect.update();
 }
 
+/**
+ * Updates the gene options in the gene select element.
+ *
+ * @param {Array<string>} geneSymbols - The array of gene symbols.
+ */
 const updateGeneOptions = (geneSymbols) => {
 
     const geneSelectElt = document.getElementById("gene_select");
@@ -1290,7 +1611,9 @@ const updateGeneOptions = (geneSymbols) => {
 
 }
 
-// Update the params that will comprise the "order" section in post-plot view
+/**
+ * Updates the sortable order of plot param series based on the current selection.
+ */
 const updateOrderSortable = () => {
     // Get all current plot param series for plotting order and save as a set
     const plotOrderElts = document.getElementsByClassName("js-plot-order");
@@ -1341,6 +1664,12 @@ const updateOrderSortable = () => {
 
 }
 
+/**
+ * Validates the requirements for plotting and updates the UI accordingly.
+ *
+ * @param {Event} event - The event object triggered by the input element.
+ * @returns {void}
+ */
 const validateRequirements = (event) => {
     const elt = event.target;
     // Reset "status" classes
@@ -1451,6 +1780,11 @@ for (const classElt of collapsableElts) {
 }
 
 /* --- Entry point --- */
+/**
+ * Handles page-specific login UI updates.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the UI updates are completed.
+ */
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
