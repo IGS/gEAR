@@ -24,7 +24,7 @@ def main():
 
     parser.add_argument('-i', '--input_file', type=str, required=True, help='Path to an input file to be read' )
     parser.add_argument('-oi', '--owner_id', type=int, required=True, help='Numerical user ID who will own the dataset' )
-    parser.add_argument('-s', '--skip_validation', action='store_true', help='Path to an output file to be created' )
+    parser.add_argument('-s', '--skip_validation', action='store_true', help='If, for some reason, you need to skip metadata validation' )
     args = parser.parse_args()
 
     dataset_uid = str(uuid.uuid4())
