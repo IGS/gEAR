@@ -425,7 +425,7 @@ const applyTooltip = (referenceElement, tooltip) => {
  * @returns {string} A comma-separated string of selected database values.
  */
 const buildFilterString = (groupName) => {
-    const selected = document.querySelectorAll(`#${groupName} ul li.js-selected :not(.js-all-selector)`);
+    const selected = document.querySelectorAll(`#${groupName} li.js-selected:not(.js-all-selector)`);
     const dbvals = [];
 
     for (const li of selected) {
@@ -628,7 +628,6 @@ const loadOrganismList = async () => {
     try {
         const {data} = await axios.get('./cgi/get_organism_list.cgi');
         const organismChoices = document.getElementById("organism_choices");    // <ul> element
-        organismChoices.innerHTML = "";
         for (const organism of data.organisms) {
             const li = document.createElement("li");
             li.dataset.dbval = organism.id;
@@ -647,16 +646,6 @@ const loadOrganismList = async () => {
         logErrorInConsole(error);
         // TODO: Display error notification
     }
-}
-
-/**
- * Loads all the parts of the page which need initial calls from the server, such as
- * database-driven select boxes.
- * @returns {void}
- */
-const loadPreliminaryData = () => {
-    loadOrganismList();
-    document.getElementById("your_gene_collection_filter").click();
 }
 
 
@@ -1161,7 +1150,44 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Initialize tooltips and popovers
     //createPopover(document.getElementById("collection_upload_reqs"));
 
-    loadPreliminaryData();
+    await loadOrganismList();
+
+    // Settings for selected facets
+    for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
+        elt.addEventListener("click", (e) => {
+            if (e.target.classList.contains("js-all-selector")) {
+                // if the one clicked is the all_selector then highlight it and unclick the rest
+                for (const elt of e.target.parentElement.children) {
+                    elt.classList.remove("js-selected");
+                }
+
+                e.target.classList.add("js-selected");
+
+            } else if (e.target.classList.contains("js-selected")) {
+                // If turning off, make sure at least one other option is selected, else set "all" option
+                e.target.classList.remove("js-selected");
+
+                if (!e.target.parentElement.querySelectorAll("li.js-selected")) {
+                    e.target.parentElement.querySelector("li.js-all-selector").classList.add("js-selected");
+                }
+            } else {
+                // If turning on, make sure all_selector is off
+                e.target.parentElement.querySelector("li.js-all-selector").classList.remove("js-selected");
+
+                // If this selection group has the 'only_one' option deselect the rest
+                if (e.target.parentElement.classList.contains("only_one")) {
+                    for (const elt of e.target.parentElement.children) {
+                        elt.classList.remove("js-selected");
+                    }
+                }
+
+                e.target.classList.add("js-selected");
+            }
+
+            submitSearch();
+        });
+    }
+
 };
 
 // validate that #new_collection_label input has a value
@@ -1374,80 +1400,24 @@ document.getElementById("btn_list_view_expanded").addEventListener("click", () =
 });
 
 
-// Generic function to handle all collapsable menus
-// h.expandable_control is clicked and looks for plus/minus icons as siblings
-// and an .expandable_target as a direct child
-
-for (const elt of document.querySelectorAll("h4.expandable_control")) {
+// Collpasible view toggle
+for (const elt of document.querySelectorAll(".js-expandable-control")) {
     elt.addEventListener("click", (e) => {
-        const exblock = e.target.nextElementSibling;
-        if (exblock.classList.contains("is-hidden")) {
-            e.target.querySelector(".mdi-plus").classList.add("is-hidden");
-            e.target.querySelector(".mdi-minus").classList.remove("is-hidden");
-            exblock.classList.remove("is-hidden");  // TODO: Add animation with fade in/out
+        const exblock = e.currentTarget.parentElement.querySelector(".js-expandable-target");
+        const iconElt = e.currentTarget.querySelector(".mdi");
 
-            if (e.target.classList.contains("profile_control")) {
-                for (const elt of document.getElementsByClassName(".profile_control")) {
-                    elt.classList.remove("is-hidden");
-                    document.getElementById("btn_arrangement_view").classList.remove("is-hidden");
-                }
-            }
+        if (exblock.classList.contains("is-hidden")) {
+            iconElt.classList.remove("mdi-plus");
+            iconElt.classList.add("mdi-minus");
+            exblock.classList.remove("is-hidden");  // TODO: Add animation with fade in/out
             return;
         }
-        e.target.querySelector(".mdi-plus").classList.remove("is-hidden");
-        e.target.querySelector(".mdi-minus").classList.add("is-hidden");
+        iconElt.classList.remove("mdi-minus");
+        iconElt.classList.add("mdi-plus");
         exblock.classList.add("is-hidden"); // TODO: Add animation with fade in/out
-
-        if (e.target.classList.contains("profile_control")) {
-            for (const elt of document.getElementsByClassName(".profile_control")) {
-                elt.classList.add("is-hidden");
-                document.getElementById("btn_arrangement_view").classList.add("is-hidden");
-            }
-        }
     }
 )};
 
-// Generic function to handle the facet selector choices
-//  For any ul.controls_filter_options the list elements can have a class="selected"
-//  The groups of <li> also have one/top li with class="all_selector" which
-//  toggles the rest of them off since no filter is applied.
-
-for (const elt of document.querySelectorAll("ul.controls_filter_options li")) {
-    elt.addEventListener("click", (e) => {
-        // if the one clicked is the all_selector then highlight it and unclick the rest
-        if (e.target.classList.contains("all_selector")) {
-            if (! e.target.classList.contains("selected")) {
-                e.target.classList.add("selected");
-            }
-
-            for (const elt of e.target.parentElement.children) {
-                elt.classList.remove("selected");
-            }
-        } else if (e.target.classList.contains("selected")) {
-            // If turning off, make sure at least one other option is selected, else set
-            //  set all_selector on
-            e.target.classList.remove("selected");
-
-            if (e.target.parentElement.querySelector("li.selected") == null) {
-                e.target.parentElement.querySelector("li.all_selector").classList.add("selected");
-            }
-        } else {
-            // If turning on, make sure all_selector is off
-            e.target.parentElement.querySelector("li.all_selector").classList.remove("selected");
-
-            // If this selection group has the 'only_one' option deselect the rest
-            if (e.target.parentElement.classList.contains("only_one")) {
-                for (const elt of e.target.parentElement.children) {
-                    elt.classList.remove("selected");
-                }
-            }
-
-            e.target.classList.add("selected");
-        }
-
-        submitSearch();
-    });
-}
 
 // Adjust the visibility label of the new cart form when the toggle is clicked
 document.getElementById("new_collection_visibility").addEventListener("change", (e) => {
