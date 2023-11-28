@@ -8,10 +8,11 @@ const resultsPerPage = 20;
 // TODO - Add transformation code for quick gene collection transformations
 // TODO - Add "labeled" gene collection type (i.e. marker genes) and integrate into other code snippets
 
-// TODO - Add public/private toggle button code
+// TODO - Add public/private toggle button code for new genecart
 // TODO - Fix "edit genecart" button code
 // TODO - Add "new genecart" code back from old version
 // TODO - Get filter properties working
+// TODO - Add Organism select box
 
 // Floating UI function alias. See https://floating-ui.com/docs/getting-started#umd
 // Subject to change if we ever need these common names for other things.
@@ -145,8 +146,12 @@ const addGeneCollectionEventListeners = () => {
             const selectorBase = `#result_gc_id_${gcId}`;
 
             // Show editable versions where there are some and hide the display versions
-            document.querySelector(`${selectorBase} .editable-version`).classList.add("is-hidden");
-            document.querySelector(`${selectorBase} .is-editable`).classList.remove("is-hidden");
+            for (const classElt of document.querySelectorAll(`${selectorBase} .js-editable-version`)) {
+                classElt.classList.add("is-hidden");
+            };
+            for (const classElt of document.querySelectorAll(`${selectorBase} .js-readonly-version`)) {
+                classElt.classList.remove("is-hidden");
+            };
 
             // Reset any unsaved/edited values
             const visibility = document.querySelector(`${selectorBase}_editable_visibility`).dataset.originalVal;
@@ -157,6 +162,9 @@ const addGeneCollectionEventListeners = () => {
 
             const orgId = document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal;
             document.querySelector(`${selectorBase}_editable_organism_id`).value = orgId;
+
+            document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
+
         });
     }
 
@@ -220,19 +228,18 @@ const addGeneCollectionEventListeners = () => {
             const selectorBase = `#result_gc_id_${gcId}`;
 
             // copy the organism selection list for this row
-            const editableOrganismIdElt = document.getElementById(`${selectorBase}_editable_organism_id`);
-            editableOrganismIdElt.innerHTML = document.getElementById("new_cart_organism_id").innerHTML;
+            const editableOrganismIdElt = document.querySelector(`${selectorBase}_editable_organism_id`);
+            editableOrganismIdElt.innerHTML = document.getElementById("new_collection_organism_id").innerHTML;
 
             // set the current value as selected
             editableOrganismIdElt.value = editableOrganismIdElt.dataset.originalVal;
 
-            const editableVisibilityElt = document.getElementById(`${selectorBase}_editable_visibility`);
+            const editableVisibilityElt = document.querySelector(`${selectorBase}_editable_visibility`);
 
-            if (editableVisibilityElt.dataset.isPublic) {
-                editableVisibilityElt.prop('checked', true).change();
-            } else {
-                editableVisibilityElt.prop('checked', false).change();
-            }
+            const isPublic = parseBool(editableVisibilityElt.dataset.isPublic);
+
+            editableVisibilityElt.checked = isPublic;
+            editableVisibilityElt.closest(".field").querySelector("label").innerText = isPublic ? "Public" : "Private";
 
             // Show editable versions where there are some and hide the display versions
             toggleEditableMode(false, selectorBase);
@@ -242,6 +249,8 @@ const addGeneCollectionEventListeners = () => {
             if (expandableViewElt.classList.contains('is-hidden')) {
                 document.querySelector(`${selectorBase} span.js-expand-box`).click();
             }
+
+            document.querySelector(`${selectorBase} .js-action-links`).classList.add("is-hidden");
 
         });
     }
@@ -339,11 +348,13 @@ const addPreviewGenesToGeneCollection = (geneCollectionId, gctype, shareId, gene
  * @returns {void}
  */
 const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
+
     // add gene collection public/private info to DOM
     const geneCollectionDisplayContainer = document.getElementById(`${geneCollectionId}_display_container`);
     const geneCollectionDisplaySpan = document.createElement("span");
     geneCollectionDisplaySpan.classList.add("tag");
     geneCollectionDisplaySpan.id = `result_gc_id_${geneCollectionId}_display_visibility`;
+
     if (isPublic) {
         geneCollectionDisplaySpan.classList.add("is-primary", "is-light");
         geneCollectionDisplaySpan.innerText = "Public gene collection";
@@ -352,6 +363,16 @@ const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
         geneCollectionDisplaySpan.innerText = "Private gene collection";
     }
     geneCollectionDisplayContainer.appendChild(geneCollectionDisplaySpan);
+
+    // Toggle switch (public is checked, private is unchecked)
+    const visibilitySwitch = document.getElementById(`result_gc_id_${geneCollectionId}_editable_visibility`);
+
+    visibilitySwitch.addEventListener("change", (e) => {
+        const isPublic = e.currentTarget.checked;
+        e.currentTarget.dataset.isPublic = isPublic;
+        e.currentTarget.closest(".field").querySelector("label").innerText = isPublic ? "Public" : "Private";
+    });
+
 }
 
 /**
@@ -603,9 +624,9 @@ const geneCollectionSaved = (gc) => {
  * @function
  * @returns {void}
  */
-const loadOrganismList = () => {
+const loadOrganismList = async () => {
     try {
-        const {data} = axios.get('./cgi/get_organism_list.cgi');
+        const {data} = await axios.get('./cgi/get_organism_list.cgi');
         const organismChoices = document.getElementById("organism_choices");    // <ul> element
         organismChoices.innerHTML = "";
         for (const organism of data.organisms) {
@@ -614,13 +635,13 @@ const loadOrganismList = () => {
             li.innerText = organism.label;
             organismChoices.appendChild(li);
         }
-        const newCartOrganismId = document.getElementById("new_cart_organism_id");    // <select> element
-        newCartOrganismId.innerHTML = "";
+        const newCollectionOrganismSelect = document.getElementById("new_collection_organism_id");    // <select> element
+        newCollectionOrganismSelect.innerHTML = "";
         for (const organism of data.organisms) {
             const option = document.createElement("option");
             option.value = organism.id;
             option.innerText = organism.label;
-            newCartOrganismId.appendChild(option);
+            newCollectionOrganismSelect.appendChild(option);
         }
     } catch (error) {
         logErrorInConsole(error);
@@ -635,7 +656,20 @@ const loadOrganismList = () => {
  */
 const loadPreliminaryData = () => {
     loadOrganismList();
-    document.getElementById("your_gene_cart_filter").click();
+    document.getElementById("your_gene_collection_filter").click();
+}
+
+
+/**
+ * Parses a string representation of a boolean value and returns the corresponding boolean value.
+ * @param {string} boolStr - The string representation of the boolean value.
+ * @returns {boolean} - The parsed boolean value.
+ */
+const parseBool = (boolStr) => {
+    if ( boolStr === 'true' ) {
+        return true;
+    }
+    return false;
 }
 
 
@@ -655,13 +689,12 @@ const processSearchResults = (data) => {
         const geneCollectionId = gc.id;
         const gctype = gc.gctype;
         const label = gc.label;
-        const longDesc = gc.ldesc;
+        const longDesc = gc.ldesc || "";
         const shareId = gc.share_id;
         const isPublic = Boolean(gc.is_public);
         const dateAdded = new Date(gc.date_added).toDateString();
 
         const organismId = gc.organism_id;
-        const userId = gc.user_id;
         const genes = gc.genes;
         const geneCount = gc.gene_count;
         const userName = gc.user_name;
@@ -698,10 +731,11 @@ const processSearchResults = (data) => {
                             <div class="js-readonly-version" id="${geneCollectionId}_display_container"></div>
                             <div class="js-editable-version is-hidden">
                                 <div class="field">
-                                    <label class="label" for="result_gc_id_${geneCollectionId}_editable_visibility">Visibility</label><br />
+                                    <label class="label">Visibility</label>
                                     <!-- toggle switch --->
-                                    <input type="checkbox" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
-                                        data-is-public="${isPublic}" data-on="Public" data-off="Private" />
+                                    <input type="checkbox" class="switch is-primary" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
+                                        data-is-public="${isPublic}"/>
+                                    <label for="result_gc_id_${geneCollectionId}_editable_visibility"></label>
                                 </div>
                             </div>
                         </div>
@@ -711,15 +745,38 @@ const processSearchResults = (data) => {
                             <div class="js-readonly-version"><span class="has-text-weight-semibold">Organism</span> <span id="result_gc_id_${geneCollectionId}_display_organism">${organism}</span></div>
                             <div class="js-editable-version is-hidden">
                                 <div class="field">
-                                    <label for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
-                                    <select class="form-control" id="result_gc_id_${geneCollectionId}_editable_organism_id" data-original-val="${organismId}"></select>
+                                    <label class="label" for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
+                                    <div class="control">
+                                        <div class="select">
+                                            <select id="result_gc_id_${geneCollectionId}_editable_organism_id" data-original-val="${organismId}"></select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-
-                        <div class="column is-3"><span class="has-text-weight-semibold">Owner</span> ${userName}</div>
-                        <div class="column is-3"><span class="has-text-weight-semibold">Added</span> ${dateAdded}</div>
+                        <div class="column is-3">
+                            <div class="js-readonly-version"><span class="has-text-weight-semibold">Owner</span> ${userName}</div>
+                            <div class="js-editable-version is-hidden">
+                                <div class="field">
+                                    <label class="label">Owner</label>
+                                    <div class="control">
+                                        <input class="input is-static" value="${userName}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-3">
+                            <div class="js-readonly-version"><span class="has-text-weight-semibold">Added</span> ${dateAdded}</div>
+                            <div class="js-editable-version is-hidden">
+                                <div class="field">
+                                    <label class="label">Added</label>
+                                    <div class="control">
+                                        <input class="input is-static" value="${dateAdded}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <!-- preview + action buttons section -->
                     <div class="columns is-size-7">
@@ -755,19 +812,31 @@ const processSearchResults = (data) => {
                                                 <span class="icon is-small"><i class="mdi mdi-pencil"></i></span>
                                             </button>
                                         </p>
+                                    </div>
+                                    <div class="field has-addons" role="group">
                                         <p class="control">
-                                            <button class="button is-small is-outlined is-primary js-edit-gc-save js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Save changes">
-                                                <span class="icon is-small"><i class="mdi mdi-floppy-o"></i></span><span>Save edits</span>
+                                            <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}">
+                                                <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
                                             </button>
                                         </p>
                                         <p class="control">
-                                            <button class="button is-small is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Cancel changes">
-                                                <span class="icon is-small"><i class="mdi mdi-undo"></i></span><span>Cancel edits</span>
+                                            <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}">
+                                                <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
                                             </button>
                                         </p>
                                     </div>
                                 </div>
-                                <div class="column is-one-third"><span class="has-text-weight-semibold">Type</span> ${gctype}</div>
+                                <div class="column is-one-third">
+                                    <div class="js-readonly-version"><span class="has-text-weight-semibold">Type</span> ${gctype}</div>
+                                    <div class="js-editable-version is-hidden">
+                                        <div class="field">
+                                            <label class="label">Type</label>
+                                            <div class="control">
+                                                <input class="input is-static" value="${gctype}" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div> <!-- end .columns -->
                             <!-- Info on actions (e.g. "URL copied to clipboard") -->
                             <span class="js-gc-action-note is-hidden"></span>
@@ -785,8 +854,12 @@ const processSearchResults = (data) => {
                             <p class="has-text-weight-semibold">Long description</p>
                         </div>
                         <div class="column is-9 js-editable-version is-hidden">
-                            <h5>Long description</h5>
-                            <textarea class="textarea" id="result_gc_id_${geneCollectionId}_editable_ldesc" rows="4" data-original-val="${longDesc}">${longDesc}</textarea>
+                            <div class="field">
+                                <label class="label">Long description</label>
+                                <div class="control">
+                                    <textarea class="textarea" id="result_gc_id_${geneCollectionId}_editable_ldesc" rows="4" data-original-val="${longDesc}">${longDesc}</textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -809,6 +882,7 @@ const processSearchResults = (data) => {
         ldescElt.id = `result_gc_id_${geneCollectionId}_display_ldesc`;
         ldescElt.innerText = longDesc || "No description entered";
         ldescContainer.appendChild(ldescElt);
+
     }
 
     // Hide some buttons if user is not owner
@@ -884,26 +958,28 @@ const processWeightedGcList = (gcId, jdata) => {
  * Finally, adds the "is-hidden" class to the form and pasted genes container, and sets isAddFormOpen to false.
  */
 const resetAddForm = () => {
-    document.getElementById("btn_new_cart_save").classList.remove("is-loading");
+    document.getElementById("btn_new_collection_save").classList.remove("is-loading");
 
-    document.getElementById("new_cart_label").value = "";
-    document.getElementById("new_cart_ldesc").value = "";
-    document.getElementById("new_cart_pasted_genes").value = "";
-    document.getElementById("new_cart_file").value = "";
-    document.getElementById("new_cart_is_public").checked = false;  // bootstrap toggle off
+    document.getElementById("new_collection_label").value = "";
+    document.getElementById("new_collection_ldesc").value = "";
+    document.getElementById("new_collection_pasted_genes").value = "";
+    document.getElementById("new_collection_file").value = "";
+    document.getElementById("new_collection_file_name").value = "";
 
-    document.getElementById("new_cart_unweighted_header").classList.remove('has-background-primary');
-    document.getElementById("new_cart_unweighted_header").style.color = 'black';
+    document.getElementById("new_collection_visibility").checked = false;
+    document.getElementById("new_collection_visibility").closest(".field").querySelector("label").innerText = "Private";
 
-    document.getElementById("new_cart_weighted_header").classList.remove('has-background-primary');
-    document.getElementById("new_cart_weighted_header").style.color = 'black';
+    for (const classElt of document.getElementsByClassName("js-new-collection-header")) {
+        classElt.classList.remove('has-background-primary', 'has-text-white');
+        classElt.classList.add("has-text-dark");
+    }
 
-    document.getElementById("btn_gc_paste_unweighted_list").removeAttribute('disabled');
-    document.getElementById("btn_gc_upload_unweighted_list").removeAttribute('disabled');
-    document.getElementById("btn_gc_upload_weighted_list").removeAttribute('disabled');
+    for (const classElt of document.getElementsByClassName("js-upload-gc-btn")) {
+        classElt.removeAttribute('disabled');
+    }
 
-    document.getElementById("new_cart_form_c").classList.add("is-hidden");
-    document.getElementById("new_cart_pasted_genes_c").classList.add("is-hidden");
+    document.getElementById("new_collection_form_c").classList.add("is-hidden");
+    document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
     isAddFormOpen = false;
 }
 
@@ -1052,6 +1128,14 @@ const updateGeneCollectionListButtons = () => {
         if (deleteButton.dataset.isOwner === "false") {
             deleteButton.parentElement.remove();    // remove .control element to prevent heavy line where button was
             editButton.parentElement.remove()
+
+            const geneCollectionId = classElt.dataset.gcId;
+            const selectorBase = `#result_gc_id_${geneCollectionId}`;
+
+            // Delete all editable elements to prevent editing in the DOM
+            for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
+                editableElt.remove();
+            }
         }
     };
 }
@@ -1075,12 +1159,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // Initialize tooltips and popovers
-    //createPopover(document.getElementById("cart_upload_reqs"));
+    //createPopover(document.getElementById("collection_upload_reqs"));
 
+    loadPreliminaryData();
 };
 
-// validate that #new_cart_label input has a value
-document.getElementById("new_cart_label").addEventListener("blur", (e) => {
+// validate that #new_collection_label input has a value
+document.getElementById("new_collection_label").addEventListener("blur", (e) => {
     e.target.classList.remove("is-danger-dark");
     // Remove small helper text under input
     const helperText = e.target.parentElement.querySelector("p.help");
@@ -1128,82 +1213,108 @@ btnCreateCartToggle.addEventListener("click", () => {
     const createCollectionContainer = document.getElementById("create_collection_container");
     const gcViewport = document.getElementById("results_container");
     const viewControls = document.getElementById("view_controls");
-    const newCartIsPublic = document.getElementById("new_cart_is_public");
+    const newCartVisibility = document.getElementById("new_collection_visibility");
+    const belowPagination = document.getElementById("below_pagination_container");
 
     if (createCollectionContainer.classList.contains("is-hidden")) {
         createCollectionContainer.classList.remove("is-hidden"); // TODO: Add animation with fade in/out
         gcViewport.classList.add("is-hidden");
         viewControls.classList.add("is-hidden");
+        belowPagination.classList.add("is-hidden");
         btnCreateCartToggle.textContent = "Cancel cart creation";
-        newCartIsPublic.checked = false; // bootstrap toggle off
+        newCartVisibility.checked = false; // bootstrap toggle off
+        newCartVisibility.closest(".field").querySelector("label").innerText = "Private";
         return;
     }
     createCollectionContainer.classList.add("is-hidden");
     gcViewport.classList.remove("is-hidden");   // TODO: Add animation with fade in/out
     viewControls.classList.remove("is-hidden"); // TODO: Add animation with fade in/out
+    belowPagination.classList.remove("is-hidden");
     btnCreateCartToggle.textContent = "Create new cart";
     resetAddForm();
 });
 
 // If an upload method is clicked, show the appropriate form and hide the others
 document.getElementById("btn_gc_paste_unweighted_list").addEventListener("click", () => {
-    document.getElementById("new_cart_unweighted_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_unweighted_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_unweighted_header").classList.remove("has-text-dark");
 
     document.getElementById("btn_gc_upload_unweighted_list").setAttribute('disabled', 'disabled');
     document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_cart_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_cart_pasted_genes_c").classList.remove("is-hidden");
+    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
-    document.getElementById("new_cart_upload_type").value = "pasted_genes";
+    document.getElementById("new_collection_upload_type").value = "pasted_genes";
     document.getElementById("file_upload_c").classList.add("is-hidden");
     isAddFormOpen = true;
 });
 
 document.getElementById("btn_gc_upload_unweighted_list").addEventListener("click", () => {
     if (isAddFormOpen) return;
-    document.getElementById("new_cart_unweighted_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_unweighted_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_unweighted_header").classList.remove("has-text-dark");
 
     document.getElementById("btn_gc_paste_unweighted_list").setAttribute('disabled', 'disabled');
     document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_cart_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_cart_pasted_genes_c").classList.remove("is-hidden");
+    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
-    document.getElementById("new_cart_upload_type").value = "uploaded-unweighted";
+    document.getElementById("new_collection_upload_type").value = "uploaded-unweighted";
     document.getElementById("file_upload_c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
 document.getElementById("btn_gc_upload_weighted_list").addEventListener("click", () => {
     if (isAddFormOpen) return;
-    document.getElementById("new_cart_weighted_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_weighted_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_weighted_header").classList.remove("has-text-dark");
 
     document.getElementById("btn_gc_paste_unweighted_list").setAttribute('disabled', 'disabled');
     document.getElementById("btn_gc_upload_unweighted_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_cart_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_cart_pasted_genes_c").classList.remove("is-hidden");
+    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
-    document.getElementById("new_cart_upload_type").value = "uploaded-weighted";
+    document.getElementById("new_collection_upload_type").value = "uploaded-weighted";
+    document.getElementById("file_upload_c").classList.remove("is-hidden");
+    isAddFormOpen = true;
+});
+
+document.getElementById("btn_gc_upload_labeled_list").addEventListener("click", () => {
+    if (isAddFormOpen) return;
+    document.getElementById("new_collection_labeled_header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new_collection_labeled_header").classList.remove("has-text-dark");
+
+    document.getElementById("btn_gc_paste_unweighted_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn_gc_upload_unweighted_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
+
+    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
+
+    document.getElementById("new_collection_upload_type").value = "uploaded-weighted";
     document.getElementById("file_upload_c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
 // If the cancel button is clicked, hide the form and show the upload buttons
-document.getElementById("btn_new_cart_cancel").addEventListener("click", () => {
+document.getElementById("btn_new_collection_cancel").addEventListener("click", () => {
     document.getElementById("create_new_gene_collection").click();
-    document.getElementById("new_cart_pasted_genes_c").classList.add("is-hidden");
+    document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
 });
 
 
-const btnNewCartSave = document.getElementById("btn_new_cart_save");
+const btnNewCartSave = document.getElementById("btn_new_collection_save");
 btnNewCartSave.addEventListener("click", (e) => {
     // disable button and show indicator that it's loading
     btnNewCartSave.classList.add("is-loading");
 
     // check required fields
-    const newCartLabel = document.getElementById("new_cart_label");
+    const newCartLabel = document.getElementById("new_collection_label");
     if (! newCartLabel.value) {
         newCartLabel.classList.add("is-danger-dark");
         // Add small helper text under input
@@ -1223,7 +1334,8 @@ btnNewCartSave.addEventListener("click", (e) => {
         helperText.remove();
     }
 
-    const isPublic = document.getElementById("new_cart_is_public").checked ? 1 : 0;
+    // Passed to CGI script as 1 or 0
+    const isPublic = document.getElementById("new_collection_visibility").checked ? 1 : 0;
 
     const formData = new FormData($(this)[0]);
     formData.append('is_public', isPublic);
@@ -1336,3 +1448,16 @@ for (const elt of document.querySelectorAll("ul.controls_filter_options li")) {
         submitSearch();
     });
 }
+
+// Adjust the visibility label of the new cart form when the toggle is clicked
+document.getElementById("new_collection_visibility").addEventListener("change", (e) => {
+    const isPublic = e.currentTarget.checked;
+    e.currentTarget.dataset.isPublic = isPublic;
+    e.currentTarget.closest(".field").querySelector("label").innerText = isPublic ? "Public" : "Private";
+});
+
+// When user uploads file, update the file name in the form
+document.getElementById("new_collection_file").addEventListener("change", (e) => {
+    const file = e.currentTarget.files[0];
+    document.getElementById("new_collection_file_name").value = file.name;
+});

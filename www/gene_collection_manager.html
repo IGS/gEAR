@@ -72,48 +72,57 @@
                         </div>
 
                         <!-- filter options -->
-                        <div id="controls_ownership" class="js-filter-subsection is-clickable">
-                            <p class="has-text-weight-semibold js-expandable-control">
-                                <span>Ownership</span>
-                                <span class="icon is-pulled-right">
-                                    <i class="mdi mdi-minus"></i>
-                                </span>
-                            </p>
-                            <ul class="js-expandable-target">
-                                <li class="js-all-selector js-selected">All</li>
-                                <li id="your_gene_cart_filter" data-dbval="yours">Your collections</li>
-                                <li data-dbval="group">Group-affiliated collections</li>
-                                <li data-dbval="shared">Collections shared with you</li>
-                                <li data-dbval="public">Public collections</li>
-                            </ul>
+                        <div class="field">
+                            <div id="controls_ownership" class="js-filter-subsection is-clickable">
+                                <p class="has-text-weight-semibold js-expandable-control">
+                                    <span>Ownership</span>
+                                    <span class="icon is-pulled-right">
+                                        <i class="mdi mdi-minus"></i>
+                                    </span>
+                                </p>
+                                <hr class="my-2 has-background-grey-lighter">
+                                <ul class="js-expandable-target">
+                                    <li class="js-all-selector js-selected">All</li>
+                                    <li id="your_gene_collection_filter" data-dbval="yours">Your collections</li>
+                                    <li data-dbval="group">Group-affiliated collections</li>
+                                    <li data-dbval="shared">Collections shared with you</li>
+                                    <li data-dbval="public">Public collections</li>
+                                </ul>
+                            </div>
                         </div>
 
-                        <div id="controls_organism" class="js-filter-subsection is-clickable">
-                            <p class="has-text-weight-semibold  js-expandable-control">
-                                <span>Organism</span>
-                                <span class="icon is-pulled-right">
-                                    <i class="mdi mdi-minus"></i>
-                                </span>
-                            </p>
-                            <ul class="js-expandable-target">
-                                <li class="js-all-selector js-selected">All</li>
-                                <!-- list built by js -->
-                            </ul>
+                        <div class="field">
+                            <div id="controls_organism" class="js-filter-subsection is-clickable">
+                                <p class="has-text-weight-semibold  js-expandable-control">
+                                    <span>Organism</span>
+                                    <span class="icon is-pulled-right">
+                                        <i class="mdi mdi-minus"></i>
+                                    </span>
+                                </p>
+                                <hr class="my-2 has-background-grey-lighter">
+                                <ul class="js-expandable-target" id="organism_choices">
+                                    <li class="js-all-selector js-selected">All</li>
+                                    <!-- list built by js -->
+                                </ul>
+                            </div>
                         </div>
 
-                        <div id="controls_date_added" class="js-filter-subsection is-clickable">
-                            <p class="has-text-weight-semibold  js-expandable-control">
-                                <span>Date added</span>
-                                <span class="icon is-pulled-right">
-                                    <i class="mdi mdi-minus"></i>
-                                </span>
-                            </p>
-                            <ul class="js-expandable-target js-choose-only-one">
-                                <li class="js-all-selector js-selected">Any time</li>
-                                <li data-dbval="week">Within last week</li>
-                                <li data-dbval="month">Within last month</li>
-                                <li data-dbval="year">Within last year</li>
-                            </ul>
+                        <div class="field">
+                            <div id="controls_date_added" class="js-filter-subsection is-clickable">
+                                <p class="has-text-weight-semibold  js-expandable-control">
+                                    <span>Date added</span>
+                                    <span class="icon is-pulled-right">
+                                        <i class="mdi mdi-minus"></i>
+                                    </span>
+                                </p>
+                                <hr class="my-2 has-background-grey-lighter">
+                                <ul class="js-expandable-target js-choose-only-one">
+                                    <li class="js-all-selector js-selected">Any time</li>
+                                    <li data-dbval="week">Within last week</li>
+                                    <li data-dbval="month">Within last month</li>
+                                    <li data-dbval="year">Within last year</li>
+                                </ul>
+                            </div>
                         </div>
 
                     </div>
@@ -121,138 +130,138 @@
                     <div class="column is-four-fifths">
 
                         <!-- create collection view -->
-                        <section id="create_collection_container" class="columns is-hidden">
-                            <div class="card column has-background-light">
-                                <header class="card-header">
-                                    <p class="card-header-title has-text-dark">
-                                        Unweighted gene collection
-                                    </p>
-                                </header>
-                                <div class="card-content">
-                                    <div class="content has-text-dark">
-                                        This is a list of gene symbols only, possibly the most common form of gene carts.
+                        <section id="create_collection_container" class="is-hidden">
+                            <section id="new collection_cards" class="columns">
+                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                    <header class="card-header">
+                                        <p class="card-header-title has-text-dark js-new-collection-header" id="new_collection_unweighted_header">
+                                            Unweighted gene collection
+                                        </p>
+                                    </header>
+                                    <div class="card-content is-flex-grow-1">
+                                        <div class="content has-text-dark">
+                                            This is a list of gene symbols only, possibly the most common type of gene collection.
+                                        </div>
                                     </div>
+                                    <footer class="card-footer">
+                                        <div class="buttons card-footer-item">
+                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_paste_unweighted_list">Paste list of genes</button>
+                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_upload_unweighted_list">Upload file</button>
+                                        </div>
+                                    </footer>
                                 </div>
-                                <footer class="card-footer">
-                                    <div class="buttons card-footer-item">
-                                        <button class="button is-link" id="btn_gc_paste_unweighted_list">Paste list of genes</button>
-                                        <button class="button is-link" id="btn_gc_upload_unweighted_list">Upload file</button>
-                                    </div>
-                                </footer>
-                            </div>
 
-                            <div class="card column has-background-light">
-                                <header class="card-header">
-                                    <p class="card-header-title has-text-dark">
-                                        Weighted gene collection
-                                    </p>
-                                </header>
-                                <div class="card-content">
-                                    <div class="content has-text-dark">
-                                        Upload a gene list with associated weights, for example from a principal component analysis
+                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                    <header class="card-header">
+                                        <p class="card-header-title has-text-dark js-new-collection-header" id="new_collection_weighted_header">
+                                            Weighted gene collection
+                                        </p>
+                                    </header>
+                                    <div class="card-content is-flex-grow-1">
+                                        <div class="content has-text-dark">
+                                            Upload a gene list with associated weights, for example from a principal component analysis
+                                        </div>
                                     </div>
+                                    <footer class="card-footer">
+                                        <div class="buttons card-footer-item">
+                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_upload_weighted_list">Upload file</button>
+                                        </div>
+                                    </footer>
                                 </div>
-                                <footer class="card-footer">
-                                    <div class="buttons card-footer-item">
-                                        <button class="button is-link" id="btn_gc_upload_weighted_list">Upload file</button>
-                                    </div>
-                                </footer>
-                            </div>
 
-                            <div class="card column has-background-light">
-                                <header class="card-header">
-                                    <p class="card-header-title has-text-dark">
-                                        Labeled gene collection
-                                    </p>
-                                </header>
-                                <div class="card-content">
-                                    <div class="content has-text-dark">
-                                        Upload a file containing a list of genes and associated labels, for example marker genes for cell types
+                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                    <header class="card-header">
+                                        <p class="card-header-title has-text-dark js-new-collection-header" id="new_collection_labeled_header">
+                                            Labeled gene collection
+                                        </p>
+                                    </header>
+                                    <div class="card-content is-flex-grow-1">
+                                        <div class="content has-text-dark">
+                                            Upload a file containing a list of genes and associated labels, for example marker genes for cell types
+                                        </div>
                                     </div>
+                                    <footer class="card-footer">
+                                        <div class="buttons card-footer-item">
+                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_upload_labeled_list">Upload file</button>
+                                        </div>
+                                    </footer>
                                 </div>
-                                <footer class="card-footer">
-                                    <div class="buttons card-footer-item">
-                                        <button class="button is-link" id="btn_gc_upload_labeled_list">Upload file</button>
-                                    </div>
-                                </footer>
-                            </div>
+                            </section>
 
                             <!-- New gene cart form -->
-                            <div class="columns is-hidden" id="new_cart_form_c">
-                                <div class="column is-full">
-                                    <div class="card">
-                                        <div class="card-header">New gene collection information</div>
-                                        <div class="card-content">
-                                            <input type="hidden" id="new_cart_upload_type" name="new_cart_upload_type" value="" />
-                                            <div class="columns">
-                                                <div class="column is-5">
-                                                    <div class="field">
-                                                        <label for="new_cart_label">Label</label>
-                                                        <div class="control">
-                                                            <input type="text" class="input" id="new_cart_label" name="new_cart_label" placeholder="" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="column is-4">
-                                                <div class="field">
-                                                        <label for="new_cart_organism_id">Organism</label>
-                                                        <div class="control">
-                                                            <select class="select" id="new_cart_organism_id" name="new_cart_organism_id"></select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="column is-3">
-                                                    <div class="filed">
-                                                        <label for="new_cart_is_public">Visibility</label><br />
-                                                        <div class="control">
-                                                            <input type="checkbox" name="new_cart_is_public" id="new_cart_is_public" data-size="small" data-offstyle="danger" data-toggle="toggle" data-on="Public" data-off="Private" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="field">
-                                                <label for="new_cart_ldesc">Longer description</label>
-                                                <div class="control">
-                                                    <textarea class="textarea" id="new_cart_ldesc" name="new_cart_ldesc" rows="3"></textarea>
-                                                </div>
-                                            </div>
-                                            <div id="file_upload_c" class="file">
-                                                <label for="new_cart_file" class="file-label">File upload:</label>
-                                                <input class="file-input" name="new_cart_file" type="file" id="new_cart_file"/>
-                                                <span class="file-cta">
-                                                    <span class="file-icon">
-                                                        <i class="mdi mdi-upload"></i>
-                                                    </span>
-                                                    <span class="file-label">
-                                                        Choose a file…
-                                                    </span>
-                                                </span>
-                                            </div>
-                                            <div class="field">
-                                                <div class="control">
-                                                    <a id="cart_upload_reqs" tabindex="0" class="button is-small is-link" role="button" data-toggle="popover" data-trigger="focus" title="Requirements" data-content="<p>CSV, TAB, or Excel-format files only.<br/><br/>Header row required.<br/><br/>First column must be unique gene identifiers.<br/>Second column must be gene symbols.<br/>Extra columns must be numeric weights.<p>">Click for requirements</a>
-                                                </div>
-                                            </div>
-                                            <div class="field is-hidden" id="new_cart_pasted_genes_c">
-                                                <label for="new_cart_pasted_genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
-                                                <div class="control">
-                                                    <textarea class="textarea" id="new_cart_pasted_genes" name="new_cart_pasted_genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
-                                                </div>
-                                            </div>
-                                            <div class="field is-grouped">
-                                                <p class="control">
-                                                    <button class="button is-small is-primary" id="btn_new_cart_save">Save</button>
-                                                </p>
-                                                <p class="control">
-                                                    <button class="button is-small is-primary" id="btn_new_cart_cancel">Cancel</button>
-                                                </p>
+                            <div class="section is-hidden" id="new_collection_form_c">
+                                <div class="is-5 title">New gene collection information</div>
+                                <input type="hidden" id="new_collection_upload_type" name="new_collection_upload_type" value="" />
+
+                                <div class="columns">
+                                    <div class="column is-5">
+                                        <div class="field">
+                                            <label class="label" for="new_collection_label">Label</label>
+                                            <div class="control">
+                                                <input type="text" class="input" id="new_collection_label" name="new_collection_label" placeholder="" />
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="column is-4">
+                                    <div class="field">
+                                            <label class="label" for="new_collection_organism_id">Organism</label>
+                                            <div class="control">
+                                                <div class="select">
+                                                    <select id="new_collection_organism_id" name="new_collection_organism_id"></select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="column is-3">
+                                        <div class="field">
+                                            <p>Visibility</p>
+                                            <!-- toggle switch --->
+                                            <input type="checkbox" class="switch is-primary" name="new_collection_visibility" id="new_collection_visibility"/>
+                                            <label for="new_collection_visibility"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label class="label" for="new_collection_ldesc">Longer description</label>
+                                    <div class="control">
+                                        <textarea class="textarea" id="new_collection_ldesc" name="new_collection_ldesc" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label class="label">Upload gene list</label>
+                                    <div id="file_upload_c" class="file">
+                                        <label for="new_collection_file" class="file-label">
+                                            <input class="file-input" name="new_collection_file" type="file" id="new_collection_file"/>
+                                            <span class="file-cta">
+                                                <span class="file-icon">
+                                                    <i class="mdi mdi-upload"></i>
+                                                </span>
+                                                <span class="file-label">
+                                                    Choose a file…
+                                                </span>
+                                            </span>
+                                        </label>
+                                        <span class="file-name" id="new_collection_file_name"></span>
+                                    </div>
+                                    <div class="control">
+                                        <a id="collection_upload_reqs" tabindex="0" class="button is-info" role="button" data-toggle="popover" data-trigger="focus" title="Requirements" data-content="<p>CSV, TAB, or Excel-format files only.<br/><br/>Header row required.<br/><br/>First column must be unique gene identifiers.<br/>Second column must be gene symbols.<br/>Extra columns must be numeric weights.<p>">Click for requirements</a>
+                                    </div>
+                                </div>
+                                <div class="field is-hidden" id="new_collection_pasted_genes_c">
+                                    <label class="label" for="new_collection_pasted_genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
+                                    <div class="control">
+                                        <textarea class="textarea" id="new_collection_pasted_genes" name="new_collection_pasted_genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
+                                    </div>
+                                </div>
+                                <div class="field is-grouped">
+                                    <p class="control">
+                                        <button class="button is-primary" id="btn_new_collection_save">Save</button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-primary" id="btn_new_collection_cancel">Cancel</button>
+                                    </p>
                                 </div>
                             </div>
-
-
                         </section>
 
                         <!-- Count and view control -->

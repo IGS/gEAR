@@ -40,15 +40,18 @@ html, body {
 /* ------------------ */
 /* -= Other styles =- */
 
-.card-content {
-    font-size: 70%;
-}
-.card-header-title {
-    font-size: 90%;
-}
 #citation_c {
     max-width: 200px;
 }
+
+#citation_c .card-content {
+    font-size: 70%;
+}
+
+#citation_c .card-header-title {
+    font-size: 90%;
+}
+
 .menu-list a {
     border-radius: 10px;
     padding: 0.25rem 0.5rem;
