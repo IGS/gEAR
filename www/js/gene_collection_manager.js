@@ -6,13 +6,6 @@ let isAddFormOpen = false;
 const resultsPerPage = 20;
 
 // TODO - Add transformation code for quick gene collection transformations
-// TODO - Add "labeled" gene collection type (i.e. marker genes) and integrate into other code snippets
-
-// TODO - Add public/private toggle button code for new genecart
-// TODO - Fix "edit genecart" button code
-// TODO - Add "new genecart" code back from old version
-// TODO - Get filter properties working
-// TODO - Add Organism select box
 
 // Floating UI function alias. See https://floating-ui.com/docs/getting-started#umd
 // Subject to change if we ever need these common names for other things.
@@ -33,47 +26,85 @@ const addGeneCollectionEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-gc-unweighted-gene-list-toggle")) {
         classElt.addEventListener("click", (e) => {
             const gcId = e.currentTarget.dataset.gcId;
-            const geneList = document.getElementById(`${gcId}_gene_list`);
 
-            // see if the gene_list is visible and toggle
-            if (geneList.classList.contains("is-hidden")) {
-                geneList.classList.remove("is-hidden");
+            const geneCollectionIdContainer = document.getElementById(`${gcId}_gene_container`);
+            const previewText = document.getElementById(`btn_gc_${gcId}_text`)
+
+            // Toggle gene container visibility
+            if (geneCollectionIdContainer.classList.contains("is-hidden")) {
+                geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
                 e.currentTarget.classList.remove("is-outlined");
-            } else {
-                geneList.classList.add("is-hidden");
-                e.currentTarget.classList.add("is-outlined");
+                e.currentTarget.querySelector("i").classList.add("mdi-eye-off");
+                e.currentTarget.querySelector("i").classList.remove("mdi-format-list-bulleted");
+                previewText.innerText = "Hide";
+                return;
             }
+            geneCollectionIdContainer.classList.add("is-hidden");
+            e.currentTarget.classList.add("is-outlined");
+            e.currentTarget.blur();
+            e.currentTarget.querySelector("i").classList.remove("mdi-eye-off");
+            e.currentTarget.querySelector("i").classList.add("mdi-format-list-bulleted");
+            previewText.innerText = previewText.dataset.offState;
 
         });
     }
 
+    // Show genes when button is clicked & adjust button styling
     for (const classElt of document.getElementsByClassName("js-gc-weighted-gene-list-toggle")) {
         classElt.addEventListener("click", async (e) => {
-            const gcId = e.currentTarget.dataset.gcId;
-            const shareId = e.currentTarget.dataset.gcShareId;
+            const button = e.currentTarget;
+            const gcId = button.dataset.gcId;
+            const shareId = button.dataset.gcShareId;
+            const geneCollectionIdContainer = document.getElementById(`${gcId}_gene_container`);
+            const previewText = document.getElementById(`btn_gc_${gcId}_text`)
 
-            document.getElementById(`btn_gc_${gcId}_preview`).classList.add("is-hidden");
-            document.getElementById(`btn_gc_${gcId}_loading`).classList.remove("is-hidden");
+            // Toggle gene container visibility
+            if (geneCollectionIdContainer.classList.contains("is-hidden")) {
+                button.classList.remove("is-outlined");
 
-            try {
-                const {data} = await axios.post('./cgi/get_weighted_gene_cart_preview.cgi', convertToFormData({
-                    'share_id': shareId
-                }));
-                processWeightedGcList(gcId, data['preview_json']);
-            } catch (error) {
-                logErrorInConsole(error);
-                // TODO: Display error notification
+                // If the preview table already exists, just show it
+                if (document.querySelector(`#gc_${gcId}_gene_table > table`)) {
+                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
+
+                    button.querySelector("i").classList.add("mdi-eye-off");
+                    button.querySelector("i").classList.remove("mdi-format-list-bulleted");
+                    previewText.innerText = "Hide";
+                    return;
+                }
+
+                button.classList.add("is-loading");
+
+                // Create the preview table of the first five genes
+                try {
+                    const {data} = await axios.post('./cgi/get_weighted_gene_cart_preview.cgi', convertToFormData({
+                        'share_id': shareId
+                    }));
+
+                    // This creates a table with classes dataframe and weighted-list
+                    document.getElementById(`gc_${gcId}_gene_table`).innerHTML = data['preview_json'];
+                    // Add Bulma table class
+                    document.querySelector(`#gc_${gcId}_gene_table > table`).classList.add("table");
+                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
+
+                    button.querySelector("i").classList.add("mdi-eye-off");
+                    button.querySelector("i").classList.remove("mdi-format-list-bulleted");
+                    previewText.innerText = "Hide";
+
+                } catch (error) {
+                    logErrorInConsole(error);
+                    // TODO: Display error notification
+                } finally {
+                    button.classList.remove("is-loading");
+                }
+
+                return;
             }
-        });
-    }
-
-    // Hide gene collection view
-    for (const classElt of document.getElementsByClassName("js-gc-weighted-gene-list-hider")) {
-        classElt.addEventListener("click", (e) => {
-            const gcId = e.currentTarget.dataset.gcId;
-            document.getElementById(`${gcId}_gene_table`).classList.add("is-hidden");   // TODO: add animate CSS with fade out
-            document.getElementById(`btn_gc_${gcId}_hider`).classList.add("is-hidden");
-            document.getElementById(`btn_gc_${gcId}_preview`).classList.remove("is-hidden");
+            geneCollectionIdContainer.classList.add("is-hidden");
+            button.classList.add("is-outlined");
+            e.currentTarget.blur();
+            button.querySelector("i").classList.remove("mdi-eye-off");
+            button.querySelector("i").classList.add("mdi-format-list-bulleted");
+            previewText.innerText = previewText.dataset.offState;
         });
     }
 
@@ -90,9 +121,9 @@ const addGeneCollectionEventListeners = () => {
             // Toggle the icon
             if (e.currentTarget.innerHTML === '<i class="mdi mdi-arrow-expand"></i>') {
                 e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-collapse"></i>';
-            } else {
-                e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
+                return;
             }
+            e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
 
 
         });
@@ -102,22 +133,50 @@ const addGeneCollectionEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-download-gc")) {
         classElt.addEventListener("click", (e) => {
             const gcId = e.currentTarget.dataset.gcId;
+            const gctype = e.currentTarget.dataset.gcType;
 
-            // Take the list elements, separate them, and put them in a text file
-            const geneListElt = document.getElementById(`${gcId}_gene_list`);
-            const fileContents = Array.from(geneListElt.children).map(li => li.innerText).join("\n");
+            if (gctype == "unweighted-list") {
+                // Take the list elements, separate them, and put them in a text file
+                const geneListElt = document.getElementById(`gc_${gcId}_gene_tags`);
+                const fileContents = Array.from(geneListElt.children).map(tag => tag.innerText).join("\n");
 
-            const element = document.createElement("a");
-            element.setAttribute(
-                "href",
-                `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
-            );
+                const element = document.createElement("a");
+                element.setAttribute(
+                    "href",
+                    `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
+                );
 
-            element.setAttribute("download", `gene_cart.${e.currentTarget.dataset.gcShareId}.tsv`);
-            element.style.display = "none";
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
+                element.setAttribute("download", `gene_cart.${e.currentTarget.dataset.gcShareId}.tsv`);
+                element.style.display = "none";
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            } else if (gctype == "weighted-list") {
+                // Retrieve the cart from the server and put it in a text file
+
+                throw Error("Not implemented yet");
+                const shareId = e.currentTarget.dataset.gcShareId;
+                const element = document.createElement("a");
+                element.setAttribute(
+                    "href",
+                    `./cgi/get_weighted_gene_cart.cgi?share_id=${shareId}`  // TODO: not created yet
+                );
+
+                element.setAttribute("download", `gene_cart.${e.currentTarget.dataset.gcShareId}.tsv`);
+                element.style.display = "none";
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+
+            } else if (gctype == "labeled-list") {
+                // Retrieve the cart from the server and put it in a text file
+                throw Error("Not implemented yet");
+
+            } else {
+                throw Error(`Invalid gene collection type: ${gctype}`);
+            }
+
+
         });
     }
 
@@ -276,21 +335,23 @@ const addGeneListToGeneCollection = (geneCollectionId, gctype, genes) => {
     const geneCollectionIdContainer = document.getElementById(`${geneCollectionId}_gene_container`);
     if (gctype == "weighted-list") {
         const weightedGeneListContainer = document.createElement("div");
-        weightedGeneListContainer.id = `${geneCollectionId}_gene_table`;
+        weightedGeneListContainer.id = `gc_${geneCollectionId}_gene_table`;
         geneCollectionIdContainer.appendChild(weightedGeneListContainer);
         return;
-    }
-    const geneListContainer = document.createElement("ul");
-    geneListContainer.classList.add("is-hidden");
-    geneListContainer.id = `${geneCollectionId}_gene_list`;
+    } else if (gctype == "labeled-list") {
+        return;
+    };
+    const geneListContainer = document.createElement("div");
+    geneListContainer.id = `gc_${geneCollectionId}_gene_tags`;
+    geneListContainer.classList.add("tags", "are-medium");
     geneCollectionIdContainer.appendChild(geneListContainer);
     // append genes to gene collection
     const geneCollectionIdGeneUlElt = document.getElementById(geneListContainer.id);
     for (const gene of genes) {
-        const li = document.createElement("li");
-        li.innerText = gene;
-        li.classList.add("mt-1");
-        geneCollectionIdGeneUlElt.appendChild(li);
+        const tag = document.createElement("span");
+        tag.classList.add("tag", "is-dark");
+        tag.innerText = gene;
+        geneCollectionIdGeneUlElt.appendChild(tag);
     }
 }
 
@@ -303,42 +364,36 @@ const addGeneListToGeneCollection = (geneCollectionId, gctype, genes) => {
  */
 const addPreviewGenesToGeneCollection = (geneCollectionId, gctype, shareId, geneCount) => {
     const geneCollectionPreviewGenesContainer = document.getElementById(`${geneCollectionId}_preview_genes_container`);
+    const button = document.createElement('button');
+    button.className = 'button is-small is-dark is-outlined';
+    button.title = 'Show gene collection';
+    button.dataset.gcId = geneCollectionId;
+    button.dataset.gcShareId = shareId;
+    button.innerHTML = `<span class="icon is-small"><i class="mdi mdi-format-list-bulleted"></i></span>`;
+
     if (gctype === "weighted-list") {
-        const previewButton = document.createElement('button');
-        previewButton.id = `btn_gc_${geneCollectionId}_preview`;
-        previewButton.className = 'button is-small is-dark is-outlined js-gc-weighted-gene-list-toggle';
-        previewButton.title = 'Show gene collection';
-        previewButton.innerHTML = '<i class="mdi mdi-format-list-bulleted"></i> Preview';
-        previewButton.dataset.gcId = geneCollectionId;
-        previewButton.dataset.gcShareId = shareId;
-
-        const loadingButton = document.createElement('button');
-        loadingButton.id = `btn_gc_${geneCollectionId}_loading`;
-        loadingButton.className = 'button is-small is-outlined is-hidden is-loading';
-        loadingButton.title = 'Loading';
-        loadingButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading';
-        loadingButton.dataset.gcId = geneCollectionId;
-
-        const hideButton = document.createElement('button');
-        hideButton.id = `btn_gc_${geneCollectionId}_hider`;
-        hideButton.className = 'button is-small is-outlined js-gc-weighted-gene-list-hider is-hidden';
-        hideButton.title = 'Hide gene collection';
-        hideButton.innerHTML = '<i class="mdi mdi-eye-off"></i> Hide';
-        hideButton.dataset.gcId = geneCollectionId;
-
-        geneCollectionPreviewGenesContainer.append(previewButton, loadingButton, hideButton);
-        return;
+        button.classList.add("js-gc-weighted-gene-list-toggle");
+        const elt = document.createElement("span");
+        elt.id = `btn_gc_${geneCollectionId}_text`;
+        elt.innerText = `Preview`;
+        elt.dataset.offState = elt.textContent
+        button.append(elt);
     } else if (gctype === "unweighted-list") {
-        const geneListButton = document.createElement('button');
-        geneListButton.className = 'button is-small is-dark is-outlined js-gc-unweighted-gene-list-toggle';
-        geneListButton.title = 'Show gene collection';
-        geneListButton.innerHTML = `<i class="mdi mdi-format-list-bulleted"></i> ${geneCount} genes`;
-        geneListButton.dataset.gcId = geneCollectionId;
-        geneCollectionPreviewGenesContainer.append(geneListButton);
-
+        button.classList.add("js-gc-unweighted-gene-list-toggle");
+        const elt = document.createElement("span");
+        elt.id = `btn_gc_${geneCollectionId}_text`;
+        elt.innerText = `${geneCount} genes`;
+        elt.dataset.offState = elt.textContent
+        button.append(elt);
     } else if (gctype === "labeled-list") {
         // Not implemented yet
+        button.classList.add("js-gc-labeled-gene-list-toggle");
+    } else {
+        throw Error(`Invalid gene collection type: ${gctype}`);
     }
+
+    geneCollectionPreviewGenesContainer.append(button);
+
 }
 
 /**
@@ -613,9 +668,8 @@ const geneCollectionFailure = (gc, message) => {
 }
 
 const geneCollectionSaved = (gc) => {
-    document.getElementById("create_new_gene_collection").click();
+    document.getElementById("create_new_gene_collection").click(); // resets form also
     submitSearch();
-    resetAddForm();
 }
 
 
@@ -672,6 +726,15 @@ const processSearchResults = (data) => {
     const resultsContainer = document.getElementById("results_container");
     resultsContainer.replaceChildren();
 
+    // If there are no results, display a message
+    if (data.gene_carts.length === 0) {
+        const noResultsMessage = document.createElement("p");
+        noResultsMessage.className = "has-text-centered";
+        noResultsMessage.innerText = "No results found.";
+        resultsContainer.appendChild(noResultsMessage);
+        return;
+    }
+
     // data.gene_carts is a list of JSON strings
     for (const gcString of data.gene_carts) {
         const gc = JSON.parse(gcString);
@@ -692,162 +755,159 @@ const processSearchResults = (data) => {
 
 
         // Build results view and add to DOM
-        // TODO: Edit "columns" class to be compatible with mobile
         const resultsViewTmpl = `
-            <div class="js-gc-list-element columns" id="result_gc_id_${geneCollectionId}" data-gc-id="${geneCollectionId}">
-                <div class="column is-full">
-                    <!-- title section -->
-                    <div class="columns">
-                        <div class="column is-11">
-                            <div class="js-readonly-version">
-                                <p class="has-text-weight-bold" id="result_gc_id_${geneCollectionId}_display_title">${label}</p>
-                            </div>
-                            <div id="editable_title_c" class="js-editable-version is-hidden">
-                                <div class="field">
-                                    <span class="has-text-weight-semibold">Title</span>
-                                    <input type="text" class="input js-editable-title" id="result_gc_id_${geneCollectionId}_editable_title" data-original-val="${label}" value="${label}"/>
-                                </div>
-                            </div>
+            <div class="js-gc-list-element" id="result_gc_id_${geneCollectionId}" data-gc-id="${geneCollectionId}">
+                <!-- title section -->
+                <div class="columns">
+                    <div class="column is-11">
+                        <div class="js-readonly-version">
+                            <p class="has-text-weight-bold" id="result_gc_id_${geneCollectionId}_display_title">${label}</p>
                         </div>
-
-                        <div class="column is-1">
-                            <span class="is-clickable is-pulled-right js-expand-box icon" data-gc-id="${geneCollectionId}"><i class="mdi mdi-arrow-expand"></i></span>
-                        </div>
-                    </div>
-                    <!-- visibility/other metadata section -->
-                    <div class="columns is-size-7">
-                        <div class="column is-3">
-                            <div class="js-readonly-version" id="${geneCollectionId}_display_container"></div>
-                            <div class="js-editable-version is-hidden">
-                                <div class="field">
-                                    <label class="label">Visibility</label>
-                                    <!-- toggle switch --->
-                                    <input type="checkbox" class="switch is-primary" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
-                                        data-is-public="${isPublic}"/>
-                                    <label for="result_gc_id_${geneCollectionId}_editable_visibility"></label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- organism section -->
-                        <div class="column is-3">
-                            <div class="js-readonly-version"><span class="has-text-weight-semibold">Organism</span> <span id="result_gc_id_${geneCollectionId}_display_organism">${organism}</span></div>
-                            <div class="js-editable-version is-hidden">
-                                <div class="field">
-                                    <label class="label" for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
-                                    <div class="control">
-                                        <div class="select">
-                                            <select id="result_gc_id_${geneCollectionId}_editable_organism_id" data-original-val="${organismId}"></select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="column is-3">
-                            <div class="js-readonly-version"><span class="has-text-weight-semibold">Owner</span> ${userName}</div>
-                            <div class="js-editable-version is-hidden">
-                                <div class="field">
-                                    <label class="label">Owner</label>
-                                    <div class="control">
-                                        <input class="input is-static" value="${userName}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="column is-3">
-                            <div class="js-readonly-version"><span class="has-text-weight-semibold">Added</span> ${dateAdded}</div>
-                            <div class="js-editable-version is-hidden">
-                                <div class="field">
-                                    <label class="label">Added</label>
-                                    <div class="control">
-                                        <input class="input is-static" value="${dateAdded}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- preview + action buttons section -->
-                    <div class="columns is-size-7">
-                        <div class="column is-3">
-                            <div id="${geneCollectionId}_preview_genes_container"></div>
-                        </div>
-                        <div class="column is-9">
-                            <div class="columns">
-                                <div class="column is-two-thirds">
-                                    <div class="field has-addons js-action-links" role="group">
-                                        <p class="control">
-                                            <button class="button is-small is-outlined is-dark js-view-gc" value="${shareId}" data-tooltip-content="View on front page">
-                                                <span class="icon is-small"><i class="mdi mdi-eye"></i></span>
-                                            </button>
-                                        </p>
-                                        <p class="control">
-                                            <button class="button is-small is-outlined is-danger js-delete-gc" value="${geneCollectionId}" data-is-owner="${isOwner}" data-tooltip-content="Delete collection">
-                                                <span class="icon is-small"><i class="mdi mdi-delete"></i></span>
-                                            </button>
-                                        </p>
-                                        <p class="control">
-                                            <button class="button is-small is-outlined is-dark js-download-gc" data-gc-share-id="${shareId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Download collection as tsv">
-                                                <span class="icon is-small"><i class="mdi mdi-download"></i></span>
-                                            </button>
-                                        </p>
-                                        <p class="control">
-                                            <button class="button is-small is-outlined is-dark js-share-gc" value="${shareId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Get shareable link">
-                                                <span class="icon is-small"><i class="mdi mdi-share-variant"></i></span>
-                                            </button>
-                                        </p>
-                                        <p class="control">
-                                            <button class="button is-small is-outlined is-dark js-edit-gc js-readonly-version" value="${geneCollectionId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Edit collection metadata">
-                                                <span class="icon is-small"><i class="mdi mdi-pencil"></i></span>
-                                            </button>
-                                        </p>
-                                    </div>
-                                    <div class="field has-addons" role="group">
-                                        <p class="control">
-                                            <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}">
-                                                <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
-                                            </button>
-                                        </p>
-                                        <p class="control">
-                                            <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}">
-                                                <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
-                                            </button>
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="column is-one-third">
-                                    <div class="js-readonly-version"><span class="has-text-weight-semibold">Type</span> ${gctype}</div>
-                                    <div class="js-editable-version is-hidden">
-                                        <div class="field">
-                                            <label class="label">Type</label>
-                                            <div class="control">
-                                                <input class="input is-static" value="${gctype}" readonly>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div> <!-- end .columns -->
-                            <!-- Info on actions (e.g. "URL copied to clipboard") -->
-                            <span class="js-gc-action-note is-hidden"></span>
-                        </div>
-
-                    </div> <!-- end .columns -->
-
-                    <!-- Gene preview section -->
-                    <div class="pl-4 is-hidden" id="${geneCollectionId}_gene_container"></div>
-                    <hr class="js-expandable-view is-hidden" />
-                    <!-- Long description section -->
-                    <div class="columns js-expandable-view is-hidden">
-                        <div class="column is-3"></div>
-                        <div class="column is-9 js-readonly-version" id="${geneCollectionId}_ldesc_container">
-                            <p class="has-text-weight-semibold">Long description</p>
-                        </div>
-                        <div class="column is-9 js-editable-version is-hidden">
+                        <div id="editable_title_c" class="js-editable-version is-hidden">
                             <div class="field">
-                                <label class="label">Long description</label>
+                                <span class="has-text-weight-semibold">Title</span>
+                                <input type="text" class="input js-editable-title" id="result_gc_id_${geneCollectionId}_editable_title" data-original-val="${label}" value="${label}"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="column is-1">
+                        <span class="is-clickable is-pulled-right js-expand-box icon" data-gc-id="${geneCollectionId}"><i class="mdi mdi-arrow-expand"></i></span>
+                    </div>
+                </div>
+                <!-- visibility/other metadata section -->
+                <div class="columns is-size-7">
+                    <div class="column is-3">
+                        <div class="js-readonly-version" id="${geneCollectionId}_display_container"></div>
+                        <div class="js-editable-version is-hidden">
+                            <div class="field">
+                                <label class="label">Visibility</label>
+                                <!-- toggle switch --->
+                                <input type="checkbox" class="switch is-primary" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
+                                    data-is-public="${isPublic}"/>
+                                <label for="result_gc_id_${geneCollectionId}_editable_visibility"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- organism section -->
+                    <div class="column is-3">
+                        <div class="js-readonly-version"><span class="has-text-weight-semibold">Organism</span> <span id="result_gc_id_${geneCollectionId}_display_organism">${organism}</span></div>
+                        <div class="js-editable-version is-hidden">
+                            <div class="field">
+                                <label class="label" for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
                                 <div class="control">
-                                    <textarea class="textarea" id="result_gc_id_${geneCollectionId}_editable_ldesc" rows="4" data-original-val="${longDesc}">${longDesc}</textarea>
+                                    <div class="select">
+                                        <select id="result_gc_id_${geneCollectionId}_editable_organism_id" data-original-val="${organismId}"></select>
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="column is-3">
+                        <div class="js-readonly-version"><span class="has-text-weight-semibold">Owner</span> ${userName}</div>
+                        <div class="js-editable-version is-hidden">
+                            <div class="field">
+                                <label class="label">Owner</label>
+                                <div class="control">
+                                    <input class="input is-static" value="${userName}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3">
+                        <div class="js-readonly-version"><span class="has-text-weight-semibold">Added</span> ${dateAdded}</div>
+                        <div class="js-editable-version is-hidden">
+                            <div class="field">
+                                <label class="label">Added</label>
+                                <div class="control">
+                                    <input class="input is-static" value="${dateAdded}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- preview + action buttons section -->
+                <div class="columns is-size-7">
+                    <div class="column is-3">
+                        <div id="${geneCollectionId}_preview_genes_container"></div>
+                    </div>
+                    <div class="column is-9">
+                        <div class="columns">
+                            <div class="column is-two-thirds">
+                                <div class="field has-addons js-action-links" role="group">
+                                    <p class="control">
+                                        <button class="button is-small is-outlined is-dark js-view-gc" value="${shareId}" data-tooltip-content="View on front page">
+                                            <span class="icon is-small"><i class="mdi mdi-eye"></i></span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-small is-outlined is-danger js-delete-gc" value="${geneCollectionId}" data-is-owner="${isOwner}" data-tooltip-content="Delete collection">
+                                            <span class="icon is-small"><i class="mdi mdi-delete"></i></span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-small is-outlined is-dark js-download-gc" data-gc-share-id="${shareId}" data-gc-id="${geneCollectionId}" data-gc-type="${gctype}" data-tooltip-content="Download collection as tsv">
+                                            <span class="icon is-small"><i class="mdi mdi-download"></i></span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-small is-outlined is-dark js-share-gc" value="${shareId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Get shareable link">
+                                            <span class="icon is-small"><i class="mdi mdi-share-variant"></i></span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-small is-outlined is-dark js-edit-gc js-readonly-version" value="${geneCollectionId}" data-gc-id="${geneCollectionId}" data-tooltip-content="Edit collection metadata">
+                                            <span class="icon is-small"><i class="mdi mdi-pencil"></i></span>
+                                        </button>
+                                    </p>
+                                </div>
+                                <div class="field has-addons" role="group">
+                                    <p class="control">
+                                        <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}">
+                                            <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" value="${geneCollectionId}" data-gc-id="${geneCollectionId}">
+                                            <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
+                                        </button>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="column is-one-third">
+                                <div class="js-readonly-version"><span class="has-text-weight-semibold">Type</span> ${gctype}</div>
+                                <div class="js-editable-version is-hidden">
+                                    <div class="field">
+                                        <label class="label">Type</label>
+                                        <div class="control">
+                                            <input class="input is-static" value="${gctype}" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div> <!-- end .columns -->
+                        <!-- Info on actions (e.g. "URL copied to clipboard") -->
+                        <span class="js-gc-action-note is-hidden"></span>
+                    </div>
+
+                </div> <!-- end .columns -->
+
+                <!-- Gene preview section -->
+                <div class="pl-4 is-hidden" id="${geneCollectionId}_gene_container"></div>
+                <hr class="js-expandable-view is-hidden" />
+                <!-- Long description section -->
+                <div class="columns js-expandable-view is-hidden">
+                    <div class="column is-3"></div>
+                    <div class="column is-9 js-readonly-version" id="${geneCollectionId}_ldesc_container">
+                        <p class="has-text-weight-semibold">Long description</p>
+                    </div>
+                    <div class="column is-9 js-editable-version is-hidden">
+                        <div class="field">
+                            <label class="label">Long description</label>
+                            <div class="control">
+                                <textarea class="textarea" id="result_gc_id_${geneCollectionId}_editable_ldesc" rows="4" data-original-val="${longDesc}">${longDesc}</textarea>
                             </div>
                         </div>
                     </div>
@@ -922,22 +982,6 @@ const toggleEditableMode = (hideEditable, selectorBase="") => {
 }
 
 /**
- * Processes the weighted GC list.
- * @param {string} gcId - The ID of the GC.
- * @param {Object} jdata - The preview JSON weighted data to show.
- * @returns {void}
- */
-const processWeightedGcList = (gcId, jdata) => {
-    document.getElementById(`btn_gc_${gcId}_loading`).classList.add("is-hidden");
-    document.getElementById(`btn_gc_${gcId}_hider`).classList.remove("is-hidden");
-
-    // This creates a table with classes dataframe and weighted-list
-    document.getElementById(`${gcId}_gene_table`).innerHTML = jdata;
-    document.getElementById(`${gcId}_gene_table`).classList.add("is-hidden");   // TODO: add animate CSS with fade in
-}
-
-
-/**
  * Resets the add form by removing the "is-hidden" class from the save button,
  * adding it to the saving button, and resetting all form fields to their default values.
  *
@@ -967,8 +1011,12 @@ const resetAddForm = () => {
         classElt.removeAttribute('disabled');
     }
 
+    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
+
     document.getElementById("new_collection_form_c").classList.add("is-hidden");
     document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
+    document.getElementById("new_collection_file_name").classList.add("is-hidden");
+
     isAddFormOpen = false;
 }
 
@@ -996,7 +1044,7 @@ const setupPagination = (pagination) => {
         document.getElementById("result_label").textContent = pagination.total_results == 1 ? " result" : " results";
         document.getElementById("gc_count_label_c").classList.remove("is-hidden");
 
-        const firstResult = (pagination.current_page - 1) * resultsPerPage + 1;
+        const firstResult = pagination.total_results > 0 ? (pagination.current_page - 1) * resultsPerPage + 1 : 0;
         const lastResult = Math.min(pagination.current_page * resultsPerPage, pagination.total_results);
         document.getElementById("result_range").textContent = `${firstResult} - ${lastResult}`;
 
@@ -1147,9 +1195,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         return;
     }
 
-    // Initialize tooltips and popovers
-    //createPopover(document.getElementById("collection_upload_reqs"));
-
     await loadOrganismList();
 
     // Settings for selected facets
@@ -1175,7 +1220,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 e.target.parentElement.querySelector("li.js-all-selector").classList.remove("js-selected");
 
                 // If this selection group has the 'only_one' option deselect the rest
-                if (e.target.parentElement.classList.contains("only_one")) {
+                if (e.target.parentElement.classList.contains("js-choose-only-one")) {
                     for (const elt of e.target.parentElement.children) {
                         elt.classList.remove("js-selected");
                     }
@@ -1271,8 +1316,9 @@ document.getElementById("btn_gc_paste_unweighted_list").addEventListener("click"
     document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
     document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
+    document.getElementById("new_collection_upload_c").classList.add("is-hidden");
+
     document.getElementById("new_collection_upload_type").value = "pasted_genes";
-    document.getElementById("file_upload_c").classList.add("is-hidden");
     isAddFormOpen = true;
 });
 
@@ -1286,10 +1332,9 @@ document.getElementById("btn_gc_upload_unweighted_list").addEventListener("click
     document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
 
     document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
     document.getElementById("new_collection_upload_type").value = "uploaded-unweighted";
-    document.getElementById("file_upload_c").classList.remove("is-hidden");
+    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
@@ -1303,10 +1348,9 @@ document.getElementById("btn_gc_upload_weighted_list").addEventListener("click",
     document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
 
     document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
     document.getElementById("new_collection_upload_type").value = "uploaded-weighted";
-    document.getElementById("file_upload_c").classList.remove("is-hidden");
+    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
@@ -1320,10 +1364,9 @@ document.getElementById("btn_gc_upload_labeled_list").addEventListener("click", 
     document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
 
     document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
 
-    document.getElementById("new_collection_upload_type").value = "uploaded-weighted";
-    document.getElementById("file_upload_c").classList.remove("is-hidden");
+    document.getElementById("new_collection_upload_type").value = "uploaded-labeled";
+    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
@@ -1363,12 +1406,18 @@ btnNewCartSave.addEventListener("click", (e) => {
     // Passed to CGI script as 1 or 0
     const isPublic = document.getElementById("new_collection_visibility").checked ? 1 : 0;
 
-    const formData = new FormData($(this)[0]);
-    formData.append('is_public', isPublic);
-    formData.append('session_id', CURRENT_USER.session_id);
+    const payload = {
+        'new_cart_label': document.getElementById("new_collection_label").value
+        , 'new_cart_organism_id': document.getElementById("new_collection_organism_id").value
+        , 'new_cart_ldesc': document.getElementById("new_collection_ldesc").value
+        , 'is_public': isPublic
+        , 'session_id': CURRENT_USER.session_id
+        , 'new_cart_upload_type': document.getElementById("new_collection_upload_type").value
+        , "new_cart_pasted_genes": document.getElementById("new_collection_pasted_genes").value
+    }
 
     const gc = new GeneCart();
-    gc.addCartToDbFromForm(formData, geneCollectionSaved, geneCollectionFailure);
+    gc.addCartToDbFromForm(payload, geneCollectionSaved, geneCollectionFailure);
     btnNewCartSave.classList.remove("is-loading");
 
 });
@@ -1429,5 +1478,134 @@ document.getElementById("new_collection_visibility").addEventListener("change", 
 // When user uploads file, update the file name in the form
 document.getElementById("new_collection_file").addEventListener("change", (e) => {
     const file = e.currentTarget.files[0];
-    document.getElementById("new_collection_file_name").value = file.name;
+    console.log(file);
+    document.getElementById("new_collection_file_name").innerText = file.name;
+    console.log(document.getElementById("new_collection_file_name"));
+    document.getElementById("new_collection_file_name").classList.remove("is-hidden");
+});
+
+// Show modal of upload requirements if clicked
+document.getElementById("collection_upload_reqs").addEventListener("click", (e) => {
+    e.preventDefault();
+    const modalId = e.target.dataset.target;
+    const modalElt = document.getElementById(modalId);
+    openModal(modalElt);
+
+    const listType = document.getElementById("new_collection_upload_type").value;
+
+    if (listType === "uploaded-unweighted") {
+        document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
+        `<p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
+        <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
+
+        <h5>Example</h5>
+        <p>Pou4f3, Sox2, Atoh1</p>
+
+        <h5>Example 2</h5>
+        <p>
+            Pou4f3<br />
+            Sox2<br />
+            Atoh1
+        </p>
+        `
+    } else if (listType === "uploaded-weighted") {
+        // ? Work on wording
+        document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
+        `<ul>
+            <li>File upload must be in CSV, TAB, or Excel-format only.</li>
+            <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
+            <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
+            <li>The second column must be gene symbols.</li>
+            <li>All columns beyond the second must be numeric weights.</li>
+            <li>The file will be parsed and validated before being uploaded.</li>
+        </ul>
+
+        <h5>Example</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ensembl_id</th>
+                    <th>gene_symbol</th>
+                    <th>PC1</th>
+                    <th>PC2</th>
+                    <th>MyCoolMetric</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ENSG00000000003</td>
+                    <td>TSPAN6</td>
+                    <td>0.1</td>
+                    <td>-0.2</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000005</td>
+                    <td>TSPAN5</td>
+                    <td>0.4</td>
+                    <td>0.5</td>
+                    <td>6</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000419</td>
+                    <td>DPM1</td>
+                    <td>0.7</td>
+                    <td>-0.8</td>
+                    <td>9</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000457</td>
+                    <td>SCYL3</td>
+                    <td>1.0</td>
+                    <td>-1.1</td>
+                    <td>12</td>
+                </tr>
+            </tbody>
+        </table
+        `
+    } else if (listType === "uploaded-labeled") {
+        document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
+        // ? This can change, particularly formatting and ensembl id requirements
+        `<ul>
+            <li>File upload must be in Excel-format only.</li>
+            <li>A header row of columns is required.</li>
+            <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
+            <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
+            <li>The file will be parsed and validated before being uploaded.</li>
+        </ul>
+
+        <h5>Example</h5>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Astrocytes</th>
+                    <th>Neurons</th>
+                    <th>Microglia</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AQP4</td>
+                    <td>APOE</td>
+                </tr>
+                <tr>
+                    <td>GRIN2A</td>
+                    <td>SLA</td>
+                    <td>SNAP25</td>
+                </tr>
+                <tr>
+                    <td>CSF1</td>
+                    <td>CSF1R</td>
+                    <td>IL6</td>
+                    <td>TNFA</td>
+                </tr>
+            </tbody>
+        </table>
+        `
+
+    } else {
+        throw new Error("Unsupported file-upload list type");
+    }
+
 });

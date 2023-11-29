@@ -196,7 +196,7 @@
                                 <div class="columns">
                                     <div class="column is-5">
                                         <div class="field">
-                                            <label class="label" for="new_collection_label">Label</label>
+                                            <label class="label" for="new_collection_label">Name of collection</label>
                                             <div class="control">
                                                 <input type="text" class="input" id="new_collection_label" name="new_collection_label" placeholder="" />
                                             </div>
@@ -214,7 +214,7 @@
                                     </div>
                                     <div class="column is-3">
                                         <div class="field">
-                                            <p>Visibility</p>
+                                            <p class="label">Visibility</p>
                                             <!-- toggle switch --->
                                             <input type="checkbox" class="switch is-primary" name="new_collection_visibility" id="new_collection_visibility"/>
                                             <label for="new_collection_visibility"></label>
@@ -227,24 +227,28 @@
                                         <textarea class="textarea" id="new_collection_ldesc" name="new_collection_ldesc" rows="3"></textarea>
                                     </div>
                                 </div>
-                                <div class="field">
-                                    <label class="label">Upload gene list</label>
-                                    <div id="file_upload_c" class="file">
-                                        <label for="new_collection_file" class="file-label">
-                                            <input class="file-input" name="new_collection_file" type="file" id="new_collection_file"/>
-                                            <span class="file-cta">
-                                                <span class="file-icon">
-                                                    <i class="mdi mdi-upload"></i>
-                                                </span>
-                                                <span class="file-label">
-                                                    Choose a file…
-                                                </span>
-                                            </span>
-                                        </label>
-                                        <span class="file-name" id="new_collection_file_name"></span>
-                                    </div>
-                                    <div class="control">
-                                        <a id="collection_upload_reqs" tabindex="0" class="button is-info" role="button" data-toggle="popover" data-trigger="focus" title="Requirements" data-content="<p>CSV, TAB, or Excel-format files only.<br/><br/>Header row required.<br/><br/>First column must be unique gene identifiers.<br/>Second column must be gene symbols.<br/>Extra columns must be numeric weights.<p>">Click for requirements</a>
+                                <div class="field" id="new_collection_upload_c">
+                                    <label class="label">Upload gene list
+                                        <a id="collection_upload_reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="collection_upload_reqs_modal">Click for requirements</a>
+
+                                    </label>
+                                    <div class="field">
+                                        <div class="control">
+                                            <div id="file_upload_c" class="file">
+                                                <label for="new_collection_file" class="file-label">
+                                                    <input class="file-input" name="new_collection_file" type="file" id="new_collection_file"/>
+                                                    <span class="file-cta">
+                                                        <span class="file-icon">
+                                                            <i class="mdi mdi-upload"></i>
+                                                        </span>
+                                                        <span class="file-label">
+                                                            Choose a file…
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                                <span class="file-name is-hidden" id="new_collection_file_name"></span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="field is-hidden" id="new_collection_pasted_genes_c">
@@ -258,7 +262,7 @@
                                         <button class="button is-primary" id="btn_new_collection_save">Save</button>
                                     </p>
                                     <p class="control">
-                                        <button class="button is-primary" id="btn_new_collection_cancel">Cancel</button>
+                                        <button class="button is-primary is-outlined" id="btn_new_collection_cancel">Cancel</button>
                                     </p>
                                 </div>
                             </div>
@@ -270,32 +274,36 @@
                                 <div class="level-item">
                                     <div class="field is-horizontal">
                                         <div class="field-label">
-                                            <label class="label_by_buttons">View:</label>
+                                            <label class="label">View:</label>
                                         </div>
-                                        <div class="buttons has-addons" role="group" aria-label="Gene cart list view preference">
-                                            <button type="button" id="btn_list_view_compact" class="button is-small is-dark active" aria-label="Compact view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Compact view">
-                                                <span class="icon is-small">
-                                                    <i class="mdi mdi-format-list-bulleted"></i>
-                                                </span>
-                                            </button>
-                                            <button type="button" id="btn_list_view_expanded" class="button is-small is-dark" aria-label="Expanded view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Expanded view">
-                                                <span class="icon is-small">
-                                                    <i class="mdi mdi-window-maximize"></i>
-                                                </span>
-                                            </button>
+                                        <div class="field-body">
+                                            <div class="buttons has-addons" role="group" aria-label="Gene cart list view preference">
+                                                <button type="button" id="btn_list_view_compact" class="button is-small is-dark active" aria-label="Compact view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Compact view">
+                                                    <span class="icon is-small">
+                                                        <i class="mdi mdi-format-list-bulleted"></i>
+                                                    </span>
+                                                </button>
+                                                <button type="button" id="btn_list_view_expanded" class="button is-small is-dark" aria-label="Expanded view" data-toggle="popover" data-toggle="tooltip" data-placement="top" title="Expanded view">
+                                                    <span class="icon is-small">
+                                                        <i class="mdi mdi-window-maximize"></i>
+                                                    </span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="level-item">
-                                    <div class="field is-horizontal">
-                                        <label class="field-label" for="sort_by">Sort by:</label>
-                                        <div class="select is-small">
-                                            <select name="sort_by" id="sort_by">
-                                                <option value="relevance">Relevance</option>
-                                                <option value="title">Gene cart title</option>
-                                                <option value="date_added" selected>Date created</option>
-                                                <option value="owner">Owner</option>
-                                            </select>
+                                    <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
+                                    <div class="field">
+                                        <div class="control">
+                                            <div class="select is-small">
+                                                <select name="sort_by" id="sort_by">
+                                                    <option value="relevance">Relevance</option>
+                                                    <option value="title">Gene cart title</option>
+                                                    <option value="date_added" selected>Date created</option>
+                                                    <option value="owner">Owner</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -331,6 +339,25 @@
         </section>
     </div>
 
+    <div class="modal" id="collection_upload_reqs_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">File upload requirements</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+            <!-- Content ... -->
+                <div class="content">
+
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button">Close</button>
+            </footer>
+        </div>
+    </div>
+
 
     <!-- Promise based HTTP client for the browser  -->
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
@@ -343,6 +370,8 @@
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>

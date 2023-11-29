@@ -75,6 +75,7 @@ def main():
         if fileitem.filename:
             pasted_genes = fileitem.file.read().decode().replace(",", " ")
             pasted_genes = re.sub(r"\s+", " ", pasted_genes)
+            pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
 
             for gene_sym in pasted_genes.split(' '):
                 gene = geardb.Gene(gene_symbol=gene_sym)
