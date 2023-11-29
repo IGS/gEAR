@@ -28,24 +28,6 @@ html, body {
 /* -------------------- */
 /* -= Left navbar section =- */
 
-/* CSS class for the hide animation */
-.hidden-sidenavbar {
-    opacity: 0;
-    max-height: 0;
-    overflow: hidden;
-    transition: opacity 0.3s ease, max-height 0.3s ease;
-}
-
-/* CSS class for the show animation */
-.shown-sidenavbar {
-    opacity: 1;
-    max-height: 1000px; /* Adjust the maximum height as needed */
-    transition: opacity 0.3s ease, max-height 0.3s ease;
-}
-
-/* ------------------ */
-/* -= Other styles =- */
-
 #citation_c {
     max-width: 200px;
 }
@@ -58,6 +40,14 @@ html, body {
     font-size: 90%;
 }
 
+/* CSS class for the hide animation */
+.hidden-sidenavbar {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
 .menu-list a {
     border-radius: 10px;
     padding: 0.25rem 0.5rem;
@@ -65,6 +55,24 @@ html, body {
     font-size: 90%;
 }
 
+.menu-list li {
+    /*border: 1px solid black; */
+    min-height: 2.5rem;
+}
+
+p.menu-label {
+    min-height: 1.5rem;
+}
+
+/* CSS class for the show animation */
+.shown-sidenavbar {
+    opacity: 1;
+    max-height: 1000px; /* Adjust the maximum height as needed */
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+/* ------------------ */
+/* -= Other styles =- */
 .js-step-collapsable {
     display: none;
 }

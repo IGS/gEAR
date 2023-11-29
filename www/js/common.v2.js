@@ -39,6 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to hide elements with animation
     function hideNavbarElementsWithAnimation() {
+        // Hide all the menu labels
+        document.querySelectorAll('span.menu-label-text').forEach(function (element) {
+            element.classList.add('is-hidden');
+        });
+
         navbarElementsToAnimate.forEach(function (element) {
             // Add the CSS class to trigger the hide animation
             element.classList.add('hidden-sidenavbar');
@@ -52,6 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to show elements with animation
     function showNavbarElementsWithAnimation() {
+        // Show all the menu labels
+        document.querySelectorAll('span.menu-label-text').forEach(function (element) {
+            element.classList.remove('is-hidden');
+        });
+
         navbarElementsToAnimate.forEach(function (element) {
             // Add the CSS class to trigger the show animation
             element.classList.add('shown-sidenavbar');
@@ -62,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // show the citation element
         document.querySelector("#citation_c").classList.remove("is-hidden")
     }
-
 
     const navbar_toggler = document.querySelector('#navbar-toggler');
 
