@@ -13,6 +13,14 @@ hr.gc-list-element-divider {
     margin-right: auto;
 }
 
+/* facets on left */
+.js-selected {
+    background-color: #E8EBEE;
+    border: 1px solid #E8EBEE;
+    border-radius: 4px;
+}
+
+
 /* CSS for Floating UI components */
 
 #delete_gc_popover {
