@@ -46,6 +46,9 @@ def main():
     # Reset index so that all column levels are the same.  Numerical index is later dropped for displaying.
     df = pd.concat([adata.var, df1], axis=1).reset_index()[:ROWS_TO_SHOW]
 
+    result["num_genes"] = len(adata.var)
+    result["weights"] = adata.obs.index.tolist()
+
     result['preview_json'] = df.to_html(classes=['weighted-list'], index=False)
     result['success'] = 1
     print(json.dumps(result))

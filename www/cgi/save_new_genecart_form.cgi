@@ -137,6 +137,10 @@ def main():
         except Exception as e:
             print(str(e))
             sys.exit(1)
+    elif upload_type == "labeled-list":
+        raise("Not implemented")
+    else:
+        raise Exception("Invalid upload type: {0}".format(upload_type))
 
     gc.save()
 

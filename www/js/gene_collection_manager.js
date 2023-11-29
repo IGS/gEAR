@@ -63,7 +63,7 @@ const addGeneCollectionEventListeners = () => {
                 button.classList.remove("is-outlined");
 
                 // If the preview table already exists, just show it
-                if (document.querySelector(`#gc_${gcId}_gene_table > table`)) {
+                if (document.querySelector(`#gc_${gcId}_gene_info > .js-info-container`)) {
                     geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
 
                     button.querySelector("i").classList.add("mdi-eye-off");
@@ -80,10 +80,25 @@ const addGeneCollectionEventListeners = () => {
                         'share_id': shareId
                     }));
 
-                    // This creates a table with classes dataframe and weighted-list
-                    document.getElementById(`gc_${gcId}_gene_table`).innerHTML = data['preview_json'];
-                    // Add Bulma table class
-                    document.querySelector(`#gc_${gcId}_gene_table > table`).classList.add("table");
+                    // List the number of genes as well as the names of weights in the gene collection
+                    const geneCount = data['num_genes'];
+                    const weights = data['weights'];
+
+                    const infoContainer = document.createElement("div");
+                    infoContainer.classList.add("js-info-container");
+                    document.getElementById(`gc_${gcId}_gene_info`).appendChild(infoContainer);
+
+                    const geneCountElt = document.createElement("p");
+                    geneCountElt.innerHTML = `<span class="has-text-weight-semibold">Genes:</span> ${geneCount}`;
+                    infoContainer.appendChild(geneCountElt);
+                    const numWeightsElt = document.createElement("p");
+                    numWeightsElt.innerHTML = `<span class="has-text-weight-semibold">Weights:</span> ${weights.length}`;
+                    infoContainer.appendChild(numWeightsElt);
+
+                    const weightsElt = document.createElement("p");
+                    weightsElt.innerHTML = `<span class="has-text-weight-semibold">Weight names:</span> ${weights.join(", ")}`;
+                    infoContainer.appendChild(weightsElt);
+
                     geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
 
                     button.querySelector("i").classList.add("mdi-eye-off");
@@ -92,7 +107,7 @@ const addGeneCollectionEventListeners = () => {
 
                 } catch (error) {
                     logErrorInConsole(error);
-                    // TODO: Display error notification
+                    createToast("Failed to load gene collection preview")
                 } finally {
                     button.classList.remove("is-loading");
                 }
@@ -137,7 +152,7 @@ const addGeneCollectionEventListeners = () => {
 
             if (gctype == "unweighted-list") {
                 // Take the list elements, separate them, and put them in a text file
-                const geneListElt = document.getElementById(`gc_${gcId}_gene_tags`);
+                const geneListElt = document.getElementById(`gc_${gcId}_gene_info`);
                 const fileContents = Array.from(geneListElt.children).map(tag => tag.innerText).join("\n");
 
                 const element = document.createElement("a");
@@ -272,9 +287,11 @@ const addGeneCollectionEventListeners = () => {
                 // Put interface back to view mode.
                 toggleEditableMode(true, selectorBase);
 
+                createToast("Gene collection changes saved", "is-success");
+
             } catch (error) {
                 logErrorInConsole(error);
-                // TODO: Display error notification
+                createToast("Failed to save gene collection changes");
             }
         });
     }
@@ -289,6 +306,12 @@ const addGeneCollectionEventListeners = () => {
             // copy the organism selection list for this row
             const editableOrganismIdElt = document.querySelector(`${selectorBase}_editable_organism_id`);
             editableOrganismIdElt.innerHTML = document.getElementById("new_collection_organism_id").innerHTML;
+
+            // Add default "select an organism" option
+            const defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.innerText = "Select an organism";
+            editableOrganismIdElt.prepend(defaultOption);
 
             // set the current value as selected
             editableOrganismIdElt.value = editableOrganismIdElt.dataset.originalVal;
@@ -335,21 +358,21 @@ const addGeneListToGeneCollection = (geneCollectionId, gctype, genes) => {
     const geneCollectionIdContainer = document.getElementById(`${geneCollectionId}_gene_container`);
     if (gctype == "weighted-list") {
         const weightedGeneListContainer = document.createElement("div");
-        weightedGeneListContainer.id = `gc_${geneCollectionId}_gene_table`;
+        weightedGeneListContainer.id = `gc_${geneCollectionId}_gene_info`;
         geneCollectionIdContainer.appendChild(weightedGeneListContainer);
         return;
     } else if (gctype == "labeled-list") {
         return;
     };
     const geneListContainer = document.createElement("div");
-    geneListContainer.id = `gc_${geneCollectionId}_gene_tags`;
-    geneListContainer.classList.add("tags", "are-medium");
+    geneListContainer.id = `gc_${geneCollectionId}_gene_info`;
+    geneListContainer.classList.add("tags");
     geneCollectionIdContainer.appendChild(geneListContainer);
     // append genes to gene collection
     const geneCollectionIdGeneUlElt = document.getElementById(geneListContainer.id);
     for (const gene of genes) {
         const tag = document.createElement("span");
-        tag.classList.add("tag", "is-dark");
+        tag.classList.add("tag", "is-gear-bg-secondary");
         tag.innerText = gene;
         geneCollectionIdGeneUlElt.appendChild(tag);
     }
@@ -375,7 +398,7 @@ const addPreviewGenesToGeneCollection = (geneCollectionId, gctype, shareId, gene
         button.classList.add("js-gc-weighted-gene-list-toggle");
         const elt = document.createElement("span");
         elt.id = `btn_gc_${geneCollectionId}_text`;
-        elt.innerText = `Preview`;
+        elt.innerText = `Info`;
         elt.dataset.offState = elt.textContent
         button.append(elt);
     } else if (gctype === "unweighted-list") {
@@ -593,6 +616,8 @@ const createDeleteConfirmationPopover = () => {
                         resultElement.style.opacity = 0;
                         resultElement.remove();
 
+                        createToast("Gene collection deleted", "is-success");
+
                         // This can affect page counts, so we need to re-run the search
                         submitSearch();
 
@@ -601,7 +626,7 @@ const createDeleteConfirmationPopover = () => {
                     }
                 } catch (error) {
                     logErrorInConsole(error);
-                    // TODO: Display error notification
+                    createToast("Failed to delete gene collection");
                 } finally {
                     popoverContent.remove();
                 }
@@ -665,13 +690,64 @@ const createActionTooltips = (referenceElement) => {
 // Callbacks after attempting to save a gene collection
 const geneCollectionFailure = (gc, message) => {
     logErrorInConsole(message);
+    createToast("Failed to save gene collection");
 }
 
 const geneCollectionSaved = (gc) => {
     document.getElementById("create_new_gene_collection").click(); // resets form also
+    createToast("Gene collection saved", "is-success");
     submitSearch();
 }
 
+/**
+ * Creates a toast notification with the given message and level class.
+ * @param {string} msg - The message to display in the toast notification.
+ * @param {string} [levelClass="is-danger"] - The level class for the toast notification. Defaults to "is-danger".
+ */
+const createToast = (msg, levelClass="is-danger") => {
+    const template = `
+    <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
+        <button class="delete"></button>
+        ${msg}
+    </div>
+    `
+    const html = generateElements(template);
+
+    const numToasts = document.querySelectorAll(".js-toast.notification").length;
+
+    if (document.querySelector(".js-toast.notification")) {
+        // If .js-toast notifications are present, append under final notification
+        // This is to prevent overlapping toast notifications
+        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
+        // Position new toast under previous toast with CSS
+        html.style.setProperty("top", `${(numToasts * 70) + 30}px`);
+    } else {
+        // Otherwise prepend to top of main content
+        document.getElementById("main_c").prepend(html);
+    }
+
+    // This should get the newly added notification since it is now the first
+    html.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
+        const notification = event.target.closest(".js-toast.notification");
+        notification.remove(notification);
+    });
+
+    // For a success message, remove it after 3 seconds
+    if (levelClass === "is-success") {
+        const notification = document.querySelector(".js-toast.notification:last-of-type");
+        notification.classList.remove("animate__fadeInUp");
+        notification.classList.remove("animate__faster");
+        notification.classList.add("animate__fadeOutDown");
+        notification.classList.add("animate__slower");
+    }
+
+    // remove the toast
+    html.addEventListener("animationend", (event) => {
+        if (event.animationName === "fadeOutDown") {
+            event.target.remove();
+        }
+    });
+}
 
 /**
  * Loads the list of organisms from the server and populates the organism choices and new cart organism ID select elements.
@@ -698,7 +774,7 @@ const loadOrganismList = async () => {
         }
     } catch (error) {
         logErrorInConsole(error);
-        // TODO: Display error notification
+        createToast("Failed to load organism list");
     }
 }
 
@@ -1017,6 +1093,10 @@ const resetAddForm = () => {
     document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
     document.getElementById("new_collection_file_name").classList.add("is-hidden");
 
+    for (const classElt of document.getElementsByClassName("js-validation-help")) {
+        classElt.remove();
+    }
+
     isAddFormOpen = false;
 }
 
@@ -1144,7 +1224,7 @@ const submitSearch = async (page) => {
         setupPagination(data.pagination);
     } catch (error) {
         logErrorInConsole(error);
-        // TODO: Display error notification
+        createToast("Failed to search gene collections");
     }
 }
 
@@ -1237,7 +1317,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 // validate that #new_collection_label input has a value
 document.getElementById("new_collection_label").addEventListener("blur", (e) => {
-    e.target.classList.remove("is-danger-dark");
+    e.target.classList.remove("is-danger");
     // Remove small helper text under input
     const helperText = e.target.parentElement.querySelector("p.help");
     if (helperText) {
@@ -1247,10 +1327,10 @@ document.getElementById("new_collection_label").addEventListener("blur", (e) => 
     if (e.target.value) {
         return;
     }
-    e.target.classList.add("is-danger-dark");
+    e.target.classList.add("is-danger");
     // Add small helper text under input
     const newHelperElt = document.createElement("p");
-    newHelperElt.classList.add("help", "is-danger-dark");
+    newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
     newHelperElt.innerText = "Please enter a value";
     e.target.parentElement.appendChild(newHelperElt);
 });
@@ -1385,10 +1465,10 @@ btnNewCartSave.addEventListener("click", (e) => {
     // check required fields
     const newCartLabel = document.getElementById("new_collection_label");
     if (! newCartLabel.value) {
-        newCartLabel.classList.add("is-danger-dark");
+        newCartLabel.classList.add("is-danger");
         // Add small helper text under input
         const newHelperElt = document.createElement("p");
-        newHelperElt.classList.add("help", "is-danger-dark");
+        newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
         newHelperElt.innerText = "Please enter a value";
         newCartLabel.parentElement.appendChild(newHelperElt);
 
@@ -1396,7 +1476,21 @@ btnNewCartSave.addEventListener("click", (e) => {
         return;
     }
 
-    newCartLabel.classList.remove("is-danger-dark");
+    const newCartOrganism = document.getElementById("new_collection_organism_id");
+    if (! newCartOrganism.value) {
+        newCartOrganism.classList.add("is-danger");
+        // Add small helper text under input
+        const newHelperElt = document.createElement("p");
+        newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
+        newHelperElt.innerText = "Please select an organism";
+        newCartOrganism.parentElement.appendChild(newHelperElt);
+
+        btnNewCartSave.classList.remove("is-loading");
+        return;
+    }
+
+    newCartLabel.classList.remove("is-danger");
+    newCartOrganism.classList.remove("is-danger");
     // Remove small helper text under input
     const helperText = newCartLabel.parentElement.querySelector("p.help");
     if (helperText) {
@@ -1407,8 +1501,8 @@ btnNewCartSave.addEventListener("click", (e) => {
     const isPublic = document.getElementById("new_collection_visibility").checked ? 1 : 0;
 
     const payload = {
-        'new_cart_label': document.getElementById("new_collection_label").value
-        , 'new_cart_organism_id': document.getElementById("new_collection_organism_id").value
+        'new_cart_label': newCartLabel.value
+        , 'new_cart_organism_id': newCartOrganism.value
         , 'new_cart_ldesc': document.getElementById("new_collection_ldesc").value
         , 'is_public': isPublic
         , 'session_id': CURRENT_USER.session_id

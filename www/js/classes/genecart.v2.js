@@ -91,3 +91,11 @@ class WeightedGeneCart extends GeneCart {
     }
 }
 
+class LabeledGeneCart extends GeneCart {
+    constructor ({...args} = {}, labels) {
+        super(args);
+        this.labels = labels || [];
+        this.genecarts = [];
+    }
+}
+

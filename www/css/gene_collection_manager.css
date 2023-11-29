@@ -20,6 +20,13 @@ hr.gc-list-element-divider {
     border-radius: 4px;
 }
 
+/* Toast-style notifications for actual alerts */
+.notification.js-toast {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    z-index:999;
+}
 
 /* CSS for Floating UI components */
 
