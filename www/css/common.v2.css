@@ -28,13 +28,19 @@ html, body {
 /* -------------------- */
 /* -= Left navbar section =- */
 
-.menu-list .icon-text-part {
-    max-width: 240px;
-    transition: transform 0.3s;
+/* CSS class for the hide animation */
+.hidden-sidenavbar {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
 }
 
-.menu-list .icon-text-part.is-collapsed {
-    transform: translateX(-100%);
+/* CSS class for the show animation */
+.shown-sidenavbar {
+    opacity: 1;
+    max-height: 1000px; /* Adjust the maximum height as needed */
+    transition: opacity 0.3s ease, max-height 0.3s ease;
 }
 
 /* ------------------ */

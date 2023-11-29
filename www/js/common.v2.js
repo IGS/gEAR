@@ -1,4 +1,5 @@
 let CURRENT_USER;
+let SIDEBAR_COLLAPSED = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Add listeners for any elements which have generic close controls
@@ -31,39 +32,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add click event for collapsable left navbar text
-    const navbar_toggler = document.querySelector('#navbar-toggler');
-    navbar_toggler.addEventListener('click', (event) => {
-        const isCollapsed = navbar_toggler.classList.contains('is-collapsed');
+/**
+ * Controls for the left navbar visibility
+ */
+    const navbarElementsToAnimate = document.querySelectorAll('.icon-text-part');
 
-        // toggle is-collapsed on all span elements of class icon-text-part
-        (document.querySelectorAll('.icon-text-part') || []).forEach(($menuLabel) => {
-            console.log("looping over a text label");
-            $menuLabel.classList.toggle('is-collapsed');
-
-            // now after the collapse finishes, toggle is-hidden
-            $menuLabel.addEventListener('transitionend', () => {
-                if (isCollapsed) {
-                    // Sidebar is collapsed
-                    console.log('Sidebar is expanded');
-                    // Perform actions for when the sidebar is collapsed
-
-                } else {
-                    // Sidebar is expanded
-                    console.log('Sidebar is collapsed');
-                    // Perform actions for when the sidebar is expanded
-                }
-                $menuLabel.classList.toggle('is-hidden');
-            });
+    // Function to hide elements with animation
+    function hideNavbarElementsWithAnimation() {
+        navbarElementsToAnimate.forEach(function (element) {
+            // Add the CSS class to trigger the hide animation
+            element.classList.add('hidden-sidenavbar');
+            // Remove the show animation class if it was previously added
+            element.classList.remove('shown-sidenavbar');
         });
 
         // hide the citation element
         document.querySelector("#citation_c").classList.add("is-hidden")
+    }
 
-        // also toggle the main site icon
+    // Function to show elements with animation
+    function showNavbarElementsWithAnimation() {
+        navbarElementsToAnimate.forEach(function (element) {
+            // Add the CSS class to trigger the show animation
+            element.classList.add('shown-sidenavbar');
+            // Remove the hide animation class if it was previously added
+            element.classList.remove('hidden-sidenavbar');
+        });
+
+        // show the citation element
+        document.querySelector("#citation_c").classList.remove("is-hidden")
+    }
+
+
+    const navbar_toggler = document.querySelector('#navbar-toggler');
+
+    navbar_toggler.addEventListener('click', (event) => {
+        if (SIDEBAR_COLLAPSED == false) {
+            hideNavbarElementsWithAnimation();
+            SIDEBAR_COLLAPSED = true;
+        } else {
+            showNavbarElementsWithAnimation();
+            SIDEBAR_COLLAPSED = false;
+        }
     });
 
-
+/**
+ * / End controls for the left navbar visibility
+ */
 
     checkForLogin();
 });
