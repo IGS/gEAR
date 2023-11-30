@@ -29,14 +29,6 @@
     background-color: lightgrey;
 }
 
-/* Toast-style notifications for actual alerts */
-.notification.js-toast {
-    position: fixed;
-    top: 30px;
-    right: 10px;
-    z-index:999;
-}
-
 #post_plot_adjustments select {
     width: 100px;
     white-space: nowrap;

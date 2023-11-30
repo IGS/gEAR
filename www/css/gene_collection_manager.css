@@ -7,7 +7,6 @@
 }
 
 hr.gc-list-element-divider {
-    width: 90%;
     background-color: #000000;
     margin-left: auto;
     margin-right: auto;
@@ -18,14 +17,6 @@ hr.gc-list-element-divider {
     background-color: #E8EBEE;
     border: 1px solid #E8EBEE;
     border-radius: 4px;
-}
-
-/* Toast-style notifications for actual alerts */
-.notification.js-toast {
-    position: fixed;
-    top: 30px;
-    right: 10px;
-    z-index:999;
 }
 
 /* CSS for Floating UI components */

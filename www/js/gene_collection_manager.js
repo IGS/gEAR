@@ -22,106 +22,14 @@ const arrow = window.FloatingUIDOM.arrow;
  */
 const addGeneCollectionEventListeners = () => {
 
-    // Show genes when button is clicked & adjust button styling
-    for (const classElt of document.getElementsByClassName("js-gc-unweighted-gene-list-toggle")) {
-        classElt.addEventListener("click", (e) => {
-            const gcId = e.currentTarget.dataset.gcId;
+    // Unweighted gene lists
+    setupGeneListToggle("js-gc-unweighted-gene-list-toggle", './cgi/get_unweighted_gene_cart_preview.cgi', createUnweightedGeneCollectionTable);
 
-            const geneCollectionIdContainer = document.getElementById(`${gcId}_gene_container`);
-            const previewText = document.getElementById(`btn_gc_${gcId}_text`)
+    // Weighted gene lists
+    setupGeneListToggle("js-gc-weighted-gene-list-toggle", './cgi/get_weighted_gene_cart_preview.cgi', createWeightedGeneCollectionPreview);
 
-            // Toggle gene container visibility
-            if (geneCollectionIdContainer.classList.contains("is-hidden")) {
-                geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
-                e.currentTarget.classList.remove("is-outlined");
-                e.currentTarget.querySelector("i").classList.add("mdi-eye-off");
-                e.currentTarget.querySelector("i").classList.remove("mdi-format-list-bulleted");
-                previewText.innerText = "Hide";
-                return;
-            }
-            geneCollectionIdContainer.classList.add("is-hidden");
-            e.currentTarget.classList.add("is-outlined");
-            e.currentTarget.blur();
-            e.currentTarget.querySelector("i").classList.remove("mdi-eye-off");
-            e.currentTarget.querySelector("i").classList.add("mdi-format-list-bulleted");
-            previewText.innerText = previewText.dataset.offState;
-
-        });
-    }
-
-    // Show genes when button is clicked & adjust button styling
-    for (const classElt of document.getElementsByClassName("js-gc-weighted-gene-list-toggle")) {
-        classElt.addEventListener("click", async (e) => {
-            const button = e.currentTarget;
-            const gcId = button.dataset.gcId;
-            const shareId = button.dataset.gcShareId;
-            const geneCollectionIdContainer = document.getElementById(`${gcId}_gene_container`);
-            const previewText = document.getElementById(`btn_gc_${gcId}_text`)
-
-            // Toggle gene container visibility
-            if (geneCollectionIdContainer.classList.contains("is-hidden")) {
-                button.classList.remove("is-outlined");
-
-                // If the preview table already exists, just show it
-                if (document.querySelector(`#gc_${gcId}_gene_info > .js-info-container`)) {
-                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
-
-                    button.querySelector("i").classList.add("mdi-eye-off");
-                    button.querySelector("i").classList.remove("mdi-format-list-bulleted");
-                    previewText.innerText = "Hide";
-                    return;
-                }
-
-                button.classList.add("is-loading");
-
-                // Create the preview table of the first five genes
-                try {
-                    const {data} = await axios.post('./cgi/get_weighted_gene_cart_preview.cgi', convertToFormData({
-                        'share_id': shareId
-                    }));
-
-                    // List the number of genes as well as the names of weights in the gene collection
-                    const geneCount = data['num_genes'];
-                    const weights = data['weights'];
-
-                    const infoContainer = document.createElement("div");
-                    infoContainer.classList.add("js-info-container");
-                    document.getElementById(`gc_${gcId}_gene_info`).appendChild(infoContainer);
-
-                    const geneCountElt = document.createElement("p");
-                    geneCountElt.innerHTML = `<span class="has-text-weight-semibold">Genes:</span> ${geneCount}`;
-                    infoContainer.appendChild(geneCountElt);
-                    const numWeightsElt = document.createElement("p");
-                    numWeightsElt.innerHTML = `<span class="has-text-weight-semibold">Weights:</span> ${weights.length}`;
-                    infoContainer.appendChild(numWeightsElt);
-
-                    const weightsElt = document.createElement("p");
-                    weightsElt.innerHTML = `<span class="has-text-weight-semibold">Weight names:</span> ${weights.join(", ")}`;
-                    infoContainer.appendChild(weightsElt);
-
-                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
-
-                    button.querySelector("i").classList.add("mdi-eye-off");
-                    button.querySelector("i").classList.remove("mdi-format-list-bulleted");
-                    previewText.innerText = "Hide";
-
-                } catch (error) {
-                    logErrorInConsole(error);
-                    createToast("Failed to load gene collection preview")
-                } finally {
-                    button.classList.remove("is-loading");
-                }
-
-                return;
-            }
-            geneCollectionIdContainer.classList.add("is-hidden");
-            button.classList.add("is-outlined");
-            e.currentTarget.blur();
-            button.querySelector("i").classList.remove("mdi-eye-off");
-            button.querySelector("i").classList.add("mdi-format-list-bulleted");
-            previewText.innerText = previewText.dataset.offState;
-        });
-    }
+    // Labeled gene lists
+    // NOT IMPLEMENTED YET
 
     // Expand and collapse gene collection view
     for (const classElt of document.getElementsByClassName("js-expand-box")) {
@@ -307,11 +215,8 @@ const addGeneCollectionEventListeners = () => {
             const editableOrganismIdElt = document.querySelector(`${selectorBase}_editable_organism_id`);
             editableOrganismIdElt.innerHTML = document.getElementById("new_collection_organism_id").innerHTML;
 
-            // Add default "select an organism" option
-            const defaultOption = document.createElement("option");
-            defaultOption.value = "";
-            defaultOption.innerText = "Select an organism";
-            editableOrganismIdElt.prepend(defaultOption);
+            // Remove the "select an organism" option
+            editableOrganismIdElt.removeChild(editableOrganismIdElt.firstChild);
 
             // set the current value as selected
             editableOrganismIdElt.value = editableOrganismIdElt.dataset.originalVal;
@@ -342,39 +247,6 @@ const addGeneCollectionEventListeners = () => {
         classElt.addEventListener("click", (e) => {
             window.location = `./p?c=${e.currentTarget.value}`;
         });
-    }
-}
-
-
-/**
- * Adds a gene collection to the gene collection display container in the DOM.
- * @param {string} geneCollectionId - The ID of the gene collection container.
- * @param {string} gctype - The type of gene collection to add.
- * @param {string[]} genes - An array of genes to add to the gene collection.
- * @returns {void}
- */
-const addGeneListToGeneCollection = (geneCollectionId, gctype, genes) => {
-    // Add weighted or unweighted gene collection to DOM
-    const geneCollectionIdContainer = document.getElementById(`${geneCollectionId}_gene_container`);
-    if (gctype == "weighted-list") {
-        const weightedGeneListContainer = document.createElement("div");
-        weightedGeneListContainer.id = `gc_${geneCollectionId}_gene_info`;
-        geneCollectionIdContainer.appendChild(weightedGeneListContainer);
-        return;
-    } else if (gctype == "labeled-list") {
-        return;
-    };
-    const geneListContainer = document.createElement("div");
-    geneListContainer.id = `gc_${geneCollectionId}_gene_info`;
-    geneListContainer.classList.add("tags");
-    geneCollectionIdContainer.appendChild(geneListContainer);
-    // append genes to gene collection
-    const geneCollectionIdGeneUlElt = document.getElementById(geneListContainer.id);
-    for (const gene of genes) {
-        const tag = document.createElement("span");
-        tag.classList.add("tag", "is-gear-bg-secondary");
-        tag.innerText = gene;
-        geneCollectionIdGeneUlElt.appendChild(tag);
     }
 }
 
@@ -511,6 +383,23 @@ const buildFilterString = (groupName) => {
     }
 
     return dbvals.join(",");
+}
+
+/**
+ * Creates a tooltip element and appends it to the body.
+ * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
+ * @returns {HTMLElement} The created tooltip element.
+ */
+const createActionTooltips = (referenceElement) => {
+    // Create tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    tooltip.innerText = referenceElement.dataset.tooltipContent;
+    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
+
+    // Append tooltip to body
+    document.body.appendChild(tooltip);
+    return tooltip;
 }
 
 /**
@@ -671,20 +560,91 @@ const createPaginationEllipsis = () => {
 }
 
 /**
- * Creates a tooltip element and appends it to the body.
- * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
- * @returns {HTMLElement} The created tooltip element.
+ * Creates an unweighted gene collection table.
+ *
+ * @param {HTMLElement} infoContainer - The container element where the table will be appended.
+ * @param {Object} data - The gene information data.
+ * @param {Object} data.gene_info - The gene information object. The keys are Ensembl IDs and the values are gene symbols and descriptions.
  */
-const createActionTooltips = (referenceElement) => {
-    // Create tooltip element
-    const tooltip = document.createElement('div');
-    tooltip.className = 'tooltip';
-    tooltip.innerText = referenceElement.dataset.tooltipContent;
-    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
+const createUnweightedGeneCollectionTable = (infoContainer, data) => {
+    const table = document.createElement("table");
+    table.classList.add("table", "is-narrow", "is-hoverable", "is-fullwidth");
+    infoContainer.appendChild(table);
 
-    // Append tooltip to body
-    document.body.appendChild(tooltip);
-    return tooltip;
+    const thead = document.createElement("thead");
+    table.appendChild(thead);
+
+    const theadTr = document.createElement("tr");
+    thead.appendChild(theadTr);
+
+    const thGeneSymbol = document.createElement("th");
+    thGeneSymbol.innerText = "Gene symbol";
+    theadTr.appendChild(thGeneSymbol);
+
+    const thEnsemblId = document.createElement("th");
+    thEnsemblId.innerText = "Ensembl ID";
+    theadTr.appendChild(thEnsemblId);
+
+    const thGeneDescription = document.createElement("th");
+    thGeneDescription.innerText = "Gene description";
+    theadTr.appendChild(thGeneDescription);
+
+    const tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+
+    // sort the gene info by gene symbol
+    const sortedGeneInfo = Object.entries(data.gene_info).sort((a, b) => {
+        if (a[1].gene_symbol < b[1].gene_symbol) {
+            return -1;
+        }
+        if (a[1].gene_symbol > b[1].gene_symbol) {
+            return 1;
+        }
+        return 0;
+    });
+
+    for (const [ensemblId, gene] of sortedGeneInfo) {
+
+        const tr = document.createElement("tr");
+        tbody.appendChild(tr);
+
+        const tdGeneSymbol = document.createElement("td");
+        tdGeneSymbol.innerText = gene.gene_symbol;
+        tr.appendChild(tdGeneSymbol);
+
+        const tdEnsemblId = document.createElement("td");
+        tdEnsemblId.innerText = ensemblId;
+        tr.appendChild(tdEnsemblId);
+
+        const tdGeneDescription = document.createElement("td");
+        tdGeneDescription.innerText = gene.product;
+        tr.appendChild(tdGeneDescription);
+    }
+}
+
+/**
+ * Creates a preview of a weighted gene collection.
+ *
+ * @param {HTMLElement} infoContainer - The container element where the gene collection preview will be appended.
+ * @param {Object} data - The data object containing information about the gene collection.
+ * @param {number} data.num_genes - The number of genes in the collection.
+ * @param {string[]} data.weights - The names of the weights in the gene collection.
+ */
+const createWeightedGeneCollectionPreview = (infoContainer, data) => {
+    // List the number of genes as well as the names of weights in the gene collection
+    const geneCount = data.num_genes;
+    const weights = data.weights;
+
+    const geneCountElt = document.createElement("p");
+    geneCountElt.innerHTML = `<span class="has-text-weight-semibold">Genes:</span> ${geneCount}`;
+    infoContainer.appendChild(geneCountElt);
+    const numWeightsElt = document.createElement("p");
+    numWeightsElt.innerHTML = `<span class="has-text-weight-semibold">Weights:</span> ${weights.length}`;
+    infoContainer.appendChild(numWeightsElt);
+
+    const weightsElt = document.createElement("p");
+    weightsElt.innerHTML = `<span class="has-text-weight-semibold">Weight names:</span> ${weights.join(", ")}`;
+    infoContainer.appendChild(weightsElt);
 }
 
 // Callbacks after attempting to save a gene collection
@@ -697,56 +657,6 @@ const geneCollectionSaved = (gc) => {
     document.getElementById("create_new_gene_collection").click(); // resets form also
     createToast("Gene collection saved", "is-success");
     submitSearch();
-}
-
-/**
- * Creates a toast notification with the given message and level class.
- * @param {string} msg - The message to display in the toast notification.
- * @param {string} [levelClass="is-danger"] - The level class for the toast notification. Defaults to "is-danger".
- */
-const createToast = (msg, levelClass="is-danger") => {
-    const template = `
-    <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
-        <button class="delete"></button>
-        ${msg}
-    </div>
-    `
-    const html = generateElements(template);
-
-    const numToasts = document.querySelectorAll(".js-toast.notification").length;
-
-    if (document.querySelector(".js-toast.notification")) {
-        // If .js-toast notifications are present, append under final notification
-        // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
-        // Position new toast under previous toast with CSS
-        html.style.setProperty("top", `${(numToasts * 70) + 30}px`);
-    } else {
-        // Otherwise prepend to top of main content
-        document.getElementById("main_c").prepend(html);
-    }
-
-    // This should get the newly added notification since it is now the first
-    html.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.closest(".js-toast.notification");
-        notification.remove(notification);
-    });
-
-    // For a success message, remove it after 3 seconds
-    if (levelClass === "is-success") {
-        const notification = document.querySelector(".js-toast.notification:last-of-type");
-        notification.classList.remove("animate__fadeInUp");
-        notification.classList.remove("animate__faster");
-        notification.classList.add("animate__fadeOutDown");
-        notification.classList.add("animate__slower");
-    }
-
-    // remove the toast
-    html.addEventListener("animationend", (event) => {
-        if (event.animationName === "fadeOutDown") {
-            event.target.remove();
-        }
-    });
 }
 
 /**
@@ -766,12 +676,20 @@ const loadOrganismList = async () => {
         }
         const newCollectionOrganismSelect = document.getElementById("new_collection_organism_id");    // <select> element
         newCollectionOrganismSelect.innerHTML = "";
+
         for (const organism of data.organisms) {
             const option = document.createElement("option");
             option.value = organism.id;
             option.innerText = organism.label;
             newCollectionOrganismSelect.appendChild(option);
         }
+        // Add default "select an organism" option
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.innerText = "Select an organism";
+        defaultOption.selected = true;
+        newCollectionOrganismSelect.prepend(defaultOption);
+
     } catch (error) {
         logErrorInConsole(error);
         createToast("Failed to load organism list");
@@ -857,7 +775,7 @@ const processSearchResults = (data) => {
                         <div class="js-readonly-version" id="${geneCollectionId}_display_container"></div>
                         <div class="js-editable-version is-hidden">
                             <div class="field">
-                                <label class="label">Visibility</label>
+                                <p class="label">Visibility</p>
                                 <!-- toggle switch --->
                                 <input type="checkbox" class="switch is-primary" name="result_gc_id_${geneCollectionId}_editable_visibility" id="result_gc_id_${geneCollectionId}_editable_visibility"
                                     data-is-public="${isPublic}"/>
@@ -999,7 +917,11 @@ const processSearchResults = (data) => {
 
         addPreviewGenesToGeneCollection(geneCollectionId, gctype, shareId, geneCount);
 
-        addGeneListToGeneCollection(geneCollectionId, gctype, genes);
+        // Add weighted or unweighted gene collection to DOM
+        const geneCollectionIdContainer = document.getElementById(`${geneCollectionId}_gene_container`);
+        const geneInfoContainer = document.createElement("div");
+        geneInfoContainer.id = `gc_${geneCollectionId}_gene_info`;
+        geneCollectionIdContainer.appendChild(geneInfoContainer);
 
         // Add ldesc if it exists
         const ldescContainer = document.getElementById(`${geneCollectionId}_ldesc_container`);
@@ -1087,14 +1009,24 @@ const resetAddForm = () => {
         classElt.removeAttribute('disabled');
     }
 
+    // Currently this is not implemented yet
+    document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
+
     document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
 
     document.getElementById("new_collection_form_c").classList.add("is-hidden");
     document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
     document.getElementById("new_collection_file_name").classList.add("is-hidden");
 
-    for (const classElt of document.getElementsByClassName("js-validation-help")) {
+    for (const classElt of document.querySelectorAll("#new_collection_form_c .js-validation-help")) {
+        console.log(classElt);
         classElt.remove();
+    }
+
+    // Remove all "is-danger" classes from form fields
+    for (const classElt of document.querySelectorAll("#new_collection_form_c .is-danger")) {
+        console.log(classElt);
+        classElt.classList.remove("is-danger");
     }
 
     isAddFormOpen = false;
@@ -1115,6 +1047,81 @@ const showGcActionNote = (gcId, msg) => {
         noteSelecterElt.classList.add("is-hidden"); // TODO: add animate CSS with fade out
         noteSelecterElt.innerHTML = "";
     }, 5000);
+}
+
+/**
+ * Sets up the gene list toggle functionality.
+ *
+ * @param {string} className - The class name of the elements that trigger the toggle.
+ * @param {string} ajaxUrl - The URL for the AJAX request.
+ * @param {Function} handleData - The callback function to handle the retrieved data.
+ */
+const setupGeneListToggle = (className, ajaxUrl, handleData) => {
+    // Show genes when button is clicked & adjust button styling
+    for (const classElt of document.getElementsByClassName(className)) {
+        classElt.addEventListener("click", async (e) => {
+            const button = e.currentTarget;
+            const gcId = e.currentTarget.dataset.gcId;
+            const shareId = e.currentTarget.dataset.gcShareId;
+            const geneCollectionIdContainer = document.getElementById(`${gcId}_gene_container`);
+            const previewText = document.getElementById(`btn_gc_${gcId}_text`)
+
+            // Toggle gene container visibility
+            if (geneCollectionIdContainer.classList.contains("is-hidden")) {
+                button.classList.remove("is-outlined");
+
+                // If the preview table already exists, just show it
+                if (document.querySelector(`#gc_${gcId}_gene_info > .js-info-container`)) {
+                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
+
+                    button.querySelector("i").classList.add("mdi-eye-off");
+                    button.querySelector("i").classList.remove("mdi-format-list-bulleted");
+                    previewText.innerText = "Hide";
+                    return;
+                }
+
+                button.classList.add("is-loading");
+
+                // Create the preview table of the first five genes
+                try {
+                    const {data} = await axios.post(ajaxUrl, convertToFormData({
+                        'share_id': shareId
+                    }));
+
+                    if (data.success < 1) {
+                        throw Error(data.message);
+                    }
+
+                    const infoContainer = document.createElement("div");
+                    infoContainer.classList.add("js-info-container");
+                    document.getElementById(`gc_${gcId}_gene_info`).appendChild(infoContainer);
+
+                    handleData(infoContainer, data);
+
+                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
+
+                    button.querySelector("i").classList.add("mdi-eye-off");
+                    button.querySelector("i").classList.remove("mdi-format-list-bulleted");
+                    previewText.innerText = "Hide";
+
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to load gene collection preview")
+                } finally {
+                    button.classList.remove("is-loading");
+                }
+
+                return;
+            }
+            geneCollectionIdContainer.classList.add("is-hidden");
+            button.classList.add("is-outlined");
+            button.blur();
+            button.querySelector("i").classList.remove("mdi-eye-off");
+            button.querySelector("i").classList.add("mdi-format-list-bulleted");
+            previewText.innerText = previewText.dataset.offState;
+
+        });
+    }
 }
 
 const setupPagination = (pagination) => {
@@ -1276,6 +1283,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     await loadOrganismList();
+
+    submitSearch();
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
@@ -1462,6 +1471,8 @@ btnNewCartSave.addEventListener("click", (e) => {
     // disable button and show indicator that it's loading
     btnNewCartSave.classList.add("is-loading");
 
+    let validationFailed = false;
+
     // check required fields
     const newCartLabel = document.getElementById("new_collection_label");
     if (! newCartLabel.value) {
@@ -1473,12 +1484,12 @@ btnNewCartSave.addEventListener("click", (e) => {
         newCartLabel.parentElement.appendChild(newHelperElt);
 
         btnNewCartSave.classList.remove("is-loading");
-        return;
+        validationFailed = true;
     }
 
     const newCartOrganism = document.getElementById("new_collection_organism_id");
     if (! newCartOrganism.value) {
-        newCartOrganism.classList.add("is-danger");
+        newCartOrganism.parentElement.classList.add("is-danger");
         // Add small helper text under input
         const newHelperElt = document.createElement("p");
         newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
@@ -1486,15 +1497,47 @@ btnNewCartSave.addEventListener("click", (e) => {
         newCartOrganism.parentElement.appendChild(newHelperElt);
 
         btnNewCartSave.classList.remove("is-loading");
+        validationFailed = true;
+    }
+
+    // Was file uploaded or genes pasted?
+    const uploadType = document.getElementById("new_collection_upload_type").value;
+    if (uploadType === "pasted_genes") {
+        const newCartPastedGenes = document.getElementById("new_collection_pasted_genes");
+        if (! newCartPastedGenes.value) {
+            newCartPastedGenes.classList.add("is-danger");
+            // Add small helper text under input
+            const newHelperElt = document.createElement("p");
+            newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
+            newHelperElt.innerText = "Please enter a value";
+            newCartPastedGenes.parentElement.appendChild(newHelperElt);
+            validationFailed = true;
+        }
+    } else if (["uploaded-unweighted", "uploaded-weighted", "uploaded-labeled"].includes(uploadType)) {
+        const newCartFile = document.getElementById("new_collection_file");
+        if (! newCartFile.value) {
+            newCartFile.parentElement.parentElement.classList.add("is-danger");
+            // Add small helper text under input
+            const newHelperElt = document.createElement("p");
+            newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help", "ml-2");
+            newHelperElt.innerText = "Please select a file";
+            newCartFile.parentElement.appendChild(newHelperElt);
+            validationFailed = true;
+        }
+    }
+
+    if (validationFailed) {
         return;
     }
 
-    newCartLabel.classList.remove("is-danger");
-    newCartOrganism.classList.remove("is-danger");
-    // Remove small helper text under input
-    const helperText = newCartLabel.parentElement.querySelector("p.help");
-    if (helperText) {
-        helperText.remove();
+    // Remove all "is-danger" classes from form fields
+    for (const classElt of document.querySelectorAll("#new_collection_form_c .js-validation-help")) {
+        classElt.remove();
+    }
+
+    // Remove all "is-danger" classes from form fields
+    for (const classElt of document.querySelectorAll("#new_collection_form_c .is-danger")) {
+        classElt.classList.remove("is-danger");
     }
 
     // Passed to CGI script as 1 or 0
@@ -1517,33 +1560,45 @@ btnNewCartSave.addEventListener("click", (e) => {
 });
 
 document.getElementById("btn_list_view_compact").addEventListener("click", () => {
-    document.getElementById("btn_arrangement_view").classList.remove('active');
-    document.getElementById("btn_list_view_compact").classList.add('active');
-    document.getElementById("btn_list_view_expanded").classList.remove('active');
-
-    document.getElementById("gc_list_c").classList.remove("is-hidden");
+    document.getElementById("btn_list_view_compact").classList.add('is-gear-bg-secondary');
+    document.getElementById("btn_list_view_compact").classList.remove('is-dark');
+    document.getElementById("btn_list_view_expanded").classList.remove('is-gear-bg-secondary');
+    document.getElementById("btn_list_view_expanded").classList.add('is-dark');
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
-        elt.classList.add("expanded-view-hidden");
+        elt.classList.add("is-hidden");
     };
+
+    // Toggle js-expand-box to icon collapse
+    for (const elt of document.querySelectorAll(".js-expand-box i")){
+        elt.classList.remove("mdi-arrow-collapse");
+        elt.classList.add("mdi-arrow-expand");
+    }
+
 });
 
 document.getElementById("btn_list_view_expanded").addEventListener("click", () => {
-    document.getElementById("btn_arrangement_view").classList.remove('active');
-    document.getElementById("btn_list_view_compact").classList.remove('active');
-    document.getElementById("btn_list_view_expanded").classList.add('active');
-
-    document.getElementById("gc_list_c").classList.remove("is-hidden");
+    document.getElementById("btn_list_view_compact").classList.remove('is-gear-bg-secondary');
+    document.getElementById("btn_list_view_compact").classList.add('is-dark');
+    document.getElementById("btn_list_view_expanded").classList.add('is-gear-bg-secondary');
+    document.getElementById("btn_list_view_expanded").classList.remove('is-dark');
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
-        elt.classList.remove("expanded-view-hidden");
+        elt.classList.remove("is-hidden");
     };
+
+    // Toggle js-expand-box to icon expand
+    for (const elt of document.querySelectorAll(".js-expand-box i")){
+        elt.classList.add("mdi-arrow-collapse");
+        elt.classList.remove("mdi-arrow-expand");
+    }
+
 });
 
 
-// Collpasible view toggle
+// Collpasible view toggle for left facet menu
 for (const elt of document.querySelectorAll(".js-expandable-control")) {
     elt.addEventListener("click", (e) => {
         const exblock = e.currentTarget.parentElement.querySelector(".js-expandable-target");

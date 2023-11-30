@@ -23,11 +23,3 @@ img#submit_wait_indicator {
     width: 30px;
     margin-right: 10px;
 }
-
-/* Toast-style notifications for actual alerts */
-.notification.js-toast {
-    position: fixed;
-    top: 30px;
-    right: 10px;
-    z-index:999;
-}

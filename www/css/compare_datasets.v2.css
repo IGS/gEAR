@@ -56,14 +56,6 @@ input[type=number] {
     height:92vh;
 }
 
-/* Toast-style notifications for actual alerts */
-.notification.js-toast {
-    position: fixed;
-    top: 30px;
-    right: 10px;
-    z-index:999;
-}
-
 /* override loader from the themed CSS */
 .button.is-loading::after, .loader, .select.is-loading::after, .control.is-loading::after {
     border-color: black;

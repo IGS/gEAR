@@ -1,49 +1,5 @@
 'use strict';
 
-/**
- * Creates a toast notification with the given message and level class.
- * @param {string} msg - The message to display in the toast notification.
- * @param {string} [levelClass="is-danger"] - The level class to apply to the toast notification. Defaults to "is-danger".
- */
-const createToast = (msg, levelClass="is-danger") => {
-    // TODO: Merge all the "createToast" functions into one in common.js
-    const template = `
-    <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
-        <button class="delete"></button>
-        ${msg}
-    </div>
-    `
-    const html = generateElements(template);
-
-    const numToasts = document.querySelectorAll(".js-toast.notification").length;
-
-    if (document.querySelector(".js-toast.notification")) {
-        // If .js-toast notifications are present, append under final notification
-        // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
-        // Position new toast under previous toast with CSS
-        html.style.setProperty("top", `${(numToasts * 70) + 30}px`);
-    } else {
-        // Otherwise prepend to top of main content
-        document.getElementById("main_c").prepend(html);
-    }
-
-    // This should get the newly added notification since it is now the first
-    document.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.closest(".js-toast.notification");
-        notification.remove(notification);
-    });
-
-    // For a success message, remove it after 3 seconds
-    if (levelClass === "is-success") {
-        const notification = document.querySelector(".js-toast.notification:last-of-type");
-        notification.classList.remove("animate__fadeInUp");
-        notification.classList.remove("animate__faster");
-        notification.classList.add("animate__fadeOutDown");
-        notification.classList.add("animate__slower");
-    }
-}
-
 // When password and repeated password are not the same, add a tooltip
 for (const classElt of document.getElementsByClassName("js-password")) {
     classElt.addEventListener("keyup", () => {

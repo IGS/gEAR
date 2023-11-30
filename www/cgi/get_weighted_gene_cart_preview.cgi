@@ -6,13 +6,13 @@
 
 import cgi
 import json
+import os
 import string
 import sys
 
 import pandas as pd
 import scanpy as sc
 
-import os, sys
 
 gene_cart_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'carts')
 ROWS_TO_SHOW = 5
@@ -35,21 +35,21 @@ def main():
     except OSError as e:
         message = "Unable to open file for genecart {}".format(share_id)
         success = -1
-        result = { 'preview_json':[], 'success': success, 'message': message }
+        result = { 'preview_json':[], 'num_genes':-1, 'weights':[], 'success': success, 'message': message }
         print(json.dump(result))
         sys.exit()
 
     adata.var_names_make_unique()
 
-    df1 = pd.DataFrame(adata.X, adata.obs.index, adata.var.index).transpose()
+    # df1 = pd.DataFrame(adata.X, adata.obs.index, adata.var.index).transpose()
     # Merge df1 into adata.var, using the index of df1 as the index of adata.var
     # Reset index so that all column levels are the same.  Numerical index is later dropped for displaying.
-    df = pd.concat([adata.var, df1], axis=1).reset_index()[:ROWS_TO_SHOW]
+    #df = pd.concat([adata.var, df1], axis=1).reset_index()[:ROWS_TO_SHOW]
 
     result["num_genes"] = len(adata.var)
     result["weights"] = adata.obs.index.tolist()
 
-    result['preview_json'] = df.to_html(classes=['weighted-list'], index=False)
+    #result['preview_json'] = df.to_html(classes=['weighted-list'], index=False)
     result['success'] = 1
     print(json.dumps(result))
 

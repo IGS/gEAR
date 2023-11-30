@@ -87,7 +87,7 @@ p.menu-label {
     background-color: lightgrey;
 }
 
-.select.is-success select, .input.is-success{
+.select.is-success select, .input.is-success, .textarea.is-success{
     border-color: #539400;  /* overwrite default success for .select */
 }
 
@@ -95,7 +95,7 @@ p.menu-label {
     border-color: #539400; /* overwrite default success for .select */
 }
 
-.select.is-danger select, .input.is-danger{
+.select.is-danger select, .input.is-danger, .textarea.is-danger{
     border-color: #942400; /* overwrite default success for .select */
 }
 
@@ -105,4 +105,12 @@ p.menu-label {
 
 .js-tree {
     max-height: 200px;  /* a) addresses long lists and b) addresses https://github.com/mar10/wunderbaum/issues/57 */
+}
+
+/* Toast-style notifications for actual alerts */
+.notification.js-toast {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    z-index:999;
 }
