@@ -32,7 +32,7 @@ def main():
     adata.obs = adata.obs.join(metadata)
 
     # remove column of a certain name
-    adata.obs.drop('Unnamed..0', axis=1, inplace=True)
+    #adata.obs.drop('Unnamed..0', axis=1, inplace=True)
 
     adata.write(args.output_file)
 
