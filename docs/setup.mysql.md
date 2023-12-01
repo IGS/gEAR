@@ -1,5 +1,24 @@
 # Set up the initial database
 
+## Change the MySQL configuration to a wider character set by default
+
+    $ vim /etc/mysql/mysql.conf.d/mysql.cnf
+
+Add:
+
+    [mysql]
+    default-character-set=utf8mb4
+
+Then:
+
+    $ vim /etc/mysql/mysql.conf.d/mysqld.cnf
+
+Add:
+
+    [mysqld]
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+
 ## New portals
 
     $ sudo mysql -u root -h localhost
