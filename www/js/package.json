@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@playwright/test": "^1.40.1",
+    "@types/node": "^20.10.3"
+  },
+  "scripts": {
+    "test": "mocha --timeout 5000"
+  },
+  "type": "module"
+}

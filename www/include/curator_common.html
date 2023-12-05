@@ -1,0 +1,56 @@
+<!-- templates that would go in both curator pages -->
+
+<template id="owner-display-card">
+    <div class="column is-one-quarter">
+        <div class="box card has-background-primary-light has-text-primary">
+            <header class="card-header">
+                <p class="card-header-title has-text-black"></p>
+            </header>
+            <div class="card-image">
+                <figure class="image is-4by3">
+                    <img src="${displayUrl} " alt="Saved display">
+                </figure>
+            </div>
+            <div class="card-content">
+                <p class="subtitle is-6 has-text-black">Genes:</p>
+            </div>
+            <footer class="card-footer buttons">
+                <p class="card-footer-item is-paddingless">
+                    <button class="js-display-default button is-responsive is-fullwidth is-primary">Set as Default</button>
+                </p>
+                <p class="card-footer-item is-paddingless">
+                    <button class="js-display-clone button is-fullwidth is-responsive is-primary">Clone</button>
+                </p>
+            </footer>
+        </div>
+    </div>
+</template>
+
+<template id="user-display-card">
+    <div class="column is-one-quarter">
+        <div class="box card has-background-primary-light has-text-primary">
+            <header class="card-header">
+                <p class="card-header-title has-text-black"></p>
+            </header>
+            <div class="card-image">
+                <figure class="image is-4by3">
+                    <img alt="Saved display">
+                </figure>
+            </div>
+            <div class="card-content">
+                <p class="subtitle is-6 has-text-black">Genes:</p>
+            </div>
+            <footer class="card-footer ">
+                <p class="card-footer-item is-paddingless">
+                    <button class="js-display-default button is-responsive is-fullwidth is-primary">Set as Default</button>
+                </p>
+                <p class="card-footer-item is-paddingless">
+                    <button class="js-display-clone button is-fullwidth is-responsive is-primary">Clone</button>
+                </p>
+                <p class="card-footer-item is-paddingless">
+                    <button class="js-display-delete button is-fullwidth is-responsive is-danger">Delete</button>
+                </p>
+            </footer>
+        </div>
+    </div>
+</template>

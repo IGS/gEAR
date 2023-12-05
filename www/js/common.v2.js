@@ -207,6 +207,9 @@ const doLogin = async () => {
         apiCallsMixin.sessionId = CURRENT_USER.session_id;
         apiCallsMixin.colorblindMode = CURRENT_USER.colorblind_mode;
 
+        // refresh the page
+        location.reload();
+
     } else {
         // Something went muy wrong
 

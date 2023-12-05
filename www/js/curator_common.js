@@ -1279,56 +1279,42 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
 
     const label = display.label || `Unnamed ${display.plot_type} display`;
 
-    let geneCardContent;
+    const template = document.getElementById("owner-display-card");
+    const displayCard = template.content.cloneNode(true);
+    const displayCardElt = displayCard.querySelector(".column");
+    displayCardElt.id = `${display.id}_display`;
+
+    const displayCardHeader = displayCard.querySelector(".card-header-title");
+    displayCardHeader.textContent = label;
+
+    const displayCardImage = displayCard.querySelector(".card-image img");
+    displayCardImage.src = displayUrl;
+    displayCardImage.alt = "Saved display";
+
+    const displayCardSubtitle = displayCard.querySelector(".card-content .subtitle");
     if (isMultigene) {
         // Card content should be number of genes
         const numGenes = display.plotly_config.gene_symbols.length;
-        geneCardContent = `<div class="card-content">
-            <p class="subtitle">Number of genes: ${numGenes}</p>
-        </div>`
+        displayCardSubtitle.textContent = `Number of genes: ${numGenes}`;
     } else {
         // Card content should be gene symbol
-        geneCardContent = `<div class="card-content">
-            <p class="subtitle">Gene: ${geneSymbol}</p>
-        </div>`
+        displayCardSubtitle.textContent = `Gene: ${geneSymbol}`;
     }
-
-    const template = `
-                <div id="${display.id}_display" class="column is-one-quarter">
-                    <div class="box card has-background-primary-light has-text-primary">
-                        <header class="card-header">
-                            <p class="card-header-title has-text-black">${label}</p>
-                        </header>
-                        <div class="card-image">
-                            <figure class="image is-4by3">
-                                <img src="${displayUrl} " alt="Saved display">
-                            </figure>
-                        </div>
-                        ${geneCardContent}
-                        <footer class="card-footer buttons">
-                            <p class="card-footer-item is-paddingless">
-                                <button class="js-display-default button is-responsive is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
-                            </p>
-                            <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-responsive is-primary" id="${display.id}_clone">Clone</button>
-                            </p>
-                        </footer>
-                    </div>
-                </div>`;
-
-    const htmlCollection = generateElements(template);
-    const ownerDisplaysElt = document.getElementById("owner_displays");
-    ownerDisplaysElt.append(htmlCollection);
 
     // Edit default properties if this is the default display
-    const defaultElt = document.getElementById(`${display.id}_default`);
+    const displayCardDefaultBtn = displayCard.querySelector(".js-display-default");
+    displayCardDefaultBtn.id = `${display.id}_default`;
     if (display.id === defaultDisplayId) {
-        defaultElt.textContent = "Default";
-        defaultElt.disabled = true;
+        displayCardDefaultBtn.textContent = "Default";
+        displayCardDefaultBtn.disabled = true;
     }
+    // Add event listeners
+    displayCardDefaultBtn.addEventListener("click", (event) => curatorApiCallsMixin.saveDefaultDisplay(display.id));
+    const displayCardCloneBtn = displayCard.querySelector(".js-display-clone");
+    displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display));
 
-    defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
-    document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
+    const ownerDisplaysElt = document.getElementById("owner_displays");
+    ownerDisplaysElt.append(displayCard);
 }
 
 /**
@@ -1350,60 +1336,44 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     const label = display.label || "Unnamed display"; // Added text to keep "p" tag from collapsing
 
-    let geneCardContent;
+    const template = document.getElementById("user-display-card");
+    const displayCard = template.content.cloneNode(true);
+    const displayCardElt = displayCard.querySelector(".column");
+    displayCardElt.id = `${display.id}_display`;
+
+    const displayCardHeader = displayCard.querySelector(".card-header-title");
+    displayCardHeader.textContent = label;
+
+    const displayCardImage = displayCard.querySelector(".card-image img");
+    displayCardImage.src = displayUrl;
+    displayCardImage.alt = "Saved display";
+
+    const displayCardSubtitle = displayCard.querySelector(".card-content .subtitle");
     if (isMultigene) {
         // Card content should be number of genes
         const numGenes = display.plotly_config.gene_symbols.length;
-        geneCardContent = `<div class="card-content">
-            <p class="subtitle">Number of genes: ${numGenes}</p>
-        </div>`
+        displayCardSubtitle.textContent = `Number of genes: ${numGenes}`;
     } else {
         // Card content should be gene symbol
-        geneCardContent = `<div class="card-content">
-            <p class="subtitle">Gene: ${geneSymbol}</p>
-        </div>`
+        displayCardSubtitle.textContent = `Gene: ${geneSymbol}`;
     }
-
-    const template = `
-                <div id="${display.id}_display" class="column is-one-quarter">
-                    <div class="box card has-background-primary-light has-text-primary">
-                        <header class="card-header">
-                            <p class="card-header-title has-text-black">${label}</p>
-                        </header>
-                        <div class="card-image">
-                            <figure class="image is-4by3">
-                                <img src="${displayUrl} " alt="Saved display">
-                            </figure>
-                        </div>
-                        ${geneCardContent}
-                        <footer class="card-footer ">
-                            <p class="card-footer-item is-paddingless">
-                                <button class="js-display-default button is-responsive is-fullwidth is-primary" id="${display.id}_default">Set as Default</button>
-                            </p>
-                            <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-responsive is-primary" id="${display.id}_clone">Clone</button>
-                            </p>
-                            <p class="card-footer-item is-paddingless">
-                                <button class="button is-fullwidth is-responsive is-danger" id="${display.id}_delete">Delete</button>
-                            </p>
-                        </footer>
-                    </div>
-                </div>`;
-
-    const htmlCollection = generateElements(template);
-    const userDisplaysElt = document.getElementById("user_displays");
-    userDisplaysElt.append(htmlCollection);
 
     // Edit default properties if this is the default display
-    const defaultElt = document.getElementById(`${display.id}_default`);
+    const displayCardDefaultBtn = displayCard.querySelector(".js-display-default");
+    displayCardDefaultBtn.id = `${display.id}_default`;
     if (display.id === defaultDisplayId) {
-        defaultElt.textContent = "Default";
-        defaultElt.disabled = true;
+        displayCardDefaultBtn.textContent = "Default";
+        displayCardDefaultBtn.disabled = true;
     }
+    // Add event listeners
+    displayCardDefaultBtn.addEventListener("click", (event) => curatorApiCallsMixin.saveDefaultDisplay(display.id));
+    const displayCardCloneBtn = displayCard.querySelector(".js-display-clone");
+    displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display));
+    const displayCardDeleteBtn = displayCard.querySelector(".js-display-delete");
+    displayCardDeleteBtn.addEventListener("click", (event) => curatorApiCallsMixin.deleteDisplay(display.id));
 
-    defaultElt.addEventListener("click", (event) => saveDefaultDisplay(display.id));
-    document.getElementById(`${display.id}_clone`).addEventListener("click", (event) => cloneDisplay(event, display));
-    document.getElementById(`${display.id}_delete`).addEventListener("click", (event) => curatorApiCallsMixin.deleteDisplay(display.id));
+    const userDisplaysElt = document.getElementById("user_displays");
+    userDisplaysElt.append(displayCard);
 }
 
 /**
@@ -1696,7 +1666,7 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make_default_display_check").checked) {
-            saveDefaultDisplay(displayId);
+            apiCallsMixin.saveDefaultDisplay(displayId);
         }
     } catch (error) {
         //pass - handled in functions
