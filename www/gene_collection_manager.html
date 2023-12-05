@@ -327,7 +327,173 @@
 
                         <!-- results view -->
                         <section id="results_container">
-                            <!-- filled in by js -->
+                            <template id="results_view">
+                                <!-- parts filled in by js -->
+                                <div class="js-gc-list-element">
+                                    <!-- title section -->
+                                    <div class="columns">
+                                        <div class="column is-11">
+                                            <div class="js-display-version js-display-title">
+                                                <p class="has-text-weight-bold"></p>
+                                            </div>
+                                            <div id="editable_title_c" class="js-editable-version js-editable-title is-hidden">
+                                                <div class="field">
+                                                    <span class="has-text-weight-semibold">Title</span>
+                                                    <input type="text" class="input"/>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="column is-1">
+                                            <span class="is-clickable is-pulled-right js-expand-box icon"><i class="mdi mdi-arrow-expand"></i></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- visibility/other metadata section -->
+                                    <div class="columns is-size-7">
+                                        <div class="column is-3">
+                                            <div class="js-display-version js-display-visibility"></div>
+                                            <div class="js-editable-version js-editable-visibility is-hidden">
+                                                <div class="field">
+                                                    <p class="label">Visibility</p>
+                                                    <!-- toggle switch --->
+                                                    <input type="checkbox" class="switch is-primary"/>
+                                                    <label></label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- organism section -->
+                                        <div class="column is-3">
+                                            <div class="js-display-version js-display-organism">
+                                                <span class="has-text-weight-semibold">Organism</span> <span></span>
+                                            </div>
+                                            <div class="js-editable-version js-editable-organism is-hidden">
+                                                <div class="field">
+                                                    <label class="label" for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
+                                                    <div class="control">
+                                                        <div class="select">
+                                                            <select></select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="column is-3">
+                                            <div class="js-display-version js-display-owner">
+                                                <span class="has-text-weight-semibold">Owner</span> <span></span>
+                                            </div>
+                                            <div class="js-editable-version js-editable-owner is-hidden">
+                                                <div class="field">
+                                                    <label class="label">Owner</label>
+                                                    <div class="control">
+                                                        <input class="input is-static" value="${userName}" readonly>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column is-3">
+                                            <div class="js-display-version js-display-date-added"><span class="has-text-weight-semibold">Added</span> <span></span></div>
+                                            <div class="js-editable-version js-editable-date-added is-hidden">
+                                                <div class="field">
+                                                    <label class="label">Added</label>
+                                                    <div class="control">
+                                                        <input class="input is-static" value="${dateAdded}" readonly>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- preview + action buttons section -->
+                                    <div class="columns is-size-7">
+                                        <div class="column is-3">
+                                            <div class="js-preview-genes-button-container"></div>
+                                        </div>
+                                        <div class="column is-9">
+                                            <div class="columns">
+                                                <div class="column is-two-thirds">
+                                                    <div class="field has-addons js-action-links" role="group">
+                                                        <p class="control">
+                                                            <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View on front page">
+                                                                <span class="icon is-small"><i class="mdi mdi-eye"></i></span>
+                                                            </button>
+                                                        </p>
+                                                        <p class="control">
+                                                            <button class="button is-small is-outlined is-danger js-delete-gc" data-tooltip-content="Delete collection">
+                                                                <span class="icon is-small"><i class="mdi mdi-delete"></i></span>
+                                                            </button>
+                                                        </p>
+                                                        <p class="control">
+                                                            <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download collection as tsv">
+                                                                <span class="icon is-small"><i class="mdi mdi-download"></i></span>
+                                                            </button>
+                                                        </p>
+                                                        <p class="control">
+                                                            <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link">
+                                                                <span class="icon is-small"><i class="mdi mdi-share-variant"></i></span>
+                                                            </button>
+                                                        </p>
+                                                        <p class="control">
+                                                            <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit collection metadata">
+                                                                <span class="icon is-small"><i class="mdi mdi-pencil"></i></span>
+                                                            </button>
+                                                        </p>
+                                                    </div>
+                                                    <div class="field has-addons" role="group">
+                                                        <p class="control">
+                                                            <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" data-gc-id="${geneCollectionId}">
+                                                                <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
+                                                            </button>
+                                                        </p>
+                                                        <p class="control">
+                                                            <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" data-gc-id="${geneCollectionId}">
+                                                                <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
+                                                            </button>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="column is-one-third">
+                                                    <div class="js-display-version js-display-gctype">
+                                                        <span class="has-text-weight-semibold">Type</span> <span></span>
+                                                    </div>
+                                                    <div class="js-editable-version js-editable-gctype is-hidden">
+                                                        <div class="field">
+                                                            <label class="label">Type</label>
+                                                            <div class="control">
+                                                                <input class="input is-static" readonly>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div> <!-- end .columns -->
+                                            <!-- Info on actions (e.g. "URL copied to clipboard") -->
+                                            <span class="js-gc-action-note is-hidden"></span>
+                                        </div>
+
+                                    </div> <!-- end .columns -->
+
+                                    <!-- Gene preview section -->
+                                    <div class="pl-4 js-preview-genes-container is-hidden"></div>
+                                    <hr class="js-expandable-view is-hidden" />
+                                    <!-- Long description section -->
+                                    <div class="columns js-expandable-view is-hidden">
+                                        <div class="column is-3"></div>
+                                        <div class="column is-9 js-display-version js-display-ldesc">
+                                            <p class="has-text-weight-semibold">Long description</p>
+                                        </div>
+                                        <div class="column is-9 js-editable-version js-editable-ldesc is-hidden">
+                                            <div class="field">
+                                                <label class="label">Long description</label>
+                                                <div class="control">
+                                                    <textarea class="textarea" rows="4"></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div> <!-- end .js-gc-list-element -->
+                                <hr class="gc-list-element-divider" />
+                            </template>
                         </section>
                         <nav id="below_pagination_container" class="pagination is-small is-pulled-right" role="navigation" aria-label="pagination">
                         </nav>
@@ -350,6 +516,114 @@
             <section class="modal-card-body">
             <!-- Content ... -->
                 <div class="content">
+
+                <template id="unweighted_example">
+                    <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
+                    <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
+
+                    <h5>Example</h5>
+                    <p>Pou4f3, Sox2, Atoh1</p>
+
+                    <h5>Example 2</h5>
+                    <p>
+                        Pou4f3<br />
+                        Sox2<br />
+                        Atoh1
+                    </p>
+                </template>
+
+                <template id="weighted_example">
+                    <ul>
+                        <li>File upload must be in CSV, TAB, or Excel-format only.</li>
+                        <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
+                        <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
+                        <li>The second column must be gene symbols.</li>
+                        <li>All columns beyond the second must be numeric weights.</li>
+                        <li>The file will be parsed and validated before being uploaded.</li>
+                    </ul>
+
+                    <h5>Example</h5>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ensembl_id</th>
+                                <th>gene_symbol</th>
+                                <th>PC1</th>
+                                <th>PC2</th>
+                                <th>MyCoolMetric</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ENSG00000000003</td>
+                                <td>TSPAN6</td>
+                                <td>0.1</td>
+                                <td>-0.2</td>
+                                <td>3</td>
+                            </tr>
+                            <tr>
+                                <td>ENSG00000000005</td>
+                                <td>TSPAN5</td>
+                                <td>0.4</td>
+                                <td>0.5</td>
+                                <td>6</td>
+                            </tr>
+                            <tr>
+                                <td>ENSG00000000419</td>
+                                <td>DPM1</td>
+                                <td>0.7</td>
+                                <td>-0.8</td>
+                                <td>9</td>
+                            </tr>
+                            <tr>
+                                <td>ENSG00000000457</td>
+                                <td>SCYL3</td>
+                                <td>1.0</td>
+                                <td>-1.1</td>
+                                <td>12</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </template>
+
+                <template id="labeled_example">
+                    <ul>
+                        <li>File upload must be in Excel-format only.</li>
+                        <li>A header row of columns is required.</li>
+                        <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
+                        <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
+                        <li>The file will be parsed and validated before being uploaded.</li>
+                    </ul>
+
+                    <h5>Example</h5>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Astrocytes</th>
+                                <th>Neurons</th>
+                                <th>Microglia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>AQP4</td>
+                                <td>APOE</td>
+                            </tr>
+                            <tr>
+                                <td>GRIN2A</td>
+                                <td>SLA</td>
+                                <td>SNAP25</td>
+                            </tr>
+                            <tr>
+                                <td>CSF1</td>
+                                <td>CSF1R</td>
+                                <td>IL6</td>
+                                <td>TNFA</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </template>
 
                 </div>
             </section>
