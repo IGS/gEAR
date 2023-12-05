@@ -18,7 +18,9 @@ None yet listed
 
 * Deleting an account
 
-## UI testing
+## UI (acceptance) testing
+
+NOTE: This will be outdated as soon as the new tests are written in `<root>/www/js/test`
 
 We use Selenium for this and these steps can take a while. Automated UI testing isn't necessarily quick, and there are a lot of pages/features to check.
 

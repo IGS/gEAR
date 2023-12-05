@@ -86,58 +86,58 @@ def main():
             wheres.append("AND (gc.is_public = 1 OR gc.user_id = %s)")
             qry_params.extend([user.id])
 
+    if search_terms:
+        selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
+        wheres.append(' AND MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
+
+        # this is the only instance where a placeholder can be in the SELECT statement, so it will
+        #  be the first qry param
+        qry_params.insert(0, ' '.join(search_terms))
+        qry_params.append(' '.join(search_terms))
+
+    if organism_ids:
+        ## only numeric characters and the comma are allowed here
+        organism_ids = re.sub("[^,0-9]", "", organism_ids)
+        wheres.append("AND gc.organism_id in ({0})".format(organism_ids))
+
+    if date_added:
+        date_added = re.sub("[^a-z]", "", date_added)
+        wheres.append("AND gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
+
+    if sort_by == 'relevance':
+        # relevance can only be ordered if a search term was used
         if search_terms:
-            selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-            wheres.append(' AND MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
-
-            # this is the only instance where a placeholder can be in the SELECT statement, so it will
-            #  be the first qry param
-            qry_params.insert(0, ' '.join(search_terms))
-            qry_params.append(' '.join(search_terms))
-
-        if organism_ids:
-            ## only numeric characters and the comma are allowed here
-            organism_ids = re.sub("[^,0-9]", "", organism_ids)
-            wheres.append("AND gc.organism_id in ({0})".format(organism_ids))
-
-        if date_added:
-            date_added = re.sub("[^a-z]", "", date_added)
-            wheres.append("AND gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
-
-        if sort_by == 'relevance':
-            # relevance can only be ordered if a search term was used
-            if search_terms:
-                orders_by.append(" rscore DESC")
-            else:
-                orders_by.append(" gc.date_added DESC")
-        elif sort_by == 'title':
-            orders_by.append(" gc.label")
-        elif sort_by == 'owner':
-            orders_by.append(" g.user_name")
+            orders_by.append(" rscore DESC")
         else:
             orders_by.append(" gc.date_added DESC")
+    elif sort_by == 'title':
+        orders_by.append(" gc.label")
+    elif sort_by == 'owner':
+        orders_by.append(" g.user_name")
+    else:
+        orders_by.append(" gc.date_added DESC")
 
-        # build query
-        qry = """
-        SELECT {0}
-        FROM {1}
-        WHERE {2}
-        ORDER BY {3}
-        """.format(
-            ", ".join(selects),
-            ", ".join(froms),
-            " ".join(wheres),
-            " ".join(orders_by)
-        )
+    # build query
+    qry = """
+    SELECT {0}
+    FROM {1}
+    WHERE {2}
+    ORDER BY {3}
+    """.format(
+        ", ".join(selects),
+        ", ".join(froms),
+        " ".join(wheres),
+        " ".join(orders_by)
+    )
 
-        # if a limit is defined, add it to the query
-        if int(limit):
-            qry += " LIMIT {0}".format(limit)
+    # if a limit is defined, add it to the query
+    if int(limit):
+        qry += " LIMIT {0}".format(limit)
 
-        # if a page is defined, add it to the query
-        if int(page):
-            offset = int(page) - 1
-            qry += " OFFSET {0}".format(offset * int(limit))
+    # if a page is defined, add it to the query
+    if int(page):
+        offset = int(page) - 1
+        qry += " OFFSET {0}".format(offset * int(limit))
 
     if DEBUG_MODE:
         ofh = open('/tmp/debug', 'wt')
@@ -153,7 +153,7 @@ def main():
         gc.user_name = row[1]
         gc.gene_count = len(gc.genes)
         gc.organism = "{0} {1}".format(row[8], row[9])
-        gc.is_owner = True if gc.user_id == user.id else False
+        gc.is_owner = True if user and gc.user_id == user.id else False
         gene_carts.append(gc)
 
     # Get count of total results

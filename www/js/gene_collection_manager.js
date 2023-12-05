@@ -1097,11 +1097,11 @@ const showGcActionNote = (gcId, msg) => {
  * @returns {void}
  */
 const submitSearch = async (page) => {
-    for (const classElt of document.getElementsByClassName("js-gc-list-element")) {
-        classElt.remove();
-    }
-    for (const classElt of document.getElementsByClassName("gc-list-element-divider")) {
-        classElt.remove();
+
+    // Clear any existing results
+    const resultsContainer = document.getElementById("results_container");
+    for (const elt of resultsContainer.querySelectorAll(":not(#results_view)")) {
+        elt.remove()
     }
 
     const searchTerms = document.getElementById("search_terms").value;
@@ -1193,7 +1193,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	if (! sessionId ) {
         document.getElementById("not_logged_in_msg").classList.remove("is-hidden");
-        return;
+        document.getElementById("create_new_gene_collection").classList.add("is-hidden");
+        document.getElementById("create_new_gene_collection").setAttribute("disabled", "disabled");
+        // only show public gene collections option
+        for (const elt of document.querySelectorAll("#controls_ownership li:not([data-dbval='public'])")) {
+            elt.remove();
+        }
+        document.querySelector("#controls_ownership li[data-dbval='public']").classList.add("js-selected");
     }
 
     await loadOrganismList();
@@ -1220,7 +1226,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 }
             } else {
                 // If turning on, make sure all_selector is off
-                e.target.parentElement.querySelector("li.js-all-selector").classList.remove("js-selected");
+                if (e.target.parentElement.querySelector("li.js-all-selector")) {
+                    // In case not logged in and "All" is not an option
+                    e.target.parentElement.querySelector("li.js-all-selector").classList.remove("js-selected");
+                }
 
                 // If this selection group has the 'only_one' option deselect the rest
                 if (e.target.parentElement.classList.contains("js-choose-only-one")) {
@@ -1295,7 +1304,7 @@ btnCreateCartToggle.addEventListener("click", () => {
         gcViewport.classList.add("is-hidden");
         viewControls.classList.add("is-hidden");
         belowPagination.classList.add("is-hidden");
-        btnCreateCartToggle.textContent = "Cancel cart creation";
+        btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-undo-variant"></i></span> <span>Cancel new collection</span>`;
         newCartVisibility.checked = false; // bootstrap toggle off
         newCartVisibility.closest(".field").querySelector("label").innerText = "Private";
         return;
@@ -1304,7 +1313,7 @@ btnCreateCartToggle.addEventListener("click", () => {
     gcViewport.classList.remove("is-hidden");   // TODO: Add animation with fade in/out
     viewControls.classList.remove("is-hidden"); // TODO: Add animation with fade in/out
     belowPagination.classList.remove("is-hidden");
-    btnCreateCartToggle.textContent = "Create new cart";
+    btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-plus"></i></span> <span>Create new gene collection</span>`;
     resetAddForm();
 });
 
