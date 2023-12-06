@@ -138,7 +138,7 @@ def main():
             print(str(e))
             sys.exit(1)
     elif upload_type == "labeled-list":
-        raise("Not implemented")
+        raise NotImplementedError("Not implemented")
     else:
         raise Exception("Invalid upload type: {0}".format(upload_type))
 

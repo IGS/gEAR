@@ -1,19 +1,23 @@
 #!/opt/bin/python3
 
 """
-Gets the gene symbols of a gene cart. Returns gene cart member ID's and Gene symbols 
+Gets the gene symbols of a gene cart. Returns gene cart member ID's and Gene symbols
 {'id': 1234, 'label': 'Sox9'}
 """
 
 import cgi
 import json
 import sys
+from pathlib import Path
 
-import os, sys
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
-sys.path.append(lib_path)
+lib_path = Path(__file__).resolve().parents[2].joinpath('lib')
+sys.path.insert(0, str(lib_path))
+
+abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
+CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 import geardb
+
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -26,21 +30,43 @@ def main():
     gene_cart_id = form.getvalue('gene_cart_id')
     result = { 'gene_symbols':[], 'success': 0 }
 
-    # Does the user have a current, saved layout?
-    layout_id = None
-
     if user is None:
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
-    else:
+
+    # Determine type of gene cart
+    gc = geardb.get_gene_cart_by_id(gene_cart_id)
+    if gc is None:
+        raise Exception("ERROR: failed to get gene cart ID {0}".format(gene_cart_id))
+
+    if gc.gctype == "unweighted-list":
         gene_cart_query = """
             SELECT id, gene_symbol
-              FROM gene_cart_member
-             WHERE gene_cart_id = %s
+                FROM gene_cart_member
+                WHERE gene_cart_id = %s
         """
 
         cursor.execute(gene_cart_query, (gene_cart_id,))
         for row in cursor:
             result['gene_symbols'].append({'id': row[0], 'label': row[1]})
+    elif gc.gctype == "weighted-list":
+        share_id = gc.share_id
+        if not share_id:
+            raise Exception("ERROR: weighted-list gene cart {0} has no share ID".format(gene_cart_id))
+
+        # Get the gene symbols from the shared cart file
+        file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id))
+        import csv
+
+        with open(file_path, "r") as fh:
+            reader = csv.reader(fh, delimiter="\t")
+            # Skip header
+            next(reader)
+            result["gene_symbols"] = [{"id":row[0], "label":row[1]} for row in reader]
+
+    elif gc.gctype == "labeled-list":
+        raise NotImplementedError("ERROR: labeled-list gene carts not yet implemented")
+    else:
+        raise Exception("ERROR: unknown gene cart type {0}".format(gc.gctype))
 
     result['success'] = 1
     cursor.close()

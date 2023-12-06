@@ -152,7 +152,29 @@ Playwright (https://playwright.dev/) is a framework used for automated end-to-en
 
 #### Dataset Explorer
 
-#### Gene Collectionmanager
+#### Gene Collection Manager
+
+* New Gene Collection
+  * Validation check on new label
+  * Validation check on save (label and organism)
+  * Cancel redirects correctly
+* Searching
+  * Clear search term
+  * Search and return results
+  * Sort By change
+  * Facet filters - Just one
+  * Facet filters - Select two
+  * Facet filters - Select All
+  * Facet filter - not logged in only show Public
+* Existing Gene Collection
+  * Expand + Collapse
+  * Expand/Collapse All
+  * Edit - Save change
+    * action links visible
+    * correct organism label
+  * Edit - Cancel
+  * Delete
+
 
 #### Epiviz Panel Designer
 

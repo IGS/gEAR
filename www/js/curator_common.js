@@ -196,7 +196,7 @@ const curatorApiCallsMixin = {
         } catch (error) {
             logErrorInConsole(error);
             createToast(error.message);
-            throw new Error(msg);
+            throw error;
         }
     },
 

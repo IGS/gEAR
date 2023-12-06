@@ -48,20 +48,19 @@ const addGeneCollectionEventListeners = () => {
             }
             e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
 
-
         });
     }
 
     // Reformats the <ul> containing the gene symbols into a text file with one gene per row
     for (const classElt of document.getElementsByClassName("js-download-gc")) {
-        classElt.addEventListener("click", (e) => {
+        classElt.addEventListener("click", async (e) => {
             const gcId = e.currentTarget.dataset.gcId;
             const gctype = e.currentTarget.dataset.gcType;
+            const shareId = e.currentTarget.dataset.gcShareId;
 
-            if (gctype == "unweighted-list") {
-                // Take the list elements, separate them, and put them in a text file
-                const geneListElt = document.getElementById(`gc_${gcId}_gene_info`);
-                const fileContents = Array.from(geneListElt.children).map(tag => tag.innerText).join("\n");
+            if (["unweighted-list", "weighted-list"].includes(gctype)) {
+                const gene_symbols = await fetchGeneCartMembers(gcId);
+                const fileContents = gene_symbols.map(gene => gene.label).join("\n");
 
                 const element = document.createElement("a");
                 element.setAttribute(
@@ -69,36 +68,20 @@ const addGeneCollectionEventListeners = () => {
                     `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
                 );
 
-                element.setAttribute("download", `gene_cart.${e.currentTarget.dataset.gcShareId}.tsv`);
+                element.setAttribute("download", `gene_cart.${shareId}.tsv`);
                 element.style.display = "none";
                 document.body.appendChild(element);
                 element.click();
                 document.body.removeChild(element);
-            } else if (gctype == "weighted-list") {
-                // Retrieve the cart from the server and put it in a text file
-
-                throw Error("Not implemented yet");
-                const shareId = e.currentTarget.dataset.gcShareId;
-                const element = document.createElement("a");
-                element.setAttribute(
-                    "href",
-                    `./cgi/get_weighted_gene_cart.cgi?share_id=${shareId}`  // TODO: not created yet
-                );
-
-                element.setAttribute("download", `gene_cart.${e.currentTarget.dataset.gcShareId}.tsv`);
-                element.style.display = "none";
-                document.body.appendChild(element);
-                element.click();
-                document.body.removeChild(element);
-
-            } else if (gctype == "labeled-list") {
+                return;
+            }
+            if (gctype == "labeled-list") {
                 // Retrieve the cart from the server and put it in a text file
                 throw Error("Not implemented yet");
 
             } else {
                 throw Error(`Invalid gene collection type: ${gctype}`);
             }
-
 
         });
     }
@@ -167,29 +150,29 @@ const addGeneCollectionEventListeners = () => {
                     'visibility': newVisibility,
                     'title': newTitle,
                     'organism_id': newOrgId,
-                    'ldesc': newLdesc
+                    'ldesc': newLdesc || ""
                 }));
 
                 // Update the UI for the new values
                 document.querySelector(`${selectorBase}_editable_visibility`).dataset.isPublic = newVisibility;
                 if (newVisibility) {
-                    document.querySelector(`${selectorBase}_display_visibility`).innerHTML = "Public gene collection";
+                    document.querySelector(`${selectorBase}_display_visibility`).textContent = "Public gene collection";
                     document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-danger");
                     document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-light");
                 } else {
-                    document.querySelector(`${selectorBase}_display_visibility`).innerHTML = "Private gene collection";
+                    document.querySelector(`${selectorBase}_display_visibility`).textContent = "Private gene collection";
                     document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-light");
                     document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-danger");
                 }
 
                 document.querySelector(`${selectorBase}_editable_title`).dataset.originalVal = newTitle;
-                document.querySelector(`${selectorBase}_display_title`).innerHTML = newTitle;
+                document.querySelector(`${selectorBase}_display_title`).textContent = newTitle;
 
                 document.querySelector(`${selectorBase}_editable_ldesc`).dataset.originalVal = newLdesc;
-                document.querySelector(`${selectorBase}_display_ldesc`).innerHTML = newLdesc;
+                document.querySelector(`${selectorBase}_display_ldesc`).textContent = newLdesc || "No description entered";;
 
-                document.querySelector(`${selectorBase}_display_organism`).innerHTML =
-                    document.querySelector(`${selectorBase}_editable_organism_id > option[value='${newOrgId}']`);
+                document.querySelector(`${selectorBase}_display_organism`).textContent =
+                    document.querySelector(`${selectorBase}_editable_organism_id > option[value='${newOrgId}']`).textContent;
                 document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal = newOrgId;
 
                 // Put interface back to view mode.
@@ -200,6 +183,8 @@ const addGeneCollectionEventListeners = () => {
             } catch (error) {
                 logErrorInConsole(error);
                 createToast("Failed to save gene collection changes");
+            } finally {
+                document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
             }
         });
     }
@@ -226,7 +211,7 @@ const addGeneCollectionEventListeners = () => {
             const isPublic = parseBool(editableVisibilityElt.dataset.isPublic);
 
             editableVisibilityElt.checked = isPublic;
-            editableVisibilityElt.closest(".field").querySelector("label").innerText = isPublic ? "Public" : "Private";
+            editableVisibilityElt.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
 
             // Show editable versions where there are some and hide the display versions
             toggleEditableMode(false, selectorBase);
@@ -270,14 +255,14 @@ const addPreviewGenesToGeneCollection = (geneCollectionId, gctype, shareId, gene
         button.classList.add("js-gc-weighted-gene-list-toggle");
         const elt = document.createElement("span");
         elt.id = `btn_gc_${geneCollectionId}_text`;
-        elt.innerText = `Info`;
+        elt.textContent = `Info`;
         elt.dataset.offState = elt.textContent
         button.append(elt);
     } else if (gctype === "unweighted-list") {
         button.classList.add("js-gc-unweighted-gene-list-toggle");
         const elt = document.createElement("span");
         elt.id = `btn_gc_${geneCollectionId}_text`;
-        elt.innerText = `${geneCount} genes`;
+        elt.textContent = `${geneCount} genes`;
         elt.dataset.offState = elt.textContent
         button.append(elt);
     } else if (gctype === "labeled-list") {
@@ -307,10 +292,10 @@ const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
 
     if (isPublic) {
         geneCollectionDisplaySpan.classList.add("is-primary", "is-light");
-        geneCollectionDisplaySpan.innerText = "Public gene collection";
+        geneCollectionDisplaySpan.textContent = "Public gene collection";
     } else {
         geneCollectionDisplaySpan.classList.add("is-danger");
-        geneCollectionDisplaySpan.innerText = "Private gene collection";
+        geneCollectionDisplaySpan.textContent = "Private gene collection";
     }
     geneCollectionDisplayContainer.appendChild(geneCollectionDisplaySpan);
 
@@ -320,7 +305,7 @@ const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
     visibilitySwitch.addEventListener("change", (e) => {
         const isPublic = e.currentTarget.checked;
         e.currentTarget.dataset.isPublic = isPublic;
-        e.currentTarget.closest(".field").querySelector("label").innerText = isPublic ? "Public" : "Private";
+        e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
     });
 
 }
@@ -394,7 +379,7 @@ const createActionTooltips = (referenceElement) => {
     // Create tooltip element
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
-    tooltip.innerText = referenceElement.dataset.tooltipContent;
+    tooltip.textContent = referenceElement.dataset.tooltipContent;
     tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
 
     // Append tooltip to body
@@ -578,15 +563,15 @@ const createUnweightedGeneCollectionTable = (infoContainer, data) => {
     thead.appendChild(theadTr);
 
     const thGeneSymbol = document.createElement("th");
-    thGeneSymbol.innerText = "Gene symbol";
+    thGeneSymbol.textContent = "Gene symbol";
     theadTr.appendChild(thGeneSymbol);
 
     const thEnsemblId = document.createElement("th");
-    thEnsemblId.innerText = "Ensembl ID";
+    thEnsemblId.textContent = "Ensembl ID";
     theadTr.appendChild(thEnsemblId);
 
     const thGeneDescription = document.createElement("th");
-    thGeneDescription.innerText = "Gene description";
+    thGeneDescription.textContent = "Gene description";
     theadTr.appendChild(thGeneDescription);
 
     const tbody = document.createElement("tbody");
@@ -609,15 +594,15 @@ const createUnweightedGeneCollectionTable = (infoContainer, data) => {
         tbody.appendChild(tr);
 
         const tdGeneSymbol = document.createElement("td");
-        tdGeneSymbol.innerText = gene.gene_symbol;
+        tdGeneSymbol.textContent = gene.gene_symbol;
         tr.appendChild(tdGeneSymbol);
 
         const tdEnsemblId = document.createElement("td");
-        tdEnsemblId.innerText = ensemblId;
+        tdEnsemblId.textContent = ensemblId;
         tr.appendChild(tdEnsemblId);
 
         const tdGeneDescription = document.createElement("td");
-        tdGeneDescription.innerText = gene.product;
+        tdGeneDescription.textContent = gene.product;
         tr.appendChild(tdGeneDescription);
     }
 }
@@ -647,6 +632,26 @@ const createWeightedGeneCollectionPreview = (infoContainer, data) => {
     infoContainer.appendChild(weightsElt);
 }
 
+/**
+ * Fetches the members of a gene cart.
+ * @param {string} geneCartId - The ID of the gene cart.
+ * @returns {Promise<Array<string>>} - A promise that resolves to an array of gene symbols.
+ * @throws {Error} - If the gene collection members cannot be fetched.
+ */
+const fetchGeneCartMembers = async (geneCartId) => {
+    try {
+        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
+        if (!success) {
+            throw new Error("Could not fetch gene collection members.");
+        }
+        return gene_symbols;
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast(error.message);
+        throw error
+    }
+}
+
 // Callbacks after attempting to save a gene collection
 const geneCollectionFailure = (gc, message) => {
     logErrorInConsole(message);
@@ -671,7 +676,7 @@ const loadOrganismList = async () => {
         for (const organism of data.organisms) {
             const li = document.createElement("li");
             li.dataset.dbval = organism.id;
-            li.innerText = organism.label;
+            li.textContent = organism.label;
             organismChoices.appendChild(li);
         }
         const newCollectionOrganismSelect = document.getElementById("new_collection_organism_id");    // <select> element
@@ -680,13 +685,13 @@ const loadOrganismList = async () => {
         for (const organism of data.organisms) {
             const option = document.createElement("option");
             option.value = organism.id;
-            option.innerText = organism.label;
+            option.textContent = organism.label;
             newCollectionOrganismSelect.appendChild(option);
         }
         // Add default "select an organism" option
         const defaultOption = document.createElement("option");
         defaultOption.value = "";
-        defaultOption.innerText = "Select an organism";
+        defaultOption.textContent = "Select an organism";
         defaultOption.selected = true;
         newCollectionOrganismSelect.prepend(defaultOption);
 
@@ -723,7 +728,7 @@ const processSearchResults = (data) => {
     if (data.gene_carts.length === 0) {
         const noResultsMessage = document.createElement("p");
         noResultsMessage.className = "has-text-centered";
-        noResultsMessage.innerText = "No results found.";
+        noResultsMessage.textContent = "No results found.";
         resultsContainer.appendChild(noResultsMessage);
         return;
     }
@@ -742,7 +747,6 @@ const processSearchResults = (data) => {
         const dateAdded = new Date(gc.date_added).toDateString();
 
         const organismId = gc.organism_id;
-        const genes = gc.genes;
         const geneCount = gc.gene_count;
         const userName = gc.user_name;
         const organism = gc.organism;
@@ -754,22 +758,22 @@ const processSearchResults = (data) => {
         // Set properties for multiple elements
         setElementProperties(resultsView, ".js-gc-list-element", { id: `result_gc_id_${geneCollectionId}`, dataset: { gcId: geneCollectionId } });
         // title section
-        setElementProperties(resultsView, ".js-display-title p", { id: `result_gc_id_${geneCollectionId}_display_title`, innerText: label });
+        setElementProperties(resultsView, ".js-display-title p", { id: `result_gc_id_${geneCollectionId}_display_title`, textContent: label });
         setElementProperties(resultsView, ".js-editable-title input", { id: `result_gc_id_${geneCollectionId}_editable_title`, dataset: { originalVal: label }, value: label });
         setElementProperties(resultsView, ".js-expand-box", { dataset: { gcId: geneCollectionId } });
         // visibility/other metadata section
         setElementProperties(resultsView, ".js-display-visibility", { id: `${geneCollectionId}_display_visibility` });
         setElementProperties(resultsView, ".js-editable-visibility input", { id: `result_gc_id_${geneCollectionId}_editable_visibility`, checked: isPublic, dataset: { isPublic } });
-        setElementProperties(resultsView, ".js-editable-visibility label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_visibility`, innerText: isPublic ? "Public" : "Private" });
+        setElementProperties(resultsView, ".js-editable-visibility label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_visibility`, textContent: isPublic ? "Public" : "Private" });
         // organism section
-        setElementProperties(resultsView, ".js-display-organism span:last-of-type", { id: `result_gc_id_${geneCollectionId}_display_organism`, innerText: organism });
+        setElementProperties(resultsView, ".js-display-organism span:last-of-type", { id: `result_gc_id_${geneCollectionId}_display_organism`, textContent: organism });
         setElementProperties(resultsView, ".js-editable-organism select", { id: `result_gc_id_${geneCollectionId}_editable_organism_id`, dataset: { originalVal: organismId }, value: organismId });
         setElementProperties(resultsView, ".js-editable-organism label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_organism_id` });
         // owner section
-        setElementProperties(resultsView, ".js-display-owner span:last-of-type", { innerText: userName });
+        setElementProperties(resultsView, ".js-display-owner span:last-of-type", { textContent: userName });
         setElementProperties(resultsView, ".js-editable-owner input", { value: userName });
         // date added section
-        setElementProperties(resultsView, ".js-display-date-added span:last-of-type", { innerText: dateAdded });
+        setElementProperties(resultsView, ".js-display-date-added span:last-of-type", { textContent: dateAdded });
         setElementProperties(resultsView, ".js-editable-date-added input", { value: dateAdded });
         // action buttons section
         setElementProperties(resultsView, ".js-view-gc", { value: shareId });
@@ -780,7 +784,7 @@ const processSearchResults = (data) => {
         setElementProperties(resultsView, ".js-edit-gc-save", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
         setElementProperties(resultsView, ".js-edit-gc-cancel", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
         // gene collection type section
-        setElementProperties(resultsView, ".js-display-gctype span:last-of-type", { innerText: gctype });
+        setElementProperties(resultsView, ".js-display-gctype span:last-of-type", { textContent: gctype });
         setElementProperties(resultsView, ".js-editable-gctype input", { value: gctype });
         // long description section
         setElementProperties(resultsView, ".js-display-ldesc", { id: `result_gc_id_${geneCollectionId}_display_ldesc_container` });
@@ -806,7 +810,7 @@ const processSearchResults = (data) => {
         const ldescContainer = document.getElementById(`result_gc_id_${geneCollectionId}_display_ldesc_container`);
         const ldescElt = document.createElement("p");
         ldescElt.id = `result_gc_id_${geneCollectionId}_display_ldesc`;
-        ldescElt.innerText = longDesc || "No description entered";
+        ldescElt.textContent = longDesc || "No description entered";
         ldescContainer.appendChild(ldescElt);
 
     }
@@ -863,7 +867,7 @@ const resetAddForm = () => {
     document.getElementById("new_collection_file_name").value = "";
 
     document.getElementById("new_collection_visibility").checked = false;
-    document.getElementById("new_collection_visibility").closest(".field").querySelector("label").innerText = "Private";
+    document.getElementById("new_collection_visibility").closest(".field").querySelector("label").textContent = "Private";
 
     for (const classElt of document.getElementsByClassName("js-new-collection-header")) {
         classElt.classList.remove('has-background-primary', 'has-text-white');
@@ -954,7 +958,7 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
 
                     button.querySelector("i").classList.add("mdi-eye-off");
                     button.querySelector("i").classList.remove("mdi-format-list-bulleted");
-                    previewText.innerText = "Hide";
+                    previewText.textContent = "Hide";
                     return;
                 }
 
@@ -980,7 +984,7 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
 
                     button.querySelector("i").classList.add("mdi-eye-off");
                     button.querySelector("i").classList.remove("mdi-format-list-bulleted");
-                    previewText.innerText = "Hide";
+                    previewText.textContent = "Hide";
 
                 } catch (error) {
                     logErrorInConsole(error);
@@ -996,7 +1000,7 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
             button.blur();
             button.querySelector("i").classList.remove("mdi-eye-off");
             button.querySelector("i").classList.add("mdi-format-list-bulleted");
-            previewText.innerText = previewText.dataset.offState;
+            previewText.textContent = previewText.dataset.offState;
 
         });
     }
@@ -1263,7 +1267,7 @@ document.getElementById("new_collection_label").addEventListener("blur", (e) => 
     // Add small helper text under input
     const newHelperElt = document.createElement("p");
     newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
-    newHelperElt.innerText = "Please enter a value";
+    newHelperElt.textContent = "Please enter a value";
     e.target.parentElement.appendChild(newHelperElt);
 });
 
@@ -1306,7 +1310,7 @@ btnCreateCartToggle.addEventListener("click", () => {
         belowPagination.classList.add("is-hidden");
         btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-undo-variant"></i></span> <span>Cancel new collection</span>`;
         newCartVisibility.checked = false; // bootstrap toggle off
-        newCartVisibility.closest(".field").querySelector("label").innerText = "Private";
+        newCartVisibility.closest(".field").querySelector("label").textContent = "Private";
         return;
     }
     createCollectionContainer.classList.add("is-hidden");
@@ -1403,7 +1407,7 @@ btnNewCartSave.addEventListener("click", (e) => {
         // Add small helper text under input
         const newHelperElt = document.createElement("p");
         newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
-        newHelperElt.innerText = "Please enter a value";
+        newHelperElt.textContent = "Please enter a value";
         newCartLabel.parentElement.appendChild(newHelperElt);
 
         btnNewCartSave.classList.remove("is-loading");
@@ -1416,7 +1420,7 @@ btnNewCartSave.addEventListener("click", (e) => {
         // Add small helper text under input
         const newHelperElt = document.createElement("p");
         newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
-        newHelperElt.innerText = "Please select an organism";
+        newHelperElt.textContent = "Please select an organism";
         newCartOrganism.parentElement.appendChild(newHelperElt);
 
         btnNewCartSave.classList.remove("is-loading");
@@ -1432,7 +1436,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             // Add small helper text under input
             const newHelperElt = document.createElement("p");
             newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
-            newHelperElt.innerText = "Please enter a value";
+            newHelperElt.textContent = "Please enter a value";
             newCartPastedGenes.parentElement.appendChild(newHelperElt);
             validationFailed = true;
         }
@@ -1443,7 +1447,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             // Add small helper text under input
             const newHelperElt = document.createElement("p");
             newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help", "ml-2");
-            newHelperElt.innerText = "Please select a file";
+            newHelperElt.textContent = "Please select a file";
             newCartFile.parentElement.appendChild(newHelperElt);
             validationFailed = true;
         }
@@ -1544,14 +1548,14 @@ for (const elt of document.querySelectorAll(".js-expandable-control")) {
 document.getElementById("new_collection_visibility").addEventListener("change", (e) => {
     const isPublic = e.currentTarget.checked;
     e.currentTarget.dataset.isPublic = isPublic;
-    e.currentTarget.closest(".field").querySelector("label").innerText = isPublic ? "Public" : "Private";
+    e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
 });
 
 // When user uploads file, update the file name in the form
 document.getElementById("new_collection_file").addEventListener("change", (e) => {
     const file = e.currentTarget.files[0];
     console.log(file);
-    document.getElementById("new_collection_file_name").innerText = file.name;
+    document.getElementById("new_collection_file_name").textContent = file.name;
     console.log(document.getElementById("new_collection_file_name"));
     document.getElementById("new_collection_file_name").classList.remove("is-hidden");
 });
