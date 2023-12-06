@@ -6,5 +6,8 @@
   "scripts": {
     "test": "mocha --timeout 5000"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "mocha": "^10.2.0"
+  }
 }
