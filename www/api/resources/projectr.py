@@ -404,11 +404,19 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
     chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
+    if len(target_df.columns) < chunk_size:
+        chunk_size = len(target_df.columns)
 
     print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=fh)
 
     # shuffle target dataframe rows.  Needed to balance out the chunks in the NMF algorithms
     target_df = target_df.sample(frac=1)
+
+    if algorithm == "fixednmf":
+        # Normalize the target_df by the minimum sum of each expression column
+        columns_sums = target_df.sum(axis=0)
+        normalized_columns_sums = columns_sums / columns_sums.min()
+        target_df = target_df.div(normalized_columns_sums, axis=1)
 
     if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
         loop = asyncio.new_event_loop()

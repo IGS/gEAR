@@ -4,6 +4,7 @@ rfuncs.py - Miscellaneous R-style functions called through rpy2
 """
 
 import sys  # for print debugging
+import traceback
 
 # rpy2.robjects calls rinterface.initr() under-the-hood when initialized to start the R session
 import rpy2.robjects as ro
@@ -25,6 +26,7 @@ def convert_r_df_to_r_matrix(df):
     """
     Convert pandas dataframe to R-style matrix
     """
+
     r_matrix = ro.r["as.matrix"]
     return r_matrix(df)
 
@@ -67,17 +69,17 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
     try:
         if algorithm == "nmf":
             projectR = importr('projectR')
-            projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, featureLoadings=loading_r_matrix, full=False)
+            projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
         elif algorithm == "fixednmf":
             sjd = importr('SJD')
-            """
-            projectionX=projectNMF(proj_dataset=ExpressionMatrix, proj_group=TRUE, list_component=WeightedGeneCart)$proj_score_list
-            """
-            projection_patterns_r_matrix = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_r_matrix)
-            print(projection_patterns_r_matrix, file=sys.stderr)
+            loading_list = ro.ListVector({"genesig": loading_r_matrix})
+            projection = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_list)
+            projection_patterns_r_matrix = projection.rx2("proj_score_list").rx2("genesig")
         else:
             raise ValueError("Algorithm {} is not supported".format(algorithm))
     except Exception as e:
+        # print stacktrace with line numbers
+        traceback.print_exc(file=sys.stderr)
         raise RError("Error: Could not run projectR command.\tReason: {}".format(str(e)))
 
     # matrix back to data.frame
