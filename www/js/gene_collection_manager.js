@@ -58,7 +58,7 @@ const addGeneCollectionEventListeners = () => {
             const gctype = e.currentTarget.dataset.gcType;
             const shareId = e.currentTarget.dataset.gcShareId;
 
-            if (["unweighted-list", "weighted-list"].includes(gctype)) {
+            if (gctype == "unweighted-list") {
                 const gene_symbols = await fetchGeneCartMembers(gcId);
                 const fileContents = gene_symbols.map(gene => gene.label).join("\n");
 
@@ -66,6 +66,27 @@ const addGeneCollectionEventListeners = () => {
                 element.setAttribute(
                     "href",
                     `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
+                );
+
+                element.setAttribute("download", `gene_cart.${shareId}.tsv`);
+                element.style.display = "none";
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+                return;
+            }
+
+            if (gctype == "weighted-list") {
+                // Download the source file (returns a content-disposition attachment header)
+
+                const {data} = await axios.post("./cgi/download_weighted_gene_cart.cgi", convertToFormData({
+                    'share_id': shareId
+                }));
+
+                const element = document.createElement("a");
+                element.setAttribute(
+                    "href",
+                    `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(data)}`
                 );
 
                 element.setAttribute("download", `gene_cart.${shareId}.tsv`);
