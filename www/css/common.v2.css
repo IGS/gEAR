@@ -1,3 +1,6 @@
+/* Import any external, global CSS files here */
+@import url("https://cdn.jsdelivr.net/npm/@creativebulma/bulma-tooltip@1.2.0/dist/bulma-tooltip.min.css");
+
 /* -------------------- */
 /* -= General layout =- */
 
@@ -7,6 +10,11 @@ html, body {
 
 #main_layout_c {
     height: 100vh;
+}
+
+/* Get rid of underlines on the tooltip elements */
+[data-tooltip] {
+    border-bottom-width: 0 !important;
 }
 
 /* ---------------- */
