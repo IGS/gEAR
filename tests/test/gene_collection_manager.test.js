@@ -52,8 +52,8 @@ describe('Gene Collection Manager', () => {
 
         // Runs before each test
         browser = await browsers[browserIndex].launch.launch({  // uncomment for debugging
-            //headless: false,
-            //slowMo: 1000
+            headless: false,
+            slowMo: 1000
         });
         context = await browser.newContext(browsers[browserIndex].browserContext);
         page = await context.newPage();
