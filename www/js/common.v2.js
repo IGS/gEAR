@@ -53,6 +53,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // hide the citation element
         document.querySelector("#citation_c").classList.add("is-hidden")
+        
+        // activate the tooltips since the menu labels are hidden
+        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+            element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
+        });
+
+        // build the tooltips based on the values of the actual menu labels
+        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+            const text = element.parentNode.querySelector('a.icon-link-part').textContent;
+            element.setAttribute('data-tooltip', text);
+        });
     }
 
     // Function to show elements with animation
@@ -71,6 +82,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // show the citation element
         document.querySelector("#citation_c").classList.remove("is-hidden")
+
+        // hide the tooltips since the menu labels are visible
+        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+            element.classList.remove('has-tooltip-right', 'has-tooltip-arrow');
+        });
+
+        // remove the menu tooltips since the actual labels are visible
+        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+            element.removeAttribute('data-tooltip');
+        });
     }
 
     const navbar_toggler = document.querySelector('#navbar-toggler');
