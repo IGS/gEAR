@@ -6,12 +6,13 @@
 
 // Some setup help by https://publishing-project.rivendellweb.net/testing-front-end-with-mocha-and-playwright-2/
 
+import "mocha" // to set global variables like describe, it, etc.
 import { chromium, webkit, firefox, devices } from 'playwright';
 import { expect } from "playwright/test";
 
 const iPhone = devices['iPhone 12'];
 const pixel = devices['Pixel 5'];
-const browsers = [
+let browsers = [
     {name: "chromium", launch: chromium, browserContext: null},
     {name: "webkit", launch: webkit, browserContext: null},
     {name: "firefox", launch: firefox, browserContext: null},
@@ -20,6 +21,10 @@ const browsers = [
 ];
 
 let browser, page, context;
+
+if (process.env.BROWSER) {
+    browsers = browsers.filter(b => b.name === process.env.BROWSER);
+}
 
 // Check if devel is local or on server
 const isLocal = process.env.LOCAL;
@@ -39,12 +44,17 @@ const login = async (page) => {
     await page.waitForURL(gearUrl);
 }
 
-// NOTE https://mochajs.org/#arrow-functions - though I am not using any "this" contexts
+// NOTE https://mochajs.org/#arrow-functions - If using "this.timeout" then don't use arrow functions
 
 // NOTE async/await is not needed for finding the locator but rather for the interactions (i.e. click, type, etc.)
 //  and some assertions that retry until they pass or timeout.
 
-describe('Gene Collection Manager', () => {
+// NOTE Playwright prefers getting elements by role, name, or text since that is what users see.
+//  However sometimes it's just easier to use the locator method to grab the css selector
+
+describe('Gene Collection Manager', function () {
+
+    this.timeout(10000);    // default is 2000
 
     let browserIndex = 0;
 
@@ -52,8 +62,8 @@ describe('Gene Collection Manager', () => {
 
         // Runs before each test
         browser = await browsers[browserIndex].launch.launch({  // uncomment for debugging
-            headless: false,
-            slowMo: 1000
+            //headless: false,
+            //slowMo: 1000
         });
         context = await browser.newContext(browsers[browserIndex].browserContext);
         page = await context.newPage();
@@ -82,6 +92,11 @@ describe('Gene Collection Manager', () => {
             });
 
             describe("New Gene Collection", () => {
+                it("should not appear if not logged in", async () => {
+                    // Check that the form is hidden
+                    await expect(page.getByRole("button", {name: "Create new gene collection"})).not.toBeVisible();
+                });
+
                 it('should validate #new_collection_label input on blur', async () => {
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
@@ -96,6 +111,75 @@ describe('Gene Collection Manager', () => {
                     // Check that the helper text was added/removed
                     await expect(label).toHaveClass(/is-danger/);
                     await expect(page.getByText("Please enter a value")).toBeVisible();
+                });
+
+                it('should validate #new_collection_label input on save', async () => {
+                    await login(page);
+                    await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    await page.getByRole("button", {name: "Paste list of genes"}).click();
+
+                    // Trigger the click event
+                    await page.locator("css=#btn_new_collection_save").click();
+
+                    await expect(page.locator("css=#new_collection_label")).toHaveClass(/is-danger/);
+
+                    const parent = page.locator("css=.control:has(#new_collection_label)")
+                        .filter({ has: page.getByText("Please enter a value") });
+
+                    await expect(parent).toBeVisible();
+                });
+
+                it("should validate #new_collection_pasted_genes input on save", async () => {
+                    await login(page);
+                    await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    await page.getByRole("button", {name: "Paste list of genes"}).click();
+
+                    // Trigger the click event
+                    await page.locator("css=#btn_new_collection_save").click();
+
+                    await expect(page.locator("css=#new_collection_label")).toHaveClass(/is-danger/);
+
+                    const parent = page.locator("css=.control:has(#new_collection_pasted_genes)")
+                        .filter({ has: page.getByText("Please enter a value") });
+
+                    await expect(parent).toBeVisible();
+                });
+
+                it("should validate #new_collection_file input on save", async () => {
+                    await login(page);
+                    await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    await page.locator("css=#btn_gc_upload_unweighted_list").click();
+
+                    // Trigger the click event
+                    await page.locator("css=#btn_new_collection_save").click();
+
+                    await expect(page.locator("css=.file:has(#new_collection_file)")).toHaveClass(/is-danger/);
+                    await expect(page.getByText("Please select a file")).toBeVisible();
+                });
+
+
+                it('should validate organism select on save', async () => {
+                    await login(page);
+                    await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    await page.getByRole("button", {name: "Paste list of genes"}).click();
+
+                    // Trigger the click event
+                    await page.locator("css=#btn_new_collection_save").click();
+
+                    await expect(page.locator("css=.select:has(#new_collection_organism_id)")).toHaveClass(/is-danger/);
+                    await expect(page.getByText("Please select an organism")).toBeVisible();
+                });
+
+                it("should hide #new_collection_form_c on cancel", async () => {
+                    await login(page);
+                    await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    await page.getByRole("button", {name: "Paste list of genes"}).click();
+
+                    // Trigger the click event
+                    await page.locator("css=#btn_new_collection_cancel").click();
+
+                    // Check that the form is hidden
+                    await expect(page.locator("css=#new_collection_form_c")).not.toBeVisible();
                 });
             });
 
