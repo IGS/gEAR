@@ -28,8 +28,11 @@ if (process.env.BROWSER) {
 
 // Check if devel is local or on server
 const isLocal = process.env.LOCAL;
-const userEmail = "sadkins@som.umaryland.edu";
+const userEmail = process.env.EMAIL;
 const userPass = process.env.PASSWORD;
+
+const skipLoginTests = !userEmail || !userPass;
+
 
 const gearBase = isLocal ? "http://localhost:8080" : "https://devel.umgear.org";
 const gearUrl = `${gearBase}/gene_collection_manager.html`;
@@ -97,7 +100,9 @@ describe('Gene Collection Manager', function () {
                     await expect(page.getByRole("button", {name: "Create new gene collection"})).not.toBeVisible();
                 });
 
-                it('should validate #new_collection_label input on blur', async () => {
+                it('should validate #new_collection_label input on blur', async function () {
+                    if (skipLoginTests) this.skip();
+
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
                     await page.getByRole("button", {name: "Paste list of genes"}).click();
@@ -113,7 +118,9 @@ describe('Gene Collection Manager', function () {
                     await expect(page.getByText("Please enter a value")).toBeVisible();
                 });
 
-                it('should validate #new_collection_label input on save', async () => {
+                it('should validate #new_collection_label input on save', async function () {
+                    if (skipLoginTests) this.skip();
+
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
                     await page.getByRole("button", {name: "Paste list of genes"}).click();
@@ -129,7 +136,9 @@ describe('Gene Collection Manager', function () {
                     await expect(parent).toBeVisible();
                 });
 
-                it("should validate #new_collection_pasted_genes input on save", async () => {
+                it("should validate #new_collection_pasted_genes input on save", async function () {
+                    if (skipLoginTests) this.skip();
+
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
                     await page.getByRole("button", {name: "Paste list of genes"}).click();
@@ -145,7 +154,9 @@ describe('Gene Collection Manager', function () {
                     await expect(parent).toBeVisible();
                 });
 
-                it("should validate #new_collection_file input on save", async () => {
+                it("should validate #new_collection_file input on save", async function () {
+                    if (skipLoginTests) this.skip();
+
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
                     await page.locator("css=#btn_gc_upload_unweighted_list").click();
@@ -158,7 +169,9 @@ describe('Gene Collection Manager', function () {
                 });
 
 
-                it('should validate organism select on save', async () => {
+                it('should validate organism select on save', async function () {
+                    if (skipLoginTests) this.skip();
+
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
                     await page.getByRole("button", {name: "Paste list of genes"}).click();
@@ -170,7 +183,8 @@ describe('Gene Collection Manager', function () {
                     await expect(page.getByText("Please select an organism")).toBeVisible();
                 });
 
-                it("should hide #new_collection_form_c on cancel", async () => {
+                it("should hide #new_collection_form_c on cancel", async function () {
+                    if (skipLoginTests) this.skip();
                     await login(page);
                     await page.getByRole("button", {name: "Create new gene collection"}).click();
                     await page.getByRole("button", {name: "Paste list of genes"}).click();

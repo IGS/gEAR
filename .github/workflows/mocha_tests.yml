@@ -1,0 +1,24 @@
+# Runs mocha tests on 5 browser modes (chrome, firefox, webkit/safari, iPhone, Pixel)
+
+# TODO: Set user/pass secret to send to mocha tests
+
+name: Mocha Tests
+on:
+  push:
+    branches: [ main, ui-v2 ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: Install dependencies
+      working-directory: ./tests
+      run: npm ci
+    - name: Run Mocha tests
+      run: npm test # alias to "mocha test"
