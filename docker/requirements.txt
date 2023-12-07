@@ -1,4 +1,4 @@
-numpy==1.24
+numpy==1.26
 numexpr==2.8.1  # 2.8.0 is broken -> https://github.com/pydata/numexpr/issues/392
 matplotlib==3.5.2 # https://discourse.scverse.org/t/metaclass-conflict-from-trying-to-import-scanpy/1133
 louvain==0.7.1

@@ -469,7 +469,7 @@ window.onload=() => {
         reset_manual_marker_gene_entries();
     });
     $('#marker_genes_manually_entered').keyup(function() {
-        update_manual_marker_gene_entries();
+        update_manual_marker_gene_entries($(this).val());
     });
     $('#marker_genes_manually_entered').change(function() {
         process_manual_marker_gene_entries();
