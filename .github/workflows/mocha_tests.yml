@@ -3,6 +3,11 @@
 # TODO: Set user/pass secret to send to mocha tests
 
 name: Mocha Tests
+
+defaults:
+  run:
+    working-directory: ./tests
+
 on:
   push:
     branches: [ main, ui-v2 ]
@@ -18,8 +23,8 @@ jobs:
       with:
         node-version: 18
     - name: Install dependencies
-      working-directory: ./tests
       run: npm ci
+    - name: Install Playwright browsers
+      run: npx playwright install && npx playwright install-deps
     - name: Run Mocha tests
-      working-directory: ./tests
       run: npm test # alias to "mocha test"
