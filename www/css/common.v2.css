@@ -17,6 +17,13 @@ html, body {
     border-bottom-width: 0 !important;
 }
 
+.columns {
+    /* Without this, the entire page has a gap at the bottom.  Discussed here:
+         https://stackoverflow.com/questions/55568335/100vh-flex-item-is-not-full-height
+    */
+    margin-top: 0 !important;
+}
+
 /* ---------------- */
 /* -= Typography =- */
 
