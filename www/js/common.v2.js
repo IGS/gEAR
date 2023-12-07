@@ -53,6 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // hide the citation element
         document.querySelector("#citation_c").classList.add("is-hidden")
+
+        // Hiding the span.icon-text-part causes the menu to narrow
+        document.querySelectorAll('span.icon-text-part').forEach(function (element) {
+            element.classList.add('is-hidden');
+        });
         
         // activate the tooltips since the menu labels are hidden
         document.querySelectorAll('span.icon-image-part').forEach(function (element) {
@@ -82,6 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // show the citation element
         document.querySelector("#citation_c").classList.remove("is-hidden")
+
+        // Hiding the span.icon-text-part causes the menu to narrow
+        document.querySelectorAll('span.icon-text-part').forEach(function (element) {
+            element.classList.remove('is-hidden');
+        });
 
         // hide the tooltips since the menu labels are visible
         document.querySelectorAll('span.icon-image-part').forEach(function (element) {
