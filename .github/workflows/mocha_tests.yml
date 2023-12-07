@@ -21,4 +21,5 @@ jobs:
       working-directory: ./tests
       run: npm ci
     - name: Run Mocha tests
+      working-directory: ./tests
       run: npm test # alias to "mocha test"
