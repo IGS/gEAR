@@ -1123,6 +1123,11 @@ const showGcActionNote = (gcId, msg) => {
  */
 const submitSearch = async (page) => {
 
+    // hide pagination (but keep results were they are)
+    for (const classElt of document.getElementsByClassName("pagination")) {
+        classElt.classList.add("is-invisible");
+    }
+
     // Clear any existing results
     const resultsContainer = document.getElementById("results_container");
     for (const elt of resultsContainer.querySelectorAll(":not(#results_view)")) {
@@ -1158,6 +1163,11 @@ const submitSearch = async (page) => {
     } catch (error) {
         logErrorInConsole(error);
         createToast("Failed to search gene collections");
+    } finally {
+        // show pagination
+        for (const classElt of document.getElementsByClassName("pagination")) {
+            classElt.classList.remove("is-invisible");
+        }
     }
 }
 
