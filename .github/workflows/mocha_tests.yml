@@ -29,6 +29,7 @@ jobs:
     strategy:
       matrix:
         browser: [chromium, firefox, webkit, iphone, pixel]
+      fail-fast: false
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-node@v3
