@@ -57,7 +57,7 @@ const login = async (page) => {
 
 describe('Gene Collection Manager', function () {
 
-    //this.timeout(10000);    // default is 2000
+    this.timeout(10000);    // default is 2000
 
     let browserIndex = 0;
 
