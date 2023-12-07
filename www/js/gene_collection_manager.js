@@ -1,7 +1,6 @@
 "use strict";
 
 let firstSearch = true;
-const animationTime = 200;  // in ms
 let isAddFormOpen = false;
 const resultsPerPage = 20;
 
