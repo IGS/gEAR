@@ -4,7 +4,7 @@
     "@types/node": "^20.10.3"
   },
   "scripts": {
-    "test": "mocha --no-colors"
+    "test": "mocha"
   },
   "type": "module",
   "dependencies": {
