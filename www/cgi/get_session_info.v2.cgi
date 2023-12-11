@@ -28,7 +28,7 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
 
-    result = {'email':None, 'name':None, 'success':0}
+    result = {'email':None, 'user_name':None, 'success':0}
 
     session_qry = """
        SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.colorblind_mode, u.updates_wanted
