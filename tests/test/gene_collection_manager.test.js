@@ -129,6 +129,11 @@ const mockSaveNewGeneCollection = async (page) => {
     })
 }
 
+/**
+ * Mocks the delete gene collection functionality.
+ * @param {Page} page - The page object.
+ * @returns {Promise<void>}
+ */
 const mockDeleteGeneCollection = async (page) => {
     await page.route(`${gearBase}/cgi/remove_gene_cart.cgi`, async route => {
         const json = {
@@ -153,6 +158,122 @@ const mockDeleteGeneCollection = async (page) => {
                 "next_page": null,
                 "prev_page": null
             }
+        }
+        await route.fulfill({ json });
+    })
+}
+
+/**
+ * Mocks the unweighted gene collection preview.
+ *
+ * @param {Page} page - The page object.
+ * @returns {Promise<void>} - A promise that resolves when the gene collection preview is mocked.
+ */
+const mockUnweightedGeneCollectionPreview = async (page) => {
+    await page.route(`${gearBase}/cgi/get_unweighted_gene_cart_preview.cgi`, async route => {
+        const json = {
+                "success": 1,
+                "gene_info": {
+                    "ENSMUSG00000060512": {
+                        "gene_symbol": "0610040J01Rik",
+                        "product": "RIKEN cDNA 0610040J01 gene"
+                    },
+                    "ENSMUSG00000029729": {
+                        "gene_symbol": "Zkscan1",
+                        "product": "zinc finger with KRAB and SCAN domains 1"
+                    },
+                    "ENSMUSG00000051319": {
+                        "gene_symbol": "1500011K16Rik",
+                        "product": "RIKEN cDNA 1500011K16 gene"
+                    },
+                    "ENSMUSG00000032666": {
+                        "gene_symbol": "1700025G04Rik",
+                        "product": "RIKEN cDNA 1700025G04 gene"
+                    },
+                    "ENSMUSG00000037640": {
+                        "gene_symbol": "Zfp60",
+                        "product": "zinc finger protein 60"
+                    },
+                }
+            }
+        await route.fulfill({ json });
+    })
+}
+
+/**
+ * Mocks the weighted gene collection preview by intercepting a network request and returning a predefined JSON response.
+ * @param {Page} page - The page object representing the browser page.
+ * @returns {Promise<void>} - A promise that resolves when the network request is intercepted and fulfilled.
+ */
+const mockWeightedGeneCollectionPreview = async (page) => {
+    await page.route(`${gearBase}/cgi/get_weighted_gene_cart_preview.cgi`, async route => {
+        const json = {"preview_json": [], "success": 1, "num_genes": 5486, "weights": ["FC"]}
+        await route.fulfill({ json });
+    })
+}
+
+const mockDownloadUnweightedGeneCollectionMembers = async (page) => {
+    await page.route(`${gearBase}/cgi/get_gene_cart_members.cgi`, async route => {
+        const json = {
+            "gene_symbols": [
+                {
+                    "id": 111273,
+                    "label": "Acbd7"
+                },
+                {
+                    "id": 111274,
+                    "label": "Calb1"
+                },
+                {
+                    "id": 111275,
+                    "label": "Calm1"
+                },
+                {
+                    "id": 111276,
+                    "label": "Calm2"
+                },
+                {
+                    "id": 111277,
+                    "label": "Cib2"
+                },
+                {
+                    "id": 111278,
+                    "label": "Espn"
+                },
+                {
+                    "id": 111279,
+                    "label": "Evl"
+                },
+                {
+                    "id": 111280,
+                    "label": "Myo6"
+                },
+                {
+                    "id": 111281,
+                    "label": "Pcp4"
+                },
+                {
+                    "id": 111282,
+                    "label": "Pou4f3"
+                },
+                {
+                    "id": 111283,
+                    "label": "Rasd2"
+                },
+                {
+                    "id": 111284,
+                    "label": "Smpx"
+                },
+                {
+                    "id": 111285,
+                    "label": "Stard10"
+                },
+                {
+                    "id": 111286,
+                    "label": "Tpm1"
+                }
+            ],
+            "success": 1
         }
         await route.fulfill({ json });
     })
@@ -376,6 +497,7 @@ describe('Gene Collection Manager', function () {
 
                         // Selecting should deselect "All"
                         await groupAffiliatedOption.click();
+                        // ! This class seems to not be detected
                         await expect(groupAffiliatedOption).toHaveClass(/js-selected/);
                         await expect(yourCollectionsOption).toHaveClass(/js-selected/);
                         await expect(allFacet).not.toHaveClass(/js-selected/);
@@ -424,6 +546,41 @@ describe('Gene Collection Manager', function () {
                             await expect(page.locator("css=#result_gc_id_334 .js-edit-gc")).not.toBeVisible();
                             await expect(page.locator("css=#result_gc_id_334 .js-delete-gc")).not.toBeVisible();
                         });
+
+                        it("should show unweighted genes in table when preview genes button is clicked", async () => {
+                            await mockUnweightedGeneCollectionPreview(page);
+
+                            const previewBtn = page.locator("css=#result_gc_id_334 .js-preview-genes-button-container");
+                            const previewContainer = page.locator("css=#result_gc_id_334 .js-preview-genes-container");
+
+                            await expect(previewBtn).toHaveText("159 genes");
+                            await previewBtn.getByText("159 genes").click();
+                            await expect(previewBtn).toHaveText("Hide");
+
+                            await expect(previewContainer.getByText("0610040J01Rik")).toBeVisible();
+                            await expect(previewContainer.getByText("ENSMUSG00000051319")).toBeVisible();   // second gene in table
+                            await expect(previewContainer.getByText("RIKEN cDNA 1700025G04 gene")).toBeVisible();   // third gene in table
+
+                            await previewBtn.getByText("Hide").click();
+                            await expect(previewBtn).toHaveText("159 genes");
+                        })
+
+                        it("should show weighted gene infomation when preview genes button is clicked", async () => {
+                            await mockWeightedGeneCollectionPreview(page);
+
+                            const previewBtn = page.locator("css=#result_gc_id_332 .js-preview-genes-button-container");
+                            const previewContainer = page.locator("css=#result_gc_id_332 .js-preview-genes-container");
+
+                            await expect(previewBtn).toHaveText("Info");
+                            await previewBtn.getByText("Info").click();
+                            await expect(previewBtn).toHaveText("Hide");
+                            await expect(previewContainer.getByText("5486")).toBeVisible(); // genes
+                            await expect(previewContainer.getByText("1")).toBeVisible();   // num weights
+                            await expect(previewContainer.getByText("FC")).toBeVisible();   // weight labels
+
+                            await previewBtn.getByText("Hide").click();
+                            await expect(previewBtn).toHaveText("Info");
+                        })
 
                         describe("login required", () => {
                             beforeEach("logging in", async () => {
@@ -497,19 +654,28 @@ describe('Gene Collection Manager', function () {
                                 expect(page.url()).toContain(shareId);
                             });
 
-                            // TODO: How to test downloaded file?
-                            it.skip("should download unweighted gene collection when download button is clicked", async () => {
+                            it("should download unweighted gene collection when download button is clicked", async () => {
+                                await mockDownloadUnweightedGeneCollectionMembers(page);
+                                // Start waiting for download before clicking. Note no await.
+                                const downloadPromise = page.waitForEvent('download');
+
                                 await page.locator("css=#result_gc_id_334 .js-download-gc").click();
-                                await expect(page.locator("css=#download_collection_form_c")).toBeVisible();
-                                await page.locator("css=#btn_download_collection_cancel").click();
-                                await expect(page.locator("css=#download_collection_form_c")).not.toBeVisible();
+                                const download = await downloadPromise;
+                                // Wait for the download process to complete and save the downloaded file somewhere.
+                                await download.saveAs(`/tmp/${download.suggestedFilename()}`);
+                                // TODO: How to test downloaded file contents?
                             })
 
-                            it.skip("should download weighted gene collection when download button is clicked", async () => {
+                            it("should download weighted gene collection when download button is clicked", async () => {
+                                // don't need to mock here has it outputs an attachment
+
+                                // Start waiting for download before clicking. Note no await.
+                                const downloadPromise = page.waitForEvent('download');
+
                                 await page.locator("css=#result_gc_id_332 .js-download-gc").click();
-                                await expect(page.locator("css=#download_collection_form_c")).toBeVisible();
-                                await page.locator("css=#btn_download_collection_cancel").click();
-                                await expect(page.locator("css=#download_collection_form_c")).not.toBeVisible();
+                                const download = await downloadPromise;
+                                // Wait for the download process to complete and save the downloaded file somewhere.
+                                await download.saveAs(`/tmp/${download.suggestedFilename()}`);
                             })
                         });
 
