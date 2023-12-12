@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // build the tooltips based on the values of the actual menu labels
         document.querySelectorAll('span.icon-image-part').forEach(function (element) {
-            const text = element.parentNode.querySelector('a.icon-link-part').textContent;
+            const text = element.parentNode.querySelector('span.icon-text-part').textContent;
             element.setAttribute('data-tooltip', text);
         });
     }
