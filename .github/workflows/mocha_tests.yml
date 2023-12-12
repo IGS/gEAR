@@ -30,6 +30,7 @@ jobs:
       matrix:
         browser: [chromium, firefox, webkit, iPhone, pixel]
       fail-fast: false
+      max-parallel: 1 # I think the tests are affected by running in parallel
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-node@v3
@@ -43,3 +44,4 @@ jobs:
       run: npm test # alias to "mocha test"
       env:
         BROWSER: ${{ matrix.browser }}
+        LOCAL: true # run tests locally instead of dev server
