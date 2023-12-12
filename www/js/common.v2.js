@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
     const navbarElementsToAnimate = document.querySelectorAll('.icon-text-part');
 
-    // Function to hide elements with animation
+    // Collapse the left navigation panel to the smaller version
     function hideNavbarElementsWithAnimation() {
         // Hide all the menu labels
         document.querySelectorAll('span.menu-label-text').forEach(function (element) {
@@ -53,6 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // hide the citation element
         document.querySelector("#citation_c").classList.add("is-hidden")
+
+        // Show the smaller logo
+        document.querySelector("#navbar-logo-normal").classList.add("is-hidden")
+        document.querySelector("#navbar-logo-small").classList.remove("is-hidden")
+
+        // Change the toggle arrow direction
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-chevron-left")
+        document.querySelector("#navbar-toggler i").classList.add("mdi-chevron-right")
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
@@ -71,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Function to show elements with animation
+    // Expand the left navigation panel to the larger version
     function showNavbarElementsWithAnimation() {
         // Show all the menu labels
         document.querySelectorAll('span.menu-label-text').forEach(function (element) {
@@ -87,6 +95,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // show the citation element
         document.querySelector("#citation_c").classList.remove("is-hidden")
+
+        // Show the larger logo
+        document.querySelector("#navbar-logo-small").classList.add("is-hidden")
+        document.querySelector("#navbar-logo-normal").classList.remove("is-hidden")
+
+        // Change the toggle arrow direction
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-chevron-right")
+        document.querySelector("#navbar-toggler i").classList.add("mdi-chevron-left")
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
