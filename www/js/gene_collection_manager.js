@@ -799,7 +799,7 @@ const processSearchResults = (data) => {
         setElementProperties(resultsView, ".js-view-gc", { value: shareId });
         setElementProperties(resultsView, ".js-delete-gc", { value: geneCollectionId, dataset: { isOwner } });
         setElementProperties(resultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneCollectionId, gcType: gctype } });
-        setElementProperties(resultsView, ".js-share-gc", { value: shareId });
+        setElementProperties(resultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneCollectionId } });
         setElementProperties(resultsView, ".js-edit-gc", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
         setElementProperties(resultsView, ".js-edit-gc-save", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
         setElementProperties(resultsView, ".js-edit-gc-cancel", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });

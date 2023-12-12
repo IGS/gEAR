@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
             element.classList.add('is-hidden');
         });
-        
+
         // activate the tooltips since the menu labels are hidden
         document.querySelectorAll('span.icon-image-part').forEach(function (element) {
             element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
@@ -242,7 +242,8 @@ const doLogin = async () => {
         location.reload();
 
     } else {
-        // Something went muy wrong
+        // Something went wrong
+        console.error("Invalid session_id returned from login.cgi");
 
     }
 }

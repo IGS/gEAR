@@ -28,6 +28,25 @@ Mocha (https://mochajs.org/) is a widely-used testing framework that has a minim
 
 Playwright (https://playwright.dev/) is a framework used for automated end-to-end testing. You can use it to interact and test on page selectors. It also provides headless browser testing by default and works with multiple browser types, including mobile ones.
 
+### Strategies for UI testing
+
+For the front-end, most of the testing is integration and interactivity of components. Since hitting the API and returning calls can slow down this testing, the API responses are mocked so that testing can occur as fast as possible. This also has the benefit of allowing for testing via Github Actions after a commit without the need to setup a database. One major downside is that if the server-side response ever changes structure, this needs to be reflected in the mock.
+
+It is worth noting that end-to-end (e2e) tests may be better suited for using the actual API calls instead of mocking them.
+
+When testing the front-end, it is important to test in the same way a user would interact. Examples include clicking a button or looking for specific text on the page. In cases where text or a button is duplicated (i.e. Save or Cancel), we may be forced to locate testable elements using CSS selectors. While selectors work, one of the issues is that they can be subject to name-changes due to refactoring. Thus it is recommended to create testing data attributes on the HTML elements, and select using those. This will notify the other developers that this piece of HTML is directly used for testing purposes, and traditional ID and CSS selector names can be modified if necessary.  See https://playwright.dev/docs/locators#locate-by-test-id for an example.
+
+### Misc Mocha and Playwright notes
+
+* https://mochajs.org/#arrow-functions - If using "this.timeout" then don't use arrow functions
+
+* async/await is not needed for finding the locator with Playwright but rather for the interactions (i.e. click, type, etc.) and some assertions that retry until they pass or timeout.
+
+* Playwright documentation prefers getting elements by role, name, or text since that is what users see. However sometimes it's just easier to use the locator method to grab the css selector
+
+* If a route is registered multiple times for a "await page.route" method, then the most recent one wins priority.  This is useful for setting "logged-in/not logged-in" mock responses
+
+
 ### Current and pending UI tests
 
 #### Account creation
@@ -175,9 +194,14 @@ Playwright (https://playwright.dev/) is a framework used for automated end-to-en
   * Edit - Cancel
   * Delete
 
-
 #### Epiviz Panel Designer
 
 ## API Testing
 
 TODO
+
+### Strategies for API testing
+
+Like the front-end tests, it may be best to mock the database return calls, and test functionality outside of the database scope, such as validation, transformation, computation etc. This may require refactoring to ensure data is prepped in its own function before or after the database actions occur. Again, the benefit here is to be able to quickly test on Github Actions.
+
+NOTE: An alternative would be to create a miniature test database dump file that can be loaded for each isolated test.
