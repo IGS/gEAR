@@ -46,6 +46,7 @@ When testing the front-end, it is important to test in the same way a user would
 
 * If a route is registered multiple times for a "await page.route" method, then the most recent one wins priority.  This is useful for setting "logged-in/not logged-in" mock responses
 
+* Mocha has a nice wiki on Github for do's and don'ts (https://github.com/mochajs/mocha/wiki)
 
 ### Current and pending UI tests
 

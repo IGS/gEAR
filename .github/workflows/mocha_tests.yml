@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        browser: [chromium, firefox, webkit, iphone, pixel]
+        browser: [chromium, firefox, webkit, iPhone, pixel]
       fail-fast: false
     steps:
     - uses: actions/checkout@v3
