@@ -17,6 +17,8 @@ from flask import request
 from flask_restful import Resource
 from matplotlib import cm
 
+from werkzeug.utils import secure_filename
+
 sc.settings.set_figure_params(dpi=100)
 sc.settings.verbosity = 0
 
@@ -91,15 +93,16 @@ def create_colorscale_with_zero_gray(colorscale):
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
+    projection_id = secure_filename(projection_id)
+    dataset_id = secure_filename(dataset_id)
+
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id)).resolve()
-    if not str(projection_adata_path).startswith(str(projection_dir)):
-        raise ValueError("Not allowed.")
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     if projection_adata_path.is_file():
         return sc.read_h5ad(projection_adata_path)#, backed="r")
 
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id)).resolve()
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except Exception as e:

@@ -9,6 +9,8 @@ import sys
 from shutil import copyfileobj
 from pathlib import Path
 
+from werkzeug.utils import secure_filename
+
 lib_path = Path(__file__).resolve().parents[2].joinpath('lib')
 sys.path.insert(0, str(lib_path))
 
@@ -21,12 +23,13 @@ def main():
 
     form = cgi.FieldStorage()
     share_id = form.getvalue('share_id')
+    share_id = secure_filename(share_id)
 
     if not share_id:
         raise Exception("ERROR: Share ID not provided")
 
     # Get the gene symbols from the shared cart file
-    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id)).resolve()
+    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id))
     if not str(file_path).startswith(str(CARTS_BASE_DIR)):
         raise ValueError("Not allowed.")
 

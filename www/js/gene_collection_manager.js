@@ -1106,9 +1106,7 @@ const showGcActionNote = (gcId, shareUrl) => {
     const noteSelector = `#result_gc_id_${gcId} span.js-gc-action-note`;
     const noteSelecterElt = document.querySelector(noteSelector);
 
-    const msg = copyToClipboard(shareUrl) ? "URL copied to clipboard" : `Failed to copy to clipboard. URL: ${shareUrl}`;
-
-    noteSelecterElt.innerHTML = msg;
+    noteSelecterElt.innerHTML = copyToClipboard(shareUrl) ? "URL copied to clipboard" : `Failed to copy to clipboard. URL: ${shareUrl}`;
     noteSelecterElt.classList.remove("is-hidden");
 
     setTimeout(() => {

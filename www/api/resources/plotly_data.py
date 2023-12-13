@@ -12,6 +12,8 @@ import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
 
+from werkzeug.utils import secure_filename
+
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
@@ -24,16 +26,18 @@ PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
+    projection_id = secure_filename(projection_id)
+    dataset_id = secure_filename(dataset_id)
+
     import scanpy as sc
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id)).resolve()
-    if not str(projection_adata_path).startswith(str(projection_dir)):
-        raise ValueError("Not allowed.")
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+
     if projection_adata_path.is_file():
         return sc.read_h5ad(projection_adata_path)  # , backed="r")
 
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id)).resolve()
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except:

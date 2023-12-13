@@ -7,10 +7,14 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 import mysql.connector
+from werkzeug.utils import secure_filename
 
 
 def attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene):
     """Attempt to create a symlink if the user of the saved display is also the dataset owner."""
+
+    dataset_id = secure_filename(dataset_id)
+    display_id = secure_filename(display_id)
 
     DATASET_PREVIEWS_DIR = "/var/www/img/dataset_previews"
 
@@ -19,15 +23,6 @@ def attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene):
         gene = "multi"
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))
-
-    # Normalize path to avoid directory traversal attacks (e.g. ../../../etc/passwd) and validate
-    filename = os.path.normpath(filename)
-    if not filename.startswith(DATASET_PREVIEWS_DIR):
-        print("Invalid filename: {}".format(filename), file=sys.stderr)
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(dict(success=False)))
-        return
 
     if not os.path.isfile(filename):
         print("File to static image does not exist.  Skipping attempted symlink.", file=sys.stderr)

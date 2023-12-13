@@ -10,6 +10,8 @@ from flask_restful import Resource
 from gear.mg_plotting import PlotError
 from plotly.utils import PlotlyJSONEncoder
 
+from werkzeug.utils import secure_filename
+
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 LOG10_TRANSFORMED_DATASETS = [
@@ -103,16 +105,18 @@ def create_composite_index_column(df, columns):
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
+    projection_id = secure_filename(projection_id)
+    dataset_id = secure_filename(dataset_id)
+
     import scanpy as sc
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id)).resolve()
-    if not str(projection_adata_path).startswith(str(projection_dir)):
-        raise ValueError("Not allowed.")
+    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+
     if projection_adata_path.is_file():
         return sc.read_h5ad(projection_adata_path)  #, backed="r")
 
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id)).resolve()
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except Exception as e:

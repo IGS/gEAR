@@ -171,11 +171,19 @@ const adjustGeneTableLabels = () => {
     const geneFoldchanges = document.getElementById("tbl_gene_foldchanges");
 	const log_base = document.getElementById("log_base").value;
 
+	const spanIcon = document.createElement("span");
+	spanIcon.classList.add("icon");
+	const i = document.createElement("i");
+	i.classList.add("mdi", "mdi-sort-numeric-ascending");
+	i.setAttribute("aria-hidden", "true");
+	spanIcon.appendChild(i);
+	geneFoldchanges.appendChild(spanIcon);
+
 	if (log_base === "raw") {
-		geneFoldchanges.innerHTML = 'Fold Change <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
+		geneFoldchanges.prepend("Fold Change ");
 		return;
 	}
-	geneFoldchanges.innerHTML = `Log${log_base} Fold Change <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>`;
+	geneFoldchanges.prepend(`Log${log_base} Fold Change `);
 }
 
 const appendGeneTagButton = (geneTagElt) => {

@@ -404,11 +404,14 @@ const convertToFormData = (object) => {
 const createToast = (msg, levelClass="is-danger") => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp", "animate__faster");
-    toast.innerHTML = `
-        <button class="delete"></button>
-        ${msg}
-    `;
-
+    const toastButton = document.createElement("button");
+    toastButton.classList.add("delete");
+    toastButton.addEventListener("click", (event) => {
+        const notification = event.target.closest(".js-toast.notification");
+        notification.remove(notification);
+    });
+    toast.appendChild(toastButton);
+    toast.appendChild(document.createTextNode(msg));
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
 
@@ -422,12 +425,6 @@ const createToast = (msg, levelClass="is-danger") => {
         // Otherwise prepend to top of main content
         document.getElementById("main_c").prepend(toast);
     }
-
-    // This should get the newly added notification since it is now the first
-    toast.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
-        const notification = event.target.closest(".js-toast.notification");
-        notification.remove(notification);
-    });
 
     // For a success message, remove it after 3 seconds
     if (levelClass === "is-success") {

@@ -282,7 +282,12 @@ function truncateAxisLabels(plotLayout) {
             ? `${elText.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`
             : elText;
 
-        el.innerHTML = `<a style="fill:inherit;">${sublabel}</a>`;
+
+        const subLabelElt = document.createElement('a');
+        subLabelElt.setAttribute('style', 'fill:inherit;');
+        subLabelElt.textContent = sublabel;
+        el.textContent = "";
+        el.appendChild(subLabelElt);
     }
 
     const axis_ticktexts = {}
