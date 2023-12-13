@@ -20,7 +20,7 @@ def main():
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id, 
+    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user.id )
 
     ## if the analysis is primary images are getting saved as user_unsaved
@@ -35,6 +35,11 @@ def main():
     ana_directory = os.path.dirname(data_file_path)
     image_path = "{0}/figures/{1}.png".format(ana_directory, analysis_name)
     #print("DEBUG: streaming image at path: {0}".format(image_path), file=sys.stderr)
+
+    # Normalize path to avoid directory traversal attacks (e.g. ../../../etc/passwd) and validate
+    image_path = os.path.normpath(image_path)
+    if not image_path.startswith(ana_directory):
+        raise Exception("Invalid filename: {}".format(image_path))
 
     with open(image_path, 'rb') as f:
         print("Content-Type: image/png\n")

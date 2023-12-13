@@ -147,6 +147,16 @@ def main():
             break
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))
+
+    # Normalize path to avoid directory traversal attacks (e.g. ../../../etc/passwd) and validate
+    filename = os.path.normpath(filename)
+    if not filename.startswith(DATASET_PREVIEWS_DIR):
+        print("Invalid filename: {}".format(filename), file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False)))
+        return
+
     # Add plot_type to config so it can be passed in the POST cmd as well
     config = json.loads(plotly_config)
     config["plot_type"] = plot_type

@@ -20,6 +20,15 @@ def attempt_symlink(cursor, user_id, dataset_id, display_id, is_multigene):
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))
 
+    # Normalize path to avoid directory traversal attacks (e.g. ../../../etc/passwd) and validate
+    filename = os.path.normpath(filename)
+    if not filename.startswith(DATASET_PREVIEWS_DIR):
+        print("Invalid filename: {}".format(filename), file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False)))
+        return
+
     if not os.path.isfile(filename):
         print("File to static image does not exist.  Skipping attempted symlink.", file=sys.stderr)
         return

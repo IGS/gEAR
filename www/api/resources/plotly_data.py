@@ -33,7 +33,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     if projection_adata_path.is_file():
         return sc.read_h5ad(projection_adata_path)  # , backed="r")
 
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
+    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id)).resolve()
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except:

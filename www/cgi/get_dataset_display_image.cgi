@@ -20,6 +20,10 @@ def main():
 
     image_preview_url = os.path.join(WEB_IMAGE_ROOT, "{}.{}.png".format(dataset_id, display_id))
 
+    image_preview_url = os.path.normpath(image_preview_url)
+    if not image_preview_url.startswith(WEB_IMAGE_ROOT):
+        raise Exception("Invalid filename: {}".format(image_preview_url))
+
     #print(image_preview_url, file=sys.stderr)
 
     if not os.path.exists(image_preview_url):

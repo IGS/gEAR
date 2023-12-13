@@ -21,6 +21,8 @@ import os, sys
 import re
 import shutil
 
+from werkzeug.utils import secure_filename
+
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -45,13 +47,13 @@ def main():
     expression_filename = form.getvalue('uploaded_expression_name')
     default_plot_type = form.getvalue('default_plot_type')
 
-    expression_source_path = user_upload_file_base + '/' + expression_filename.replace('.', '_') + '.h5ad'
-    expression_dest_path = user_upload_dest_base + '/' + dataset_uid + '.h5ad'
-    
+    expression_source_path = secure_filename(user_upload_file_base + '/' + expression_filename.replace('.', '_') + '.h5ad')
+    expression_dest_path = secure_filename(user_upload_dest_base + '/' + dataset_uid + '.h5ad')
+
     # Metadata file paths to: original, renamed original dest, output json dest
-    metadata_user_path = user_upload_file_base + '/' + metadata_filename
-    metadata_user_path_renamed = user_upload_dest_base + '/' + dataset_uid + '.xlsx'
-    metadata_dest_path = user_upload_dest_base + '/' + dataset_uid + '.json'
+    metadata_user_path = secure_filename(user_upload_file_base + '/' + metadata_filename)
+    metadata_user_path_renamed = secure_filename(user_upload_dest_base + '/' + dataset_uid + '.xlsx')
+    metadata_dest_path = secure_filename(user_upload_dest_base + '/' + dataset_uid + '.json')
 
     # Must have a gEAR account to upload datasets
     user = geardb.get_user_from_session_id(session_id)
@@ -78,15 +80,15 @@ def main():
         # Write metadata to JSON
         metadata.write_json(file_path=metadata_dest_path)
 
-        source_user_file = user_upload_file_base + '/' + expression_filename
-        
+        source_user_file = secure_filename(user_upload_file_base + '/' + expression_filename)
+
         if expression_filename.endswith('.xlsx'):
-            dest_user_file = user_upload_dest_base + '/' + dataset_uid + '.xlsx'
+            dest_user_file = secure_filename(user_upload_dest_base + '/' + dataset_uid + '.xlsx')
         elif expression_filename.endswith('.tar'):
-            dest_user_file = user_upload_dest_base + '/' + dataset_uid + '.tar'
+            dest_user_file = secure_filename(user_upload_dest_base + '/' + dataset_uid + '.tar')
         elif expression_filename.endswith('.gz'):
             # Can't search for .tar.gz because many duplicate upload steps create files like: GSE11347.tar (13).gz
-            dest_user_file = user_upload_dest_base + '/' + dataset_uid + '.tar.gz'
+            dest_user_file = secure_filename(user_upload_dest_base + '/' + dataset_uid + '.tar.gz')
 
         shutil.move(source_user_file, dest_user_file)
 

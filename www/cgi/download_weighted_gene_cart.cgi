@@ -26,7 +26,9 @@ def main():
         raise Exception("ERROR: Share ID not provided")
 
     # Get the gene symbols from the shared cart file
-    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id))
+    file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id)).resolve()
+    if not str(file_path).startswith(str(CARTS_BASE_DIR)):
+        raise ValueError("Not allowed.")
 
     print("Content-type: application/octet-stream")
     print(f"Content-Disposition: attachment; filename={file_path}")

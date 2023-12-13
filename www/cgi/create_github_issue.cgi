@@ -11,6 +11,8 @@ from requests.exceptions import HTTPError
 from pathlib import Path
 from uuid import uuid4
 
+from werkzeug.utils import secure_filename
+
 env_path = Path('..') / '.env'  # .env file is in "www" directory
 load_dotenv(dotenv_path=env_path)
 
@@ -61,8 +63,8 @@ def main():
     if screenshot and not screenshot == "null":
         ext = os.path.splitext(screenshot)[1]
         new_basename = str(uuid4()) + ext
-        src = f"../{SCREENSHOT_DIR}/files/{screenshot}"
-        dst = f"../{SCREENSHOT_DIR}/{new_basename}" # Synlink is up a directory
+        src = secure_filename(f"../{SCREENSHOT_DIR}/files/{screenshot}")
+        dst = secure_filename(f"../{SCREENSHOT_DIR}/{new_basename}") # Synlink is up a directory
         os.symlink(src, dst)
         screenshot_url = "{}/{}".format(SCREENSHOT_URL, new_basename)
 
