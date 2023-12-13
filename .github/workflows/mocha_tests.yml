@@ -44,4 +44,4 @@ jobs:
       run: npm test # alias to "mocha test"
       env:
         BROWSER: ${{ matrix.browser }}
-        LOCAL: true # run tests locally instead of dev server
+        #LOCAL: true # run tests locally instead of dev server
