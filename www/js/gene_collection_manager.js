@@ -1103,6 +1103,9 @@ const setupPagination = (pagination) => {
  * @returns {void}
  */
 const showGcActionNote = (gcId, shareUrl) => {
+    // sanitize shareUrl
+    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     const noteSelector = `#result_gc_id_${gcId} span.js-gc-action-note`;
     const noteSelecterElt = document.querySelector(noteSelector);
 
