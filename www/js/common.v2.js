@@ -315,18 +315,6 @@ const handleLoginUIUpdates = () => {
 *************************************************************************************/
 
 /**
- * Generates an element from the provided HTML string.
- *
- * @param {string} html - The HTML string to generate the element from.
- * @returns {Element} - The generated element.
- */
-const generateElements = (html) => {
-    const template = document.createElement('template');
-    template.innerHTML = html.trim();
-    return template.content.children[0];    // htmlCollection that can be appended to a parent HTML
-}
-
-/**
  * Triggers an event on the given element.
  * @param {HTMLElement} el - The element on which to trigger the event.
  * @param {string|Function|Event} eventType - The type of event to trigger, or a function to execute as an event handler, or a custom event object.
@@ -414,29 +402,29 @@ const convertToFormData = (object) => {
  * @param {string} [levelClass="is-danger"] - The level class for the toast notification. Defaults to "is-danger".
  */
 const createToast = (msg, levelClass="is-danger") => {
-    const template = `
-    <div class="notification js-toast ${levelClass} animate__animated animate__fadeInUp animate__faster">
+    const toast = document.createElement("div");
+    toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp", "animate__faster");
+    toast.innerHTML = `
         <button class="delete"></button>
         ${msg}
-    </div>
-    `
-    const html = generateElements(template);
+    `;
+
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
 
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", html);
+        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", toast);
         // Position new toast under previous toast with CSS
-        html.style.setProperty("top", `${(numToasts * 70) + 30}px`);
+        toast.style.setProperty("top", `${(numToasts * 70) + 30}px`);
     } else {
         // Otherwise prepend to top of main content
-        document.getElementById("main_c").prepend(html);
+        document.getElementById("main_c").prepend(toast);
     }
 
     // This should get the newly added notification since it is now the first
-    html.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
+    toast.querySelector(".js-toast.notification .delete").addEventListener("click", (event) => {
         const notification = event.target.closest(".js-toast.notification");
         notification.remove(notification);
     });
@@ -451,7 +439,7 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 
     // remove the toast
-    html.addEventListener("animationend", (event) => {
+    toast.addEventListener("animationend", (event) => {
         if (event.animationName === "fadeOutDown") {
             event.target.remove();
         }

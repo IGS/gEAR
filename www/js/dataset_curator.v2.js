@@ -142,8 +142,10 @@ class PlotlyHandler extends PlotHandler {
 
         // NOTE: Plot initially is created to a default width but is responsive.
         // Noticed container within our "column" will make full-width go beyond the screen
-        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
-        plotContainer.append(divElt);
+        const plotlyPreview = document.createElement("div");
+        plotlyPreview.classList.add("container", "is-max-desktop");
+        plotlyPreview.id = "plotly_preview";
+        plotContainer.append(plotlyPreview);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
         if (!plotJson) {
@@ -164,23 +166,24 @@ class PlotlyHandler extends PlotHandler {
             const seriesGroups = levels[seriesName];
             return seriesGroups.length > 20;
         });
-        if (overcrowdedSeries.length) {
-            const template = `
-                <article class="message is-warning" id="overcrowded_series_warning">
-                    <div class="message-body">
-                        <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
-                    </div>
-                </article>
-            `
-            const elt = generateElements(template);
-            plotContainer.prepend(elt);
-
-            // Add event listener to delete button
-            const deleteButton = document.getElementById("overcrowded_series_warning").querySelector(".delete");
-            deleteButton.addEventListener("click", (event) => {
-                event.target.parentElement.parentElement.remove();
-            });
+        if (!overcrowdedSeries.length) {
+            return;
         }
+        const overcrowdedSeriesWarning = document.createElement("article");
+        overcrowdedSeriesWarning.classList.add("message", "is-warning");
+        overcrowdedSeriesWarning.id = "overcrowded_series_warning";
+        overcrowdedSeriesWarning.innerHTML = `
+                <div class="message-body">
+                    <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
+                </div>
+            `;
+        plotContainer.prepend(overcrowdedSeriesWarning);
+
+        // Add event listener to delete button
+        const deleteButton = document.getElementById("overcrowded_series_warning").querySelector(".delete");
+        deleteButton.addEventListener("click", (event) => {
+            event.target.parentElement.parentElement.remove();
+        });
 
     }
 
@@ -413,8 +416,10 @@ class ScanpyHandler extends PlotHandler {
         const plotContainer = document.getElementById("plot_container");
         plotContainer.replaceChildren();    // erase plot
 
-        const imgElt = generateElements('<img class="image" id="tsne_preview"></img>');
-        plotContainer.append(imgElt);
+        const tsnePreview = document.createElement("img");
+        tsnePreview.classList.add("image");
+        tsnePreview.id = "tsne_preview";
+        plotContainer.append(tsnePreview);
 
         if (image) {
             document.getElementById("tsne_preview").setAttribute("src", `data:image/png;base64,${image}`);
@@ -948,8 +953,10 @@ const renderColorPicker = (seriesName) => {
         return;
     }
 
-    const seriesNameHtml = generateElements(`<p class="has-text-weight-bold is-underlined">${seriesName}</p>`);
-    colorsContainer.append(seriesNameHtml);
+    const seriesNameElt = document.createElement("p");
+    seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
+    seriesNameElt.textContent = seriesName;
+    colorsContainer.append(seriesNameElt);
 
     // Otherwise d3 category10 colors
     const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
@@ -962,13 +969,23 @@ const renderColorPicker = (seriesName) => {
             ? d3.color(baseColor).darker(darkerLevel).formatHex()
             : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
         counter++;
-        const groupHtml = generateElements(`
-            <p class="is-flex is-justify-content-space-between pr-3">
-                <span class="has-text-weight-medium">${group}</span>
-                <input class="js-plot-color" id="${group}_color" type="color" value="${groupColor}" aria-label="Select a color" />
-            </p>
-        `);
-        colorsContainer.append(groupHtml)
+
+        const groupElt = document.createElement("p");
+        groupElt.classList.add("is-flex", "is-justify-content-space-between", "pr-3");
+
+        const groupText = document.createElement("span");
+        groupText.classList.add("has-text-weight-medium");
+        groupText.textContent = group;
+
+        const colorInput = document.createElement("input");
+        colorInput.classList.add("js-plot-color");
+        colorInput.id = `${group}_color`;
+        colorInput.type = "color";
+        colorInput.value = groupColor;
+        colorInput.setAttribute("aria-label", "Select a color");
+
+        groupElt.append(groupText, colorInput);
+        colorsContainer.append(groupElt);
     }
 
     colorsSection.classList.remove("is-hidden");

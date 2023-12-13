@@ -1192,13 +1192,19 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
 
     // Add titles to each section if there are displays
     if (userDisplays.length) {
-        const userTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Your Displays</p>`);
+        const userTitle = document.createElement("p");
+        userTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+        userTitle.textContent = "Your Displays";
         userDisplaysElt.append(userTitle);
+
     }
 
     if (ownerDisplays.length) {
-    const ownerTitle = generateElements(`<p class="has-text-weight-bold is-underlined column is-full">Displays by Dataset Owner</p>`);
-    ownerDisplaysElt.append(ownerTitle);
+        const ownerTitle = document.createElement("p");
+        ownerTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+        ownerTitle.textContent = "Displays by Dataset Owner";
+        ownerDisplaysElt.append(ownerTitle);
+
     }
 
     for (const display of userDisplays) {
@@ -1230,24 +1236,25 @@ const renderOrderSortableSeries = (series) => {
     // Create parent template
     // Designed so the title is a full row and the draggables are 50% width
     const parentList = `<ul id="${series}_order_list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
-    const template = `
-        <div id="${series}_order" class="columns is-multiline">
+
+    const orderDiv = document.createElement("div");
+    orderDiv.id = `${series}_order`;
+    orderDiv.classList.add("columns", "is-multiline");
+    orderDiv.innerHTML = `
         <p id="${series}_order_title" class="has-text-weight-bold column is-full">${series}</p>
         ${parentList}
-        </div
     `;
-
-    const htmlCollection = generateElements(template);
-    orderContainer.append(htmlCollection);
+    orderContainer.append(orderDiv);
 
     // Add in list elements
     for (const group of levels[series]) {
         // If filters are present and group is not in filters, skip
         if (facetWidget.filters.hasOwnProperty(series) && !facetWidget.filters[series].includes(group)) continue;
 
-        const listElt = `<li class="has-background-grey-lighter has-text-dark">${group}</li>`;
-        const listCollection = generateElements(listElt);
-        document.getElementById(`${series}_order_list`).append(listCollection);
+        const listElt = document.createElement("li");
+        listElt.classList.add("has-background-grey-lighter", "has-text-dark");
+        listElt.textContent = group;
+        document.getElementById(`${series}_order_list`).append(listElt);
     }
 
     // Create sortable for this series

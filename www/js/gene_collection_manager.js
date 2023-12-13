@@ -115,11 +115,7 @@ const addGeneCollectionEventListeners = () => {
             const shareUrl = `${currentUrl.substring(0, currentPage)}p?c=${shareId}`;
             const gcId = e.currentTarget.dataset.gcId;
 
-            if (copyToClipboard(shareUrl)) {
-                showGcActionNote(gcId, "URL copied to clipboard");
-            } else {
-                showGcActionNote(gcId, `Failed to copy to clipboard. URL: ${shareUrl}`);
-            }
+            showGcActionNote(gcId, shareUrl);
 
         });
     }
@@ -1098,14 +1094,20 @@ const setupPagination = (pagination) => {
 
 }
 
+
 /**
- * Updates the action note for a given gene collection.
+ * Displays an action note for a gene collection.
+ *
  * @param {string} gcId - The ID of the gene collection.
- * @param {string} msg - The message to display in the action note.
+ * @param {string} shareUrl - The URL to be copied to the clipboard.
+ * @returns {void}
  */
-const showGcActionNote = (gcId, msg) => {
+const showGcActionNote = (gcId, shareUrl) => {
     const noteSelector = `#result_gc_id_${gcId} span.js-gc-action-note`;
     const noteSelecterElt = document.querySelector(noteSelector);
+
+    const msg = copyToClipboard(shareUrl) ? "URL copied to clipboard" : `Failed to copy to clipboard. URL: ${shareUrl}`;
+
     noteSelecterElt.innerHTML = msg;
     noteSelecterElt.classList.remove("is-hidden");
 

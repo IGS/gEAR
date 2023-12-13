@@ -103,8 +103,10 @@ class GenesAsAxisHandler extends PlotHandler {
 
         // NOTE: Plot initially is created to a default width but is responsive.
         // Noticed container within our "column" will make full-width go beyond the screen
-        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
-        plotContainer.append(divElt);
+        const plotlyPreview = document.createElement("div");
+        plotlyPreview.classList.add("container", "is-max-desktop");
+        plotlyPreview.id = "plotly_preview";
+        plotContainer.append(plotlyPreview);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
         if (!this.plotJson) {
@@ -242,15 +244,22 @@ class GenesAsAxisHandler extends PlotHandler {
         for (const classElt of document.getElementsByClassName("js-dash-clusterbar")) {
             for (const catColumn of catColumns) {
 
-                const template = `<div class="control">
-                    <label class="checkbox">
-                        <input type="checkbox" value="${catColumn}" class="js-dash-clusterbar-checkbox" />
-                        ${catColumn}
-                    </label>
-                <div>`
+                const clusterbarElt = document.createElement("div");
+                clusterbarElt.classList.add("control");
 
-                const html = generateElements(template);
-                classElt.append(html);
+                const label = document.createElement("label");
+                label.classList.add("checkbox");
+
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.value = catColumn;
+                input.classList.add("js-dash-clusterbar-checkbox");
+                label.appendChild(input);
+                label.innerHTML += catColumn;
+                clusterbarElt.appendChild(label);
+
+                classElt.appendChild(clusterbarElt);
+
             }
         }
 
@@ -393,8 +402,10 @@ class GenesAsDataHandler extends PlotHandler {
 
         // NOTE: Plot initially is created to a default width but is responsive.
         // Noticed container within our "column" will make full-width go beyond the screen
-        const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
-        plotContainer.append(divElt);
+        const plotlyPreviewElt = document.createElement("div");
+        plotlyPreviewElt.classList.add("container", "is-max-desktop");
+        plotlyPreviewElt.id = "plotly_preview";
+        plotContainer.append(plotlyPreviewElt);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
         if (!this.plotJson) {
@@ -414,10 +425,9 @@ class GenesAsDataHandler extends PlotHandler {
         const plotlyPreview = document.getElementById("plotly_preview");
 
         // Append small note about using the Plotly selection utilities
-        const plotlyNote = generateElements(`
-        <div class="notification is-info is-light">
-            <p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
-        </div>`);
+        const plotlyNote = document.createElement("div");
+        plotlyNote.classList.add("notification", "is-info", "is-light");
+        plotlyNote.innerHTML = `<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>`;
         plotlyPreview.append(plotlyNote);
 
         // If plot data is selected, create the right-column table and do other misc things

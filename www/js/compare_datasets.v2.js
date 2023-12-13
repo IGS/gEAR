@@ -735,14 +735,13 @@ const plotDataToGraph = (data) => {
 
 	// NOTE: Plot initially is created to a default width but is responsive.
 	// Noticed container within our "column" will make full-width go beyond the screen
-	const divElt = generateElements('<div class="container is-max-desktop" id="plotly_preview"></div>');
-	plotContainer.append(divElt);
+	const plotlyPreview = document.getElementById("plotly_preview");
+	plotlyPreview.classList.add("container", "is-max-desktop");
+	plotContainer.append(plotlyPreview);
+
 	Plotly.purge("plotly_preview"); // clear old Plotly plots
 
 	Plotly.newPlot("plotly_preview", plotData, layout, config);
-
-
-	const plotlyPreview = document.getElementById("plotly_preview");
 
 	// If plot data is selected, create the right-column table and do other misc things
 	plotlyPreview.on("plotly_selected", (eventData) => {
@@ -799,12 +798,12 @@ const plotDataToGraph = (data) => {
 		}
 	});
 
-	const plotlyNote = generateElements(`
-		<div id="tip_on_editing" class="notification content is-info is-light">
-		<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
+	const plotlyNote = document.createElement("div");
+	plotlyNote.id = "tip_on_editing";
+	plotlyNote.classList.add("notification", "content", "is-info", "is-light");
+	plotlyNote.innerHTML = `<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
 
-		<p>You can also click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>
-		</div>`);
+	<p>You can also click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>`;
 	plotlyPreview.append(plotlyNote);
 }
 
