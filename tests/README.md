@@ -14,7 +14,7 @@ Ensure npm is installed, and make sure you are in the `<gear_root>/tests` direct
 npm install --save-dev mocha chai playwright
 ```
 
-In the created package.json file, add within the outermost braces (you can append CLI options, like "--timeout" to this as well):
+In the created package.json file, add within the outermost braces (you can append CLI options, like "--timeout" to the test alias as well):
 
 ```json
 "scripts": {
@@ -47,6 +47,8 @@ When testing the front-end, it is important to test in the same way a user would
 * If a route is registered multiple times for a "await page.route" method, then the most recent one wins priority.  This is useful for setting "logged-in/not logged-in" mock responses
 
 * Mocha has a nice wiki on Github for do's and don'ts (https://github.com/mochajs/mocha/wiki)
+
+* The default timeout of mocha tests is 2000ms. It may be wise to set sections to a longer timeout with `this.timeout(ms)`
 
 ### Current and pending UI tests
 

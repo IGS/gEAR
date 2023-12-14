@@ -13,9 +13,10 @@ import { browsers, gearBase, login, loginFailure, setupBrowserContext, teardownB
 
 import { mockGetDatasetList } from "./helpers.js";
 
+
 let page;
 
-const gearUrl = `${gearBase}/dataset_curator.html`;
+const gearUrl = `${gearBase}/multigene_curator.html`;
 
 
 describe('Dataset Curator', function () {
@@ -40,31 +41,45 @@ describe('Dataset Curator', function () {
         describe(`Browser: ${b.name}`, () => {
 
             it("should populate the dataset list", async () => {
-                await mockGetDatasetList(page);
-                const datasetInput = page.locator("css=#dataset_query");
-                const datasetTree = page.locator("css=#dataset_tree");
-                expect(await datasetTree).toBeVisible();
-                expect(await datasetTree.locator("css=.wb-row")).toHaveCount(3);    // 3 categories
-                await datasetInput.fill("Hertzano");
-                expect(await page.getByText("(Hertzano/Ament)")).toBeVisible();
+                it("should populate the dataset list", async () => {
+                    await mockGetDatasetList(page);
+                    const datasetInput = page.locator("css=#dataset_query");
+                    const datasetTree = page.locator("css=#dataset_tree");
+                    expect(await datasetTree).toBeVisible();
+                    expect(await datasetTree.locator("css=.wb-row")).toHaveCount(3);    // 3 categories
+                    await datasetInput.fill("Hertzano");
+                    expect(await page.getByText("(Hertzano/Ament)")).toBeVisible();
 
+                });
+
+            });
+
+            describe("gene selection", () => {
+
+                it("should append to the genes list when a gene is manually selected", async () => {});
+
+                it("should append to the genes list when a genecart is selected", async () => {});
+
+                it("should remove a gene from the genes list when the remove button is clicked", async () => {});
+
+                it("should remove all genes when Clear is clicked", async () => {});
             });
 
             describe("plotting", () => {
 
-                it("should plot a scatterplot", async () => {});
+                it("should plot a heatmap", async () => {});
 
-                it("should plot a boxplot", async () => {});
+                it("should plot a matrixplot", async () => {});
 
-                it("should plot a line plot", async () => {});
+                it("should plot a dotplot", async () => {});
 
                 it("should plot a violin plot", async () => {});
 
-                it("should plot a tSNE static plot", async () => {});
+                it("should plot a stacked violin plot", async () => {});
 
-                it("should plot a UMAP static plot", async () => {});
+                it("should plot a volcano plot", async () => {});
 
-                it("should plot a SVG plot", async () => {});
+                it("should plot a quadrant plot", async () => {});
 
             });
 
@@ -80,6 +95,10 @@ describe('Dataset Curator', function () {
 
             });
 
+            describe("saving", () => {
+
+            });
+
 
             describe("logged in", () => {
 
@@ -88,7 +107,7 @@ describe('Dataset Curator', function () {
                 });
 
                 it('should login', async () => {
-                    expect(await page.title()).toEqual("gEAR dataset curator page");
+                    expect(await page.title()).toEqual("gEAR multigene viewer page");
                 });
 
                 it("should prevent user from deleting a display owned by another user", async () => {});
@@ -102,7 +121,6 @@ describe('Dataset Curator', function () {
                     it("should save a new display", async () => {});
 
                     it("should save a new display as a new default", async () => {});
-
                 });
 
             })
@@ -114,7 +132,7 @@ describe('Dataset Curator', function () {
                     // Check that the error message is displayed
                     const incorrectPw = page.getByText("Incorrect password");
                     await expect(incorrectPw).toBeVisible();
-                    expect(await page.title()).toEqual("gEAR dataset curator page");
+                    expect(await page.title()).toEqual("gEAR multigene viewer page");
                 });
 
                 it("should prevent user from selecting a default display", async () => {})
@@ -122,7 +140,6 @@ describe('Dataset Curator', function () {
                 it("should prevent user from saving a display", async () => {});
 
                 it("should prevent user from deteting a display", async () => {});
-
 
             })
 

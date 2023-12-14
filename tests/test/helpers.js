@@ -196,3 +196,93 @@ export const mockGetOrganismList = async (page, organism) => {
         await route.fulfill({ json });
     });
 }
+export const mockGetDatasetList = async (page) => {
+    await page.route(`${gearBase}/cgi/get_h5ad_dataset_list.cgi`, async route => {
+        const json = {
+            "shared_with_user": {
+                "datasets": []
+            },
+            "user": {
+                "datasets": [
+                    {
+                        "id": "dcfb4818-5302-83b5-4cc1-e586a5f81f74",
+                        "owner_id": 662,
+                        "title": "RNAseq, Deiters' cells,pillar cells, Inner Hair Cells and Outer Hair Cells,workshop (He)",
+                        "organism_id": 1,
+                        "pubmed_id": "30327589",
+                        "geo_id": "GSE111347",
+                        "is_public": null,
+                        "ldesc": "RNA extracted from Deiters' cells,pillar cells, Inner Hair Cells and Outer Hair Cells. three  biological replicates, each with two technical repeats for Deiter and pillar cells, two biological replicates of IHCs and three biological replicates of OHCs, each with two technical repeats. They was seuqenced by Illumina HiSeq 2500.",
+                        "date_added": "2022-05-25 15:21:30",
+                        "dtype": "bulk-rnaseq",
+                        "schematic_image": null,
+                        "share_id": "711a8330",
+                        "math_default": "raw",
+                        "marked_for_removal": 0,
+                        "load_status": "completed",
+                        "has_h5ad": 1,
+                        "platform_id": null,
+                        "instrument_model": null,
+                        "library_selection": null,
+                        "library_source": null,
+                        "library_strategy": null,
+                        "contact_email": null,
+                        "contact_institute": null,
+                        "contact_name": null,
+                        "annotation_source": null,
+                        "plot_default": null,
+                        "annotation_release": null,
+                        "gene_count": null,
+                        "obs_count": null,
+                        "has_tarball": 0,
+                        "displays": [],
+                        "tags": [],
+                        "layouts": [],
+                        "links": []
+                    }
+                ]
+            },
+            "public": {
+                "datasets": [
+                    {
+                        "id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "owner_id": 3,
+                        "title": "P2, mouse, scRNA-seq, cochlea (Hertzano/Ament)",
+                        "organism_id": 1,
+                        "pubmed_id": "None",
+                        "geo_id": "None",
+                        "is_public": 1,
+                        "ldesc": "Cochleae of P2 C57BL/6N wild type mice were dissociated. Gene expression was measured using the 10x scRNA-seq platform. This is an unpublished dataest from the laboratories of Drs. Hertzano and Ament from the University of Maryland School of Medicine (UMSOM).\n\nThis dataset has a limited number of cells. Hair cells were identified as a single cluster. Inner and outer hair cells cluster together. ",
+                        "date_added": "2019-02-01 15:29:49",
+                        "dtype": "single-cell-rnaseq",
+                        "schematic_image": null,
+                        "share_id": "2050da31",
+                        "math_default": "raw",
+                        "marked_for_removal": 0,
+                        "load_status": "completed",
+                        "has_h5ad": 1,
+                        "platform_id": null,
+                        "instrument_model": null,
+                        "library_selection": null,
+                        "library_source": null,
+                        "library_strategy": null,
+                        "contact_email": null,
+                        "contact_institute": null,
+                        "contact_name": null,
+                        "annotation_source": null,
+                        "plot_default": null,
+                        "annotation_release": null,
+                        "gene_count": null,
+                        "obs_count": null,
+                        "has_tarball": 0,
+                        "displays": [],
+                        "tags": [],
+                        "layouts": [],
+                        "links": []
+                    }
+                ]
+            }
+        }
+        await route.fulfill({ json });
+    });
+};
