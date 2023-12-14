@@ -41,7 +41,13 @@ jobs:
     - name: Install Playwright browsers
       run: npx playwright install && npx playwright install-deps
     - name: Run Mocha tests
-      run: npm test # alias to "mocha test"
+      run: npm test > mocha_${{ matrix.browser }}_test.md # alias to "mocha test"
       env:
         BROWSER: ${{ matrix.browser }}
         TEST_ENV: "node"
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: mocha_${{ matrix.browser }}_test.md
+        path: mocha_${{ matrix.browser }}_test.md
+        retention-days: 30
