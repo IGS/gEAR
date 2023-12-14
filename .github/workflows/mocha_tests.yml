@@ -40,11 +40,15 @@ jobs:
       run: npm ci
     - name: Install Playwright browsers
       run: npx playwright install && npx playwright install-deps
+    - name: Serve files
+      run: npm run serve
+      env:
+        PORT: 8080
     - name: Run Mocha tests
       run: npm test > mocha_${{ matrix.browser }}_test.md # alias to "mocha test"
       env:
         BROWSER: ${{ matrix.browser }}
-        TEST_ENV: "node"
+        LOCAL: "true"
     - uses: actions/upload-artifact@v3
       if: always()
       with:

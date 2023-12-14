@@ -18,36 +18,13 @@ if (process.env.BROWSER) {
 }
 
 // Check if devel is local or on server
-const testEnv = process.env.TEST_ENV?.toLowerCase();
+const isLocal = process.env.LOCAL?.toLowerCase() === "true";
 
 // Control debug output to make it easier to see what's going on
 const isDebug = process.env.DEBUG?.toLowerCase() === "true";
 
-// Set the gEAR URL based on the testing environment
-const isLocal = testEnv === "local";
-const isNode = testEnv === "node";
-const isDevel = testEnv === "devel";
-export let gearBase;
-switch (true) {
-    case isLocal:
-        console.log("Testing locally");
-        gearBase = "http://localhost:8080";
-        break;
+export const gearBase = isLocal ? "http://localhost:8080" : "https://devel.umgear.org";
 
-    case isNode:
-        console.log("Testing on node");
-        gearBase = "http://localhost:3000";
-        break;
-
-    case isDevel:
-        console.log("Testing on devel");
-        gearBase = "https://devel.umgear.org";
-        break;
-
-    default:
-        console.error("Unknown testing environment");
-        throw new Error("Unknown testing environment");
-}
 
 export let browser, context;
 
