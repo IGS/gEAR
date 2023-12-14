@@ -27,7 +27,7 @@ const isDebug = process.env.DEBUG?.toLowerCase() === "true";
 const isLocal = testEnv === "local";
 const isNode = testEnv === "node";
 const isDevel = testEnv === "devel";
-let gearBase;
+export let gearBase;
 switch (true) {
     case isLocal:
         console.log("Testing locally");
@@ -47,7 +47,6 @@ switch (true) {
     default:
         console.error("Unknown testing environment");
         throw new Error("Unknown testing environment");
-        break;
 }
 
 export let browser, context;
