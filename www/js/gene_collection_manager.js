@@ -1246,36 +1246,36 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
         elt.addEventListener("click", (e) => {
-            if (e.target.classList.contains("js-all-selector")) {
+            if (e.currentTarget.classList.contains("js-all-selector")) {
                 // if the one clicked is the all_selector then highlight it and unclick the rest
-                for (const elt of e.target.parentElement.children) {
+                for (const elt of e.currentTarget.parentElement.children) {
                     elt.classList.remove("js-selected");
                 }
 
-                e.target.classList.add("js-selected");
+                e.currentTarget.classList.add("js-selected");
 
-            } else if (e.target.classList.contains("js-selected")) {
+            } else if (e.currentTarget.classList.contains("js-selected")) {
                 // If turning off, make sure at least one other option is selected, else set "all" option
-                e.target.classList.remove("js-selected");
+                e.currentTarget.classList.remove("js-selected");
 
-                if (!e.target.parentElement.querySelectorAll("li.js-selected")) {
-                    e.target.parentElement.querySelector("li.js-all-selector").classList.add("js-selected");
+                if (!e.currentTarget.parentElement.querySelectorAll("li.js-selected")) {
+                    e.currentTarget.parentElement.querySelector("li.js-all-selector").classList.add("js-selected");
                 }
             } else {
                 // If turning on, make sure all_selector is off
-                if (e.target.parentElement.querySelector("li.js-all-selector")) {
+                if (e.currentTarget.parentElement.querySelector("li.js-all-selector")) {
                     // In case not logged in and "All" is not an option
-                    e.target.parentElement.querySelector("li.js-all-selector").classList.remove("js-selected");
+                    e.currentTarget.parentElement.querySelector("li.js-all-selector").classList.remove("js-selected");
                 }
 
                 // If this selection group has the 'only_one' option deselect the rest
-                if (e.target.parentElement.classList.contains("js-choose-only-one")) {
-                    for (const elt of e.target.parentElement.children) {
+                if (e.currentTarget.parentElement.classList.contains("js-choose-only-one")) {
+                    for (const elt of e.currentTarget.parentElement.children) {
                         elt.classList.remove("js-selected");
                     }
                 }
 
-                e.target.classList.add("js-selected");
+                e.currentTarget.classList.add("js-selected");
             }
 
             submitSearch();
