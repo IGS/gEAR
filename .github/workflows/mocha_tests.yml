@@ -40,8 +40,8 @@ jobs:
       run: npm ci
     - name: Install Playwright browsers
       run: npx playwright install && npx playwright install-deps
-    - name: Serve files
-      run: npm run serve
+    - name: Start server
+      run: npm start
       env:
         PORT: 8080
     - name: Run Mocha tests
