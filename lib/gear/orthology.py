@@ -1,9 +1,13 @@
 # orthology.py - functions related to orthology mapping
 
+import sys
 import pandas as pd
 
 from pathlib import Path
-from .. import geardb
+# append parent directory to path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import geardb
 
 organisms = geardb.OrganismCollection().get_all()
 
