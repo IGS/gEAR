@@ -440,7 +440,7 @@ CREATE TABLE `dataset_epiviz` (
 ) ENGINE=InnoDB;
 
 CREATE TABLE user_history (
- 	id			    INT PRIMARY KEY AUTO_INCREMENT,
+    id			    INT PRIMARY KEY AUTO_INCREMENT,
     user_id         INT NOT NULL,
     entry_date      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     entry_category  VARCHAR(100) NOT NULL,
@@ -449,3 +449,50 @@ CREATE TABLE user_history (
     FOREIGN KEY (user_id)
      REFERENCES guser(id)
 ) ENGINE=InnoDB;
+
+/* Restrictd datasets can only be accessed by users in a specific group */
+/* NOTE: Not inserting at this time, as I am currently using "dataset_shares"
+       to address a shared dataset
+CREATE TABLE dataset_group_membership (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       dataset_id     VARCHAR(50) NOT NULL,
+       group_id       INT NOT NULL,
+       FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE,
+       FOREIGN KEY (group_id) REFERENCES ggroup(id) ON DELETE CASCADE
+) ENGINE=INNODB;
+*/
+
+CREATE TABLE submission (
+       id               VARCHAR(50) PRIMARY KEY,
+       user_id                     INT NOT NULL,
+       layout_id                   INT,
+       is_finished                 TINYINT DEFAULT 0,
+       is_restricted               TINYINT DEFAULT 0, /* if one dataset is restricted, then the whole submission must be */
+       date_added                DATETIME DEFAULT CURRENT_TIMESTAMP,
+       email_updates               TINYINT DEFAULT 0,
+       FOREIGN KEY (user_id) REFERENCES guser(id),
+       FOREIGN KEY (layout_id) REFERENCES layout(id)
+) ENGINE=INNODB;
+
+CREATE TABLE submission_dataset (
+       id                          INT PRIMARY KEY AUTO_INCREMENT,
+       dataset_id                  VARCHAR(50) NOT NULL,
+       nemo_identifier             VARCHAR(20) NOT NULL, /* from nemoarchive (should we do UUID here and make new one?) */
+       pulled_to_vm_status         VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       convert_metadata_status   VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       convert_to_h5ad_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       make_tsne_status      VARCHAR(20) default "pending", /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+       log_message                 TEXT,
+       is_restricted               TINYINT DEFAULT 0,
+       FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE
+) ENGINE=INNODB;
+/* For some reason the collation of "dataset" table is "latin1_swedish_ci", and modifying it to "latin1_general_ci" would need to cascade elsewhere
+So for now I am just removing the COLLATE part of the ENGINE syntax */
+
+CREATE TABLE submission_member (
+       id                          INT PRIMARY KEY AUTO_INCREMENT,
+       submission_id               VARCHAR(50) NOT NULL,
+       submission_dataset_id       INT NOT NULL,
+       FOREIGN KEY (submission_id) REFERENCES submission(id) ON DELETE CASCADE,
+       FOREIGN KEY (submission_dataset_id) REFERENCES submission_dataset(id) ON DELETE CASCADE
+) ENGINE=INNODB;
