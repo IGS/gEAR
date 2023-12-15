@@ -90,21 +90,44 @@ def create_orthology_dict(orthomap_file: Path):
         orthomap_file (Path): The path to the orthologous mapping file.
 
     Returns:
-        dict: A dictionary where the keys are gene symbols and the values are the corresponding orthologous gene symbols.
+        dict: A dictionary where the keys are unique accessions (i.e. Ensembl IDs) and the values are the corresponding unique accessions.
     """
     # Read HDF5 file using Pandas read_hdf
     try:
         orthomap_df = pd.read_hdf(str(orthomap_file))
     except Exception as e:
         raise Exception("Error reading orthologous mapping file: {0}".format(e))
-    # Index -> gs1 / id2 / gs2
+    # Index (id1) -> gs1 / id2 / gs2
     orthomap_dict = orthomap_df.to_dict()["id2"]
+    # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
+    return orthomap_dict
+
+def create_orthology_gene_symbol_dict(orthomap_file: Path):
+    """
+    Create a dictionary of orthologous gene symbols from the orthologous mapping file.
+
+    Args:
+        orthomap_file (Path): The path to the orthologous mapping file.
+
+    Returns:
+        dict: A dictionary where the keys are unique accessions (i.e. Ensembl IDs) and the values are the corresponding gene symbols.
+    """
+    # Read HDF5 file using Pandas read_hdf
+    try:
+        orthomap_df = pd.read_hdf(str(orthomap_file))
+    except Exception as e:
+        raise Exception("Error reading orthologous mapping file: {0}".format(e))
+    # Index (id1) -> gs1 / id2 / gs2
+
+    orthomap_df.set_index("gs1", inplace=True)
+    orthomap_df.drop_duplicates(inplace=True)   # not working with unique accessions anymore
+    orthomap_dict = orthomap_df.to_dict()["gs2"]
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return orthomap_dict
 
 def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
     """
-    Remap the passed-in DataFrame to have gene indexes from the orthologous mapping file.
+    Remap the passed-in DataFrame to have gene indexes (accession IDs like Ensembl) from the orthologous mapping file.
 
     Parameters:
         orig_df (pd.DataFrame): The original DataFrame to be remapped. The DataFrame's index should be gene symbols.
@@ -131,9 +154,9 @@ def map_single_gene(gene_symbol:str, orthomap_file: Path):
         KeyError: If the gene symbol cannot be mapped.
     """
     # Read HDF5 file using Pandas read_hdf
-    orthomap_dict = create_orthology_dict(orthomap_file)
+    gene_symbol_dict = create_orthology_gene_symbol_dict(orthomap_file)
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
-    return orthomap_dict[gene_symbol]
+    return gene_symbol_dict[gene_symbol]
 
 def map_multiple_genes(gene_symbols:list, orthomap_file: Path):
     """
@@ -147,6 +170,7 @@ def map_multiple_genes(gene_symbols:list, orthomap_file: Path):
         dict: A dictionary mapping each input gene symbol to its corresponding orthologous gene symbol.
     """
     # Read HDF5 file using Pandas read_hdf
-    orthomap_dict = create_orthology_dict(orthomap_file)
+    gene_symbol_dict = create_orthology_gene_symbol_dict(orthomap_file)
+
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
-    return { gene_symbol: orthomap_dict[gene_symbol] for gene_symbol in gene_symbols}
+    return { gene_symbol: gene_symbol_dict[gene_symbol] for gene_symbol in gene_symbols}

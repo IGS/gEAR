@@ -595,8 +595,8 @@ const choosePlotType = async (event) => {
  */
 const cloneDisplay = async (event, display) => {
 
-    const cloneId = event.target.id;
-    document.getElementById(cloneId).classList.add("is-loading");
+    const cloneElt = event.currentTarget;
+    cloneElt.classList.add("is-loading");
 
     // Populate gene select element
     // Will be overwritten if an analysis was in config
@@ -641,7 +641,7 @@ const cloneDisplay = async (event, display) => {
 
         return;
     } finally {
-        document.getElementById(cloneId).classList.remove("is-loading");
+        cloneElt.classList.remove("is-loading");
     }
 
     // Choose gene from config

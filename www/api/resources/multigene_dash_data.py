@@ -12,6 +12,8 @@ from plotly.utils import PlotlyJSONEncoder
 
 from werkzeug.utils import secure_filename
 
+from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_multiple_genes
+
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 LOG10_TRANSFORMED_DATASETS = [
@@ -61,6 +63,44 @@ abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 CLUSTER_LIMIT = 5000
+
+def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id):
+    """
+    Maps a list of gene symbols to their orthologous symbols in a given organism.
+
+    Args:
+        gene_symbols (list): List of gene symbols to be mapped.
+        gene_organism_id (str): ID of the organism corresponding to the gene symbols.
+        dataset_organism_id (str): ID of the organism corresponding to the dataset.
+
+    Returns:
+        dict: A dictionary mapping the input gene symbols to their orthologous symbols.
+    """
+    if gene_organism_id and gene_organism_id != dataset_organism_id:
+        ortholog_file = get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")
+
+        return map_multiple_genes(gene_symbols, ortholog_file)
+    else:
+        for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
+            try:
+                return map_multiple_genes(gene_symbols, ortholog_file)
+            except:
+                continue
+    return {}
+
+def check_all_genes_in_dataset(adata, gene_symbols):
+    """
+    Check if all the given gene symbols are present in the dataset.
+
+    Parameters:
+    adata (AnnData): Annotated data object.
+    gene_symbols (list): List of gene symbols to check.
+
+    Returns:
+    bool: True if all gene symbols are present, False otherwise.
+    """
+    gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+    return gene_filter.all()
 
 def order_by_time_point(obs_df):
     """Order observations by time point column if it exists."""
@@ -150,6 +190,7 @@ class MultigeneDashData(Resource):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         analysis = req.get('analysis', None)
+        gene_organism_id = req.get('gene_organism_id', None)
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
@@ -249,6 +290,18 @@ class MultigeneDashData(Resource):
         # 3 Warning - One or more genes could not be processed
         # NOTE: The success level in a warning can be overridden by another warning or error
 
+        dataset = geardb.get_dataset_by_id(dataset_id)
+        dataset_organism_id = dataset.organism_id
+
+        mapped_gene_symbols_dict = {}
+
+        # If any searched gene is not in the dataset, attempt to map it to the dataset organism
+        if not check_all_genes_in_dataset(adata, gene_symbols):
+            try:
+                mapped_gene_symbols_dict = get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id)
+            except:
+                return {"success": -1, "message": "The searched gene symbols could not be mapped to the dataset organism."}
+
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
             if not gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
@@ -259,7 +312,7 @@ class MultigeneDashData(Resource):
 
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
-            gene_filter, success, message = mg.create_dataframe_gene_mask(adata.var, gene_symbols)
+            gene_filter, success, message = mg.create_dataframe_gene_mask(adata.var, gene_symbols, mapped_gene_symbols_dict)
         except PlotError as pe:
             return {
                 'success': -1,
@@ -698,10 +751,16 @@ class MultigeneDashData(Resource):
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
+        # create list of mapped_gene_symbols in gene_symbols order
+        mapped_gene_symbols = []
+        for gene_symbol in gene_symbols:
+            mapped_gene_symbols.append(mapped_gene_symbols_dict.get(gene_symbol, gene_symbol))
+
         # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response occasionally
         return {
             "success": success
             , "message": message
             , 'gene_symbols': gene_symbols
+            , 'mapped_gene_symbols': mapped_gene_symbols
             , 'plot_json': json.loads(plot_json)
         }

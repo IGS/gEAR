@@ -10,6 +10,8 @@ from flask_restful import Resource
 
 from werkzeug.utils import secure_filename
 
+from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene
+
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
@@ -19,6 +21,43 @@ class PlotError(Exception):
     def __init__(self, message="") -> None:
         self.message = message
         super().__init__(self.message)
+
+def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
+    """
+    Maps a gene symbol to its corresponding orthologous gene symbol in a given dataset.
+
+    Args:
+        gene_symbol (str): The gene symbol to be mapped.
+        gene_organism_id (str): The organism ID of the gene symbol.
+        dataset_organism_id (str): The organism ID of the dataset.
+
+    Returns:
+        str: The mapped orthologous gene symbol, or None if no mapping is found.
+    """
+    if gene_organism_id and gene_organism_id != dataset_organism_id:
+        ortholog_file = get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")
+        return map_single_gene(gene_symbol, ortholog_file)
+    else:
+        for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
+            try:
+                return map_single_gene(gene_symbol, ortholog_file)
+            except:
+                continue
+    return None
+
+def check_gene_in_dataset(adata, gene_symbols):
+    """
+    Check if any of the given gene symbols are present in the dataset.
+
+    Args:
+        adata (AnnData): Annotated data object.
+        gene_symbols (list): List of gene symbols to check.
+
+    Returns:
+        bool: True if any of the gene symbols are present in the dataset, False otherwise.
+    """
+    gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+    return gene_filter.any()
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
@@ -57,6 +96,7 @@ class SvgData(Resource):
     """
     def get(self, dataset_id):
         gene_symbol = request.args.get('gene', None)
+        gene_organism_id = request.get('gene_organism_id', None)
         projection_id = request.args.get('projection_id', None)    # projection id of csv output
 
         if not gene_symbol or not dataset_id:
@@ -66,6 +106,7 @@ class SvgData(Resource):
             }
 
         dataset = geardb.get_dataset_by_id(dataset_id)
+        dataset_organism_id = dataset.organism_id
 
         h5_path = dataset.get_file_path()
         if not os.path.exists(h5_path):
@@ -85,27 +126,32 @@ class SvgData(Resource):
                     'message': str(pe),
                 }
 
+
+        mapped_gene_symbol = None
         gene_symbols = (gene_symbol,)
 
-        if 'gene_symbol' in adata.var.columns:
-            gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-            if not gene_filter.any():
-                return {
-                    "success": -1,
-                    "message": "Gene not found."
-                }
-        else:
-            return {
-                "success": -1,
-                "message": "The h5ad is missing gene_symbol.",
-            }
+        if 'gene_symbol' not in adata.var.columns:
+            return {"success": -1, "message": "The h5ad is missing the gene_symbol column."}
+
+        if not check_gene_in_dataset(adata, gene_symbols):
+            try:
+                mapped_gene_symbol = get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id)
+            except:
+                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
+
+            if mapped_gene_symbol:
+                gene_symbols = (mapped_gene_symbol,)
+                if not check_gene_in_dataset(adata, gene_symbols):
+                    return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the h5ad file."}
+            else:
+                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
 
         try:
+            gene_filter = adata.var.gene_symbol.isin(gene_symbols)
             selected = adata[:, gene_filter].to_memory()
         except:
             # The "try" may fail for projections as it is already in memory
             selected = adata[:, gene_filter]
-
 
         df = selected.to_df()
 
@@ -175,5 +221,6 @@ class SvgData(Resource):
             "success": success,
             "message": message,
             "scores": scores,
+            "mapped_gene_symbol": mapped_gene_symbol,
             **df.to_dict()
         }
