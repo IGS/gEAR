@@ -625,9 +625,13 @@ $("#projection_source").on('change', (_event) => {
     const gctype = $("#projection_source").data("gctype");
 
     $("#binary_algo_form_check").hide();
+    $("$nmf_algo_form_check").show();
+    $("#fixed_algo_form_check").show();
     $('#multi_pattern_group').show();
     if (gctype === "unweighted-list") {
         $("#binary_algo_form_check").show();
+        $("$nmf_algo_form_check").hide();
+        $("#fixed_algo_form_check").hide();
         $('#multi_pattern_group').hide();
     }
 

@@ -150,20 +150,20 @@
                 <div id="projection_algorithm_c" class="form-group form-group-sm"  data-toggle="tooltip" data-placement="right" title="Choose which projection algorithm to use">
                   <h3>Select Algorithm</h3>
                   <!-- TODO: Add help text for each algorithm (consult Carlo) -->
-                  <div class="form-check">
+                  <div class="form-check" id="pca_algo_form_check">
                     <input class="form-check-input" type="radio" name="projection_algo" id="pca_algo" value="pca" checked>
                     <label class="form-check-label" for="pca_algo">
                       Principal Component Analysis (PCA)
                     </label>
                   </div>
-                  <div class="form-check">
+                  <div class="form-check" id="nmf_algo_form_check">
                     <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="nmf">
                     <label class="form-check-label" for="nmf_algo">
                       Least-squares optimiazation for NMF
                     </label>
                   </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="fixednmf">
+                  <div class="form-check" id="fixednmf_algo_form_check">
+                    <input class="form-check-input" type="radio" name="projection_algo" id="fixednmf_algo" value="fixednmf">
                     <label class="form-check-label" for="fixednmf_algo">
                       Fixed gene weights in NMF re-run
                     </label>
