@@ -48,7 +48,7 @@ def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotatio
     Raises:
         FileNotFoundError: If the orthologous mapping file is not found.
     """
-    abs_path_www = Path(__file__).resolve().parents[3] # get www directory
+    abs_path_www = Path(__file__).resolve().parents[2].joinpath("www") # get www directory
     ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 
     orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(gene_organism_id, dataset_organism_id, annotation_source)
@@ -58,14 +58,29 @@ def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotatio
     return orthomap_file
 
 def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source: str="ensembl"):
-    abs_path_www = Path(__file__).resolve().parents[3] # get www directory
+    """
+    Retrieves the orthologous mapping files for a given dataset organism ID.
+
+    Args:
+        dataset_organism_id (str): The ID of the dataset organism.
+        annotation_source (str, optional): The annotation source. Defaults to "ensembl".
+
+    Returns:
+        List[Path]: A list of Path objects representing the orthologous mapping files.
+
+    Raises:
+        FileNotFoundError: If no orthologous mapping files are found for the given dataset organism ID.
+    """
+    abs_path_www = Path(__file__).resolve().parents[2].joinpath("www") # get www directory
     ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 
-    orthomap_file_base = "orthomap.*__{0}.{1}.hdf5".format(dataset_organism_id, annotation_source)
     # Find all orthologous mapping files for the given dataset organism ID
-    orthomap_files = ORTHOLOG_BASE_DIR.glob(orthomap_file_base)
+    orthomap_file_base = "orthomap.[0-9].{1}__{0}.{1}.hdf5".format(dataset_organism_id, annotation_source)
+    orthomap_files = list(ORTHOLOG_BASE_DIR.glob(orthomap_file_base))
     if not orthomap_files:
         raise FileNotFoundError("Orthologous mapping files not found for dataset organism {0}".format(get_organism_name_by_id(dataset_organism_id)))
+    return orthomap_files
+
 
 def create_orthology_dict(orthomap_file: Path):
     """
