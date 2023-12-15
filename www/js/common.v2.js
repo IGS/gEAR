@@ -744,11 +744,11 @@ const apiCallsMixin = {
     },
     /**
      * Fetches user history entries.
-     * @param {Array} entries - The entries to fetch.
-     * @returns {Promise} - A promise that resolves with the fetched data.
+     * @param {number} numEntries - The number of entries to fetch.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
      */
-    async fetchUserHistoryEntries(entries) {
-        const payload = { session_id: this.sessionId, entries };
+    async fetchUserHistoryEntries(numEntries) {
+        const payload = { session_id: this.sessionId, num_entries: numEntries };
         const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
         return data;
     },

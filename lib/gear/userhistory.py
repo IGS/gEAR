@@ -40,7 +40,7 @@ class UserHistory:
     def _serialize_json(self):
         # Called when json modules attempts to serialize
         return self.__dict__
-        
+
     def add_record(self, user_id=None, entry_category=None, label=None, **kwargs):
         """
         Adds a history record for a user action to the DB. Arguments needed for all types:
@@ -48,7 +48,7 @@ class UserHistory:
             user_id, entry_category, label
 
         Individual additional arguments needed depending on category:
-        
+
             'dataset_search' -> search_terms (an array of terms)
             'gene_search' -> gene_symbol (can be a string with multiple), layout_share_id / dataset_share_id
             'layout_added' -> layout_share_id
@@ -68,13 +68,13 @@ class UserHistory:
                     url = "/p?p=gcm&s={0}".format(kwargs['gene_cart_share_id'])
                 else:
                     raise Exception("ERROR: If recording a gene_cart_added category, 'gene_cart_share_id' must be passsed")
-                
+
             case 'gene_cart_search':
                 if 'search_terms' in kwargs:
                     url = "/p?p=gcm&ss={}".format(urllib.parse.quote(str(" ".join(kwargs['search_terms']))))
                 else:
                     raise Exception("ERROR: If recording a dataset_search category, 'search_terms' must be passsed")
-                
+
             case 'gene_search':
                 if 'layout_share_id' in kwargs:
                     url = "/p?l={0}".format(kwargs['layout_share_id'])
@@ -85,7 +85,7 @@ class UserHistory:
 
                 if 'gene_symbol' not in kwargs:
                     raise Exception("ERROR: If recording a gene_search category, 'gene_symbol' must be passed")
-                
+
                 gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}".format(gene_string)
@@ -106,7 +106,7 @@ class UserHistory:
 
                 if 'gene_symbol' not in kwargs:
                     raise Exception("ERROR: If recording a multigene_search category, 'gene_symbol' must be passed")
-                
+
                 gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}&multi=1&gsem=1".format(gene_string)
@@ -127,10 +127,10 @@ class UserHistory:
                     url += "&c={0}".format(kwargs['gene_cart'])
                 else:
                     raise Exception("ERROR: If recording a projection_run category, 'gene_cart' must be passsed")
-                
+
             case _ :
                 raise Exception("ERROR: Invalid entry_category when calling UserHistory.add_record()")
-        
+
         qry = """
               INSERT INTO user_history (user_id, entry_category, label, url)
               VALUES (%s, %s, %s, %s)
@@ -158,8 +158,7 @@ class UserHistory:
             qry += " AND entry_category = %s"
             qry_args.append(self.entry_category)
 
-        qry += " LIMIT %s"
-        qry_args.append(entry_count)
+        qry += f" LIMIT {entry_count}"
 
         cursor.execute(qry, qry_args)
         entries = list()
@@ -171,8 +170,6 @@ class UserHistory:
             entries.append(entry)
 
         return entries
-        
-                    
 
 
 
@@ -182,4 +179,6 @@ class UserHistory:
 
 
 
-        
+
+
+

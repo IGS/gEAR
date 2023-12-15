@@ -2,10 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Nothing here yet
 });
 
-const populateUserHistoryTable = async (el, eventType) => {
-    const entries = 5;
+const populateUserHistoryTable = async () => {
+    const numEntries = 5;
     try {
-        const data = await apiCallsMixin.fetchUserHistoryEntries(entries);
+        const data = await apiCallsMixin.fetchUserHistoryEntries(numEntries);
         const template = document.querySelector('#user-history-row');
 
         for (const entry of data) {
