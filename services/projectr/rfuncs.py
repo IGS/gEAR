@@ -73,6 +73,7 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
         elif algorithm == "fixednmf":
             sjd = importr('SJD')
             loading_list = ro.ListVector({"genesig": loading_r_matrix})
+
             projection = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_list)
             projection_patterns_r_matrix = projection.rx2("proj_score_list").rx2("genesig")
         else:

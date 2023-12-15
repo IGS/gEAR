@@ -11,6 +11,7 @@ from time import sleep
 from more_itertools import sliced
 
 import geardb
+from gear.orthology import get_ortholog_file, map_dataframe_genes
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
@@ -22,7 +23,6 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
-ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 PROJECTIONS_JSON_BASENAME = "projections.json"
 
 ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
@@ -113,18 +113,6 @@ def get_analysis(analysis, dataset_id, session_id):
             raise FileNotFoundError("No h5 file found for this dataset")
         ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
     return ana
-
-def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
-    """Remap the passed-in Dataframe to have gene indexes from the orthologous mapping file."""
-    # Read HDF5 file using Pandas read_hdf
-    try:
-        orthomap_df = pd.read_hdf(orthomap_file)
-    except Exception as e:
-        raise
-    # Index -> gs1 / id2 / gs2
-    orthomap_dict = orthomap_df.to_dict()["id2"]
-    # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
-    return orig_df.rename(index=orthomap_dict)
 
 def calculate_chunk_size(num_genes, num_samples):
     """
@@ -243,6 +231,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     if not fh:
         fh=sys.stderr
 
+    if scope == "unweighted-list" and algorithm in ["nmf", "fixednmf"]:
+        return {
+            'success': -1
+            , 'message': "Unweighted gene lists cannot be used with NMF algorithms."
+        }
+
     """
     Steps
 
@@ -293,22 +287,17 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
     try:
         # Get the organism ID associated with the dataset.
-        ds = geardb.get_dataset_by_id(dataset_id)
+        try:
+            ds = geardb.get_dataset_by_id(dataset_id)
+        except:
+            raise Exception("Dataset was not found in the database. Please contact a gEAR admin.")
+
         if not genecart.organism_id == ds.organism_id:
-            orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
-            orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
-            try:
-                loading_df = remap_df_genes(loading_df, orthomap_file)
-            except Exception as e:
-                print(str(e), file=fh)
-                message = "Could not remap pattern genes to ortholog equivalent in the dataset"
-                return {
-                    "success": -1
-                    , "message": message
-                }
-    except:
-        message = "Dataset was not found in the database. Please contact a gEAR admin."
-        return {"success": -1, "message": message}
+            orthomap_file = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
+            loading_df = map_dataframe_genes(loading_df, orthomap_file)
+    except Exception as e:
+        print(str(e), file=fh)
+        return {"success": -1, "message": str(e)}
 
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
