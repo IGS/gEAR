@@ -23,7 +23,10 @@
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-        
+
+        <!-- Any other extension here -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@creativebulma/bulma-divider@1.1.0/dist/bulma-divider.min.css" />
+       
         <!--Page-specific CSS here -->
         <script>document.write('<link rel="stylesheet" href="css/index.' + (new Date()).getTime() + '.css" />');</script>
     </head>
@@ -146,34 +149,35 @@
                   <ul>
                       <li class="is-active">
                         <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field is-grouped">
-                          <p class="control has-icons-left has-icons-right">
+                        <div class="field is-grouped mr-0 pr-0">
+
+                          <div class="control has-icons-left has-icons-right">
                             <input class="input" type="input" placeholder="Type here to search using specific gene symbols">
                             <span class="icon is-small is-left">
                               <i class="mdi mdi-magnify"></i>
                             </span>
-                          </p>
-                          <p class="control is-vcentered">OR</p>
+                          </div>
+                          <div class="divider is-vertical">OR</div>
                           <div class="control select">
                             <select>
                               <option>Quick search using Gene Lists</option>
                               <option>With options</option>
                             </select>
                           </div>
-                          <p class="control is-vcentered">IN</p>
+                          <div class="divider is-vertical">IN</div>
                           <div class="control select">
                             <select>
                               <option>Hearing</option>
                               <option>Here is a much longer profile name to test</option>
                             </select>
                           </div>
-                          <p class="control">
+                          <div class="control">
                             <button class="button">
                               <span class="icon is-small">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
                             </button>
-                          </p>
+                          </div>
                         </div>
                         <div class="field is-grouped">
                           <div class="control">
