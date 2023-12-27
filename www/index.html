@@ -25,8 +25,7 @@
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
         <!-- Any other extension here -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@creativebulma/bulma-divider@1.1.0/dist/bulma-divider.min.css" />
-       
+        
         <!--Page-specific CSS here -->
         <script>document.write('<link rel="stylesheet" href="css/index.' + (new Date()).getTime() + '.css" />');</script>
     </head>
@@ -149,22 +148,30 @@
                   <ul>
                       <li class="is-active">
                         <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field is-grouped mr-0 pr-0">
-
-                          <div class="control has-icons-left has-icons-right">
+                        <div class="field has-addons is-grouped">
+                          <div class="control has-icons-left has-icons-right mr-0">
                             <input class="input" type="input" placeholder="Type here to search using specific gene symbols">
                             <span class="icon is-small is-left">
                               <i class="mdi mdi-magnify"></i>
                             </span>
                           </div>
-                          <div class="divider is-vertical">OR</div>
-                          <div class="control select">
+                          <!-- div with the text 'OR' centered vertically. this is awkward -->
+                          <div class="columns">
+                            <div class="column is-1">
+                              <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                            </div>
+                          </div>
+                          <div class="control select mr-0">
                             <select>
                               <option>Quick search using Gene Lists</option>
                               <option>With options</option>
                             </select>
                           </div>
-                          <div class="divider is-vertical">IN</div>
+                          <div class="columns">
+                            <div class="column is-1">
+                              <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                            </div>
+                          </div>
                           <div class="control select">
                             <select>
                               <option>Hearing</option>
