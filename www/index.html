@@ -19,7 +19,7 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
@@ -148,7 +148,7 @@
                   <ul>
                       <li class="is-active">
                         <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field has-addons is-grouped">
+                        <div class="field has-addons is-grouped mb-0">
                           <div class="control has-icons-left has-icons-right mr-0">
                             <input class="input" type="input" placeholder="Type here to search using specific gene symbols">
                             <span class="icon is-small is-left">
@@ -161,12 +161,25 @@
                               <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
                             </div>
                           </div>
-                          <div class="control select mr-0">
-                            <select>
-                              <option>Quick search using Gene Lists</option>
-                              <option>With options</option>
-                            </select>
+
+                          <div class="control dropdown is-right mr-0 is-hoverable">
+                            <div class="dropdown-trigger">
+                              <button class="button" aria-haspopup="true" aria-controls="dropdown-menu6">
+                                <span>Quick search using Gene Lists</span>
+                                <span class="icon is-small">
+                                  <i class="mdi mdi-arrow-expand-vertical" aria-hidden="true"></i>
+                                </span>
+                              </button>
+                            </div>
+                            <div class="dropdown-menu" id="dropdown-menu6" role="menu">
+                              <div class="dropdown-content">
+                                <div class="dropdown-item">
+                                  <p>Add the <code>is-right</code> modifier for a <strong>right-aligned</strong> dropdown.</p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
+
                           <div class="columns">
                             <div class="column is-1">
                               <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
