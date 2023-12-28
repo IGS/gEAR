@@ -10,7 +10,7 @@ div.ul-li {
     padding: 0.5em;
 }
 div.ul-li.is-selected {
-    background-color: rgb(240, 240, 240);
+    background-color: #cbcfd6;
 }
 
 
