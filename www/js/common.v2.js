@@ -59,8 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#navbar-logo-small").classList.remove("is-hidden")
 
         // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-chevron-left-box")
-        document.querySelector("#navbar-toggler i").classList.add("mdi-chevron-right-box")
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-left")
+        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-right")
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
@@ -101,8 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#navbar-logo-normal").classList.remove("is-hidden")
 
         // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-chevron-right-box")
-        document.querySelector("#navbar-toggler i").classList.add("mdi-chevron-left-box")
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-right")
+        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-left")
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
