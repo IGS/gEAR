@@ -288,8 +288,9 @@
                   <td colspan="4">
                     <div class="has-text-centered">
                       <span class="icon is-large">
-                        <i class="mdi mdi-loading mdi-spin mdi-48px"></i>
+                        <i class="mdi mdi-account-off mdi-48px"></i>
                       </span>
+                      <p class="mt-2">Login to show recent activity</p>
                     </div>
                   </td>
                 </tr>
@@ -304,6 +305,29 @@
                   <td class="category is-vcentered"></td>
                   <td class="action-label is-vcentered"></td>
                   <td class="date is-vcentered"></td>
+                </tr>
+              </template>
+              <template id="user-history-no-entries">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-alert-outline mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">No history found. As you use the site entries will appear here</p>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <template id="user-history-loading">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-loading mdi-spin mdi-48px"></i>
+                      </span>
+                    </div>
+                  </td>
                 </tr>
               </template>
             </table>
