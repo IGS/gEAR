@@ -172,7 +172,7 @@
                               </button>
                             </div>
                             <div class="dropdown-menu" id="dropdown-menu6" role="menu">
-                              <div class="dropdown-content">
+                              <div class="dropdown-content is-full-width">
                                 <div class="dropdown-item">
                                   <div class="field">
                                     <p class="control has-icons-left">
@@ -209,11 +209,22 @@
                                     </div>
                                     <div class="column is-one-third">
                                       <h3>Gene Lists</h3>
-                                      <p>stuff here</p>
+                                      <div id="dropdown-content-gene-lists" class="ul-replacement"></div>
                                     </div>
                                     <div class="column is-one-third">
                                       <h3>Genes</h3>
                                     </div>
+                                    <template id="tmpl-gene-list-item">
+                                      <div class="ul-li">
+                                        <span class="icon is-pulled-left">
+                                          <i class="mdi mdi-18px mdi-plus mr-2"></i>
+                                        </span>
+                                        <span class="gene-list-item-label"></span>
+                                        <span class="icon is-pulled-right">
+                                          <i class="mdi mdi-18px mdi-chevron-right"></i>
+                                        </span>
+                                      </div>
+                                    </template>
                                   </div> 
 
 

@@ -1,6 +1,30 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Nothing here yet
+    populateGeneCartDropdown();
 });
+
+const populateGeneCartDropdown = async () => {
+    let numEntries = 10;
+
+    try {
+        const data = await apiCallsMixin.fetchGeneCarts();
+        console.log(data);
+        const template = document.querySelector('#tmpl-gene-list-item');
+
+        for (const entry of data.domain_carts) {
+            const row = template.content.cloneNode(true);
+            row.querySelector('.gene-list-item-label').textContent = entry.label;
+            //document.querySelector('#dropdown-content-gene-lists').appendChild(row);
+            // reduce number of entries by 1
+            if (numEntries > 0) {
+                document.querySelector('#dropdown-content-gene-lists').appendChild(row);
+                numEntries--;
+            }
+        }
+
+    } catch (error) {
+        console.error(error);
+    }
+}
 
 const populateUserHistoryTable = async () => {
     const numEntries = 5;

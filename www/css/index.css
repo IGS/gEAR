@@ -1,5 +1,6 @@
 div.dropdown-item {
-    width: 600px;
+    /* TODO: Make the width not extend past the screen width */
+    width: 70vw;
 }
 div.dropdown-item h3 {
     font-weight: bold;
