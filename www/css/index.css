@@ -7,7 +7,7 @@ div.dropdown-item h3 {
     font-size: 120%;
 }
 div.dropdown-item div.column.is-scrollable {
-    max-height: 50vh;
+    max-height: 40vh;
     overflow-y: scroll;
 }
 div.ul-li {

@@ -162,8 +162,8 @@
                             </div>
                           </div>
 
-                          <div id="dropdown-gene-lists" class="control dropdown is-clickable is-right is-loading is-disabled mr-0">
-                            <div class="dropdown-trigger">
+                          <div id="dropdown-gene-lists" class="control dropdown is-right is-loading is-disabled mr-0">
+                            <div class="dropdown-trigger is-clickable">
                               <button class="button" aria-haspopup="true" aria-controls="dropdown-menu6">
                                 <span>Quick search using Gene Lists</span>
                                 <span class="icon is-small">
@@ -188,20 +188,20 @@
                                   <div class="columns is-mobile">
                                     <div class="column is-one-third is-scrollable">
                                       <h3>Saved Items</h3>
-                                      <div class="ul-replacement">
-                                        <div class="ul-li">
+                                      <div id="dropdown-content-gene-list-category" class="ul-replacement">
+                                        <div class="ul-li is-clickable" data-category="favorites">
                                           Favorites
                                           <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                                         </div>
-                                        <div class="ul-li is-selected">
+                                        <div class="ul-li is-clickable" data-category="recent">
                                           Recent
                                           <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                                         </div> 
-                                        <div class="ul-li">
+                                        <div class="ul-li is-clickable" data-category="saved">
                                           Saved gene lists
                                           <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                                         </div> 
-                                        <div class="ul-li">
+                                        <div class="ul-li is-clickable" data-category="shared">
                                           Shared gene lists
                                           <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                                         </div> 
