@@ -28,26 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target.classList.contains('gene-list-item-label') || 
             event.target.classList.contains('dropdown-gene-list-item-right-selector')) {
             
-            row_div = event.target.closest('div');
-            const genes = row_div.dataset.genes.split(',');
-            const gene_item_template = document.querySelector('#tmpl-gene-item');
-            
-            document.querySelector('#dropdown-content-genes').innerHTML = '';
-
-            for (const gene of genes) {
-                const gene_row = gene_item_template.content.cloneNode(true);
-                gene_row.querySelector('.gene-item-label').textContent = gene;
-                document.querySelector('#dropdown-content-genes').appendChild(gene_row);
-            }
-
-            const geneListSelectors = document.querySelectorAll('#dropdown-content-gene-lists .ul-li');
-            geneListSelectors.forEach((element) => {
-                element.classList.remove('is-selected');
-                element.classList.add('is-clickable');
-            });
-
-            row_div.classList.add('is-selected');
-            row_div.classList.remove('is-clickable');
+            const row_div = event.target.closest('div');
+            setActiveGeneCart(row_div, 'view');
+        } else if (event.target.classList.contains('dropdown-gene-list-item-add')) {
+            const row_div = event.target.closest('div');
+            setActiveGeneCart(row_div, 'add');
         }
     });
 });
@@ -98,6 +83,45 @@ const populateUserHistoryTable = async () => {
     } catch (error) {
         console.error(error);
     }
+}
+
+const setActiveGeneCart = (cart_row, mode) => {
+    const genes = cart_row.dataset.genes.split(',');
+    const gene_item_template = document.querySelector('#tmpl-gene-item');
+    
+    document.querySelector('#dropdown-content-genes').innerHTML = '';
+
+    if (mode === 'add') {
+        cart_row.querySelector('i.toggler').classList.remove('mdi-plus');
+        cart_row.querySelector('i.toggler').classList.add('mdi-minus');
+    }
+
+    for (const gene of genes.sort()) {
+        const gene_row = gene_item_template.content.cloneNode(true);
+        gene_row.querySelector('.gene-item-label').textContent = gene;
+        gene_row_div = gene_row.querySelector('.gene-item-label').closest('div');
+
+        if (mode === 'view') {
+            gene_row_div.classList.remove('is-selected');
+        } else {
+            gene_row_div.classList.add('is-selected');
+
+            gene_row_div.querySelector('i').classList.remove('mdi-plus');
+            gene_row_div.querySelector('i').classList.add('mdi-minus');
+        }
+
+        document.querySelector('#dropdown-content-genes').appendChild(gene_row);
+
+    }
+
+    const geneListSelectors = document.querySelectorAll('#dropdown-content-gene-lists .ul-li');
+    geneListSelectors.forEach((element) => {
+        element.classList.remove('is-selected');
+        element.classList.add('is-clickable');
+    });
+
+    cart_row.classList.add('is-selected');
+    cart_row.classList.remove('is-clickable');
 }
 
 const setActiveGeneCartCategory = (category) => {

@@ -12,7 +12,8 @@ div.dropdown-item div.column.is-scrollable {
 }
 div.ul-li {
     border-radius: 0.5em;
-    padding: 0.5em;
+    padding: 0.4em;
+    margin-bottom: 0.2em;
 }
 div.ul-li.is-selected {
     background-color: #cbcfd6;
