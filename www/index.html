@@ -213,16 +213,25 @@
                                     </div>
                                     <div class="column is-one-third is-scrollable">
                                       <h3>Genes</h3>
+                                      <div id="dropdown-content-genes" class="ul-replacement"></div>
                                     </div>
                                     <template id="tmpl-gene-list-item">
-                                      <div class="ul-li">
+                                      <div class="ul-li dropdown-gene-list-item is-clickable" data-genes="">
                                         <span class="icon is-pulled-left">
-                                          <i class="mdi mdi-18px mdi-plus mr-2"></i>
+                                          <i class="mdi mdi-18px mdi-plus mr-2 dropdown-gene-list-item-add"></i>
                                         </span>
                                         <span class="gene-list-item-label"></span>
                                         <span class="icon is-pulled-right">
-                                          <i class="mdi mdi-18px mdi-chevron-right"></i>
+                                          <i class="mdi mdi-18px mdi-chevron-right dropdown-gene-list-item-right-selector"></i>
                                         </span>
+                                      </div>
+                                    </template>
+                                    <template id="tmpl-gene-item">
+                                      <div class="ul-li dropdown-gene-item">
+                                        <span class="icon is-pulled-left">
+                                          <i class="mdi mdi-18px mdi-plus mr-2"></i>
+                                        </span>
+                                        <span class="gene-item-label"></span>
                                       </div>
                                     </template>
                                   </div> 
