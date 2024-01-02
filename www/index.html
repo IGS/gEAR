@@ -186,7 +186,7 @@
                                 <hr class="dropdown-divider">
                                 <div class="dropdown-item">
                                   <div class="columns is-mobile">
-                                    <div class="column is-one-third">
+                                    <div class="column is-one-third is-scrollable">
                                       <h3>Saved Items</h3>
                                       <div class="ul-replacement">
                                         <div class="ul-li">
@@ -207,11 +207,11 @@
                                         </div> 
                                       </div>
                                     </div>
-                                    <div class="column is-one-third">
+                                    <div class="column is-one-third is-scrollable">
                                       <h3>Gene Lists</h3>
                                       <div id="dropdown-content-gene-lists" class="ul-replacement"></div>
                                     </div>
-                                    <div class="column is-one-third">
+                                    <div class="column is-one-third is-scrollable">
                                       <h3>Genes</h3>
                                     </div>
                                     <template id="tmpl-gene-list-item">
@@ -226,10 +226,16 @@
                                       </div>
                                     </template>
                                   </div> 
-
-
-                                  
-                                  <p> Results Cell, Proceed button </p>
+                                </div>
+                                <div class="dropdown-item">
+                                  <div class="columns">
+                                    <div class="column is-10">
+                                      <div id="gene-select-dropdown-dynamic-selections"></div>
+                                    </div>
+                                    <div class="column is-2">
+                                      <button class="button is-primary is-rounded">Proceed</button>
+                                    </div>
+                                  </div>  
                                 </div>
                               </div>
                             </div>
