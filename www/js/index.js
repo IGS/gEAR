@@ -21,6 +21,10 @@ const populateGeneCartDropdown = async () => {
             }
         }
 
+        // remove the 'is-loading' class from the dropdown
+        document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
+        document.querySelector('#dropdown-gene-lists').classList.remove('is-disabled');
+
     } catch (error) {
         console.error(error);
     }

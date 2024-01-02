@@ -24,6 +24,10 @@ html, body {
     margin-top: 0 !important;
 }
 
+.is-disabled {
+    pointer-events: none;
+    opacity: 0.50;
+}
 
 /* ---------------- */
 /* -= Typography =- */
