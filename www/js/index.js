@@ -157,13 +157,17 @@ const setActiveGeneCart = (cart_row, mode) => {
     // merge the currently selected genes with the genes in the gene list to create unique list
     currently_selected_genes = [...new Set([...currently_selected_genes, ...selected_genes])];
     
-    for (let gene_div in document.querySelector('.dropdown-gene-item')) {
+    for (const gene_div of document.querySelectorAll('.dropdown-gene-item')) {
         let gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
 
         if (currently_selected_genes.includes(gene_symbol)) {
             gene_div.classList.add('is-selected');
+            gene_div.querySelector('i.toggler').classList.remove('mdi-plus');
+            gene_div.querySelector('i.toggler').classList.add('mdi-minus');            
         } else {
             gene_div.classList.remove('is-selected');
+            gene_div.querySelector('i.toggler').classList.remove('mdi-minus');
+            gene_div.querySelector('i.toggler').classList.add('mdi-plus');
         }
     }
 }
