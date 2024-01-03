@@ -19,10 +19,12 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+        <!-- Any other extension here -->
         
         <!--Page-specific CSS here -->
         <script>document.write('<link rel="stylesheet" href="css/index.' + (new Date()).getTime() + '.css" />');</script>
@@ -146,34 +148,126 @@
                   <ul>
                       <li class="is-active">
                         <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field is-grouped">
-                          <p class="control has-icons-left has-icons-right">
+                        <div class="field has-addons is-grouped mb-0">
+                          <div class="control has-icons-left has-icons-right mr-0">
                             <input class="input" type="input" placeholder="Type here to search using specific gene symbols">
                             <span class="icon is-small is-left">
                               <i class="mdi mdi-magnify"></i>
                             </span>
-                          </p>
-                          <p class="control is-vcentered">OR</p>
-                          <div class="control select">
-                            <select>
-                              <option>Quick search using Gene Lists</option>
-                              <option>With options</option>
-                            </select>
                           </div>
-                          <p class="control is-vcentered">IN</p>
+                          <!-- div with the text 'OR' centered vertically. this is awkward -->
+                          <div class="columns">
+                            <div class="column is-1">
+                              <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                            </div>
+                          </div>
+
+                          <div id="dropdown-gene-lists" class="control dropdown is-right is-loading is-disabled mr-0">
+                            <div class="dropdown-trigger is-clickable">
+                              <button class="button" aria-haspopup="true" aria-controls="dropdown-menu6">
+                                <span>Quick search using Gene Lists</span>
+                                <span class="icon is-small">
+                                  <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+                                </span>
+                              </button>
+                            </div>
+                            <div class="dropdown-menu" id="dropdown-menu6" role="menu">
+                              <div class="dropdown-content is-full-width">
+                                <div class="dropdown-item">
+                                  <div class="field">
+                                    <p class="control has-icons-left">
+                                      <input class="input" type="input" placeholder="Search and select a Gene List or a Gene">
+                                      <span class="icon is-small is-left">
+                                        <i class="mdi mdi-magnify"></i>
+                                      </span>
+                                    </p>
+                                  </div>
+                                </div>
+                                <hr class="dropdown-divider">
+                                <div class="dropdown-item">
+                                  <div class="columns is-mobile">
+                                    <div class="column is-one-third is-scrollable">
+                                      <h3>Saved Items</h3>
+                                      <div id="dropdown-content-gene-list-category" class="ul-replacement">
+                                        <div class="ul-li is-clickable" data-category="favorites">
+                                          Favorites
+                                          <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                                        </div>
+                                        <div class="ul-li is-clickable" data-category="recent">
+                                          Recent
+                                          <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                                        </div> 
+                                        <div class="ul-li is-clickable" data-category="saved">
+                                          Saved gene lists
+                                          <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                                        </div> 
+                                        <div class="ul-li is-clickable" data-category="shared">
+                                          Shared gene lists
+                                          <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                                        </div> 
+                                      </div>
+                                    </div>
+                                    <div class="column is-one-third is-scrollable">
+                                      <h3>Gene Lists</h3>
+                                      <div id="dropdown-content-gene-lists" class="ul-replacement"></div>
+                                    </div>
+                                    <div class="column is-one-third is-scrollable">
+                                      <h3>Genes</h3>
+                                      <div id="dropdown-content-genes" class="ul-replacement"></div>
+                                    </div>
+                                    <template id="tmpl-gene-list-item">
+                                      <div class="ul-li dropdown-gene-list-item is-clickable" data-share-id="" data-genes="">
+                                        <span class="icon is-pulled-left">
+                                          <i class="mdi mdi-18px mdi-plus mr-2 dropdown-gene-list-item-add toggler is-clickable"></i>
+                                        </span>
+                                        <span class="gene-list-item-label"></span>
+                                        <span class="icon is-pulled-right">
+                                          <i class="mdi mdi-18px mdi-chevron-right dropdown-gene-list-item-right-selector"></i>
+                                        </span>
+                                      </div>
+                                    </template>
+                                    <template id="tmpl-gene-item">
+                                      <div class="ul-li dropdown-gene-item">
+                                        <span class="icon is-pulled-left">
+                                          <i class="mdi mdi-18px toggler mdi-plus is-clickable mr-2"></i>
+                                        </span>
+                                        <span class="gene-item-label"></span>
+                                      </div>
+                                    </template>
+                                  </div> 
+                                </div>
+                                <div class="dropdown-item">
+                                  <div class="columns">
+                                    <div class="column is-10">
+                                      <div id="gene-select-dropdown-dynamic-selections"></div>
+                                    </div>
+                                    <div class="column is-2">
+                                      <button class="button is-primary is-rounded">Proceed</button>
+                                    </div>
+                                  </div>  
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="columns">
+                            <div class="column is-1">
+                              <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                            </div>
+                          </div>
                           <div class="control select">
                             <select>
                               <option>Hearing</option>
                               <option>Here is a much longer profile name to test</option>
                             </select>
                           </div>
-                          <p class="control">
+                          <div class="control">
                             <button class="button">
                               <span class="icon is-small">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
                             </button>
-                          </p>
+                          </div>
                         </div>
                         <div class="field is-grouped">
                           <div class="control">
@@ -215,7 +309,18 @@
                   <td>Date</td>
                 </tr>
               </thead>
-              <tbody id="user-history-table-tbody"></tbody>
+              <tbody id="user-history-table-tbody">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-account-off mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">Login to show recent activity</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
               <template id="user-history-row">
                 <tr>
                   <td><button class="button is-small">
@@ -226,6 +331,29 @@
                   <td class="category is-vcentered"></td>
                   <td class="action-label is-vcentered"></td>
                   <td class="date is-vcentered"></td>
+                </tr>
+              </template>
+              <template id="user-history-no-entries">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-alert-outline mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">No history found. As you use the site entries will appear here</p>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <template id="user-history-loading">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-loading mdi-spin mdi-48px"></i>
+                      </span>
+                    </div>
+                  </td>
                 </tr>
               </template>
             </table>

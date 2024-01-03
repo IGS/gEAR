@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Bulma dropdowns can't be clicked without a wee bit of Javascript
+    document.querySelectorAll('.dropdown-trigger').forEach(item => {
+        item.addEventListener('click', function(event) {
+            event.stopPropagation();
+            item.parentNode.classList.toggle('is-active');
+        });
+    });
+    
+
     // modal code from https://bulma.io/documentation/components/modal/
 
     // Add a click event on various child elements to close the parent modal
@@ -59,8 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#navbar-logo-small").classList.remove("is-hidden")
 
         // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-chevron-left-box")
-        document.querySelector("#navbar-toggler i").classList.add("mdi-chevron-right-box")
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-left")
+        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-right")
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
@@ -101,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#navbar-logo-normal").classList.remove("is-hidden")
 
         // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-chevron-right-box")
-        document.querySelector("#navbar-toggler i").classList.add("mdi-chevron-left-box")
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-right")
+        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-left")
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {

@@ -1,3 +1,28 @@
+div.dropdown-item {
+    /* TODO: Make the width not extend past the screen width */
+    width: 70vw;
+}
+div.dropdown-item h3 {
+    font-weight: bold;
+    font-size: 120%;
+}
+div.dropdown-item div.column.is-scrollable {
+    max-height: 40vh;
+    overflow-y: scroll;
+}
+div.ul-li {
+    border-radius: 0.5em;
+    padding: 0.4em;
+    margin-bottom: 0.2em;
+}
+div.ul-li.is-selected {
+    background-color: #cbcfd6;
+}
+div#gene-select-dropdown-dynamic-selections {
+    border: 1px solid rgb(200,200,200);
+    border-radius: 0.5em;
+    min-height: 4em;
+}
 div.guide_element {
     border-right: 1px solid rgb(200, 200, 200);
 }

@@ -78,10 +78,6 @@ def main():
     shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
     public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
 
-    for carts in [domain_carts, user_carts, group_carts, shared_carts, public_carts]:
-        for cart in carts:
-            cart.label = f"{cart.label} ({cart.num_genes} genes)"
-
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
         gctypes = ["unweighted-list", "weighted-list"]
@@ -103,13 +99,12 @@ def main():
         print(json.dumps(gctypes_result, default=lambda o: o.__dict__))
         sys.exit(0)
 
-    if filter_cart_type:
+    if len(str(filter_cart_type)) > 0 and filter_cart_type != 'undefined':
         domain_carts = filter_by_cart_type(domain_carts, filter_cart_type)
         user_carts = filter_by_cart_type(user_carts, filter_cart_type)
         group_carts = filter_by_cart_type(group_carts, filter_cart_type)
         shared_carts = filter_by_cart_type(shared_carts, filter_cart_type)
         public_carts = filter_by_cart_type(public_carts, filter_cart_type)
-
 
     result = { 'domain_carts':domain_carts,
                 'group_carts':group_carts,
