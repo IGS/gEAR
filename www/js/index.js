@@ -1,5 +1,9 @@
 let gene_cart_data = null;
 
+// For carts, key is share_id, value is array of genes
+let selected_carts = {};
+let selected_genes = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchGeneCartData();
 
@@ -86,19 +90,19 @@ const populateUserHistoryTable = async () => {
 }
 
 const setActiveGeneCart = (cart_row, mode) => {
-    const genes = cart_row.dataset.genes.split(',');
-    const gene_item_template = document.querySelector('#tmpl-gene-item');
-    
+    // clear the current gene list
     document.querySelector('#dropdown-content-genes').innerHTML = '';
 
-    if (mode === 'add') {
-        cart_row.querySelector('i.toggler').classList.remove('mdi-plus');
-        cart_row.querySelector('i.toggler').classList.add('mdi-minus');
-    }
+    // populate the gene list from this cart
+    const genes = cart_row.dataset.genes.split(',');
+    const gene_item_template = document.querySelector('#tmpl-gene-item');
 
     for (const gene of genes.sort()) {
         const gene_row = gene_item_template.content.cloneNode(true);
         gene_row.querySelector('.gene-item-label').textContent = gene;
+        document.querySelector('#dropdown-content-genes').appendChild(gene_row);
+
+        /*
         gene_row_div = gene_row.querySelector('.gene-item-label').closest('div');
 
         if (mode === 'view') {
@@ -109,19 +113,59 @@ const setActiveGeneCart = (cart_row, mode) => {
             gene_row_div.querySelector('i').classList.remove('mdi-plus');
             gene_row_div.querySelector('i').classList.add('mdi-minus');
         }
-
-        document.querySelector('#dropdown-content-genes').appendChild(gene_row);
-
+        */
+    }
+    
+    // if adding or removing, update the inventory
+    if (mode === 'add') {
+        selected_carts[cart_row.dataset.shareId] = genes;
+        console.log(selected_carts);
+    } else if (mode === 'remove') {
+        delete selected_carts[cart_row.dataset.shareId];
+        console.log(selected_carts);
     }
 
-    const geneListSelectors = document.querySelectorAll('#dropdown-content-gene-lists .ul-li');
-    geneListSelectors.forEach((element) => {
-        element.classList.remove('is-selected');
-        element.classList.add('is-clickable');
-    });
+    // now handle the coloring, icons and selection box based on the mode
+    if (mode === 'add') {
+        cart_row.querySelector('i.toggler').classList.remove('mdi-plus');
+        cart_row.querySelector('i.toggler').classList.add('mdi-minus');
+        cart_row.classList.add('is-selected');
 
-    cart_row.classList.add('is-selected');
-    cart_row.classList.remove('is-clickable');
+    } else if (mode === 'remove') {
+        cart_row.querySelector('i.toggler').classList.remove('mdi-minus');
+        cart_row.querySelector('i.toggler').classList.add('mdi-plus');
+        cart_row.classList.remove('is-selected');
+        
+    } else if (mode === 'view') {
+        // do nothing
+    }
+
+    // process the gene list panel now
+    const gene_list = document.querySelector('#dropdown-content-genes');
+
+    // build a list of selected genes. this is detailed since multiple selected carts can have the same gene
+    let currently_selected_genes = [];
+    
+    for (const cart of Object.values(selected_carts)) {
+        for (const gene of cart) {
+            if (!currently_selected_genes.includes(gene)) {
+                currently_selected_genes.push(gene);
+            }
+        }
+    }
+
+    // merge the currently selected genes with the genes in the gene list to create unique list
+    currently_selected_genes = [...new Set([...currently_selected_genes, ...selected_genes])];
+    
+    for (let gene_div in document.querySelector('.dropdown-gene-item')) {
+        let gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
+
+        if (currently_selected_genes.includes(gene_symbol)) {
+            gene_div.classList.add('is-selected');
+        } else {
+            gene_div.classList.remove('is-selected');
+        }
+    }
 }
 
 const setActiveGeneCartCategory = (category) => {
@@ -148,6 +192,7 @@ const setActiveGeneCartCategory = (category) => {
         const row = gene_list_item_template.content.cloneNode(true);
         row.querySelector('.gene-list-item-label').textContent = entry.label;
         row.querySelector('.ul-li').dataset.genes = entry.genes.join(',');
+        row.querySelector('.ul-li').dataset.shareId = entry.share_id;
         document.querySelector('#dropdown-content-gene-lists').appendChild(row);
     }
 }
