@@ -3,6 +3,7 @@ import base64
 import io
 import os
 import re
+import sys
 from math import ceil
 from pathlib import Path
 from time import sleep
@@ -145,7 +146,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     try:
         projection_adata = sc.read_csv(projection_csv_path)
     except Exception as e:
-        import sys
         print(str(e), file=sys.stderr)
         raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
@@ -297,6 +297,7 @@ class TSNEData(Resource):
                     'message': str(pe),
                 }
 
+
         dataset = geardb.get_dataset_by_id(dataset_id)
         dataset_organism_id = dataset.organism_id
 
@@ -318,6 +319,8 @@ class TSNEData(Resource):
                     return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the h5ad file."}
             else:
                 return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
+
+        gene_filter = adata.var.gene_symbol.isin(gene_symbols)
 
         # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
         if analysis is None or analysis in ["null", "undefined", dataset_id]:
@@ -405,6 +408,13 @@ class TSNEData(Resource):
         if adata.isbacked:
             adata.file.close()
 
+        # If selected name in adata.var is also an observation column append _orig to the column name
+        selected_gene = gene_symbols[0]
+        if selected_gene in selected.obs.columns:
+            selected.obs["{}_orig".format(selected_gene)] = selected.obs[selected_gene]
+            # delete the original column
+            selected.obs.drop(selected_gene, axis=1, inplace=True)
+
         df = selected.to_df()
         success = 1
         message = ""
@@ -455,7 +465,6 @@ class TSNEData(Resource):
                     plot_vcenter = median
                     expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
             except Exception as e:
-                import sys
                 print(str(e), file=sys.stderr)
 
         # If colorize_by is passed we need to generate that image first, before the index is reset

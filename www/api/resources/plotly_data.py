@@ -239,6 +239,16 @@ class PlotlyData(Resource):
             return return_dict
 
         adata = ana.get_adata(backed=True)
+
+        if projection_id:
+            try:
+                adata = create_projection_adata(adata, dataset_id, projection_id)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
+
         adata.obs = order_by_time_point(adata.obs)
 
         # Reorder the categorical values in the observation dataframe
@@ -260,15 +270,6 @@ class PlotlyData(Resource):
 
         if 'replicate' in columns:
             columns.remove('replicate')
-
-        if projection_id:
-            try:
-                adata = create_projection_adata(adata, dataset_id, projection_id)
-            except PlotError as pe:
-                return {
-                    'success': -1,
-                    'message': str(pe),
-                }
 
         dataset = geardb.get_dataset_by_id(dataset_id)
         dataset_organism_id = dataset.organism_id
@@ -332,8 +333,6 @@ class PlotlyData(Resource):
 
         df2 = pd.concat([df,selected.obs], axis=1)
         df = df2.rename(columns={df.columns[0]: "raw_value"})
-
-        print()
 
         # Valid analysis column names from api/resources/h5ad.py
         analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']

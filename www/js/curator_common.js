@@ -482,7 +482,7 @@ const analysisSelectUpdate = async () => {
 const chooseAnalysis = async (event) => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
-    const analysisText = (analysisId.length) ? analysisId : "Primary Analysis";
+    const analysisText = (analysisId?.length) ? analysisId : "Primary Analysis";
 
     // Display current selected analysis
     document.getElementById("current_analysis").textContent = analysisText;
@@ -1093,7 +1093,7 @@ const loadColorscaleSelect = (isContinuous=false) => {
 
 
     // set default to purples
-    setSelectBoxByValue("color_palette_post", "purp");
+    setSelectBoxByValue("color_palette_post", isContinuous ? "purp" : "d3");
 
     return;
 
