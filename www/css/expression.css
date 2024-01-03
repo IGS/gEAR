@@ -1,0 +1,37 @@
+div#annotation-and-grid-c h3 {
+    font-weight: normal;
+    font-size: 90%;
+}
+div#annotation-and-grid-c h3 span {
+    font-weight: bold;
+}
+div#gene-result-list-c {
+    border-right: 1px solid rgb(220, 220, 220);
+}
+div#gene-result-list-c h3 {
+    font-weight: bold;
+    font-size: 90%;
+}
+div#results-main-c {
+    border-top: 1px solid rgb(220, 220, 220);
+    margin-top: 50px;
+}
+section#annotation-panel {
+    background-color: #fbfcfd;
+}
+ul#gene-result-list {
+    list-style: none;
+}
+ul#gene-result-list li {
+    padding: 0.3em 0 0.3em 1em;
+    border-top: 1px solid rgb(220, 220, 220);
+    font-size: 90%;
+}
+ul#gene-result-list li:last-child {
+    border-bottom: 1px solid rgb(220, 220, 220);
+}
+ul#gene-result-list li.is-selected {
+    /* TODO: Make this a variable */
+    background-color: #483285;
+    color: white;
+}
