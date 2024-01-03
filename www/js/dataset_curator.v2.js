@@ -207,7 +207,12 @@ class PlotlyHandler extends PlotHandler {
         const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
 
         // Load color palette select options
-        loadColorscaleSelect(true);
+        if (["violin"].includes(this.plotType)) {
+            // TODO: Discrete scale should go to color mapping
+            loadColorscaleSelect(false);
+        } else {
+            loadColorscaleSelect(true);
+        }
 
         if (["scatter", "tsne_dyna"].includes(this.plotType)) {
             prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_scatter.html");
@@ -234,6 +239,11 @@ class PlotlyHandler extends PlotHandler {
         // Small fix for tsne/umap dynamic plots
         if (this.plotType.toLowerCase() === "tsne_dyna") {
             this.plotType = "tsne/umap_dynamic";
+        }
+
+        // Violin plots will error (from API) if color_palette is provided
+        if (this.plotType.toLowerCase() === "violin") {
+            this.plotConfig["color_palette"] = null;
         }
 
         // Filtered observation groups
