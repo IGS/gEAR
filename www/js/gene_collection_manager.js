@@ -327,12 +327,13 @@ const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
 }
 
 /**
- * Creates a tooltip for a reference element.
+ * Applies a tooltip to a reference element.
  *
- * @param {HTMLElement} referenceElement - The reference element to attach the tooltip to.
+ * @param {HTMLElement} referenceElement - The element to which the tooltip is applied.
  * @param {HTMLElement} tooltip - The tooltip element.
+ * @param {string} [position="top"] - The preferred position of the tooltip relative to the reference element.
  */
-const applyTooltip = (referenceElement, tooltip) => {
+const applyTooltip = (referenceElement, tooltip, position="top") => {
 
     const hideTooltip = (event) => {
         tooltip.classList.add("is-hidden");
@@ -341,7 +342,7 @@ const applyTooltip = (referenceElement, tooltip) => {
     const showTooltip = (event) => {
         // Compute position
         computePosition(event.currentTarget, tooltip, {
-            placement: 'top', // Change this to your preferred placement
+            placement: position, // Change this to your preferred placement
             middleware: [
                 flip(), // flip to bottom if there is not enough space on top
                 shift(), // shift the popover to the right if there is not enough space on the left
@@ -738,18 +739,25 @@ const parseBool = (boolStr) => {
  */
 const processSearchResults = (data) => {
 
+
     const resultsContainer = document.getElementById("results_container");
 
     // If there are no results, display a message
     if (data.gene_carts.length === 0) {
         const noResultsMessage = document.createElement("p");
+        noResultsMessage.id = "no_results_message";
+
         noResultsMessage.className = "has-text-centered";
         noResultsMessage.textContent = "No results found.";
         resultsContainer.appendChild(noResultsMessage);
         return;
     }
 
-    const template = document.getElementById("results_view");
+    const tableResultsBody = document.querySelector("#results_table tbody");
+    const tableTamplate = document.getElementById("results_table_view")
+
+    const resultsListDiv = document.getElementById("results_list_div");
+    const listTemplate = document.getElementById("results_list_view");
 
     // data.gene_carts is a list of JSON strings
     for (const gcString of data.gene_carts) {
@@ -768,49 +776,68 @@ const processSearchResults = (data) => {
         const organism = gc.organism;
         const isOwner = gc.is_owner;
 
+        // TABLE VIEW
+
         // Clone the template
-        const resultsView = template.content.cloneNode(true)
+        const tableResultsView = tableTamplate.content.cloneNode(true)
 
         // Set properties for multiple elements
-        setElementProperties(resultsView, ".js-gc-list-element", { id: `result_gc_id_${geneCollectionId}`, dataset: { gcId: geneCollectionId } });
-        // title section
-        setElementProperties(resultsView, ".js-display-title p", { id: `result_gc_id_${geneCollectionId}_display_title`, textContent: label });
-        setElementProperties(resultsView, ".js-editable-title input", { id: `result_gc_id_${geneCollectionId}_editable_title`, dataset: { originalVal: label }, value: label });
-        setElementProperties(resultsView, ".js-expand-box", { dataset: { gcId: geneCollectionId } });
-        // visibility/other metadata section
-        setElementProperties(resultsView, ".js-display-visibility", { id: `${geneCollectionId}_display_visibility` });
-        setElementProperties(resultsView, ".js-editable-visibility input", { id: `result_gc_id_${geneCollectionId}_editable_visibility`, checked: isPublic, dataset: { isPublic } });
-        setElementProperties(resultsView, ".js-editable-visibility label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_visibility`, textContent: isPublic ? "Public" : "Private" });
-        // organism section
-        setElementProperties(resultsView, ".js-display-organism span:last-of-type", { id: `result_gc_id_${geneCollectionId}_display_organism`, textContent: organism });
-        setElementProperties(resultsView, ".js-editable-organism select", { id: `result_gc_id_${geneCollectionId}_editable_organism_id`, dataset: { originalVal: organismId }, value: organismId });
-        setElementProperties(resultsView, ".js-editable-organism label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_organism_id` });
-        // owner section
-        setElementProperties(resultsView, ".js-display-owner span:last-of-type", { textContent: userName });
-        setElementProperties(resultsView, ".js-editable-owner input", { value: userName });
-        // date added section
-        setElementProperties(resultsView, ".js-display-date-added span:last-of-type", { textContent: dateAdded });
-        setElementProperties(resultsView, ".js-editable-date-added input", { value: dateAdded });
-        // action buttons section
-        setElementProperties(resultsView, ".js-view-gc", { value: shareId });
-        setElementProperties(resultsView, ".js-delete-gc", { value: geneCollectionId, dataset: { isOwner } });
-        setElementProperties(resultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneCollectionId, gcType: gctype } });
-        setElementProperties(resultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneCollectionId } });
-        setElementProperties(resultsView, ".js-edit-gc", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
-        setElementProperties(resultsView, ".js-edit-gc-save", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
-        setElementProperties(resultsView, ".js-edit-gc-cancel", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
-        // gene collection type section
-        setElementProperties(resultsView, ".js-display-gctype span:last-of-type", { textContent: gctype });
-        setElementProperties(resultsView, ".js-editable-gctype input", { value: gctype });
-        // long description section
-        setElementProperties(resultsView, ".js-display-ldesc", { id: `result_gc_id_${geneCollectionId}_display_ldesc_container` });
-        setElementProperties(resultsView, ".js-editable-ldesc textarea", { id: `result_gc_id_${geneCollectionId}_editable_ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
-        // preview genes stuff
-        setElementProperties(resultsView, ".js-preview-genes-button-container", { id: `${geneCollectionId}_preview_genes_container` });
-        setElementProperties(resultsView, ".js-preview-genes-container", { id: `${geneCollectionId}_gene_container` });
+        setElementProperties(tableResultsView, ".js-display-title", { id: `result_gc_id_${geneCollectionId}_display_title`, textContent: label });
+        setElementProperties(tableResultsView, ".js-display-visibility", { id: `${geneCollectionId}_display_visibility` });
+        setElementProperties(tableResultsView, ".js-display-organism", { id: `result_gc_id_${geneCollectionId}_display_organism`, textContent: organism });
+        setElementProperties(tableResultsView, ".js-display-owner", { textContent: userName });
+        setElementProperties(tableResultsView, ".js-display-date-added", { textContent: dateAdded });
+        setElementProperties(tableResultsView, ".js-display-gctype", { textContent: gctype });
+        setElementProperties(tableResultsView, ".js-display-num-genes", { textContent: geneCount });
 
         // Append the cloned template to the results container
-        resultsContainer.appendChild(resultsView);
+        tableResultsBody.appendChild(tableResultsView);
+
+        // LIST VIEW
+
+        // Clone the template
+        const listResultsView = listTemplate.content.cloneNode(true)
+
+        // Set properties for multiple elements
+        setElementProperties(listResultsView, ".js-gc-list-element", { id: `result_gc_id_${geneCollectionId}`, dataset: { gcId: geneCollectionId } });
+        // title section
+        setElementProperties(listResultsView, ".js-display-title p", { id: `result_gc_id_${geneCollectionId}_display_title`, textContent: label });
+        setElementProperties(listResultsView, ".js-editable-title input", { id: `result_gc_id_${geneCollectionId}_editable_title`, dataset: { originalVal: label }, value: label });
+        setElementProperties(listResultsView, ".js-expand-box", { dataset: { gcId: geneCollectionId } });
+        // visibility/other metadata section
+        setElementProperties(listResultsView, ".js-display-visibility", { id: `${geneCollectionId}_display_visibility` });
+        setElementProperties(listResultsView, ".js-editable-visibility input", { id: `result_gc_id_${geneCollectionId}_editable_visibility`, checked: isPublic, dataset: { isPublic } });
+        setElementProperties(listResultsView, ".js-editable-visibility label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_visibility`, textContent: isPublic ? "Public" : "Private" });
+        // organism section
+        setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `result_gc_id_${geneCollectionId}_display_organism`, textContent: organism });
+        setElementProperties(listResultsView, ".js-editable-organism select", { id: `result_gc_id_${geneCollectionId}_editable_organism_id`, dataset: { originalVal: organismId }, value: organismId });
+        setElementProperties(listResultsView, ".js-editable-organism label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_organism_id` });
+        // owner section
+        setElementProperties(listResultsView, ".js-display-owner span:last-of-type", { textContent: userName });
+        setElementProperties(listResultsView, ".js-editable-owner input", { value: userName });
+        // date added section
+        setElementProperties(listResultsView, ".js-display-date-added span:last-of-type", { textContent: dateAdded });
+        setElementProperties(listResultsView, ".js-editable-date-added input", { value: dateAdded });
+        // action buttons section
+        setElementProperties(listResultsView, ".js-view-gc", { value: shareId });
+        setElementProperties(listResultsView, ".js-delete-gc", { value: geneCollectionId, dataset: { isOwner } });
+        setElementProperties(listResultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneCollectionId, gcType: gctype } });
+        setElementProperties(listResultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneCollectionId } });
+        setElementProperties(listResultsView, ".js-edit-gc", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
+        setElementProperties(listResultsView, ".js-edit-gc-save", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
+        setElementProperties(listResultsView, ".js-edit-gc-cancel", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
+        // gene collection type section
+        setElementProperties(listResultsView, ".js-display-gctype span:last-of-type", { textContent: gctype });
+        setElementProperties(listResultsView, ".js-editable-gctype input", { value: gctype });
+        // long description section
+        setElementProperties(listResultsView, ".js-display-ldesc", { id: `result_gc_id_${geneCollectionId}_display_ldesc_container` });
+        setElementProperties(listResultsView, ".js-editable-ldesc textarea", { id: `result_gc_id_${geneCollectionId}_editable_ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
+        // preview genes stuff
+        setElementProperties(listResultsView, ".js-preview-genes-button-container", { id: `${geneCollectionId}_preview_genes_container` });
+        setElementProperties(listResultsView, ".js-preview-genes-container", { id: `${geneCollectionId}_gene_container` });
+
+        // Append the cloned template to the results container
+        resultsListDiv.appendChild(listResultsView);
 
         addVisibilityInfoToGeneCollection(geneCollectionId, isPublic);
 
@@ -856,6 +883,11 @@ const processSearchResults = (data) => {
         }
     }
 
+    // Create tooltips for gene collection view buttons
+    const viewBtns = document.getElementsByClassName("js-view-btn");
+    for (const classElt of viewBtns) {
+        applyTooltip(classElt, createActionTooltips(classElt), "bottom");
+    }
 
     // Initiialize delete gene collection popover for each delete button
     createDeleteConfirmationPopover();
@@ -1131,9 +1163,19 @@ const submitSearch = async (page) => {
     }
 
     // Clear any existing results
-    const resultsContainer = document.getElementById("results_container");
-    for (const elt of resultsContainer.querySelectorAll(":not(#results_view)")) {
+    const resultsListDiv = document.getElementById("results_list_div");
+    for (const elt of resultsListDiv.querySelectorAll(":not(#results_list_view)")) {
         elt.remove()
+    }
+
+    const resultsTableBody = document.querySelector("#results_table tbody");
+    for (const elt of resultsTableBody.querySelectorAll(":not(#results_table_view)")) {
+        elt.remove()
+    }
+
+    // remove "no results" message if it exists
+    if (document.getElementById("no_results_message")) {
+        document.getElementById("no_results_message").remove();
     }
 
     const searchTerms = document.getElementById("search_terms").value;
@@ -1519,11 +1561,31 @@ btnNewCartSave.addEventListener("click", (e) => {
 
 });
 
+document.getElementById("btn_table_view").addEventListener("click", () => {
+    for (const classElt of document.getElementsByClassName("js-view-btn")) {
+        classElt.classList.remove('is-gear-bg-secondary');
+        classElt.classList.add('is-dark');
+    }
+
+    document.getElementById("btn_table_view").classList.add('is-gear-bg-secondary');
+    document.getElementById("btn_table_view").classList.remove('is-dark');
+
+    document.getElementById("results_table").classList.remove("is-hidden");
+    document.getElementById("results_list_div").classList.add("is-hidden");
+
+})
+
 document.getElementById("btn_list_view_compact").addEventListener("click", () => {
+    for (const classElt of document.getElementsByClassName("js-view-btn")) {
+        classElt.classList.remove('is-gear-bg-secondary');
+        classElt.classList.add('is-dark');
+    }
+
     document.getElementById("btn_list_view_compact").classList.add('is-gear-bg-secondary');
     document.getElementById("btn_list_view_compact").classList.remove('is-dark');
-    document.getElementById("btn_list_view_expanded").classList.remove('is-gear-bg-secondary');
-    document.getElementById("btn_list_view_expanded").classList.add('is-dark');
+
+    document.getElementById("results_table").classList.add("is-hidden");
+    document.getElementById("results_list_div").classList.remove("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -1539,10 +1601,16 @@ document.getElementById("btn_list_view_compact").addEventListener("click", () =>
 });
 
 document.getElementById("btn_list_view_expanded").addEventListener("click", () => {
-    document.getElementById("btn_list_view_compact").classList.remove('is-gear-bg-secondary');
-    document.getElementById("btn_list_view_compact").classList.add('is-dark');
+    for (const classElt of document.getElementsByClassName("js-view-btn")) {
+        classElt.classList.remove('is-gear-bg-secondary');
+        classElt.classList.add('is-dark');
+    }
+
     document.getElementById("btn_list_view_expanded").classList.add('is-gear-bg-secondary');
     document.getElementById("btn_list_view_expanded").classList.remove('is-dark');
+
+    document.getElementById("results_table").classList.add("is-hidden");
+    document.getElementById("results_list_div").classList.remove("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){

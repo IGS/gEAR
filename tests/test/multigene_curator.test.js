@@ -19,7 +19,7 @@ let page;
 const gearUrl = `${gearBase}/multigene_curator.html`;
 
 
-describe('Dataset Curator', function () {
+describe('Multigene Curator', function () {
     this.retries(3);
 
     this.timeout(10000);    // default is 2000
@@ -45,10 +45,10 @@ describe('Dataset Curator', function () {
                     await mockGetDatasetList(page);
                     const datasetInput = page.locator("css=#dataset_query");
                     const datasetTree = page.locator("css=#dataset_tree");
-                    expect(await datasetTree).toBeVisible();
-                    expect(await datasetTree.locator("css=.wb-row")).toHaveCount(3);    // 3 categories
+                    await expect(datasetTree).toBeVisible();
+                    await expect(datasetTree.locator("css=.wb-row")).toHaveCount(4);    // 3 categories + root
                     await datasetInput.fill("Hertzano");
-                    expect(await page.getByText("(Hertzano/Ament)")).toBeVisible();
+                    await expect(page.getByText("(Hertzano/Ament)")).toBeVisible();
 
                 });
 
@@ -107,7 +107,7 @@ describe('Dataset Curator', function () {
                 });
 
                 it('should login', async () => {
-                    expect(await page.title()).toEqual("gEAR multigene viewer page");
+                    await expect(page.title()).toEqual("gEAR multigene viewer page");
                 });
 
                 it("should prevent user from deleting a display owned by another user", async () => {});
@@ -132,7 +132,7 @@ describe('Dataset Curator', function () {
                     // Check that the error message is displayed
                     const incorrectPw = page.getByText("Incorrect password");
                     await expect(incorrectPw).toBeVisible();
-                    expect(await page.title()).toEqual("gEAR multigene viewer page");
+                    expect(page.title()).toEqual("gEAR multigene viewer page");
                 });
 
                 it("should prevent user from selecting a default display", async () => {})

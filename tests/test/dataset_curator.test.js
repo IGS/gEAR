@@ -43,29 +43,108 @@ describe('Dataset Curator', function () {
                 await mockGetDatasetList(page);
                 const datasetInput = page.locator("css=#dataset_query");
                 const datasetTree = page.locator("css=#dataset_tree");
-                expect(await datasetTree).toBeVisible();
-                expect(await datasetTree.locator("css=.wb-row")).toHaveCount(3);    // 3 categories
+                await expect(datasetTree).toBeVisible();
+                await expect(datasetTree.locator("css=.wb-row")).toHaveCount(4);    // 3 categories + root
                 await datasetInput.fill("Hertzano");
-                expect(await page.getByText("(Hertzano/Ament)")).toBeVisible();
+                await expect(page.getByText("(Hertzano/Ament)")).toBeVisible();
 
             });
 
             describe("plotting", () => {
 
-                it("should plot a scatterplot", async () => {});
+                beforeEach("Selecting a dataset", async () => {
+                    await mockGetDatasetList(page);
+                    const datasetInput = page.locator("css=#dataset_query");
+                    await datasetInput.fill("Hertzano");
+                    const datasetTree = page.locator("css=#dataset_tree");
+                    await datasetTree.getByText("P2, mouse, scRNA-seq, cochlea (Hertzano/Ament)").click();
+                    await page.getByText("Curate new display").click();
+                });
 
-                it("should plot a boxplot", async () => {});
+                it("should plot a scatterplot", async () => {
+                    await page.getByText("Choose how to plot").click();
+                    const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                    await plotSelect.getByText("Scatter").click();
 
-                it("should plot a line plot", async () => {});
+                    await page.getByText("Please select a gene").click();
+                    const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                    await geneSelect.getByText("Pou4f3").click();
+                });
 
-                it("should plot a violin plot", async () => {});
+                it("should plot a bar plot", async () => {
+                    await page.getByText("Choose how to plot").click();
+                    const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                    await plotSelect.getByText("Bar").click();
 
-                it("should plot a tSNE static plot", async () => {});
+                    await page.getByText("Please select a gene").click();
+                    const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                    await geneSelect.getByText("Pou4f3").click();
+                });
 
-                it("should plot a UMAP static plot", async () => {});
+                it("should plot a line plot", async () => {
+                    await page.getByText("Choose how to plot").click();
+                    const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                    await plotSelect.getByText("Line").click();
 
-                it("should plot a SVG plot", async () => {});
+                    await page.getByText("Please select a gene").click();
+                    const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                    await geneSelect.getByText("Pou4f3").click();
+                });
 
+                it("should plot a violin plot", async () => {
+                    await page.getByText("Choose how to plot").click();
+                    const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                    await plotSelect.getByText("Violin").click();
+
+                    await page.getByText("Please select a gene").click();
+                    const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                    await geneSelect.getByText("Pou4f3").click();
+                });
+
+                it("should plot a tSNE static plot", async () => {
+                    await page.getByText("Choose how to plot").click();
+                    const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                    await plotSelect.getByText("tSNE static").click();
+
+                    await page.getByText("Please select a gene").click();
+                    const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                    await geneSelect.getByText("Pou4f3").click();
+                });
+
+                it("should plot a UMAP static plot", async () => {
+                    await page.getByText("Choose how to plot").click();
+                    const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                    await plotSelect.getByText("UMAP static").click();
+
+                    await page.getByText("Please select a gene").click();
+                    const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                    await geneSelect.getByText("Pou4f3").click();
+                });
+
+            });
+
+            // TODO: Save SVG template as artifact for "local" testing
+            it("should plot a SVG plot", async () => {
+                // Get dataset with an SVG image
+                await mockGetDatasetList(page);
+                const datasetInput = page.locator("css=#dataset_query");
+                await datasetInput.fill("Hertzano");
+                const datasetTree = page.locator("css=#dataset_tree");
+                await datasetTree.getByText("P0, mouse, RNA-seq, hair cells vs epithelial non-hair cells (Hertzano)").click();
+                await page.getByText("Curate new display").click();
+                await page.getByText("Choose how to plot").click();
+                const plotSelect = page.locator("css=#plot_type_select_c nice-select-dropdown list");
+                await plotSelect.getByText("SVG image").click();
+
+                await page.getByText("Please select a gene").click();
+                const geneSelect = page.locator("css=#gene_select_c nice-select-dropdown list");
+                await geneSelect.getByText("Pou4f3").click();
+
+                await page.locator("css=#plot_btn").click();
+
+                // Check that the SVG image is displayed
+                const svg = page.locator("css=#plot_container svg");
+                await expect(svg).toBeVisible();
             });
 
             describe("options settings", () => {
@@ -88,7 +167,7 @@ describe('Dataset Curator', function () {
                 });
 
                 it('should login', async () => {
-                    expect(await page.title()).toEqual("gEAR dataset curator page");
+                    expect(page.title()).toEqual("gEAR dataset curator page");
                 });
 
                 it("should prevent user from deleting a display owned by another user", async () => {});
@@ -114,7 +193,7 @@ describe('Dataset Curator', function () {
                     // Check that the error message is displayed
                     const incorrectPw = page.getByText("Incorrect password");
                     await expect(incorrectPw).toBeVisible();
-                    expect(await page.title()).toEqual("gEAR dataset curator page");
+                    expect(page.title()).toEqual("gEAR dataset curator page");
                 });
 
                 it("should prevent user from selecting a default display", async () => {})

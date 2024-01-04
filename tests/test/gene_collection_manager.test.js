@@ -517,15 +517,26 @@ describe('Gene Collection Manager', function () {
 
                     describe("Gene collection actions", () => {
 
+                        it("should show the table view when that button is clicked", async () => {
+                            await page.locator("css=#btn_table_view").click();
+                            await expect(page.locator("css=#results_table")).toBeVisible();
+                            await expect(page.locator("css=#results_list_div")).not.toBeVisible();
+                            await expect(page.getByText("This is the unweighted description")).not.toBeVisible();
+                            await expect(page.getByText("This is the weighted description")).not.toBeVisible();
+                        });
+
                         it("should expand/collapse all results when those buttons are clicked", async () => {
                             // Expand all
                             await page.locator("css=#btn_list_view_expanded").click();
                             await expect(page.getByText("This is the unweighted description")).toBeVisible();
                             await expect(page.getByText("This is the weighted description")).toBeVisible();
+                            await expect(page.locator("css=#results_table")).not.toBeVisible();
                             // Collapse all
                             await page.locator("css=#btn_list_view_compact").click();
                             await expect(page.getByText("This is the unweighted description")).not.toBeVisible();
                             await expect(page.getByText("This is the weighted description")).not.toBeVisible();
+                            await expect(page.locator("css=#results_table")).not.toBeVisible();
+
                         });
 
                         it("should expand/collapse individual results when those buttons are clicked", async () => {

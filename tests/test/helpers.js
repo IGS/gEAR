@@ -25,7 +25,6 @@ const isDebug = process.env.DEBUG?.toLowerCase() === "true";
 
 export const gearBase = isLocal ? "http://localhost:8080" : "https://devel.umgear.org";
 
-
 export let browser, context;
 
 /**
@@ -105,6 +104,12 @@ export const login = async (page, gearUrl) => {
     await page.waitForURL(gearUrl);
 }
 
+/**
+ * Simulates a login failure by mocking the login process and overriding session information.
+ * @param {Page} page - The page object representing the browser page.
+ * @param {string} gearUrl - The URL of the gear.
+ * @returns {Promise<void>} - A promise that resolves when the login failure process is complete.
+ */
 export const loginFailure = async (page, gearUrl) => {
     // Mock login
     await page.route(`${gearBase}/cgi/login.v2.cgi`, async route => {
@@ -133,7 +138,13 @@ export const loginFailure = async (page, gearUrl) => {
     await page.waitForURL(gearUrl);
 }
 
-export const mockGetOrganismList = async (page, organism) => {
+/**
+ * Mocks the getOrganismList function by intercepting the network request and returning a predefined JSON response.
+ * @param {Object} page - The page object.
+ * @param {string} organism - The organism name.
+ * @returns {Promise<void>} - A promise that resolves when the network request is intercepted and fulfilled.
+ */
+export const mockGetOrganismList = async (page) => {
     await page.route(`${gearBase}/cgi/get_organism_list.cgi`, async route => {
         const json = {
             "organisms": [
@@ -196,6 +207,11 @@ export const mockGetOrganismList = async (page, organism) => {
         await route.fulfill({ json });
     });
 }
+/**
+ * Mocks the behavior of the getDatasetList function.
+ * @param {Object} page - The page object.
+ * @returns {Promise<void>}
+ */
 export const mockGetDatasetList = async (page) => {
     await page.route(`${gearBase}/cgi/get_h5ad_dataset_list.cgi`, async route => {
         const json = {
@@ -205,18 +221,18 @@ export const mockGetDatasetList = async (page) => {
             "user": {
                 "datasets": [
                     {
-                        "id": "dcfb4818-5302-83b5-4cc1-e586a5f81f74",
-                        "owner_id": 662,
-                        "title": "RNAseq, Deiters' cells,pillar cells, Inner Hair Cells and Outer Hair Cells,workshop (He)",
+                        "id": "7812a487-932b-32f7-2de7-33dd3155c849",
+                        "owner_id": 3,
+                        "title": "P0, mouse, RNA-seq, cochlea, hair cells compared with rest of cochlear duct (Groves)",
                         "organism_id": 1,
-                        "pubmed_id": "30327589",
-                        "geo_id": "GSE111347",
-                        "is_public": null,
-                        "ldesc": "RNA extracted from Deiters' cells,pillar cells, Inner Hair Cells and Outer Hair Cells. three  biological replicates, each with two technical repeats for Deiter and pillar cells, two biological replicates of IHCs and three biological replicates of OHCs, each with two technical repeats. They was seuqenced by Illumina HiSeq 2500.",
-                        "date_added": "2022-05-25 15:21:30",
-                        "dtype": "bulk-rnaseq",
-                        "schematic_image": null,
-                        "share_id": "711a8330",
+                        "pubmed_id": "25855195",
+                        "geo_id": null,
+                        "is_public": 1,
+                        "ldesc": "(P0) Atoh1&lt;super&gt;A1GFP/A1GFP&lt;/super&gt; mice which express GFP in their hair cells were used. Cochlear ducts were dissociated and hair cells were separated from the rest of the cells in the cochlear duct. Gene expression was measured using RNA-seq. (Cai T, Jen HI, Kang H, Klisch TJ, Zoghbi HY and Groves AK (2015) Characterization of the transcriptome of nascent hair cells and identification of direct targets of the Atoh1 transcription factor. J Neurosci. 2015 Apr 8;35(14):5870-83)",
+                        "date_added": "2016-02-09 09:27:49",
+                        "dtype": "svg-expression",
+                        "schematic_image": "datasets_uploaded/7812a487-932b-32f7-2de7-33dd3155c849.jpg",
+                        "share_id": "2c88b23c-b0f6-4f92-b88d-791c4de63527",
                         "math_default": "raw",
                         "marked_for_removal": 0,
                         "load_status": "completed",
@@ -286,3 +302,359 @@ export const mockGetDatasetList = async (page) => {
         await route.fulfill({ json });
     });
 };
+
+/**
+ * Mocks the behavior of the get_dataset_displays.cgi API endpoint.
+ * @param {Object} page - The page object.
+ * @returns {Promise<void>} - A promise that resolves when the mocking is complete.
+ */
+export const mockGetDatasetDisplays = async (page) => {
+    await page.route(`${gearBase}/cgi/get_dataset_displays.cgi`, async route => {
+        const json = {
+                "user": [
+                    {
+                        "id": 2416,
+                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "label": "ugly test plot",
+                        "plot_type": "scatter",
+                        "plotly_config": {
+                            "x_axis": "cell_type",
+                            "y_axis": "raw_value",
+                            "hide_x_labels": false,
+                            "hide_y_labels": false,
+                            "color_name": "cell_type",
+                            "hide_legend": false,
+                            "jitter": false,
+                            "marker_size": "8",
+                            "color_palette": "purp",
+                            "reverse_palette": false,
+                            "order": {
+                                "cell_type": [
+                                    "Crabp1+_Cells",
+                                    "Dividing_Glial_Cells",
+                                    "Dividing_Mes_Cells",
+                                    "Fst+_Cells",
+                                    "Glial_Cells",
+                                    "Hair_Cells",
+                                    "Medial_Interdental_Cells",
+                                    "Mes_Cells_2/3",
+                                    "Mes_Cells_1",
+                                    "Oc90+_Cells",
+                                    "Pf4+_Cells",
+                                    "Pillar_Cells",
+                                    "Rgs5+_Cells",
+                                    "Supporting_Cells",
+                                    "Vascular_Cells"
+                                ]
+                            },
+                            "colors": {
+                                "Crabp1+_Cells": "#1f77b4",
+                                "Dividing_Glial_Cells": "#ff7f0e",
+                                "Dividing_Mes_Cells": "#2ca02c",
+                                "Fst+_Cells": "#d62728",
+                                "Glial_Cells": "#9467bd",
+                                "Hair_Cells": "#8c564b",
+                                "Medial_Interdental_Cells": "#e377c2",
+                                "Mes_Cells_2/3": "#7f7f7f",
+                                "Mes_Cells_1": "#bcbd22",
+                                "Oc90+_Cells": "#17becf",
+                                "Pf4+_Cells": "#16537e",
+                                "Pillar_Cells": "#b3590a",
+                                "Rgs5+_Cells": "#1f701f",
+                                "Supporting_Cells": "#961b1c",
+                                "Vascular_Cells": "#684884"
+                            },
+                            "vlines": [],
+                            "gene_symbol": "Six1"
+                        }
+                    },
+                    {
+                        "id": 2417,
+                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "label": "ugly multigene plot",
+                        "plot_type": "heatmap",
+                        "plotly_config": {
+                            "primary_col": "cell_type",
+                            "colorscale": "bluered",
+                            "reverse_colorscale": false,
+                            "distance_metric": "euclidean",
+                            "matrixplot": true,
+                            "center_around_zero": false,
+                            "cluster_obs": false,
+                            "cluster_genes": true,
+                            "flip_axes": false,
+                            "hide_obs_labels": false,
+                            "hide_gene_labels": false,
+                            "clusterbar_fields": [
+                                "cell_type"
+                            ],
+                            "obs_filters": {
+                                "cell_type": [
+                                    "Crabp1+_Cells",
+                                    "Dividing_Glial_Cells",
+                                    "Dividing_Mes_Cells",
+                                    "Fst+_Cells",
+                                    "Glial_Cells",
+                                    "Hair_Cells",
+                                    "Medial_Interdental_Cells",
+                                    "Mes_Cells_2/3",
+                                    "Mes_Cells_1",
+                                    "Oc90+_Cells",
+                                    "Pf4+_Cells",
+                                    "Pillar_Cells",
+                                    "Rgs5+_Cells",
+                                    "Supporting_Cells",
+                                    "Vascular_Cells"
+                                ]
+                            },
+                            "sort_order": {
+                                "cell_type": [
+                                    "Hair_Cells",
+                                    "Supporting_Cells",
+                                    "Pillar_Cells",
+                                    "Mes_Cells_1",
+                                    "Mes_Cells_2/3",
+                                    "Dividing_Mes_Cells",
+                                    "Fst+_Cells",
+                                    "Glial_Cells",
+                                    "Dividing_Glial_Cells",
+                                    "Medial_Interdental_Cells",
+                                    "Vascular_Cells",
+                                    "Crabp1+_Cells",
+                                    "Oc90+_Cells",
+                                    "Pf4+_Cells",
+                                    "Rgs5+_Cells"
+                                ]
+                            },
+                            "gene_symbols": [
+                                "Acbd7",
+                                "Cabp2",
+                                "Cd164l2",
+                                "Cib2",
+                                "Gfi1",
+                                "Gng8",
+                                "Myo6",
+                                "Myo7a",
+                                "Pcp4",
+                                "Pou3f4",
+                                "Pou4f3",
+                                "Ptprq",
+                                "Pvalb",
+                                "Shtn1",
+                                "Smpx",
+                                "Sox2",
+                                "Tmc1"
+                            ]
+                        }
+                    }
+                ],
+                "owner": [
+                    {
+                        "id": 2423,
+                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "label": "volcano test case",
+                        "plot_type": "volcano",
+                        "plotly_config": {
+                            "de_test_algo": "t-test",
+                            "annot_nonsignificant": true,
+                            "pvalue_threshold": "0.05",
+                            "adj_pvals": true,
+                            "lower_logfc_threshold": "-1",
+                            "upper_logfc_threshold": "1",
+                            "ref_condition": "cell_type;-;Supporting_Cells",
+                            "query_condition": "cell_type;-;Hair_Cells",
+                            "obs_filters": {},
+                            "gene_symbols": [
+                                "Acbd7",
+                                "Cabp2",
+                                "Cd164l2",
+                                "Cib2",
+                                "Gng8",
+                                "Myo6",
+                                "Myo7a",
+                                "Pcp4",
+                                "Pou4f3",
+                                "Ptprq",
+                                "Pvalb",
+                                "Shtn1",
+                                "Smpx",
+                                "Tmc1"
+                            ]
+                        }
+                    },
+                    {
+                        "id": 2425,
+                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "label": "static_tsne_test",
+                        "plot_type": "tsne_static",
+                        "plotly_config": {
+                            "x_axis": "X_tsne_1",
+                            "y_axis": "X_tsne_2",
+                            "flip_x": false,
+                            "flip_y": false,
+                            "colorize_legend_by": "cell_type",
+                            "max_columns": "3",
+                            "skip_gene_plot": false,
+                            "horizontal_legend": false,
+                            "marker_size": null,
+                            "order": {},
+                            "obs_filters": {},
+                            "colors": {
+                                "Crabp1+_Cells": "#1f77b4",
+                                "Dividing_Glial_Cells": "#ff7f0e",
+                                "Dividing_Mes_Cells": "#2ca02c",
+                                "Fst+_Cells": "#d62728",
+                                "Glial_Cells": "#9467bd",
+                                "Hair_Cells": "#8c564b",
+                                "Medial_Interdental_Cells": "#e377c2",
+                                "Mes_Cells_2/3": "#7f7f7f",
+                                "Mes_Cells_1": "#bcbd22",
+                                "Oc90+_Cells": "#17becf",
+                                "Pf4+_Cells": "#16537e",
+                                "Pillar_Cells": "#b3590a",
+                                "Rgs5+_Cells": "#1f701f",
+                                "Supporting_Cells": "#961b1c",
+                                "Vascular_Cells": "#684884"
+                            },
+                            "gene_symbol": "Pou4f3"
+                        }
+                    }
+                ]
+        }
+        await route.fulfill({ json });
+    });
+};
+
+/**
+ * Mocks the getDatasetGenes function.
+ * @param {Page} page - The page object.
+ * @param {string} datasetId - The dataset ID.
+ * @returns {Promise<void>}
+ */
+export const mockGetDatasetGenes = async (page, datasetId) => {
+    await page.route(`${gearBase}/api/h5ad/${datasetId}/genes`, async route => {
+        const json = {
+            "success": 1,
+            "gene_symbols": [
+                "Atoh1",
+                "Pou4f3",
+                "Sox2",
+            ]
+        }
+        await route.fulfill({ json });
+    });
+}
+
+/**
+ * Mocks the getDatasetAnalyses function.
+ * @param {Page} page - The page object.
+ * @param {string} datasetId - The dataset ID.
+ * @returns {Promise<void>}
+ */
+export const mockGetDatasetAnalyses = async (page, datasetId) => {
+    await page.route(`${gearBase}/api/h5ad/${datasetId}/analyses`, async route => {
+        const json = {
+            "success": 1,
+            "public":[],
+            "private":[]
+        }
+        await route.fulfill({ json });
+    });
+}
+
+/**
+ * Mocks the API endpoint for retrieving available display types for a dataset.
+ * @param {Page} page - The Puppeteer page object.
+ * @param {string} datasetId - The ID of the dataset.
+ * @returns {Promise<void>} - A promise that resolves when the API endpoint is mocked.
+ */
+export const mockGetDatasetAvailableDisplayTypes = async (page, datasetId) => {
+    await page.route(`${gearBase}/api/h5ad/${datasetId}/availableDisplayTypes`, async route => {
+        const json = {
+            "scatter": true,
+            "tsne_static": true,
+            "umap_static": true,
+            "pca_static": true,
+            "tsne/umap_dynamic": true,
+            "bar": true,
+            "violin": true,
+            "line": true,
+            "svg": true
+        }
+        await route.fulfill({ json });
+    });
+}
+
+export const mockGetDatasetH5adInfo = async (page, datasetId) => {
+    await page.route(`${gearBase}/api/h5ad/${datasetId}`, async route => {
+        const json = {
+            "success": 1,
+            "num_obs": 4194,
+            "obs_columns": [
+                "cell_type",
+                "barcode",
+                "tSNE_1",
+                "tSNE_2",
+                "louvain",
+                "cell_type_colors",
+                "X_tsne_1",
+                "X_tsne_2"
+            ],
+            "obs_levels": {
+                "cell_type": [
+                    "Crabp1+_Cells",
+                    "Dividing_Glial_Cells",
+                    "Dividing_Mes_Cells",
+                    "Fst+_Cells",
+                    "Glial_Cells",
+                    "Hair_Cells",
+                    "Medial_Interdental_Cells",
+                    "Mes_Cells_2/3",
+                    "Mes_Cells_1",
+                    "Oc90+_Cells",
+                    "Pf4+_Cells",
+                    "Pillar_Cells",
+                    "Rgs5+_Cells",
+                    "Supporting_Cells",
+                    "Vascular_Cells"
+                ],
+                "louvain": [
+                    "Crabp1+_Cells",
+                    "Dividing_Glial_Cells",
+                    "Dividing_Mes_Cells",
+                    "Fst+_Cells",
+                    "Glial_Cells",
+                    "Hair_Cells",
+                    "Medial_Interdental_Cells",
+                    "Mes_Cells_2/3",
+                    "Mes_Cells_1",
+                    "Oc90+_Cells",
+                    "Pf4+_Cells",
+                    "Pillar_Cells",
+                    "Rgs5+_Cells",
+                    "Supporting_Cells",
+                    "Vascular_Cells"
+                ],
+                "cell_type_colors": [
+                    "#00B0F6",
+                    "#00BA38",
+                    "#00BCD8",
+                    "#00BF7D",
+                    "#00C0AF",
+                    "#6BB100",
+                    "#619CFF",
+                    "#A3A500",
+                    "#B983FF",
+                    "#C99800",
+                    "#E76BF3",
+                    "#E58700",
+                    "#F8766D",
+                    "#FD61D1",
+                    "#FF67A4"
+                ]
+            },
+            "has_replicates": 1
+        }
+        await route.fulfill({ json });
+    });
+}

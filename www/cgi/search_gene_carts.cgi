@@ -175,8 +175,8 @@ def main():
     # compile pagination information
     result["pagination"] = {}
     result["pagination"]['total_results'] = cursor.fetchone()[0]
-    result["pagination"]['current_page'] = page if page else 1
-    result["pagination"]['limit'] = limit if limit else DEFAULT_MAX_RESULTS
+    result["pagination"]['current_page'] = int(page) if page else 1
+    result["pagination"]['limit'] = int(limit) if limit else DEFAULT_MAX_RESULTS
     result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
     result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
     result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
