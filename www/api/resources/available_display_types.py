@@ -29,7 +29,6 @@ class MGAvailableDisplayTypes(Resource):
 
     def post(self, dataset_id):
         req = request.get_json()
-        user_id = req.get('user_id')
         dataset_id = req.get('dataset_id')
         session_id = req.get('session_id')
         analysis_id = req.get('analysis_id')
@@ -139,6 +138,7 @@ class AvailableDisplayTypes(Resource):
         (base_path, _) = h5_path.split('/datasets/')
         svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
         # santize svg_path to prevent path traversal
+        base_path = os.path.normpath(base_path)
         full_svg_path = os.path.normpath(svg_path)
         if full_svg_path.startswith(base_path) and os.path.exists(full_svg_path):
           svg_exists = True

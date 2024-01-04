@@ -555,13 +555,12 @@ class SvgHandler extends PlotHandler {
     /**
      * Creates a plot for a given dataset and gene symbol.
      * @param {string} datasetId - The ID of the dataset.
-     * @param {string} geneSymbol - The gene symbol.
      * @returns {void}
      */
-    async createPlot(datasetId, geneSymbol) {
+    async createPlot(datasetId) {
         let data;
         try {
-            data = await fetchSvgData(datasetId, geneSymbol)
+            data = await fetchSvgData(datasetId, this.plotConfig)
         } catch (error) {
             return;
         }
@@ -779,7 +778,7 @@ const curatorSpecifcCreatePlot = async (plotType) => {
         await plotStyle.createPlot(datasetId, analysisObj);
 
     } else if (plotType === "svg") {
-        await plotStyle.createPlot(datasetId, geneSymbol);
+        await plotStyle.createPlot(datasetId);
     } else {
         console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
         return;
@@ -897,12 +896,13 @@ const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
 /**
  * Fetches SVG data for a given dataset and gene symbol.
  * @param {string} datasetId - The ID of the dataset.
- * @param {string} geneSymbol - The gene symbol.
+ * @param {object} plotConfig - The configuration options for the plot.
  * @returns {Promise<Object>} - The fetched SVG data.
  * @throws {Error} - If there is an error fetching the SVG data.
  */
-const fetchSvgData = async (datasetId, geneSymbol) => {
+const fetchSvgData = async (datasetId, plotConfig) => {
     try {
+        const {gene_symbol: geneSymbol} = plotConfig;
         const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")

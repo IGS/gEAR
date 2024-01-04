@@ -96,7 +96,7 @@ class SvgData(Resource):
     """
     def get(self, dataset_id):
         gene_symbol = request.args.get('gene', None)
-        gene_organism_id = request.get('gene_organism_id', None)
+        gene_organism_id = request.args.get('gene_organism_id', None)
         projection_id = request.args.get('projection_id', None)    # projection id of csv output
 
         if not gene_symbol or not dataset_id:
