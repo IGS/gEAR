@@ -12,6 +12,10 @@ div#annotation-and-grid-c h3 {
 div#annotation-and-grid-c h3 span {
     font-weight: bold;
 }
+div#functional-annotation-c h3 {
+    font-weight: bold;
+    font-size: 90%;
+}
 div#gene-result-list-c {
     border-right: 1px solid #e9eef1;
 }
@@ -23,7 +27,8 @@ div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
     margin-top: 50px;
 }
-section#annotation-panel {
+section#annotation-panel,
+section#result-panel {
     background-color: #fbfcfd;
     border: 1px solid #e9eef1;
 }
