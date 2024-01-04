@@ -48,4 +48,4 @@ jobs:
       run: npm test # alias to "mocha test"
       env:
         BROWSER: ${{ matrix.browser }}
-        LOCAL: "true"
+        #LOCAL: "true"  # if false, run on devel.umgear.org
