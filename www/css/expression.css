@@ -12,6 +12,11 @@ div#annotation-and-grid-c h3 {
 div#annotation-and-grid-c h3 span {
     font-weight: bold;
 }
+div.card-content {
+    background-color: white;
+    color: black;
+    height: 20em;
+}
 div#functional-annotation-c h3 {
     font-weight: bold;
     font-size: 90%;
@@ -33,6 +38,10 @@ section#result-panel {
     border: 1px solid #e9eef1;
 }
 section#annotation-panel h4 {
+    font-weight: bold;
+    font-size: 90%;
+}
+span.option-label {
     font-weight: bold;
     font-size: 90%;
 }
