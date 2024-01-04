@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>gEAR - Expression display</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+          -->
+        <base href="/" />
+
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+        
+        <!--Page-specific CSS here -->
+            <script>document.write('<link rel="stylesheet" href="css/expression.' + (new Date()).getTime() + '.css" />');</script>
+    </head>
+    <body>
+      <div id="main_layout_c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main_c" class="column pl-0">
+          
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content_c" class="m-3">
+            <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
+            <div id="search-bar-c" class="mt-4 ml-3 mb-4">
+              <div class="field has-addons is-grouped mb-0">
+                <div class="control has-icons-left has-icons-right mr-0">
+                  <input class="input" type="input" placeholder="Type here to search using specific gene symbols">
+                  <span class="icon is-small is-left">
+                    <i class="mdi mdi-magnify"></i>
+                  </span>
+                </div>
+                <!-- div with the text 'OR' centered vertically. this is awkward -->
+                <div class="columns">
+                  <div class="column is-1">
+                    <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                  </div>
+                </div>
+
+                <div id="dropdown-gene-lists" class="control dropdown is-right is-loading is-disabled mr-0">
+                  <div class="dropdown-trigger is-clickable">
+                    <button class="button" aria-haspopup="true" aria-controls="dropdown-menu6">
+                      <span>Quick search using Gene Lists</span>
+                      <span class="icon is-small">
+                        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+                      </span>
+                    </button>
+                  </div>
+                  <div class="dropdown-menu" id="dropdown-menu6" role="menu">
+                    <div class="dropdown-content is-full-width">
+                      <div class="dropdown-item">
+                        <div class="field">
+                          <p class="control has-icons-left">
+                            <input class="input" type="input" placeholder="Search and select a Gene List or a Gene">
+                            <span class="icon is-small is-left">
+                              <i class="mdi mdi-magnify"></i>
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <hr class="dropdown-divider">
+                      <div class="dropdown-item">
+                        <div class="columns is-mobile">
+                          <div class="column is-one-third is-scrollable">
+                            <h3>Saved Items</h3>
+                            <div id="dropdown-content-gene-list-category" class="ul-replacement">
+                              <div class="ul-li is-clickable" data-category="favorites">
+                                Favorites
+                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                              </div>
+                              <div class="ul-li is-clickable" data-category="recent">
+                                Recent
+                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                              </div> 
+                              <div class="ul-li is-clickable" data-category="saved">
+                                Saved gene lists
+                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                              </div> 
+                              <div class="ul-li is-clickable" data-category="shared">
+                                Shared gene lists
+                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                              </div> 
+                            </div>
+                          </div>
+                          <div class="column is-one-third is-scrollable">
+                            <h3>Gene Lists</h3>
+                            <div id="dropdown-content-gene-lists" class="ul-replacement"></div>
+                          </div>
+                          <div class="column is-one-third is-scrollable">
+                            <h3>Genes</h3>
+                            <div id="dropdown-content-genes" class="ul-replacement"></div>
+                          </div>
+                          <template id="tmpl-gene-list-item">
+                            <div class="ul-li dropdown-gene-list-item is-clickable" data-share-id="" data-genes="">
+                              <span class="icon is-pulled-left">
+                                <i class="mdi mdi-18px mdi-plus mr-2 dropdown-gene-list-item-add toggler is-clickable"></i>
+                              </span>
+                              <span class="gene-list-item-label"></span>
+                              <span class="icon is-pulled-right">
+                                <i class="mdi mdi-18px mdi-chevron-right dropdown-gene-list-item-right-selector"></i>
+                              </span>
+                            </div>
+                          </template>
+                          <template id="tmpl-gene-item">
+                            <div class="ul-li dropdown-gene-item">
+                              <span class="icon is-pulled-left">
+                                <i class="mdi mdi-18px toggler mdi-plus is-clickable mr-2"></i>
+                              </span>
+                              <span class="gene-item-label"></span>
+                            </div>
+                          </template>
+                        </div> 
+                      </div>
+                      <div class="dropdown-item">
+                        <div class="columns">
+                          <div class="column is-10">
+                            <div id="gene-select-dropdown-dynamic-selections"></div>
+                          </div>
+                          <div class="column is-2">
+                            <button class="button is-primary is-rounded">Proceed</button>
+                          </div>
+                        </div>  
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="columns">
+                  <div class="column is-1">
+                    <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                  </div>
+                </div>
+                <div class="control select">
+                  <select>
+                    <option>Hearing</option>
+                    <option>Here is a much longer profile name to test</option>
+                  </select>
+                </div>
+                <div class="control">
+                  <button class="button">
+                    <span class="icon is-small">
+                      <i class="mdi mdi-magnify"></i>
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div class="field is-grouped">
+                <div class="control">
+                  <label class="checkbox">
+                    <input type="checkbox">
+                    Exact match
+                  </label>
+                </div>  
+                <div class="control">
+                  <label class="radio">
+                    <input type="radio" name="answer">
+                    Single-gene Display
+                  </label>
+                  <label class="radio">
+                    <input type="radio" name="answer">
+                    Multi-gene Display
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div id="results-main-c" class="columns">
+              <div id="gene-result-list-c" class="column is-narrow is-fullheight p-0">
+                <h3 class="mt-3 ml-3 mr-6">Search results (<span id="gene-result-count">3</span>)</h3>
+                <ul id="gene-result-list" class="mt-3">
+                  <li class="is-clickable is-selected">Sox2</li>
+                  <li class="is-clickable">Pou4f3</li>
+                  <li class="is-clickable">Rfx7</li>
+                </ul>
+              </div>
+              <div id="annotation-and-grid-c" class="column">
+                <h3>Showing results for: <span id="currently-selected-gene">Sox2</span></h3>
+                <section id="annotation-panel">
+                  <div class="columns">
+                    <div class="column is-one-third">
+                      <h4>Organism</h4>
+                      <div class="control">
+                        <div class="select is-small">
+                          <select class="pr-6">
+                            <option>Select an organism</option>
+                            <option>Human</option>
+                            <option>Mouse</option>
+                            <option>Zebrafish</option>
+                            <option>Chicken</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column is-one-third">
+
+                    </div>
+                    <div class="column is-one-third">
+
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </section><!-- end #content_c -->
+
+        </section> <!-- end #main_c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="js/vendor/js.cookie.js"></script>
+      <script src="js/vendor/jsrender.20181003.min.js"></script>
+
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+      <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/expression.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    </body>
+</html>

@@ -32,7 +32,7 @@ def main():
     identifiers_org_id = form.getvalue('id')
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
-    main_page = 'index.html'
+    main_page = 'expression.html'
 
     if page == 'a':
         main_page = 'analyze_dataset.html'
