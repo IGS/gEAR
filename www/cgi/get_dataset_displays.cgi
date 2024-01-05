@@ -19,8 +19,9 @@ def main():
 
     displays = {"user":[], "owner":[]}
 
-    displays["user"] = geardb.get_displays_by_user_id(user_id=user.id,
-        dataset_id=dataset_id)
+    if user:
+        displays["user"] = geardb.get_displays_by_user_id(user_id=user.id,
+            dataset_id=dataset_id)
 
     # Delete user_id from the displays
     for display in displays["user"]:
@@ -34,7 +35,7 @@ def main():
     (dataset_owner,) = cursor.fetchone()
 
     # If the user is not the owner of the dataset, then retrieve those displays
-    if not user.id == dataset_owner:
+    if not (user and user.id == dataset_owner):
         displays["owner"] = geardb.get_displays_by_user_id(user_id=dataset_owner,
             dataset_id=dataset_id)
 
