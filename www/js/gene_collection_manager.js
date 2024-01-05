@@ -173,22 +173,26 @@ const addGeneCollectionEventListeners = () => {
                 document.querySelector(`${selectorBase}_editable_visibility`).dataset.isPublic = newVisibility;
                 if (newVisibility) {
                     document.querySelector(`${selectorBase}_display_visibility`).textContent = "Public gene collection";
+                    document.querySelector(`${selectorBase}_table_visibility`).textContent = "Public";
                     document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-danger");
                     document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-light");
                 } else {
                     document.querySelector(`${selectorBase}_display_visibility`).textContent = "Private gene collection";
+                    document.querySelector(`${selectorBase}_table_visibility`).textContent = "Private";
                     document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-light");
                     document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-danger");
                 }
 
                 document.querySelector(`${selectorBase}_editable_title`).dataset.originalVal = newTitle;
                 document.querySelector(`${selectorBase}_display_title`).textContent = newTitle;
+                document.querySelector(`${selectorBase}_table_title`).textContent = newTitle;
 
                 document.querySelector(`${selectorBase}_editable_ldesc`).dataset.originalVal = newLdesc;
                 document.querySelector(`${selectorBase}_display_ldesc`).textContent = newLdesc || "No description entered";;
 
                 document.querySelector(`${selectorBase}_display_organism`).textContent =
                     document.querySelector(`${selectorBase}_editable_organism_id > option[value='${newOrgId}']`).textContent;
+                document.querySeleector(`${selectorBase}_table_organism`).textContent = document.querySelector(`${selectorBase}_display_organism`).textContent;
                 document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal = newOrgId;
 
                 // Put interface back to view mode.
@@ -305,13 +309,18 @@ const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
     const geneCollectionDisplaySpan = document.createElement("span");
     geneCollectionDisplaySpan.classList.add("tag");
     geneCollectionDisplaySpan.id = `result_gc_id_${geneCollectionId}_display_visibility`;
+    const geneCollectionTableVisibility = document.getElementById(`result_gc_id_${geneCollectionId}_table_visibility`);
 
     if (isPublic) {
         geneCollectionDisplaySpan.classList.add("is-primary", "is-light");
         geneCollectionDisplaySpan.textContent = "Public gene collection";
+        geneCollectionTableVisibility.classList.add("has-background-primary-light");
+        geneCollectionTableVisibility.textContent = "Public";
     } else {
         geneCollectionDisplaySpan.classList.add("is-danger");
         geneCollectionDisplaySpan.textContent = "Private gene collection";
+        geneCollectionTableVisibility.classList.add("has-background-danger");
+        geneCollectionTableVisibility.textContent = "Private";
     }
     geneCollectionDisplayContainer.appendChild(geneCollectionDisplaySpan);
 
@@ -764,11 +773,27 @@ const processSearchResults = (data) => {
         const gc = JSON.parse(gcString);
         const geneCollectionId = gc.id;
         const gctype = gc.gctype;
+        let gctypeLabel;
+        switch (gc.gctype) {
+            case "unweighted-list":
+                gctypeLabel = "Unweighted";
+                break;
+            case "weighted-list":
+                gctypeLabel = "Weighted";
+                break;
+            case "labeled-list":
+                gctypeLabel = "Labeled";
+                break;
+            default:
+                throw Error(`Invalid gene collection type: ${gc.gctype}`);
+        }
         const label = gc.label;
         const longDesc = gc.ldesc || "";
         const shareId = gc.share_id;
         const isPublic = Boolean(gc.is_public);
         const dateAdded = new Date(gc.date_added).toDateString();
+        // as YYYY/MM/DD
+        const shortDateAdded = new Date(gc.date_added).toISOString().slice(0, 10);
 
         const organismId = gc.organism_id;
         const geneCount = gc.gene_count;
@@ -782,12 +807,12 @@ const processSearchResults = (data) => {
         const tableResultsView = tableTamplate.content.cloneNode(true)
 
         // Set properties for multiple elements
-        setElementProperties(tableResultsView, ".js-display-title", { id: `result_gc_id_${geneCollectionId}_display_title`, textContent: label });
-        setElementProperties(tableResultsView, ".js-display-visibility", { id: `${geneCollectionId}_display_visibility` });
-        setElementProperties(tableResultsView, ".js-display-organism", { id: `result_gc_id_${geneCollectionId}_display_organism`, textContent: organism });
+        setElementProperties(tableResultsView, ".js-display-title", { id: `result_gc_id_${geneCollectionId}_table_title`, textContent: label });
+        setElementProperties(tableResultsView, ".js-display-visibility", { id: `result_gc_id_${geneCollectionId}_table_visibility` });
+        setElementProperties(tableResultsView, ".js-display-organism", { id: `result_gc_id_${geneCollectionId}_table_organism`, textContent: organism });
         setElementProperties(tableResultsView, ".js-display-owner", { textContent: userName });
-        setElementProperties(tableResultsView, ".js-display-date-added", { textContent: dateAdded });
-        setElementProperties(tableResultsView, ".js-display-gctype", { textContent: gctype });
+        setElementProperties(tableResultsView, ".js-display-date-added", { textContent: shortDateAdded });
+        setElementProperties(tableResultsView, ".js-display-gctype", { textContent: gctypeLabel });
         setElementProperties(tableResultsView, ".js-display-num-genes", { textContent: geneCount });
 
         // Append the cloned template to the results container
@@ -827,8 +852,8 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-edit-gc-save", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
         setElementProperties(listResultsView, ".js-edit-gc-cancel", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
         // gene collection type section
-        setElementProperties(listResultsView, ".js-display-gctype span:last-of-type", { textContent: gctype });
-        setElementProperties(listResultsView, ".js-editable-gctype input", { value: gctype });
+        setElementProperties(listResultsView, ".js-display-gctype span:last-of-type", { textContent: gctypeLabel });
+        setElementProperties(listResultsView, ".js-editable-gctype input", { value: gctypeLabel });
         // long description section
         setElementProperties(listResultsView, ".js-display-ldesc", { id: `result_gc_id_${geneCollectionId}_display_ldesc_container` });
         setElementProperties(listResultsView, ".js-editable-ldesc textarea", { id: `result_gc_id_${geneCollectionId}_editable_ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
@@ -838,6 +863,8 @@ const processSearchResults = (data) => {
 
         // Append the cloned template to the results container
         resultsListDiv.appendChild(listResultsView);
+
+        // EXTRA STUFF TO BOTH VIEWS
 
         addVisibilityInfoToGeneCollection(geneCollectionId, isPublic);
 
