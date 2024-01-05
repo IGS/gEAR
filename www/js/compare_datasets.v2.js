@@ -483,7 +483,7 @@ const getComparisons = async (event) => {
 
 	} catch (error) {
 		console.error(error);
-		handleGetComparisonError(datasetId, xSeries, ySeries);
+		handleGetComparisonError(datasetId, checkedX, checkedY);
 	} finally {
 		event.target.classList.remove("is-loading");
 	}
@@ -743,7 +743,9 @@ const plotDataToGraph = (data) => {
 
 	// NOTE: Plot initially is created to a default width but is responsive.
 	// Noticed container within our "column" will make full-width go beyond the screen
-	const plotlyPreview = document.getElementById("plotly_preview");
+
+	const plotlyPreview = document.createElement("div");
+	plotlyPreview.id = "plotly_preview";
 	plotlyPreview.classList.add("container", "is-max-desktop");
 	plotContainer.append(plotlyPreview);
 
