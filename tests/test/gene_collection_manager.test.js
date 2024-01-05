@@ -430,7 +430,8 @@ describe('Gene Collection Manager', function () {
                         await expect(page.locator("css=#gc_count_label")).toContainText("result");  // 1 result
 
                         // Check that the new gene collection is in the results
-                        await expect(page.getByText("new test")).toBeVisible();
+                        const resultsTable = page.locator("css=#results_table");
+                        await expect(resultsTable.getByText("new test")).toBeVisible();
                     });
 
                 });
@@ -540,6 +541,9 @@ describe('Gene Collection Manager', function () {
                         });
 
                         it("should expand/collapse individual results when those buttons are clicked", async () => {
+                            // switch to list view
+                            await page.locator("css=#btn_list_view_compact").click();
+
                             // Expand
                             await page.locator("css=#result_gc_id_334 .js-expand-box").click();
                             await expect(page.getByText("This is the unweighted description")).toBeVisible();
@@ -553,12 +557,16 @@ describe('Gene Collection Manager', function () {
                         it("edit and delete buttons should not appear if not logged in", async () => {
                             await mockSearchGeneCollectionsNotLoggedIn(page);
                             // Check that the form is hidden
-                            await expect(page.getByText("Unweighted test")).toBeVisible();
+                            const resultsTable = page.locator("css=#results_table");
+                            await expect(resultsTable.getByText("Unweighted test")).toBeVisible();
                             await expect(page.locator("css=#result_gc_id_334 .js-edit-gc")).not.toBeVisible();
                             await expect(page.locator("css=#result_gc_id_334 .js-delete-gc")).not.toBeVisible();
                         });
 
                         it("should show unweighted genes in table when preview genes button is clicked", async () => {
+                            // switch to list view
+                            await page.locator("css=#btn_list_view_compact").click();
+
                             await mockUnweightedGeneCollectionPreview(page);
 
                             const previewBtn = page.locator("css=#result_gc_id_334 .js-preview-genes-button-container");
@@ -577,6 +585,9 @@ describe('Gene Collection Manager', function () {
                         })
 
                         it("should show weighted gene infomation when preview genes button is clicked", async () => {
+                            // switch to list view
+                            await page.locator("css=#btn_list_view_compact").click();
+
                             await mockWeightedGeneCollectionPreview(page);
 
                             const previewBtn = page.locator("css=#result_gc_id_332 .js-preview-genes-button-container");
@@ -596,11 +607,15 @@ describe('Gene Collection Manager', function () {
                         describe("login required", () => {
                             beforeEach("logging in", async () => {
                                 await login(page, gearUrl);
+
+                                // switch to list view
+                                await page.locator("css=#btn_list_view_compact").click();
                             });
 
                             it("edit and delete buttons should not appear for datasets user does not own", async () => {
                                 // Check that the form is hidden
-                                await expect(page.getByText("Unweighted test")).toBeVisible();
+                                const resultsList = page.locator("css=#results_list_div");
+                                await expect(resultsList.getByText("Unweighted test")).toBeVisible();
                                 await expect(page.locator("css=#result_gc_id_202 .js-edit-gc")).not.toBeVisible();
                                 await expect(page.locator("css=#result_gc_id_202 .js-delete-gc")).not.toBeVisible();
                             });
@@ -618,7 +633,8 @@ describe('Gene Collection Manager', function () {
                                 // Check that the search results were updated
                                 await expect(page.locator("css=#gc_count_label")).toContainText("results");
                                 // Check that the updated gene collection is in the results
-                                await expect(page.getByText("updated test")).toBeVisible();
+                                const resultsList = page.locator("css=#results_list_div");
+                                await expect(resultsList.getByText("updated test")).toBeVisible();
                             });
 
                             it("should hide edit form when cancel button is clicked", async () => {
@@ -648,7 +664,8 @@ describe('Gene Collection Manager', function () {
                                 await page.locator("css=#cancel_gc_delete").click();
                                 await expect(page.getByText("Remove collection")).not.toBeVisible();
                                 // Ensure the gene collection is still there
-                                await expect(page.getByText("Unweighted test")).toBeVisible();
+                                const resultsList = page.locator("css=#results_list_div");
+                                await expect(resultsList.getByText("Unweighted test")).toBeVisible();
                             });
 
                             // TODO: How to test copied to clipboard?
