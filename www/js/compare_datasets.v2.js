@@ -372,11 +372,8 @@ const fetchAggregations = async (datasetId, analysisId, filters) => {
 const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction) => {
 	try {
 		return await apiCallsMixin.fetchDatasetComparison(datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction);
-		return data;
 	} catch (error) {
-		logErrorInConsole(error);
 		const msg = "Could not fetch dataset comparison. Please contact the gEAR team."
-		createToast(msg);
 		throw new Error(msg);
 	}
 }
@@ -657,10 +654,11 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: passing.labels,
 					marker: {
-						color: [].fill(passColor, 0, passing.x.length),
 						size: 4,
 					},
 				}
+
+			passingObj.marker.color = new Array(passingObj.x.length).fill(passColor, 0, passingObj.x.length);
 			const failingObj = {
 					id: failing.id,
 					pvals: failing.pvals,
@@ -672,10 +670,10 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: failing.labels,
 					marker: {
-						color: [].fill(failColor, 0, failing.x.length),
 						size: 4,
 					},
 				}
+			failingObj.marker.color = new Array(failingObj.x.length).fill(failColor, 0, failingObj.x.length);
 			plotData.push(passingObj);
 			plotData.push(failingObj);
 		} else {

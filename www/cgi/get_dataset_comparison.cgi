@@ -85,8 +85,13 @@ def main():
 
     # add the composite column for ranked grouping
     if perform_ranking == True:
-        sc.pp.filter_cells(adata, min_genes=10)
-        sc.pp.filter_genes(adata, min_cells=1)
+        try:
+            # TODO: Had the tool crash here and apache restart resolved it.  Need to investigate.
+            sc.pp.filter_cells(adata, min_genes=10)
+            sc.pp.filter_genes(adata, min_cells=1)
+        except Exception as e:
+            msg = "scanpy.pp.filter_cells or scanpy.pp.filter_genes failed.\n{}".format(str(e))
+            return_error_response(msg)
 
         try:
             sc.tl.rank_genes_groups(adata, "compare", groups=["x"], reference="y", n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
