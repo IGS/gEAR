@@ -135,11 +135,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (SIDEBAR_COLLAPSED == false) {
             hideNavbarElementsWithAnimation();
             SIDEBAR_COLLAPSED = true;
+            Cookies.set('gear_sidebar_collapsed', true, { expires: 7 });
         } else {
             showNavbarElementsWithAnimation();
             SIDEBAR_COLLAPSED = false;
+            Cookies.set('gear_sidebar_collapsed', false, { expires: 7 });
         }
     });
+
+    // now, if the page was initially loaded check and see if this has already been toggled via a cookie
+    const sidebar_cookie = Cookies.get('gear_sidebar_collapsed');
+    if (sidebar_cookie == "true") {
+        hideNavbarElementsWithAnimation();
+        SIDEBAR_COLLAPSED = true;
+    } else {
+        showNavbarElementsWithAnimation();
+        SIDEBAR_COLLAPSED = false;
+    }
 
 /**
  * / End controls for the left navbar visibility
