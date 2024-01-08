@@ -101,19 +101,6 @@ const setActiveGeneCart = (cart_row, mode) => {
         const gene_row = gene_item_template.content.cloneNode(true);
         gene_row.querySelector('.gene-item-label').textContent = gene;
         document.querySelector('#dropdown-content-genes').appendChild(gene_row);
-
-        /*
-        gene_row_div = gene_row.querySelector('.gene-item-label').closest('div');
-
-        if (mode === 'view') {
-            gene_row_div.classList.remove('is-selected');
-        } else {
-            gene_row_div.classList.add('is-selected');
-
-            gene_row_div.querySelector('i').classList.remove('mdi-plus');
-            gene_row_div.querySelector('i').classList.add('mdi-minus');
-        }
-        */
     }
     
     // if adding or removing, update the inventory
@@ -170,6 +157,11 @@ const setActiveGeneCart = (cart_row, mode) => {
             gene_div.querySelector('i.toggler').classList.add('mdi-plus');
         }
     }
+
+    // Add an event listener to when a user types in the genes-manually-entered input box
+
+
+
 }
 
 const setActiveGeneCartCategory = (category) => {
