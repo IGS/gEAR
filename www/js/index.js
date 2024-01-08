@@ -1,6 +1,6 @@
 let gene_cart_data = null;
 
-// For carts, key is share_id, value is array of genes
+// For carts, key is share_id, value is array of genes individually selected
 let selected_carts = {};
 let selected_genes = [];
 
@@ -24,10 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Add even listeners to the gene list selectors even if they don't exist yet
+    // Add event listeners to the gene list selectors even if they don't exist yet
     document.addEventListener('click', (event) => {
         // gene-list-item-label & dropdown-gene-list-item-right-selector both should only show the genes
-        // dropdown-gene-list-item-add should add the entire cart
+        // dropdown-gene-list-item-add should add the entire cartsmpl
 
         if (event.target.classList.contains('gene-list-item-label') || 
             event.target.classList.contains('dropdown-gene-list-item-right-selector')) {
@@ -37,6 +37,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (event.target.classList.contains('dropdown-gene-list-item-add')) {
             const row_div = event.target.closest('div');
             setActiveGeneCart(row_div, 'add');
+        }
+    });
+
+    // Add event listeners to the gene selectors even if they don't exist yet
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('gene-list-item-add') || 
+            event.target.classList.contains('gene-list-item-remove')) {
+            
+            const row_div = event.target.closest('div');
+            const gene_symbol = row_div.querySelector('.gene-item-label').textContent;
+            console.log("Gene symbol is: " + gene_symbol);
+            console.log("Selected genes is:");
+            console.log(selected_genes);
+
+            if (selected_genes.includes(gene_symbol)) {
+                console.log("Removing gene from list");
+                selected_genes = selected_genes.filter((gene) => gene !== gene_symbol);
+            } else {
+                console.log("Adding gene to list");
+                selected_genes.push(gene_symbol);
+            }
+
+            console.log("Selected genes is now:"); 
+            console.log(selected_genes);
+
+            row_div.classList.toggle('is-selected');
+            row_div.querySelector('i.toggler').classList.toggle('mdi-plus');
+            row_div.querySelector('i.toggler').classList.toggle('mdi-minus');
         }
     });
 });
@@ -106,10 +134,8 @@ const setActiveGeneCart = (cart_row, mode) => {
     // if adding or removing, update the inventory
     if (mode === 'add') {
         selected_carts[cart_row.dataset.shareId] = genes;
-        console.log(selected_carts);
     } else if (mode === 'remove') {
         delete selected_carts[cart_row.dataset.shareId];
-        console.log(selected_carts);
     }
 
     // now handle the coloring, icons and selection box based on the mode
