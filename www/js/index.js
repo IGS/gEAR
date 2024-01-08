@@ -157,14 +157,12 @@ const setActiveGeneCart = (cart_row, mode) => {
             gene_div.querySelector('i.toggler').classList.add('mdi-plus');
         }
     }
-
-    // Add an event listener to when a user types in the genes-manually-entered input box
-
-
-
 }
 
 const setActiveGeneCartCategory = (category) => {
+    // clear the gene list
+    document.querySelector('#dropdown-content-genes').innerHTML = '';
+
     const gene_list_item_template = document.querySelector('#tmpl-gene-list-item');
     let data = null;
     
@@ -189,6 +187,17 @@ const setActiveGeneCartCategory = (category) => {
         row.querySelector('.gene-list-item-label').textContent = entry.label;
         row.querySelector('.ul-li').dataset.genes = entry.genes.join(',');
         row.querySelector('.ul-li').dataset.shareId = entry.share_id;
+
+        if (entry.share_id in selected_carts) {
+            row.querySelector('i.toggler').classList.remove('mdi-plus');
+            row.querySelector('i.toggler').classList.add('mdi-minus');
+            row.querySelector('.ul-li').classList.add('is-selected');
+        } else {
+            row.querySelector('i.toggler').classList.remove('mdi-minus');
+            row.querySelector('i.toggler').classList.add('mdi-plus');
+            row.querySelector('.ul-li').classList.remove('is-selected');
+        }
+
         document.querySelector('#dropdown-content-gene-lists').appendChild(row);
     }
 }

@@ -61,22 +61,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // hide the citation element
-        document.querySelector("#citation_c").classList.add("is-hidden")
+        document.querySelector("#citation_c").classList.add("is-hidden");
 
         // Show the smaller logo
-        document.querySelector("#navbar-logo-normal").classList.add("is-hidden")
-        document.querySelector("#navbar-logo-small").classList.remove("is-hidden")
+        document.querySelector("#navbar-logo-normal").classList.add("is-hidden");
+        document.querySelector("#navbar-logo-small").classList.remove("is-hidden");
 
         // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-left")
-        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-right")
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-left");
+        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-right");
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
             element.classList.add('is-hidden');
         });
 
-        // activate the tooltips since the menu labels are hidden
+        // activate the tools since the menu labels are hidden
         document.querySelectorAll('span.icon-image-part').forEach(function (element) {
             element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
         });
@@ -103,15 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // show the citation element
-        document.querySelector("#citation_c").classList.remove("is-hidden")
+        document.querySelector("#citation_c").classList.remove("is-hidden");
 
         // Show the larger logo
-        document.querySelector("#navbar-logo-small").classList.add("is-hidden")
-        document.querySelector("#navbar-logo-normal").classList.remove("is-hidden")
+        document.querySelector("#navbar-logo-small").classList.add("is-hidden");
+        document.querySelector("#navbar-logo-normal").classList.remove("is-hidden");
 
         // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-right")
-        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-left")
+        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-right");
+        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-left");
 
         // Hiding the span.icon-text-part causes the menu to narrow
         document.querySelectorAll('span.icon-text-part').forEach(function (element) {
