@@ -1,4 +1,5 @@
 let gene_cart_data = null;
+let gene_cart_label_index = {};
 
 // For carts, key is share_id, value is array of genes symbol strings
 let selected_carts = {};
@@ -67,10 +68,16 @@ document.addEventListener('DOMContentLoaded', () => {
 const fetchGeneCartData = async () => {
     try {
         gene_cart_data = await apiCallsMixin.fetchGeneCarts('unweighted-list');
-        console.log(gene_cart_data);
-
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-disabled');
+
+        // Build the gene cart label index for ease of use
+        for (const cart_type in gene_cart_data) {
+            for (const cart of gene_cart_data[cart_type]) {                
+                gene_cart_label_index[cart.share_id] = cart.label;
+            }
+        }
+        
     } catch (error) {
         console.error(error);
     }
@@ -167,6 +174,9 @@ const setActiveGeneCart = (cart_row, mode) => {
             gene_div.querySelector('i.toggler').classList.add('mdi-plus');
         }
     }
+
+    // update the panel of selected items
+    updateGeneListSelectionPanel();
 }
 
 const setActiveGeneCartCategory = (category) => {
@@ -209,6 +219,17 @@ const setActiveGeneCartCategory = (category) => {
         }
 
         document.querySelector('#dropdown-content-gene-lists').appendChild(row);
+    }
+}
+
+const updateGeneListSelectionPanel = () => {
+    selection_box = document.querySelector('#gene-select-dropdown-dynamic-selections');
+
+    // first empty it out, then populate it
+    selection_box.innerHTML = '';
+
+    for (const cart_share_id in selected_carts) {
+        selection_box.innerHTML += `<span class="tag is-info is-light is-small m-1">${gene_cart_label_index[cart_share_id]}</span>`;
     }
 }
 
