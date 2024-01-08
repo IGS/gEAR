@@ -798,6 +798,7 @@ const curatorSpecifcDatasetTreeCallback = () => {
     // Not providing the object in the argument could duplicate the nice-select2 structure if called multiple times
     geneSelect = createGeneSelectInstance("gene_select", geneSelect);
     geneSelectPost = createGeneSelectInstance("gene_select_post", geneSelectPost);
+    document.getElementById("current_gene").textContent = "";
 
 }
 
