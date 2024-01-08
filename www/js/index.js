@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (event.target.classList.contains('dropdown-gene-list-item-add')) {
             const row_div = event.target.closest('div');
             setActiveGeneCart(row_div, 'add');
+        } else if (event.target.classList.contains('dropdown-gene-list-item-remove')) {
+            const row_div = event.target.closest('div');
+            setActiveGeneCart(row_div, 'remove');
         }
     });
 
@@ -135,12 +138,16 @@ const setActiveGeneCart = (cart_row, mode) => {
     // now handle the coloring, icons and selection box based on the mode
     if (mode === 'add') {
         cart_row.querySelector('i.toggler').classList.remove('mdi-plus');
-        cart_row.querySelector('i.toggler').classList.add('mdi-minus');
+        cart_row.querySelector('i.toggler').classList.add('mdi-minus')
+        cart_row.querySelector('i.toggler').classList.remove('dropdown-gene-list-item-add');
+        cart_row.querySelector('i.toggler').classList.add('dropdown-gene-list-item-remove');
         cart_row.classList.add('is-selected');
 
     } else if (mode === 'remove') {
         cart_row.querySelector('i.toggler').classList.remove('mdi-minus');
         cart_row.querySelector('i.toggler').classList.add('mdi-plus');
+        cart_row.querySelector('i.toggler').classList.add('dropdown-gene-list-item-add');
+        cart_row.querySelector('i.toggler').classList.remove('dropdown-gene-list-item-remove');
         cart_row.classList.remove('is-selected');
         
     } else if (mode === 'view') {
