@@ -654,11 +654,13 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: passing.labels,
 					marker: {
+						color: new Array(passing.x.length).fill(passColor, 0, passing.x.length),
 						size: 4,
 					},
 				}
+			// store original marker color as a deep copy
+			passingObj.marker.origColor = JSON.parse(JSON.stringify(passingObj.marker.color));
 
-			passingObj.marker.color = new Array(passingObj.x.length).fill(passColor, 0, passingObj.x.length);
 			const failingObj = {
 					id: failing.id,
 					pvals: failing.pvals,
@@ -670,10 +672,13 @@ const plotDataToGraph = (data) => {
 					type: "scatter",
 					text: failing.labels,
 					marker: {
+						color: new Array(failing.x.length).fill(failColor, 0, failing.x.length),
 						size: 4,
 					},
 				}
-			failingObj.marker.color = new Array(failingObj.x.length).fill(failColor, 0, failingObj.x.length);
+			// store original marker color as a deep copy
+			failingObj.marker.origColor = JSON.parse(JSON.stringify(failingObj.marker.color));
+
 			plotData.push(passingObj);
 			plotData.push(failingObj);
 		} else {
@@ -688,10 +693,13 @@ const plotDataToGraph = (data) => {
 				type: "scatter",
 				text: passing.labels,
 				marker: {
-					color: [].fill("#000000" , 0, passing.x.length),
+					color: new Array(passing.x.length).fill("#000000" , 0, passing.x.length),
 					size: 4,
 				},
 			}
+			// store original marker color as a deep copy
+			passingObj.marker.origColor = JSON.parse(JSON.stringify(passingObj.marker.color));
+
 			plotData.push(passingObj);
 		}
 
@@ -710,10 +718,13 @@ const plotDataToGraph = (data) => {
 			type: "scatter",
 			text: pointLabels,
 			marker: {
-				color: [].fill("#000000", 0, data.x.length),
+				color: new Array(data.x.length).fill("#000000", 0, data.x.length),
 				size: 4,
 			},
 		}
+		// store original marker color as a deep copy
+		dataObj.marker.origColor = JSON.parse(JSON.stringify(dataObj.marker.color));
+
 		plotData.push(dataObj);
 	}
 
@@ -1126,6 +1137,11 @@ const updatePlotAnnotations = (genes) => {
 	const annotationColor = CURRENT_USER.colorblind_mode ? "orange" : "cyan";
 
 	layout.annotations = [];
+
+	// Reset all trace colors
+	for (const trace of plotData) {
+		trace.marker.color = trace.marker.origColor;
+	}
 
 	genes.forEach((gene) => {
 		let found = false;
