@@ -20,6 +20,7 @@ class PlotlyHandler extends PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
+        this.apiPlotType = plotType;
     }
 
     classElt2Prop = {
@@ -131,7 +132,7 @@ class PlotlyHandler extends PlotHandler {
         // Get data and set up the image area
         let plotJson;
         try {
-            const data = await fetchPlotlyData(datasetId, analysisObj, this.plotType, this.plotConfig);
+            const data = await fetchPlotlyData(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
             ({plot_json: plotJson} = data);
         } catch (error) {
             return;
@@ -238,7 +239,7 @@ class PlotlyHandler extends PlotHandler {
 
         // Small fix for tsne/umap dynamic plots
         if (this.plotType.toLowerCase() === "tsne_dyna") {
-            this.plotType = "tsne/umap_dynamic";
+            this.apiPlotType = "tsne/umap_dynamic";
         }
 
         // Violin plots will error (from API) if color_palette is provided
@@ -304,6 +305,7 @@ class ScanpyHandler extends PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
+        this.apiPlotType = plotType;
     }
 
     classElt2Prop = {
@@ -417,7 +419,7 @@ class ScanpyHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         let image;
         try {
-            const data = await fetchTsneImage(datasetId, analysisObj, this.plotType, this.plotConfig);
+            const data = await fetchTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
             ({image} = data);
         } catch (error) {
             return;
