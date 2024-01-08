@@ -133,3 +133,10 @@ p.menu-label {
     right: 10px;
     z-index:999;
 }
+
+/* By default clicking the nice-select2 dropdown search closes it again.  This
+    feels unintuitage.  This CSS fixes that. */
+
+.nice-select .nice-select-search-box {
+    pointer-events: unset;
+}

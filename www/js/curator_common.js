@@ -340,7 +340,7 @@ const curatorApiCallsMixin = {
             }
 
             // Make new display card and make it the default display
-            renderUserDisplayCard({id: display_id, label, plot_type, plotly_config: plotConfig}, display_id);
+            renderUserDisplayCard({id: display_id, label, plot_type: plotType, plotly_config: plotConfig}, display_id);
 
             return display_id;
         } catch (error) {
@@ -833,7 +833,7 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
     // If object exists, just update it with the revised data and return
     if (plotTypeSelect) {
         plotTypeSelect.update();
-        return geneSelect;
+        return plotTypeSelect;
     }
 
     // Initialize fixed plot types
