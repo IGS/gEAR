@@ -1,6 +1,6 @@
 let gene_cart_data = null;
 
-// For carts, key is share_id, value is array of genes individually selected
+// For carts, key is share_id, value is array of genes symbol strings
 let selected_carts = {};
 let selected_genes = [];
 
@@ -47,20 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const row_div = event.target.closest('div');
             const gene_symbol = row_div.querySelector('.gene-item-label').textContent;
-            console.log("Gene symbol is: " + gene_symbol);
-            console.log("Selected genes is:");
-            console.log(selected_genes);
 
             if (selected_genes.includes(gene_symbol)) {
-                console.log("Removing gene from list");
                 selected_genes = selected_genes.filter((gene) => gene !== gene_symbol);
             } else {
-                console.log("Adding gene to list");
                 selected_genes.push(gene_symbol);
             }
-
-            console.log("Selected genes is now:"); 
-            console.log(selected_genes);
 
             row_div.classList.toggle('is-selected');
             row_div.querySelector('i.toggler').classList.toggle('mdi-plus');
@@ -134,8 +126,10 @@ const setActiveGeneCart = (cart_row, mode) => {
     // if adding or removing, update the inventory
     if (mode === 'add') {
         selected_carts[cart_row.dataset.shareId] = genes;
+        selected_genes = [...new Set([...selected_genes, ...genes])];
     } else if (mode === 'remove') {
         delete selected_carts[cart_row.dataset.shareId];
+        selected_genes = selected_genes.filter((gene) => !genes.includes(gene));
     }
 
     // now handle the coloring, icons and selection box based on the mode
@@ -152,28 +146,11 @@ const setActiveGeneCart = (cart_row, mode) => {
     } else if (mode === 'view') {
         // do nothing
     }
-
-    // process the gene list panel now
-    const gene_list = document.querySelector('#dropdown-content-genes');
-
-    // build a list of selected genes. this is detailed since multiple selected carts can have the same gene
-    let currently_selected_genes = [];
-    
-    for (const cart of Object.values(selected_carts)) {
-        for (const gene of cart) {
-            if (!currently_selected_genes.includes(gene)) {
-                currently_selected_genes.push(gene);
-            }
-        }
-    }
-
-    // merge the currently selected genes with the genes in the gene list to create unique list
-    currently_selected_genes = [...new Set([...currently_selected_genes, ...selected_genes])];
     
     for (const gene_div of document.querySelectorAll('.dropdown-gene-item')) {
         let gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
 
-        if (currently_selected_genes.includes(gene_symbol)) {
+        if (selected_genes.includes(gene_symbol)) {
             gene_div.classList.add('is-selected');
             gene_div.querySelector('i.toggler').classList.remove('mdi-plus');
             gene_div.querySelector('i.toggler').classList.add('mdi-minus');            
