@@ -13,6 +13,7 @@ class GenesAsAxisHandler extends PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
+        this.apiPlotType = plotType;
     }
 
     classElt2Prop = {
@@ -92,7 +93,7 @@ class GenesAsAxisHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(datasetId, analysisObj,  this.plotType, this.plotConfig);
+            const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
@@ -308,6 +309,7 @@ class GenesAsDataHandler extends PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
+        this.apiPlotType = plotType;
     }
 
     compareSeparator = ";-;";
@@ -391,7 +393,7 @@ class GenesAsDataHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(datasetId, analysisObj,  this.plotType, this.plotConfig);
+            const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
