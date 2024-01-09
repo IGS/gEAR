@@ -82,10 +82,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // clear the genes-manually-entered input element
         document.querySelector('#genes-manually-entered').value = '';
         document.querySelector('#dropdown-gene-list-search-input').value = '';
+        document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
         // and finally the related gene lists and genes
         selected_carts = {};
         selected_genes = [];
+    });
+
+    document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
+        const selected_cart_count = Object.keys(selected_carts).length;
+
+        if (selected_cart_count === 1) {
+            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[selected_carts[0]];
+        } else if (selected_cart_count > 1) {
+            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
+        } else {
+            // Nothing to do
+        }
+
+        // close the dropdown
+        document.querySelector('#dropdown-gene-lists').classList.remove('is-active');
     });
 
     // Minor key strokes after user types more than 2 characters in the dropdown-gene-list-search-input box
