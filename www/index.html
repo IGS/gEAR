@@ -171,12 +171,12 @@
                                 </span>
                               </button>
                             </div>
-                            <div class="dropdown-menu" id="dropdown-menu6" role="menu">
+                            <div class="dropdown-menu" role="menu">
                               <div class="dropdown-content is-full-width">
                                 <div class="dropdown-item">
                                   <div class="field">
                                     <p class="control has-icons-left">
-                                      <input class="input" type="input" placeholder="Search and select a Gene List or a Gene">
+                                      <input class="input" type="input" id="dropdown-gene-list-search-input" placeholder="Search and select a Gene List">
                                       <span class="icon is-small is-left">
                                         <i class="mdi mdi-magnify"></i>
                                       </span>
@@ -242,7 +242,8 @@
                                       <div id="gene-select-dropdown-dynamic-selections"></div>
                                     </div>
                                     <div class="column is-2">
-                                      <button class="button is-primary is-rounded">Proceed</button>
+                                      <button class="button is-primary is-rounded is-small mb-1">Proceed</button><br />
+                                      <button id="dropdown-gene-list-cancel" class="button is-secondary is-rounded is-small">Reset</button>
                                     </div>
                                   </div>  
                                 </div>
@@ -273,7 +274,7 @@
                           <div class="control">
                             <label class="checkbox">
                               <input type="checkbox">
-                              Exact match
+                              Exact
                             </label>
                           </div>  
                           <div class="control">
