@@ -73,8 +73,10 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Sanitize input to prevent path traversal
     projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
 
-    if projection_adata_path.is_file():
-        return sc.read_h5ad(projection_adata_path)  # , backed="r")
+    # SAdkins - Run into issues where the h5ad present had different observation columns than the dataset adata, leading to KeyError
+    #  when using certain columns. For now, we will always createa new backed h5ad file.
+    #if projection_adata_path.is_file():
+    #    return sc.read_h5ad(projection_adata_path)#, backed="r")
 
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
