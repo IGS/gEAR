@@ -48,6 +48,10 @@ html, body {
 /* -------------------- */
 /* -= Left navbar section =- */
 
+#primary_nav {
+    height: max-content;
+}
+
 #citation_c {
     max-width: 200px;
 }
