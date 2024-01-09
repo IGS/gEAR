@@ -63,6 +63,26 @@ document.addEventListener('DOMContentLoaded', () => {
             row_div.querySelector('i.toggler').classList.toggle('mdi-minus');
         }
     });
+
+    // Add a click listener to the dropdown-gene-list-cancel button
+    document.querySelector('#dropdown-gene-list-cancel').addEventListener('click', (event) => {
+        // clear gene lists and gene list areas
+        document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
+        document.querySelector('#dropdown-content-genes').innerHTML = '';
+
+        // reset the label container
+        document.querySelector('#gene-select-dropdown-dynamic-selections').innerHTML = '';
+
+        const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li'); 
+        categorySelectors.forEach((element) => {
+            element.classList.remove('is-selected');
+            element.classList.add('is-clickable');
+        });
+
+        // and finally the related gene lists and genes
+        selected_carts = {};
+        selected_genes = [];
+    });
 });
 
 const fetchGeneCartData = async () => {
