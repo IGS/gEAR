@@ -154,7 +154,10 @@ const addGeneCollectionEventListeners = () => {
         classElt.addEventListener("click", async (e) => {
             const gcId = e.currentTarget.dataset.gcId;
             const selectorBase = `#result_gc_id_${gcId}`;
-            const newVisibility = document.querySelector(`${selectorBase}_editable_visibility`).value;
+            //
+            const newVisibility = document.querySelector(`${selectorBase}_editable_visibility`).checked;
+            // convert "true/false" visibility to 1/0
+            const intNewVisibility = newVisibility ? 1 : 0;
             const newTitle = document.querySelector(`${selectorBase}_editable_title`).value;
             const newOrgId = document.querySelector(`${selectorBase}_editable_organism_id`).value;
             const newLdesc = document.querySelector(`${selectorBase}_editable_ldesc`).value;
@@ -163,49 +166,56 @@ const addGeneCollectionEventListeners = () => {
                 const {data} = await axios.post('./cgi/save_genecart_changes.cgi', convertToFormData({
                     'session_id': CURRENT_USER.session_id,
                     'gc_id': gcId,
-                    'visibility': newVisibility,
+                    'visibility': intNewVisibility,
                     'title': newTitle,
                     'organism_id': newOrgId,
                     'ldesc': newLdesc || ""
                 }));
-
-                // Update the UI for the new values
-                document.querySelector(`${selectorBase}_editable_visibility`).dataset.isPublic = newVisibility;
-                if (newVisibility) {
-                    document.querySelector(`${selectorBase}_display_visibility`).textContent = "Public gene collection";
-                    document.querySelector(`${selectorBase}_table_visibility`).textContent = "Public";
-                    document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-danger");
-                    document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-light");
-                } else {
-                    document.querySelector(`${selectorBase}_display_visibility`).textContent = "Private gene collection";
-                    document.querySelector(`${selectorBase}_table_visibility`).textContent = "Private";
-                    document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-light");
-                    document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-danger");
-                }
-
-                document.querySelector(`${selectorBase}_editable_title`).dataset.originalVal = newTitle;
-                document.querySelector(`${selectorBase}_display_title`).textContent = newTitle;
-                document.querySelector(`${selectorBase}_table_title`).textContent = newTitle;
-
-                document.querySelector(`${selectorBase}_editable_ldesc`).dataset.originalVal = newLdesc;
-                document.querySelector(`${selectorBase}_display_ldesc`).textContent = newLdesc || "No description entered";;
-
-                document.querySelector(`${selectorBase}_display_organism`).textContent =
-                    document.querySelector(`${selectorBase}_editable_organism_id > option[value='${newOrgId}']`).textContent;
-                document.querySeleector(`${selectorBase}_table_organism`).textContent = document.querySelector(`${selectorBase}_display_organism`).textContent;
-                document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal = newOrgId;
-
-                // Put interface back to view mode.
-                toggleEditableMode(true, selectorBase);
 
                 createToast("Gene collection changes saved", "is-success");
 
             } catch (error) {
                 logErrorInConsole(error);
                 createToast("Failed to save gene collection changes");
+                return;
             } finally {
                 document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
             }
+
+            // Update the UI for the new values
+            document.querySelector(`${selectorBase}_editable_visibility`).dataset.isPublic = newVisibility;
+            if (newVisibility) {
+                document.querySelector(`${selectorBase}_display_visibility`).textContent = "Public gene collection";
+                document.querySelector(`${selectorBase}_table_visibility`).textContent = "Public";
+                document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-danger");
+                document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-light", "is-primary");
+                document.querySelector(`${selectorBase}_table_visibility`).classList.remove("has-background-danger");
+                document.querySelector(`${selectorBase}_table_visibility`).classList.add("has-background-primary-light");
+
+            } else {
+                document.querySelector(`${selectorBase}_display_visibility`).textContent = "Private gene collection";
+                document.querySelector(`${selectorBase}_table_visibility`).textContent = "Private";
+                document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-light", "is-primary");
+                document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-danger");
+                document.querySelector(`${selectorBase}_table_visibility`).classList.remove("has-background-primary-light");
+                document.querySelector(`${selectorBase}_table_visibility`).classList.add("has-background-danger");
+            }
+
+            document.querySelector(`${selectorBase}_editable_title`).dataset.originalVal = newTitle;
+            document.querySelector(`${selectorBase}_display_title`).textContent = newTitle;
+            document.querySelector(`${selectorBase}_table_title`).textContent = newTitle;
+
+            document.querySelector(`${selectorBase}_editable_ldesc`).dataset.originalVal = newLdesc;
+            document.querySelector(`${selectorBase}_display_ldesc`).textContent = newLdesc || "No description entered";;
+
+            document.querySelector(`${selectorBase}_display_organism`).textContent =
+                document.querySelector(`${selectorBase}_editable_organism_id > option[value='${newOrgId}']`).textContent;
+            document.querySelector(`${selectorBase}_table_organism`).textContent = document.querySelector(`${selectorBase}_display_organism`).textContent;
+            document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal = newOrgId;
+
+            // Put interface back to view mode.
+            toggleEditableMode(true, selectorBase);
+
         });
     }
 

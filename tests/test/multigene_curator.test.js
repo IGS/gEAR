@@ -1,7 +1,7 @@
 #!/usr/bin/env mocha
 
 /*
-    Unit tests for dataset_curator.js
+    Unit tests for multigene_curator.js
 */
 
 // Some setup help by https://publishing-project.rivendellweb.net/testing-front-end-with-mocha-and-playwright-2/
