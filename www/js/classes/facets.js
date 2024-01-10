@@ -119,7 +119,7 @@ class FacetWidget {
     createFilterContent(filter) {
         const filterContent = document.createElement('div');
         filterContent.id = `filter-content-${filter.name}`;
-        filterContent.className = 'filter-content is-hidden has-background-white';
+        filterContent.className = 'filter-content is-hidden has-background-white mb-3';
         const filterItems = this.createFilterItems(filter);
         filterContent.appendChild(filterItems);
         return filterContent;
