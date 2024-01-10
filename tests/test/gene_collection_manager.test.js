@@ -129,6 +129,16 @@ const mockSaveNewGeneCollection = async (page) => {
     })
 }
 
+const mockSaveGeneCollectionChanges = async (page) => {
+    await page.route(`${gearBase}/cgi/save_genecart_changes.cgi`, async route => {
+        const json = {
+            "gene_cart": "{\"id\": 334, \"user_id\": 1, \"gctype\": \"unweighted-list\", \"label\": \"updated test\", \"organism_id\": 1, \"ldesc\": \"This is the unweighted description\", \"share_id\": \"06c1cdd3\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2023-11-01 17:10:36\", \"genes\": [\"0610040J01Rik\", \"Zkscan1\", \"1500011K16Rik\", \"1700025G04Rik\", \"Zfp60\", \"1810037I17Rik\", \"2010111I01Rik\", \"2300009A05Rik\", \"Zfp24\", \"Zdhhc2\", \"4931406P16Rik\", \"Ypel2\", \"5031439G07Rik\", \"Wwp1\", \"Wsb2\", \"Wls\", \"Wasf1\", \"Vwc2\", \"Vwa1\", \"Aatk\", \"Vps36\", \"Vps37b\", \"Abca8a\", \"Vldlr\", \"Abhd4\", \"Vcl\", \"Utrn\", \"Acsbg1\", \"Usp1\", \"Adam10\", \"Adam17\", \"Adam23\", \"Adamts17\", \"Adamts5\", \"Ung\", \"Unc119\", \"Adgrg6\", \"Ucp2\", \"Ado\", \"Ado\", \"Uchl1\", \"Adra2c\", \"Afap1l2\", \"Ubl3\", \"Ube2e2\", \"Ube2c\", \"Ahr\", \"Ak3\", \"Ak6\", \"Tyms\", \"Akr1b8\", \"Twf1\", \"Alcam\", \"Alad\", \"Tubg1\", \"Ttyh1\", \"Ttyh2\", \"Tst\", \"Tspo\", \"Angpt2\", \"Ank3\", \"Tspan18\", \"Tspan13\", \"Tspan15\", \"Tspan17\", \"Tsc22d4\", \"Anxa2\", \"Trim2\", \"Trim13\", \"Arfip1\", \"Trappc2\", \"Arhgap19\", \"Arhgap24\", \"Arhgap32\", \"Arhgap39\", \"Arhgef10\", \"Arhgef28\", \"Tpst1\", \"Tppp3\", \"Tpp1\", \"Arid5b\", \"Tpd52\", \"Tox\", \"Arl8a\", \"Arnt2\", \"Top2a\", \"Arrdc3\", \"Art3\", \"Arvcf\", \"Arvcf\", \"Arxes2\", \"Tns3\", \"Asb8\", \"Aspa\", \"Asrgl1\", \"Atad2\", \"Asxl3\", \"Tnik\", \"Atad2\", \"Tnfrsf21\", \"Atg3\", \"Tnfaip6\", \"Tmpo\", \"Atp1b1\", \"Tmod2\", \"Tmem9b\", \"Tmem63b\", \"Atp8a1\", \"Aurkb\", \"Tmem245\", \"B4galt6\", \"Bach1\", \"Bambi\", \"Tmem117\", \"Tm7sf3\", \"Bcas1\", \"Tk1\", \"Tjp1\", \"Bcl7a\", \"Thtpa\", \"Bicd1\", \"Bin3\", \"Birc5\", \"Tgfbr3\", \"Borcs5\", \"Bpnt1\", \"Tex30\", \"Tdrkh\", \"Tead1\", \"Bzw2\", \"Tcp11l1\", \"Tcf19\", \"Tbx2\", \"Cab39l\", \"Cadm1\", \"Cadm4\", \"Camk2d\", \"Tbc1d10a\", \"Tax1bp3\", \"Capg\", \"Tanc2\", \"Capn5\", \"Taldo1\", \"Tagln2\", \"Taf13\", \"Tacc1\", \"Syt11\", \"Syngr1\", \"Cbx6\", \"Svip\", \"Ccdc13\", \"Ccdc28b\", \"Stx7\", \"Strbp\", \"Ccna2\", \"Ccnd1\", \"Ccnb2\", \"Stmn2\", \"Ccser2\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 159, \"organism\": \"Mus musculus\", \"is_owner\": false}",
+            "success": 1
+        };
+        await route.fulfill({ json });
+    });
+}
+
 /**
  * Mocks the delete gene collection functionality.
  * @param {Page} page - The page object.
@@ -281,7 +291,6 @@ const mockDownloadUnweightedGeneCollectionMembers = async (page) => {
 
 describe('Gene Collection Manager', function () {
     this.retries(3);
-
     this.timeout(10000);    // default is 2000
 
     let browserIndex = 0;
@@ -498,7 +507,7 @@ describe('Gene Collection Manager', function () {
 
                         // Selecting should deselect "All"
                         await groupAffiliatedOption.click();
-                        // ! This class seems to not be detected
+                        // TODO: detecting the class seems to be flaky when all tests are run
                         await expect(groupAffiliatedOption).toHaveClass(/js-selected/);
                         await expect(yourCollectionsOption).toHaveClass(/js-selected/);
                         await expect(allFacet).not.toHaveClass(/js-selected/);
@@ -628,6 +637,9 @@ describe('Gene Collection Manager', function () {
                             it("should update gene collection when save button is clicked", async () => {
                                 await page.locator("css=#result_gc_id_334 .js-edit-gc").click();
                                 await page.locator("css=#result_gc_id_334_editable_title").fill("updated test");
+
+                                await mockSaveGeneCollectionChanges(page);
+
                                 await page.locator("css=#result_gc_id_334 .js-edit-gc-save").click();
                                 await expect(page.locator("css=#result_gc_id_334_editable_title")).not.toBeVisible();
                                 // Check that the search results were updated
