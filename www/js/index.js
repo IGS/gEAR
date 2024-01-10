@@ -7,6 +7,7 @@ let selected_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchGeneCartData();
+    fetchDatasetCollections();
 
     // Add event listeners to the gene list category selectors
     const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
@@ -145,7 +146,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+const fetchDatasetCollections = async () => {
+    console.log("Fetching dataset collections");
+    try {
+        const data = await apiCallsMixin.fetchDatasetCollections();
+        console.log(data);
+        return;
+
+        const template = document.querySelector('#tmpl-dataset-collection');
+        const container = document.querySelector('#dataset-collection-container');
+
+        for (const collection of data) {
+            const row = template.content.cloneNode(true);
+            row.querySelector('.dataset-collection-label').textContent = collection.label;
+            row.querySelector('.dataset-collection-description').textContent = collection.description;
+            row.querySelector('.dataset-collection-link').setAttribute('href', collection.url);
+
+            container.appendChild(row);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 const fetchGeneCartData = async () => {
+    console.log("Fetching gene cart data");
     try {
         gene_cart_data = await apiCallsMixin.fetchGeneCarts('unweighted-list');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
