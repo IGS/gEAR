@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             element.classList.add('is-hidden');
         });
 
-        // activate the tools since the menu labels are hidden
+        // activate the tooltips since the menu labels are hidden
         document.querySelectorAll('span.icon-image-part').forEach(function (element) {
             element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
         });
@@ -638,6 +638,23 @@ const apiCallsMixin = {
         };
 		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
 		return data;
+    },
+    async fetchDatasetCollections() {
+        const payload = {session_id: this.sessionId};
+        const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches the display image for a dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} displayId - The ID of the display.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchDatasetDisplayImage(datasetId, displayId) {
+        // POST due to payload variables being sensitive
+        const payload = {dataset_id: datasetId, display_id: displayId};
+        const {data} = await axios.post("/cgi/get_dataset_display_image.cgi", convertToFormData(payload));
+        return data;
     },
     /**
      * Fetches datasets asynchronously.
