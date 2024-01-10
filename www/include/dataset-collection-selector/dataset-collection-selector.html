@@ -1,0 +1,80 @@
+<!--
+    This creates the following top-level variables:
+
+    - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call
+
+    Requirements for importing this component:
+
+    - 
+
+-->
+
+<link rel="stylesheet" href="include/dataset-collection-selector/dataset-collection-selector.css" />
+<script src="include/dataset-collection-selector/dataset-collection-selector.js"></script>
+
+<div id="dropdown-dc" class="control dropdown is-right is-loading is-disabled mr-0">
+    <div class="dropdown-trigger is-clickable">
+      <button class="button">
+        <span id="dropdown-dc-selector-label">Choose a Dataset Collection</span>
+        <span class="icon is-small">
+          <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+        </span>
+      </button>
+    </div>
+    <div class="dropdown-menu" role="menu">
+      <div class="dropdown-content">
+        <div class="dropdown-item">
+          <div class="field">
+            <p class="control has-icons-left">
+              <input class="input" type="input" id="dropdown-dc-search-input" placeholder="Search and select a Dataset Collection">
+              <span class="icon is-small is-left">
+                <i class="mdi mdi-magnify"></i>
+              </span>
+            </p>
+          </div>
+        </div>
+        <hr class="dropdown-divider">
+        <div class="dropdown-item">
+          <div class="columns is-mobile">
+            <div class="column is-one-half is-scrollable">
+              <h3>Category</h3>
+              <div id="dropdown-content-dc-category" class="ul-replacement">
+                <div class="ul-li is-clickable" data-category="favorites">
+                  Site-curated
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="recent">
+                  Yours
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="saved">
+                  Recently viewed
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="saved">
+                  Group shared
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="shared">
+                  Other shared
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+              </div>
+            </div>
+            <div class="column is-one-half is-scrollable">
+              <h3>Dataset Collection</h3>
+              <div id="dropdown-content-dc" class="ul-replacement"></div>
+            </div>
+            <template id="tmpl-dc">
+              <div class="ul-li dropdown-dc-item">
+                <span class="icon is-pulled-left">
+                  <i class="mdi mdi-18px toggler mdi-plus is-clickable mr-2 dc-item-add"></i>
+                </span>
+                <span class="gene-item-label"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
