@@ -927,7 +927,8 @@ const loadGeneCarts = async () => {
                 cartsFound = true;
 
                 for (const item of geneCartData[`${ctype}_carts`]) {
-                    carts[ctype].push({value: item.id, text: item.label });
+					const fullLabel = `${item.label} (${item.num_genes} genes)`; // Add number of genes to label
+                    carts[ctype].push({value: item.id, text: fullLabel });
                 };
             }
         }

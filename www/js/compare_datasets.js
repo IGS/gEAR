@@ -579,7 +579,8 @@ const loadGeneCarts = async () => {
                 cartsFound = true;
 
                 for (const item of geneCartData[`${ctype}_carts`]) {
-                    carts[ctype].push({value: item.id, text: item.label });
+					const fullLabel = `${item.label} (${item.num_genes} genes)`; // Add number of genes to label
+                    carts[ctype].push({value: item.id, text: fullLabel });
                 };
             }
         }
@@ -1071,6 +1072,8 @@ const updateGeneOptions = (geneSymbols) => {
     const geneSelectElt = document.getElementById("gene_select");
     geneSelectElt.replaceChildren();
 
+	geneSelectElt.parentElement.classList.add("is-loading");
+
     // Append empty placeholder element
     const firstOption = document.createElement("option");
     firstOption.textContent = "Please select a gene";
@@ -1086,6 +1089,8 @@ const updateGeneOptions = (geneSymbols) => {
     // Update the nice-select2 element to reflect this.
     // This function is always called in the 1st view, so only update that
     geneSelect.update();
+
+	geneSelectElt.parentElement.classList.remove("is-loading");
 
 }
 
