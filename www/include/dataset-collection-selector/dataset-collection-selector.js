@@ -53,46 +53,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add a click listener to the dropdown-gene-list-cancel button
+    // Add a click listener to the dancel button
     document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
+        document.querySelector('#dropdown-dc-search-input').value = '';
+        document.querySelector('#dropdown-content-dc').innerHTML = '';
         document.querySelector('#dropdown-dc').classList.remove('is-active');
     });
 
-    // Monitor key strokes after user types more than 2 characters in the dropdown-gene-list-search-input box
-    document.querySelector('#dropdown-gene-list-search-input').addEventListener('keyup', (event) => {
+    // Monitor key strokes after user types more than 2 characters in the search box
+    document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
          
         if (search_term.length <= 2) {return}
 
-        const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li'); 
+        const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li'); 
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
         });
 
-        document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
-        document.querySelector('#dropdown-content-genes').innerHTML = '';
-        const gene_list_item_template = document.querySelector('#tmpl-gene-list-item');
-        
-        for (const cart_type in gene_cart_data) {
-            for (const cart of gene_cart_data[cart_type]) {
-                if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {                    
-                    const row = gene_list_item_template.content.cloneNode(true);
-                    row.querySelector('.gene-list-item-label').textContent = cart.label;
-                    row.querySelector('.ul-li').dataset.genes = cart.genes.join(',');
-                    row.querySelector('.ul-li').dataset.shareId = cart.share_id;
+        document.querySelector('#dropdown-content-dc').innerHTML = '';
 
-                    if (cart.share_id in selected_carts) {
-                        row.querySelector('i.toggler').classList.remove('mdi-plus');
-                        row.querySelector('i.toggler').classList.add('mdi-minus');
-                        row.querySelector('.ul-li').classList.add('is-selected');
+        const dc_item_template = document.querySelector('#tmpl-dc');
+
+        // build a label index for the dataset collections
+        for (const category in dataset_collection_data) {
+            // This data structure has mixed types - we only care about the arrayed categories
+            if (!Array.isArray(dataset_collection_data[category])) {continue}
+
+            for (const entry of dataset_collection_data[category]) {
+                if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                    const row = dc_item_template.content.cloneNode(true);
+                    row.querySelector('.dc-item-label').textContent = entry.label;
+                    row.querySelector('.ul-li').dataset.shareId = entry.share_id;
+
+                    let tag_element = row.querySelector('.ul-li .dc-item-tag');
+
+                    if (entry.folder_label) {
+                        tag_element.textContent = entry.folder_label;
                     } else {
-                        row.querySelector('i.toggler').classList.remove('mdi-minus');
-                        row.querySelector('i.toggler').classList.add('mdi-plus');
-                        row.querySelector('.ul-li').classList.remove('is-selected');
+                        // we don't need the tag at all if there's no content for it
+                        tag_element.remove();
                     }
 
-                    document.querySelector('#dropdown-content-gene-lists').appendChild(row);
+                    document.querySelector('#dropdown-content-dc').appendChild(row);
                 }
             }
         }
