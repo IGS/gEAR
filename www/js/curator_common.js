@@ -1476,6 +1476,9 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
     privateAnalysesElt.replaceChildren();
     publicAnalysesElt.replaceChildren();
 
+    const analysisElt = document.getElementById("analysis_select");
+    analysisElt.parentElement.classList.add("is-loading");
+
     // Show message that no analyses are present if none exist
     if (!privateAnalyses?.length) {
         const option = document.createElement("option");
@@ -1512,6 +1515,9 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
 
     // Update select2
     analysisSelect.update();
+
+    analysisElt.parentElement.classList.remove("is-loading");
+
 }
 
 /**
@@ -1523,6 +1529,11 @@ const updateGeneOptions = (geneSymbols) => {
 
     const geneSelectElt = document.getElementById("gene_select");
     geneSelectElt.replaceChildren();
+
+    const selectors = document.querySelectorAll(".select > .js-gene-select");
+    for (const elt of selectors) {
+        elt.parentElement.classList.add("is-loading");
+    }
 
     // Append empty placeholder element
     const firstOption = document.createElement("option");
@@ -1541,6 +1552,10 @@ const updateGeneOptions = (geneSymbols) => {
     // Update the nice-select2 element to reflect this.
     // This function is always called in the 1st view, so only update that
     geneSelect.update();
+
+    for (const elt of selectors) {
+        elt.parentElement.classList.remove("is-loading");
+    }
 
 }
 
