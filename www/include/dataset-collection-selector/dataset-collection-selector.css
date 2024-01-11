@@ -32,22 +32,3 @@ div.ul-li {
 div.ul-li.is-selected {
     background-color: #cbcfd6;
 }
-div#gene-select-dropdown-dynamic-selections {
-    border: 1px solid rgb(200,200,200);
-    border-radius: 0.5em;
-    min-height: 4em;
-}
-div.guide_element {
-    border-right: 1px solid rgb(200, 200, 200);
-}
-div.tabs-content li {
-    display: none;
-    list-style: none;
-}
-div.tabs-content li.is-active {
-    display: block;
-}
-.icon-text {
-    /* https://github.com/jgthms/bulma/issues/3635 */
-    width: max-content;
-}
