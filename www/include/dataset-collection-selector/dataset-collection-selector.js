@@ -3,14 +3,15 @@ let dataset_collection_data = null;
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchDatasetCollections();
+
+    //fetchDatasetCollections();
 
     // Add event listeners to the gene list category selectors
-    const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
+    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
     categorySelectors.forEach((element) => {
         element.addEventListener('click', (event) => {
             const category = event.target.dataset.category;
-            setActiveGeneCartCategory(category);
+            setActiveDCCategory(category);
 
             categorySelectors.forEach((element) => {
                 element.classList.remove('is-selected');
@@ -86,21 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selected_genes = [];
     });
 
-    document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
-        const selected_cart_count = Object.keys(selected_carts).length;
-
-        if (selected_cart_count === 1) {
-            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[selected_carts[0]];
-        } else if (selected_cart_count > 1) {
-            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
-        } else {
-            // Nothing to do
-        }
-
-        // close the dropdown
-        document.querySelector('#dropdown-gene-lists').classList.remove('is-active');
-    });
-
     // Minor key strokes after user types more than 2 characters in the dropdown-gene-list-search-input box
     document.querySelector('#dropdown-gene-list-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
@@ -143,12 +129,68 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const fetchDatasetCollections = async () => {
+    console.log("Fetching dataset collections");
+    console.log(CURRENT_USER);
+
     try {
-        const data = await apiCallsMixin.fetchDatasetCollections();
-        dataset_collection_data = data;
+        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections();
+        console.log(dataset_collection_data);
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
         document.querySelector('#dropdown-dc').classList.remove('is-disabled');
     } catch (error) {
         console.error(error);
+    }
+}
+
+const setActiveDCCategory = (category) => {
+    // clear the gene list
+    document.querySelector('#dropdown-content-dc').innerHTML = '';
+    document.querySelector('#dropdown-dc-search-input').value = '';
+
+    const dc_item_template = document.querySelector('#tmpl-dc');
+    let data = null;
+    
+    document.querySelector('#dropdown-content-dc').innerHTML = '';
+
+    switch (category) {
+        case 'domain':
+            data = dataset_collection_data.domain_layouts;
+            break;
+        case 'user':
+            data = dataset_collection_data.user_layouts;
+            break;
+        case 'recent':
+            //data = dataset_collection_data.recent_layouts;
+            break;
+        case 'group':
+            data = dataset_collection_data.group_layouts;
+            break;
+        case 'shared':
+            data = dataset_collection_data.shared_layouts;
+            break;
+    }
+
+    // sort the data by label before iterating
+    data.sort((a, b) => {
+        if (a.label < b.label) {return -1}
+        if (a.label > b.label) {return 1}
+        return 0;
+    });
+
+    for (const entry of data) {
+        const row = dc_item_template.content.cloneNode(true);
+        row.querySelector('.dc-item-label').textContent = entry.label;
+        row.querySelector('.ul-li').dataset.shareId = entry.share_id;
+
+        let tag_element = row.querySelector('.ul-li .dc-item-tag');
+
+        if (entry.folder_label) {
+            tag_element.textContent = entry.folder_label;
+        } else {
+            // delete this element
+            tag_element.remove();
+        }
+
+        document.querySelector('#dropdown-content-dc').appendChild(row);
     }
 }

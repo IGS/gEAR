@@ -6,8 +6,6 @@ let selected_carts = {};
 let selected_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchGeneCartData();
-
     // Add event listeners to the gene list category selectors
     const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
     categorySelectors.forEach((element) => {
@@ -147,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fetchGeneCartData = async () => {
     console.log("Fetching gene cart data");
+    console.log(CURRENT_USER);
     try {
         gene_cart_data = await apiCallsMixin.fetchGeneCarts('unweighted-list');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
@@ -319,4 +318,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     if (CURRENT_USER.session_id) {
         populateUserHistoryTable();
     }
+
+    fetchGeneCartData();
+    fetchDatasetCollections();
 }

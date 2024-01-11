@@ -1,7 +1,8 @@
 <!--
     This creates the following top-level variables:
 
-    - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call
+    - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to 
+      happen in the login UI handler of the page.
 
     Requirements for importing this component:
 
@@ -39,24 +40,24 @@
             <div class="column is-one-half is-scrollable">
               <h3>Category</h3>
               <div id="dropdown-content-dc-category" class="ul-replacement">
-                <div class="ul-li is-clickable" data-category="favorites">
+                <div class="ul-li is-clickable" data-category="domain">
                   Site-curated
                   <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                 </div>
-                <div class="ul-li is-clickable" data-category="recent">
+                <div class="ul-li is-clickable" data-category="user">
                   Yours
                   <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                 </div>
-                <div class="ul-li is-clickable" data-category="saved">
+                <div class="ul-li is-clickable" data-category="recent">
                   Recently viewed
                   <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                 </div>
-                <div class="ul-li is-clickable" data-category="saved">
-                  Group shared
+                <div class="ul-li is-clickable" data-category="group">
+                  From your groups
                   <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                 </div>
                 <div class="ul-li is-clickable" data-category="shared">
-                  Other shared
+                  Others shared with you
                   <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
                 </div>
               </div>
@@ -66,13 +67,22 @@
               <div id="dropdown-content-dc" class="ul-replacement"></div>
             </div>
             <template id="tmpl-dc">
-              <div class="ul-li dropdown-dc-item">
-                <span class="icon is-pulled-left">
-                  <i class="mdi mdi-18px toggler mdi-plus is-clickable mr-2 dc-item-add"></i>
-                </span>
-                <span class="gene-item-label"></span>
+              <div class="ul-li dropdown-dc-item is-clickable pl-3">
+                <span class="dc-item-tag tag is-info is-light"></span>
+                <span class="dc-item-label"></span>
               </div>
             </template>
+          </div>
+        </div>
+        <div class="dropdown-item">
+          <hr class="dropdown-divider mb-0 pb-0">
+        </div>
+        <div class="dropdown-item">
+          <div class="columns">
+            <div class="column is-10">&nbsp;</div>
+            <div class="column is-2">
+              <button id="dropdown-dc-cancel" class="button is-secondary is-rounded is-small">Cancel</button>
+            </div>
           </div>
         </div>
       </div>
