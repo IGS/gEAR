@@ -27,6 +27,10 @@ export const gearBase = isLocal ? "http://localhost:8080" : "https://devel.umgea
 
 export let browser, context;
 
+
+const datasetId = "00000000-0000-0000-0000-000000000000";   // dummy uuid for P2, mouse, scRNA-seq, cochlea (Hertzano/Ament)
+
+
 /**
  * Sets up the browser context for testing.
  * @param {number} browserIndex - The index of the browser to use.
@@ -261,7 +265,7 @@ export const mockGetDatasetList = async (page) => {
             "public": {
                 "datasets": [
                     {
-                        "id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "id": "00000000-0000-0000-0000-000000000000",
                         "owner_id": 3,
                         "title": "P2, mouse, scRNA-seq, cochlea (Hertzano/Ament)",
                         "organism_id": 1,
@@ -314,7 +318,7 @@ export const mockGetDatasetDisplays = async (page) => {
                 "user": [
                     {
                         "id": 2416,
-                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "dataset_id": "00000000-0000-0000-0000-000000000000",
                         "label": "ugly test plot",
                         "plot_type": "scatter",
                         "plotly_config": {
@@ -370,7 +374,7 @@ export const mockGetDatasetDisplays = async (page) => {
                     },
                     {
                         "id": 2417,
-                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "dataset_id": "00000000-0000-0000-0000-000000000000",
                         "label": "ugly multigene plot",
                         "plot_type": "heatmap",
                         "plotly_config": {
@@ -451,7 +455,7 @@ export const mockGetDatasetDisplays = async (page) => {
                 "owner": [
                     {
                         "id": 2423,
-                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "dataset_id": "00000000-0000-0000-0000-000000000000",
                         "label": "volcano test case",
                         "plot_type": "volcano",
                         "plotly_config": {
@@ -484,7 +488,7 @@ export const mockGetDatasetDisplays = async (page) => {
                     },
                     {
                         "id": 2425,
-                        "dataset_id": "1b12dde9-1762-7564-8fbd-1b07b750505f",
+                        "dataset_id": "00000000-0000-0000-0000-000000000000",
                         "label": "static_tsne_test",
                         "plot_type": "tsne_static",
                         "plotly_config": {
@@ -531,7 +535,7 @@ export const mockGetDatasetDisplays = async (page) => {
  * @param {string} datasetId - The dataset ID.
  * @returns {Promise<void>}
  */
-export const mockGetDatasetGenes = async (page, datasetId) => {
+export const mockGetDatasetGenes = async (page) => {
     await page.route(`${gearBase}/api/h5ad/${datasetId}/genes`, async route => {
         const json = {
             "success": 1,
@@ -551,7 +555,7 @@ export const mockGetDatasetGenes = async (page, datasetId) => {
  * @param {string} datasetId - The dataset ID.
  * @returns {Promise<void>}
  */
-export const mockGetDatasetAnalyses = async (page, datasetId) => {
+export const mockGetDatasetAnalyses = async (page) => {
     await page.route(`${gearBase}/api/h5ad/${datasetId}/analyses`, async route => {
         const json = {
             "success": 1,
@@ -568,7 +572,7 @@ export const mockGetDatasetAnalyses = async (page, datasetId) => {
  * @param {string} datasetId - The ID of the dataset.
  * @returns {Promise<void>} - A promise that resolves when the API endpoint is mocked.
  */
-export const mockGetDatasetAvailableDisplayTypes = async (page, datasetId) => {
+export const mockGetDatasetAvailableDisplayTypes = async (page) => {
     await page.route(`${gearBase}/api/h5ad/${datasetId}/availableDisplayTypes`, async route => {
         const json = {
             "scatter": true,
@@ -585,7 +589,31 @@ export const mockGetDatasetAvailableDisplayTypes = async (page, datasetId) => {
     });
 }
 
-export const mockGetDatasetH5adInfo = async (page, datasetId) => {
+/**
+ * Mocks the API endpoint for retrieving available multigene display types for a dataset.
+ * @param {Page} page - The page object.
+ * @returns {Promise<void>}
+ */
+export const mockGetDatasetAvailableMultigeneDisplayTypes = async (page) => {
+    await page.route(`${gearBase}/api/h5ad/${datasetId}/mg_availableDisplayTypes`, async route => {
+        const json = {
+            "dotplot": true,
+            "heatmap": true,
+            "mg_violin": true,
+            "volcano": true,
+            "quadrant": true
+
+        }
+        await route.fulfill({ json });
+    });
+}
+
+/**
+ * Mocks the response for the h5ad info API call.
+ * @param {Object} page - The page object.
+ * @returns {Promise<void>}
+ */
+export const mockGetDatasetH5adInfo = async (page) => {
     await page.route(`${gearBase}/api/h5ad/${datasetId}`, async route => {
         const json = {
             "success": 1,
@@ -657,4 +685,153 @@ export const mockGetDatasetH5adInfo = async (page, datasetId) => {
         }
         await route.fulfill({ json });
     });
+}
+
+/**
+ * Mocks the response for getting dataset aggregations.
+ * @param {Page} page - The page object.
+ * @returns {Promise<void>}
+ */
+export const mockGetDatasetAggregations = async (page) => {
+    await page.route(`${gearBase}/api/h5ad/${datasetId}/aggregations`, async route => {
+        const json = {
+            "success": 1,
+            "aggregations": [
+                {
+                    "name": "cell_type",
+                    "count": "4194",
+                    "items": [
+                        {
+                            "name": "Mes_Cells_2/3",
+                            "count": 1032
+                        },
+                        {
+                            "name": "Mes_Cells_1",
+                            "count": 1009
+                        },
+                        {
+                            "name": "Glial_Cells",
+                            "count": 398
+                        },
+                        {
+                            "name": "Medial_Interdental_Cells",
+                            "count": 382
+                        },
+                        {
+                            "name": "Supporting_Cells",
+                            "count": 339
+                        },
+                        {
+                            "name": "Crabp1+_Cells",
+                            "count": 252
+                        },
+                        {
+                            "name": "Dividing_Glial_Cells",
+                            "count": 115
+                        },
+                        {
+                            "name": "Dividing_Mes_Cells",
+                            "count": 113
+                        },
+                        {
+                            "name": "Oc90+_Cells",
+                            "count": 113
+                        },
+                        {
+                            "name": "Hair_Cells",
+                            "count": 101
+                        },
+                        {
+                            "name": "Fst+_Cells",
+                            "count": 85
+                        },
+                        {
+                            "name": "Pillar_Cells",
+                            "count": 70
+                        },
+                        {
+                            "name": "Pf4+_Cells",
+                            "count": 63
+                        },
+                        {
+                            "name": "Rgs5+_Cells",
+                            "count": 62
+                        },
+                        {
+                            "name": "Vascular_Cells",
+                            "count": 60
+                        }
+                    ]
+                },
+                {
+                    "name": "louvain",
+                    "count": "4194",
+                    "items": [
+                        {
+                            "name": "Mes_Cells_2/3",
+                            "count": 1032
+                        },
+                        {
+                            "name": "Mes_Cells_1",
+                            "count": 1009
+                        },
+                        {
+                            "name": "Glial_Cells",
+                            "count": 398
+                        },
+                        {
+                            "name": "Medial_Interdental_Cells",
+                            "count": 382
+                        },
+                        {
+                            "name": "Supporting_Cells",
+                            "count": 339
+                        },
+                        {
+                            "name": "Crabp1+_Cells",
+                            "count": 252
+                        },
+                        {
+                            "name": "Dividing_Glial_Cells",
+                            "count": 115
+                        },
+                        {
+                            "name": "Dividing_Mes_Cells",
+                            "count": 113
+                        },
+                        {
+                            "name": "Oc90+_Cells",
+                            "count": 113
+                        },
+                        {
+                            "name": "Hair_Cells",
+                            "count": 101
+                        },
+                        {
+                            "name": "Fst+_Cells",
+                            "count": 85
+                        },
+                        {
+                            "name": "Pillar_Cells",
+                            "count": 70
+                        },
+                        {
+                            "name": "Pf4+_Cells",
+                            "count": 63
+                        },
+                        {
+                            "name": "Rgs5+_Cells",
+                            "count": 62
+                        },
+                        {
+                            "name": "Vascular_Cells",
+                            "count": 60
+                        }
+                    ]
+                }
+            ],
+            "total_count": 4194
+        }
+        await route.fulfill({ json });
+    })
 }

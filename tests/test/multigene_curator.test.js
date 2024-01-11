@@ -10,6 +10,7 @@ import "mocha" // to set global variables like describe, it, etc.
 import { expect } from "playwright/test";
 
 import { browsers, gearBase, login, loginFailure, setupBrowserContext, teardownBrowserContext } from "./helpers.js";
+import { mockGetDatasetAnalyses, mockGetDatasetAvailableMultigeneDisplayTypes, mockGetDatasetGenes, mockGetDatasetAggregations } from "./helpers.js";
 
 import { mockGetDatasetList } from "./helpers.js";
 
@@ -21,7 +22,6 @@ const gearUrl = `${gearBase}/multigene_curator.html`;
 
 describe('Multigene Curator', function () {
     this.retries(3);
-
     this.timeout(10000);    // default is 2000
 
     let browserIndex = 0;
@@ -48,7 +48,7 @@ describe('Multigene Curator', function () {
                     await expect(datasetTree).toBeVisible();
                     await expect(datasetTree.locator("css=.wb-row")).toHaveCount(4);    // 3 categories + root
                     await datasetInput.fill("Hertzano");
-                    await expect(page.getByText("(Hertzano/Ament)")).toBeVisible();
+                    await expect(page.getByText("P2, mouse, scRNA-seq, cochlea")).toBeVisible();
 
                 });
 
@@ -66,6 +66,23 @@ describe('Multigene Curator', function () {
             });
 
             describe("plotting", () => {
+
+                beforeEach("Selecting a dataset", async () => {
+                    await mockGetDatasetList(page);
+                    const datasetInput = page.locator("css=#dataset_query");
+                    await datasetInput.fill("Hertzano");
+                    const datasetTree = page.locator("css=#dataset_tree");
+                    await datasetTree.getByText("P2, mouse, scRNA-seq, cochlea (Hertzano/Ament)").click();
+
+                    await mockGetDatasetGenes(page);
+                    await mockGetDatasetAnalyses(page);
+                    await mockGetDatasetAvailableMultigeneDisplayTypes(page);
+
+                    await page.getByText("Curate new display").click();
+
+                    // Should now be on Plot Type and Analysis select part
+                    await page.getByText("Choose how to plot").click();
+                });
 
                 it("should plot a heatmap", async () => {});
 
@@ -107,7 +124,7 @@ describe('Multigene Curator', function () {
                 });
 
                 it('should login', async () => {
-                    await expect(page.title()).toEqual("gEAR multigene viewer page");
+                    expect(await page.title()).toEqual("gEAR multigene viewer page");
                 });
 
                 it("should prevent user from deleting a display owned by another user", async () => {});
@@ -132,7 +149,7 @@ describe('Multigene Curator', function () {
                     // Check that the error message is displayed
                     const incorrectPw = page.getByText("Incorrect password");
                     await expect(incorrectPw).toBeVisible();
-                    expect(page.title()).toEqual("gEAR multigene viewer page");
+                    expect(await page.title()).toEqual("gEAR multigene viewer page");
                 });
 
                 it("should prevent user from selecting a default display", async () => {})
