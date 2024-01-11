@@ -2,6 +2,10 @@ let dataset_collection_data = null;
 let dataset_collection_label_index = {};
 
 let selected_dc_share_id = null;
+let selected_dc_label = null;
+
+// This many characters will be included and then three dots will be appended
+const DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT = 35;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Add event listeners to the gene list category selectors
@@ -34,11 +38,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const row_div = event.target.closest('div');
-            const dc_share_id = row_div.dataset.shareId;
-
             row_div.classList.toggle('is-selected');
+            selected_dc_share_id = row_div.dataset.shareId;
+            selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
 
-            document.querySelector('#dropdown-dc-selector-label').innerHTML = dataset_collection_label_index[dc_share_id];
+            if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
+                let truncated_label = selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) + '...';
+                document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
+            } else {
+                document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
+            }
+
             document.querySelector('#dropdown-dc').classList.remove('is-active');
         }
     });

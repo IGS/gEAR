@@ -1,10 +1,18 @@
 <!--
+    How to include:
+
+    Just add the following line to the page you want to include this component in (but with a proper
+    comment tag, since this is already within a comment!):
+
+      <!- - #include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" - ->
+
     This creates the following top-level variables:
 
+    - selected_dc_share_id: The selected dataset collection share id the user selected, null if no selection made.
+    - selected_dc_label: The selcted dataset collection label the user selected, null if no selection made.
     - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to 
       happen in the login UI handler of the page.
     - dataset_collection_label_index: A map of dataset collection share ids to their labels.
-    - selected_dc_share_id: The selected dataset collection share id the user selected.
 
     Requirements for importing this component:
 
