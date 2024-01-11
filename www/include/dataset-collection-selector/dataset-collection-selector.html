@@ -3,10 +3,13 @@
 
     - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to 
       happen in the login UI handler of the page.
+    - dataset_collection_label_index: A map of dataset collection share ids to their labels.
+    - selected_dc_share_id: The selected dataset collection share id the user selected.
 
     Requirements for importing this component:
 
-    - 
+    - There are no other elements on the page with ID: 'dropdown-dc'
+    - apiCallsMixin.fetchDatasetCollections() must be called in the login UI handler of the page.
 
 -->
 

@@ -144,8 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const fetchGeneCartData = async () => {
-    console.log("Fetching gene cart data");
-    console.log(CURRENT_USER);
     try {
         gene_cart_data = await apiCallsMixin.fetchGeneCarts('unweighted-list');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
