@@ -141,6 +141,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // Bulma gives the styling for tabs, but not the functionality
+    const tabs = document.querySelectorAll('.tabs li');
+    tabs.forEach((element) => {
+        element.addEventListener('click', (event) => {
+            const tab_id = event.target.dataset.tabId;
+
+            console.log("Clicked with tab ID: " + tab_id);
+            console.log("TODO: Fix this");
+
+            // First, hide all the tab-content elements
+            document.querySelectorAll('.tab-content').forEach((element) => {
+                if (element.dataset.tabId === tab_id) {
+                    element.classList.add('is-active');
+                } else {
+                    element.classList.remove('is-active');
+                }
+            });
+        });
+
+    });
 });
 
 const fetchGeneCartData = async () => {
