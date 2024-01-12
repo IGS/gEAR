@@ -142,6 +142,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
+        const status = validateExpressionSearchForm();
+    });
+
     // Bulma gives the styling for tabs, but not the functionality
     const tabs = document.querySelectorAll('div.tabs li a');
     tabs.forEach((element) => {
@@ -191,6 +195,7 @@ const populateUserHistoryTable = async () => {
         const data = await apiCallsMixin.fetchUserHistoryEntries(numEntries);
         const template = document.querySelector('#user-history-row');
         document.querySelector('#user-history-table-tbody').innerHTML = '';
+        console.log(data);
 
         if (data.length === 0) {
             const noHistoryTemplate = document.querySelector('#user-history-no-entries');
@@ -328,6 +333,47 @@ const updateGeneListSelectionPanel = () => {
     for (const cart_share_id in selected_carts) {
         selection_box.innerHTML += `<span class="tag is-info is-light is-small m-1">${gene_cart_label_index[cart_share_id]}</span>`;
     }
+}
+
+const validateExpressionSearchForm = () => {
+    // User must have either selected a gene list or entered genes manually
+    // TODO: Left off here
+
+
+    // First, check if the user has selected any gene lists
+    if (Object.keys(selected_carts).length === 0) {
+        alert('Please select at least one gene list to proceed');
+        return false;
+    }
+
+    // Second, check if the user has selected any genes
+    if (selected_genes.length === 0) {
+        alert('Please select at least one gene to proceed');
+        return false;
+    }
+
+    // Third, check if the user has entered any genes manually
+    const manually_entered_genes = document.querySelector('#genes-manually-entered').value;
+    if (manually_entered_genes.length > 0) {
+        const genes = manually_entered_genes.split(',');
+        selected_genes = [...new Set([...selected_genes, ...genes])];
+    }
+
+    // Fourth, check if the user has selected any datasets
+    const selected_datasets = document.querySelectorAll('#dropdown-content-datasets .is-selected');
+    if (selected_datasets.length === 0) {
+        alert('Please select at least one dataset to proceed');
+        return false;
+    }
+
+    // Fifth, check if the user has selected any dataset collections
+    const selected_collections = document.querySelectorAll('#dropdown-content-dc .is-selected');
+    if (selected_collections.length === 0) {
+        alert('Please select at least one dataset collection to proceed');
+        return false;
+    }
+
+    
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
