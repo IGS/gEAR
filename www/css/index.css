@@ -30,7 +30,7 @@ div.ul-li {
     margin-bottom: 0.2em;
 }
 div.ul-li.is-selected {
-    background-color: #cbcfd6;
+    background-color: #EFEDF7;
 }
 div#gene-select-dropdown-dynamic-selections {
     border: 1px solid rgb(200,200,200);

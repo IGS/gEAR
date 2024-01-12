@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             row_div.classList.toggle('is-selected');
             row_div.querySelector('i.toggler').classList.toggle('mdi-plus');
-            row_div.querySelector('i.toggler').classList.toggle('mdi-minus');
+            row_div.querySelector('i.toggler').classList.toggle('mdi-check');
         }
     });
 
@@ -128,10 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (cart.share_id in selected_carts) {
                         row.querySelector('i.toggler').classList.remove('mdi-plus');
-                        row.querySelector('i.toggler').classList.add('mdi-minus');
+                        row.querySelector('i.toggler').classList.add('mdi-check');
                         row.querySelector('.ul-li').classList.add('is-selected');
                     } else {
-                        row.querySelector('i.toggler').classList.remove('mdi-minus');
+                        row.querySelector('i.toggler').classList.remove('mdi-check');
                         row.querySelector('i.toggler').classList.add('mdi-plus');
                         row.querySelector('.ul-li').classList.remove('is-selected');
                     }
@@ -241,13 +241,13 @@ const setActiveGeneCart = (cart_row, mode) => {
     // now handle the coloring, icons and selection box based on the mode
     if (mode === 'add') {
         cart_row.querySelector('i.toggler').classList.remove('mdi-plus');
-        cart_row.querySelector('i.toggler').classList.add('mdi-minus')
+        cart_row.querySelector('i.toggler').classList.add('mdi-check')
         cart_row.querySelector('i.toggler').classList.remove('dropdown-gene-list-item-add');
         cart_row.querySelector('i.toggler').classList.add('dropdown-gene-list-item-remove');
         cart_row.classList.add('is-selected');
 
     } else if (mode === 'remove') {
-        cart_row.querySelector('i.toggler').classList.remove('mdi-minus');
+        cart_row.querySelector('i.toggler').classList.remove('mdi-check');
         cart_row.querySelector('i.toggler').classList.add('mdi-plus');
         cart_row.querySelector('i.toggler').classList.add('dropdown-gene-list-item-add');
         cart_row.querySelector('i.toggler').classList.remove('dropdown-gene-list-item-remove');
@@ -263,10 +263,10 @@ const setActiveGeneCart = (cart_row, mode) => {
         if (selected_genes.includes(gene_symbol)) {
             gene_div.classList.add('is-selected');
             gene_div.querySelector('i.toggler').classList.remove('mdi-plus');
-            gene_div.querySelector('i.toggler').classList.add('mdi-minus');            
+            gene_div.querySelector('i.toggler').classList.add('mdi-check');            
         } else {
             gene_div.classList.remove('is-selected');
-            gene_div.querySelector('i.toggler').classList.remove('mdi-minus');
+            gene_div.querySelector('i.toggler').classList.remove('mdi-check');
             gene_div.querySelector('i.toggler').classList.add('mdi-plus');
         }
     }
@@ -307,10 +307,10 @@ const setActiveGeneCartCategory = (category) => {
 
         if (entry.share_id in selected_carts) {
             row.querySelector('i.toggler').classList.remove('mdi-plus');
-            row.querySelector('i.toggler').classList.add('mdi-minus');
+            row.querySelector('i.toggler').classList.add('mdi-check');
             row.querySelector('.ul-li').classList.add('is-selected');
         } else {
-            row.querySelector('i.toggler').classList.remove('mdi-minus');
+            row.querySelector('i.toggler').classList.remove('mdi-check');
             row.querySelector('i.toggler').classList.add('mdi-plus');
             row.querySelector('.ul-li').classList.remove('is-selected');
         }
