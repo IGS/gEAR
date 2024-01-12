@@ -143,16 +143,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Bulma gives the styling for tabs, but not the functionality
-    const tabs = document.querySelectorAll('.tabs li');
+    const tabs = document.querySelectorAll('div.tabs li a');
     tabs.forEach((element) => {
         element.addEventListener('click', (event) => {
-            const tab_id = event.target.dataset.tabId;
-
-            console.log("Clicked with tab ID: " + tab_id);
-            console.log("TODO: Fix this");
+            const tab_id = element.closest('li').dataset.tabId;
 
             // First, hide all the tab-content elements
-            document.querySelectorAll('.tab-content').forEach((element) => {
+            document.querySelectorAll('.tabs-content li').forEach((element) => {
                 if (element.dataset.tabId === tab_id) {
                     element.classList.add('is-active');
                 } else {
