@@ -4,6 +4,7 @@ let gene_cart_label_index = {};
 // For carts, key is share_id, value is array of genes symbol strings
 let selected_carts = {};
 let selected_genes = [];
+let manually_entered_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     // Add event listeners to the gene list category selectors
@@ -142,8 +143,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // add event listener for when the dropdown-gene-list-search-input input box is changed
+    document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
+        const search_term_string = event.target.value;
+
+        if (search_term_string.length > 0) {
+            // split the string into an array of genes by spaces or commas
+            manually_entered_genes = search_term_string.split(/[ ,]+/);
+            selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
+        }
+    });
+
     document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
         const status = validateExpressionSearchForm();
+
+        if (status) {
+            // build the URL for a GET request
+            let url = '/expression-search.html?';
+
+            // add the manually-entered genes
+            if (manually_entered_genes.length > 0) {
+                url += `gene_symbol=${manually_entered_genes.join(',')}`;
+            }
+
+            // add the gene lists
+            if (Object.keys(selected_carts).length > 0) {
+                url += `&gene_lists=${Object.keys(selected_carts).join(',')}`;
+            }
+
+            // add the dataset collections
+            url += `&layout_id=${selected_dc_share_id}`;
+
+            // multigene
+
+            
+        }
     });
 
     // Bulma gives the styling for tabs, but not the functionality
@@ -195,7 +229,6 @@ const populateUserHistoryTable = async () => {
         const data = await apiCallsMixin.fetchUserHistoryEntries(numEntries);
         const template = document.querySelector('#user-history-row');
         document.querySelector('#user-history-table-tbody').innerHTML = '';
-        console.log(data);
 
         if (data.length === 0) {
             const noHistoryTemplate = document.querySelector('#user-history-no-entries');
@@ -336,44 +369,20 @@ const updateGeneListSelectionPanel = () => {
 }
 
 const validateExpressionSearchForm = () => {
-    // User must have either selected a gene list or entered genes manually
-    // TODO: Left off here
-
-
-    // First, check if the user has selected any gene lists
-    if (Object.keys(selected_carts).length === 0) {
-        alert('Please select at least one gene list to proceed');
-        return false;
-    }
-
-    // Second, check if the user has selected any genes
+    // User must have either selected a gene list or entered genes manually. Either of these
+    // will populate the selected_genes array
     if (selected_genes.length === 0) {
-        alert('Please select at least one gene to proceed');
+        alert('Please enter at least one gene to proceed');
         return false;
     }
 
-    // Third, check if the user has entered any genes manually
-    const manually_entered_genes = document.querySelector('#genes-manually-entered').value;
-    if (manually_entered_genes.length > 0) {
-        const genes = manually_entered_genes.split(',');
-        selected_genes = [...new Set([...selected_genes, ...genes])];
-    }
-
-    // Fourth, check if the user has selected any datasets
-    const selected_datasets = document.querySelectorAll('#dropdown-content-datasets .is-selected');
-    if (selected_datasets.length === 0) {
+    // Check if the user has selected any dataset collections
+    if (selected_dc_share_id === null) {
         alert('Please select at least one dataset to proceed');
         return false;
     }
 
-    // Fifth, check if the user has selected any dataset collections
-    const selected_collections = document.querySelectorAll('#dropdown-content-dc .is-selected');
-    if (selected_collections.length === 0) {
-        alert('Please select at least one dataset collection to proceed');
-        return false;
-    }
-
-    
+    return true;    
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
