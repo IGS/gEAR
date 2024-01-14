@@ -119,7 +119,9 @@ const fetchDatasetCollections = async (callback) => {
             }
         }
 
-        callback();
+        if (callback) {
+            callback(); 
+        }
 
     } catch (error) {
         console.error(error);
