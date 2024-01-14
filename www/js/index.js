@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (status) {
             // build the URL for a GET request
-            let url = '/expression-search.html?';
+            let url = '/expression.html?';
 
             // add the manually-entered genes
             if (manually_entered_genes.length > 0) {
@@ -33,9 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // add the dataset collections
             url += `&layout_id=${selected_dc_share_id}`;
 
-            // multigene
-
-            
+            // now go there
+            window.location.href = url;
         }
     });
 
