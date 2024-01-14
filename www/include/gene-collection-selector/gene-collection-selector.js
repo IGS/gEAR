@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-const fetchGeneCartData = async () => {
+const fetchGeneCartData = async (callback) => {
     try {
         gene_cart_data = await apiCallsMixin.fetchGeneCarts('unweighted-list');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
@@ -157,6 +157,8 @@ const fetchGeneCartData = async () => {
                 gene_cart_label_index[cart.share_id] = cart.label;
             }
         }
+
+        callback();
         
     } catch (error) {
         console.error(error);

@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-const fetchDatasetCollections = async () => {
+const fetchDatasetCollections = async (callback) => {
     try {
         dataset_collection_data = await apiCallsMixin.fetchDatasetCollections();
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
@@ -119,6 +119,7 @@ const fetchDatasetCollections = async () => {
             }
         }
 
+        callback();
 
     } catch (error) {
         console.error(error);
