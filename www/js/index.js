@@ -374,13 +374,13 @@ const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
     if (selected_genes.length === 0) {
-        alert('Please enter at least one gene to proceed');
+        createToast('Please enter at least one gene to proceed');
         return false;
     }
 
     // Check if the user has selected any dataset collections
     if (selected_dc_share_id === null) {
-        alert('Please select at least one dataset to proceed');
+        createToast('Please select at least one dataset to proceed');
         return false;
     }
 
