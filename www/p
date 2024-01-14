@@ -6,8 +6,9 @@ c = gene cart share ID
 g = gene_symbol to search
 gsem = toggle exact match searching for gene symbols (truthy value)
 l = profile/layout ID
+m = multi-gene view? (truthy value, default is 0)
 p = page to send to:
-    null = index.html (default)
+    null = expression.html (default)
     a = analyze_dataset.html
 s = dataset_share_id
 id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
@@ -27,6 +28,7 @@ def main():
     gene_symbol = form.getvalue('g')
     gene_symbol_exact_match = form.getvalue('gsem')
     layout_id = form.getvalue('l')
+    is_multigene = form.getvalue('m')
     page = form.getvalue('p')
     share_id = form.getvalue('s')
     identifiers_org_id = form.getvalue('id')
@@ -46,6 +48,9 @@ def main():
 
     if layout_id is not None:
         params['layout_id'] = layout_id
+
+    if is_multigene is not None:
+        params['is_multigene'] = is_multigene
 
     if gene_symbol is not None:
         params['gene_symbol'] = gene_symbol
