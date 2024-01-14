@@ -91,7 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const selected_cart_count = Object.keys(selected_carts).length;
 
         if (selected_cart_count === 1) {
-            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[selected_carts[0]];
+            // get the key of the only element in the selected_carts object
+            const only_cart_id = Object.keys(selected_carts)[0];
+            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
         } else if (selected_cart_count > 1) {
             document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
         } else {
