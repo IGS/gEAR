@@ -53,107 +53,18 @@
                   </div>
                 </div>
 
-                <div id="dropdown-gene-lists" class="control dropdown is-right is-loading is-disabled mr-0">
-                  <div class="dropdown-trigger is-clickable">
-                    <button class="button" aria-haspopup="true" aria-controls="dropdown-menu6">
-                      <span>Quick search using Gene Lists</span>
-                      <span class="icon is-small">
-                        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
-                      </span>
-                    </button>
-                  </div>
-                  <div class="dropdown-menu" id="dropdown-menu6" role="menu">
-                    <div class="dropdown-content is-full-width">
-                      <div class="dropdown-item">
-                        <div class="field">
-                          <p class="control has-icons-left">
-                            <input class="input" type="input" placeholder="Search and select a Gene List or a Gene">
-                            <span class="icon is-small is-left">
-                              <i class="mdi mdi-magnify"></i>
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      <hr class="dropdown-divider">
-                      <div class="dropdown-item">
-                        <div class="columns is-mobile">
-                          <div class="column is-one-third is-scrollable">
-                            <h3>Saved Items</h3>
-                            <div id="dropdown-content-gene-list-category" class="ul-replacement">
-                              <div class="ul-li is-clickable" data-category="favorites">
-                                Favorites
-                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
-                              </div>
-                              <div class="ul-li is-clickable" data-category="recent">
-                                Recent
-                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
-                              </div> 
-                              <div class="ul-li is-clickable" data-category="saved">
-                                Saved gene lists
-                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
-                              </div> 
-                              <div class="ul-li is-clickable" data-category="shared">
-                                Shared gene lists
-                                <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
-                              </div> 
-                            </div>
-                          </div>
-                          <div class="column is-one-third is-scrollable">
-                            <h3>Gene Lists</h3>
-                            <div id="dropdown-content-gene-lists" class="ul-replacement"></div>
-                          </div>
-                          <div class="column is-one-third is-scrollable">
-                            <h3>Genes</h3>
-                            <div id="dropdown-content-genes" class="ul-replacement"></div>
-                          </div>
-                          <template id="tmpl-gene-list-item">
-                            <div class="ul-li dropdown-gene-list-item is-clickable" data-share-id="" data-genes="">
-                              <span class="icon is-pulled-left">
-                                <i class="mdi mdi-18px mdi-plus mr-2 dropdown-gene-list-item-add toggler is-clickable"></i>
-                              </span>
-                              <span class="gene-list-item-label"></span>
-                              <span class="icon is-pulled-right">
-                                <i class="mdi mdi-18px mdi-chevron-right dropdown-gene-list-item-right-selector"></i>
-                              </span>
-                            </div>
-                          </template>
-                          <template id="tmpl-gene-item">
-                            <div class="ul-li dropdown-gene-item">
-                              <span class="icon is-pulled-left">
-                                <i class="mdi mdi-18px toggler mdi-plus is-clickable mr-2"></i>
-                              </span>
-                              <span class="gene-item-label"></span>
-                            </div>
-                          </template>
-                        </div> 
-                      </div>
-                      <div class="dropdown-item">
-                        <div class="columns">
-                          <div class="column is-10">
-                            <div id="gene-select-dropdown-dynamic-selections"></div>
-                          </div>
-                          <div class="column is-2">
-                            <button class="button is-primary is-rounded">Proceed</button>
-                          </div>
-                        </div>  
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
 
                 <div class="columns">
                   <div class="column is-1">
                     <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
                   </div>
                 </div>
-                <div class="control select">
-                  <select>
-                    <option>Hearing</option>
-                    <option>Here is a much longer profile name to test</option>
-                  </select>
-                </div>
+
+                <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+
                 <div class="control">
-                  <button class="button">
+                  <button class="button is-primary ml-3">
                     <span class="icon is-small">
                       <i class="mdi mdi-magnify"></i>
                     </span>
