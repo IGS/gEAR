@@ -24,7 +24,7 @@ const parseGeneCartURLParams = () => {
     let gene_lists = [];
     if (getUrlParameter('gene_lists')) {
         gene_lists = getUrlParameter('gene_lists').split(',');
-        toggleOnGeneLists(gene_lists);
+        selectGeneLists(gene_lists);
     }
 }
 

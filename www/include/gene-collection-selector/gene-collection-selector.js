@@ -90,17 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
-        const selected_cart_count = selected_carts.length;
-
-        if (selected_cart_count === 1) {
-            // It's the only one
-            const only_cart_id = selected_carts[0];
-            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
-        } else if (selected_cart_count > 1) {
-            document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
-        } else {
-            // Nothing to do
-        }
+        updateGeneListSelectorLabel();
 
         // close the dropdown
         document.querySelector('#dropdown-gene-lists').classList.remove('is-active');
@@ -279,10 +269,15 @@ const setActiveGeneCartCategory = (category) => {
     }
 }
 
-const toggleOnGeneLists = (share_ids) => {
+const selectGeneLists = (share_ids) => {
+    // reads the gene list share_ids passed and handles any UI and data updates to make 
+    //   them preselected
     for (const share_id of share_ids) {
-        //selected_carts[share_id] = gene_cart_data.domain_carts.find((cart) => cart.share_id === share_id).genes;
+        selected_carts.push(share_id);
+        selected_genes = [...new Set([...selected_genes, ...gene_cart_genes[share_id]])];
     }
+
+    updateGeneListSelectorLabel();
 }
 
 const updateGeneListSelectionPanel = () => {
@@ -293,5 +288,18 @@ const updateGeneListSelectionPanel = () => {
 
     for (const cart_share_id of selected_carts) {
         selection_box.innerHTML += `<span class="tag is-info is-light is-small m-1">${gene_cart_label_index[cart_share_id]}</span>`;
+    }
+}
+
+const updateGeneListSelectorLabel = () => {
+    // Updates the gene list select drop down label based on the current state of the selected_carts array
+    const selected_cart_count = selected_carts.length;
+
+    if (selected_cart_count === 1) {
+        // It's the only one
+        const only_cart_id = selected_carts[0];
+        document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
+    } else if (selected_cart_count > 1) {
+        document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
     }
 }
