@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // add the gene lists
             if (Object.keys(selected_carts).length > 0) {
-                url += `&gene_lists=${Object.keys(selected_carts).join(',')}`;
+                url += `&gene_lists=${selected_carts.join(',')}`;
             }
 
             // add the dataset collections
