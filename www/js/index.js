@@ -24,6 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (manually_entered_genes.length > 0) {
                 url += `gene_symbol=${manually_entered_genes.join(',')}`;
             }
+            
+            // are we doing exact matches?
+            if (document.querySelector('#gene-search-exact-match').checked) {
+                url += '&gene_symbol_exact_match=true';
+            }
 
             // add the gene lists
             if (Object.keys(selected_carts).length > 0) {

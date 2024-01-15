@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#page-header-label').textContent = 'Gene Expression Search';
 
     // Handle passed URL parameters
- 
+    if (getUrlParameter('gene_symbol_exact_match') === 'true') {
+        document.querySelector('#gene-search-exact-match').checked = true;
+    }
 
 });
 
@@ -33,6 +35,8 @@ const parseDatasetCollectionURLParams = () => {
     const layout_id = getUrlParameter('layout_id');
 
     if (layout_id) {
-        selectDatasetCollection(layout_id);
+        selected_dc_share_id = layout_id;
+        selected_dc_label = dataset_collection_label_index[layout_id];
+        document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
     }
 }
