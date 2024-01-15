@@ -8,10 +8,11 @@
 
     This creates the following top-level variables:
 
-    - selected_carts: The selected carts - key is share_id, value is array of genes symbol strings
+    - selected_carts: The selected carts - An array of select cart share ids.
     - selected_genes: The selected individal genes, unique merge of all genes in carts and manually entered.
     - gene_cart_data: The output of the apiCallsMixin.fetchGeneCartData() call, which needs to 
       happen in the login UI handler of the page.
+    - gene_cart_genes: An index of all gene carts loaded and their genes.
     - gene_cart_label_index: A map of gene cart share ids to their labels.
 
     Requirements for importing this component:

@@ -1,8 +1,10 @@
 let gene_cart_data = null;
 let gene_cart_label_index = {};
 
-// For carts, key is share_id, value is array of genes symbol strings
-let selected_carts = {};
+// Build this where key is share_id and values are arrays of gene symbols
+let gene_cart_genes = {};
+
+let selected_carts = [];
 let selected_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -83,16 +85,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
         // and finally the related gene lists and genes
-        selected_carts = {};
+        selected_carts = [];
         selected_genes = [];
     });
 
     document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
-        const selected_cart_count = Object.keys(selected_carts).length;
+        const selected_cart_count = selected_carts.length;
 
         if (selected_cart_count === 1) {
-            // get the key of the only element in the selected_carts object
-            const only_cart_id = Object.keys(selected_carts)[0];
+            // It's the only one
+            const only_cart_id = selected_carts[0];
             document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
         } else if (selected_cart_count > 1) {
             document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
@@ -125,10 +127,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {                    
                     const row = gene_list_item_template.content.cloneNode(true);
                     row.querySelector('.gene-list-item-label').textContent = cart.label;
-                    row.querySelector('.ul-li').dataset.genes = cart.genes.join(',');
                     row.querySelector('.ul-li').dataset.shareId = cart.share_id;
+                    row.querySelector('.ul-li').dataset.genes = gene_cart_data[cart.share_id].join(',');
 
-                    if (cart.share_id in selected_carts) {
+                    if (selected_carts.contains(cart.share_id)) {
                         row.querySelector('i.toggler').classList.remove('mdi-plus');
                         row.querySelector('i.toggler').classList.add('mdi-check');
                         row.querySelector('.ul-li').classList.add('is-selected');
@@ -153,8 +155,13 @@ const fetchGeneCartData = async (callback) => {
 
         // Build the gene cart label index for ease of use
         for (const cart_type in gene_cart_data) {
-            for (const cart of gene_cart_data[cart_type]) {                
+            for (const cart of gene_cart_data[cart_type]) {   
                 gene_cart_label_index[cart.share_id] = cart.label;
+                gene_cart_genes[cart.share_id] = cart.genes;
+                
+                // remove the genes list from the original data structure so we don't
+                //  use the memory twice
+                delete cart.genes;
             }
         }
 
@@ -183,7 +190,7 @@ const setActiveGeneCart = (cart_row, mode) => {
     
     // if adding or removing, update the inventory
     if (mode === 'add') {
-        selected_carts[cart_row.dataset.shareId] = genes;
+        selected_carts.push(cart_row.dataset.shareId);
         selected_genes = [...new Set([...selected_genes, ...genes])];
     } else if (mode === 'remove') {
         delete selected_carts[cart_row.dataset.shareId];
@@ -254,10 +261,11 @@ const setActiveGeneCartCategory = (category) => {
     for (const entry of data) {
         const row = gene_list_item_template.content.cloneNode(true);
         row.querySelector('.gene-list-item-label').textContent = entry.label;
-        row.querySelector('.ul-li').dataset.genes = entry.genes.join(',');
         row.querySelector('.ul-li').dataset.shareId = entry.share_id;
+        row.querySelector('.ul-li').dataset.genes = gene_cart_genes[entry.share_id].join(',');
+        
 
-        if (entry.share_id in selected_carts) {
+        if (selected_carts.includes(entry.share_id)) {
             row.querySelector('i.toggler').classList.remove('mdi-plus');
             row.querySelector('i.toggler').classList.add('mdi-check');
             row.querySelector('.ul-li').classList.add('is-selected');
@@ -271,13 +279,19 @@ const setActiveGeneCartCategory = (category) => {
     }
 }
 
+const toggleOnGeneLists = (share_ids) => {
+    for (const share_id of share_ids) {
+        //selected_carts[share_id] = gene_cart_data.domain_carts.find((cart) => cart.share_id === share_id).genes;
+    }
+}
+
 const updateGeneListSelectionPanel = () => {
     selection_box = document.querySelector('#gene-select-dropdown-dynamic-selections');
 
     // first empty it out, then populate it
     selection_box.innerHTML = '';
 
-    for (const cart_share_id in selected_carts) {
+    for (const cart_share_id of selected_carts) {
         selection_box.innerHTML += `<span class="tag is-info is-light is-small m-1">${gene_cart_label_index[cart_share_id]}</span>`;
     }
 }
