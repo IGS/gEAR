@@ -29,6 +29,10 @@ const parseGeneCartURLParams = () => {
 }
 
 const parseDatasetCollectionURLParams = () => {
-    // handle passed dataset collections
-    //const layout_id = getUrlParameter('layout_id');
+    // handle passed dataset collection
+    const layout_id = getUrlParameter('layout_id');
+
+    if (layout_id) {
+        selectDatasetCollection(layout_id);
+    }
 }

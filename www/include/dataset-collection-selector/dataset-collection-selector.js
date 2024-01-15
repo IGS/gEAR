@@ -42,12 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selected_dc_share_id = row_div.dataset.shareId;
             selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
 
-            if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
-                let truncated_label = selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) + '...';
-                document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
-            } else {
-                document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
-            }
+            updateDatasetCollectionSelectorLabel();
 
             document.querySelector('#dropdown-dc').classList.remove('is-active');
         }
@@ -128,6 +123,15 @@ const fetchDatasetCollections = async (callback) => {
     }
 }
 
+const selectDatasetCollection = (share_id) => {
+    // reads the DC share_id passed and handles any UI and data updates to make 
+    //   it preselected
+    selected_dc_share_id = share_id;
+    selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
+
+    updateDatasetCollectionSelectorLabel();
+}
+
 const setActiveDCCategory = (category) => {
     // clear the gene list
     document.querySelector('#dropdown-content-dc').innerHTML = '';
@@ -178,5 +182,14 @@ const setActiveDCCategory = (category) => {
         }
 
         document.querySelector('#dropdown-content-dc').appendChild(row);
+    }
+}
+
+const updateDatasetCollectionSelectorLabel = () => {
+    if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
+        let truncated_label = selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) + '...';
+        document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
+    } else {
+        document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
     }
 }
