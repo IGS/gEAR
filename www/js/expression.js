@@ -1,4 +1,5 @@
 url_params_passed = false;
+annotation_data = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -29,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        console.log("Fetching gene annotations");
         fetchGeneAnnotations();
     });
 
@@ -37,37 +37,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fetchGeneAnnotations = async (callback) => {
     try {
-        const data = await apiCallsMixin.fetchGeneAnnotations(
+        annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             selected_genes.join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
-        console.log(data);
 
-
-
-        /*
-        const template = document.querySelector('#user-history-row');
-        document.querySelector('#user-history-table-tbody').innerHTML = '';
-
-        if (data.length === 0) {
-            const noHistoryTemplate = document.querySelector('#user-history-no-entries');
-            document.querySelector('#user-history-table-tbody').appendChild(noHistoryTemplate.content.cloneNode(true));
+        document.querySelector('#gene-result-count').innerHTML = annotation_data.length;
+        
+        if (annotation_data.length === 0) {
+            const noHistoryTemplate = document.querySelector('#tmpl-gene-result-none-found');
+            document.querySelector('#gene-result-list').appendChild(noHistoryTemplate.content.cloneNode(true));
         } else {
-            for (const entry of data) {
-                const row = template.content.cloneNode(true);
+            const template = document.querySelector('#tmpl-gene-result-item');
+            document.querySelector('#gene-result-list').innerHTML = '';
 
-                let formatted_category = entry.entry_category.replaceAll('_', ' ');
-                formatted_category = formatted_category.charAt(0).toUpperCase() + formatted_category.slice(1);
-
-                row.querySelector('.category').textContent = formatted_category;
-                row.querySelector('.action-label').textContent = entry.label;
-                row.querySelector('.date').textContent = entry.entry_date;
-                row.querySelector('.url').setAttribute('href', entry.url);
-
-                document.querySelector('#user-history-table-tbody').appendChild(row);
+            for (const gene_symbol in annotation_data) {
+                let row = template.content.cloneNode(true);
+                row.querySelector('li').innerHTML = gene_symbol;
+                document.querySelector('#gene-result-list').appendChild(row);
             }
         }
-        */
     } catch (error) {
         console.error(error);
     }

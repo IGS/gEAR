@@ -92,12 +92,14 @@
             </div>
             <div id="results-main-c" class="columns">
               <div id="gene-result-list-c" class="column is-narrow is-fullheight p-0">
-                <h3 class="mt-3 ml-3 mr-6">Search results (<span id="gene-result-count">3</span>)</h3>
-                <ul id="gene-result-list" class="mt-3">
-                  <li class="is-clickable is-selected">Sox2</li>
-                  <li class="is-clickable">Pou4f3</li>
-                  <li class="is-clickable">Rfx7</li>
-                </ul>
+                <h3 class="mt-3 ml-3 mr-6">Search results (<span id="gene-result-count"></span>)</h3>
+                <ul id="gene-result-list" class="mt-3"></ul>
+                <template id="tmpl-gene-result-item">
+                  <li class="is-clickable"></li>
+                </template>
+                <template id="tmpl-gene-result-none-found">
+                  <li>No matches found</li>
+                </template>
               </div>
               <div id="annotation-and-grid-c" class="column">
                 <h3 class="mb-2 mt-0">Showing results for: <span id="currently-selected-gene">Sox2</span></h3>
