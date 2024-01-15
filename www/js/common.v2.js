@@ -719,6 +719,16 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches annotations for the passed gene symbols
+     * @param {array} gene_symbols - comma-separated string of gene symbols
+     * @returns {Promise<any>} - A promise that resolves to the data of the gene annotations.
+     */
+    async fetchGeneAnnotations(gene_symbols, exact_match) {
+        const payload = { session_id: this.sessionId, search_gene_symbol: gene_symbols, exact_match: exact_match };
+        const {data} = await axios.post(`/cgi/search_genes.cgi`, convertToFormData(payload));
+        return data;
+    },
+    /**
      * Fetches the members of a gene cart.
      * @param {string} geneCartId - The ID of the gene cart.
      * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
