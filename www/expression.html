@@ -95,10 +95,10 @@
                 <h3 class="mt-3 ml-3 mr-6">Search<br />results (<span id="gene-result-count"></span>)</h3>
                 <ul id="gene-result-list" class="mt-3"></ul>
                 <template id="tmpl-gene-result-item">
-                  <li class="is-clickable pl-4"></li>
+                  <li class="gene-result-list-item is-clickable pl-4"></li>
                 </template>
                 <template id="tmpl-gene-result-none-found">
-                  <li>No matches found</li>
+                  <li class="pl-4">No matches found</li>
                 </template>
               </div>
               <div id="annotation-and-grid-c" class="column">
@@ -117,6 +117,7 @@
                           </template>
                         </div>
                       </div>
+                      <span id="set-default-organism" class="is-hidden is-size-7 has-text-weight-bold is-clickable">Set as your default</span>
                     </div>
                     <div class="column is-one-third">
                       <h4 class="mb-1">Deafness Gene Annotation</h4>

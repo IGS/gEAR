@@ -33,6 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchGeneAnnotations();
     });
 
+    // Add event listeners to the gene result list items even if they don't exist yet
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('gene-result-list-item')) {
+            const gene_symbol = event.target.innerHTML;
+
+            // remove is-selected from all the existing rows, then add it to this one
+            const rows = document.querySelectorAll('.gene-result-list-item');
+            rows.forEach((row) => {
+                row.classList.remove('is-selected');
+            });
+
+            event.target.classList.add('is-selected');
+            selectGeneResult(gene_symbol);
+        }
+    });
+
 });
 
 const fetchGeneAnnotations = async (callback) => {
@@ -55,6 +71,12 @@ const fetchGeneAnnotations = async (callback) => {
                 let row = template.content.cloneNode(true);
                 row.querySelector('li').innerHTML = gene_symbol;
                 document.querySelector('#gene-result-list').appendChild(row);
+
+                // due to a python issue, at some point in depth the data becomes a string. Parse it.
+                for (const organism_id in annotation_data[gene_symbol]['by_organism']) {
+                    const annot = JSON.parse(annotation_data[gene_symbol]['by_organism'][organism_id][0]);
+                    annotation_data[gene_symbol]['by_organism'][organism_id] = annot;                    
+                }
             }
         }
     } catch (error) {
@@ -140,6 +162,10 @@ const parseDatasetCollectionURLParams = () => {
         selected_dc_label = dataset_collection_label_index[layout_id];
         document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
     }
+}
+
+const selectGeneResult = (gene_symbol) => {
+
 }
 
 const validateExpressionSearchForm = () => {
