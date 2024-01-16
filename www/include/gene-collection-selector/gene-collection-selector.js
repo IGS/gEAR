@@ -80,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // clear the genes-manually-entered input element
-        document.querySelector('#genes-manually-entered').value = '';
         document.querySelector('#dropdown-gene-list-search-input').value = '';
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
