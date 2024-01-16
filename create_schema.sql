@@ -35,9 +35,9 @@ CREATE TABLE guser (
        is_admin       TINYINT(1) DEFAULT 0,
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
-       default_org_id INT DEFAULT 1,
+       default_org_id INT NOT NULL DEFAULT 1,
        is_gear_curator TINYINT(1) DEFAULT 0,
-       FOREIGN KEY (default_org_id) REFERENCES organism(id)
+       FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
 -- password is a hashlib md5 hexdigest
