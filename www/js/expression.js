@@ -121,6 +121,14 @@ const parseGeneCartURLParams = () => {
     } else {
         document.querySelector('#gene-search-exact-match').checked = false;
     }
+
+    // single or multiple gene view?
+    const is_multigene = getUrlParameter('is_multigene');
+    if (is_multigene === '1') {
+        document.querySelector('#single-multi-multi').checked = true;
+    } else {
+        document.querySelector('#single-multi-single').checked = true;        
+    }
 }
 
 const parseDatasetCollectionURLParams = () => {

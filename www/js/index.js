@@ -30,6 +30,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 url += '&gene_symbol_exact_match=true';
             }
 
+            // get the value of the single-multi radio box
+            const single_multi = document.querySelector('input[name="single-multi"]:checked').value;
+
+            if (single_multi === 'single') {
+                url += '&is_multigene=0';
+            } else {
+                url += '&is_multigene=1';
+            }
+
             // add the gene lists
             if (Object.keys(selected_carts).length > 0) {
                 url += `&gene_lists=${selected_carts.join(',')}`;
