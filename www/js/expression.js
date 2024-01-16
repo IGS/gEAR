@@ -62,11 +62,29 @@ const fetchGeneAnnotations = async (callback) => {
     }
 }
 
+const fetchOrganisms = async (callback) => {
+    try {
+        orgs = await apiCallsMixin.fetchOrganismList();
+        const template = document.querySelector('#tmpl-organism-option');
+
+        for (const organism of orgs['organisms']) {
+            let row = template.content.cloneNode(true);
+            row.querySelector('option').innerHTML = organism.label;
+            row.querySelector('option').value = organism.id;
+            document.querySelector('#organism-selector').appendChild(row);
+        }
+        
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
     const [cart_result, dc_result] = await Promise.all([
         fetchGeneCartData(parseGeneCartURLParams),
         fetchDatasetCollections(parseDatasetCollectionURLParams),
+        fetchOrganisms()
     ]);
 
     // Now, if URL params were passed and we have both genes and a dataset collection, 

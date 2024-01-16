@@ -773,6 +773,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches info on all the organisms in the database
+     * @returns {Promise<any>} - A promise that resolves to the list of organisms
+     */
+    async fetchOrganismList() {
+        const payload = {session_id: this.sessionId};
+        const {data} = await axios.post(`/cgi/get_organism_list.cgi`, convertToFormData(payload));
+        return data;
+    },
+    /**
      * Fetches Plotly data for a given dataset, analysis, plot type, and plot configuration.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysis - The analysis type.

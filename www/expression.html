@@ -109,13 +109,12 @@
                       <h4 class="mb-1">Organism</h4>
                       <div class="control">
                         <div class="select is-small">
-                          <select class="pr-6">
-                            <option>Select an organism</option>
-                            <option>Human</option>
-                            <option>Mouse</option>
-                            <option>Zebrafish</option>
-                            <option>Chicken</option>
+                          <select id="organism-selector" class="pr-6">
+                            <option value="">Select an organism</option>
                           </select>
+                          <template id="tmpl-organism-option">
+                            <option value=""></option>
+                          </template>
                         </div>
                       </div>
                     </div>
