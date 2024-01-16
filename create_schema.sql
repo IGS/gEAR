@@ -1,3 +1,28 @@
+CREATE TABLE organism (
+       id             INT PRIMARY KEY AUTO_INCREMENT,
+       label          VARCHAR(255) NOT NULL,
+       genus          VARCHAR(255),
+       species        VARCHAR(255),
+       strain         VARCHAR(255),
+       taxon_id       INT
+) ENGINE=INNODB;
+
+-- DO NOT change these values without making corresponding changes in the annotation loading scripts
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (1, 'Mouse', 'Mus', 'musculus', NULL, 10090);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (2, 'Human', 'Homo', 'sapiens', 'sapiens', 9606);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (3, 'Zebrafish', 'Danio', 'rerio', NULL, 7955);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (5, 'Chicken', 'Gallus', 'gallus', NULL, 9031);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (6, 'Rat', 'Rattus', 'norvegicus', NULL, 10116);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (7, 'Marmoset', 'Callithrix', 'jacchus', 'jacchus', 9483);
+INSERT INTO organism (id, label, genus, species, strain, taxon_id)
+       VALUES (8, 'Roundworm', 'Caenorhabditis', 'elegans', 'WBcel235', 6239);
+
 -- https://docs.python.org/3.4/library/http.cookies.html
 CREATE TABLE guser (
        id             INT PRIMARY KEY AUTO_INCREMENT,
@@ -11,7 +36,8 @@ CREATE TABLE guser (
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        default_org_id INT DEFAULT 1,
-       is_gear_curator TINYINT(1) DEFAULT 0
+       is_gear_curator TINYINT(1) DEFAULT 0,
+       FOREIGN KEY (default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
 -- password is a hashlib md5 hexdigest
@@ -44,31 +70,6 @@ CREATE TABLE user_session (
           REFERENCES guser(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB;
-
-CREATE TABLE organism (
-       id             INT PRIMARY KEY AUTO_INCREMENT,
-       label          VARCHAR(255) NOT NULL,
-       genus          VARCHAR(255),
-       species        VARCHAR(255),
-       strain         VARCHAR(255),
-       taxon_id       INT
-) ENGINE=INNODB;
-
--- DO NOT change these values without making corresponding changes in the annotation loading scripts
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (1, 'Mouse', 'Mus', 'musculus', NULL, 10090);
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (2, 'Human', 'Homo', 'sapiens', 'sapiens', 9606);
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (3, 'Zebrafish', 'Danio', 'rerio', NULL, 7955);
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (5, 'Chicken', 'Gallus', 'gallus', NULL, 9031);
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (6, 'Rat', 'Rattus', 'norvegicus', NULL, 10116);
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (7, 'Marmoset', 'Callithrix', 'jacchus', 'jacchus', 9483);
-INSERT INTO organism (id, label, genus, species, strain, taxon_id)
-       VALUES (8, 'Roundworm', 'Caenorhabditis', 'elegans', 'WBcel235', 6239);
 
 CREATE TABLE gene (
        id               INT PRIMARY KEY AUTO_INCREMENT,
