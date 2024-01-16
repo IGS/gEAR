@@ -42,9 +42,9 @@ const fetchGeneAnnotations = async (callback) => {
             document.querySelector('#gene-search-exact-match').checked
         );
 
-        document.querySelector('#gene-result-count').innerHTML = annotation_data.length;
+        document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
         
-        if (annotation_data.length === 0) {
+        if (Object.keys(annotation_data).length === 0) {
             const noHistoryTemplate = document.querySelector('#tmpl-gene-result-none-found');
             document.querySelector('#gene-result-list').appendChild(noHistoryTemplate.content.cloneNode(true));
         } else {
