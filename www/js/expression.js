@@ -226,11 +226,13 @@ const updateAnnotationDisplay = () => {
     // if the selected organism is not in the annotation data, show a message
     if (annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
         const annotation = annotation_data[gs]['by_organism'][oid];
-        //console.log(annotation);
+        console.log(annotation);
 
+        // Gene product
         document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
         document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
 
+        // External database references
         let good_dbxref_count = 0;
 
         for (const dbxref of annotation['dbxrefs']) {
