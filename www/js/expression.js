@@ -288,15 +288,21 @@ const updateAnnotationDisplay = () => {
 
     // GO terms
     document.querySelector('#go-term-count').innerHTML = '(' + annotation['go_terms'].length + ')';
-    for (const go_term of annotation['go_terms']) {
-        const go_term_template = document.querySelector('#tmpl-go-term');
-        const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
-        
+    if (annotation['go_terms'].length === 0) {
+        const go_term_template = document.querySelector('#tmpl-go-term-none-found');
         const row = go_term_template.content.cloneNode(true);
-        row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
-        row.querySelector('.go-term-id').href = go_term_url;
-        row.querySelector('.go-term-label').innerHTML = go_term['name'];
         document.querySelector('#go-terms').appendChild(row);
+    } else {
+        for (const go_term of annotation['go_terms']) {
+            const go_term_template = document.querySelector('#tmpl-go-term');
+            const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
+            
+            const row = go_term_template.content.cloneNode(true);
+            row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
+            row.querySelector('.go-term-id').href = go_term_url;
+            row.querySelector('.go-term-label').innerHTML = go_term['name'];
+            document.querySelector('#go-terms').appendChild(row);
+        }
     }
         
 
