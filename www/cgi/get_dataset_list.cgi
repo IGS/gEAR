@@ -97,7 +97,7 @@ def main():
         result['datasets'].extend(dsc.datasets)
 
     # Was a specific layout ID passed?
-    if form.getvalue('layout_id') is not None:
+    elif form.getvalue('layout_id') is not None:
         layout_id = form.getvalue('layout_id')
         layout = geardb.Layout(id=layout_id)
         layout.load()
