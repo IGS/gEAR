@@ -159,12 +159,21 @@
                         </span>
                       </span>
                     </h3>
-                    <div class="columns">
+                    <div id="extended-annotation-panel" class="columns">
                       <div class="column is-4">
                         <h4>Annotation</h4>
                       </div>
                       <div class="column is-4">
-                        <h4>GO terms</h4>
+                        <h4>GO terms <span id="go-term-count"></span></h4>
+                        <ul id="go-terms"></ul>
+                        <template id="tmpl-go-term">
+                          <li class="is-clickable go-term-c is-size-7 p-1">
+                            <a class="go-term-id" target="_blank" href=""></a> : <span class="go-term-label"></span>
+                          </li>
+                        </template>
+                        <template id="tmpl-go-term-none-found">
+                          <li class="go-term-c is-size-7 p-1">None found</li>
+                        </template>
                       </div>
                       <div class="column is-4">
                         <h4>miRNA tree</h4>

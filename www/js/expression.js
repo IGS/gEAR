@@ -221,8 +221,10 @@ const updateAnnotationDisplay = () => {
     const gs = currently_selected_gene_symbol;
     const oid = currently_selected_org_id;
 
-    // clear the external resource links
+    // clear the external resource links and GO terms
     document.querySelector('#external-resource-links').innerHTML = '';
+    document.querySelector('#go-terms').innerHTML = '';
+    document.querySelector('#go-term-count').innerHTML = '';
 
     // if the selected organism is not in the annotation data, show a message
     if (! annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
@@ -261,6 +263,19 @@ const updateAnnotationDisplay = () => {
         const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
         const row = dbxref_template.content.cloneNode(true);
         document.querySelector('#external-resource-links').appendChild(row);
+    }
+
+    // GO terms
+    document.querySelector('#go-term-count').innerHTML = '(' + annotation['go_terms'].length + ')';
+    for (const go_term of annotation['go_terms']) {
+        const go_term_template = document.querySelector('#tmpl-go-term');
+        const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
+        
+        const row = go_term_template.content.cloneNode(true);
+        row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
+        row.querySelector('.go-term-id').href = go_term_url;
+        row.querySelector('.go-term-label').innerHTML = go_term['name'];
+        document.querySelector('#go-terms').appendChild(row);
     }
         
 
