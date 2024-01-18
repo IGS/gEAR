@@ -191,52 +191,7 @@ class TileGrid {
 
         return tilegrid;;
 
-            // TODO: Create a subgrid for variable heights
-
-        /*
-            // tiles are not all the same height
-            // Create a grid of tiles for the not-tallest tiles
-            const maxTileHeight = Math.max(...usedTiles.map((t) => t.tile.height));
-            const notTallestTiles = usedTiles.filter((t) => t.tile.height < maxTileHeight);
-            let remainingHeight = maxTileHeight - height;
-
-            // Create a subgrid for the not-tallest tiles using their widths
-            const subgrid = [[...notTallestTiles]];
-            const subgridWidth = notTallestTiles.reduce((acc, t) => acc + t.tile.width, 0);
-
-            // find tiles that fit into the remaining height
-            while (remainingHeight > 0) {
-                const tile = tiles.find((t) => !t.used && t.tile.height <= remainingHeight);
-                if (!tile) {
-                    break;
-                }
-
-                const subgridUsedTiles = [tile];
-                const subgridRemainingWidth = subgridWidth - tile.tile.width;
-
-                // find tiles that fit into the remaining width
-                while (subgridRemainingWidth > 0) {
-                    const tile = tiles.find(
-                        (t) => !t.used && t.tile.width <= subgridRemainingWidth
-                    );
-                    if (!tile) {
-                        break;
-                    }
-
-                    subgridUsedTiles.push(tile);
-                    subgridRemainingWidth -= tile.tile.width;
-                }
-
-
-                subgrid.push([tile]);
-                remainingHeight -= tile.tile.height;
-            }
-
-        }
-
-        return tilegrid;
-
-        */
+        // TODO: Create a subgrid for variable heights
     }
 };
 
@@ -254,7 +209,7 @@ class DatasetTile {
         const tile = {};
         const dataset = this.dataset;
         tile.width = this.type === "single" ? dataset.grid_width : dataset.mg_grid_width;
-        tile.height = 1; // dataset.grid_height || dataset.mg_grid_height;  // Heights are not bound by the grid, so just use 1, 2, 3, etc.
+        tile.height = 1; // dataset.grid_height || dataset.mg_grid_height;  // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
         tile.tile_id = `${dataset.id}_${dataset.grid_position}_${this.type}`
         tile.used = false;
         tile.title = dataset.title;

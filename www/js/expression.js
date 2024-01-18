@@ -1,7 +1,6 @@
 'use strict';
 
 let urlParamsPassed = false;
-let annotationData = null;
 let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
 let isMultigene = false;
@@ -72,29 +71,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fetchGeneAnnotations = async (callback) => {
     try {
-        const annotationData = await apiCallsMixin.fetchGeneAnnotations(
+        const annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             selected_genes.join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
 
-        document.querySelector('#gene-result-count').innerHTML = Object.keys(annotationData).length;
+        document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
 
-        if (Object.keys(annotationData).length === 0) {
+        if (Object.keys(annotation_data).length === 0) {
             const noHistoryTemplate = document.querySelector('#tmpl-gene-result-none-found');
             document.querySelector('#gene-result-list').appendChild(noHistoryTemplate.content.cloneNode(true));
         } else {
             const template = document.querySelector('#tmpl-gene-result-item');
             document.querySelector('#gene-result-list').innerHTML = '';
 
-            for (const gene_symbol in annotationData) {
+            for (const gene_symbol in annotation_data) {
                 const row = template.content.cloneNode(true);
                 row.querySelector('li').innerHTML = gene_symbol;
                 document.querySelector('#gene-result-list').appendChild(row);
 
                 // due to a python issue, at some point in depth the data becomes a string. Parse it.
-                for (const organism_id in annotationData[gene_symbol]['by_organism']) {
-                    const annot = JSON.parse(annotationData[gene_symbol]['by_organism'][organism_id][0]);
-                    annotationData[gene_symbol]['by_organism'][organism_id] = annot;
+                for (const organism_id in annotation_data[gene_symbol]['by_organism']) {
+                    const annot = JSON.parse(annotation_data[gene_symbol]['by_organism'][organism_id][0]);
+                    annotation_data[gene_symbol]['by_organism'][organism_id] = annot;
                 }
             }
         }
@@ -235,7 +234,7 @@ const updateAnnotationDisplay = () => {
         for (const dbxref of annotation['dbxrefs']) {
             if (dbxref['url'] !== null) {
                 const dbxref_template = document.querySelector('#tmpl-external-resource-link');
-                let row = dbxref_template.content.cloneNode(true);
+                const row = dbxref_template.content.cloneNode(true);
                 row.querySelector('a').innerHTML = dbxref['source'];
                 row.querySelector('a').href = dbxref['url'];
                 document.querySelector('#external-resource-links').appendChild(row);
@@ -245,19 +244,19 @@ const updateAnnotationDisplay = () => {
 
         if (good_dbxref_count === 0) {
             const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
-            let row = dbxref_template.content.cloneNode(true);
+            const row = dbxref_template.content.cloneNode(true);
             document.querySelector('#external-resource-links').appendChild(row);
         }
+        return;
 
 
-    } else {
-        document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
-        document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
-
-        const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
-        let dbxref_template_row = dbxref_template.content.cloneNode(true);
-        document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
     }
+    document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
+    document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+
+    const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+    const dbxref_template_row = dbxref_template.content.cloneNode(true);
+    document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
 
 }
 
