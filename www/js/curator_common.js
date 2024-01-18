@@ -273,7 +273,7 @@ const curatorApiCallsMixin = {
     async fetchDefaultDisplay(datasetId) {
         try {
             // POST due to payload variables being sensitive
-            const {default_display_id} =  await super.fetchDefaultDisplay(datasetId);
+            const {default_display_id} =  await super.fetchDefaultDisplay(datasetId, isMultigene);
             return default_display_id;
         } catch (error) {
             logErrorInConsole(error);
@@ -435,7 +435,7 @@ const datasetTree = new DatasetTree({
         const {userDisplays, ownerDisplays} = await curatorApiCallsMixin.fetchDatasetDisplays(datasetId);
         let defaultDisplayId;
         try {
-            defaultDisplayId = await fetchDefaultDisplay(datasetId);
+            defaultDisplayId = await curatorApiCallsMixin.fetchDefaultDisplay(datasetId);
         } catch (error) {
             defaultDisplayId = -1;  // Cannot make any display a default.
         }

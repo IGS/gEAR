@@ -204,14 +204,7 @@ const parseDatasetCollectionURLParams = async () => {
     selected_dc_label = dataset_collection_label_index[layout_share_id];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 
-    const tile_grid = new TileGrid(layout_share_id, "#result-panel-grid");
-    try {
-        tile_grid.layout = await tile_grid.getLayout();
-        tile_grid.tilegrid = tile_grid.generateTileGrid();
-        tile_grid.applyTileGrid(is_multigene);
-    }   catch (error) {
-        logErrorInConsole(error);
-    }
+    setupTileGrid(layout_share_id);
 }
 
 const selectGeneResult = (gene_symbol) => {
@@ -225,6 +218,18 @@ const selectGeneResult = (gene_symbol) => {
     }
 
     updateAnnotationDisplay();
+}
+
+const setupTileGrid = async (layout_share_id) => {
+    const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
+    try {
+        tilegrid.layout = await tilegrid.getLayout();
+        tilegrid.tilegrid = tilegrid.generateTileGrid();
+        tilegrid.applyTileGrid(is_multigene);
+        await tilegrid.addDefaultDisplays();
+    }   catch (error) {
+        logErrorInConsole(error);
+    }
 }
 
 const showOrganismSelectorToolip = () => {

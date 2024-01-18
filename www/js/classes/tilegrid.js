@@ -14,13 +14,25 @@ class TileGrid {
         this.maxCols = 12 // highest number of columns in a row
         this.maxRows = 12 // highest number of rows in a column
 
-        this.tilegrid = [] // this.generateTileGrid();    // can also have sub-TileGrids
+        this.singleGeneTiles = [];  // collection of DatasetTile objects
+        this.multiGeneTiles = [];
+
+        this.tilegrid = [] // this.generateTileGrid();
         this.selector = selector;
 
         //this.applyTileGrid();
 
     }
 
+    async addDefaultDisplays() {
+
+    }
+
+    /**
+     * Applies the tile grid layout to the specified element.
+     *
+     * @param {boolean} [isMulti=false] - Indicates whether the multi-tile grid should be used.
+     */
     applyTileGrid(isMulti = false) {
         const tilegrid = isMulti ? this.tilegrid.multi : this.tilegrid.single;
         const selector = this.selector;
@@ -48,6 +60,11 @@ class TileGrid {
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
+    /**
+     * Retrieves the layout information from the server.
+     * @returns {Promise<Array>} A promise that resolves to an array of datasets.
+     * @throws {Error} If an error occurs during the API call.
+     */
     async getLayout() {
         try {
             const data = await apiCallsMixin.fetchDatasetListInfo({layout_share_id: this.layoutShareId})
@@ -58,6 +75,10 @@ class TileGrid {
         }
     }
 
+    /**
+     * Generates a tile grid.
+     * @returns {Object} The generated tile grid object.
+     */
     generateTileGrid() {
         const tilegrid = {};
 
@@ -66,6 +87,10 @@ class TileGrid {
         return tilegrid;
     }
 
+    /**
+     * Generates a multi-gene tile grid based on the layout.
+     * @returns {Array<Array<DatasetTile>>} The generated tile grid.
+     */
     generateMultiTileGrid() {
         const tilegrid = [];
         const tiles = [];
@@ -77,6 +102,8 @@ class TileGrid {
 
         // sort by grid position
         tiles.sort((a, b) => a.dataset.grid_position - b.dataset.grid_position);
+
+        this.multiGeneTiles = tiles;
 
         for (const datasetTile of tiles) {
             if (datasetTile.used) {
@@ -129,6 +156,10 @@ class TileGrid {
         return tilegrid;
     }
 
+    /**
+     * Generates a single-gene tile grid based on the layout.
+     * @returns {Array<Array<DatasetTile>>} The generated tile grid.
+     */
     generateSingleTileGrid() {
         const tilegrid = [];
         const tiles = [];
@@ -140,6 +171,9 @@ class TileGrid {
 
         // sort by grid position
         tiles.sort((a, b) => a.dataset.grid_position - b.dataset.grid_position);
+
+        this.singleGeneTiles = tiles;
+
 
         for (const datasetTile of tiles) {
             if (datasetTile.used) {
@@ -205,6 +239,10 @@ class DatasetTile {
 
     // TODO: Refactor since both of these functions are the same except for the using "grid_width" vs "mg_grid_width"
     // TODO: Also add "grid_height" and "mg_grid_height" to the dataset object
+    /**
+     * Generates a tile object based on the current dataset and tile type.
+     * @returns {Object} The generated tile object.
+     */
     generateTile() {
         const tile = {};
         const dataset = this.dataset;
@@ -216,6 +254,10 @@ class DatasetTile {
         return tile;
     }
 
+    /**
+     * Generates the HTML representation of a tile.
+     * @returns {HTMLElement} The HTML element representing the tile.
+     */
     generateTileHTML() {
         const tile = this.tile;
 
