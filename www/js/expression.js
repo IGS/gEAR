@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
     document.querySelector('#page-header-label').textContent = 'Gene Expression Search';
 
-    // add event listener for when the dropdown-gene-list-search-input input box is changed
+    // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
 
@@ -33,6 +33,19 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchGeneAnnotations();
     });
 
+    // handle when the organism-selector select box is changed
+    document.querySelector('#organism-selector').addEventListener('change', (event) => {
+        const selected_organism_id = document.querySelector('#organism-selector').value;
+
+        if (selected_organism_id === "") {
+            showOrganismSelectorToolip();
+            return;
+        } else {
+            hideOrganismSelectorToolip();
+        }
+
+    });
+
     // Add event listeners to the gene result list items even if they don't exist yet
     document.addEventListener('click', (event) => {
         if (event.target.classList.contains('gene-result-list-item')) {
@@ -48,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
             selectGeneResult(gene_symbol);
         }
     });
-
 });
 
 const fetchGeneAnnotations = async (callback) => {
@@ -97,13 +109,13 @@ const fetchOrganisms = async (callback) => {
         }
         
     } catch (error) {
-        console.error(error);
+        createToast("There was an error fetching the organism list (" + error + ")");
     }
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
-    const [cart_result, dc_result] = await Promise.all([
+    const [cart_result, dc_result, org_result] = await Promise.all([
         fetchGeneCartData(parseGeneCartURLParams),
         fetchDatasetCollections(parseDatasetCollectionURLParams),
         fetchOrganisms()
@@ -116,6 +128,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector('#submit-expression-search').click();
         }
     }
+}
+
+const hideOrganismSelectorToolip = () => {
+    document.querySelector('#organism-selector-control').classList.remove('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
+    document.querySelector('#organism-selector-control').removeAttribute('data-tooltip');
 }
 
 const parseGeneCartURLParams = () => {
@@ -165,7 +182,18 @@ const parseDatasetCollectionURLParams = () => {
 }
 
 const selectGeneResult = (gene_symbol) => {
+    const selected_organism_id = document.querySelector('#organism-selector').value;
 
+    // if no organism is selected, display a tooltip to choose one
+    if (selected_organism_id === "") {
+        showOrganismSelectorToolip();
+        return;
+    }
+}
+
+const showOrganismSelectorToolip = () => {
+    document.querySelector('#organism-selector-control').setAttribute('data-tooltip', 'Select an organism to view annotation');
+    document.querySelector('#organism-selector-control').classList.add('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
 }
 
 const validateExpressionSearchForm = () => {
