@@ -333,6 +333,10 @@ const curatorApiCallsMixin = {
      */
     async saveDatasetDisplay(datasetId, displayId, label, plotType, plotConfig){
         // NOTE: Saving all displays as new displays (clone) instead of overwriting. User can always delete excess displays
+        if (analysisObj) {
+            plotConfig["analysis"] = analysisObj;
+        }
+
         try {
             const {display_id, success} = await super.saveDatasetDisplay(datasetId, displayId, label, plotType, plotConfig);
             if (!success) {
