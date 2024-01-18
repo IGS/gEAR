@@ -1,5 +1,7 @@
 url_params_passed = false;
 annotation_data = null;
+currently_selected_gene_symbol = null;
+currently_selected_org_id = "";
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -35,13 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // handle when the organism-selector select box is changed
     document.querySelector('#organism-selector').addEventListener('change', (event) => {
-        const selected_organism_id = document.querySelector('#organism-selector').value;
+        currently_selected_org_id = document.querySelector('#organism-selector').value;
 
-        if (selected_organism_id === "") {
+        if (currently_selected_org_id === "") {
             showOrganismSelectorToolip();
             return;
         } else {
             hideOrganismSelectorToolip();
+            updateAnnotationDisplay();
         }
 
     });
@@ -182,18 +185,37 @@ const parseDatasetCollectionURLParams = () => {
 }
 
 const selectGeneResult = (gene_symbol) => {
-    const selected_organism_id = document.querySelector('#organism-selector').value;
+    let selected_organism_id = document.querySelector('#organism-selector').value;
+    currently_selected_gene_symbol = gene_symbol;
 
     // if no organism is selected, display a tooltip to choose one
     if (selected_organism_id === "") {
         showOrganismSelectorToolip();
         return;
     }
+
+    updateAnnotationDisplay();
 }
 
 const showOrganismSelectorToolip = () => {
     document.querySelector('#organism-selector-control').setAttribute('data-tooltip', 'Select an organism to view annotation');
     document.querySelector('#organism-selector-control').classList.add('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
+}
+
+const updateAnnotationDisplay = () => {
+    // these make some of the syntax below shorter
+    const gs = currently_selected_gene_symbol;
+    const oid = currently_selected_org_id;
+
+    // if the selected organism is not in the annotation data, show a message
+    if (annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
+        document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation_data[gs]['by_organism'][oid]['product'];
+        document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+    } else {
+        document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
+        document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+    }
+
 }
 
 const validateExpressionSearchForm = () => {
