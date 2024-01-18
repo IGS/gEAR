@@ -38,7 +38,7 @@ class TileGrid {
                 const tileChildHTML = tile.html;
 
                 const tileParentHTML = document.createElement('div');
-                tileParentHTML.classList.add('tile', 'is-parent', 'pr-0', `is-${tile.width}`);
+                tileParentHTML.classList.add('tile', 'is-parent', 'p-1', `is-${tile.width}`);
                 tileParentHTML.append(tileChildHTML);
 
                 tilegridHTML.append(tileParentHTML);

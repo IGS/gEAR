@@ -777,8 +777,7 @@ const apiCallsMixin = {
      * @returns {Promise<any>} - A promise that resolves to the list of organisms
      */
     async fetchOrganismList() {
-        const payload = {session_id: this.sessionId};
-        const {data} = await axios.post(`/cgi/get_organism_list.cgi`, convertToFormData(payload));
+        const {data} = await axios.post(`/cgi/get_organism_list.cgi`);
         return data;
     },
     /**
