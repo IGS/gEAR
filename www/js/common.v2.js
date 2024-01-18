@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.parentNode.classList.toggle('is-active');
         });
     });
-    
+
 
     // modal code from https://bulma.io/documentation/components/modal/
 
@@ -677,27 +677,6 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches datasets asynchronously.
-     * @returns {Promise<any>} The fetched data.
-     */
-    async fetchDatasets() {
-        const payload = {session_id: this.sessionId};
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
-        return data;
-    },
-    /**
-     * Fetches the display image for a dataset.
-     * @param {string} datasetId - The ID of the dataset.
-     * @param {string} displayId - The ID of the display.
-     * @returns {Promise<any>} - A promise that resolves to the fetched data.
-     */
-    async fetchDatasetDisplayImage(datasetId, displayId) {
-        // POST due to payload variables being sensitive
-        const payload = {dataset_id: datasetId, display_id: displayId};
-        const {data} = await axios.post("/cgi/get_dataset_display_image.cgi", convertToFormData(payload));
-        return data;
-    },
-    /**
      * Fetches dataset displays.
      * @param {string} datasetId - The ID of the dataset.
      * @returns {Promise<any>} - A promise that resolves to the fetched data.
@@ -707,6 +686,27 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/get_dataset_displays.cgi", convertToFormData(payload));
         return data;
     },
+    /**
+     * Fetches dataset list information for the user, such as metadata and default display settings.
+     * This can be used for a single dataset id or a layout id.
+     * @param {Object} requestConfig - The request configuration.
+     * @returns {Promise<Object>} The dataset list information.
+     */
+    async fetchDatasetListInfo(requestConfig) {
+        const payload = {session_id: this.sessionId, ...requestConfig};
+        const {data} = await axios.post("/cgi/get_dataset_list.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches datasets asynchronously.
+     * @returns {Promise<any>} The fetched data.
+     */
+    async fetchDatasets() {
+        const payload = {session_id: this.sessionId};
+        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+        return data;
+    },
+
     /**
      * Fetches the default display for a dataset.
      * @param {string} datasetId - The ID of the dataset.

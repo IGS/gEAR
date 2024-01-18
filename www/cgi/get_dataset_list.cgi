@@ -64,11 +64,6 @@ def main():
     if only_types_str:
         only_types = only_types_str.replace(' ', '').split(',')
 
-    # Only for get_layout_by_id - intial load on main.js = 1; dataset_manager.js = 0
-    exclude_pending = form.getvalue('exclude_pending')
-    if exclude_pending is not None:
-        exclude_pending = int(exclude_pending)
-
     if sort_order is None:
         sort_order = 'default'
 
@@ -78,8 +73,6 @@ def main():
     # only used to non-redundify
     dataset_ids = list()
 
-    join_type = 'AND'
-
     # Permalinks only. Get dataset info and return it
     if permalink_id is not None:
         result['datasets'] = get_permalink_dataset(cursor, permalink_id)
@@ -88,7 +81,22 @@ def main():
         print(json.dumps(result))
         return
 
-     # Was a specific layout ID passed?
+    if form.getvalue(("layout_share_id")) is not None:
+        layout_share_id = form.getvalue('layout_share_id')
+        layouts = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        if len(layouts) > 2:
+            raise Exception("More than one layout found with ID {0}".format(layout_id))
+        if not len(layouts):
+            raise Exception("No layout found with ID {0}".format(layout_id))
+        layout = layouts[0]
+        layout.load()
+
+        dsc = geardb.DatasetCollection()
+        dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
+        dsc.apply_layout(layout=layout)
+        result['datasets'].extend(dsc.datasets)
+
+    # Was a specific layout ID passed?
     if form.getvalue('layout_id') is not None:
         layout_id = form.getvalue('layout_id')
         layout = geardb.Layout(id=layout_id)

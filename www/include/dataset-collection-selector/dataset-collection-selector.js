@@ -1,3 +1,5 @@
+"use strict";
+
 let dataset_collection_data = null;
 let dataset_collection_label_index = {};
 
@@ -19,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.classList.remove('is-selected');
                 element.classList.add('is-clickable');
             });
-            
+
             event.target.classList.add('is-selected');
             event.target.classList.remove('is-clickable');
         });
@@ -28,9 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add event listeners to the DC selectors even if they don't exist yet
     document.addEventListener('click', (event) => {
         if (event.target.classList.contains('dropdown-dc-item') ||
-            event.target.classList.contains('dc-item-label') || 
+            event.target.classList.contains('dc-item-label') ||
             event.target.classList.contains('dc-item-tag')) {
-            
+
             // uncheck all the existing rows
             const rows = document.querySelectorAll('.dropdown-dc-item');
             rows.forEach((row) => {
@@ -58,10 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Monitor key strokes after user types more than 2 characters in the search box
     document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
-         
+
         if (search_term.length <= 2) {return}
 
-        const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li'); 
+        const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
@@ -115,7 +117,7 @@ const fetchDatasetCollections = async (callback) => {
         }
 
         if (callback) {
-            callback(); 
+            callback();
         }
 
     } catch (error) {
@@ -124,7 +126,7 @@ const fetchDatasetCollections = async (callback) => {
 }
 
 const selectDatasetCollection = (share_id) => {
-    // reads the DC share_id passed and handles any UI and data updates to make 
+    // reads the DC share_id passed and handles any UI and data updates to make
     //   it preselected
     selected_dc_share_id = share_id;
     selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
@@ -139,7 +141,7 @@ const setActiveDCCategory = (category) => {
 
     const dc_item_template = document.querySelector('#tmpl-dc');
     let data = null;
-    
+
     document.querySelector('#dropdown-content-dc').innerHTML = '';
 
     switch (category) {
