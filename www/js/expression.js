@@ -26,6 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#gene-search-exact-match').checked = true;
     }
 
+    document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
+        const annotation_panel = document.querySelector('#extended-annotation-panel');
+        const toggle_icon = document.querySelector('#functional-annotation-toggle i');
+
+        if (annotation_panel.classList.contains('is-hidden')) {
+            annotation_panel.classList.remove('is-hidden');
+            toggle_icon.classList.remove('mdi-chevron-down');
+            toggle_icon.classList.add('mdi-chevron-up');
+
+        } else {
+            annotation_panel.classList.add('is-hidden');
+            toggle_icon.classList.remove('mdi-chevron-up');
+            toggle_icon.classList.add('mdi-chevron-down');
+        }
+    });
+
     // add event listener for when the submit-expression-search button is clicked
     document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
         // TODO: If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
