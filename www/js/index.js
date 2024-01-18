@@ -1,3 +1,5 @@
+'use strict';
+
 let manually_entered_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (manually_entered_genes.length > 0) {
                 url += `gene_symbol=${manually_entered_genes.join(',')}`;
             }
-            
+
             // are we doing exact matches?
             if (document.querySelector('#gene-search-exact-match').checked) {
                 url += '&gene_symbol_exact_match=true';
@@ -121,7 +123,7 @@ const validateExpressionSearchForm = () => {
         return false;
     }
 
-    return true;    
+    return true;
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {

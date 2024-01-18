@@ -23,7 +23,7 @@
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-        
+
         <!--Page-specific CSS here -->
             <script>document.write('<link rel="stylesheet" href="css/expression.' + (new Date()).getTime() + '.css" />');</script>
     </head>
@@ -33,7 +33,7 @@
         <!--#include virtual="/include/primary_nav.html" -->
 
         <section id="main_c" class="column pl-0 pt-0">
-          
+
           <!--#include virtual="/include/header_bar.html" -->
 
           <section id="content_c" class="m-3">
@@ -77,7 +77,7 @@
                     <input type="checkbox" id="gene-search-exact-match" >
                     Exact match
                   </label>
-                </div>  
+                </div>
                 <div class="control">
                   <label class="radio">
                     <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
@@ -173,102 +173,6 @@
                   <hr class="mt-3 mb-3" \>
                   <div id="result-panel-grid" class="p-3">
 
-                    <div class="tile is-ancestor">
-                      <div class="tile is-vertical is-8 mr-0">
-
-                        <div class="tile is-parent pl-0 pt-0">
-                          <div class="tile is-child">
-                            <div class="card">
-                              <div class="card-header">
-                                <div class="card-header-title">Mouse, inner ear maturation, p1hc_p1sc, rnaSeq (Segil's lab)</div>
-                                <div class="card-header-icon">
-                                  <span class="icon"><i class="mdi mdi-18px mdi-dots-vertical"></i></span>
-                                </div>
-                              </div>
-                              <div class="card-content">
-                                Image gets drawn here.
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="tile is-parent pl-0 pt-0">
-                          <div class="tile is-child pr-1">
-                            <div class="card">
-                              <div class="card-header">
-                                <div class="card-header-title">Mouse, inner ear maturation, p1hc_p1sc, rnaSeq (Segil's lab)</div>
-                                <div class="card-header-icon">
-                                  <span class="icon"><i class="mdi mdi-18px mdi-dots-vertical"></i></span>
-                                </div>
-                              </div>
-                              <div class="card-content">
-                                Image gets drawn here.
-                              </div>
-                            </div>
-                          </div>
-                          <div class="tile is-child pl-2">
-                            <div class="card">
-                              <div class="card-header">
-                                <div class="card-header-title">Mouse, inner ear maturation, p1hc_p1sc, rnaSeq (Segil's lab)</div>
-                                <div class="card-header-icon">
-                                  <span class="icon"><i class="mdi mdi-18px mdi-dots-vertical"></i></span>
-                                </div>
-                              </div>
-                              <div class="card-content">
-                                Image gets drawn here.
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>
-                      <div class="tile is-parent is-vertical is-4 pl-0 pt-0">
-                        <div class="tile is-child">
-                          <div class="card">
-                            <div class="card-header">
-                              <div class="card-header-title">Mouse, inner ear maturation, p1hc_p1sc, rnaSeq (Segil's lab)</div>
-                              <div class="card-header-icon">
-                                <span class="icon"><i class="mdi mdi-18px mdi-dots-vertical"></i></span>
-                              </div>
-                            </div>
-                            <div class="card-content">
-                              Fancy tall graphic here
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div> <!-- end ancestor tile-->
-                    <div class="tile is-ancestor">
-                      <div class="tile pr-1">
-                        <div class="card">
-                          <div class="card-header">
-                            <div class="card-header-title">Mouse, inner ear maturation, p1hc_p1sc, rnaSeq (Segil's lab)</div>
-                            <div class="card-header-icon">
-                              <span class="icon"><i class="mdi mdi-18px mdi-dots-vertical"></i></span>
-                            </div>
-                          </div>
-                          <div class="card-content">
-                            Fancy tall graphic here
-                          </div>
-                        </div>
-                      </div>
-                      <div class="tile pl-2 pr-2">
-                        <div class="card">
-                          <div class="card-header">
-                            <div class="card-header-title">Mouse, inner ear maturation, p1hc_p1sc, rnaSeq (Segil's lab)</div>
-                            <div class="card-header-icon">
-                              <span class="icon"><i class="mdi mdi-18px mdi-dots-vertical"></i></span>
-                            </div>
-                          </div>
-                          <div class="card-content">
-                            Fancy tall graphic here
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                    
                   </div>
                 </section>
               </div>
@@ -289,6 +193,7 @@
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/tilegrid.' + (new Date()).getTime() + '.js"><\/script>');</script>
       <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
       <!-- Page-specific JS file here -->

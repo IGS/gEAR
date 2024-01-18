@@ -1,3 +1,5 @@
+"use strict";
+
 let gene_cart_data = null;
 let gene_cart_label_index = {};
 
@@ -19,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.classList.remove('is-selected');
                 element.classList.add('is-clickable');
             });
-            
+
             event.target.classList.add('is-selected');
             event.target.classList.remove('is-clickable');
         });
@@ -30,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // gene-list-item-label & dropdown-gene-list-item-right-selector both should only show the genes
         // dropdown-gene-list-item-add should add the entire cartsmpl
 
-        if (event.target.classList.contains('gene-list-item-label') || 
+        if (event.target.classList.contains('gene-list-item-label') ||
             event.target.classList.contains('dropdown-gene-list-item-right-selector')) {
-            
+
             const row_div = event.target.closest('div');
             setActiveGeneCart(row_div, 'view');
         } else if (event.target.classList.contains('dropdown-gene-list-item-add')) {
@@ -46,9 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners to the gene selectors even if they don't exist yet
     document.addEventListener('click', (event) => {
-        if (event.target.classList.contains('gene-list-item-add') || 
+        if (event.target.classList.contains('gene-list-item-add') ||
             event.target.classList.contains('gene-list-item-remove')) {
-            
+
             const row_div = event.target.closest('div');
             const gene_symbol = row_div.querySelector('.gene-item-label').textContent;
 
@@ -73,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // reset the label container
         document.querySelector('#gene-select-dropdown-dynamic-selections').innerHTML = '';
 
-        const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li'); 
+        const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
@@ -98,10 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Monitor key strokes after user types more than 2 characters in the dropdown-gene-list-search-input box
     document.querySelector('#dropdown-gene-list-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
-         
+
         if (search_term.length <= 2) {return}
 
-        const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li'); 
+        const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
@@ -110,10 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
         document.querySelector('#dropdown-content-genes').innerHTML = '';
         const gene_list_item_template = document.querySelector('#tmpl-gene-list-item');
-        
+
         for (const cart_type in gene_cart_data) {
             for (const cart of gene_cart_data[cart_type]) {
-                if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {                    
+                if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
                     const row = gene_list_item_template.content.cloneNode(true);
                     row.querySelector('.gene-list-item-label').textContent = cart.label;
                     row.querySelector('.ul-li').dataset.shareId = cart.share_id;
@@ -144,10 +146,10 @@ const fetchGeneCartData = async (callback) => {
 
         // Build the gene cart label index for ease of use
         for (const cart_type in gene_cart_data) {
-            for (const cart of gene_cart_data[cart_type]) {   
+            for (const cart of gene_cart_data[cart_type]) {
                 gene_cart_label_index[cart.share_id] = cart.label;
                 gene_cart_genes[cart.share_id] = cart.genes;
-                
+
                 // remove the genes list from the original data structure so we don't
                 //  use the memory twice
                 delete cart.genes;
@@ -157,7 +159,7 @@ const fetchGeneCartData = async (callback) => {
         if (callback) {
             callback();
         }
-        
+
     } catch (error) {
         console.error(error);
     }
@@ -176,7 +178,7 @@ const setActiveGeneCart = (cart_row, mode) => {
         gene_row.querySelector('.gene-item-label').textContent = gene;
         document.querySelector('#dropdown-content-genes').appendChild(gene_row);
     }
-    
+
     // if adding or removing, update the inventory
     if (mode === 'add') {
         selected_carts.push(cart_row.dataset.shareId);
@@ -200,18 +202,18 @@ const setActiveGeneCart = (cart_row, mode) => {
         cart_row.querySelector('i.toggler').classList.add('dropdown-gene-list-item-add');
         cart_row.querySelector('i.toggler').classList.remove('dropdown-gene-list-item-remove');
         cart_row.classList.remove('is-selected');
-        
+
     } else if (mode === 'view') {
         // do nothing
     }
-    
+
     for (const gene_div of document.querySelectorAll('.dropdown-gene-item')) {
         let gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
 
         if (selected_genes.includes(gene_symbol)) {
             gene_div.classList.add('is-selected');
             gene_div.querySelector('i.toggler').classList.remove('mdi-plus');
-            gene_div.querySelector('i.toggler').classList.add('mdi-check');            
+            gene_div.querySelector('i.toggler').classList.add('mdi-check');
         } else {
             gene_div.classList.remove('is-selected');
             gene_div.querySelector('i.toggler').classList.remove('mdi-check');
@@ -230,7 +232,7 @@ const setActiveGeneCartCategory = (category) => {
 
     const gene_list_item_template = document.querySelector('#tmpl-gene-list-item');
     let data = null;
-    
+
     document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
 
     switch (category) {
@@ -252,7 +254,7 @@ const setActiveGeneCartCategory = (category) => {
         row.querySelector('.gene-list-item-label').textContent = entry.label;
         row.querySelector('.ul-li').dataset.shareId = entry.share_id;
         row.querySelector('.ul-li').dataset.genes = gene_cart_genes[entry.share_id].join(',');
-        
+
 
         if (selected_carts.includes(entry.share_id)) {
             row.querySelector('i.toggler').classList.remove('mdi-plus');
@@ -269,7 +271,7 @@ const setActiveGeneCartCategory = (category) => {
 }
 
 const selectGeneLists = (share_ids) => {
-    // reads the gene list share_ids passed and handles any UI and data updates to make 
+    // reads the gene list share_ids passed and handles any UI and data updates to make
     //   them preselected
     for (const share_id of share_ids) {
         selected_carts.push(share_id);
