@@ -1,9 +1,9 @@
 'use strict';
 
-let urlParamsPassed = false;
+let url_params_passed = false;
 let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
-let isMultigene = false;
+let is_multigene = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
-        const searchTermString = event.target.value;
+        const search_term_string = event.target.value;
 
-        if (searchTermString.length > 0) {
+        if (search_term_string.length > 0) {
             // split the string into an array of genes by spaces or commas
-            const manuallyEnteredGenes = searchTermString.split(/[ ,]+/);
-            selected_genes = [...new Set([...selected_genes, ...manuallyEnteredGenes])];
+            const manually_entered_genes = search_term_string.split(/[ ,]+/);
+            selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
         }
     });
 
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!event.target.classList.contains('gene-result-list-item')) {
             return;
         }
-        const geneSymbol = event.target.innerHTML;
+        const gene_symbol = event.target.innerHTML;
 
         // remove is-selected from all the existing rows, then add it to this one
         const rows = document.querySelectorAll('.gene-result-list-item');
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         event.target.classList.add('is-selected');
-        selectGeneResult(geneSymbol);
+        selectGeneResult(gene_symbol);
     });
 });
 
@@ -81,8 +81,8 @@ const fetchGeneAnnotations = async (callback) => {
         document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
 
         if (Object.keys(annotation_data).length === 0) {
-            const noHistoryTemplate = document.querySelector('#tmpl-gene-result-none-found');
-            document.querySelector('#gene-result-list').appendChild(noHistoryTemplate.content.cloneNode(true));
+            const no_history_template = document.querySelector('#tmpl-gene-result-none-found');
+            document.querySelector('#gene-result-list').appendChild(no_history_template.content.cloneNode(true));
         } else {
             const template = document.querySelector('#tmpl-gene-result-item');
             document.querySelector('#gene-result-list').innerHTML = '';
@@ -123,7 +123,7 @@ const fetchOrganisms = async (callback) => {
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
-    const [cartResult, dcResult, orgResults] = await Promise.all([
+    const [cart_result, dc_result, org_result] = await Promise.all([
         fetchGeneCartData(parseGeneCartURLParams),
         fetchDatasetCollections(parseDatasetCollectionURLParams),
         fetchOrganisms()
@@ -131,7 +131,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
-    if (urlParamsPassed) {
+    if (url_params_passed) {
         if (selected_dc_share_id && selected_genes.length > 0) {
             document.querySelector('#submit-expression-search').click();
         }
@@ -150,25 +150,25 @@ const parseGeneCartURLParams = () => {
         document.querySelector('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
         selected_genes = gene_symbols.split(',');
 
-        urlParamsPassed = true;
+        url_params_passed = true;
     }
 
     // handle passed gene lists
-    let geneLists = [];
+    let gene_lists = [];
     if (getUrlParameter('gene_lists')) {
-        geneLists = getUrlParameter('gene_lists').split(',');
-        selectGeneLists(geneLists); // declared in gene-collection-selector.js
-        urlParamsPassed = true;
+        gene_lists = getUrlParameter('gene_lists').split(',');
+        selectGeneLists(gene_lists); // declared in gene-collection-selector.js
+        url_params_passed = true;
     }
 
     // are we doing exact matches?
-    const exactMatch = getUrlParameter('gene_symbol_exact_match');
-    document.querySelector('#gene-search-exact-match').checked = exactMatch === 'true';
+    const exact_match = getUrlParameter('gene_symbol_exact_match');
+    document.querySelector('#gene-search-exact-match').checked = exact_match === 'true';
 
     // single or multiple gene view (convert to boolean)?
-    const isMultigeneParam = getUrlParameter('is_multigene');
-    isMultigene = isMultigeneParam === '1';
-    if (isMultigene) {
+    const is_multigene_param = getUrlParameter('is_multigene');
+    is_multigene = is_multigene_param === '1';
+    if (is_multigene) {
         document.querySelector('#single-multi-multi').checked = true;
     } else {
         document.querySelector('#single-multi-single').checked = true;
@@ -177,28 +177,28 @@ const parseGeneCartURLParams = () => {
 
 const parseDatasetCollectionURLParams = async () => {
     // handle passed dataset collection
-    const layoutShareId = getUrlParameter('layout_id');
+    const layout_share_id = getUrlParameter('layout_id');
 
-    if (!layoutShareId) {
+    if (!layout_share_id) {
         return;
     }
 
-    selected_dc_share_id = layoutShareId;
-    selected_dc_label = dataset_collection_label_index[layoutShareId];
+    selected_dc_share_id = layout_share_id;
+    selected_dc_label = dataset_collection_label_index[layout_share_id];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 
-    const tileGrid = new TileGrid(layoutShareId, "#result-panel-grid");
+    const tile_grid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
-        tileGrid.layout = await tileGrid.getLayout();
-        tileGrid.tilegrid = tileGrid.generateTileGrid();
-        tileGrid.applyTileGrid(isMultigene);
+        tile_grid.layout = await tile_grid.getLayout();
+        tile_grid.tilegrid = tile_grid.generateTileGrid();
+        tile_grid.applyTileGrid(is_multigene);
     }   catch (error) {
         logErrorInConsole(error);
     }
 }
 
 const selectGeneResult = (gene_symbol) => {
-    let selected_organism_id = document.querySelector('#organism-selector').value;
+    const selected_organism_id = document.querySelector('#organism-selector').value;
     currently_selected_gene_symbol = gene_symbol;
 
     // if no organism is selected, display a tooltip to choose one
