@@ -207,13 +207,44 @@ const updateAnnotationDisplay = () => {
     const gs = currently_selected_gene_symbol;
     const oid = currently_selected_org_id;
 
+    // clear the external resource links
+    document.querySelector('#external-resource-links').innerHTML = '';
+
     // if the selected organism is not in the annotation data, show a message
     if (annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
-        document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation_data[gs]['by_organism'][oid]['product'];
+        const annotation = annotation_data[gs]['by_organism'][oid];
+        //console.log(annotation);
+
+        document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
         document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+
+        let good_dbxref_count = 0;
+        
+        for (const dbxref of annotation['dbxrefs']) {
+            if (dbxref['url'] !== null) {
+                const dbxref_template = document.querySelector('#tmpl-external-resource-link');
+                let row = dbxref_template.content.cloneNode(true);
+                row.querySelector('a').innerHTML = dbxref['source'];
+                row.querySelector('a').href = dbxref['url'];
+                document.querySelector('#external-resource-links').appendChild(row);
+                good_dbxref_count++;
+            }
+        }
+    
+        if (good_dbxref_count === 0) {
+            const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+            let row = dbxref_template.content.cloneNode(true);
+            document.querySelector('#external-resource-links').appendChild(row);
+        }
+        
+
     } else {
         document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
         document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+
+        const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+        let dbxref_template_row = dbxref_template.content.cloneNode(true);
+        document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
     }
 
 }

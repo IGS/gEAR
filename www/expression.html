@@ -140,15 +140,13 @@
                           </span>
                         </span>
                       </h4>
-                      <div class="tags">
-                        <span class="tag">CCDS</span>
-                        <span class="tag">UCSC</span>
-                        <span class="tag">UniParc</span>
-                        <span class="tag">ENSEMBL</span>
-                        <span class="tag">PubMed</span>
-                        <span class="tag">HomoloGene</span>
-                        <span class="tag">SHIELD</span>
-                      </div>
+                      <div id="external-resource-links" class="tags"></div>
+                      <template id="tmpl-external-resource-link">
+                        <a href="" target="_blank" class="tag"></a>
+                      </template>
+                      <template id="tmpl-external-resource-link-none-found">
+                        <span class="tag is-rounded">None found</span>
+                      </template>
                     </div>
                   </div>
                   <hr class="mt-1 mb-2" \>
