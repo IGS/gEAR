@@ -16,6 +16,9 @@ div.card-content {
     color: black;
     min-height: 20em;
 }
+div#extended-annotation-panel {
+    height: 20em;
+}
 div#functional-annotation-c h3 {
     font-weight: bold;
     font-size: 90%;
@@ -68,4 +71,11 @@ ul#gene-result-list li.is-selected {
     /* TODO: Make this a variable */
     background-color: #483285;
     color: white;
+}
+ul#go-terms {
+    max-height: 17em;
+    overflow-y: scroll;
+}
+ul#go-terms li {
+    border-bottom: 1px solid #e9eef1;
 }

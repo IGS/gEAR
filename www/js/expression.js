@@ -4,6 +4,7 @@ let url_params_passed = false;
 let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
 let is_multigene = false;
+let annotation_data = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -73,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fetchGeneAnnotations = async (callback) => {
     try {
-        const annotation_data = await apiCallsMixin.fetchGeneAnnotations(
+        annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             selected_genes.join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
@@ -225,47 +226,63 @@ const updateAnnotationDisplay = () => {
     const gs = currently_selected_gene_symbol;
     const oid = currently_selected_org_id;
 
-    // clear the external resource links
+    // clear the external resource links and GO terms
     document.querySelector('#external-resource-links').innerHTML = '';
+    document.querySelector('#go-terms').innerHTML = '';
+    document.querySelector('#go-term-count').innerHTML = '';
 
     // if the selected organism is not in the annotation data, show a message
-    if (annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
-        const annotation = annotation_data[gs]['by_organism'][oid];
-        console.log(annotation);
-
-        // Gene product
-        document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
+    if (! annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
+        document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
         document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
-
-        // External database references
-        let good_dbxref_count = 0;
-
-        for (const dbxref of annotation['dbxrefs']) {
-            if (dbxref['url'] !== null) {
-                const dbxref_template = document.querySelector('#tmpl-external-resource-link');
-                const row = dbxref_template.content.cloneNode(true);
-                row.querySelector('a').innerHTML = dbxref['source'];
-                row.querySelector('a').href = dbxref['url'];
-                document.querySelector('#external-resource-links').appendChild(row);
-                good_dbxref_count++;
-            }
-        }
-
-        if (good_dbxref_count === 0) {
-            const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
-            const row = dbxref_template.content.cloneNode(true);
-            document.querySelector('#external-resource-links').appendChild(row);
-        }
+    
+        const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+        const dbxref_template_row = dbxref_template.content.cloneNode(true);
+        document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
         return;
-
-
     }
-    document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
+
+    // if we got this far, we have annotation for this one. let's display it
+    const annotation = annotation_data[gs]['by_organism'][oid];
+    console.log(annotation);
+
+    // Gene product
+    document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
     document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
 
-    const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
-    const dbxref_template_row = dbxref_template.content.cloneNode(true);
-    document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
+    // External database references
+    let good_dbxref_count = 0;
+
+    for (const dbxref of annotation['dbxrefs']) {
+        if (dbxref['url'] !== null) {
+            const dbxref_template = document.querySelector('#tmpl-external-resource-link');
+            const row = dbxref_template.content.cloneNode(true);
+            row.querySelector('a').innerHTML = dbxref['source'];
+            row.querySelector('a').href = dbxref['url'];
+            document.querySelector('#external-resource-links').appendChild(row);
+            good_dbxref_count++;
+        }
+    }
+
+    if (good_dbxref_count === 0) {
+        const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+        const row = dbxref_template.content.cloneNode(true);
+        document.querySelector('#external-resource-links').appendChild(row);
+    }
+
+    // GO terms
+    document.querySelector('#go-term-count').innerHTML = '(' + annotation['go_terms'].length + ')';
+    for (const go_term of annotation['go_terms']) {
+        const go_term_template = document.querySelector('#tmpl-go-term');
+        const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
+        
+        const row = go_term_template.content.cloneNode(true);
+        row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
+        row.querySelector('.go-term-id').href = go_term_url;
+        row.querySelector('.go-term-label').innerHTML = go_term['name'];
+        document.querySelector('#go-terms').appendChild(row);
+    }
+        
 
 }
 
