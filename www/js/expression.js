@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await Promise.allSettled([fetchGeneAnnotations(),setupTileGrid(selected_dc_share_id)]);
+            await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
         } catch (error) {
             logErrorInConsole(error);
         }
