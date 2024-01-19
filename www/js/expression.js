@@ -6,10 +6,19 @@ let currently_selected_org_id = "";
 let is_multigene = false;
 let annotation_data = null;
 let manually_entered_genes = [];
+let tilegrid = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
-    document.querySelector('#page-header-label').textContent = 'Gene Expression Search';
+    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
+
+    // Set current sidebar menu item to active
+	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+		elt.classList.remove("is-active");
+	}
+
+	document.querySelector("a[tool='search_expression'").classList.add("is-active");
+
 
     // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
@@ -54,8 +63,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // If multigene toggle changed, but genes and layout are the same, just render the grid
+        const new_is_multigene = document.querySelector('#single-multi-multi').checked;
+        if (new_is_multigene !== is_multigene && selected_dc_share_id === selected_dc_share_id) {
+            is_multigene = new_is_multigene;
+            if (tilegrid) {
+                tilegrid.applyTileGrid(is_multigene);
+                await tilegrid.renderDisplays(selected_genes, is_multigene);
+                return;
+            }
+        }
+
         try {
-            await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
+            ([undefined, tilegrid] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]));
         } catch (error) {
             logErrorInConsole(error);
         }
@@ -244,6 +264,8 @@ const setupTileGrid = async (layout_share_id) => {
         await tilegrid.renderDisplays(selected_genes, is_multigene);
     } catch (error) {
         logErrorInConsole(error);
+    } finally {
+        return tilegrid;
     }
 }
 

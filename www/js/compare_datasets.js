@@ -1395,7 +1395,7 @@ document.getElementById("download_selected_genes_btn").addEventListener("click",
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
-	document.querySelector("#header_bar .navbar-item").textContent = "Comparison Tool";
+	document.getElementById("page-header-label").textContent = "Comparison Tool";
 	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
