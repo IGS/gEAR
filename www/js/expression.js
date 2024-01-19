@@ -124,11 +124,17 @@ const fetchOrganisms = async (callback) => {
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
-    const [cart_result, dc_result, org_result] = await Promise.all([
-        fetchGeneCartData(parseGeneCartURLParams),
-        fetchDatasetCollections(parseDatasetCollectionURLParams),
-        fetchOrganisms()
-    ]);
+    try {
+        // SAdkins note - Promise.all fails fast,
+        // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
+        const [cart_result, dc_result, org_result] = await Promise.all([
+            fetchGeneCartData(parseGeneCartURLParams),
+            fetchDatasetCollections(parseDatasetCollectionURLParams),
+            fetchOrganisms()
+        ]);
+    } catch (error) {
+        logErrorInConsole(error);
+    }
 
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
@@ -188,7 +194,7 @@ const parseDatasetCollectionURLParams = async () => {
     selected_dc_label = dataset_collection_label_index[layout_share_id];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 
-    setupTileGrid(layout_share_id);
+    await setupTileGrid(layout_share_id);
 }
 
 const selectGeneResult = (gene_symbol) => {
@@ -210,8 +216,10 @@ const setupTileGrid = async (layout_share_id) => {
         tilegrid.layout = await tilegrid.getLayout();
         tilegrid.tilegrid = tilegrid.generateTileGrid();
         tilegrid.applyTileGrid(is_multigene);
+        await tilegrid.addAllDisplays();
         await tilegrid.addDefaultDisplays();
-    }   catch (error) {
+        await tilegrid.renderDisplays(selected_genes, is_multigene);
+    } catch (error) {
         logErrorInConsole(error);
     }
 }
@@ -235,7 +243,7 @@ const updateAnnotationDisplay = () => {
     if (! annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
         document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
         document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
-    
+
         const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
         const dbxref_template_row = dbxref_template.content.cloneNode(true);
         document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
@@ -275,14 +283,14 @@ const updateAnnotationDisplay = () => {
     for (const go_term of annotation['go_terms']) {
         const go_term_template = document.querySelector('#tmpl-go-term');
         const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
-        
+
         const row = go_term_template.content.cloneNode(true);
         row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
         row.querySelector('.go-term-id').href = go_term_url;
         row.querySelector('.go-term-label').innerHTML = go_term['name'];
         document.querySelector('#go-terms').appendChild(row);
     }
-        
+
 
 }
 

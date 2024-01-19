@@ -81,6 +81,8 @@ def check_gene_in_dataset(adata, gene_symbols):
         bool: True if any of the gene symbols are present in the dataset, False otherwise.
     """
     gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+    print(gene_symbols, file=sys.stderr)
+    print(gene_filter.any(), file=sys.stderr)
     return gene_filter.any()
 
 def get_analysis(analysis, dataset_id, session_id):
@@ -423,7 +425,7 @@ class TSNEData(Resource):
         message = ""
         if len(df.columns) > 1:
             success = 2
-            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
+            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
 
         # Drop duplicate gene symbols so that only 1 ensemble ID is used in scanpy
         selected.var = selected.var.reset_index().set_index('gene_symbol')
@@ -460,8 +462,8 @@ class TSNEData(Resource):
             try:
                 algo = get_projection_algorithm(dataset_id, projection_id)
                 if algo == "pca":
-                    median = np.median(selected[:, gene_symbol].X.squeeze())
-                    sort_order = np.argsort(np.abs(median - selected[:, gene_symbol].X.squeeze()))
+                    median = np.median(selected[:, selected_gene].X.squeeze())
+                    sort_order = np.argsort(np.abs(median - selected[:, selected_gene].X.squeeze()))
                     ordered_obs = selected.obs.iloc[sort_order].index
                     selected = selected[ordered_obs, :]
                     plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
@@ -535,7 +537,7 @@ class TSNEData(Resource):
                 io_fig = plt.figure(figsize=(figwidth,figheight))
                 spec = io_fig.add_gridspec(ncols=max_cols, nrows=max_rows)
 
-                selected.obs["gene_expression"] = [float(x) for x in selected[:,selected.var.index.isin([gene_symbol])].X]
+                selected.obs["gene_expression"] = [float(x) for x in selected[:,selected.var.index.isin([selected_gene])].X]
                 max_expression = max(selected.obs["gene_expression"].tolist())
 
                 row_counter = 0
@@ -560,7 +562,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
+                    sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, ax=f_gene, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
                     rename_axes_labels(f_gene, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -601,7 +603,7 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, ax=f1, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     # BUG: the line below throws error with stacktrace
                     # ValueError: To copy an AnnData object in backed mode, pass a filename: `.copy(filename='myfilename.h5ad')`. To load the object into memory, use `.to_memory()
                     sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False, size=marker_size)
@@ -615,7 +617,7 @@ class TSNEData(Resource):
                             f2.get_legend().remove()  # Remove legend added by scanpy
 
         else:
-            io_fig = sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
+            io_fig = sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, return_fig=True, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
             rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
 
         # Close adata so that we do not have a stale opened object
@@ -631,6 +633,6 @@ class TSNEData(Resource):
         return {
             "success": success,
             "message": message,
-            "mapped_gene_symbol": mapped_gene_symbol,
+            "mapped_gene_symbol": mapped_gene_symbol,   # ? should i used selected_gene instead
             "image": base64.b64encode(io_pic.read()).decode("utf-8")
         }

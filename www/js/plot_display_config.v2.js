@@ -96,7 +96,7 @@ const paletteInformation = {
 
 
 const postPlotlyConfig = {
-    index: [
+    expression: [
         {
             plot_type: "all"
             , config: {

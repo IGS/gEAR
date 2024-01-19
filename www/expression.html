@@ -103,7 +103,7 @@
               </div>
               <div id="annotation-and-grid-c" class="column">
                 <h3 class="mb-2 mt-0">
-                  Showing results for: 
+                  Showing results for:
                   <span id="currently-selected-gene">Sox2</span>
                   <span id="currently-selected-gene-product" class="is-hidden"></span>
                 </h3>
@@ -210,13 +210,18 @@
       </footer>
 
       <script src="js/vendor/js.cookie.js"></script>
-      <script src="js/vendor/jsrender.20181003.min.js"></script>
+      <script src="js/vendor/jsrender.20181003.min.js"></script>  <!-- ? SAdkins - are we still using this? -->
+
+      <script src="js/vendor/snap.svg-min.js"></script>
+      <script src="https://d3js.org/d3.v5.min.js"></script>
+      <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
       <script>document.write('<script src="js/classes/tilegrid.' + (new Date()).getTime() + '.js"><\/script>');</script>
       <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/plot_display_config.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
       <!-- Page-specific JS file here -->
       <script>document.write('<script src="js/expression.' + (new Date()).getTime() + '.js"><\/script>');</script>
