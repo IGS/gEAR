@@ -81,6 +81,12 @@ class TileGrid {
             }
             document.querySelector(selector).append(tilegridHTML);
         }
+
+        // Make all card-header titles the same height
+        //const cardHeaderTitles = document.querySelectorAll(`${selector} .card-header`);
+        //const cardHeaderTitleHeight = Math.max(...Array.from(cardHeaderTitles).map(e => e.offsetHeight));
+        //cardHeaderTitles.forEach(e => e.style.height = `${cardHeaderTitleHeight}px`);
+
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -177,13 +183,20 @@ class TileGrid {
             throw new Error("Gene symbol or symbols are required to render displays.");
         }
 
-        if (isMultigene) {
-            await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbols)));
-        } else {
-            const geneSymbol = Array.isArray(geneSymbols) ? geneSymbols[0] : geneSymbols;
-            await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbol)));
+        const geneSymbolInput = geneSymbols;
+        if (!isMultigene) {
+            geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols[0] : geneSymbols;
         }
 
+
+        if (!isMultigene) {
+            await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput)));
+        } else {
+            // Sometimes multigene fails to render due to OOM errors, so we want to try each tile individually
+            for (const tile of this.tiles) {
+                await tile.renderDisplay(geneSymbolInput);
+            }
+        }
     }
 
 };
@@ -246,7 +259,7 @@ class DatasetTile {
         const cardHeader = document.createElement('div');
         cardHeader.classList.add('card-header', 'has-background-primary');
         const cardHeaderTitle = document.createElement('div');
-        cardHeaderTitle.classList.add('card-header-title');
+        cardHeaderTitle.classList.add('card-header-title', "py-0");
         cardHeaderTitle.textContent = tile.title;
 
         const cardHeaderIcon = document.createElement('div');
