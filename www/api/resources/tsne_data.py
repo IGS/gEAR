@@ -64,7 +64,9 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
     else:
         for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
             try:
-                return map_single_gene(gene_symbol, ortholog_file)
+                mapped_gene = map_single_gene(gene_symbol, ortholog_file)
+                if mapped_gene:
+                    return mapped_gene
             except:
                 continue
     return None
@@ -81,8 +83,6 @@ def check_gene_in_dataset(adata, gene_symbols):
         bool: True if any of the gene symbols are present in the dataset, False otherwise.
     """
     gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-    print(gene_symbols, file=sys.stderr)
-    print(gene_filter.any(), file=sys.stderr)
     return gene_filter.any()
 
 def get_analysis(analysis, dataset_id, session_id):

@@ -40,7 +40,9 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
     else:
         for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
             try:
-                return map_single_gene(gene_symbol, ortholog_file)
+                mapped_gene = map_single_gene(gene_symbol, ortholog_file)
+                if mapped_gene:
+                    return mapped_gene
             except:
                 continue
     return None
