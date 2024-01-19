@@ -282,7 +282,7 @@ const selectGeneLists = (share_ids) => {
 }
 
 const updateGeneListSelectionPanel = () => {
-    selection_box = document.querySelector('#gene-select-dropdown-dynamic-selections');
+    let selection_box = document.querySelector('#gene-select-dropdown-dynamic-selections');
 
     // first empty it out, then populate it
     selection_box.innerHTML = '';
