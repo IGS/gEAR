@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let url = '/expression.html?';
 
             // add the manually-entered genes
+            // TODO: need to combine selected_genes here to accommodate the case where a gene cart
+            //  chosen but the individual genes removed.
             if (manually_entered_genes.length > 0) {
                 url += `gene_symbol=${manually_entered_genes.join(',')}`;
             }
@@ -42,6 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // add the gene lists
+            //  TODO: This will only be for labeling purposes, since individual genes could have been
+            //    deselected within
             if (Object.keys(selected_carts).length > 0) {
                 url += `&gene_lists=${selected_carts.join(',')}`;
             }
@@ -112,7 +116,7 @@ const populateUserHistoryTable = async () => {
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (selected_genes.length === 0) {
+    if (selected_genes.length + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }

@@ -5,6 +5,7 @@ let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
 let is_multigene = false;
 let annotation_data = null;
+let manually_entered_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -16,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (search_term_string.length > 0) {
             // split the string into an array of genes by spaces or commas
-            const manually_entered_genes = search_term_string.split(/[ ,]+/);
+            manually_entered_genes = search_term_string.split(/[ ,]+/);
             selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
         }
     });
@@ -94,6 +95,8 @@ const fetchGeneAnnotations = async (callback) => {
             selected_genes.join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
+
+        console.log(annotation_data);
 
         document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
 
@@ -311,7 +314,7 @@ const updateAnnotationDisplay = () => {
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (!selected_genes.length) {
+    if (selected_genes.length + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }
