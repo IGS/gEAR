@@ -5,6 +5,7 @@ let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
 let is_multigene = false;
 let annotation_data = null;
+let manually_entered_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -16,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (search_term_string.length > 0) {
             // split the string into an array of genes by spaces or commas
-            const manually_entered_genes = search_term_string.split(/[ ,]+/);
+            manually_entered_genes = search_term_string.split(/[ ,]+/);
             selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
         }
     });
@@ -25,6 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getUrlParameter('gene_symbol_exact_match') === 'true') {
         document.querySelector('#gene-search-exact-match').checked = true;
     }
+
+    document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
+        const annotation_panel = document.querySelector('#extended-annotation-panel');
+        const toggle_icon = document.querySelector('#functional-annotation-toggle i');
+
+        if (annotation_panel.classList.contains('is-hidden')) {
+            annotation_panel.classList.remove('is-hidden');
+            toggle_icon.classList.remove('mdi-chevron-down');
+            toggle_icon.classList.add('mdi-chevron-up');
+
+        } else {
+            annotation_panel.classList.add('is-hidden');
+            toggle_icon.classList.remove('mdi-chevron-up');
+            toggle_icon.classList.add('mdi-chevron-down');
+        }
+    });
 
     // add event listener for when the submit-expression-search button is clicked
     document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
@@ -37,7 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // These can next be wrapped in a Promise.all() call for auto-first-gene selection if we want.
         fetchGeneAnnotations();
+        setupTileGrid(selected_dc_share_id);
     });
 
     // handle when the organism-selector select box is changed
@@ -78,6 +97,8 @@ const fetchGeneAnnotations = async (callback) => {
             selected_genes.join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
+
+        console.log(annotation_data);
 
         document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
 
@@ -193,8 +214,6 @@ const parseDatasetCollectionURLParams = async () => {
     selected_dc_share_id = layout_share_id;
     selected_dc_label = dataset_collection_label_index[layout_share_id];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
-
-    await setupTileGrid(layout_share_id);
 }
 
 const selectGeneResult = (gene_symbol) => {
@@ -204,13 +223,15 @@ const selectGeneResult = (gene_symbol) => {
     // if no organism is selected, display a tooltip to choose one
     if (selected_organism_id === "") {
         showOrganismSelectorToolip();
-        return;
+    } else {
+        updateAnnotationDisplay();
     }
 
-    updateAnnotationDisplay();
+    // Other things can be called next, such as plotting calls
 }
 
 const setupTileGrid = async (layout_share_id) => {
+    console.log("Setting up tile grid with layout share ID " + layout_share_id);
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
@@ -280,15 +301,21 @@ const updateAnnotationDisplay = () => {
 
     // GO terms
     document.querySelector('#go-term-count').innerHTML = '(' + annotation['go_terms'].length + ')';
-    for (const go_term of annotation['go_terms']) {
-        const go_term_template = document.querySelector('#tmpl-go-term');
-        const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
-
+    if (annotation['go_terms'].length === 0) {
+        const go_term_template = document.querySelector('#tmpl-go-term-none-found');
         const row = go_term_template.content.cloneNode(true);
-        row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
-        row.querySelector('.go-term-id').href = go_term_url;
-        row.querySelector('.go-term-label').innerHTML = go_term['name'];
         document.querySelector('#go-terms').appendChild(row);
+    } else {
+        for (const go_term of annotation['go_terms']) {
+            const go_term_template = document.querySelector('#tmpl-go-term');
+            const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
+
+            const row = go_term_template.content.cloneNode(true);
+            row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
+            row.querySelector('.go-term-id').href = go_term_url;
+            row.querySelector('.go-term-label').innerHTML = go_term['name'];
+            document.querySelector('#go-terms').appendChild(row);
+        }
     }
 
 
@@ -297,7 +324,7 @@ const updateAnnotationDisplay = () => {
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (!selected_genes.length) {
+    if (selected_genes.length + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }
