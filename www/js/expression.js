@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // add event listener for when the submit-expression-search button is clicked
-    document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
+    document.querySelector('#submit-expression-search').addEventListener('click', async (event) => {
         // TODO: If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
 
         const status = validateExpressionSearchForm();
@@ -54,9 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // These can next be wrapped in a Promise.all() call for auto-first-gene selection if we want.
-        fetchGeneAnnotations();
-        setupTileGrid(selected_dc_share_id);
+        try {
+            await Promise.allSettled([fetchGeneAnnotations(),setupTileGrid(selected_dc_share_id)]);
+        } catch (error) {
+            logErrorInConsole(error);
+        }
     });
 
     // handle when the organism-selector select box is changed

@@ -54,6 +54,9 @@ class TileGrid {
         const tilegrid = isMulti ? this.tilegrid.multi : this.tilegrid.single;
         const selector = this.selector;
 
+        // Clear selector element
+        document.querySelector(selector).replaceChildren();
+
         // All child tiles fit into a single parent in a vertical sense.
         // If "is-vertical" is present, all children tiles will be stacked vertically
         // If "tile" class does not have "is-vertical", then children tiles will be stacked horizontally
