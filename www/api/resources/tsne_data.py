@@ -46,6 +46,13 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
+def normalize_searched_gene(gene_list, chosen_gene):
+    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
+    for g in gene_list:
+        if chosen_gene.lower() == str(g).lower():
+            return g
+    return None
+
 def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
     """
     Maps a gene symbol to its corresponding orthologous gene symbol in a given dataset.
@@ -315,15 +322,20 @@ class TSNEData(Resource):
         if not check_gene_in_dataset(adata, gene_symbols):
             try:
                 mapped_gene_symbol = get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id)
+
+                # Last chance - See if a normalized gene symbol is present in the dataset
+                if not mapped_gene_symbol:
+                    dataset_genes = adata.var['gene_symbol'].unique().tolist()
+                    mapped_gene_symbol = normalize_searched_gene(dataset_genes, gene_symbol)
+                    if not mapped_gene_symbol:
+                        raise Exception("Could not map gene symbol to dataset organism.")
+
             except:
                 return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
 
-            if mapped_gene_symbol:
-                gene_symbols = (mapped_gene_symbol,)
-                if not check_gene_in_dataset(adata, gene_symbols):
-                    return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the h5ad file."}
-            else:
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
+            gene_symbols = (mapped_gene_symbol,)
+            if not check_gene_in_dataset(adata, gene_symbols):
+                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the h5ad file."}
 
         gene_filter = adata.var.gene_symbol.isin(gene_symbols)
 

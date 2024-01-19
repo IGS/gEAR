@@ -188,15 +188,12 @@ class TileGrid {
             geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols[0] : geneSymbols;
         }
 
-
-        if (!isMultigene) {
-            await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput)));
-        } else {
-            // Sometimes multigene fails to render due to OOM errors, so we want to try each tile individually
-            for (const tile of this.tiles) {
-                await tile.renderDisplay(geneSymbolInput);
-            }
+        // Sometimes fails to render due to OOM errors, so we want to try each tile individually
+        for (const tile of this.tiles) {
+            await tile.renderDisplay(geneSymbolInput);
         }
+
+        // await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput)));
     }
 
 };
