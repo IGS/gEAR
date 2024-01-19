@@ -53,8 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Aborting search");
             return;
         }
-
+        
+        // These can next be wrapped in a Promise.all() call for auto-first-gene selection if we want.
         fetchGeneAnnotations();
+        setupTileGrid(selected_dc_share_id);
     });
 
     // handle when the organism-selector select box is changed
@@ -207,7 +209,7 @@ const parseDatasetCollectionURLParams = async () => {
     selected_dc_label = dataset_collection_label_index[layout_share_id];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 
-    setupTileGrid(layout_share_id);
+    //setupTileGrid(selected_dc_share_id);
 }
 
 const selectGeneResult = (gene_symbol) => {
@@ -224,6 +226,7 @@ const selectGeneResult = (gene_symbol) => {
 }
 
 const setupTileGrid = async (layout_share_id) => {
+    console.log("Setting up tile grid with layout share ID " + layout_share_id);
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
