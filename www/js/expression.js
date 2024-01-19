@@ -219,10 +219,11 @@ const selectGeneResult = (gene_symbol) => {
     // if no organism is selected, display a tooltip to choose one
     if (selected_organism_id === "") {
         showOrganismSelectorToolip();
-        return;
+    } else {
+        updateAnnotationDisplay();
     }
 
-    updateAnnotationDisplay();
+    // Other things can be called next, such as plotting calls
 }
 
 const setupTileGrid = async (layout_share_id) => {
