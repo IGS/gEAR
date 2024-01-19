@@ -7,6 +7,7 @@ let is_multigene = false;
 let annotation_data = null;
 let manually_entered_genes = [];
 let tilegrid = null;
+let svg_scoring_method = 'gene';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
@@ -93,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!event.target.classList.contains('gene-result-list-item')) {
             return;
         }
-        const gene_symbol = event.target.innerHTML;
+        const gene_symbol = event.target.textContent;
 
         // remove is-selected from all the existing rows, then add it to this one
         const rows = document.querySelectorAll('.gene-result-list-item');
@@ -102,6 +103,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         event.target.classList.add('is-selected');
+        selectGeneResult(gene_symbol);
+    });
+
+    // Change the svg scoring method when select element is changed
+    document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
+        if (is_multigene) return;   // multigene does not use this
+
+        svg_scoring_method = event.target.value;
+        // Get gene symbol from currently selected list item
+        let list_item = document.querySelector('.gene-result-list-item.is-selected');
+        if (!list_item) {
+            list_item = document.querySelector('.gene-result-list-item');
+        }
+
+        const gene_symbol = list_item.textContent;
         selectGeneResult(gene_symbol);
     });
 });
@@ -246,7 +262,7 @@ const selectGeneResult = (gene_symbol) => {
 
     // Other things can be called next, such as plotting calls
     if (tilegrid) {
-        tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene);
+        tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene, svg_scoring_method);
     }
 }
 
@@ -258,7 +274,7 @@ const setupTileGrid = async (layout_share_id) => {
         tilegrid.applyTileGrid(is_multigene);
         await tilegrid.addAllDisplays();
         await tilegrid.addDefaultDisplays();
-        await tilegrid.renderDisplays(selected_genes, is_multigene);
+        await tilegrid.renderDisplays(selected_genes, is_multigene, svg_scoring_method);
     } catch (error) {
         logErrorInConsole(error);
     } finally {

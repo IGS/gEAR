@@ -155,6 +155,14 @@ def map_single_gene(gene_symbol:str, orthomap_file: Path):
     """
     # Read HDF5 file using Pandas read_hdf
     gene_symbol_dict = create_orthology_gene_symbol_dict(orthomap_file)
+
+    # Check if case-insensitive gene symbol is in dictionary
+    gene_symbol = gene_symbol.lower()
+    for key in gene_symbol_dict.keys():
+        if gene_symbol == key.lower():
+            gene_symbol = key
+            break
+
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return gene_symbol_dict.get(gene_symbol, None)
 
@@ -171,6 +179,13 @@ def map_multiple_genes(gene_symbols:list, orthomap_file: Path):
     """
     # Read HDF5 file using Pandas read_hdf
     gene_symbol_dict = create_orthology_gene_symbol_dict(orthomap_file)
+
+    # Check if case-insensitive gene symbols are in dictionary
+    gene_symbols = [gene_symbol.lower() for gene_symbol in gene_symbols]
+    for key in gene_symbol_dict.keys():
+        if key.lower() in gene_symbols:
+            gene_symbols[gene_symbols.index(key.lower())] = key
+
 
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
     return { gene_symbol: gene_symbol_dict[gene_symbol] for gene_symbol in gene_symbols if gene_symbol in gene_symbol_dict}
