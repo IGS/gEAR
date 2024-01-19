@@ -63,19 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // If multigene toggle changed, but genes and layout are the same, just render the grid
-        const new_is_multigene = document.querySelector('#single-multi-multi').checked;
-        if (new_is_multigene !== is_multigene && selected_dc_share_id === selected_dc_share_id) {
-            is_multigene = new_is_multigene;
-            if (tilegrid) {
-                tilegrid.applyTileGrid(is_multigene);
-                await tilegrid.renderDisplays(selected_genes, is_multigene);
-                return;
-            }
-        }
+        // update multigene/single gene
+        is_multigene = document.querySelector('#single-multi-multi').checked;
 
         try {
-            ([undefined, tilegrid] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]));
+            const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
+            tilegrid = tilegridRes.value;
         } catch (error) {
             logErrorInConsole(error);
         }
@@ -114,6 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const fetchGeneAnnotations = async (callback) => {
+    // ! - SAdkins note - Need to either hide this if is_multigene selected, or disable the "click" event (otherwise displays will be rendered with selected gene)
+
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             selected_genes.join(','),
@@ -250,14 +245,16 @@ const selectGeneResult = (gene_symbol) => {
     }
 
     // Other things can be called next, such as plotting calls
+    if (tilegrid) {
+        tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene);
+    }
 }
 
 const setupTileGrid = async (layout_share_id) => {
-    console.log("Setting up tile grid with layout share ID " + layout_share_id);
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
-        tilegrid.tilegrid = tilegrid.generateTileGrid();
+        tilegrid.generateTileGrid(is_multigene);
         tilegrid.applyTileGrid(is_multigene);
         await tilegrid.addAllDisplays();
         await tilegrid.addDefaultDisplays();

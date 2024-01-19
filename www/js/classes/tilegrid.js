@@ -18,9 +18,7 @@ class TileGrid {
         this.maxCols = 12 // highest number of columns in a row
         this.maxRows = 12 // highest number of rows in a column
 
-        this.singleGeneTiles = [];  // collection of DatasetTile objects
-        this.multiGeneTiles = [];
-
+        this.tiles = [];
         this.tilegrid = [] // this.generateTileGrid();
         this.selector = selector;
 
@@ -28,6 +26,10 @@ class TileGrid {
 
     }
 
+    /**
+     * Adds all displays to the tile grid.
+     * @returns {Promise<void>} A promise that resolves when all displays are added.
+     */
     async addAllDisplays() {
 
         for (const dataset of this.layout) {
@@ -40,18 +42,20 @@ class TileGrid {
         }
     }
 
+    /**
+     * Adds default displays to all tiles in the tile grid.
+     * @returns {Promise<void>} A promise that resolves when all default displays have been added.
+     */
     async addDefaultDisplays() {
-        await Promise.allSettled(this.singleGeneTiles.map( async tile => await tile.addDefaultDisplay()));
-        await Promise.allSettled(this.multiGeneTiles.map( async tile => await tile.addDefaultDisplay()));
+        // Each tile has "single" or "multi" type stored, so we can use that to determine the correct default display
+        await Promise.allSettled(this.tiles.map( async tile => await tile.addDefaultDisplay()));
     }
 
     /**
-     * Applies the tile grid layout to the specified element.
-     *
-     * @param {boolean} [isMulti=false] - Indicates whether the multi-tile grid should be used.
+     * Applies the tile grid to the specified selector element.
      */
-    applyTileGrid(isMulti = false) {
-        const tilegrid = isMulti ? this.tilegrid.multi : this.tilegrid.single;
+    applyTileGrid() {
+        const tilegrid = this.tilegrid;
         const selector = this.selector;
 
         // Clear selector element
@@ -94,35 +98,26 @@ class TileGrid {
         }
     }
 
-    /**
-     * Generates a tile grid.
-     * @returns {Object} The generated tile grid object.
-     */
-    generateTileGrid() {
-        const tilegrid = {};
-
-        tilegrid.single = this.generateSingleTileGrid();
-        tilegrid.multi = this.generateMultiTileGrid();
-        return tilegrid;
-    }
 
     /**
-     * Generates a multi-gene tile grid based on the layout.
-     * @returns {Array<Array<DatasetTile>>} The generated tile grid.
+     * Generates the tile grid based on the layout and dataset information.
+     *
+     * @param {boolean} is_multigene - Indicates whether the grid is for a multigene view.
      */
-    generateMultiTileGrid() {
-        const tilegrid = [];
+    generateTileGrid(is_multigene = false) {
+
         const tiles = [];
+        const tilegrid = [];
 
         for (const dataset of this.layout) {
-            const datasetTile = new DatasetTile(dataset, true);
+            const datasetTile = new DatasetTile(dataset, is_multigene);
             tiles.push(datasetTile);
         }
 
         // sort by grid position
         tiles.sort((a, b) => a.dataset.grid_position - b.dataset.grid_position);
 
-        this.multiGeneTiles = tiles;
+        this.tiles = tiles;
 
         for (const datasetTile of tiles) {
             if (datasetTile.used) {
@@ -172,77 +167,7 @@ class TileGrid {
             }
         }
 
-        return tilegrid;
-    }
-
-    /**
-     * Generates a single-gene tile grid based on the layout.
-     * @returns {Array<Array<DatasetTile>>} The generated tile grid.
-     */
-    generateSingleTileGrid() {
-        const tilegrid = [];
-        const tiles = [];
-
-        for (const dataset of this.layout) {
-            const datasetTile = new DatasetTile(dataset, false);
-            tiles.push(datasetTile);
-        }
-
-        // sort by grid position
-        tiles.sort((a, b) => a.dataset.grid_position - b.dataset.grid_position);
-
-        this.singleGeneTiles = tiles;
-
-
-        for (const datasetTile of tiles) {
-            if (datasetTile.used) {
-                continue;
-            }
-
-            const width = datasetTile.tile.width;
-            const height = datasetTile.tile.height;
-
-            if (width === 12) {
-                // tile spans the entire row
-                const tileRow = [];
-                tileRow.push(datasetTile);
-                tilegrid.push(tileRow);
-                datasetTile.used = true;
-                continue;
-            }
-
-            // tile does not span the entire row
-            const tileRow = [];
-            datasetTile.used = true;
-            const usedTiles = [datasetTile];
-
-            let remainingWidth = 12 - width;
-
-            // find tiles that fit into the remaining width
-            while (remainingWidth > 0) {
-                const tile = tiles.find((t) => !t.used && t.tile.width <= remainingWidth);
-                if (!tile) {
-                    break;
-                }
-
-                tile.used = true;
-                usedTiles.push(tile);
-                remainingWidth -= tile.tile.width;
-            }
-
-            tileRow.push(...usedTiles);
-            tilegrid.push(tileRow);
-
-            // check if all tiles are the same height
-            const allSameHeight = usedTiles.every((t) => t.tile.height === height);
-            if (allSameHeight) {
-                // all tiles are the same height
-                //tileRow.push(...usedTiles);
-                //tilegrid.push(tileRow);
-            }
-        }
-
-        return tilegrid;;
+        this.tilegrid = tilegrid;
 
         // TODO: Create a subgrid for variable heights
     }
@@ -253,12 +178,11 @@ class TileGrid {
         }
 
         if (isMultigene) {
-            await Promise.allSettled(this.multiGeneTiles.map( async tile => await tile.renderDisplay(geneSymbols)));
+            await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbols)));
         } else {
             const geneSymbol = Array.isArray(geneSymbols) ? geneSymbols[0] : geneSymbols;
-            await Promise.allSettled(this.singleGeneTiles.map( async tile => await tile.renderDisplay(geneSymbol)));
+            await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbol)));
         }
-
 
     }
 
@@ -274,6 +198,10 @@ class DatasetTile {
         this.tile.html = this.generateTileHTML();
     }
 
+    /**
+     * Adds a default display to the tile grid.
+     * @returns {Promise<void>} A promise that resolves when the default display is added.
+     */
     async addDefaultDisplay() {
 
         const dataset = this.dataset;
@@ -362,6 +290,18 @@ class DatasetTile {
         // if the display config was not found, then do not render
         if (!userDisplay && !ownerDisplay) {
             console.warn(`Display config for dataset ${this.dataset.id} was not found.`)
+            // Let the user know that the display config was not found
+            const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+            cardContent.replaceChildren();
+            const warningMessage = document.createElement("p");
+            warningMessage.classList.add("has-text-warning-dark", "has-background-warning-light", "p-2", "m-2", "has-text-weight-bold");
+            // Add 200 px height and center vertically
+            warningMessage.style.height = "200px";
+            warningMessage.style.display = "flex";
+            warningMessage.style.alignItems = "center";
+            warningMessage.style.justifyContent = "center";
+            warningMessage.textContent = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
+            cardContent.append(warningMessage);
             return;
         }
 
@@ -398,8 +338,19 @@ class DatasetTile {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
         } catch (error) {
-            console.error(error);
             // we want to ensure other plots load even if one fails
+            console.error(error);
+            // Fill in card-image with error message
+            cardContent.replaceChildren();
+            const errorMessage = document.createElement("p");
+            errorMessage.classList.add("has-text-danger-dark", "has-background-danger-light", "p-2", "m-2", "has-text-weight-bold");
+            // Add 200 px height and center vertically
+            errorMessage.style.height = "200px";
+            errorMessage.style.display = "flex";
+            errorMessage.style.alignItems = "center";
+            errorMessage.style.justifyContent = "center";
+            errorMessage.textContent = error.message;
+            cardContent.append(errorMessage);
         } finally {
             cardContent.classList.remove("is-loading");
         }
@@ -450,9 +401,12 @@ class DatasetTile {
         const custonLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
         Plotly.relayout(plotlyPreview.id , custonLayout)
 
-        document.getElementById("legend_title_container").classList.remove("is-hidden");
-        if (plotType === "dotplot") {
-            document.getElementById("legend_title_container").classList.add("is-hidden");
+        const legendTitle = document.getElementById("legend_title_container");
+        if (legendTitle) {
+            legendTitle.classList.remove("is-hidden");
+            if (plotType === "dotplot") {
+                legendTitle.classList.add("is-hidden");
+            }
         }
 
     }
