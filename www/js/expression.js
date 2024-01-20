@@ -65,6 +65,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
             tilegrid = tilegridRes.value;
+
+            // auto-select the first gene in the list
+            const first_gene = document.querySelector('.gene-result-list-item');
+            if (first_gene) {
+                first_gene.click();
+            }
+
         } catch (error) {
             logErrorInConsole(error);
         }
@@ -89,7 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!event.target.classList.contains('gene-result-list-item')) {
             return;
         }
+
         const gene_symbol = event.target.textContent;
+        document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
 
         // remove is-selected from all the existing rows, then add it to this one
         const rows = document.querySelectorAll('.gene-result-list-item');
@@ -269,7 +278,11 @@ const setupTileGrid = async (layout_share_id) => {
         tilegrid.applyTileGrid(is_multigene);
         await tilegrid.addAllDisplays();
         await tilegrid.addDefaultDisplays();
-        await tilegrid.renderDisplays(selected_genes, is_multigene, svg_scoring_method);
+
+        // Don't render yet if a gene is not selected
+        if (currently_selected_gene_symbol) {
+            await tilegrid.renderDisplays(selected_genes, is_multigene, svg_scoring_method);
+        }
     } catch (error) {
         logErrorInConsole(error);
     } finally {
