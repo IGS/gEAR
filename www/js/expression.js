@@ -318,11 +318,27 @@ const updateAnnotationDisplay = () => {
 
     // if we got this far, we have annotation for this one. let's display it
     const annotation = annotation_data[gs]['by_organism'][oid];
+    document.querySelector('#annotation-panel-gene-symbol').innerHTML = gs;
+
     console.log(annotation);
 
     // Gene product
     document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
     document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+    document.querySelector('#annotation-panel-gene-product').innerHTML = annotation['product'];
+
+    // aliases and Ensembl ID
+    if (annotation['aliases'].length > 1) {
+        document.querySelector('#annotation-panel-gene-aliases').innerHTML = annotation['aliases'].join(', ');
+    } else {
+        document.querySelector('#annotation-panel-gene-aliases').innerHTML = "None found";
+    }
+    
+    document.querySelector('#annotation-panel-gene-ensembl-release').innerHTML = annotation['ensembl_release'];
+    document.querySelector('#annotation-panel-gene-ensembl-id').innerHTML = annotation['ensembl_id'];
+
+    const ensembl_url = "https://www.ensembl.org/Multi/Search/Results?q=" + annotation['ensembl_id'] + ";site=ensembl";
+    document.querySelector('#annotation-panel-gene-ensembl-id').setAttribute('href', ensembl_url);
 
     // External database references
     let good_dbxref_count = 0;

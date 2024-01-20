@@ -161,7 +161,17 @@
                     </h3>
                     <div id="extended-annotation-panel" class="columns is-hidden ml-1 mr-1 mb-1">
                       <div class="column is-4">
-                        <h4>Annotation</h4>
+                        <h4 class="mb-2">Annotation</h4>
+                        <dl class="is-size-7">
+                          <dt class="has-text-weight-bold">Product</dt>
+                          <dd class="mb-3" id="annotation-panel-gene-product"></dd>
+                          <dt class="has-text-weight-bold">Gene symbol</dt>
+                          <dd class="mb-3" id="annotation-panel-gene-symbol"></dd>
+                          <dt class="has-text-weight-bold">Aliases</dt>
+                          <dd class="mb-3" id="annotation-panel-gene-aliases"></dd>
+                          <dt class="has-text-weight-bold">Ensembl ID (Release <span id="annotation-panel-gene-ensembl-release"></span>)</dt>
+                          <dd class="mb-3"><a id="annotation-panel-gene-ensembl-id" href=""></a></dd>
+                        </dl>
                       </div>
                       <div class="column is-4">
                         <h4>GO terms <span id="go-term-count"></span></h4>
@@ -177,6 +187,7 @@
                       </div>
                       <div class="column is-4">
                         <h4>miRNA tree</h4>
+                        <p class="is-size-7">n/a</p>
                       </div>
                     </div>
                   </div>
