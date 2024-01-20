@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // are we doing exact matches?
             if (document.querySelector('#gene-search-exact-match').checked) {
-                url += '&gene_symbol_exact_match=true';
+                url += '&gene_symbol_exact_match=1';
             }
 
             // get the value of the single-multi radio box
@@ -73,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-
     });
 });
 

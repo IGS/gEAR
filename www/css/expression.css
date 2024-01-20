@@ -17,6 +17,8 @@ div.card-content {
     min-height: 20em;
 }
 div#extended-annotation-panel {
+    border: 1px solid #e9eef1;
+    border-style: rounded;
     height: 20em;
 }
 div#functional-annotation-c h3 {

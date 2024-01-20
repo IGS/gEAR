@@ -32,11 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle passed URL parameters
-    if (getUrlParameter('gene_symbol_exact_match') === 'true') {
-        document.querySelector('#gene-search-exact-match').checked = true;
-    }
-
     document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
         const annotation_panel = document.querySelector('#extended-annotation-panel');
         const toggle_icon = document.querySelector('#functional-annotation-toggle i');
@@ -224,7 +219,7 @@ const parseGeneCartURLParams = () => {
 
     // are we doing exact matches?
     const exact_match = getUrlParameter('gene_symbol_exact_match');
-    document.querySelector('#gene-search-exact-match').checked = exact_match === 'true';
+    document.querySelector('#gene-search-exact-match').checked = exact_match === '1';
 
     // single or multiple gene view (convert to boolean)?
     const is_multigene_param = getUrlParameter('is_multigene');
