@@ -18,7 +18,7 @@ class TileGrid {
         this.layout = [];   // this.getLayout();
 
         this.maxCols = 12 // highest number of columns in a row
-        this.maxRows = 12 // highest number of rows in a column
+        this.maxRows = 3 // highest number of rows in a column
 
         this.tiles = [];
         this.tilegrid = [] // this.generateTileGrid();
@@ -135,7 +135,7 @@ class TileGrid {
             const width = datasetTile.tile.width;
             const height = datasetTile.tile.height;
 
-            if (width === 12) {
+            if (width === this.maxCols) {
                 // tile spans the entire row
                 const tileRow = [];
                 tileRow.push(datasetTile);
@@ -149,7 +149,7 @@ class TileGrid {
             datasetTile.used = true;
             const usedTiles = [datasetTile];
 
-            let remainingWidth = 12 - width;
+            let remainingWidth = this.maxCols - width;
 
             // find tiles that fit into the remaining width
             while (remainingWidth > 0) {
@@ -344,7 +344,8 @@ class DatasetTile {
             display.plotly_config.gene_symbol = geneSymbol;
         }
         const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
-        cardContent.classList.add("loader");
+        // TODO: this breaks things... change loader
+        //cardContent.classList.add("loader");
 
         try {
             // TODO: Add Epiviz
@@ -374,7 +375,7 @@ class DatasetTile {
             errorMessage.textContent = error.message;
             cardContent.append(errorMessage);
         } finally {
-            cardContent.classList.remove("loader");
+            //cardContent.classList.remove("loader");
         }
 
     }
@@ -468,7 +469,6 @@ class DatasetTile {
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
         Plotly.relayout(plotlyPreview.id, custonLayout)
-
     }
 
     async renderScanpyDisplay(display) {
@@ -788,9 +788,8 @@ const drawLegend = (data, plotConfig, datasetTile, score) => {
             .attr('stop-color', highColor);
     }
 
-    //const// { width } = node.getBoundingClientRect();
     const width = card.getBoundingClientRect().width;
-    console.log(width);
+
     // Draw the rectangle using the linear gradient
     legend
         .append('rect')
