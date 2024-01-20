@@ -541,11 +541,15 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     // create a legend div
     const legendDiv = document.createElement('div');
     legendDiv.classList.add('legend');
+    legendDiv.style.zIndex = 1;
+    legendDiv.style.height = "40px";    // match the viewbox height of child
     cardImage.append(legendDiv);
 
     // create a svg div (CSS for margin-top will now work nicely)
     const svgDiv = document.createElement('div');
     svgDiv.classList.add('svg');
+    // higher z-index so we can mouseover the svg
+    svgDiv.style.zIndex = 2;
     cardImage.append(svgDiv);
 
     const snap = Snap(svgDiv);
@@ -628,9 +632,29 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
                     // Place tissue in score in a nice compact tooltip
                     const tooltipText = `${tissue}: ${score}`;
 
-                    // Add data-tooltip and "has-tooltip-top" class to each path so that Bulma can render the tooltip
-                    path.attr('data-tooltip', tooltipText);
-                    path.addClass('has-tooltip-top');
+                    // Add mouseover and mouseout events to create and destroy the tooltip
+                    path.mouseover(() => {
+                        // get position of path node relative to page
+                        const yOffset = path.node.getBoundingClientRect().top - svgDiv.getBoundingClientRect().top;
+
+                        const tooltip = document.createElement('div');
+                        tooltip.classList.add('tooltip');
+                        tooltip.textContent = tooltipText;
+                        tooltip.style.position = 'absolute';
+                        tooltip.style.top = `${yOffset}px`;
+                        tooltip.style.left = `${0}px`;
+                        tooltip.style.backgroundColor = 'white';
+                        tooltip.style.color = 'black';
+                        tooltip.style.padding = '5px';
+                        tooltip.style.border = '1px solid black';
+                        tooltip.style.zIndex = 3;
+                        svgDiv.appendChild(tooltip);
+
+                    });
+                    path.mouseout(() => {
+                        svgDiv.querySelector('.tooltip').remove();
+                    });
+
                 });
             });
             return;
@@ -704,10 +728,28 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
                     // Place tissue in score in a nice compact tooltip
                     const tooltipText = `${tissue}: ${score}`;
 
-                    // Add data-tooltip and "has-tooltip-top" class to each path so that Bulma can render the tooltip
-                    // TODO: doesn't work
-                    path.attr('data-tooltip', tooltipText);
-                    path.addClass('has-tooltip-top');
+                    // Add mouseover and mouseout events to create and destroy the tooltip
+                    path.mouseover(() => {
+                        const yOffset = svgDiv.getBoundingClientRect().top - path.node.getBoundingClientRect().top;
+
+                        const tooltip = document.createElement('div');
+                        tooltip.classList.add('tooltip');
+                        tooltip.textContent = tooltipText;
+                        tooltip.style.position = 'absolute';
+                        tooltip.style.top = `${yOffset}px`;
+                        tooltip.style.left = `${0}px`;
+                        tooltip.style.backgroundColor = 'white';
+                        tooltip.style.color = 'black';
+                        tooltip.style.padding = '5px';
+                        tooltip.style.border = '1px solid black';
+                        tooltip.style.zIndex = 3;
+                        svgDiv.appendChild(tooltip);
+
+                    });
+                    path.mouseout(() => {
+                        svgDiv.querySelector('.tooltip').remove();
+                    });
+
                 });
             });
         } else {
@@ -733,6 +775,7 @@ const drawLegend = (plotConfig, datasetTile, score) => {
         .append('svg')
         .style('position', 'absolute')
         .style('width', '100%')
+        .style("height", "40px")    // Without a fixed heigh, the box is too tall and prevents mouseover of the svg image
         .attr('viewbox', `0 0 ${node.getBoundingClientRect().width} 40`)
         .attr('class', 'svg-gradient-container');
     const defs = legend.append('defs');
@@ -745,10 +788,6 @@ const drawLegend = (plotConfig, datasetTile, score) => {
         .attr('x2', '100%')
         .attr('y2', '0%');
 
-    // TODO: Issues to resolve here.  The 'atf4' gene in this datasets:
-    //  The Adult Cochlea Response to PTS-Inducing Noise - Summary View
-    // Has a data range of around -0.34 up but here the min is returning as
-    // 0. Is this being converted to an into somewhere?
     const { min, max } = score;
 
     // Create the gradient points for either three- or two-color gradients
