@@ -538,13 +538,12 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     // Load SVG file and set up the window
     const cardImage = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
 
-    // create a legend div about 7% of the card-image height
+    // create a legend div
     const legendDiv = document.createElement('div');
     legendDiv.classList.add('legend');
-    //legendDiv.style.height = '10%';
     cardImage.append(legendDiv);
 
-    // create a svg div about 92% of the card-image height
+    // create a svg div (CSS for margin-top will now work nicely)
     const svgDiv = document.createElement('div');
     svgDiv.classList.add('svg');
     cardImage.append(svgDiv);
@@ -733,8 +732,8 @@ const drawLegend = (plotConfig, datasetTile, score) => {
     const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
         .style('position', 'absolute')
-        .style('max-width', '100%')
-        .attr('viewbox', `0 0 ${card.getBoundingClientRect().width} 40`)
+        .style('width', '100%')
+        .attr('viewbox', `0 0 ${node.getBoundingClientRect().width} 40`)
         .attr('class', 'svg-gradient-container');
     const defs = legend.append('defs');
     // Define our gradient shape
@@ -805,7 +804,7 @@ const drawLegend = (plotConfig, datasetTile, score) => {
             .attr('stop-color', highColor);
     }
 
-    const width = card.getBoundingClientRect().width;
+    const width = node.getBoundingClientRect().width;
 
     // Draw the rectangle using the linear gradient
     legend
