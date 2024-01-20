@@ -343,8 +343,8 @@ class DatasetTile {
         } else {
             display.plotly_config.gene_symbol = geneSymbol;
         }
-        //const cardHeader = document.querySelector(`#tile_${this.tile.tile_id} .card-header`);
-        //cardHeader.classList.add("loader");
+        const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        //cardContent.classList.add("loader");
 
         try {
             // TODO: Add Epiviz
@@ -372,9 +372,9 @@ class DatasetTile {
             errorMessage.style.alignItems = "center";
             errorMessage.style.justifyContent = "center";
             errorMessage.textContent = error.message;
-            //cardContent.append(errorMessage);
+            cardContent.append(errorMessage);
         } finally {
-            cardHeader.classList.remove("loader");
+           // cardContent.classList.remove("loader");
         }
 
     }
@@ -536,20 +536,34 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     const NA_FIELD_COLOR = '#808080';
 
     // Load SVG file and set up the window
-    const svg = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
-    const snap = Snap(svg);
+    const cardImage = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
+
+    // create a legend div about 7% of the card-image height
+    const legendDiv = document.createElement('div');
+    legendDiv.classList.add('legend');
+    //legendDiv.style.height = '10%';
+    cardImage.append(legendDiv);
+
+    // create a svg div about 92% of the card-image height
+    const svgDiv = document.createElement('div');
+    svgDiv.classList.add('svg');
+    cardImage.append(svgDiv);
+
+    const snap = Snap(svgDiv);
     const svg_path = `datasets_uploaded/${datasetTile.dataset.id}.svg`;
 
     await Snap.load(svg_path, async (path) => {
         await snap.append(path);
+        const svg = snap.select("svg");
 
-        snap.select("svg").attr({
-            width: "100%",
+        svg.attr({
+            width: "100%"
         });
 
         // TODO: Set viewbar just like the legend.
-        // TODO: Set margin-top to 7% here instead of CSS
+        // TODO: Set at bottom of card-image
 
+        // Get all paths, circles, rects, and ellipses
         const paths = Snap.selectAll("path, circle, rect, ellipse");
 
         if (svgScoringMethod === 'gene' || svgScoringMethod === 'dataset') {
@@ -714,7 +728,7 @@ const drawLegend = (plotConfig, datasetTile, score) => {
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
 
     const card = document.querySelector(`#tile_${datasetTile.tile.tile_id}.card`);
-    const node = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
+    const node = document.querySelector(`#tile_${datasetTile.tile.tile_id} .legend`);
     // Create our legend svg
     const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
