@@ -102,7 +102,7 @@ const postPlotlyConfig = {
             , config: {
                 showLink: false
                 , displaylogo: false
-                , responsive: false
+                , responsive: true
                 , modeBarButtonsToRemove: [
                     "zoom2d",
                     "autoScale2d",

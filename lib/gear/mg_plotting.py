@@ -1074,7 +1074,7 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
             filter_indexes[k][elem] = obs_index.tolist()
     return filter_indexes
 
-def create_dataframe_gene_mask(df, gene_symbols, mapped_gene_symbols={}):
+def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
     if not "gene_symbol" in df:
         raise PlotError('Missing gene_symbol column in adata.var')
@@ -1120,15 +1120,8 @@ def create_dataframe_gene_mask(df, gene_symbols, mapped_gene_symbols={}):
         # Note to user which genes were not found in the dataset
         genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
         if genes_not_present:
-            # attempt to map the gene to an ensembl id, and add to the gene_filter
-            for gene in genes_not_present:
-                if gene in mapped_gene_symbols:
-                    gene_filter = gene_filter | df['gene_symbol'].isin([mapped_gene_symbols[gene]])
-            # If the gene is still not present, add it to the message
-            genes_not_present = [gene for gene in genes_not_present if gene not in mapped_gene_symbols]
-            if genes_not_present:
-                success = 2,
-                message_list.append('<li>One or more genes were not found in the dataset nor could be mapped: {}</li>'.format(', '.join(genes_not_present)))
+            success = 2,
+            message_list.append('<li>One or more genes were not found in the dataset nor could be mapped: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list)
         return gene_filter, success, message
     except PlotError as pe:

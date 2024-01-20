@@ -806,7 +806,7 @@ const curatorSpecifcDatasetTreeCallback = () => {
  * Updates the curator-specific navbar with the current page information.
  */
 const curatorSpecificNavbarUpdates = () => {
-	document.querySelector("#header_bar .navbar-item").textContent = "Single-gene Curator";
+	document.getElementById("page-header-label").textContent = "Single-gene Curator";
 
     for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
         elt.classList.remove("is-active");

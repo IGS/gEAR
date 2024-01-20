@@ -6,10 +6,20 @@ let currently_selected_org_id = "";
 let is_multigene = false;
 let annotation_data = null;
 let manually_entered_genes = [];
+let tilegrid = null;
+let svg_scoring_method = 'gene';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
-    document.querySelector('#page-header-label').textContent = 'Gene Expression Search';
+    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
+
+    // Set current sidebar menu item to active
+	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+		elt.classList.remove("is-active");
+	}
+
+	document.querySelector("a[tool='search_expression'").classList.add("is-active");
+
 
     // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
@@ -54,8 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // update multigene/single gene
+        is_multigene = document.querySelector('#single-multi-multi').checked;
+
         try {
-            await Promise.allSettled([fetchGeneAnnotations(),setupTileGrid(selected_dc_share_id)]);
+            const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
+            tilegrid = tilegridRes.value;
         } catch (error) {
             logErrorInConsole(error);
         }
@@ -80,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!event.target.classList.contains('gene-result-list-item')) {
             return;
         }
-        const gene_symbol = event.target.innerHTML;
+        const gene_symbol = event.target.textContent;
 
         // remove is-selected from all the existing rows, then add it to this one
         const rows = document.querySelectorAll('.gene-result-list-item');
@@ -91,9 +105,26 @@ document.addEventListener('DOMContentLoaded', () => {
         event.target.classList.add('is-selected');
         selectGeneResult(gene_symbol);
     });
+
+    // Change the svg scoring method when select element is changed
+    document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
+        if (is_multigene) return;   // multigene does not use this
+
+        svg_scoring_method = event.target.value;
+        // Get gene symbol from currently selected list item
+        let list_item = document.querySelector('.gene-result-list-item.is-selected');
+        if (!list_item) {
+            list_item = document.querySelector('.gene-result-list-item');
+        }
+
+        const gene_symbol = list_item.textContent;
+        selectGeneResult(gene_symbol);
+    });
 });
 
 const fetchGeneAnnotations = async (callback) => {
+    // ! - SAdkins note - Need to either hide this if is_multigene selected, or disable the "click" event (otherwise displays will be rendered with selected gene)
+
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             selected_genes.join(','),
@@ -230,19 +261,24 @@ const selectGeneResult = (gene_symbol) => {
     }
 
     // Other things can be called next, such as plotting calls
+    if (tilegrid) {
+        tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene, svg_scoring_method);
+    }
 }
 
 const setupTileGrid = async (layout_share_id) => {
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
-        tilegrid.tilegrid = tilegrid.generateTileGrid();
+        tilegrid.generateTileGrid(is_multigene);
         tilegrid.applyTileGrid(is_multigene);
         await tilegrid.addAllDisplays();
         await tilegrid.addDefaultDisplays();
-        await tilegrid.renderDisplays(selected_genes, is_multigene);
+        await tilegrid.renderDisplays(selected_genes, is_multigene, svg_scoring_method);
     } catch (error) {
         logErrorInConsole(error);
+    } finally {
+        return tilegrid;
     }
 }
 

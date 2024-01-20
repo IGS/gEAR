@@ -83,7 +83,10 @@ def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id)
     else:
         for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
             try:
-                return map_multiple_genes(gene_symbols, ortholog_file)
+                mapped_gene_symbols_dict =  map_multiple_genes(gene_symbols, ortholog_file)
+                # ? Should we check all and return the dict with the most matches
+                if len(mapped_gene_symbols_dict):
+                    return mapped_gene_symbols_dict
             except:
                 continue
     return {}
@@ -296,25 +299,32 @@ class MultigeneDashData(Resource):
         dataset_organism_id = dataset.organism_id
 
         mapped_gene_symbols_dict = {}
+        # create list of mapped_gene_symbols in gene_symbols order
+        mapped_gene_symbols = []
 
         # If any searched gene is not in the dataset, attempt to map it to the dataset organism
         if not check_all_genes_in_dataset(adata, gene_symbols):
             try:
                 mapped_gene_symbols_dict = get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id)
+                if len(mapped_gene_symbols_dict):
+                    for gene_symbol in gene_symbols:
+                        mapped_gene_symbols.append(mapped_gene_symbols_dict.get(gene_symbol, gene_symbol))
+
             except:
                 return {"success": -1, "message": "The searched gene symbols could not be mapped to the dataset organism."}
 
+        selected_gene_symbols = gene_symbols if not mapped_gene_symbols else mapped_gene_symbols
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
-            if not gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
+            if not selected_gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
                 raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
 
-            if len(gene_symbols) == 1 and plot_type == "heatmap":
+            if len(selected_gene_symbols) == 1 and plot_type == "heatmap":
                 raise PlotError('Heatmaps require 2 or more genes as input')
 
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
-            gene_filter, success, message = mg.create_dataframe_gene_mask(adata.var, gene_symbols, mapped_gene_symbols_dict)
+            gene_filter, success, message = mg.create_dataframe_gene_mask(adata.var, selected_gene_symbols)
         except PlotError as pe:
             return {
                 'success': -1,
@@ -345,7 +355,7 @@ class MultigeneDashData(Resource):
             # Collect all genes from the unfiltered dataset
             dataset_genes = adata.var['gene_symbol'].unique().tolist()
             # Gene symbols list may have genes not in the dataset.
-            normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
+            normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, selected_gene_symbols)
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
@@ -444,16 +454,16 @@ class MultigeneDashData(Resource):
 
             mg.modify_volcano_plot(fig, query_val, ref_val, ensm2genesymbol, downcolor, upcolor)
 
-            if gene_symbols:
+            if selected_gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
-                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
+                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, selected_gene_symbols)
                 mg.add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
         elif plot_type == "quadrant":
             # Get list of normalized genes before dataframe filtering takes place
-            if gene_symbols:
+            if selected_gene_symbols:
                 dataset_genes = adata.var['gene_symbol'].unique().tolist()
-                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
+                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, selected_gene_symbols)
             try:
                 key, control_val, compare1_val, compare2_val = mg.validate_quadrant_conditions(ref_condition, compare_group1, compare_group2)
                 df = mg.prep_quadrant_dataframe(selected
@@ -477,7 +487,7 @@ class MultigeneDashData(Resource):
 
             fig = mg.create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale)
             # Annotate selected genes
-            if gene_symbols:
+            if selected_gene_symbols:
                 genes_not_found, genes_none_none = mg.add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
                 if genes_not_found:
                     success = 2
@@ -519,6 +529,9 @@ class MultigeneDashData(Resource):
             percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
             groupby = ["gene_symbol"]
             groupby.extend(groupby_filters)
+
+            # drop Ensembl ID index since it may not aggregate and throw warnings
+            df.drop(columns=[var_index], inplace=True)
 
             grouped = df.groupby(groupby)
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
@@ -752,11 +765,6 @@ class MultigeneDashData(Resource):
         fig["layout"].pop("width", None)
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
-
-        # create list of mapped_gene_symbols in gene_symbols order
-        mapped_gene_symbols = []
-        for gene_symbol in gene_symbols:
-            mapped_gene_symbols.append(mapped_gene_symbols_dict.get(gene_symbol, gene_symbol))
 
         # NOTE: With volcano plots, the Chrome "devtools" cannot load the JSON response occasionally
         return {

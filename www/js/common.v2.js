@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bulma dropdowns can't be clicked without a wee bit of Javascript
     document.querySelectorAll('.dropdown-trigger').forEach(item => {
-        item.addEventListener('click', function(event) {
+        item.addEventListener('click', (event) => {
             event.stopPropagation();
             item.parentNode.classList.toggle('is-active');
         });
@@ -47,13 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbarElementsToAnimate = document.querySelectorAll('.icon-text-part');
 
     // Collapse the left navigation panel to the smaller version
-    function hideNavbarElementsWithAnimation() {
+    const hideNavbarElementsWithAnimation = () => {
         // Hide all the menu labels
-        document.querySelectorAll('span.menu-label-text').forEach(function (element) {
+        document.querySelectorAll('span.menu-label-text').forEach((element) => {
             element.classList.add('is-hidden');
         });
 
-        navbarElementsToAnimate.forEach(function (element) {
+        navbarElementsToAnimate.forEach((element) => {
             // Add the CSS class to trigger the hide animation
             element.classList.add('hidden-sidenavbar');
             // Remove the show animation class if it was previously added
@@ -72,30 +72,30 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-right");
 
         // Hiding the span.icon-text-part causes the menu to narrow
-        document.querySelectorAll('span.icon-text-part').forEach(function (element) {
+        document.querySelectorAll('span.icon-text-part').forEach((element) => {
             element.classList.add('is-hidden');
         });
 
         // activate the tooltips since the menu labels are hidden
-        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+        document.querySelectorAll('span.icon-image-part').forEach((element) => {
             element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
         });
 
         // build the tooltips based on the values of the actual menu labels
-        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+        document.querySelectorAll('span.icon-image-part').forEach((element) => {
             const text = element.parentNode.querySelector('span.icon-text-part').textContent;
             element.setAttribute('data-tooltip', text);
         });
     }
 
     // Expand the left navigation panel to the larger version
-    function showNavbarElementsWithAnimation() {
+    const showNavbarElementsWithAnimation = () => {
         // Show all the menu labels
-        document.querySelectorAll('span.menu-label-text').forEach(function (element) {
+        document.querySelectorAll('span.menu-label-text').forEach((element) => {
             element.classList.remove('is-hidden');
         });
 
-        navbarElementsToAnimate.forEach(function (element) {
+        navbarElementsToAnimate.forEach((element) => {
             // Add the CSS class to trigger the show animation
             element.classList.add('shown-sidenavbar');
             // Remove the hide animation class if it was previously added
@@ -114,17 +114,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-left");
 
         // Hiding the span.icon-text-part causes the menu to narrow
-        document.querySelectorAll('span.icon-text-part').forEach(function (element) {
+        document.querySelectorAll('span.icon-text-part').forEach((element) => {
             element.classList.remove('is-hidden');
         });
 
         // hide the tooltips since the menu labels are visible
-        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+        document.querySelectorAll('span.icon-image-part').forEach((element) => {
             element.classList.remove('has-tooltip-right', 'has-tooltip-arrow');
         });
 
         // remove the menu tooltips since the actual labels are visible
-        document.querySelectorAll('span.icon-image-part').forEach(function (element) {
+        document.querySelectorAll('span.icon-image-part').forEach((element) => {
             element.removeAttribute('data-tooltip');
         });
     }
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
 //   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
 //   then:      var tech = getUrlParameter('technology');
 //              var blog = getUrlParameter('blog');
-const getUrlParameter = function getUrlParameter(sParam) {
+const getUrlParameter = (sParam) => {
     const sPageURL = decodeURIComponent(window.location.search.substring(1));
     const sURLVariables = sPageURL.split('&');
     let sParameterName;
