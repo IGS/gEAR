@@ -305,12 +305,20 @@ class DatasetTile {
         const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
 
         // find the display config in the user or owner display lists
-        const userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
-        const ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
+        let userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
+        let ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
+
+        // Try epiviz display if no plotly display was found
+        if (this.type === "single") {
+            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
+
+            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
+        }
+
 
         // if the display config was not found, then do not render
         if (!userDisplay && !ownerDisplay) {
-            console.warn(`Display config for dataset ${this.dataset.id} was not found.`)
+            console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
             // Let the user know that the display config was not found
             const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
             cardContent.replaceChildren();
