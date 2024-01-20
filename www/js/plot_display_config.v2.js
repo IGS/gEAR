@@ -157,26 +157,6 @@ const postPlotlyConfig = {
                     b: 10
                 }
             }
-        }, {
-            plot_type: "violin"
-            , layout:{
-                margin: {
-                    t: 30
-                    , r: 10
-                }
-            }
-        }, {
-            plot_type: "bar"
-            , layout:{
-                margin: {
-                    t: 30
-                    , r: 10
-                }
-                /* , legend: {
-                    orientation: "h"
-                }
-                */
-            }
         }
     ]
     , curator: [
