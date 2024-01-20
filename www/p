@@ -55,10 +55,10 @@ def main():
     if gene_symbol is not None:
         params['gene_symbol'] = gene_symbol
 
-    if gene_symbol_exact_match is None:
-        params['gene_symbol_exact_match'] = 1
+    if gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
+        params['gene_symbol_exact_match'] = 0
     else:
-        params['gene_symbol_exact_match'] = gene_symbol_exact_match
+        params['gene_symbol_exact_match'] = 1
 
     if gene_cart:
         params['gene_cart_share_id'] = gene_cart
