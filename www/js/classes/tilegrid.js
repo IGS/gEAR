@@ -506,7 +506,6 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
         const {gene_symbol: geneSymbol} = plotConfig;
 
-
         const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol)
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
@@ -519,18 +518,19 @@ class DatasetTile {
     }
 }
 
-const colorSVG = (chartData, plotConfig, datasetTile, svgScoringMethod="gene") => {
+const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="gene") => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
     const colorblindMode = CURRENT_USER.colorblind_mode;
-    const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
-    const midColor = colorblindMode ? null : plotConfig["mid_color"];
-    const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
+    const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : (plotConfig?.low_color || '#e7d1d5');
+    const midColor = colorblindMode ? null : (plotConfig?.mid_color || null);
+    const highColor = colorblindMode ? 'rgb(0, 34, 78)' : (plotConfig?.high_color || '#401362');
 
     // Fill in tissue classes with the expression colors
     const {data: expression} = chartData;
     const tissues = Object.keys(expression);   // dataframe
 
     const score = chartData.scores[svgScoringMethod];
+
     // for those fields which have no reading, a specific value is sometimes put in instead
     // These are colored a neutral color
     const NA_FIELD_PLACEHOLDER = -0.012345679104328156;
@@ -540,10 +540,11 @@ const colorSVG = (chartData, plotConfig, datasetTile, svgScoringMethod="gene") =
     const svg = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
     const snap = Snap(svg);
     const svg_path = `datasets_uploaded/${datasetTile.dataset.id}.svg`;
-    Snap.load(svg_path, async (path) => {
-        await snap.append(path)
 
-        snap.select("svg").attr({
+    await Snap.load(svg_path, async (path) => {
+        await snap.append(path);
+
+       snap.select("svg").attr({
             width: "100%",
         });
 
@@ -699,12 +700,11 @@ const colorSVG = (chartData, plotConfig, datasetTile, svgScoringMethod="gene") =
 
     });
 
-    // This doesn't show if placed in the SnapSVG callback
-    drawLegend(chartData, plotConfig, datasetTile, score)
+    drawLegend(plotConfig, datasetTile, score)
 
 }
 
-const drawLegend = (data, plotConfig, datasetTile, score) => {
+const drawLegend = (plotConfig, datasetTile, score) => {
     const colorblindMode = CURRENT_USER.colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
@@ -713,11 +713,11 @@ const drawLegend = (data, plotConfig, datasetTile, score) => {
     const card = document.querySelector(`#tile_${datasetTile.tile.tile_id}.card`);
     const node = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
     // Create our legend svg
-    const legend = new_d3
-        .select(node)
+    const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
         .style('position', 'absolute')
-        .attr('width', '100%')
+        .style('max-width', '100%')
+        .attr('viewbox', `0 0 ${card.getBoundingClientRect().width} 40`)
         .attr('class', 'svg-gradient-container');
     const defs = legend.append('defs');
     // Define our gradient shape
@@ -736,7 +736,7 @@ const drawLegend = (data, plotConfig, datasetTile, score) => {
     const { min, max } = score;
 
     // Create the gradient points for either three- or two-color gradients
-    if (this.mid_color) {
+    if (midColor) {
         // Even if a midpoint is called for, it doesn't make sense if the values are
         //  all less than or all greater than 0
         if (min >= 0) {
@@ -793,10 +793,10 @@ const drawLegend = (data, plotConfig, datasetTile, score) => {
     // Draw the rectangle using the linear gradient
     legend
         .append('rect')
-        .attr('width', width / 2)
+        .attr('width', "50%")
         .attr('y', 10)
-        .attr('x', width / 4)
-        .attr('height', 10)
+        .attr('x', "25%")
+        .attr('height', 10) // quarter of viewport height
         .style(
             'fill',
             `url(#tile_${datasetTile.tile.tile_id}-linear-gradient)`
@@ -810,12 +810,41 @@ const drawLegend = (data, plotConfig, datasetTile, score) => {
     const xAxis = new_d3
         .axisBottom()
         .ticks(3)
-        .scale(xScale);
+        .scale(xScale)
+
     legend
         .append('g')
         .attr('class', 'axis')
-        .attr('transform', `translate(${width / 4}, 20)`)
+        .attr('transform', `translate(${width / 4}, 20)`)   // start quarter from left, and 10 px below rectangle
+        .attr("stroke", "black")
         .call(xAxis);
+
+    // Ensure axis is responsive
+    window.addEventListener('resize', () => {
+        legend.attr('viewbox', `0 0 ${card.getBoundingClientRect().width} 40`);
+
+        // purge old axis
+        legend.select('.axis').remove();
+
+        // redraw axis
+        // TODO: this is hacky, but it works
+        const xScale = new_d3
+            .scaleLinear()
+            .domain([min, max])
+            .range([0, card.getBoundingClientRect().width / 2]);
+
+        const xAxis = new_d3
+            .axisBottom()
+            .ticks(3)
+            .scale(xScale)
+
+        legend
+            .append('g')
+            .attr('class', 'axis')
+            .attr('transform', `translate(${card.getBoundingClientRect().width / 4}, 20)`)   // start quarter from left, and 10 px below rectangle
+            .attr("stroke", "black")
+            .call(xAxis);
+    });
 }
 
 /**

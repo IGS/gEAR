@@ -81,3 +81,7 @@ ul#go-terms {
 ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
+
+.card-image svg:last-child {
+    margin-top:10%; /* this is shaky... current the main image is last but not guaranteed */
+}
