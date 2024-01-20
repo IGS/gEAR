@@ -347,13 +347,14 @@ class DatasetTile {
         //cardContent.classList.add("loader");
 
         try {
-            // TODO: Add Epiviz
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display);
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display);
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, svgScoringMethod);
+            } else if (display.plot_type === "epiviz") {
+                await this.renderEpivizDisplay(display);
             } else if (this.type === "multi") {
                 await this.renderMultiGeneDisplay(display);
             } else {
@@ -376,6 +377,109 @@ class DatasetTile {
         } finally {
            // cardContent.classList.remove("loader");
         }
+
+    }
+
+    // TODO: Add abort controller signals to all fetch calls
+
+    async renderEpivizDisplay(display) {
+        const datasetId = display.dataset_id;
+        const {gene_symbol: geneSymbol} = display.plotly_config;
+
+        let genome = null;
+        const genesTrack = display.plotly_config.tracks["EPIVIZ-GENES-TRACK"];
+        if (genesTrack.length > 0) {
+            const gttrack = genesTrack[0];
+            genome = gttrack.measurements ? gttrack.measurements[0].id : gttrack.id[0].id;
+        }
+
+        // Get data and set up the image area
+        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome);
+        if (data.hasOwnProperty("success") && data.success === -1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+
+        const extendRangeRatio = 10;
+
+        // generate the epiviz panel + tracks
+        const epiviznav = document.querySelector(`#epiviznav_${this.tile.tile_id}`);
+        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!epiviznav) {
+            // epiviz container already exists, so only update gneomic position in the browser
+
+            plotContainer.replaceChildren();    // erase plot
+            plotContainer.append(this.epivizTemplate(data, display.plotly_config, extendRangeRatio));
+            return;
+        }
+        // epiviz container already exists, so only update gneomic position in the browser
+        epiviznav.setAttribute("chr", data.chr);
+        const nstart = data.start - Math.round((data.end - data.start) * extendRangeRatio);
+        const nend = data.end + Math.round((data.end - data.start) * extendRangeRatio);
+        epiviznav.setAttribute("start", nstart);
+        epiviznav.setAttribute("end", nend);
+        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);
+
+    }
+
+    /**
+     * HTML template for EpiViz
+     */
+    epivizTemplate(data, plotConfig, extendRangeRatio) {
+
+
+    //TODO: Place in an "includes" script
+
+    let epivizTracksTemplate = "";
+    for (const track in plotConfig.tracks) {
+        const trackConfig = plotConfig.tracks[track];
+        trackConfig.forEach((tc) => {
+            let tempTrack = `<${track} slot='charts' `;
+            tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
+
+            if (tc.colors != null) {
+                tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
+            }
+
+            if (tc.settings != null) {
+                tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
+            }
+
+            tempTrack += ` style='min-height:200px;'></${track}> `;
+
+            epivizTracksTemplate += tempTrack;
+        });
+    }
+
+
+        // the chr, start and end should come from query - map gene to genomic position.
+
+        return `
+        <div id='epiviz_${this.tile.tile_id}' class='epiviz-container'>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
+
+            <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
+
+            <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
+            id='${this.tile.tile_id}epivizds'
+            provider-id="fileapi"
+            provider-url="${plotConfig.dataserver}">
+            </epiviz-data-source>
+            <epiviz-navigation
+            hide-chr-input
+            hide-search
+            hide-add-chart
+            show-viewer
+            id='${this.tile.tile_id}_epiviznav'
+            chr='${data.chr}'
+            start=${data.start - Math.round((data.end - data.start) * extendRangeRatio)}
+            end=${data.end + Math.round((data.end - data.start) * extendRangeRatio)}
+            viewer=${`/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`}
+            >
+            ${epivizTracksTemplate}
+            </epiviz-navigation>
+        </div>
+        `;
 
     }
 
