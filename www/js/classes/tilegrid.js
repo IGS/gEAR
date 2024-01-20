@@ -412,6 +412,8 @@ class DatasetTile {
         // generate the epiviz panel + tracks
         const epiviznav = document.querySelector(`#epiviznav_${this.tile.tile_id}`);
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
+
         if (!epiviznav) {
             // epiviz container already exists, so only update gneomic position in the browser
 
@@ -433,7 +435,6 @@ class DatasetTile {
      * HTML template for EpiViz
      */
     epivizTemplate(data, plotConfig, extendRangeRatio) {
-
 
     //TODO: Place in an "includes" script
 
@@ -507,6 +508,7 @@ class DatasetTile {
         const {plot_json: plotJson} = data;
 
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -560,6 +562,7 @@ class DatasetTile {
         const {plot_json: plotJson} = data;
 
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -597,6 +600,7 @@ class DatasetTile {
         const {image} = data;
 
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         const tsnePreview = document.createElement("img");
@@ -622,6 +626,7 @@ class DatasetTile {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, plotConfig.colors, this, svgScoringMethod);
