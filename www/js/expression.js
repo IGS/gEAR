@@ -233,7 +233,6 @@ const selectGeneResult = (gene_symbol) => {
 }
 
 const setupTileGrid = async (layout_share_id) => {
-    console.log("Setting up tile grid with layout share ID " + layout_share_id);
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
