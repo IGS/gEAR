@@ -83,5 +83,5 @@ ul#go-terms li {
 }
 
 .card-image svg:last-child {
-    margin-top:10%; /* this is shaky... current the main image is last but not guaranteed */
+    margin-top:7%; /* this is shaky... current the main image is last but not guaranteed */
 }

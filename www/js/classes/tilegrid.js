@@ -343,9 +343,8 @@ class DatasetTile {
         } else {
             display.plotly_config.gene_symbol = geneSymbol;
         }
-        const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
-        // TODO: this breaks things... change loader
-        //cardContent.classList.add("loader");
+        //const cardHeader = document.querySelector(`#tile_${this.tile.tile_id} .card-header`);
+        //cardHeader.classList.add("loader");
 
         try {
             // TODO: Add Epiviz
@@ -373,9 +372,9 @@ class DatasetTile {
             errorMessage.style.alignItems = "center";
             errorMessage.style.justifyContent = "center";
             errorMessage.textContent = error.message;
-            cardContent.append(errorMessage);
+            //cardContent.append(errorMessage);
         } finally {
-            //cardContent.classList.remove("loader");
+            cardHeader.classList.remove("loader");
         }
 
     }
@@ -544,9 +543,12 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     await Snap.load(svg_path, async (path) => {
         await snap.append(path);
 
-       snap.select("svg").attr({
+        snap.select("svg").attr({
             width: "100%",
         });
+
+        // TODO: Set viewbar just like the legend.
+        // TODO: Set margin-top to 7% here instead of CSS
 
         const paths = Snap.selectAll("path, circle, rect, ellipse");
 
@@ -690,6 +692,7 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
                     const tooltipText = `${tissue}: ${score}`;
 
                     // Add data-tooltip and "has-tooltip-top" class to each path so that Bulma can render the tooltip
+                    // TODO: doesn't work
                     path.attr('data-tooltip', tooltipText);
                     path.addClass('has-tooltip-top');
                 });
