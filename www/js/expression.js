@@ -9,6 +9,13 @@ let manually_entered_genes = [];
 let tilegrid = null;
 let svg_scoring_method = 'gene';
 
+/*
+TODOs:
+- hide the annotation panel when multi-gene searches are displayed
+- check if the user has a stored default profile and select that one if none were passed (index page too)
+- If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
+*/
+
 document.addEventListener('DOMContentLoaded', () => {
     // Set the page header title
     document.getElementById('page-header-label').textContent = 'Gene Expression Search';
@@ -50,8 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // add event listener for when the submit-expression-search button is clicked
     document.querySelector('#submit-expression-search').addEventListener('click', async (event) => {
-        // TODO: If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
-
         const status = validateExpressionSearchForm();
 
         if (! status) {
@@ -79,16 +84,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // handle when the organism-selector select box is changed
     document.querySelector('#organism-selector').addEventListener('change', (event) => {
-        currently_selected_org_id = document.querySelector('#organism-selector').value;
+        currently_selected_org_id = parseInt(document.querySelector('#organism-selector').value);
 
         if (currently_selected_org_id === "") {
             showOrganismSelectorToolip();
+            document.querySelector('#set-default-organism').classList.add('is-hidden');
             return;
         } else {
             hideOrganismSelectorToolip();
             updateAnnotationDisplay();
-        }
 
+            // If the user is logged in and doesn't have a default org ID or it's different from their current, 
+            //  show the control
+            if (CURRENT_USER.session_id) {
+                if (CURRENT_USER.default_org_id === undefined || CURRENT_USER.default_org_id !== currently_selected_org_id) {
+                    document.querySelector('#set-default-organism').classList.remove('is-hidden');
+                } else {
+                    document.querySelector('#set-default-organism').classList.add('is-hidden');
+                }
+            }
+        }
+    });
+
+    document.querySelector('#set-default-organism').addEventListener('click', (event) => {
+        // we don't want to set to null, and the UI should have prevented this, but check just in case
+        if (currently_selected_org_id !== "") {
+            CURRENT_USER.default_org_id = currently_selected_org_id;
+            apiCallsMixin.saveUserDefaultOrgId(CURRENT_USER);
+            document.querySelector('#set-default-organism').classList.add('is-hidden');
+        }
     });
 
     // Add event listeners to the gene result list items even if they don't exist yet
@@ -127,15 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 const fetchGeneAnnotations = async (callback) => {
-    // ! - SAdkins note - Need to either hide this if is_multigene selected, or disable the "click" event (otherwise displays will be rendered with selected gene)
-
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             selected_genes.join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
 
-        console.log(annotation_data);
+        //console.log(annotation_data);
 
         document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
 
@@ -172,6 +194,13 @@ const fetchOrganisms = async (callback) => {
             const row = template.content.cloneNode(true);
             row.querySelector('option').innerHTML = organism.label;
             row.querySelector('option').value = organism.id;
+
+            // if this matches the user's default organism, select it
+            if (CURRENT_USER.default_org_id === organism.id) {
+                row.querySelector('option').selected = true;
+                currently_selected_org_id = organism.id;
+            }
+
             document.querySelector('#organism-selector').appendChild(row);
         }
 
@@ -320,8 +349,6 @@ const updateAnnotationDisplay = () => {
     const annotation = annotation_data[gs]['by_organism'][oid];
     document.querySelector('#annotation-panel-gene-symbol').innerHTML = gs;
 
-    console.log(annotation);
-
     // Gene product
     document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
     document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
@@ -333,7 +360,7 @@ const updateAnnotationDisplay = () => {
     } else {
         document.querySelector('#annotation-panel-gene-aliases').innerHTML = "None found";
     }
-    
+
     document.querySelector('#annotation-panel-gene-ensembl-release').innerHTML = annotation['ensembl_release'];
     document.querySelector('#annotation-panel-gene-ensembl-id').innerHTML = annotation['ensembl_id'];
 

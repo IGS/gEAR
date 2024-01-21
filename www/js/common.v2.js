@@ -883,7 +883,18 @@ const apiCallsMixin = {
         const payload = {display_id: displayId, session_id: this.sessionId, dataset_id: datasetId, is_multigene: isMultigene};
         const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
         return data;
+    },
+    /**
+         * Saves the default organism for all annotation views.
+         * @param {Object} user - The JS object for the currently-logged in user
+         * @returns {Promise<any>} - A promise that resolves to the saved data.
+         */
+    async saveUserDefaultOrgId(user) {
+        const payload = {session_id: this.sessionId, default_org_id: user.default_org_id};
+        const {data} = await axios.post("/cgi/save_user_default_organism.cgi", convertToFormData(payload));
+        return data;
     }
+
 }
 
 // First-class function to handle API calls
