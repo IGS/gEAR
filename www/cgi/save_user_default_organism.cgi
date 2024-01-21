@@ -23,7 +23,7 @@ def main():
         cursor.execute(query, (default_org_id, user_id))
         result = dict(success=True)
     except mysql.connector.Error as err:
-        print("Something went wrong: {}".format(err), file=sys.stderr)
+        #print("Something went wrong: {}".format(err), file=sys.stderr)
         result = dict(success=False)
 
     cnx.commit()
