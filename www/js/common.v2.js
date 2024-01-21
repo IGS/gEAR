@@ -718,6 +718,11 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
         return data;
     },
+    async fetchEpivizDisplay(datasetId, geneSymbol, genome) {
+        const query = `?gene=${geneSymbol}&genome=${genome}`;
+        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${query}`);
+        return data;
+    },
     /**
      * Fetches annotations for the passed gene symbols
      * @param {array} gene_symbols - comma-separated string of gene symbols

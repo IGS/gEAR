@@ -305,12 +305,20 @@ class DatasetTile {
         const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
 
         // find the display config in the user or owner display lists
-        const userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
-        const ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
+        let userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
+        let ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
+
+        // Try epiviz display if no plotly display was found
+        if (this.type === "single") {
+            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
+
+            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
+        }
+
 
         // if the display config was not found, then do not render
         if (!userDisplay && !ownerDisplay) {
-            console.warn(`Display config for dataset ${this.dataset.id} was not found.`)
+            console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
             // Let the user know that the display config was not found
             const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
             cardContent.replaceChildren();
@@ -344,17 +352,17 @@ class DatasetTile {
             display.plotly_config.gene_symbol = geneSymbol;
         }
         const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
-        // TODO: this breaks things... change loader
         //cardContent.classList.add("loader");
 
         try {
-            // TODO: Add Epiviz
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display);
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display);
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, svgScoringMethod);
+            } else if (display.plot_type === "epiviz") {
+                await this.renderEpivizDisplay(display);
             } else if (this.type === "multi") {
                 await this.renderMultiGeneDisplay(display);
             } else {
@@ -375,8 +383,112 @@ class DatasetTile {
             errorMessage.textContent = error.message;
             cardContent.append(errorMessage);
         } finally {
-            //cardContent.classList.remove("loader");
+           // cardContent.classList.remove("loader");
         }
+
+    }
+
+    // TODO: Add abort controller signals to all fetch calls
+
+    async renderEpivizDisplay(display) {
+        const datasetId = display.dataset_id;
+        const {gene_symbol: geneSymbol} = display.plotly_config;
+
+        let genome = null;
+        const genesTrack = display.plotly_config.tracks["EPIVIZ-GENES-TRACK"];
+        if (genesTrack.length > 0) {
+            const gttrack = genesTrack[0];
+            genome = gttrack.measurements ? gttrack.measurements[0].id : gttrack.id[0].id;
+        }
+
+        // Get data and set up the image area
+        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome);
+        if (data.hasOwnProperty("success") && data.success === -1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+
+        const extendRangeRatio = 10;
+
+        // generate the epiviz panel + tracks
+        const epiviznav = document.querySelector(`#epiviznav_${this.tile.tile_id}`);
+        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
+
+        if (!epiviznav) {
+            // epiviz container already exists, so only update gneomic position in the browser
+
+            plotContainer.replaceChildren();    // erase plot
+            plotContainer.append(this.epivizTemplate(data, display.plotly_config, extendRangeRatio));
+            return;
+        }
+        // epiviz container already exists, so only update gneomic position in the browser
+        epiviznav.setAttribute("chr", data.chr);
+        const nstart = data.start - Math.round((data.end - data.start) * extendRangeRatio);
+        const nend = data.end + Math.round((data.end - data.start) * extendRangeRatio);
+        epiviznav.setAttribute("start", nstart);
+        epiviznav.setAttribute("end", nend);
+        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);
+
+    }
+
+    /**
+     * HTML template for EpiViz
+     */
+    epivizTemplate(data, plotConfig, extendRangeRatio) {
+
+    //TODO: Place in an "includes" script
+
+    let epivizTracksTemplate = "";
+    for (const track in plotConfig.tracks) {
+        const trackConfig = plotConfig.tracks[track];
+        trackConfig.forEach((tc) => {
+            let tempTrack = `<${track} slot='charts' `;
+            tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
+
+            if (tc.colors != null) {
+                tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
+            }
+
+            if (tc.settings != null) {
+                tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
+            }
+
+            tempTrack += ` style='min-height:200px;'></${track}> `;
+
+            epivizTracksTemplate += tempTrack;
+        });
+    }
+
+
+        // the chr, start and end should come from query - map gene to genomic position.
+
+        return `
+        <div id='epiviz_${this.tile.tile_id}' class='epiviz-container'>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
+            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
+
+            <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
+
+            <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
+            id='${this.tile.tile_id}epivizds'
+            provider-id="fileapi"
+            provider-url="${plotConfig.dataserver}">
+            </epiviz-data-source>
+            <epiviz-navigation
+            hide-chr-input
+            hide-search
+            hide-add-chart
+            show-viewer
+            id='${this.tile.tile_id}_epiviznav'
+            chr='${data.chr}'
+            start=${data.start - Math.round((data.end - data.start) * extendRangeRatio)}
+            end=${data.end + Math.round((data.end - data.start) * extendRangeRatio)}
+            viewer=${`/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`}
+            >
+            ${epivizTracksTemplate}
+            </epiviz-navigation>
+        </div>
+        `;
 
     }
 
@@ -396,6 +508,7 @@ class DatasetTile {
         const {plot_json: plotJson} = data;
 
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -449,6 +562,7 @@ class DatasetTile {
         const {plot_json: plotJson} = data;
 
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -486,6 +600,7 @@ class DatasetTile {
         const {image} = data;
 
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         const tsnePreview = document.createElement("img");
@@ -511,6 +626,7 @@ class DatasetTile {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
         const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, plotConfig.colors, this, svgScoringMethod);
@@ -537,17 +653,37 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     const NA_FIELD_COLOR = '#808080';
 
     // Load SVG file and set up the window
-    const svg = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
-    const snap = Snap(svg);
+    const cardImage = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
+
+    // create a legend div
+    const legendDiv = document.createElement('div');
+    legendDiv.classList.add('legend');
+    legendDiv.style.zIndex = 1;
+    legendDiv.style.height = "40px";    // match the viewbox height of child
+    cardImage.append(legendDiv);
+
+    // create a svg div (CSS for margin-top will now work nicely)
+    const svgDiv = document.createElement('div');
+    svgDiv.classList.add('svg');
+    // higher z-index so we can mouseover the svg
+    svgDiv.style.zIndex = 2;
+    cardImage.append(svgDiv);
+
+    const snap = Snap(svgDiv);
     const svg_path = `datasets_uploaded/${datasetTile.dataset.id}.svg`;
 
     await Snap.load(svg_path, async (path) => {
         await snap.append(path);
+        const svg = snap.select("svg");
 
-       snap.select("svg").attr({
-            width: "100%",
+        svg.attr({
+            width: "100%"
         });
 
+        // TODO: Set viewbar just like the legend.
+        // TODO: Set at bottom of card-image
+
+        // Get all paths, circles, rects, and ellipses
         const paths = Snap.selectAll("path, circle, rect, ellipse");
 
         if (svgScoringMethod === 'gene' || svgScoringMethod === 'dataset') {
@@ -613,9 +749,29 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
                     // Place tissue in score in a nice compact tooltip
                     const tooltipText = `${tissue}: ${score}`;
 
-                    // Add data-tooltip and "has-tooltip-top" class to each path so that Bulma can render the tooltip
-                    path.attr('data-tooltip', tooltipText);
-                    path.addClass('has-tooltip-top');
+                    // Add mouseover and mouseout events to create and destroy the tooltip
+                    path.mouseover(() => {
+                        // get position of path node relative to page
+                        const yOffset = path.node.getBoundingClientRect().top - svgDiv.getBoundingClientRect().top;
+
+                        const tooltip = document.createElement('div');
+                        tooltip.classList.add('tooltip');
+                        tooltip.textContent = tooltipText;
+                        tooltip.style.position = 'absolute';
+                        tooltip.style.top = `${yOffset}px`;
+                        tooltip.style.left = `${0}px`;
+                        tooltip.style.backgroundColor = 'white';
+                        tooltip.style.color = 'black';
+                        tooltip.style.padding = '5px';
+                        tooltip.style.border = '1px solid black';
+                        tooltip.style.zIndex = 3;
+                        svgDiv.appendChild(tooltip);
+
+                    });
+                    path.mouseout(() => {
+                        svgDiv.querySelector('.tooltip').remove();
+                    });
+
                 });
             });
             return;
@@ -689,9 +845,28 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
                     // Place tissue in score in a nice compact tooltip
                     const tooltipText = `${tissue}: ${score}`;
 
-                    // Add data-tooltip and "has-tooltip-top" class to each path so that Bulma can render the tooltip
-                    path.attr('data-tooltip', tooltipText);
-                    path.addClass('has-tooltip-top');
+                    // Add mouseover and mouseout events to create and destroy the tooltip
+                    path.mouseover(() => {
+                        const yOffset = svgDiv.getBoundingClientRect().top - path.node.getBoundingClientRect().top;
+
+                        const tooltip = document.createElement('div');
+                        tooltip.classList.add('tooltip');
+                        tooltip.textContent = tooltipText;
+                        tooltip.style.position = 'absolute';
+                        tooltip.style.top = `${yOffset}px`;
+                        tooltip.style.left = `${0}px`;
+                        tooltip.style.backgroundColor = 'white';
+                        tooltip.style.color = 'black';
+                        tooltip.style.padding = '5px';
+                        tooltip.style.border = '1px solid black';
+                        tooltip.style.zIndex = 3;
+                        svgDiv.appendChild(tooltip);
+
+                    });
+                    path.mouseout(() => {
+                        svgDiv.querySelector('.tooltip').remove();
+                    });
+
                 });
             });
         } else {
@@ -711,13 +886,14 @@ const drawLegend = (plotConfig, datasetTile, score) => {
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
 
     const card = document.querySelector(`#tile_${datasetTile.tile.tile_id}.card`);
-    const node = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
+    const node = document.querySelector(`#tile_${datasetTile.tile.tile_id} .legend`);
     // Create our legend svg
     const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
         .style('position', 'absolute')
-        .style('max-width', '100%')
-        .attr('viewbox', `0 0 ${card.getBoundingClientRect().width} 40`)
+        .style('width', '100%')
+        .style("height", "40px")    // Without a fixed heigh, the box is too tall and prevents mouseover of the svg image
+        .attr('viewbox', `0 0 ${node.getBoundingClientRect().width} 40`)
         .attr('class', 'svg-gradient-container');
     const defs = legend.append('defs');
     // Define our gradient shape
@@ -729,10 +905,6 @@ const drawLegend = (plotConfig, datasetTile, score) => {
         .attr('x2', '100%')
         .attr('y2', '0%');
 
-    // TODO: Issues to resolve here.  The 'atf4' gene in this datasets:
-    //  The Adult Cochlea Response to PTS-Inducing Noise - Summary View
-    // Has a data range of around -0.34 up but here the min is returning as
-    // 0. Is this being converted to an into somewhere?
     const { min, max } = score;
 
     // Create the gradient points for either three- or two-color gradients
@@ -788,7 +960,7 @@ const drawLegend = (plotConfig, datasetTile, score) => {
             .attr('stop-color', highColor);
     }
 
-    const width = card.getBoundingClientRect().width;
+    const width = node.getBoundingClientRect().width;
 
     // Draw the rectangle using the linear gradient
     legend

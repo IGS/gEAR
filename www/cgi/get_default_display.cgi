@@ -18,8 +18,10 @@ def main():
 
     user = geardb.get_user_from_session_id(session_id=session_id)
 
-    default_display_id = geardb.get_default_display(
-      user_id=user.id, dataset_id=dataset_id, is_multigene=is_multigene
+    default_display_id = None
+    if user:
+      default_display_id = geardb.get_default_display(
+        user_id=user.id, dataset_id=dataset_id, is_multigene=is_multigene
 )
     if default_display_id is None:
       # User owner's default

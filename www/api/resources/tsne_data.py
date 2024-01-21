@@ -335,7 +335,7 @@ class TSNEData(Resource):
 
             gene_symbols = (mapped_gene_symbol,)
             if not check_gene_in_dataset(adata, gene_symbols):
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the h5ad file."}
+                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
 
         gene_filter = adata.var.gene_symbol.isin(gene_symbols)
 
