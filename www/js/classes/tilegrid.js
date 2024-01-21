@@ -255,40 +255,21 @@ class DatasetTile {
     /**
      * Generates the HTML representation of a tile.
      * @returns {HTMLElement} The HTML element representing the tile.
+     * 
+     * Note: Tile html template comes from /include/tile-grid/tile.html
      */
     generateTileHTML() {
         const tile = this.tile;
 
-        const tileHTML = document.createElement('div');
-        tileHTML.classList.add('tile', 'is-child', 'card', 'has-background-white');
-        tileHTML.id = `tile_${tile.tile_id}`;
+        const template = document.querySelector('#tmpl-tile-grid-tile');
+        const tileHTML = template.content.cloneNode(true);
 
-        // card header (title + icon)
-        const cardHeader = document.createElement('div');
-        cardHeader.classList.add('card-header', 'has-background-primary');
-        const cardHeaderTitle = document.createElement('div');
-        cardHeaderTitle.classList.add('card-header-title', "py-0");
-        cardHeaderTitle.textContent = tile.title;
+        // Set tile id & title
+        const tileElement = tileHTML.querySelector('.tile');
+        tileElement.id = `tile_${tile.tile_id}`;
 
-        const cardHeaderIcon = document.createElement('div');
-        cardHeaderIcon.classList.add('card-header-icon');
-
-        const cardHeaderIconSpan = document.createElement('span');
-        cardHeaderIconSpan.classList.add('icon');
-
-        const cardHeaderIconSpanI = document.createElement('i');
-        cardHeaderIconSpanI.classList.add('mdi', 'mdi-18px', 'mdi-dots-vertical');
-
-        cardHeaderIconSpan.appendChild(cardHeaderIconSpanI);
-        cardHeaderIcon.appendChild(cardHeaderIconSpan);
-        cardHeader.appendChild(cardHeaderTitle);
-        cardHeader.appendChild(cardHeaderIcon);
-        tileHTML.appendChild(cardHeader);
-
-        // card content
-        const cardContent = document.createElement('div');
-        cardContent.classList.add('card-image');
-        tileHTML.appendChild(cardContent);
+        const tileTitle = tileHTML.querySelector('.card-header-title');
+        tileTitle.textContent = tile.title;
 
         return tileHTML;
     }
