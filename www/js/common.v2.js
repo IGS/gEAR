@@ -15,11 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Bulma dropdowns can't be clicked without a wee bit of Javascript
-    document.querySelectorAll('.dropdown-trigger').forEach(item => {
-        item.addEventListener('click', (event) => {
+    document.addEventListener('click', (event) => {
+        let item = event.target;
+        if (item.classList.contains('dropdown-trigger')) {
+            console.log("dropdown-trigger clicked");
             event.stopPropagation();
-            item.parentNode.classList.toggle('is-active');
-        });
+            item.closest(".dropdown").classList.toggle('is-active');
+        }
     });
 
 

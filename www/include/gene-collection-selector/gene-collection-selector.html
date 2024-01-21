@@ -26,11 +26,12 @@
 <script src="include/gene-collection-selector/gene-collection-selector.js"></script>
 
 <div id="dropdown-gene-lists" class="control dropdown is-right is-loading is-disabled mr-0">
-    <div class="dropdown-trigger is-clickable">
-      <button class="button">
-        <span id="dropdown-gene-list-selector-label">Quick search using Gene Lists</span>
-        <span class="icon is-small">
-          <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+    <div class="is-clickable">
+      <!-- why doesn't have dropdown-trigger on the button alone capture all clicks?? -->
+      <button class="button dropdown-trigger">
+        <span id="dropdown-gene-list-selector-label" class="dropdown-trigger">Quick search using Gene Lists</span>
+        <span class="icon is-small dropdown-trigger">
+          <i class="mdi mdi-chevron-down dropdown-trigger" aria-hidden="true"></i>
         </span>
       </button>
     </div>

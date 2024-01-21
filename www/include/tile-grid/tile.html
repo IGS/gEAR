@@ -3,9 +3,35 @@
         <div class="card-header has-background-primary">
             <div class="card-header-title py-0"></div>
             <div class="card-header-icon">
-                <span class="icon">
-                    <i class="mdi mdi-18px mdi-dots-vertical"></i>
-                </span>
+                <div class="dropdown is-right dataset-dropdown">
+                    <div>
+                        <button class="button dropdown-trigger" aria-haspopup="true" aria-controls="dropdown-menu">
+                            <span class="icon">
+                                <i class="mdi mdi-18px mdi-dots-vertical dropdown-trigger"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                        <div class="dropdown-content">
+                        <a href="#" class="dropdown-item">
+                            Dropdown item
+                        </a>
+                        <a class="dropdown-item">
+                            Other dropdown item
+                        </a>
+                        <a href="#" class="dropdown-item is-active">
+                            Active dropdown item
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            Other dropdown item
+                        </a>
+                        <hr class="dropdown-divider">
+                        <a href="#" class="dropdown-item">
+                            With a divider
+                        </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="card-image"></div>

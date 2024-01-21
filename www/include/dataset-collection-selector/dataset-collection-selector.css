@@ -1,18 +1,18 @@
-div.dropdown-menu {
+#dropdown-dc div.dropdown-menu {
     width: 60vw;
 }
 @media (min-width: 1320px) {
-    div.dropdown-menu {
+    #dropdown-dc div.dropdown-menu {
         width: 55vw;
     }
 }
 @media (min-width: 1440px) {
-    div.dropdown-menu {
+    #dropdown-dc div.dropdown-menu {
         width: 50vw;
     }
 }
 @media (min-width: 1580px) {
-    div.dropdown-menu {
+    #dropdown-dc div.dropdown-menu {
         width: 45vw;
     }
 }
