@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // auto-select the first gene in the list
             const first_gene = document.querySelector('.gene-result-list-item');
-            if (first_gene) {
+            if (!is_multigene && first_gene) {
                 first_gene.click();
             }
 
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideOrganismSelectorToolip();
             updateAnnotationDisplay();
 
-            // If the user is logged in and doesn't have a default org ID or it's different from their current, 
+            // If the user is logged in and doesn't have a default org ID or it's different from their current,
             //  show the control
             if (CURRENT_USER.session_id) {
                 if (CURRENT_USER.default_org_id === undefined || CURRENT_USER.default_org_id !== currently_selected_org_id) {
