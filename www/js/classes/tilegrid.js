@@ -255,7 +255,7 @@ class DatasetTile {
     /**
      * Generates the HTML representation of a tile.
      * @returns {HTMLElement} The HTML element representing the tile.
-     * 
+     *
      * Note: Tile html template comes from /include/tile-grid/tile.html
      */
     generateTileHTML() {
@@ -296,6 +296,14 @@ class DatasetTile {
             if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
         }
 
+        // add console warning if default display id was not found in the user or owner display lists
+        if (!userDisplay && !ownerDisplay) {
+            console.warn(`Selected display config for dataset ${this.dataset.title} was not found. Will show first available.`);
+
+            // last chance... if still no display config (i.e default display was not found), then use the first display config
+            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));
+            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));
+        }
 
         // if the display config was not found, then do not render
         if (!userDisplay && !ownerDisplay) {

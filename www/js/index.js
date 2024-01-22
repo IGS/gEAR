@@ -37,11 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // get the value of the single-multi radio box
             const single_multi = document.querySelector('input[name="single-multi"]:checked').value;
 
-            if (single_multi === 'single') {
-                url += '&is_multigene=0';
-            } else {
-                url += '&is_multigene=1';
-            }
+            url += single_multi === 'single' ? '&is_multigene=0' : '&is_multigene=1';
 
             // add the gene lists
             //  TODO: This will only be for labeling purposes, since individual genes could have been
