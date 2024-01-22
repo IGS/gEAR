@@ -1,3 +1,5 @@
+<!-- Templates to be used with the TileGrid or an individual DatasetTile -->
+
 <template id="tmpl-tile-grid-tile">
     <div class="tile is-child card has-background-white" id="">
         <div class="card-header has-background-primary">
@@ -7,27 +9,110 @@
                     <div>
                         <button class="button dropdown-trigger" aria-haspopup="true" aria-controls="dropdown-menu">
                             <span class="icon">
-                                <i class="mdi mdi-18px mdi-dots-vertical dropdown-trigger"></i>
+                                <i class="mdi mdi-24px mdi-18px mdi-dots-vertical dropdown-trigger"></i>
                             </span>
                         </button>
                     </div>
                     <div class="dropdown-menu" id="dropdown-menu" role="menu">
-                        <div class="dropdown-content">
+                        <div class="dropdown-content" style="width:max-content">
+
                         <a href="#" class="dropdown-item">
-                            Dropdown item
-                        </a>
-                        <a class="dropdown-item">
-                            Other dropdown item
-                        </a>
-                        <a href="#" class="dropdown-item is-active">
-                            Active dropdown item
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-view-grid-outline"></i>
+                                </span>
+                                <span>Choose Display</span>
+                            </span>
                         </a>
                         <a href="#" class="dropdown-item">
-                            Other dropdown item
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-arrow-expand-all"></i>
+                                </span>
+                                <span>Expand Display</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-pencil-box-outline"></i>
+                                </span>
+                                <span>Take Notes</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-information-slab-circle-outline"></i>
+                                </span>
+                                <span>Dataset Information</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-school-outline"></i>
+                                </span>
+                                <span>Dataset publication</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-earth"></i>
+                                </span>
+                                <span>GEO Information</span>
+                            </span>
                         </a>
                         <hr class="dropdown-divider">
                         <a href="#" class="dropdown-item">
-                            With a divider
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-chart-line"></i>
+                                </span>
+                                <span>Single Cell Workbench</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-compare-horizontal"></i>
+                                </span>
+                                <span>Comparison Tool</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-chart-box-outline"></i>
+                                </span>
+                                <span>Single-gene Curator</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-chart-box-multiple-outline"></i>
+                                </span>
+                                <span>Multi-gene Displays</span>
+                            </span>
+                        </a>
+                        <hr class="dropdown-divider">
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-briefcase-download-outline"></i>
+                                </span>
+                                <span>Download Bundle</span>
+                            </span>
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="mdi mdi-24px mdi-file-download-outline"></i>
+                                </span>
+                                <span>Download H5AD</span>
+                            </span>
                         </a>
                         </div>
                     </div>
@@ -35,5 +120,26 @@
             </div>
         </div>
         <div class="card-image"></div>
+    </div>
+</template>
+
+<template id="tmpl-epiviz-container">
+    <div class='epiviz-container'>
+        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
+
+        <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
+
+        <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
+            provider-id="fileapi"
+        >
+        </epiviz-data-source>
+        <epiviz-navigation
+            hide-chr-input
+            hide-search
+            hide-add-chart
+            show-viewer
+        >
+        </epiviz-navigation>
     </div>
 </template>

@@ -261,7 +261,7 @@ class DatasetTile {
     generateTileHTML() {
         const tile = this.tile;
 
-        const template = document.querySelector('#tmpl-tile-grid-tile');
+        const template = document.getElementById('tmpl-tile-grid-tile');
         const tileHTML = template.content.cloneNode(true);
 
         // Set tile id & title
@@ -377,8 +377,16 @@ class DatasetTile {
 
     }
 
-    // TODO: Add abort controller signals to all fetch calls
+    epivizNavStart(data, extendRangeRatio) {
+        return data.start - Math.round((data.end - data.start) * extendRangeRatio);
+    }
 
+    epivizNavEnd(data, extendRangeRatio) {
+        return data.end + Math.round((data.end - data.start) * extendRangeRatio);
+    }
+
+
+    // TODO: Add abort controller signals to all fetch calls
     async renderEpivizDisplay(display) {
         const datasetId = display.dataset_id;
         const {gene_symbol: geneSymbol} = display.plotly_config;
@@ -410,13 +418,14 @@ class DatasetTile {
             plotContainer.append(this.epivizTemplate(data, display.plotly_config, extendRangeRatio));
             return;
         }
+        const nStart = this.epivizNavStart(data, extendRangeRatio);
+        const nEnd = this.epivizNavEnd(data, extendRangeRatio);
+
         // epiviz container already exists, so only update gneomic position in the browser
         epiviznav.setAttribute("chr", data.chr);
-        const nstart = data.start - Math.round((data.end - data.start) * extendRangeRatio);
-        const nend = data.end + Math.round((data.end - data.start) * extendRangeRatio);
-        epiviznav.setAttribute("start", nstart);
-        epiviznav.setAttribute("end", nend);
-        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);
+        epiviznav.setAttribute("start", nStart);
+        epiviznav.setAttribute("end", nEnd);
+        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);    // function is imported from epiviz JS
 
     }
 
@@ -425,31 +434,48 @@ class DatasetTile {
      */
     epivizTemplate(data, plotConfig, extendRangeRatio) {
 
-    //TODO: Place in an "includes" script
 
-    let epivizTracksTemplate = "";
-    for (const track in plotConfig.tracks) {
-        const trackConfig = plotConfig.tracks[track];
-        trackConfig.forEach((tc) => {
-            let tempTrack = `<${track} slot='charts' `;
-            tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
+        const template = document.getElementById('tmpl-epiviz-container');
+        const epivizHTML = template.content.cloneNode(true);
+        // Add in properties to the epiviz container
+        const epivizContainer = epivizHTML.querySelector('.epiviz-container');
+        epivizContainer.id = `epiviz_${this.tile.tile_id}`;
+        const epivizDataSource = epivizHTML.querySelector('epiviz-data-source');
+        epivizDataSource.id = `${this.tile.tile_id}epivizds`;
+        epivizDataSource.setAttribute("provider-url", plotConfig.dataserver);
 
-            if (tc.colors != null) {
-                tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
-            }
-
-            if (tc.settings != null) {
-                tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
-            }
-
-            tempTrack += ` style='min-height:200px;'></${track}> `;
-
-            epivizTracksTemplate += tempTrack;
-        });
-    }
-
-
+        const epivizNavigation = epivizHTML.querySelector('epiviz-navigation');
+        epivizNavigation.id = `${this.tile.tile_id}_epiviznav`;
         // the chr, start and end should come from query - map gene to genomic position.
+        epivizNavigation.setAttribute("chr", data.chr);
+        epivizNavigation.setAttribute("start", this.epivizNavStart(data, extendRangeRatio));
+        epivizNavigation.setAttribute("end", this.epivizNavEnd(data, extendRangeRatio));
+        epivizNavigation.setAttribute("viewer", `/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`);
+
+        //Create the tracks
+        let epivizTracksTemplate = "";
+        for (const track in plotConfig.tracks) {
+            const trackConfig = plotConfig.tracks[track];
+            trackConfig.forEach((tc) => {
+                let tempTrack = `<${track} slot='charts' `;
+                tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
+
+                if (tc.colors != null) {
+                    tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
+                }
+
+                if (tc.settings != null) {
+                    tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
+                }
+
+                tempTrack += ` style='min-height:200px;'></${track}> `;
+
+                epivizTracksTemplate += tempTrack;
+            });
+        }
+
+        epivizNavigation.innerHTLM(epivizTracksTemplate);
+
 
         return `
         <div id='epiviz_${this.tile.tile_id}' class='epiviz-container'>
