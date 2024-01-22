@@ -85,3 +85,13 @@ ul#go-terms li {
 .card-image .svg svg {
     margin-top:10%;
 }
+
+/* Dropdown settings */
+
+.tile .dropdown-content {
+    width: max-content;
+}
+
+.tile .dropdown-item {
+    padding: 0.125rem 1rem;
+}
