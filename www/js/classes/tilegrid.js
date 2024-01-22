@@ -603,7 +603,7 @@ class DatasetTile {
         epivizNavigation.setAttribute("start", this.epivizNavStart(data, extendRangeRatio));
         epivizNavigation.setAttribute("end", this.epivizNavEnd(data, extendRangeRatio));
         epivizNavigation.setAttribute("viewer", `/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`);
-        epivizNavigation.innerHTLM(this.renderEpivizTracks(plotConfig));
+        epivizNavigation.innerHTML(this.renderEpivizTracks(plotConfig));
         return epivizHTML;
     }
 
