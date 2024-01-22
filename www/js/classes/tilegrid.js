@@ -475,36 +475,7 @@ class DatasetTile {
         }
 
         epivizNavigation.innerHTLM(epivizTracksTemplate);
-
-
-        return `
-        <div id='epiviz_${this.tile.tile_id}' class='epiviz-container'>
-            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
-            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
-
-            <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
-
-            <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
-            id='${this.tile.tile_id}epivizds'
-            provider-id="fileapi"
-            provider-url="${plotConfig.dataserver}">
-            </epiviz-data-source>
-            <epiviz-navigation
-            hide-chr-input
-            hide-search
-            hide-add-chart
-            show-viewer
-            id='${this.tile.tile_id}_epiviznav'
-            chr='${data.chr}'
-            start=${data.start - Math.round((data.end - data.start) * extendRangeRatio)}
-            end=${data.end + Math.round((data.end - data.start) * extendRangeRatio)}
-            viewer=${`/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`}
-            >
-            ${epivizTracksTemplate}
-            </epiviz-navigation>
-        </div>
-        `;
-
+        return epivizHTML;
     }
 
     async renderMultiGeneDisplay(display) {
