@@ -710,7 +710,7 @@ const apiCallsMixin = {
         return data;
     },
     async fetchEpivizDisplay(datasetId, geneSymbol, genome) {
-        const query = `?gene=${geneSymbol}&genome=${genome}`;
+        const query = `gene=${geneSymbol}&genome=${genome}`;
         const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${query}`);
         return data;
     },
