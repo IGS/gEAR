@@ -509,15 +509,12 @@ class DatasetTile {
             console.error(error);
             // Fill in card-image with error message
             cardContent.replaceChildren();
-            const errorMessage = document.createElement("p");
-            errorMessage.classList.add("has-text-danger-dark", "has-background-danger-light", "p-2", "m-2", "has-text-weight-bold");
-            // Add 200 px height and center vertically
-            errorMessage.style.height = "200px";
-            errorMessage.style.display = "flex";
-            errorMessage.style.alignItems = "center";
-            errorMessage.style.justifyContent = "center";
-            errorMessage.textContent = error.message;
-            cardContent.append(errorMessage);
+
+            const template = document.getElementById('tmpl-tile-grid-error');
+            const errorHTML = template.content.cloneNode(true);
+            const errorElement = errorHTML.querySelector('p');
+            errorElement.textContent = error.message;
+            cardContent.append(errorHTML);
         } finally {
            // cardContent.classList.remove("loader");
         }
@@ -565,7 +562,11 @@ class DatasetTile {
             // epiviz container already exists, so only update gneomic position in the browser
 
             plotContainer.replaceChildren();    // erase plot
-            plotContainer.append(this.renderEpivizTemplate(data, display.plotly_config, extendRangeRatio));
+            try {
+                plotContainer.append(this.renderEpivizTemplate(data, display.plotly_config, extendRangeRatio));
+            } catch (error) {
+                throw new Error(`Could not render Epiviz display. Please contact gEAR support`);
+            }
             return;
         }
         const nStart = this.epivizNavStart(data, extendRangeRatio);
@@ -576,7 +577,6 @@ class DatasetTile {
         epiviznav.setAttribute("start", nStart);
         epiviznav.setAttribute("end", nEnd);
         epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);    // function is imported from epiviz JS
-
     }
 
     /**
