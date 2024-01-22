@@ -565,6 +565,7 @@ class DatasetTile {
             try {
                 plotContainer.append(this.renderEpivizTemplate(data, display.plotly_config, extendRangeRatio));
             } catch (error) {
+                logErrorInConsole(error);
                 throw new Error(`Could not render Epiviz display. Please contact gEAR support`);
             }
             return;
