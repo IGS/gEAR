@@ -10,6 +10,13 @@ let selected_carts = [];
 let selected_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Add event listener to dropdown trigger
+    document.querySelector("#dropdown-gene-lists > button.dropdown-trigger").addEventListener("click", (event) => {
+        const item = event.currentTarget;
+        item.closest(".dropdown").classList.toggle('is-active');
+    });
+
     // Add event listeners to the gene list category selectors
     const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
     categorySelectors.forEach((element) => {

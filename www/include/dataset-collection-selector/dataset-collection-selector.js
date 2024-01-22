@@ -10,6 +10,12 @@ let selected_dc_label = null;
 const DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT = 35;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Add event listener to dropdown trigger
+    document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
+        const item = event.currentTarget;
+        item.closest(".dropdown").classList.toggle('is-active');
+    });
+
     // Add event listeners to the gene list category selectors
     const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
     categorySelectors.forEach((element) => {

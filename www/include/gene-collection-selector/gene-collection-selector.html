@@ -10,7 +10,7 @@
 
     - selected_carts: The selected carts - An array of select cart share ids.
     - selected_genes: The selected individal genes, unique merge of all genes in carts and manually entered.
-    - gene_cart_data: The output of the apiCallsMixin.fetchGeneCartData() call, which needs to 
+    - gene_cart_data: The output of the apiCallsMixin.fetchGeneCartData() call, which needs to
       happen in the login UI handler of the page.
     - gene_cart_genes: An index of all gene carts loaded and their genes.
     - gene_cart_label_index: A map of gene cart share ids to their labels.
@@ -23,18 +23,13 @@
 -->
 
 <link rel="stylesheet" href="include/gene-collection-selector/gene-collection-selector.css" />
-<script src="include/gene-collection-selector/gene-collection-selector.js"></script>
-
 <div id="dropdown-gene-lists" class="control dropdown is-right is-loading is-disabled mr-0">
-    <div class="is-clickable">
-      <!-- why doesn't have dropdown-trigger on the button alone capture all clicks?? -->
-      <button class="button dropdown-trigger">
-        <span id="dropdown-gene-list-selector-label" class="dropdown-trigger">Quick search using Gene Lists</span>
-        <span class="icon is-small dropdown-trigger">
-          <i class="mdi mdi-chevron-down dropdown-trigger" aria-hidden="true"></i>
-        </span>
-      </button>
-    </div>
+    <button class="button dropdown-trigger">
+      <span id="dropdown-gene-list-selector-label">Quick search using Gene Lists</span>
+      <span class="icon is-small">
+        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+      </span>
+    </button>
     <div class="dropdown-menu" role="menu">
       <div class="dropdown-content">
         <div class="dropdown-item">
@@ -117,3 +112,4 @@
       </div>
     </div>
 </div>
+<script type="text/javascript" src="include/gene-collection-selector/gene-collection-selector.js"></script>

@@ -1,21 +1,19 @@
 <!-- Templates to be used with the TileGrid or an individual DatasetTile -->
 
 <template id="tmpl-tile-grid-tile">
-    <div class="tile is-child card has-background-white" id="">
+    <div class="tile is-child card has-background-white">
         <div class="card-header has-background-primary">
             <div class="card-header-title py-0"></div>
             <div class="card-header-icon">
-                <div class="dropdown is-right dataset-dropdown is-align-self-flex-start">
-                    <div>
-                        <button class="button dropdown-trigger" aria-haspopup="true" aria-controls="dropdown-menu">
-                            <span class="icon">
-                                <i class="mdi mdi-24px mdi-18px mdi-dots-vertical dropdown-trigger"></i>
-                            </span>
-                        </button>
-                    </div>
-                    <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                <div class="dropdown is-right is-align-self-flex-start">
+                    <button class="button dropdown-trigger" aria-haspopup="true" aria-controls="dropdown-menu">
+                        <span class="icon">
+                            <i class="mdi mdi-24px mdi-18px mdi-dots-vertical"></i>
+                        </span>
+                    </button>
+                    <div class="dropdown-menu" role="menu">
                         <div class="dropdown-content">
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="display">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-view-grid-outline"></i>
@@ -23,7 +21,7 @@
                                     <span>Choose Display</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="expand">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-arrow-expand-all"></i>
@@ -31,7 +29,7 @@
                                     <span>Expand Display</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="info">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-information-slab-circle-outline"></i>
@@ -39,7 +37,7 @@
                                     <span>Dataset Information</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="publication" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-school-outline"></i>
@@ -47,7 +45,7 @@
                                     <span>Dataset publication</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="geo" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-earth"></i>
@@ -55,7 +53,7 @@
                                     <span>GEO Information</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="notes">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-pencil-box-outline"></i>
@@ -64,7 +62,7 @@
                                 </span>
                             </a>
                             <hr class="dropdown-divider">
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="single-cell" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-chart-line"></i>
@@ -72,7 +70,7 @@
                                     <span>Single Cell Workbench</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="compare" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-compare-horizontal"></i>
@@ -80,7 +78,7 @@
                                     <span>Comparison Tool</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="single-gene" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-chart-box-outline"></i>
@@ -88,7 +86,7 @@
                                     <span>Single-gene Curator</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="multi-gene" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-chart-box-multiple-outline"></i>
@@ -97,7 +95,7 @@
                                 </span>
                             </a>
                             <hr class="dropdown-divider">
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="download-bundle">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-briefcase-download-outline"></i>
@@ -105,7 +103,7 @@
                                     <span>Download Bundle</span>
                                 </span>
                             </a>
-                            <a href="#" class="dropdown-item">
+                            <a class="dropdown-item" data-tool="download-h5ad">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-file-download-outline"></i>
@@ -120,6 +118,17 @@
         </div>
         <div class="card-image"></div>
     </div>
+</template>
+
+<template id="tmpl-tile-grid-dropdown-link">
+    <a class="dropdown-item" target="_blank">
+        <span class="icon-text">
+            <span class="icon">
+                <i class="mdi mdi-24px mdi-link"></i>
+            </span>
+            <span class="js-link-label"></span>
+        </span>
+    </a>
 </template>
 
 <template id="tmpl-epiviz-container">

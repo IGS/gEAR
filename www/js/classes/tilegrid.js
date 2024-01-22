@@ -271,7 +271,154 @@ class DatasetTile {
         const tileTitle = tileHTML.querySelector('.card-header-title');
         tileTitle.textContent = tile.title;
 
+        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
+
         return tileHTML;
+    }
+
+    addDropdownInformation(tileElement, tileId, dataset) {
+
+        const dropdownMenu = tileElement.querySelector(`#${tileId} .dropdown-menu`);
+        dropdownMenu.id = `dropdown-menu_${tileId}`;
+        const dropdownContent = dropdownMenu.querySelector(".dropdown-content");
+        const dropdownItems = dropdownContent.querySelectorAll('.dropdown-item');
+
+        const datasetId = dataset.id;
+        const pubmedId = dataset.pubmed_id;
+        const geoId = dataset.geo_id;
+        const hasTarball = dataset.has_tarball;
+        const hasH5ad = dataset.has_h5ad;
+        const links = dataset.links;
+
+        for (const item of dropdownItems) {
+            switch (item.dataset.tool) {
+                case "display":
+                    // Modal for all user and owner displays
+                    break;
+                case "expand":
+                    // Zoom panel to take up all of "#result-panel-grid"
+                    break;
+                case "info":
+                    // Modal for dataset information
+                    break;
+                case "publication":
+                    // Link to publication if it exists
+                    if (pubmedId) {
+                        item.href = `http://www.ncbi.nlm.nih.gov/pubmed/?term=${pubmedId}`;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "geo":
+                    // Link to GEO entry if it exists
+                    if (geoId) {
+                        item.href = `https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${geoId}`;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "notes":
+                    // Modal for notes
+                    break;
+                case "single-cell":
+                    // Redirect to single-cell analysis workbench
+                    if (hasH5ad) {
+                        const url = `./analyze_dataset.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "compare":
+                    // Redirect to comparison tool
+                    if (hasH5ad) {
+                        const url = `./compare_datasets.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "single-gene":
+                    // Redirect to single-gene curation tool
+                    // TODO: It would be cool to pass in the gene symbol to the curation tool to auto-populate the gene symbol field
+                    if (hasH5ad) {
+                        const url = `./dataset_curator.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "multi-gene":
+                    // Redirect to multi-gene curation tool
+                    // TODO: It would be cool to pass in the gene symbols to the curation tool to auto-populate the gene symbol field
+                    if (hasH5ad) {
+                        const url = `./multigene_curator.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "download-bundle":
+                    // Download dataset bundle
+                    if (hasTarball) {
+
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "download-h5ad":
+                    // Download h5ad file
+                    if (hasH5ad) {
+
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                default:
+                    console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${datasetId}.`);
+                    break;
+            }
+        }
+
+        // Add links to the dropdown above the download-bundle item
+        if (links.length) {
+            const downloadBundle = dropdownContent.querySelector('.dropdown-item[data-tool="download-bundle"]');
+            // create new download-item for each link
+            for (const link of links) {
+                const linkTemplate = document.getElementById('tmpl-tile-grid-dropdown-link');
+                const linkHTML = linkTemplate.content.cloneNode(true);
+
+                const linkItem = linkHTML.querySelector('.dropdown-item');
+                const linkLabel = linkHTML.querySelector('.link-label');
+                const linkA = linkHTML.querySelector('a');
+
+                linkItem.classList.add(`dataset-link-${link.resource}`);    // In case there is custom CSS for this link
+                linkA.href = link.url;
+                linkLabel.textContent = link.label;
+
+                downloadBundle.insertAdjacentElement("beforebegin", linkItem);
+            }
+
+            // add divider between links and download items
+            const divider = document.createElement("hr");
+            divider.classList.add("dropdown-divider");
+            downloadBundle.insertAdjacentElement("beforebegin", divider);
+        }
+
+        // Add event listener to dropdown trigger
+        tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
+            const item = event.currentTarget;
+            if (item.classList.contains('dropdown-trigger')) {
+                // close other dropdowns
+                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                    if (item !== dropdown.querySelector('.dropdown-trigger')) {
+                        dropdown.classList.remove('is-active');
+                    }
+                };
+
+                item.closest(".dropdown").classList.toggle('is-active');
+            }
+        });
     }
 
     async renderDisplay(geneSymbol, displayId=null, svgScoringMethod="gene") {
@@ -385,8 +532,11 @@ class DatasetTile {
         return data.end + Math.round((data.end - data.start) * extendRangeRatio);
     }
 
-
-    // TODO: Add abort controller signals to all fetch calls
+    /**
+     * Renders the Epiviz display on the tile grid.
+     * @param {Object} display - The display object containing dataset_id and plotly_config.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     */
     async renderEpivizDisplay(display) {
         const datasetId = display.dataset_id;
         const {gene_symbol: geneSymbol} = display.plotly_config;
@@ -415,7 +565,7 @@ class DatasetTile {
             // epiviz container already exists, so only update gneomic position in the browser
 
             plotContainer.replaceChildren();    // erase plot
-            plotContainer.append(this.epivizTemplate(data, display.plotly_config, extendRangeRatio));
+            plotContainer.append(this.renderEpivizTemplate(data, display.plotly_config, extendRangeRatio));
             return;
         }
         const nStart = this.epivizNavStart(data, extendRangeRatio);
@@ -430,11 +580,13 @@ class DatasetTile {
     }
 
     /**
-     * HTML template for EpiViz
+     * Renders an Epiviz template with the provided data and configuration.
+     * @param {Object} data - The data to be rendered in the template.
+     * @param {Object} plotConfig - The configuration for the plot.
+     * @param {number} extendRangeRatio - The ratio by which to extend the range.
+     * @returns {HTMLElement} - The rendered Epiviz template.
      */
-    epivizTemplate(data, plotConfig, extendRangeRatio) {
-
-
+    renderEpivizTemplate(data, plotConfig, extendRangeRatio) {
         const template = document.getElementById('tmpl-epiviz-container');
         const epivizHTML = template.content.cloneNode(true);
         // Add in properties to the epiviz container
@@ -451,7 +603,11 @@ class DatasetTile {
         epivizNavigation.setAttribute("start", this.epivizNavStart(data, extendRangeRatio));
         epivizNavigation.setAttribute("end", this.epivizNavEnd(data, extendRangeRatio));
         epivizNavigation.setAttribute("viewer", `/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`);
+        epivizNavigation.innerHTLM(this.renderEpivizTracks(plotConfig));
+        return epivizHTML;
+    }
 
+    renderEpivizTracks(plotConfig) {
         //Create the tracks
         let epivizTracksTemplate = "";
         for (const track in plotConfig.tracks) {
@@ -474,8 +630,7 @@ class DatasetTile {
             });
         }
 
-        epivizNavigation.innerHTLM(epivizTracksTemplate);
-        return epivizHTML;
+        return epivizTracksTemplate;
     }
 
     async renderMultiGeneDisplay(display) {

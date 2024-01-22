@@ -10,7 +10,7 @@
 
     - selected_dc_share_id: The selected dataset collection share id the user selected, null if no selection made.
     - selected_dc_label: The selcted dataset collection label the user selected, null if no selection made.
-    - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to 
+    - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to
       happen in the login UI handler of the page.
     - dataset_collection_label_index: A map of dataset collection share ids to their labels.
 
@@ -25,14 +25,12 @@
 <script src="include/dataset-collection-selector/dataset-collection-selector.js"></script>
 
 <div id="dropdown-dc" class="control dropdown is-right is-loading is-disabled mr-0">
-    <div class="dropdown-trigger is-clickable">
-      <button class="button dropdown-trigger">
-        <span id="dropdown-dc-selector-label" class="dropdown-trigger">Choose a Dataset Collection</span>
-        <span class="icon is-small dropdown-trigger">
-          <i class="mdi mdi-chevron-down dropdown-trigger" aria-hidden="true"></i>
-        </span>
-      </button>
-    </div>
+    <button class="button dropdown-trigger">
+      <span id="dropdown-dc-selector-label">Choose a Dataset Collection</span>
+      <span class="icon is-small">
+        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+      </span>
+    </button>
     <div class="dropdown-menu" role="menu">
       <div class="dropdown-content">
         <div class="dropdown-item">

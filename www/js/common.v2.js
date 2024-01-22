@@ -14,19 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Bulma dropdowns can't be clicked without a wee bit of Javascript
-    document.addEventListener('click', (event) => {
-        let item = event.target;
-        if (item.classList.contains('dropdown-trigger')) {
-            console.log("dropdown-trigger clicked");
-            event.stopPropagation();
-            item.closest(".dropdown").classList.toggle('is-active');
-        }
-    });
-
 
     // modal code from https://bulma.io/documentation/components/modal/
-
     // Add a click event on various child elements to close the parent modal
     (document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button') || []).forEach(($close) => {
         const $target = $close.closest('.modal');
