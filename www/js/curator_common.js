@@ -1641,6 +1641,14 @@ const validateRequirements = (event) => {
             document.getElementById("plot_options_s_success").classList.remove("is-hidden");
             document.getElementById("plot_options_s_failed").classList.add("is-hidden");
         }
+
+    // Perform misc. validation checks
+    if (!curatorSpecificValidationChecks()){
+        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+            plotBtn.disabled = true;
+        }
+    }
+
         return;
     }
 

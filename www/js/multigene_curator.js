@@ -792,6 +792,10 @@ const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
     //pass
 }
 
+const curatorSpecificValidationChecks = () => {
+    return true;
+}
+
 const downloadSelectedGenes = (event) => {
     event.preventDefault();
 

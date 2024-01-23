@@ -746,7 +746,7 @@ const curatorSpecifcChooseGene = (event) => {
     }
 
     // Cannot plot if no gene is selected
-    if (document.getElementById("gene_select").value === "Please select a gene") {
+    if (!validateGeneSelected()){
         document.getElementById("gene_s_failed").classList.remove("is-hidden");
         document.getElementById("gene_s_success").classList.add("is-hidden");
         document.getElementById("current_gene").textContent = "";
@@ -869,6 +869,17 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
         geneSelectEltPost.append(option);
     }
 
+}
+
+/**
+ * Performs specific validation checks for the curator.
+ * @returns {boolean} Returns true if all validation checks pass, otherwise false.
+ */
+const curatorSpecificValidationChecks = () => {
+    if (!validateGeneSelected()) {
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -1464,4 +1475,16 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
         if (catOptgroup.children.length) elt.append(catOptgroup);
 
     }
+}
+
+/**
+ * Validates the selected gene.
+ *
+ * @returns {boolean} Returns true if a gene is selected, false otherwise.
+ */
+const validateGeneSelected = () => {
+    if (document.getElementById("gene_select").value === "Please select a gene") {
+        return false;
+    }
+    return true;
 }
