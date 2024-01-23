@@ -50,6 +50,17 @@ describe('Dataset Curator', function () {
 
             });
 
+            it("Plot button should be disabled if a dataset is not selected", async () => {
+
+            });
+
+            it("Plot button should be disabled if a plot type is not selected", async () => {
+
+            });
+
+            it("Plot button should be disabled if a gene is not selected", async () => {
+            });
+
             describe("plotting", () => {
 
                 beforeEach("Selecting a dataset", async () => {
@@ -111,6 +122,10 @@ describe('Dataset Curator', function () {
                     await page.getByText("Please select a gene").click();
                     const geneSelect = page.locator("css=#gene_select_c .nice-select-dropdown .list");
                     await geneSelect.getByText("Pou4f3").click();
+                });
+
+                it("After plotting a violin plot with no color series, ensure color selection dropdown is disabled", async () => {
+
                 });
 
                 it("should plot a tSNE static plot", async () => {
