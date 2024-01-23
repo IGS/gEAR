@@ -95,3 +95,10 @@ ul#go-terms li {
 .tile .dropdown-item {
     padding: 0.125rem 1rem;
 }
+
+.js-display-modal.is-selected {
+    border-color: blue;
+    border-width: medium;
+    border-style: solid;
+
+}

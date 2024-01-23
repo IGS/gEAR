@@ -206,7 +206,6 @@ class TileGrid {
 
         // await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod)));
     }
-
 };
 
 class DatasetTile {
@@ -276,6 +275,141 @@ class DatasetTile {
         return tileHTML;
     }
 
+    renderChooseDisplayModal() {
+        // Render a modal to choose a display from the user or owner display lists
+        // TODO: Have an indicator of the currently selected display
+
+        // Remove any existing modals
+        const existingModals = document.querySelectorAll('.js-choose-display-modal');
+        for (const modal of existingModals) {
+            modal.remove();
+        }
+
+        const modalTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal');
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
+
+        const modalContent = modalHTML.querySelector('.modal-content');
+
+        // Add dataset title
+        const datasetTitle = modalContent.querySelector("h5");
+        datasetTitle.replaceChildren();
+        datasetTitle.textContent = this.dataset.title;
+
+        // Add user and owner displays
+        const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
+        userDisplaysElt.replaceChildren();
+        const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
+        ownerDisplaysElt.replaceChildren();
+
+        // Get all user and owner displays for a single-gene or multi-gene view
+        const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
+
+        // Find all the display config in the user or owner display lists
+        const userDisplays = this.dataset.userDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
+        const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
+
+        // Append epiviz displays to user and owner displays
+        if (this.type === "single") {
+            const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
+            const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
+            userDisplays.push(...userEpivizDisplays);
+            ownerDisplays.push(...ownerEpivizDisplays);
+        }
+
+        // Add titles to each section if there are displays
+        if (userDisplays.length) {
+            const userTitle = document.createElement("p");
+            userTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+            userTitle.textContent = "Your Displays";
+            userDisplaysElt.append(userTitle);
+
+        }
+
+        if (ownerDisplays.length) {
+            const ownerTitle = document.createElement("p");
+            ownerTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+            ownerTitle.textContent = "Displays by Dataset Owner";
+            ownerDisplaysElt.append(ownerTitle);
+        }
+
+        this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt);
+        this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt);
+
+        const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
+
+        // remove tag from all other displays
+        const allDisplayElts = modalContent.querySelectorAll(".js-modal-display");
+        for (const displayElt of allDisplayElts) {
+            displayElt.classList.remove("is-selected");
+        }
+
+        // add tag to the currently selected display
+        if (currentDisplayElt) {
+            currentDisplayElt.classList.add("is-selected");
+        }
+
+        // Add event listeners to all display elements to render the display
+        for (const displayElt of allDisplayElts) {
+            displayElt.addEventListener("click", (event) => {
+                const displayElement = event.currentTarget;
+                const displayId = displayElement.dataset.displayId;
+                const geneSymbol = displayElement.dataset.geneSymbol;
+
+                // Render display
+                this.renderDisplay(geneSymbol, displayId);
+
+                // Close modal
+                const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
+                closeModal(modalElt);
+            });
+        }
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".modal-close");
+        closeButton.addEventListener("click", (event) => {
+            const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
+            closeModal(modalElt);
+        });
+
+        // Add modal to DOM
+        document.body.append(modalHTML);
+
+    }
+
+    async renderChooseDisplayModalDisplays(displays, displayElt) {
+        // Add user displays
+        for (const display of displays) {
+            const displayTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal-display');
+            const displayHTML = displayTemplate.content.cloneNode(true);
+
+            const displayElement = displayHTML.querySelector('.js-modal-display');
+            displayElement.dataset.displayId = display.id;
+            displayElement.dataset.datasetId = this.dataset.id;
+
+            // Add display image
+            let displayUrl = "";
+            try {
+                displayUrl = await curatorApiCallsMixin.fetchDatasetDisplayImage(datasetId, display.id);
+            } catch (error) {
+                // Realistically we should try to plot, but I assume most saved displays will have an image present.
+                displayUrl = "/img/dataset_previews/missing.png";
+                if (display.plot_type === "epiviz") {
+                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+                }
+            }
+
+            const displayImage = document.createElement("img");
+            displayImage.src = displayUrl;
+            displayImage.classList.add("image");
+            displayElement.append(displayImage);
+
+            displayElt.append(displayHTML);
+        }
+    }
+
     addDropdownInformation(tileElement, tileId, dataset) {
 
         const dropdownMenu = tileElement.querySelector(`#${tileId} .dropdown-menu`);
@@ -293,7 +427,13 @@ class DatasetTile {
         for (const item of dropdownItems) {
             switch (item.dataset.tool) {
                 case "display":
-                    // Modal for all user and owner displays
+                    // Add event listener to dropdown item
+                    item.addEventListener("click", (event) => {
+                        // Create and open modal for all user and owner displays
+                        this.renderChooseDisplayModal();    // TODO: Need to add after displays are retrieved
+                        const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
+                        openModal(modalElt);
+                    });
                     break;
                 case "expand":
                     // Zoom panel to take up all of "#result-panel-grid"
@@ -472,6 +612,8 @@ class DatasetTile {
 
         // if the display config was found, then render
         const display = userDisplay || ownerDisplay;
+
+        this.currentDisplayId = display.id;
 
         // handle legacy plot types
         if (display.plot_type === "tsne_dynamic") {
@@ -668,8 +810,9 @@ class DatasetTile {
 
         if (plotType === 'heatmap') {
             // These modify the plotJson object in place
-            adjustExpressionColorbar(plotJson.data);
-            adjustClusterColorbars(plotJson.data);
+            // TODO: Adjust these functions
+            //adjustExpressionColorbar(plotJson.data);
+            //adjustClusterColorbars(plotJson.data);
         }
 
         // Update plot with custom plot config stuff stored in plot_display_config.js

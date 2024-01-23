@@ -158,5 +158,28 @@
     <p class="has-text-danger-dark has-background-danger-light p-2 m-2 has-text-weight-bold"
         style="height: 200px; display: flex; align-items: center; justify-content: center;">
     </p>
+</template>
 
+<template id="tmpl-tile-grid-choose-display-modal">
+    <div class="js-choose-display-modal modal">
+        <div class="modal-background"></div>
+        <div class="modal-content has-background-light">
+            <div class="box">
+                <h5 class="title is-5"></h5>
+                <div class="js-modal-user-displays columns is-multiline">
+                    <img>
+                </div>
+                <div class="js-modal-owner-displays columns is-multiline">
+                    <img>
+                </div>
+            </div>
+        </div>
+        <button class="modal-close is-large" aria-label="close"></button>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-choose-display-modal-display">
+    <div class="js-modal-display column is-3 is-clickable">
+
+    </div>
 </template>

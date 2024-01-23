@@ -303,9 +303,10 @@ const setupTileGrid = async (layout_share_id) => {
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
+        await tilegrid.addAllDisplays();
+
         tilegrid.generateTileGrid(is_multigene);
         tilegrid.applyTileGrid(is_multigene);
-        await tilegrid.addAllDisplays();
         await tilegrid.addDefaultDisplays();
 
         // Don't render yet if a gene is not selected
