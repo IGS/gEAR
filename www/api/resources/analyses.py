@@ -13,10 +13,12 @@ class Analyses(Resource):
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
 
+        user_id = user.id if user else None
+
         acollection = geardb.AnalysisCollection()
 
         acollection.get_all_by_dataset_id(
-            user_id=user.id,
+            user_id=user_id,
             session_id=session_id,
             dataset_id=dataset_id)
 
