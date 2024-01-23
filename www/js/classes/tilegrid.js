@@ -559,6 +559,15 @@ class DatasetTile {
                 item.closest(".dropdown").classList.toggle('is-active');
             }
         });
+
+        // Click off dropdown to close
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.dropdown')) {
+                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                    dropdown.classList.remove('is-active');
+                }
+            }
+        });
     }
 
     async renderDisplay(geneSymbol, displayId=null, svgScoringMethod="gene") {
