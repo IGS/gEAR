@@ -169,6 +169,7 @@ const geneCartTree = new GeneCartTree({
 
 const adjustGeneTableLabels = () => {
     const geneFoldchanges = document.getElementById("tbl_gene_foldchanges");
+	geneFoldchanges.replaceChildren();
 	const log_base = document.getElementById("log_base").value;
 
 	const spanIcon = document.createElement("span");
@@ -860,12 +861,16 @@ const populateGeneTable = (data) => {
         geneTableBody.appendChild(row);
     }
 
-	// If not statistical test, delete p-value column
+	// If not statistical test, hide p-value column (deleting can cause issues with subsequent calls to this function)
+	const pvalColumn = document.getElementById("tbl_gene_pvalues");
+	pvalColumn.classList.remove("is-hidden");
+	for (const pvalCell of document.querySelectorAll("#tbl_selected_genes tbody tr td:nth-child(2)")) {
+		pvalCell.classList.remove("is-hidden");
+	}
 	if (!statisticalTest) {
-		const pvalColumn = document.querySelector("#tbl_selected_genes thead tr th:nth-child(2)");
-		pvalColumn.remove();
+		pvalColumn.classList.add("is-hidden");
 		for (const pvalCell of document.querySelectorAll("#tbl_selected_genes tbody tr td:nth-child(2)")) {
-			pvalCell.remove();
+			pvalCell.classList.add("is-hidden");
 		}
 	}
 	// Should be sorted by logFC now
