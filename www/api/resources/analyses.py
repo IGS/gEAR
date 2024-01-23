@@ -30,12 +30,14 @@ class Analyses(Resource):
             )
           )
 
-        private_tsne = list(
-            filter(
-              tsne_or_umap_present,
-              acollection.user_saved
+        private_tsne = []
+        if user_id:
+          private_tsne = list(
+              filter(
+                tsne_or_umap_present,
+                acollection.user_saved
+              )
             )
-          )
 
         return {
             "success": 1,
