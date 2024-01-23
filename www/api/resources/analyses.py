@@ -10,7 +10,7 @@ class Analyses(Resource):
     """Resource for retrieving all public and private analysis."""
 
     def get(self, dataset_id):
-        session_id = request.cookies.get('gear_session_id')
+        session_id = request.cookies.get('gear_session_id', None)
         user = geardb.get_user_from_session_id(session_id)
 
         user_id = user.id if user else None
@@ -30,14 +30,13 @@ class Analyses(Resource):
             )
           )
 
-        private_tsne = []
-        if user_id:
-          private_tsne = list(
-              filter(
-                tsne_or_umap_present,
-                acollection.user_saved
-              )
+        # This will be empty if the user is not logged in (handled in get_all_by_dataset_id)
+        private_tsne = list(
+            filter(
+              tsne_or_umap_present,
+              acollection.user_saved
             )
+          )
 
         return {
             "success": 1,

@@ -243,6 +243,7 @@ describe('Dataset Curator', function () {
 
                 it("should prevent user from deteting a display", async () => {});
 
+                it("should only retrieve public saved analyses", async () => {});
 
             })
 
