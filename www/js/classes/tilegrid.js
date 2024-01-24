@@ -214,6 +214,11 @@ class DatasetTile {
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
 
+        this.performingProjection = false;  // Indicates whether a projection is currently being performed
+
+        this.controller = new AbortController(); // Create new controller for new set of frames
+
+
         this.tile = this.generateTile();
         this.tile.html = this.generateTileHTML();
     }
@@ -275,9 +280,12 @@ class DatasetTile {
         return tileHTML;
     }
 
+    /**
+     * Renders a modal to choose a display from the user or owner display lists.
+     *
+     * @returns {void}
+     */
     renderChooseDisplayModal() {
-        // Render a modal to choose a display from the user or owner display lists
-        // TODO: Have an indicator of the currently selected display
 
         // Remove any existing modals
         const existingModals = document.querySelectorAll('.js-choose-display-modal');
@@ -380,6 +388,13 @@ class DatasetTile {
 
     }
 
+    /**
+     * Renders the choose display modal with the given displays.
+     *
+     * @param {Array} displays - The array of displays to render.
+     * @param {HTMLElement} displayElt - The element to append the rendered displays to.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     */
     async renderChooseDisplayModalDisplays(displays, displayElt) {
         // Add user displays
         for (const display of displays) {
@@ -415,6 +430,13 @@ class DatasetTile {
         }
     }
 
+    /**
+     * Adds dropdown information to a tile element.
+     *
+     * @param {HTMLElement} tileElement - The tile element to add dropdown information to.
+     * @param {string} tileId - The ID of the tile.
+     * @param {object} dataset - The dataset object containing information for the dropdown items.
+     */
     addDropdownInformation(tileElement, tileId, dataset) {
 
         const dropdownMenu = tileElement.querySelector(`#${tileId} .dropdown-menu`);
@@ -581,6 +603,14 @@ class DatasetTile {
         });
     }
 
+    /**
+     * Renders the display for a given gene symbol.
+     * @param {string} geneSymbol - The gene symbol to render the display for.
+     * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
+     * @param {string} svgScoringMethod - The SVG scoring method to use.
+     * @throws {Error} If geneSymbol is not provided.
+     * @returns {Promise<void>} A promise that resolves when the display is rendered.
+     */
     async renderDisplay(geneSymbol, displayId=null, svgScoringMethod="gene") {
         if (!geneSymbol) {
             throw new Error("Gene symbol or symbols are required to render this display.");
@@ -592,6 +622,12 @@ class DatasetTile {
 
         this.geneSymbol = geneSymbol;
         this.svgScoringMethod = svgScoringMethod;
+
+        this.resetAbortController();
+        const otherOpts = {}
+        if (this.controller) {
+            otherOpts.signal = this.controller.signal;
+        }
 
         const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
 
@@ -657,15 +693,15 @@ class DatasetTile {
 
         try {
             if (plotlyPlots.includes(display.plot_type)) {
-                await this.renderPlotlyDisplay(display);
+                await this.renderPlotlyDisplay(display, otherOpts);
             } else if (scanpyPlots.includes(display.plot_type)) {
-                await this.renderScanpyDisplay(display);
+                await this.renderScanpyDisplay(display, otherOpts);
             } else if (display.plot_type === "svg") {
-                await this.renderSVG(display, svgScoringMethod);
+                await this.renderSVG(display, this.svgScoringMethod, otherOpts);
             } else if (display.plot_type === "epiviz") {
-                await this.renderEpivizDisplay(display);
+                await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
-                await this.renderMultiGeneDisplay(display);
+                await this.renderMultiGeneDisplay(display, otherOpts);
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
@@ -699,7 +735,7 @@ class DatasetTile {
      * @param {Object} display - The display object containing dataset_id and plotly_config.
      * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
      */
-    async renderEpivizDisplay(display) {
+    async renderEpivizDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
         const {gene_symbol: geneSymbol} = display.plotly_config;
 
@@ -711,7 +747,7 @@ class DatasetTile {
         }
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome);
+        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts);
         if (data.hasOwnProperty("success") && data.success === -1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -799,7 +835,7 @@ class DatasetTile {
         return epivizTracksTemplate;
     }
 
-    async renderMultiGeneDisplay(display) {
+    async renderMultiGeneDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -808,7 +844,7 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -855,7 +891,7 @@ class DatasetTile {
 
     }
 
-    async renderPlotlyDisplay(display) {
+    async renderPlotlyDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
@@ -863,7 +899,7 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysisObj, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -893,7 +929,7 @@ class DatasetTile {
         Plotly.relayout(plotlyPreview.id, custonLayout)
     }
 
-    async renderScanpyDisplay(display) {
+    async renderScanpyDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -901,7 +937,7 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
-        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -924,12 +960,12 @@ class DatasetTile {
         }
     }
 
-    async renderSVG(display, svgScoringMethod="gene") {
+    async renderSVG(display, svgScoringMethod="gene", otherOpts) {
         const datasetId = display.dataset_id;
         const plotConfig = display.plotly_config;
         const {gene_symbol: geneSymbol} = plotConfig;
 
-        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol)
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, otherOpts)
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -938,6 +974,14 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, plotConfig.colors, this, svgScoringMethod);
+
+    }
+
+    resetAbortController() {
+        if (this.controller && !this.performingProjection) {
+            this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        }
+        this.controller = new AbortController(); // Create new controller for new set of frames
 
     }
 }
