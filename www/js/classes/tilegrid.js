@@ -528,7 +528,8 @@ class DatasetTile {
                 case "download-bundle":
                     // Download dataset bundle
                     if (hasTarball) {
-
+                        const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
+                        item.href = url;
                     } else {
                         item.classList.add("is-hidden");
                     }
@@ -536,7 +537,8 @@ class DatasetTile {
                 case "download-h5ad":
                     // Download h5ad file
                     if (hasH5ad) {
-
+                        const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                        item.href = url;
                     } else {
                         item.classList.add("is-hidden");
                     }
