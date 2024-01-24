@@ -310,7 +310,7 @@ const setupTileGrid = async (layout_share_id) => {
         await tilegrid.addDefaultDisplays();
 
         // Don't render yet if a gene is not selected
-        if (currently_selected_gene_symbol) {
+        if (selected_genes.length) {
             await tilegrid.renderDisplays(selected_genes, is_multigene, svg_scoring_method);
         }
     } catch (error) {
