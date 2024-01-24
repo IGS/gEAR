@@ -1300,7 +1300,6 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
 
     const displayCardImage = displayCard.querySelector(".card-image img");
     displayCardImage.src = displayUrl;
-    displayCardImage.alt = "Saved display";
 
     const displayCardSubtitle = displayCard.querySelector(".card-content .subtitle");
     if (isMultigene) {
@@ -1357,7 +1356,6 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     const displayCardImage = displayCard.querySelector(".card-image img");
     displayCardImage.src = displayUrl;
-    displayCardImage.alt = "Saved display";
 
     const displayCardSubtitle = displayCard.querySelector(".card-content .subtitle");
     if (isMultigene) {

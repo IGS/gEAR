@@ -96,9 +96,19 @@ ul#go-terms li {
     padding: 0.125rem 1rem;
 }
 
-.js-display-modal.is-selected {
-    border-color: blue;
-    border-width: medium;
+.js-modal-display figure {
+    border-color: darkgray;
+    border-width: thin;
+    border-style: solid;
+}
+
+.js-modal-display.is-selected figure{
+    border-color: lightblue;
+    border-width: thick;
     border-style: solid;
 
+}
+
+.js-choose-display-modal .modal-content {
+    width: 70%; /* make wider, which makes preview images larger */
 }

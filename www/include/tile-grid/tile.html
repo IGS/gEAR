@@ -163,8 +163,8 @@
 <template id="tmpl-tile-grid-choose-display-modal">
     <div class="js-choose-display-modal modal">
         <div class="modal-background"></div>
-        <div class="modal-content has-background-light">
-            <div class="box">
+        <div class="modal-content">
+            <div class="box has-background-white-ter">
                 <h5 class="title is-5"></h5>
                 <div class="js-modal-user-displays columns is-multiline">
                     <img>
@@ -174,12 +174,15 @@
                 </div>
             </div>
         </div>
-        <button class="modal-close is-large" aria-label="close"></button>
+        <button class="modal-close is-large has-background-link" aria-label="close"></button>
     </div>
 </template>
 
 <template id="tmpl-tile-grid-choose-display-modal-display">
-    <div class="js-modal-display column is-3 is-clickable">
-
+    <div class="js-modal-display column is-3 is-clickable p-1">
+        <figure class="image is-4by3">
+            <img alt="Saved display">
+            <span class="js-modal-display-type tag is-info is-relative"></span>
+        </figure>
     </div>
 </template>

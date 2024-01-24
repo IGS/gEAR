@@ -335,43 +335,44 @@ class DatasetTile {
             ownerDisplaysElt.append(ownerTitle);
         }
 
-        this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt);
-        this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt);
+        // Did it this way so we didn't have to pass async/await up the chain
+        Promise.allSettled([
+            this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt),
+            this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt)
+        ]).then(() => {
+            const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
 
-        const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
+            // remove tag from all other displays
+            const allDisplayElts = modalContent.querySelectorAll(".js-modal-display");
+            for (const displayElt of allDisplayElts) {
+                displayElt.classList.remove("is-selected");
+            }
 
-        // remove tag from all other displays
-        const allDisplayElts = modalContent.querySelectorAll(".js-modal-display");
-        for (const displayElt of allDisplayElts) {
-            displayElt.classList.remove("is-selected");
-        }
+            // add tag to the currently selected display
+            if (currentDisplayElt) {
+                currentDisplayElt.classList.add("is-selected");
+            }
 
-        // add tag to the currently selected display
-        if (currentDisplayElt) {
-            currentDisplayElt.classList.add("is-selected");
-        }
+            // Add event listeners to all display elements to render the display
+            for (const displayElt of allDisplayElts) {
+                displayElt.addEventListener("click", (event) => {
+                    const displayElement = event.currentTarget;
+                    const displayId = parseInt(displayElement.dataset.displayId);
+                    // Render display
+                    if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
+                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
 
-        // Add event listeners to all display elements to render the display
-        for (const displayElt of allDisplayElts) {
-            displayElt.addEventListener("click", (event) => {
-                const displayElement = event.currentTarget;
-                const displayId = displayElement.dataset.displayId;
-                const geneSymbol = displayElement.dataset.geneSymbol;
+                    // Close modal
+                    closeModal(modalDiv);
+                });
+            }
+        });
 
-                // Render display
-                this.renderDisplay(geneSymbol, displayId);
-
-                // Close modal
-                const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
-                closeModal(modalElt);
-            });
-        }
 
         // Close button event listener
         const closeButton = modalDiv.querySelector(".modal-close");
         closeButton.addEventListener("click", (event) => {
-            const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
-            closeModal(modalElt);
+            closeModal(modalDiv);
         });
 
         // Add modal to DOM
@@ -392,8 +393,10 @@ class DatasetTile {
             // Add display image
             let displayUrl = "";
             try {
-                displayUrl = await curatorApiCallsMixin.fetchDatasetDisplayImage(datasetId, display.id);
+                // TODO: SVGs are colorless
+                displayUrl = await apiCallsMixin.fetchDatasetDisplayImage(this.dataset.id, display.id);
             } catch (error) {
+                logErrorInConsole(error);
                 // Realistically we should try to plot, but I assume most saved displays will have an image present.
                 displayUrl = "/img/dataset_previews/missing.png";
                 if (display.plot_type === "epiviz") {
@@ -401,10 +404,12 @@ class DatasetTile {
                 }
             }
 
-            const displayImage = document.createElement("img");
+            const displayImage = displayElement.querySelector('figure > img');
             displayImage.src = displayUrl;
-            displayImage.classList.add("image");
-            displayElement.append(displayImage);
+
+            // Add tag indicating plot type
+            const displayType = displayElement.querySelector('.js-modal-display-type');
+            displayType.textContent = display.plot_type;
 
             displayElt.append(displayHTML);
         }
@@ -518,6 +523,12 @@ class DatasetTile {
                     console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${datasetId}.`);
                     break;
             }
+
+            // Remove "is-active" after click
+            item.addEventListener("click", (event) => {
+                const item = event.currentTarget;
+                item.classList.remove("is-active");
+            });
         }
 
         // Add links to the dropdown above the download-bundle item
@@ -578,6 +589,9 @@ class DatasetTile {
         if (displayId === null) {
             displayId = this.defaultDisplayId;
         };
+
+        this.geneSymbol = geneSymbol;
+        this.svgScoringMethod = svgScoringMethod;
 
         const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
 
