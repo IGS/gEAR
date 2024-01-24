@@ -358,6 +358,8 @@ CREATE TABLE layout_members (
        grid_position            INT NOT NULL,
        grid_width               INT NOT NULL DEFAULT 4,
        mg_grid_width            INT NOT NULL DEFAULT 12,
+       grid_height              INT NOT NULL DEFAULT 1, -- height is not based on 12-pt grid system like column
+       mg_grid_height           INT NOT NULL DEFAULT 1,
        math_preference          VARCHAR(50), -- options: 'raw', 'log2', 'log10'
        plot_preference          VARCHAR(50), -- options: 'bar', 'line', 'violin'
        FOREIGN KEY (layout_id)
