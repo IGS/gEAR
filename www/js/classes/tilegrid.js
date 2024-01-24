@@ -213,14 +213,13 @@ class DatasetTile {
         this.dataset = dataset;
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
+        this.tile = this.generateTile();
+        this.tile.html = this.generateTileHTML();
 
         this.performingProjection = false;  // Indicates whether a projection is currently being performed
 
         this.controller = new AbortController(); // Create new controller for new set of frames
 
-
-        this.tile = this.generateTile();
-        this.tile.html = this.generateTileHTML();
     }
 
     /**
@@ -239,21 +238,21 @@ class DatasetTile {
         }
     }
 
-    // TODO: Refactor since both of these functions are the same except for the using "grid_width" vs "mg_grid_width"
-    // TODO: Also add "grid_height" and "mg_grid_height" to the dataset object
     /**
      * Generates a tile object based on the current dataset and tile type.
      * @returns {Object} The generated tile object.
      */
     generateTile() {
-        const tile = {};
-        const dataset = this.dataset;
-        tile.width = this.type === "single" ? dataset.grid_width : dataset.mg_grid_width;
-        tile.height = 1; // dataset.grid_height || dataset.mg_grid_height;  // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
-        tile.tile_id = `${dataset.id}_${dataset.grid_position}_${this.type}`
-        tile.used = false;
-        tile.title = dataset.title;
-        return tile;
+        const { id, grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height } = this.dataset;
+        return {
+            width: this.type === "single" ? grid_width : mg_grid_width,
+            // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
+            //height: this.type === "single" ? grid_height : mg_grid_height,
+            height: 1,
+            tile_id: `${id}_${grid_position}_${this.type}`,
+            used: false,
+            title,
+        };
     }
 
     /**
@@ -281,67 +280,84 @@ class DatasetTile {
     }
 
     /**
-     * Renders a modal to choose a display from the user or owner display lists.
+     * Retrieves all displays from the dataset based on the type of tile grid.
      *
-     * @returns {void}
+     * @returns {Object} An object containing user displays and owner displays.
      */
-    renderChooseDisplayModal() {
-
-        // Remove any existing modals
-        const existingModals = document.querySelectorAll('.js-choose-display-modal');
-        for (const modal of existingModals) {
-            modal.remove();
-        }
-
-        const modalTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal');
-        const modalHTML = modalTemplate.content.cloneNode(true);
-
-        const modalDiv = modalHTML.querySelector('.modal');
-        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
-
-        const modalContent = modalHTML.querySelector('.modal-content');
-
-        // Add dataset title
-        const datasetTitle = modalContent.querySelector("h5");
-        datasetTitle.replaceChildren();
-        datasetTitle.textContent = this.dataset.title;
-
-        // Add user and owner displays
-        const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
-        userDisplaysElt.replaceChildren();
-        const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
-        ownerDisplaysElt.replaceChildren();
-
-        // Get all user and owner displays for a single-gene or multi-gene view
+    getAllDisplays() {
         const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
-
-        // Find all the display config in the user or owner display lists
         const userDisplays = this.dataset.userDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
         const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
 
-        // Append epiviz displays to user and owner displays
         if (this.type === "single") {
+            // Add userEpivizDisplays to userDisplays...
             const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
             const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
             userDisplays.push(...userEpivizDisplays);
             ownerDisplays.push(...ownerEpivizDisplays);
         }
 
-        // Add titles to each section if there are displays
-        if (userDisplays.length) {
-            const userTitle = document.createElement("p");
-            userTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
-            userTitle.textContent = "Your Displays";
-            userDisplaysElt.append(userTitle);
+        return { userDisplays, ownerDisplays };
+    }
 
-        }
+    addDatasetTitleToModal(modalHTML) {
+        const modalContent = modalHTML.querySelector('.modal-content');
+        const datasetTitle = modalContent.querySelector("h5");
+        datasetTitle.replaceChildren();
+        datasetTitle.textContent = this.dataset.title;
+    }
 
-        if (ownerDisplays.length) {
-            const ownerTitle = document.createElement("p");
-            ownerTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
-            ownerTitle.textContent = "Displays by Dataset Owner";
-            ownerDisplaysElt.append(ownerTitle);
+    addSectionTitle(element, titleText) {
+        if (!element.length) {
+            return;
         }
+        const title = document.createElement("p");
+        title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+        title.textContent = titleText;
+        element.append(title);
+    }
+
+    removeExistingModals() {
+        const existingModals = document.querySelectorAll('.js-choose-display-modal');
+        for (const modal of existingModals) {
+            modal.remove();
+        }
+    }
+
+    createModalHTML() {
+        const modalTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal');
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
+
+        return modalHTML;
+    }
+
+    /**
+     * Renders a modal to choose a display from the user or owner display lists.
+     *
+     * @returns {void}
+     */
+    renderChooseDisplayModal() {
+
+        this.removeExistingModals();
+        const modalHTML = this.createModalHTML();
+        const modalDiv = modalHTML.querySelector('.modal');
+
+        this.addDatasetTitleToModal(modalHTML);
+
+        const { userDisplays, ownerDisplays } = this.getAllDisplays();
+
+        const modalContent = modalHTML.querySelector('.modal-content');
+        // Add user and owner displays
+        const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
+        userDisplaysElt.replaceChildren();
+        const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
+        ownerDisplaysElt.replaceChildren();
+
+        this.addSectionTitle(userDisplaysElt, "Your Displays");
+        this.addSectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
 
         // Did it this way so we didn't have to pass async/await up the chain
         Promise.allSettled([
