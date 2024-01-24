@@ -382,6 +382,10 @@ class DatasetTile {
         closeButton.addEventListener("click", (event) => {
             closeModal(modalDiv);
         });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
 
         // Add modal to DOM
         document.body.append(modalHTML);
