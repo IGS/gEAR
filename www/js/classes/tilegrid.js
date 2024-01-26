@@ -68,6 +68,74 @@ class TileGrid {
         // If "tile" class does not have "is-vertical", then children tiles will be stacked horizontally
         // A fully horizontal row of tiles will have a "is-ancestor" class
 
+        let thisAncestorTiles = new Set();  // Set of tiles that are in the same ancestor
+        let startingHeight = 0
+
+        for (let h = 0; h < this.tilegrid.length; h++) {
+            // Add all tiles in the row to the set of used tiles
+            for (const datasetTile of this.tilegrid[h]) {
+                if (datasetTile) thisAncestorTiles.add(datasetTile);
+            }
+
+            // Create "is-ancestor" blocks.  Check if the every tile end_row is equal to the current row
+            const isAncestor = tilegrid[h].every(dt => dt?.tile.end_row === h + 1);
+            const tilegridHTML = document.createElement('div');
+            tilegridHTML.classList.add('tile', 'is-ancestor');
+            if (isAncestor) {
+                tilegridHTML.classList.add('is-ancestor');
+
+                // if all used tiles are the same height, then create parent tile and add to ancestor
+                const tileHeight = tilegrid[h][0].tile.height;
+                if (tilegrid[h].every(tile => tile?.tile.height === tileHeight)) {
+                    for (const datasetTile of thisAncestorTiles) {
+                        const tile = datasetTile.tile;
+                        const tileChildHTML = tile.html;
+
+                        const tileParentHTML = document.createElement('div');
+                        tileParentHTML.classList.add('tile', 'is-parent', 'p-1', `is-${tile.width}`);
+                        tileParentHTML.append(tileChildHTML);
+
+                        tilegridHTML.append(tileParentHTML);
+                    }
+                } else {
+                    // If all used tiles are not the same height, then check if there is a tile that spans the entire ancestor height
+
+                    // Find the tiles that span the entire ancestor height
+                    const maxHeightTile = [...thisAncestorTiles].find(dt => dt?.tile.start_row === startingHeight && dt?.tile.end_row === h + 1);
+                    if (maxHeightTile) {
+
+                        // Create parent tile, and append to the left of the ancestor group
+                        const tileParentHTML = document.createElement('div');
+                        tileParentHTML.classList.add('tile', 'is-parent', 'p-1', `is-${maxHeightTile.tile.width}`);
+                        tilegridHTML.append(tileParentHTML);
+                        const tileChildHTML = maxHeightTile.tile.html;
+                        tileParentHTML.append(tileChildHTML);
+                        tilegridHTML.prepend(tileParentHTML);
+                        // remove from usedTiles
+                        thisAncestorTiles.delete(maxHeightTile);
+
+
+                        const remaningWidth = this.maxCols - maxHeightTile.tile.width;
+                        this.renderVerticalTileNest(remaningWidth);
+
+                    }
+                }
+
+
+                thisAncestorTiles = new Set();
+                startingHeight = h + 1;
+                document.querySelector(selector).append(tilegridHTML);
+
+            }
+        }
+
+        //console.log(tilegrid)
+        //const subarrays = this.convertTileGridToSubarrays();
+        //console.log(subarrays);
+
+        return;
+
+
         for (const row of tilegrid) {
             const tilegridHTML = document.createElement('div');
             tilegridHTML.classList.add('tile', 'is-ancestor');
@@ -84,11 +152,55 @@ class TileGrid {
             document.querySelector(selector).append(tilegridHTML);
         }
 
-        // Make all card-header titles the same height
-        //const cardHeaderTitles = document.querySelectorAll(`${selector} .card-header`);
-        //const cardHeaderTitleHeight = Math.max(...Array.from(cardHeaderTitles).map(e => e.offsetHeight));
-        //cardHeaderTitles.forEach(e => e.style.height = `${cardHeaderTitleHeight}px`);
+    }
 
+    renderVerticalTileNest(remaningWidth) {
+
+        // for the remaining tiles, create "is-vertical" tile.
+        const verticalTile = document.createElement('div');
+        verticalTile.classList.add('tile', 'is-vertical', `is-${remaningWidth}`);
+
+    }
+
+    renderHorizontalTileNest() {
+
+    }
+
+    convertTileGridToSubarrays() {
+        const subarrays = [];
+        const visited = new Set();
+
+        for (let h = 0; h < this.tilegrid.length; h++) {
+            for (let w = 0; w < this.tilegrid[h].length; w++) {
+                const tile = this.tilegrid[h][w];
+                if (!visited.has(tile)) {
+                    visited.add(tile);
+
+                    const subarray = [];
+                    let width = 0;
+                    let height = 0;
+
+                    // Find the width and height of the block
+                    while (w + width < this.tilegrid[h].length && this.tilegrid[h][w + width] === tile) {
+                        width++;
+                    }
+                    while (h + height < this.tilegrid.length && this.tilegrid[h + height][w] === tile) {
+                        height++;
+                    }
+
+                    // Add the block to the subarray
+                    for (let k = h; k < h + height; k++) {
+                        for (let l = w; l < w + width; l++) {
+                            subarray.push(this.tilegrid[k][l]);
+                        }
+                    }
+
+                    subarrays.push(subarray);
+                }
+            }
+        }
+
+        return subarrays;
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -115,7 +227,7 @@ class TileGrid {
     generateTileGrid(is_multigene = false) {
 
         const tiles = [];
-        const tilegrid = [];
+        //const tilegrid = [];
 
         for (const dataset of this.layout) {
             const datasetTile = new DatasetTile(dataset, is_multigene);
@@ -127,57 +239,60 @@ class TileGrid {
 
         this.tiles = tiles;
 
-        for (const datasetTile of tiles) {
-            if (datasetTile.used) {
-                continue;
-            }
+        // Initialize an empty grid
+        let arrayHeight = 1
+        let tilegrid = Array(arrayHeight).fill().map(() => Array(this.maxCols).fill(null));
 
+        for (const datasetTile of tiles) {
             const width = datasetTile.tile.width;
             const height = datasetTile.tile.height;
 
-            if (width === this.maxCols) {
-                // tile spans the entire row
-                const tileRow = [];
-                tileRow.push(datasetTile);
-                tilegrid.push(tileRow);
-                datasetTile.used = true;
-                continue;
-            }
+            let placed = false;
 
-            // tile does not span the entire row
-            const tileRow = [];
-            datasetTile.used = true;
-            const usedTiles = [datasetTile];
+            while (!placed) {
+                for (let h = 0; h < tilegrid.length; h++) {
+                    for (let w = 0; w < tilegrid[h].length; w++) {
+                        // Check if the tile fits in the current position
+                        if (tilegrid[h][w] === null && h + height <= tilegrid.length && w + width <= tilegrid[h].length) {
+                            // Fill the grid with the tile
+                            for (let fill_k = h; fill_k < h + height; fill_k++) {
+                                for (let fill_w = w; fill_w < w + width; fill_w++) {
+                                    tilegrid[fill_k][fill_w] = datasetTile;
+                                }
+                            }
+                            placed = true;
 
-            let remainingWidth = this.maxCols - width;
+                            // Keep track of the start and end positions of the tile
+                            datasetTile.tile.start_row = h;
+                            datasetTile.tile.start_col = w;
+                            datasetTile.tile.end_row = h + height;
+                            datasetTile.tile.end_col = w + width;
 
-            // find tiles that fit into the remaining width
-            while (remainingWidth > 0) {
-                const tile = tiles.find((t) => !t.used && t.tile.width <= remainingWidth);
-                if (!tile) {
-                    break;
+                            break;
+                        }
+                    }
+                    if (placed) break;
                 }
 
-                tile.used = true;
-                usedTiles.push(tile);
-                remainingWidth -= tile.tile.width;
-            }
+                // If the tile couldn't be placed because it exceeds the grid height, increase the grid height
+                if (!placed) {
+                    arrayHeight++;
+                    const newGrid = Array(arrayHeight).fill().map(() => Array(this.maxCols).fill(null));
 
-            tileRow.push(...usedTiles);
-            tilegrid.push(tileRow);
+                    // Copy the old grid into the new grid
+                    for (let h = 0; h < tilegrid.length; h++) {
+                        for (let w = 0; w < tilegrid[h].length; w++) {
+                            newGrid[h][w] = tilegrid[h][w];
+                        }
+                    }
 
-            // check if all tiles are the same height
-            const allSameHeight = usedTiles.every((t) => t.tile.height === height);
-            if (allSameHeight) {
-                // all tiles are the same height
-                //tileRow.push(...usedTiles);
-                //tilegrid.push(tileRow);
+                    // Replace the old grid with the new grid
+                    tilegrid = newGrid;
+                }
             }
         }
 
         this.tilegrid = tilegrid;
-
-        // TODO: Create a subgrid for variable heights
     }
 
     /**
@@ -239,215 +354,15 @@ class DatasetTile {
     }
 
     /**
-     * Generates a tile object based on the current dataset and tile type.
-     * @returns {Object} The generated tile object.
-     */
-    generateTile() {
-        const { id, grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height } = this.dataset;
-        return {
-            width: this.type === "single" ? grid_width : mg_grid_width,
-            // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
-            //height: this.type === "single" ? grid_height : mg_grid_height,
-            height: 1,
-            tile_id: `${id}_${grid_position}_${this.type}`,
-            used: false,
-            title,
-        };
-    }
-
-    /**
-     * Generates the HTML representation of a tile.
-     * @returns {HTMLElement} The HTML element representing the tile.
+     * Adds the dataset title to the modal.
      *
-     * Note: Tile html template comes from /include/tile-grid/tile.html
+     * @param {HTMLElement} modalHTML - The HTML element representing the modal.
      */
-    generateTileHTML() {
-        const tile = this.tile;
-
-        const template = document.getElementById('tmpl-tile-grid-tile');
-        const tileHTML = template.content.cloneNode(true);
-
-        // Set tile id & title
-        const tileElement = tileHTML.querySelector('.tile');
-        tileElement.id = `tile_${tile.tile_id}`;
-
-        const tileTitle = tileHTML.querySelector('.card-header-title');
-        tileTitle.textContent = tile.title;
-
-        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
-
-        return tileHTML;
-    }
-
-    /**
-     * Retrieves all displays from the dataset based on the type of tile grid.
-     *
-     * @returns {Object} An object containing user displays and owner displays.
-     */
-    getAllDisplays() {
-        const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
-        const userDisplays = this.dataset.userDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
-        const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
-
-        if (this.type === "single") {
-            // Add userEpivizDisplays to userDisplays...
-            const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
-            const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
-            userDisplays.push(...userEpivizDisplays);
-            ownerDisplays.push(...ownerEpivizDisplays);
-        }
-
-        return { userDisplays, ownerDisplays };
-    }
-
     addDatasetTitleToModal(modalHTML) {
         const modalContent = modalHTML.querySelector('.modal-content');
         const datasetTitle = modalContent.querySelector("h5");
         datasetTitle.replaceChildren();
         datasetTitle.textContent = this.dataset.title;
-    }
-
-    addSectionTitle(element, titleText) {
-        if (!element.length) {
-            return;
-        }
-        const title = document.createElement("p");
-        title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
-        title.textContent = titleText;
-        element.append(title);
-    }
-
-    removeExistingModals() {
-        const existingModals = document.querySelectorAll('.js-choose-display-modal');
-        for (const modal of existingModals) {
-            modal.remove();
-        }
-    }
-
-    createModalHTML() {
-        const modalTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal');
-        const modalHTML = modalTemplate.content.cloneNode(true);
-
-        const modalDiv = modalHTML.querySelector('.modal');
-        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
-
-        return modalHTML;
-    }
-
-    /**
-     * Renders a modal to choose a display from the user or owner display lists.
-     *
-     * @returns {void}
-     */
-    renderChooseDisplayModal() {
-
-        this.removeExistingModals();
-        const modalHTML = this.createModalHTML();
-        const modalDiv = modalHTML.querySelector('.modal');
-
-        this.addDatasetTitleToModal(modalHTML);
-
-        const { userDisplays, ownerDisplays } = this.getAllDisplays();
-
-        const modalContent = modalHTML.querySelector('.modal-content');
-        // Add user and owner displays
-        const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
-        userDisplaysElt.replaceChildren();
-        const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
-        ownerDisplaysElt.replaceChildren();
-
-        this.addSectionTitle(userDisplaysElt, "Your Displays");
-        this.addSectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
-
-        // Did it this way so we didn't have to pass async/await up the chain
-        Promise.allSettled([
-            this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt),
-            this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt)
-        ]).then(() => {
-            const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
-
-            // remove tag from all other displays
-            const allDisplayElts = modalContent.querySelectorAll(".js-modal-display");
-            for (const displayElt of allDisplayElts) {
-                displayElt.classList.remove("is-selected");
-            }
-
-            // add tag to the currently selected display
-            if (currentDisplayElt) {
-                currentDisplayElt.classList.add("is-selected");
-            }
-
-            // Add event listeners to all display elements to render the display
-            for (const displayElt of allDisplayElts) {
-                displayElt.addEventListener("click", (event) => {
-                    const displayElement = event.currentTarget;
-                    const displayId = parseInt(displayElement.dataset.displayId);
-                    // Render display
-                    if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
-                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
-
-                    // Close modal
-                    closeModal(modalDiv);
-                });
-            }
-        });
-
-
-        // Close button event listener
-        const closeButton = modalDiv.querySelector(".modal-close");
-        closeButton.addEventListener("click", (event) => {
-            closeModal(modalDiv);
-        });
-        const modalBackground = modalDiv.querySelector(".modal-background");
-        modalBackground.addEventListener("click", (event) => {
-            closeModal(modalDiv);
-        });
-
-        // Add modal to DOM
-        document.body.append(modalHTML);
-
-    }
-
-    /**
-     * Renders the choose display modal with the given displays.
-     *
-     * @param {Array} displays - The array of displays to render.
-     * @param {HTMLElement} displayElt - The element to append the rendered displays to.
-     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
-     */
-    async renderChooseDisplayModalDisplays(displays, displayElt) {
-        // Add user displays
-        for (const display of displays) {
-            const displayTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal-display');
-            const displayHTML = displayTemplate.content.cloneNode(true);
-
-            const displayElement = displayHTML.querySelector('.js-modal-display');
-            displayElement.dataset.displayId = display.id;
-            displayElement.dataset.datasetId = this.dataset.id;
-
-            // Add display image
-            let displayUrl = "";
-            try {
-                // TODO: SVGs are colorless
-                displayUrl = await apiCallsMixin.fetchDatasetDisplayImage(this.dataset.id, display.id);
-            } catch (error) {
-                logErrorInConsole(error);
-                // Realistically we should try to plot, but I assume most saved displays will have an image present.
-                displayUrl = "/img/dataset_previews/missing.png";
-                if (display.plot_type === "epiviz") {
-                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
-                }
-            }
-
-            const displayImage = displayElement.querySelector('figure > img');
-            displayImage.src = displayUrl;
-
-            // Add tag indicating plot type
-            const displayType = displayElement.querySelector('.js-modal-display-type');
-            displayType.textContent = display.plot_type;
-
-            displayElt.append(displayHTML);
-        }
     }
 
     /**
@@ -624,6 +539,224 @@ class DatasetTile {
     }
 
     /**
+     * Adds a modal display section title to the specified element.
+     *
+     * @param {HTMLElement} element - The element to which the title will be added.
+     * @param {string} titleText - The text content of the title.
+     */
+    addModalDisplaySectionTitle(element, titleText) {
+        if (!element.length) {
+            return;
+        }
+        const title = document.createElement("p");
+        title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+        title.textContent = titleText;
+        element.append(title);
+    }
+
+    /**
+     * Creates the HTML for the modal used in the tile grid to choose display options.
+     * @returns {DocumentFragment} The HTML fragment representing the modal.
+     */
+    createModalHTML() {
+        const modalTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal');
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
+
+        return modalHTML;
+    }
+
+    /**
+     * Generates a tile object based on the current dataset and tile type.
+     * @returns {Object} The generated tile object.
+     */
+    generateTile() {
+        const { id, grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height } = this.dataset;
+        return {
+            width: this.type === "single" ? grid_width : mg_grid_width,
+            // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
+            //height: this.type === "single" ? grid_height : mg_grid_height,
+            height: 1,
+            tile_id: `${id}_${grid_position}_${this.type}`,
+            used: false,
+            title,
+        };
+    }
+
+    /**
+     * Generates the HTML representation of a tile.
+     * @returns {HTMLElement} The HTML element representing the tile.
+     *
+     * Note: Tile html template comes from /include/tile-grid/tile.html
+     */
+    generateTileHTML() {
+        const tile = this.tile;
+
+        const template = document.getElementById('tmpl-tile-grid-tile');
+        const tileHTML = template.content.cloneNode(true);
+
+        // Set tile id & title
+        const tileElement = tileHTML.querySelector('.tile');
+        tileElement.id = `tile_${tile.tile_id}`;
+
+        const tileTitle = tileHTML.querySelector('.card-header-title');
+        tileTitle.textContent = tile.title;
+
+        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
+
+        return tileHTML;
+    }
+
+    /**
+     * Retrieves all displays from the dataset based on the type of tile grid.
+     *
+     * @returns {Object} An object containing user displays and owner displays.
+     */
+    getAllDisplays() {
+        const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
+        const userDisplays = this.dataset.userDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
+        const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
+
+        if (this.type === "single") {
+            // Add userEpivizDisplays to userDisplays...
+            const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
+            const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
+            userDisplays.push(...userEpivizDisplays);
+            ownerDisplays.push(...ownerEpivizDisplays);
+        }
+
+        return { userDisplays, ownerDisplays };
+    }
+
+    /**
+     * Removes existing modals from the document.
+     */
+    removeExistingModals() {
+        const existingModals = document.querySelectorAll('.js-choose-display-modal');
+        for (const modal of existingModals) {
+            modal.remove();
+        }
+    }
+
+    /**
+     * Renders a modal to choose a display from the user or owner display lists.
+     *
+     * @returns {void}
+     */
+    renderChooseDisplayModal() {
+
+        this.removeExistingModals();
+        const modalHTML = this.createModalHTML();
+        const modalDiv = modalHTML.querySelector('.modal');
+
+        this.addDatasetTitleToModal(modalHTML);
+
+        const { userDisplays, ownerDisplays } = this.getAllDisplays();
+
+        const modalContent = modalHTML.querySelector('.modal-content');
+        // Add user and owner displays
+        const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
+        userDisplaysElt.replaceChildren();
+        const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
+        ownerDisplaysElt.replaceChildren();
+
+        this.addModalDisplaySectionTitle(userDisplaysElt, "Your Displays");
+        this.addModalDisplaySectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
+
+        // Did it this way so we didn't have to pass async/await up the chain
+        Promise.allSettled([
+            this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt),
+            this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt)
+        ]).then(() => {
+            const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
+
+            // remove tag from all other displays
+            const allDisplayElts = modalContent.querySelectorAll(".js-modal-display");
+            for (const displayElt of allDisplayElts) {
+                displayElt.classList.remove("is-selected");
+            }
+
+            // add tag to the currently selected display
+            if (currentDisplayElt) {
+                currentDisplayElt.classList.add("is-selected");
+            }
+
+            // Add event listeners to all display elements to render the display
+            for (const displayElt of allDisplayElts) {
+                displayElt.addEventListener("click", (event) => {
+                    const displayElement = event.currentTarget;
+                    const displayId = parseInt(displayElement.dataset.displayId);
+                    // Render display
+                    if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
+                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
+
+                    // Close modal
+                    closeModal(modalDiv);
+                });
+            }
+        });
+
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".modal-close");
+        closeButton.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+
+        // Add modal to DOM
+        document.body.append(modalHTML);
+
+    }
+
+    /**
+     * Renders the choose display modal with the given displays.
+     *
+     * @param {Array} displays - The array of displays to render.
+     * @param {HTMLElement} displayElt - The element to append the rendered displays to.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     */
+    async renderChooseDisplayModalDisplays(displays, displayElt) {
+        // Add user displays
+        for (const display of displays) {
+            const displayTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal-display');
+            const displayHTML = displayTemplate.content.cloneNode(true);
+
+            const displayElement = displayHTML.querySelector('.js-modal-display');
+            displayElement.dataset.displayId = display.id;
+            displayElement.dataset.datasetId = this.dataset.id;
+
+            // Add display image
+            let displayUrl = "";
+            try {
+                // TODO: SVGs are colorless
+                displayUrl = await apiCallsMixin.fetchDatasetDisplayImage(this.dataset.id, display.id);
+            } catch (error) {
+                logErrorInConsole(error);
+                // Realistically we should try to plot, but I assume most saved displays will have an image present.
+                displayUrl = "/img/dataset_previews/missing.png";
+                if (display.plot_type === "epiviz") {
+                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+                }
+            }
+
+            const displayImage = displayElement.querySelector('figure > img');
+            displayImage.src = displayUrl;
+
+            // Add tag indicating plot type
+            const displayType = displayElement.querySelector('.js-modal-display-type');
+            displayType.textContent = display.plot_type;
+
+            displayElt.append(displayHTML);
+        }
+    }
+
+    /**
      * Renders the display for a given gene symbol.
      * @param {string} geneSymbol - The gene symbol to render the display for.
      * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
@@ -742,14 +875,6 @@ class DatasetTile {
 
     }
 
-    epivizNavStart(data, extendRangeRatio) {
-        return data.start - Math.round((data.end - data.start) * extendRangeRatio);
-    }
-
-    epivizNavEnd(data, extendRangeRatio) {
-        return data.end + Math.round((data.end - data.start) * extendRangeRatio);
-    }
-
     /**
      * Renders the Epiviz display on the tile grid.
      * @param {Object} display - The display object containing dataset_id and plotly_config.
@@ -791,8 +916,8 @@ class DatasetTile {
             }
             return;
         }
-        const nStart = this.epivizNavStart(data, extendRangeRatio);
-        const nEnd = this.epivizNavEnd(data, extendRangeRatio);
+        const nStart = epivizNavStart(data, extendRangeRatio);
+        const nEnd = epivizNavEnd(data, extendRangeRatio);
 
         // epiviz container already exists, so only update gneomic position in the browser
         epiviznav.setAttribute("chr", data.chr);
@@ -822,8 +947,8 @@ class DatasetTile {
         epivizNavigation.id = `${this.tile.tile_id}_epiviznav`;
         // the chr, start and end should come from query - map gene to genomic position.
         epivizNavigation.setAttribute("chr", data.chr);
-        epivizNavigation.setAttribute("start", this.epivizNavStart(data, extendRangeRatio));
-        epivizNavigation.setAttribute("end", this.epivizNavEnd(data, extendRangeRatio));
+        epivizNavigation.setAttribute("start", epivizNavStart(data, extendRangeRatio));
+        epivizNavigation.setAttribute("end", epivizNavEnd(data, extendRangeRatio));
         epivizNavigation.setAttribute("viewer", `/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`);
         epivizNavigation.innerHTML(this.renderEpivizTracks(plotConfig));
         return epivizHTML;
@@ -993,7 +1118,7 @@ class DatasetTile {
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
-        colorSVG(data, plotConfig.colors, this, svgScoringMethod);
+        colorSVG(data, plotConfig.colors, datasetId, this.tile.tile_id, svgScoringMethod);
 
     }
 
@@ -1006,7 +1131,16 @@ class DatasetTile {
     }
 }
 
-const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="gene") => {
+/**
+ * Color the SVG based on the chart data and plot configuration.
+ * @param {Object} chartData - The data for the chart.
+ * @param {Object} plotConfig - The configuration for the plot.
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} tileId - The ID of the tile.
+ * @param {string} [svgScoringMethod="gene"] - The scoring method for coloring the SVG.
+ * @returns {Promise<void>} - A promise that resolves when the SVG is colored.
+ */
+const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMethod="gene") => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
     const colorblindMode = CURRENT_USER.colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : (plotConfig?.low_color || '#e7d1d5');
@@ -1025,7 +1159,7 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     const NA_FIELD_COLOR = '#808080';
 
     // Load SVG file and set up the window
-    const cardImage = document.querySelector(`#tile_${datasetTile.tile.tile_id} .card-image`);
+    const cardImage = document.querySelector(`#tile_${tileId} .card-image`);
 
     // create a legend div
     const legendDiv = document.createElement('div');
@@ -1042,7 +1176,7 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
     cardImage.append(svgDiv);
 
     const snap = Snap(svgDiv);
-    const svg_path = `datasets_uploaded/${datasetTile.dataset.id}.svg`;
+    const svg_path = `datasets_uploaded/${datasetId}.svg`;
 
     await Snap.load(svg_path, async (path) => {
         await snap.append(path);
@@ -1247,18 +1381,25 @@ const colorSVG = async (chartData, plotConfig, datasetTile, svgScoringMethod="ge
 
     });
 
-    drawLegend(plotConfig, datasetTile, score)
+    drawSVGLegend(plotConfig, tileId, score);
 
 }
 
-const drawLegend = (plotConfig, datasetTile, score) => {
+/**
+ * Draws a legend for a SVG image
+ *
+ * @param {Object} plotConfig - The configuration for the plot.
+ * @param {string} tileId - The ID of the tile.
+ * @param {Object} score - The score object containing the minimum and maximum values.
+ */
+const drawSVGLegend = (plotConfig, tileId, score) => {
     const colorblindMode = CURRENT_USER.colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
 
-    const card = document.querySelector(`#tile_${datasetTile.tile.tile_id}.card`);
-    const node = document.querySelector(`#tile_${datasetTile.tile.tile_id} .legend`);
+    const card = document.querySelector(`#tile_${tileId}.card`);
+    const node = document.querySelector(`#tile_${tileId} .legend`);
     // Create our legend svg
     const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
@@ -1271,7 +1412,7 @@ const drawLegend = (plotConfig, datasetTile, score) => {
     // Define our gradient shape
     const linearGradient = defs
         .append('linearGradient')
-        .attr('id', `tile_${datasetTile.tile.tile_id}-linear-gradient`)
+        .attr('id', `tile_${tileId}-linear-gradient`)
         .attr('x1', '0%')
         .attr('y1', '0%')
         .attr('x2', '100%')
@@ -1343,7 +1484,7 @@ const drawLegend = (plotConfig, datasetTile, score) => {
         .attr('height', 10) // quarter of viewport height
         .style(
             'fill',
-            `url(#tile_${datasetTile.tile.tile_id}-linear-gradient)`
+            `url(#tile_${tileId}-linear-gradient)`
         );
 
     const xScale = new_d3
@@ -1389,6 +1530,26 @@ const drawLegend = (plotConfig, datasetTile, score) => {
             .attr("stroke", "black")
             .call(xAxis);
     });
+}
+
+/**
+ * Calculates the start position for the epiviz navigation based on the given data and extend range ratio.
+ * @param {Object} data - The data object containing the start and end positions.
+ * @param {number} extendRangeRatio - The ratio by which to extend the range.
+ * @returns {number} - The calculated start position.
+ */
+const epivizNavStart = (data, extendRangeRatio) => {
+    return data.start - Math.round((data.end - data.start) * extendRangeRatio);
+}
+
+/**
+ * Calculates the end position of a navigation based on the given data and extend range ratio.
+ * @param {Object} data - The data object containing the start and end positions.
+ * @param {number} extendRangeRatio - The ratio by which to extend the range.
+ * @returns {number} - The calculated end position.
+ */
+const epivizNavEnd = (data, extendRangeRatio) => {
+    return data.end + Math.round((data.end - data.start) * extendRangeRatio);
 }
 
 /**

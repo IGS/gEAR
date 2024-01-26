@@ -356,9 +356,14 @@ CREATE TABLE layout_members (
        layout_id                INT NOT NULL,
        dataset_id               VARCHAR(50) NOT NULL,
        grid_position            INT NOT NULL,
+       mg_grid_position         INT NOT NULL,
+       start_col                INT,
+       mg_start_col             INT,
        grid_width               INT NOT NULL DEFAULT 4,
        mg_grid_width            INT NOT NULL DEFAULT 12,
-       grid_height              INT NOT NULL DEFAULT 1, -- height is not based on 12-pt grid system like column
+       start_row                INT,
+       mg_start_row             INT,
+       grid_height              INT NOT NULL DEFAULT 1, -- height is number of rows spanned, which is not based on a grid
        mg_grid_height           INT NOT NULL DEFAULT 1,
        math_preference          VARCHAR(50), -- options: 'raw', 'log2', 'log10'
        plot_preference          VARCHAR(50), -- options: 'bar', 'line', 'violin'
