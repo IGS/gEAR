@@ -94,7 +94,6 @@ class GenesAsAxisHandler extends PlotHandler {
         // Get data and set up the image area
         try {
             const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
-            console.log(data);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
