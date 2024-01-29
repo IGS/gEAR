@@ -614,7 +614,8 @@ $("#projection_search_form").submit((event) => {
         // TODO, build the 'label' and add it here.
         const history_label = 'Projection of ' + layout_id + ' into ' + projection_source + ' for datasets in profile <profilename>'
 
-        $.ajax({
+        // SAdkins - Commenting out as I do not have permissions to alter table in DB in nemo-devel
+        /*$.ajax({
              type: "POST",
              url: "./cgi/add_to_user_history.cgi",
              async: false,
@@ -627,7 +628,7 @@ $("#projection_search_form").submit((event) => {
                  'multi': multipattern ? 1 : 0
              },
              dataType: "json"
-         })
+         })*/
 
         return false;  // keeps the page from not refreshing
     }
