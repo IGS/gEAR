@@ -14,7 +14,7 @@ Reboot if there are kernel updates (or just to be safe if you don't know.)
 ```bash
     cd && mkdir git
     sudo apt install git
-    git clone https://github.com/jorvis/gEAR.git
+    git clone https://github.com/IGS/gEAR.git
 ```
 
 ### Updating Ubuntu version to 22.04 LTS
