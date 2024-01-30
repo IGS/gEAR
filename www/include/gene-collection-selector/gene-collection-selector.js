@@ -312,5 +312,7 @@ const updateGeneListSelectorLabel = () => {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
     } else if (selected_cart_count > 1) {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
+    } else {
+        document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
     }
 }
