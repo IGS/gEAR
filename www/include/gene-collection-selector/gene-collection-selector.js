@@ -6,8 +6,8 @@ let gene_cart_label_index = {};
 // Build this where key is share_id and values are arrays of gene symbols
 let gene_cart_genes = {};
 
-let selected_carts = [];
-let selected_genes = [];
+let selected_carts = new Set();
+let selected_genes = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -61,10 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const row_div = event.target.closest('div');
             const gene_symbol = row_div.querySelector('.gene-item-label').textContent;
 
-            if (selected_genes.includes(gene_symbol)) {
-                selected_genes = selected_genes.filter((gene) => gene !== gene_symbol);
+            if (selected_genes.has(gene_symbol)) {
+                selected_genes.delete(gene_symbol);
             } else {
-                selected_genes.push(gene_symbol);
+                selected_genes.add(gene_symbol);
             }
 
             row_div.classList.toggle('is-selected');
@@ -93,8 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
         // and finally the related gene lists and genes
-        selected_carts = [];
-        selected_genes = [];
+        selected_carts.clear();
+        selected_gene.clear();
     });
 
     document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.querySelector('.ul-li').dataset.shareId = cart.share_id;
                     row.querySelector('.ul-li').dataset.genes = gene_cart_data[cart.share_id].join(',');
 
-                    if (selected_carts.contains(cart.share_id)) {
+                    if (selected_carts.has(cart.share_id)) {
                         row.querySelector('i.toggler').classList.remove('mdi-plus');
                         row.querySelector('i.toggler').classList.add('mdi-check');
                         row.querySelector('.ul-li').classList.add('is-selected');
@@ -188,11 +188,14 @@ const setActiveGeneCart = (cart_row, mode) => {
 
     // if adding or removing, update the inventory
     if (mode === 'add') {
-        selected_carts.push(cart_row.dataset.shareId);
-        selected_genes = [...new Set([...selected_genes, ...genes])];
+        selected_carts.add(cart_row.dataset.shareId);
+        selected_genes = new Set([...selected_genes, ...genes]);
     } else if (mode === 'remove') {
-        delete selected_carts[cart_row.dataset.shareId];
-        selected_genes = selected_genes.filter((gene) => !genes.includes(gene));
+        selected_carts.delete(cart_row.dataset.shareId);
+
+        for (const gene of genes) {
+            selected_genes.delete(gene);
+        }
     }
 
     // now handle the coloring, icons and selection box based on the mode
@@ -217,7 +220,7 @@ const setActiveGeneCart = (cart_row, mode) => {
     for (const gene_div of document.querySelectorAll('.dropdown-gene-item')) {
         let gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
 
-        if (selected_genes.includes(gene_symbol)) {
+        if (selected_genes.has(gene_symbol)) {
             gene_div.classList.add('is-selected');
             gene_div.querySelector('i.toggler').classList.remove('mdi-plus');
             gene_div.querySelector('i.toggler').classList.add('mdi-check');
@@ -263,7 +266,7 @@ const setActiveGeneCartCategory = (category) => {
         row.querySelector('.ul-li').dataset.genes = gene_cart_genes[entry.share_id].join(',');
 
 
-        if (selected_carts.includes(entry.share_id)) {
+        if (selected_carts.has(entry.share_id)) {
             row.querySelector('i.toggler').classList.remove('mdi-plus');
             row.querySelector('i.toggler').classList.add('mdi-check');
             row.querySelector('.ul-li').classList.add('is-selected');
@@ -281,8 +284,8 @@ const selectGeneLists = (share_ids) => {
     // reads the gene list share_ids passed and handles any UI and data updates to make
     //   them preselected
     for (const share_id of share_ids) {
-        selected_carts.push(share_id);
-        selected_genes = [...new Set([...selected_genes, ...gene_cart_genes[share_id]])];
+        selected_carts.add(share_id);
+        selected_genes = new Set([...selected_genes, ...gene_cart_genes[share_id]]);
     }
 
     updateGeneListSelectorLabel();
@@ -301,11 +304,11 @@ const updateGeneListSelectionPanel = () => {
 
 const updateGeneListSelectorLabel = () => {
     // Updates the gene list select drop down label based on the current state of the selected_carts array
-    const selected_cart_count = selected_carts.length;
+    const selected_cart_count = selected_carts.size;
 
     if (selected_cart_count === 1) {
         // It's the only one
-        const only_cart_id = selected_carts[0];
+        const only_cart_id = Array.from(selected_carts)[0];
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
     } else if (selected_cart_count > 1) {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;
