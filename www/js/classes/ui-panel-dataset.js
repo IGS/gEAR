@@ -534,6 +534,7 @@ class DatasetPanel extends Dataset {
         const dataset_id = this.id;
         const payload = {
             genecart_id: projection_source,
+            session_id: CURRENT_USER.session_id,
             algorithm,
         };
         const other_opts = {}

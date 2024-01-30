@@ -4,15 +4,27 @@ let manually_entered_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // add event listener for when the dropdown-gene-list-search-input input box is changed
+    // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
+        let previously_manual_genes = manually_entered_genes;
 
         if (search_term_string.length > 0) {
-            // split the string into an array of genes by spaces or commas
             manually_entered_genes = search_term_string.split(/[ ,]+/);
-            selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
+        } else {
+            manually_entered_genes = [];
         }
+
+        // if any genes have been removed since last time, we need to remove them from the selected_genes array
+        manually_entered_genes.forEach((gene) => {
+            previously_manual_genes = previously_manual_genes.filter((g) => g !== gene);
+        });
+
+        previously_manual_genes.forEach((gene) => {
+            selected_genes.delete(gene);
+        });
+        
+        selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
     document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
@@ -42,8 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // add the gene lists
             //  TODO: This will only be for labeling purposes, since individual genes could have been
             //    deselected within
-            if (Object.keys(selected_carts).length > 0) {
-                url += `&gene_lists=${selected_carts.join(',')}`;
+            if (selected_carts.size > 0) {
+                let gene_cart_share_ids = Array.from(selected_carts);
+                url += `&gene_lists=${gene_cart_share_ids.join(',')}`;
             }
 
             // add the dataset collections
@@ -111,7 +124,7 @@ const populateUserHistoryTable = async () => {
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (selected_genes.length + manually_entered_genes.length === 0) {
+    if (selected_genes.size + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }

@@ -31,12 +31,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
+        let previously_manual_genes = manually_entered_genes;
 
         if (search_term_string.length > 0) {
-            // split the string into an array of genes by spaces or commas
             manually_entered_genes = search_term_string.split(/[ ,]+/);
-            selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
+        } else {
+            manually_entered_genes = [];
         }
+
+        // if any genes have been removed since last time, we need to remove them from the selected_genes array
+        manually_entered_genes.forEach((gene) => {
+            previously_manual_genes = previously_manual_genes.filter((g) => g !== gene);
+        });
+
+        previously_manual_genes.forEach((gene) => {
+            selected_genes.delete(gene);
+        });
+        
+        selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
     document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
@@ -153,11 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
 const fetchGeneAnnotations = async (callback) => {
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
-            selected_genes.join(','),
+            Array.from(selected_genes).join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
 
-        //console.log(annotation_data);
+        // console.log(annotation_data);
 
         document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
 
@@ -226,7 +238,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
     if (url_params_passed) {
-        if (selected_dc_share_id && selected_genes.length > 0) {
+        if (selected_dc_share_id && selected_genes.size > 0) {
             document.querySelector('#submit-expression-search').click();
         }
     }
@@ -242,8 +254,8 @@ const parseGeneCartURLParams = () => {
     const gene_symbols = getUrlParameter('gene_symbol');
     if (gene_symbols) {
         document.querySelector('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
-        selected_genes = gene_symbols.split(',');
-
+        selected_genes = new Set(gene_symbols.split(','));
+        manually_entered_genes = Array.from(selected_genes);
         url_params_passed = true;
     }
 
@@ -313,8 +325,8 @@ const setupTileGrid = async (layout_share_id) => {
         // But we are using a string for clarity.
         if (is_multigene) {
             // Don't render yet if a gene is not selected
-            if (selected_genes.length) {
-                await tilegrid.renderDisplays(selected_genes, is_multigene);
+            if (selected_genes.size) {
+                await tilegrid.renderDisplays(Array.from(selected_genes), is_multigene);
             }
         } else {
             // Don't render yet if a gene is not selected
@@ -415,14 +427,12 @@ const updateAnnotationDisplay = () => {
             document.querySelector('#go-terms').appendChild(row);
         }
     }
-
-
 }
 
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (selected_genes.length + manually_entered_genes.length === 0) {
+    if (selected_genes.size + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }
