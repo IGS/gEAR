@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previously_manual_genes.forEach((gene) => {
             selected_genes.delete(gene);
         });
-        
+
         selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
@@ -78,6 +78,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // update multigene/single gene
         is_multigene = document.querySelector('#single-multi-multi').checked;
+
+        // if multigene, clear the selected gene symbol and hide the gene-result-list container
+        document.getElementById("gene-result-list-c").classList.remove('is-hidden');
+        document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
+        document.getElementById("annotation-panel").classList.remove('is-hidden');
+        document.getElementById("scoring-method-div").classList.remove('is-hidden');
+        if (is_multigene) {
+            currently_selected_gene_symbol = null;
+            document.getElementById("gene-result-list-c").classList.add('is-hidden');
+            document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
+            document.getElementById("annotation-panel").classList.add('is-hidden');
+            document.getElementById("scoring-method-div").classList.add('is-hidden');
+        }
+
 
         try {
             const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
@@ -162,6 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/**
+ * Fetches gene annotations.
+ * @param {Function} callback - The callback function to be executed after fetching gene annotations.
+ * @returns {Promise<void>} - A promise that resolves when the gene annotations are fetched.
+ */
 const fetchGeneAnnotations = async (callback) => {
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
@@ -171,7 +190,9 @@ const fetchGeneAnnotations = async (callback) => {
 
         // console.log(annotation_data);
 
-        document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
+        const gene_result_count_elt = document.getElementById("gene-result-count");
+        gene_result_count_elt.innerHTML = Object.keys(annotation_data).length;
+        gene_result_count_elt.parentElement.classList.remove('is-hidden');
 
         if (Object.keys(annotation_data).length === 0) {
             const no_history_template = document.querySelector('#tmpl-gene-result-none-found');
