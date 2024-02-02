@@ -32,6 +32,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // If the user has agreed to the site's beta status, don't show the modal
+    const beta_cookie = Cookies.get('gear_beta_agreed');
+    if (beta_cookie != "true") {
+        document.querySelector('#beta-site-modal').classList.add('is-active');
+    }
+
 /**
  * Controls for the left navbar visibility
  */
@@ -195,6 +201,14 @@ const closeAllModals = () => {
         closeModal($modal);
     });
 }
+
+/**
+ * Temporary code to handle the warning modal while in beta mode
+ */
+document.getElementById('beta-modal-agree').addEventListener('click', () => {
+    Cookies.set('gear_beta_agreed', 'true', { expires: 7 });
+    document.querySelector('#beta-site-modal').classList.remove('is-active');
+});
 
 /*************************************************************************************
  Code related to the login process, which is available in the header across all pages.

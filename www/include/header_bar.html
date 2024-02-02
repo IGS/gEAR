@@ -89,3 +89,45 @@
             </div>
             </nav>
           </section> <!-- end #header_bar -->
+
+          <!-- Temporary modal for warnings beta testing users -->
+          <div id="beta-site-modal" class="modal">
+            <div class="modal-background"></div>
+            <div class="modal-content">
+              <h2>Thank you for testing our beta release of gEAR 2.0!</h2>
+              <p>
+                We are still working on the final version of the site. Please be aware that some features 
+                may not work as expected, though we've tried to put placeholders where we know things aren't
+                yet finished.  If you encounter any issues, please report them to us using the 
+                "Feedback" link in the user menu on the left.
+              </p>
+              <h3>
+                <span class="icon-text">
+                  <span class="icon pr-1"><i class="mdi mdi-24px mdi-alert"></i></span>
+                  <span>Important!</span>
+                  <span class="icon pl-1"><i class="mdi mdi-24px mdi-alert"></i></span>
+                </span>
+              </h3>
+              <p>
+                This page is for testing and feedback. You are free to make changes, add data, perform analyses,
+                etc. but <u>changes will not be saved permanently</u> while in beta mode.
+              </p>
+              <div class="buttons">
+                <button id="beta-modal-agree" class="button is-primary is-rounded is-fullwidth">
+                  <span class="icon">
+                    <i class="mdi mdi-24px mdi-beta"></i>
+                  </span>
+                  <span class="pl-3">Got it, changes won't be saved. Let's go.</span>
+                </button>
+                <button id="beta-modal-go-to-gear-v1" class="button is-secondary is-rounded is-fullwidth">
+                  <span class="icon">
+                    <i class="mdi mdi-24px mdi-home-outline"></i>
+                  </span>
+                  <span class="pl-3">
+                    <a href="https://umgear.org">Go to normal gEAR (v1) instead</a>
+                  </span>
+                </button>
+              </div>
+            </div>
+            <button class="modal-close is-large" aria-label="close"></button>
+          </div>
