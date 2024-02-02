@@ -102,6 +102,12 @@ def make_static_tsne_graph(filename, config, url):
 
 def main():
 
+    uri_identifier = "https://"
+    if sys.argv[2] == "localhost":
+        print("Running in localhost mode")
+        # set to http
+        uri_identifier = "http://"
+
     if not os.path.isdir(DATASET_PREVIEWS_DIR):
         sys.exit("Directory to store static dataset images does not exist.")
 
@@ -126,7 +132,7 @@ def main():
                 print("Overwriting file {}".format(filename))
 
             success = False
-            url = "https://localhost/api/plot/{}".format(dataset_id)
+            url = "{}localhost/api/plot/{}".format(uri_identifier, dataset_id)
             try:
                 # Plotly
                 if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:

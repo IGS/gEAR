@@ -94,7 +94,7 @@ class GenesAsAxisHandler extends PlotHandler {
         // Get data and set up the image area
         try {
             const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
-            ({plot_json: plotJson} = data);
+            ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
         }
@@ -107,24 +107,25 @@ class GenesAsAxisHandler extends PlotHandler {
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container", "is-max-desktop");
         plotlyPreview.id = "plotly_preview";
+        console.log(plotlyPreview);
         plotContainer.append(plotlyPreview);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
-        if (!plotJson) {
+        if (!this.plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
 
         if (this.plotType === 'heatmap') {
-            setHeatmapHeightBasedOnGenes(plotJson.layout, this.plotConfig.gene_symbols);
+            setHeatmapHeightBasedOnGenes(this.plotJson.layout, this.plotConfig.gene_symbols);
         } else if (this.plotType === "mg_violin" && this.plotConfig.stacked_violin){
-            adjustStackedViolinHeight(plotJson.layout);
+            adjustStackedViolinHeight(this.plotJson.layout);
         }
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
 
@@ -394,7 +395,7 @@ class GenesAsDataHandler extends PlotHandler {
         // Get data and set up the image area
         try {
             const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
-            ({plot_json: plotJson} = data);
+            ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
         }
@@ -410,14 +411,14 @@ class GenesAsDataHandler extends PlotHandler {
         plotContainer.append(plotlyPreviewElt);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
-        if (!plotJson) {
+        if (!this.plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
 
@@ -790,6 +791,10 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
 
 const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
     //pass
+}
+
+const curatorSpecificValidationChecks = () => {
+    return true;
 }
 
 const downloadSelectedGenes = (event) => {

@@ -1300,7 +1300,6 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
 
     const displayCardImage = displayCard.querySelector(".card-image img");
     displayCardImage.src = displayUrl;
-    displayCardImage.alt = "Saved display";
 
     const displayCardSubtitle = displayCard.querySelector(".card-content .subtitle");
     if (isMultigene) {
@@ -1357,7 +1356,6 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     const displayCardImage = displayCard.querySelector(".card-image img");
     displayCardImage.src = displayUrl;
-    displayCardImage.alt = "Saved display";
 
     const displayCardSubtitle = displayCard.querySelector(".card-content .subtitle");
     if (isMultigene) {
@@ -1641,6 +1639,14 @@ const validateRequirements = (event) => {
             document.getElementById("plot_options_s_success").classList.remove("is-hidden");
             document.getElementById("plot_options_s_failed").classList.add("is-hidden");
         }
+
+    // Perform misc. validation checks
+    if (!curatorSpecificValidationChecks()){
+        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+            plotBtn.disabled = true;
+        }
+    }
+
         return;
     }
 

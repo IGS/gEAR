@@ -746,7 +746,7 @@ const curatorSpecifcChooseGene = (event) => {
     }
 
     // Cannot plot if no gene is selected
-    if (document.getElementById("gene_select").value === "Please select a gene") {
+    if (!validateGeneSelected()){
         document.getElementById("gene_s_failed").classList.remove("is-hidden");
         document.getElementById("gene_s_success").classList.add("is-hidden");
         document.getElementById("current_gene").textContent = "";
@@ -869,6 +869,17 @@ const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
         geneSelectEltPost.append(option);
     }
 
+}
+
+/**
+ * Performs specific validation checks for the curator.
+ * @returns {boolean} Returns true if all validation checks pass, otherwise false.
+ */
+const curatorSpecificValidationChecks = () => {
+    if (!validateGeneSelected()) {
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -1148,6 +1159,12 @@ const setupPlotlyOptions = async () => {
                 document.getElementById("color_palette_post").disabled = true;
                 //colorscaleSelect.disable()
             } else {
+                // remove color picker
+                const colorsContainer = document.getElementById("colors_container");
+                const colorsSection = document.getElementById("colors_section");
+                colorsSection.classList.add("is-hidden");
+                colorsContainer.replaceChildren();
+
                 // Enable the color palette select
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
                     paletteElt.disabled = false;
@@ -1280,7 +1297,6 @@ const setupScanpyOptions = async () => {
                 // If colorized legend is continuous, we cannot plot by group
                 // So all dependencies need to be disabled.
                 if ((catColumns.includes(event.target.value))) {
-                    renderColorPicker(event.target.value);
                     targetElt.disabled = false;
                     disableCheckboxLabel(targetElt, false);
                 }
@@ -1295,8 +1311,17 @@ const setupScanpyOptions = async () => {
             }
         });
 
+        //
         elt.addEventListener("change", (event) => {
-            renderColorPicker(event.target.value);
+            // if series is empty or not categorical, remove color picker
+            if ((catColumns.includes(event.target.value))) {
+                renderColorPicker(event.target.value);
+                return;
+            }
+            const colorsContainer = document.getElementById("colors_container");
+            const colorsSection = document.getElementById("colors_section");
+            colorsSection.classList.add("is-hidden");
+            colorsContainer.replaceChildren();
             return;
         })
     }
@@ -1464,4 +1489,16 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
         if (catOptgroup.children.length) elt.append(catOptgroup);
 
     }
+}
+
+/**
+ * Validates the selected gene.
+ *
+ * @returns {boolean} Returns true if a gene is selected, false otherwise.
+ */
+const validateGeneSelected = () => {
+    if (document.getElementById("gene_select").value === "Please select a gene") {
+        return false;
+    }
+    return true;
 }

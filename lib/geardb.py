@@ -785,8 +785,10 @@ class AnalysisCollection:
         ## Each of these is a list of JSON objects
         self.primary = self._scan_analysis_directory(ana, 'primary')
         self.public = self._scan_analysis_directory(ana, 'public')
-        self.user_saved = self._scan_analysis_directory(ana, 'user_saved')
-        self.user_unsaved = self._scan_analysis_directory(ana, 'user_unsaved')
+        if user_id:
+            self.user_saved = self._scan_analysis_directory(ana, 'user_saved')
+        if session_id:
+            self.user_unsaved = self._scan_analysis_directory(ana, 'user_unsaved')
 
 class Connection:
     def __init__(self):

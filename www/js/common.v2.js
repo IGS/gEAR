@@ -14,19 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Bulma dropdowns can't be clicked without a wee bit of Javascript
-    document.addEventListener('click', (event) => {
-        let item = event.target;
-        if (item.classList.contains('dropdown-trigger')) {
-            console.log("dropdown-trigger clicked");
-            event.stopPropagation();
-            item.closest(".dropdown").classList.toggle('is-active');
-        }
-    });
-
 
     // modal code from https://bulma.io/documentation/components/modal/
-
     // Add a click event on various child elements to close the parent modal
     (document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button') || []).forEach(($close) => {
         const $target = $close.closest('.modal');
@@ -624,12 +613,13 @@ const apiCallsMixin = {
      * @param {string} analysis - The type of analysis.
      * @param {string} plotType - The type of plot.
      * @param {object} plotConfig - The configuration for the plot.
+     * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<object>} - The fetched data.
      */
-    async fetchDashData(datasetId, analysis, plotType, plotConfig) {
+    async fetchDashData(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
-        const {data} = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload);
+        const {data} = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload, otherOpts);
         return data;
     },
     /**
@@ -720,9 +710,17 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
         return data;
     },
-    async fetchEpivizDisplay(datasetId, geneSymbol, genome) {
-        const query = `?gene=${geneSymbol}&genome=${genome}`;
-        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${query}`);
+    /**
+     * Fetches the Epiviz display data for a given dataset, gene symbol, and genome.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} geneSymbol - The gene symbol.
+     * @param {string} genome - The genome.
+     * @param {Object} [otherOpts={}] - Additional options for the axios GET request.
+     * @returns {Promise} - A promise that resolves to the fetched Epiviz display data.
+     */
+    async fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts={}) {
+        const query = `gene=${geneSymbol}&genome=${genome}`;
+        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${query}`, otherOpts);
         return data;
     },
     /**
@@ -793,36 +791,40 @@ const apiCallsMixin = {
      * @param {string} analysis - The analysis type.
      * @param {string} plotType - The type of plot.
      * @param {object} plotConfig - The configuration object for the plot.
+     * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<object>} - The fetched Plotly data.
      */
-    async fetchPlotlyData(datasetId, analysis, plotType, plotConfig) {
+    async fetchPlotlyData(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
-        const {data} = await axios.post(`/api/plot/${datasetId}`, payload);
+        const {data} = await axios.post(`/api/plot/${datasetId}`, payload, otherOpts);
         return data;
     },
     /**
      * Fetches SVG data for a given dataset ID and gene symbol.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} geneSymbol - The symbol of the gene.
+     * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<any>} - A promise that resolves to the fetched SVG data.
      */
-    async fetchSvgData(datasetId, geneSymbol) {
-        const {data} = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`);
+    async fetchSvgData(datasetId, geneSymbol, otherOpts={}) {
+        const {data} = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`, otherOpts);
         return data;
     },
+
     /**
-     * Fetches the TSNE image for a given dataset, analysis, plot type, and plot configuration.
+     * Fetches the TSNE image for a given dataset, analysis, plot type, plot configuration, and other options.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysis - The analysis type.
      * @param {string} plotType - The type of plot.
-     * @param {Object} plotConfig - The configuration for the plot.
-     * @returns {Promise<any>} - A promise that resolves with the fetched TSNE image data.
+     * @param {object} plotConfig - The plot configuration.
+     * @param {object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
      */
-    async fetchTsneImage(datasetId, analysis, plotType, plotConfig) {
+    async fetchTsneImage(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
-        const {data} = await axios.post(`/api/plot/${datasetId}/tsne`, payload);
+        const {data} = await axios.post(`/api/plot/${datasetId}/tsne`, payload, otherOpts);
         return data;
     },
     /**

@@ -206,7 +206,6 @@ class TileGrid {
 
         // await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod)));
     }
-
 };
 
 class DatasetTile {
@@ -214,6 +213,11 @@ class DatasetTile {
         this.dataset = dataset;
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
+
+        this.performingProjection = false;  // Indicates whether a projection is currently being performed
+
+        this.controller = new AbortController(); // Create new controller for new set of frames
+
 
         this.tile = this.generateTile();
         this.tile.html = this.generateTileHTML();
@@ -261,7 +265,7 @@ class DatasetTile {
     generateTileHTML() {
         const tile = this.tile;
 
-        const template = document.querySelector('#tmpl-tile-grid-tile');
+        const template = document.getElementById('tmpl-tile-grid-tile');
         const tileHTML = template.content.cloneNode(true);
 
         // Set tile id & title
@@ -271,9 +275,348 @@ class DatasetTile {
         const tileTitle = tileHTML.querySelector('.card-header-title');
         tileTitle.textContent = tile.title;
 
+        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
+
         return tileHTML;
     }
 
+    /**
+     * Renders a modal to choose a display from the user or owner display lists.
+     *
+     * @returns {void}
+     */
+    renderChooseDisplayModal() {
+
+        // Remove any existing modals
+        const existingModals = document.querySelectorAll('.js-choose-display-modal');
+        for (const modal of existingModals) {
+            modal.remove();
+        }
+
+        const modalTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal');
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
+
+        const modalContent = modalHTML.querySelector('.modal-content');
+
+        // Add dataset title
+        const datasetTitle = modalContent.querySelector("h5");
+        datasetTitle.replaceChildren();
+        datasetTitle.textContent = this.dataset.title;
+
+        // Add user and owner displays
+        const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
+        userDisplaysElt.replaceChildren();
+        const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
+        ownerDisplaysElt.replaceChildren();
+
+        // Get all user and owner displays for a single-gene or multi-gene view
+        const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
+
+        // Find all the display config in the user or owner display lists
+        const userDisplays = this.dataset.userDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
+        const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
+
+        // Append epiviz displays to user and owner displays
+        if (this.type === "single") {
+            const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
+            const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
+            userDisplays.push(...userEpivizDisplays);
+            ownerDisplays.push(...ownerEpivizDisplays);
+        }
+
+        // Add titles to each section if there are displays
+        if (userDisplays.length) {
+            const userTitle = document.createElement("p");
+            userTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+            userTitle.textContent = "Your Displays";
+            userDisplaysElt.append(userTitle);
+
+        }
+
+        if (ownerDisplays.length) {
+            const ownerTitle = document.createElement("p");
+            ownerTitle.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+            ownerTitle.textContent = "Displays by Dataset Owner";
+            ownerDisplaysElt.append(ownerTitle);
+        }
+
+        // Did it this way so we didn't have to pass async/await up the chain
+        Promise.allSettled([
+            this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt),
+            this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt)
+        ]).then(() => {
+            const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
+
+            // remove tag from all other displays
+            const allDisplayElts = modalContent.querySelectorAll(".js-modal-display");
+            for (const displayElt of allDisplayElts) {
+                displayElt.classList.remove("is-selected");
+            }
+
+            // add tag to the currently selected display
+            if (currentDisplayElt) {
+                currentDisplayElt.classList.add("is-selected");
+            }
+
+            // Add event listeners to all display elements to render the display
+            for (const displayElt of allDisplayElts) {
+                displayElt.addEventListener("click", (event) => {
+                    const displayElement = event.currentTarget;
+                    const displayId = parseInt(displayElement.dataset.displayId);
+                    // Render display
+                    if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
+                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
+
+                    // Close modal
+                    closeModal(modalDiv);
+                });
+            }
+        });
+
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".modal-close");
+        closeButton.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+
+        // Add modal to DOM
+        document.body.append(modalHTML);
+
+    }
+
+    /**
+     * Renders the choose display modal with the given displays.
+     *
+     * @param {Array} displays - The array of displays to render.
+     * @param {HTMLElement} displayElt - The element to append the rendered displays to.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     */
+    async renderChooseDisplayModalDisplays(displays, displayElt) {
+        // Add user displays
+        for (const display of displays) {
+            const displayTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal-display');
+            const displayHTML = displayTemplate.content.cloneNode(true);
+
+            const displayElement = displayHTML.querySelector('.js-modal-display');
+            displayElement.dataset.displayId = display.id;
+            displayElement.dataset.datasetId = this.dataset.id;
+
+            // Add display image
+            let displayUrl = "";
+            try {
+                // TODO: SVGs are colorless
+                displayUrl = await apiCallsMixin.fetchDatasetDisplayImage(this.dataset.id, display.id);
+            } catch (error) {
+                logErrorInConsole(error);
+                // Realistically we should try to plot, but I assume most saved displays will have an image present.
+                displayUrl = "/img/dataset_previews/missing.png";
+                if (display.plot_type === "epiviz") {
+                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+                }
+            }
+
+            const displayImage = displayElement.querySelector('figure > img');
+            displayImage.src = displayUrl;
+
+            // Add tag indicating plot type
+            const displayType = displayElement.querySelector('.js-modal-display-type');
+            displayType.textContent = display.plot_type;
+
+            displayElt.append(displayHTML);
+        }
+    }
+
+    /**
+     * Adds dropdown information to a tile element.
+     *
+     * @param {HTMLElement} tileElement - The tile element to add dropdown information to.
+     * @param {string} tileId - The ID of the tile.
+     * @param {object} dataset - The dataset object containing information for the dropdown items.
+     */
+    addDropdownInformation(tileElement, tileId, dataset) {
+
+        const dropdownMenu = tileElement.querySelector(`#${tileId} .dropdown-menu`);
+        dropdownMenu.id = `dropdown-menu_${tileId}`;
+        const dropdownContent = dropdownMenu.querySelector(".dropdown-content");
+        const dropdownItems = dropdownContent.querySelectorAll('.dropdown-item');
+
+        const datasetId = dataset.id;
+        const pubmedId = dataset.pubmed_id;
+        const geoId = dataset.geo_id;
+        const hasTarball = dataset.has_tarball;
+        const hasH5ad = dataset.has_h5ad;
+        const links = dataset.links;
+
+        for (const item of dropdownItems) {
+            switch (item.dataset.tool) {
+                case "display":
+                    // Add event listener to dropdown item
+                    item.addEventListener("click", (event) => {
+                        // Create and open modal for all user and owner displays
+                        this.renderChooseDisplayModal();    // TODO: Need to add after displays are retrieved
+                        const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
+                        openModal(modalElt);
+                    });
+                    break;
+                case "expand":
+                    // Zoom panel to take up all of "#result-panel-grid"
+                    break;
+                case "info":
+                    // Modal for dataset information
+                    break;
+                case "publication":
+                    // Link to publication if it exists
+                    if (pubmedId) {
+                        item.href = `http://www.ncbi.nlm.nih.gov/pubmed/?term=${pubmedId}`;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "geo":
+                    // Link to GEO entry if it exists
+                    if (geoId) {
+                        item.href = `https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${geoId}`;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "notes":
+                    // Modal for notes
+                    break;
+                case "single-cell":
+                    // Redirect to single-cell analysis workbench
+                    if (hasH5ad) {
+                        const url = `./analyze_dataset.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "compare":
+                    // Redirect to comparison tool
+                    if (hasH5ad) {
+                        const url = `./compare_datasets.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "single-gene":
+                    // Redirect to single-gene curation tool
+                    // TODO: It would be cool to pass in the gene symbol to the curation tool to auto-populate the gene symbol field
+                    if (hasH5ad) {
+                        const url = `./dataset_curator.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "multi-gene":
+                    // Redirect to multi-gene curation tool
+                    // TODO: It would be cool to pass in the gene symbols to the curation tool to auto-populate the gene symbol field
+                    if (hasH5ad) {
+                        const url = `./multigene_curator.html?dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "download-bundle":
+                    // Download dataset bundle
+                    if (hasTarball) {
+                        const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "download-h5ad":
+                    // Download h5ad file
+                    if (hasH5ad) {
+                        const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                        item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                default:
+                    console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${datasetId}.`);
+                    break;
+            }
+
+            // Remove "is-active" after click
+            item.addEventListener("click", (event) => {
+                const item = event.currentTarget;
+                item.classList.remove("is-active");
+            });
+        }
+
+        // Add links to the dropdown above the download-bundle item
+        if (links.length) {
+            const downloadBundle = dropdownContent.querySelector('.dropdown-item[data-tool="download-bundle"]');
+            // create new download-item for each link
+            for (const link of links) {
+                const linkTemplate = document.getElementById('tmpl-tile-grid-dropdown-link');
+                const linkHTML = linkTemplate.content.cloneNode(true);
+
+                const linkItem = linkHTML.querySelector('.dropdown-item');
+                const linkLabel = linkHTML.querySelector('.link-label');
+                const linkA = linkHTML.querySelector('a');
+
+                linkItem.classList.add(`dataset-link-${link.resource}`);    // In case there is custom CSS for this link
+                linkA.href = link.url;
+                linkLabel.textContent = link.label;
+
+                downloadBundle.insertAdjacentElement("beforebegin", linkItem);
+            }
+
+            // add divider between links and download items
+            const divider = document.createElement("hr");
+            divider.classList.add("dropdown-divider");
+            downloadBundle.insertAdjacentElement("beforebegin", divider);
+        }
+
+        // Add event listener to dropdown trigger
+        tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
+            const item = event.currentTarget;
+            if (item.classList.contains('dropdown-trigger')) {
+                // close other dropdowns
+                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                    if (item !== dropdown.querySelector('.dropdown-trigger')) {
+                        dropdown.classList.remove('is-active');
+                    }
+                };
+
+                item.closest(".dropdown").classList.toggle('is-active');
+            }
+        });
+
+        // Click off dropdown to close
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.dropdown')) {
+                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                    dropdown.classList.remove('is-active');
+                }
+            }
+        });
+    }
+
+    /**
+     * Renders the display for a given gene symbol.
+     * @param {string} geneSymbol - The gene symbol to render the display for.
+     * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
+     * @param {string} svgScoringMethod - The SVG scoring method to use.
+     * @throws {Error} If geneSymbol is not provided.
+     * @returns {Promise<void>} A promise that resolves when the display is rendered.
+     */
     async renderDisplay(geneSymbol, displayId=null, svgScoringMethod="gene") {
         if (!geneSymbol) {
             throw new Error("Gene symbol or symbols are required to render this display.");
@@ -282,6 +625,15 @@ class DatasetTile {
         if (displayId === null) {
             displayId = this.defaultDisplayId;
         };
+
+        this.geneSymbol = geneSymbol;
+        this.svgScoringMethod = svgScoringMethod;
+
+        this.resetAbortController();
+        const otherOpts = {}
+        if (this.controller) {
+            otherOpts.signal = this.controller.signal;
+        }
 
         const filterKey = this.type === "single" ? "gene_symbol" : "gene_symbols";
 
@@ -326,6 +678,8 @@ class DatasetTile {
         // if the display config was found, then render
         const display = userDisplay || ownerDisplay;
 
+        this.currentDisplayId = display.id;
+
         // handle legacy plot types
         if (display.plot_type === "tsne_dynamic") {
             display.plot_type = "tsne/umap_dynamic";
@@ -345,15 +699,15 @@ class DatasetTile {
 
         try {
             if (plotlyPlots.includes(display.plot_type)) {
-                await this.renderPlotlyDisplay(display);
+                await this.renderPlotlyDisplay(display, otherOpts);
             } else if (scanpyPlots.includes(display.plot_type)) {
-                await this.renderScanpyDisplay(display);
+                await this.renderScanpyDisplay(display, otherOpts);
             } else if (display.plot_type === "svg") {
-                await this.renderSVG(display, svgScoringMethod);
+                await this.renderSVG(display, this.svgScoringMethod, otherOpts);
             } else if (display.plot_type === "epiviz") {
-                await this.renderEpivizDisplay(display);
+                await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
-                await this.renderMultiGeneDisplay(display);
+                await this.renderMultiGeneDisplay(display, otherOpts);
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
@@ -362,24 +716,32 @@ class DatasetTile {
             console.error(error);
             // Fill in card-image with error message
             cardContent.replaceChildren();
-            const errorMessage = document.createElement("p");
-            errorMessage.classList.add("has-text-danger-dark", "has-background-danger-light", "p-2", "m-2", "has-text-weight-bold");
-            // Add 200 px height and center vertically
-            errorMessage.style.height = "200px";
-            errorMessage.style.display = "flex";
-            errorMessage.style.alignItems = "center";
-            errorMessage.style.justifyContent = "center";
-            errorMessage.textContent = error.message;
-            cardContent.append(errorMessage);
+
+            const template = document.getElementById('tmpl-tile-grid-error');
+            const errorHTML = template.content.cloneNode(true);
+            const errorElement = errorHTML.querySelector('p');
+            errorElement.textContent = error.message;
+            cardContent.append(errorHTML);
         } finally {
            // cardContent.classList.remove("loader");
         }
 
     }
 
-    // TODO: Add abort controller signals to all fetch calls
+    epivizNavStart(data, extendRangeRatio) {
+        return data.start - Math.round((data.end - data.start) * extendRangeRatio);
+    }
 
-    async renderEpivizDisplay(display) {
+    epivizNavEnd(data, extendRangeRatio) {
+        return data.end + Math.round((data.end - data.start) * extendRangeRatio);
+    }
+
+    /**
+     * Renders the Epiviz display on the tile grid.
+     * @param {Object} display - The display object containing dataset_id and plotly_config.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     */
+    async renderEpivizDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
         const {gene_symbol: geneSymbol} = display.plotly_config;
 
@@ -391,7 +753,7 @@ class DatasetTile {
         }
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome);
+        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts);
         if (data.hasOwnProperty("success") && data.success === -1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -407,81 +769,79 @@ class DatasetTile {
             // epiviz container already exists, so only update gneomic position in the browser
 
             plotContainer.replaceChildren();    // erase plot
-            plotContainer.append(this.epivizTemplate(data, display.plotly_config, extendRangeRatio));
+            try {
+                plotContainer.append(this.renderEpivizTemplate(data, display.plotly_config, extendRangeRatio));
+            } catch (error) {
+                logErrorInConsole(error);
+                throw new Error(`Could not render Epiviz display. Please contact gEAR support`);
+            }
             return;
         }
+        const nStart = this.epivizNavStart(data, extendRangeRatio);
+        const nEnd = this.epivizNavEnd(data, extendRangeRatio);
+
         // epiviz container already exists, so only update gneomic position in the browser
         epiviznav.setAttribute("chr", data.chr);
-        const nstart = data.start - Math.round((data.end - data.start) * extendRangeRatio);
-        const nend = data.end + Math.round((data.end - data.start) * extendRangeRatio);
-        epiviznav.setAttribute("start", nstart);
-        epiviznav.setAttribute("end", nend);
-        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);
-
+        epiviznav.setAttribute("start", nStart);
+        epiviznav.setAttribute("end", nEnd);
+        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);    // function is imported from epiviz JS
     }
 
     /**
-     * HTML template for EpiViz
+     * Renders an Epiviz template with the provided data and configuration.
+     * @param {Object} data - The data to be rendered in the template.
+     * @param {Object} plotConfig - The configuration for the plot.
+     * @param {number} extendRangeRatio - The ratio by which to extend the range.
+     * @returns {HTMLElement} - The rendered Epiviz template.
      */
-    epivizTemplate(data, plotConfig, extendRangeRatio) {
+    renderEpivizTemplate(data, plotConfig, extendRangeRatio) {
+        const template = document.getElementById('tmpl-epiviz-container');
+        const epivizHTML = template.content.cloneNode(true);
+        // Add in properties to the epiviz container
+        const epivizContainer = epivizHTML.querySelector('.epiviz-container');
+        epivizContainer.id = `epiviz_${this.tile.tile_id}`;
+        const epivizDataSource = epivizHTML.querySelector('epiviz-data-source');
+        epivizDataSource.id = `${this.tile.tile_id}epivizds`;
+        epivizDataSource.setAttribute("provider-url", plotConfig.dataserver);
 
-    //TODO: Place in an "includes" script
-
-    let epivizTracksTemplate = "";
-    for (const track in plotConfig.tracks) {
-        const trackConfig = plotConfig.tracks[track];
-        trackConfig.forEach((tc) => {
-            let tempTrack = `<${track} slot='charts' `;
-            tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
-
-            if (tc.colors != null) {
-                tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
-            }
-
-            if (tc.settings != null) {
-                tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
-            }
-
-            tempTrack += ` style='min-height:200px;'></${track}> `;
-
-            epivizTracksTemplate += tempTrack;
-        });
-    }
-
-
+        const epivizNavigation = epivizHTML.querySelector('epiviz-navigation');
+        epivizNavigation.id = `${this.tile.tile_id}_epiviznav`;
         // the chr, start and end should come from query - map gene to genomic position.
-
-        return `
-        <div id='epiviz_${this.tile.tile_id}' class='epiviz-container'>
-            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
-            <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
-
-            <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
-
-            <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
-            id='${this.tile.tile_id}epivizds'
-            provider-id="fileapi"
-            provider-url="${plotConfig.dataserver}">
-            </epiviz-data-source>
-            <epiviz-navigation
-            hide-chr-input
-            hide-search
-            hide-add-chart
-            show-viewer
-            id='${this.tile.tile_id}_epiviznav'
-            chr='${data.chr}'
-            start=${data.start - Math.round((data.end - data.start) * extendRangeRatio)}
-            end=${data.end + Math.round((data.end - data.start) * extendRangeRatio)}
-            viewer=${`/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`}
-            >
-            ${epivizTracksTemplate}
-            </epiviz-navigation>
-        </div>
-        `;
-
+        epivizNavigation.setAttribute("chr", data.chr);
+        epivizNavigation.setAttribute("start", this.epivizNavStart(data, extendRangeRatio));
+        epivizNavigation.setAttribute("end", this.epivizNavEnd(data, extendRangeRatio));
+        epivizNavigation.setAttribute("viewer", `/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`);
+        epivizNavigation.innerHTML(this.renderEpivizTracks(plotConfig));
+        return epivizHTML;
     }
 
-    async renderMultiGeneDisplay(display) {
+    renderEpivizTracks(plotConfig) {
+        //Create the tracks
+        let epivizTracksTemplate = "";
+        for (const track in plotConfig.tracks) {
+            const trackConfig = plotConfig.tracks[track];
+            trackConfig.forEach((tc) => {
+                let tempTrack = `<${track} slot='charts' `;
+                tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
+
+                if (tc.colors != null) {
+                    tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
+                }
+
+                if (tc.settings != null) {
+                    tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
+                }
+
+                tempTrack += ` style='min-height:200px;'></${track}> `;
+
+                epivizTracksTemplate += tempTrack;
+            });
+        }
+
+        return epivizTracksTemplate;
+    }
+
+    async renderMultiGeneDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -490,7 +850,7 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -515,8 +875,9 @@ class DatasetTile {
 
         if (plotType === 'heatmap') {
             // These modify the plotJson object in place
-            adjustExpressionColorbar(plotJson.data);
-            adjustClusterColorbars(plotJson.data);
+            // TODO: Adjust these functions
+            //adjustExpressionColorbar(plotJson.data);
+            //adjustClusterColorbars(plotJson.data);
         }
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
@@ -536,7 +897,7 @@ class DatasetTile {
 
     }
 
-    async renderPlotlyDisplay(display) {
+    async renderPlotlyDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
@@ -544,7 +905,7 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysisObj, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -574,7 +935,7 @@ class DatasetTile {
         Plotly.relayout(plotlyPreview.id, custonLayout)
     }
 
-    async renderScanpyDisplay(display) {
+    async renderScanpyDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -582,7 +943,7 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
-        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -605,12 +966,12 @@ class DatasetTile {
         }
     }
 
-    async renderSVG(display, svgScoringMethod="gene") {
+    async renderSVG(display, svgScoringMethod="gene", otherOpts) {
         const datasetId = display.dataset_id;
         const plotConfig = display.plotly_config;
         const {gene_symbol: geneSymbol} = plotConfig;
 
-        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol)
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, otherOpts)
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -619,6 +980,14 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, plotConfig.colors, this, svgScoringMethod);
+
+    }
+
+    resetAbortController() {
+        if (this.controller && !this.performingProjection) {
+            this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
+        }
+        this.controller = new AbortController(); // Create new controller for new set of frames
 
     }
 }

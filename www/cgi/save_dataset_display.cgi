@@ -87,6 +87,7 @@ def main():
     label = form.getvalue('label')
     plot_type = form.getvalue('plot_type')
     plotly_config = form.getvalue('plotly_config')
+    is_local = form.getvalue('is_local', False)
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -164,8 +165,8 @@ def main():
     image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
 
-    url = "http://localhost/api/plot/{}".format(dataset_id)
-
+    if is_local:
+        url = "http://localhost/api/plot/{}".format(dataset_id)
 
     try:
         if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:

@@ -85,3 +85,30 @@ ul#go-terms li {
 .card-image .svg svg {
     margin-top:10%;
 }
+
+/* Dropdown settings */
+
+.tile .dropdown-content {
+    width: max-content;
+}
+
+.tile .dropdown-item {
+    padding: 0.125rem 1rem;
+}
+
+.js-modal-display figure {
+    border-color: darkgray;
+    border-width: thin;
+    border-style: solid;
+}
+
+.js-modal-display.is-selected figure{
+    border-color: lightblue;
+    border-width: thick;
+    border-style: solid;
+
+}
+
+.js-choose-display-modal .modal-content {
+    width: 70%; /* make wider, which makes preview images larger */
+}

@@ -12,7 +12,7 @@ defaults:
 
 on:
   push:
-    branches: [ main, ui-v2 ]
+    branches: [ main] #, ui-v2 ]
     paths:
       - '**/*.js'
       - '**/*.html'
