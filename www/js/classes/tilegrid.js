@@ -468,9 +468,17 @@ class DatasetTile {
                     break;
                 case "expand":
                     // Zoom panel to take up all of "#result-panel-grid"
+                    item.addEventListener("click", (event) => {
+                        // Create and open modal for all user and owner displays
+                        createToast("This feature is not yet implemented.", "is-warning");  
+                    });
                     break;
                 case "info":
                     // Modal for dataset information
+                    item.addEventListener("click", (event) => {
+                        // Create and open modal for all user and owner displays
+                        createToast("This feature is not yet implemented.", "is-warning");  
+                    });
                     break;
                 case "publication":
                     // Link to publication if it exists
@@ -490,6 +498,10 @@ class DatasetTile {
                     break;
                 case "notes":
                     // Modal for notes
+                    item.addEventListener("click", (event) => {
+                        // Create and open modal for all user and owner displays
+                        createToast("This feature is not yet implemented.", "is-warning");  
+                    });
                     break;
                 case "single-cell":
                     // Redirect to single-cell analysis workbench
