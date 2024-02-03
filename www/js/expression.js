@@ -14,6 +14,11 @@ TODOs:
 - hide the annotation panel when multi-gene searches are displayed
 - check if the user has a stored default profile and select that one if none were passed (index page too)
 - If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
+- Page currently doesn't seem to be submitting history events
+- Entire annotation section should be collapsible, leaving only gene name and product
+- Scrolling of datasets in collection should still show gene list
+- When changing genes the tiles need to show 'loading' states before redrawing
+- When changing scopes the tiles need to show 'loading' states before redrawing
 */
 
 document.addEventListener('DOMContentLoaded', () => {

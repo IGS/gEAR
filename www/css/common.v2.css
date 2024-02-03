@@ -143,3 +143,26 @@ p.menu-label {
 .nice-select .nice-select-search-box {
     pointer-events: unset;
 }
+
+/* TEMPORARY code to prettify the beta modal */
+div#beta-site-modal .modal-content {
+    padding: 2em;
+    background-color: white;
+    border-radius: 0.5em;
+}
+div#beta-site-modal div.buttons {
+    margin-top: 1.5em;
+
+}
+div#beta-site-modal h2 {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+    color: #362E5C;
+}
+div#beta-site-modal h3 {
+    color: #362E5C;
+    margin-top: 1.5em;
+    font-size: 1.3em;
+    font-weight: bold;
+}
