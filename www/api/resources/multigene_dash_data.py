@@ -125,13 +125,17 @@ def get_analysis(analysis, dataset_id, session_id):
     # If an analysis is posted we want to read from its h5ad
     if analysis:
         user = geardb.get_user_from_session_id(session_id)
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=user.id)
+        user_id = None
+        if user:
+            user_id = user.id
 
-        try:
+        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=user_id)
+
+        if 'type' in analysis:
             ana.type = analysis['type']
-        except:
-            ana.discover_type(current_user_id=user.id)
+        else:
+            ana.discover_type(current_user_id=user_id)
     else:
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
