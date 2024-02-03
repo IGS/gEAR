@@ -356,6 +356,10 @@ class MultigeneDashData(Resource):
             dataset_genes = adata.var['gene_symbol'].unique().tolist()
             # Gene symbols list may have genes not in the dataset.
             normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, selected_gene_symbols)
+
+            # deduplicate normalized_genes_list
+            normalized_genes_list = list(dict.fromkeys(normalized_genes_list))
+
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
