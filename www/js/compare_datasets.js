@@ -435,7 +435,7 @@ const geneSelectUpdate = async (analysisId=null) => {
     // Populate gene select element
     try {
         const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
-        //updateGeneOptions(geneSymbols); // Come from curator specific code
+        updateGeneOptions(geneSymbols); // Come from curator specific code
     } catch (error) {
 		logErrorInConsole(error);
 	}
@@ -598,7 +598,6 @@ const loadGeneCarts = async () => {
         }*/
 
     } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
 }
 
@@ -1091,9 +1090,10 @@ const updateGeneOptions = (geneSymbols) => {
         geneSelectElt.append(option);
     }
 
-    // Update the nice-select2 element to reflect this.
-    // This function is always called in the 1st view, so only update that
-    geneSelect.update();
+	// TODO: Had to disable geneSelect.update() until a gene cart is selected. This is a temporary adjustment to save memory
+
+    // Update the nice-select2 element to reflect select options
+    //geneSelect.update();
 
 	geneSelectElt.parentElement.classList.remove("is-loading");
 
