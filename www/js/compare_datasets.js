@@ -1204,6 +1204,11 @@ const updatePlotAnnotations = (genes) => {
 // For plotting options, populate select menus with category groups
 const updateSeriesOptions = (classSelector, seriesArray) => {
 
+	if (!seriesArray.length) {
+		createToast("No categorical data series found for this dataset. Please choose another dataset or contact the gEAR team.");
+		return;
+	}
+
     for (const elt of document.getElementsByClassName(classSelector)) {
         elt.replaceChildren();
 
