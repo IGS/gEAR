@@ -435,7 +435,7 @@ const geneSelectUpdate = async (analysisId=null) => {
     // Populate gene select element
     try {
         const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
-        updateGeneOptions(geneSymbols); // Come from curator specific code
+        //updateGeneOptions(geneSymbols); // Come from curator specific code
     } catch (error) {
 		logErrorInConsole(error);
 	}
@@ -1223,6 +1223,7 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
 }
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
+	createToast("Gene cart saved successfully", "is-success");
 }
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {
