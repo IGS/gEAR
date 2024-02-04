@@ -508,7 +508,7 @@ class ProfileTree extends Tree {
             })
         });
 
-        $.each(this.publicdProfiles, (_i, item) => {
+        $.each(this.publicProfiles, (_i, item) => {
             this.addNode(treeData, this.usedIDs, item.value, 105, item.text, this.nodeType, {
                 'profile_label': item.text,
                 'profile_id': item.value,
