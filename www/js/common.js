@@ -306,8 +306,7 @@ function does_page_need_login() {
         document.URL.includes("dataset_curator.html") ||
         document.URL.includes("gene_cart_manager.html") ||
         document.URL.includes("multigene_curator.html") ||
-        document.URL.includes("epiviz_panel_designer.html") ||
-        document.URL.includes("dataset_explorer.html")
+        document.URL.includes("epiviz_panel_designer.html")
         );
 }
 
