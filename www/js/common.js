@@ -369,9 +369,10 @@ function handle_login_ui_updates() {
 
     }
 
+    $('div#login_checking').hide();
+
     if (does_page_need_login()) {
         $('div#login_warning').hide();
-        $('div#login_checking').hide();
         $('div#main_content').show();
         $('input#session_id').val(CURRENT_USER.session_id);
     }
