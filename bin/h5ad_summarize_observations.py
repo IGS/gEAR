@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/bin/python3
 
 """
 If you have an H5AD file with observation headers like this:
