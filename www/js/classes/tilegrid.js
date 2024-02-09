@@ -196,15 +196,38 @@ class TileGrid {
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
         for (const tile of this.tiles) {
+            const tileId = tile.tile.tile_id;
+            const tileElement = document.getElementById(`tile_${tileId}`);
+
+            // Clear the tile content so isoform dropdown does not duplicate
+            const optionContent = tileElement.querySelector('.content');
+            optionContent.replaceChildren();
+
             await tile.getOrthologs(geneSymbolInput)
 
             // If no genes were found, then raise an error
+            // This should never happen as geneSymbolInput should be a key in the orthologs object
             if (Object.keys(tile.orthologs).length === 0) {
-                throw new Error("The given gene symbol(s) nor corresponding orthologs were found in this dataset.");
+                throw new Error("Should never happen. Please contact the gEAR team.");
             }
 
             // Make a list out of the first ortholog for each gene and flatten the list
             tile.isoformsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
+
+            if (tile.isoformsToPlot.length === 0) {
+                const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
+                // render a warning image
+                // Fill in card-image with error message
+                const cardImage = tileElement.querySelector('.card-image');
+                cardImage.replaceChildren();
+
+                const template = document.getElementById('tmpl-tile-grid-error');
+                const errorHTML = template.content.cloneNode(true);
+                const errorElement = errorHTML.querySelector('p');
+                errorElement.textContent = message;
+                cardImage.append(errorHTML);
+                return
+            }
 
             // Get the first isoform for each gene (needed for multigene plots, and initial single-gene plots).
             const isoforms = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()[0]).flat();
@@ -550,7 +573,7 @@ class DatasetTile {
         // Add dropdown to tile
         const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
         const cardContent = tileElement.querySelector('.content');
-        cardContent.prepend(orthoHTML);
+        cardContent.append(orthoHTML);
     }
 
     /**
