@@ -804,6 +804,17 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches orthologs for a given dataset and gene symbols.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string[]} geneSymbols - An array of gene symbols.
+     * @returns {Promise<any>} - A promise that resolves to the fetched ortholog data.
+     */
+    async fetchOrthologs(datasetId, geneSymbols) {
+        const payload = { session_id: this.sessionId, gene_symbols:geneSymbols };
+        const {data} = await axios.post(`/api/h5ad/${datasetId}/orthologs`, payload);
+        return data;
+    },
+    /**
      * Fetches Plotly data for a given dataset, analysis, plot type, and plot configuration.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysis - The analysis type.
