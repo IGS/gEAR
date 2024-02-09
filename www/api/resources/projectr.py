@@ -91,29 +91,6 @@ def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
 
-def get_analysis(analysis, dataset_id, session_id):
-    """Return analysis object based on various factors."""
-    # If an analysis is posted we want to read from its h5ad
-    if analysis:
-        user = geardb.get_user_from_session_id(session_id)
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=user.id)
-
-        try:
-            ana.type = analysis['type']
-        except:
-            user = geardb.get_user_from_session_id(session_id)
-            ana.discover_type(current_user_id=user.id)
-    else:
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not Path(h5_path).is_file():
-            raise FileNotFoundError("No h5 file found for this dataset")
-        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
-    return ana
-
 def calculate_chunk_size(num_genes, num_samples):
     """
     Calculate number of chunks to divide all samples into.
@@ -304,7 +281,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # NOTE Currently no analyses are supported yet.
     try:
-        ana = get_analysis(None, dataset_id, session_id)
+        ana = geardb.get_analysis(None, dataset_id, session_id)
     except Exception as e:
         print(str(e), file=fh)
         return {

@@ -25,52 +25,6 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
-def normalize_searched_gene(gene_list, chosen_gene):
-    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
-    for g in gene_list:
-        if chosen_gene.lower() == str(g).lower():
-            return g
-    return None
-
-def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
-    """
-    Maps a gene symbol to its corresponding orthologous gene symbol in a given dataset.
-
-    Args:
-        gene_symbol (str): The gene symbol to be mapped.
-        gene_organism_id (str): The organism ID of the gene symbol.
-        dataset_organism_id (str): The organism ID of the dataset.
-
-    Returns:
-        str: The mapped orthologous gene symbol, or None if no mapping is found.
-    """
-    if gene_organism_id and gene_organism_id != dataset_organism_id:
-        ortholog_file = get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")
-        return map_single_gene(gene_symbol, ortholog_file)
-    else:
-        for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
-            try:
-                mapped_gene = map_single_gene(gene_symbol, ortholog_file)
-                if mapped_gene:
-                    return mapped_gene
-            except:
-                continue
-    return None
-
-def check_gene_in_dataset(adata, gene_symbols):
-    """
-    Check if any of the given gene symbols are present in the dataset.
-
-    Args:
-        adata (AnnData): Annotated data object.
-        gene_symbols (list): List of gene symbols to check.
-
-    Returns:
-        bool: True if any of the gene symbols are present in the dataset, False otherwise.
-    """
-    gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-    return gene_filter.any()
-
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
     # ? Does it make sense to put this in the geardb/Analysis class?
@@ -101,32 +55,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Associate with a filename to ensure AnnData is read in "backed" mode
     projection_adata.filename = projection_adata_path
     return projection_adata
-
-def get_analysis(analysis, dataset_id, session_id):
-    """Return analysis object based on various factors."""
-    # If an analysis is posted we want to read from its h5ad
-    if analysis:
-        user = geardb.get_user_from_session_id(session_id)
-        user_id = None
-        if user:
-            user_id = user.id
-
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=user_id)
-
-        if 'type' in analysis:
-            ana.type = analysis['type']
-        else:
-            ana.discover_type(current_user_id=user_id)
-    else:
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not os.path.exists(h5_path):
-            raise PlotError("No h5 file found for this dataset")
-        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
-    return ana
 
 def order_by_time_point(obs_df):
     """Order observations by time point column if it exists."""
@@ -167,7 +95,6 @@ class PlotlyData(Resource):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         gene_symbol = req.get('gene_symbol', None)
-        gene_organism_id = req.get('gene_organism_id', None)
         plot_type = req.get('plot_type')
 
         # tsne/umap_dynamic is just a symlink to scatter (support legacy tsne_dynamic)
@@ -246,10 +173,10 @@ class PlotlyData(Resource):
             return return_dict
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id)
-        except PlotError as pe:
+            ana = geardb.get_analysis(analysis, dataset_id, session_id)
+        except Exception as e:
             return_dict["success"] = -1
-            return_dict["message"] = str(pe)
+            return_dict["message"] = str(e)
             return return_dict
 
         adata = ana.get_adata(backed=True)
@@ -285,38 +212,23 @@ class PlotlyData(Resource):
         if 'replicate' in columns:
             columns.remove('replicate')
 
-        dataset = geardb.get_dataset_by_id(dataset_id)
-        dataset_organism_id = dataset.organism_id
 
-        mapped_gene_symbol = None
         gene_symbols = (gene_symbol,)
 
         if 'gene_symbol' not in adata.var.columns:
-            return {"success": -1, "message": "The h5ad is missing the gene_symbol column."}
-
-        if not check_gene_in_dataset(adata, gene_symbols):
-            try:
-                mapped_gene_symbol = get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id)
-
-                # Last chance - See if a normalized gene symbol is present in the dataset
-                if not mapped_gene_symbol:
-                    dataset_genes = adata.var['gene_symbol'].unique().tolist()
-                    mapped_gene_symbol = normalize_searched_gene(dataset_genes, gene_symbol)
-                    if not mapped_gene_symbol:
-                        raise Exception("Could not map gene symbol to dataset organism.")
-
-            except Exception as e:
-                print(str(e), file=sys.stderr)
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
-
-            gene_symbols = (mapped_gene_symbol,)
-            if not check_gene_in_dataset(adata, gene_symbols):
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
+            return_dict["success"] = -1
+            return_dict["message"] = "The h5ad is missing the gene_symbol column."
+            return return_dict
 
         # Filter genes and slice the adata to get a dataframe
         # with expression and its observation metadata
+        gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+        if not gene_filter.any():
+            return_dict["success"] = -1
+            return_dict["message"] = "The searched gene symbol could not be found in the dataset."
+            return return_dict
+
         try:
-            gene_filter = adata.var.gene_symbol.isin(gene_symbols)
             selected = adata[:, gene_filter].to_memory()
         except:
             # The "try" may fail for projections as it is already in memory
@@ -533,7 +445,6 @@ class PlotlyData(Resource):
             "success": success,
             "message": message,
             'gene_symbol': gene_symbol,
-            'mapped_gene_symbol': mapped_gene_symbol,
             'plot_json': json.loads(plot_json),
             "x_axis": x_axis,
             "y_axis": y_axis,
