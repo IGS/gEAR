@@ -83,12 +83,6 @@ class TileGrid {
             }
             document.querySelector(selector).append(tilegridHTML);
         }
-
-        // Make all card-header titles the same height
-        //const cardHeaderTitles = document.querySelectorAll(`${selector} .card-header`);
-        //const cardHeaderTitleHeight = Math.max(...Array.from(cardHeaderTitles).map(e => e.offsetHeight));
-        //cardHeaderTitles.forEach(e => e.style.height = `${cardHeaderTitleHeight}px`);
-
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -194,17 +188,36 @@ class TileGrid {
             throw new Error("Gene symbol or symbols are required to render displays.");
         }
 
+        // Adapt geneSymbols to an array if it is not already
         let geneSymbolInput = geneSymbols;
         if (!isMultigene) {
-            geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols[0] : geneSymbols;
+            geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols : [geneSymbols];
         }
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
         for (const tile of this.tiles) {
-            await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod);
-        }
+            await tile.getOrthologs(geneSymbolInput)
 
-        // await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod)));
+            // If no genes were found, then raise an error
+            if (Object.keys(tile.orthologs).length === 0) {
+                throw new Error("The given gene symbol(s) nor corresponding orthologs were found in this dataset.");
+            }
+
+            // Make a list out of the first ortholog for each gene and flatten the list
+            tile.isoformsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
+
+            // Get the first isoform for each gene (needed for multigene plots, and initial single-gene plots).
+            const isoforms = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()[0]).flat();
+
+            // Render ortholog dropdown if in single-gene view and there is more than one isoform for the gene
+            if (!isMultigene && tile.isoformsToPlot.length > 1) {
+                tile.renderOrthologDropdown(tile.isoformsToPlot);
+            }
+
+            // Plot and render the display
+            await tile.renderDisplay(isoforms, null, svgScoringMethod);
+
+        }
     }
 };
 
@@ -218,6 +231,8 @@ class DatasetTile {
 
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+        this.orthologs = null;
+        this.isoformsToPlot = null;
 
         this.tile = this.generateTile();
         this.tile.html = this.generateTileHTML();
@@ -278,6 +293,27 @@ class DatasetTile {
         this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
 
         return tileHTML;
+    }
+
+    /**
+     * Retrieves orthologs for the given gene symbols.
+     * @param {Array<string>} geneSymbols - The gene symbols to retrieve orthologs for.
+     * @returns {Promise<void>} - A promise that resolves when the orthologs are fetched.
+     */
+    async getOrthologs(geneSymbols) {
+        if (this.orthologs) {
+            this.orthologs = null;
+        }
+
+        const geneOrganismId = CURRENT_USER.default_org_id || null;
+
+        try {
+            const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
+
+            this.orthologs = data.mapping;
+        } catch (error) {
+            logErrorInConsole(error);
+        }
     }
 
     /**
@@ -434,6 +470,89 @@ class DatasetTile {
         }
     }
 
+    renderOrthologDropdown(isoforms) {
+        const orthoTemplate = document.getElementById('tmpl-tile-grid-isoform-dropdown');
+        const orthoHTML = orthoTemplate.content.cloneNode(true);
+
+        const orthoElement = orthoHTML.querySelector('.js-isoform-dropdown');
+        orthoElement.dataset.datasetId = this.dataset.id;
+
+        // Populate the dropdown-items with the isoforms
+        const dropdownContent = orthoHTML.querySelector('.dropdown-content');
+        dropdownContent.replaceChildren();
+
+        for (const isoform of isoforms) {
+            const isoformItem = document.createElement("a");
+            isoformItem.classList.add("dropdown-item");
+            isoformItem.textContent = isoform;
+
+            // If isoform is clicked, render display using that isoform
+            isoformItem.addEventListener("click", async (event) => {
+                // Set clicked item as active
+                const allItems = dropdownContent.querySelectorAll('.dropdown-item');
+                for (const item of allItems) {
+                    item.classList.remove("is-active");
+                }
+                isoformItem.classList.add("is-active");
+
+                const isoform = event.currentTarget.textContent;
+                this.isoformsToPlot = [isoform];
+
+                // close dropdown
+                orthoElement.classList.remove('is-active');
+
+                await this.renderDisplay(this.isoformsToPlot, this.currentDisplayId, this.svgScoringMethod);
+
+            });
+
+            dropdownContent.append(isoformItem);
+        }
+
+        // Make first dropdown item active
+        const firstItem = dropdownContent.querySelector('.dropdown-item');
+        firstItem.classList.add("is-active");
+
+        // Add event listener to dropdown trigger
+        orthoElement.querySelector(".dropdown-trigger button").addEventListener("click", (event) => {
+            const item = event.currentTarget;
+            const triggerElt = item.parentElement;
+
+            // close other dropdowns
+            for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                if (triggerElt !== dropdown.querySelector('.dropdown-trigger')) {
+                    dropdown.classList.remove('is-active');
+                }
+            };
+
+            const arrow = item.querySelector('i');
+
+            // Close dropdown if already active
+            if (orthoElement.classList.contains('is-active')) {
+                orthoElement.classList.remove('is-active');
+                arrow.classList.replace('mdi-chevron-up', 'mdi-chevron-down');
+                return;
+            }
+
+            orthoElement.classList.add('is-active');
+            arrow.classList.replace('mdi-chevron-down', 'mdi-chevron-up');
+
+        });
+
+        // Click off dropdown to close
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.dropdown')) {
+                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                    dropdown.classList.remove('is-active');
+                }
+            }
+        });
+
+        // Add dropdown to tile
+        const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
+        const cardContent = tileElement.querySelector('.content');
+        cardContent.prepend(orthoHTML);
+    }
+
     /**
      * Adds dropdown information to a tile element.
      *
@@ -470,14 +589,14 @@ class DatasetTile {
                     // Zoom panel to take up all of "#result-panel-grid"
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");  
+                        createToast("This feature is not yet implemented.", "is-warning");
                     });
                     break;
                 case "info":
                     // Modal for dataset information
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");  
+                        createToast("This feature is not yet implemented.", "is-warning");
                     });
                     break;
                 case "publication":
@@ -500,7 +619,7 @@ class DatasetTile {
                     // Modal for notes
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");  
+                        createToast("This feature is not yet implemented.", "is-warning");
                     });
                     break;
                 case "single-cell":
@@ -623,14 +742,14 @@ class DatasetTile {
 
     /**
      * Renders the display for a given gene symbol.
-     * @param {string} geneSymbol - The gene symbol to render the display for.
+     * @param {string} geneSymbolInput - The gene symbol(s) to render the display for.
      * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
      * @param {string} svgScoringMethod - The SVG scoring method to use.
      * @throws {Error} If geneSymbol is not provided.
      * @returns {Promise<void>} A promise that resolves when the display is rendered.
      */
-    async renderDisplay(geneSymbol, displayId=null, svgScoringMethod="gene") {
-        if (!geneSymbol) {
+    async renderDisplay(geneSymbolInput, displayId=null, svgScoringMethod="gene") {
+        if (!geneSymbolInput) {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
 
@@ -638,7 +757,7 @@ class DatasetTile {
             displayId = this.defaultDisplayId;
         };
 
-        this.geneSymbol = geneSymbol;
+        geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
         this.svgScoringMethod = svgScoringMethod;
 
         this.resetAbortController();
@@ -702,9 +821,9 @@ class DatasetTile {
 
         // Add gene or genes to plot config
         if (this.type === "multi") {
-            display.plotly_config.gene_symbols = geneSymbol;
+            display.plotly_config.gene_symbols = geneSymbolInput;
         } else {
-            display.plotly_config.gene_symbol = geneSymbol;
+            display.plotly_config.gene_symbol = geneSymbolInput;
         }
         const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
         //cardContent.classList.add("loader");

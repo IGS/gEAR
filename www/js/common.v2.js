@@ -809,8 +809,8 @@ const apiCallsMixin = {
      * @param {string[]} geneSymbols - An array of gene symbols.
      * @returns {Promise<any>} - A promise that resolves to the fetched ortholog data.
      */
-    async fetchOrthologs(datasetId, geneSymbols) {
-        const payload = { session_id: this.sessionId, gene_symbols:geneSymbols };
+    async fetchOrthologs(datasetId, geneSymbols, geneOrganismId=null) {
+        const payload = { session_id: this.sessionId, gene_symbols:geneSymbols, gene_organism_id: geneOrganismId };
         const {data} = await axios.post(`/api/h5ad/${datasetId}/orthologs`, payload);
         return data;
     },

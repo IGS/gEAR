@@ -116,6 +116,9 @@
                 </div>
             </div>
         </div>
+        <div class="content columns">
+            <!-- Extra options, etc go here -->
+        </div>
         <div class="card-image"></div>
     </div>
 </template>
@@ -184,5 +187,25 @@
             <img alt="Saved display">
             <span class="js-modal-display-type tag is-info is-relative"></span>
         </figure>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-isoform-dropdown">
+    <div class="column is-4">
+        <div class="dropdown js-isoform-dropdown">
+            <div class="dropdown-trigger">
+                <button class="button" aria-haspopup="true">
+                <span><strong>Choose isoform</strong></span>
+                    <span class="icon is-small">
+                        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+                    </span>
+                </button>
+                </div>
+                <div class="dropdown-menu" role="menu">
+                <div class="dropdown-content">
+                    <!-- add isoforms here -->
+                </div>
+            </div>
+        </div>
     </div>
 </template>

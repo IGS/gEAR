@@ -64,12 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
             annotation_panel.classList.remove('is-hidden');
             toggle_icon.classList.remove('mdi-chevron-down');
             toggle_icon.classList.add('mdi-chevron-up');
+            return;
 
-        } else {
-            annotation_panel.classList.add('is-hidden');
-            toggle_icon.classList.remove('mdi-chevron-up');
-            toggle_icon.classList.add('mdi-chevron-down');
         }
+        annotation_panel.classList.add('is-hidden');
+        toggle_icon.classList.remove('mdi-chevron-up');
+        toggle_icon.classList.add('mdi-chevron-down');
     });
 
     // add event listener for when the submit-expression-search button is clicked
@@ -121,19 +121,16 @@ document.addEventListener('DOMContentLoaded', () => {
             showOrganismSelectorToolip();
             document.querySelector('#set-default-organism').classList.add('is-hidden');
             return;
-        } else {
-            hideOrganismSelectorToolip();
-            updateAnnotationDisplay();
+        }
+        hideOrganismSelectorToolip();
+        updateAnnotationDisplay();
 
-            // If the user is logged in and doesn't have a default org ID or it's different from their current,
-            //  show the control
-            if (CURRENT_USER.session_id) {
-                if (CURRENT_USER.default_org_id === undefined || CURRENT_USER.default_org_id !== currently_selected_org_id) {
-                    document.querySelector('#set-default-organism').classList.remove('is-hidden');
-                } else {
-                    document.querySelector('#set-default-organism').classList.add('is-hidden');
-                }
-            }
+        // If the user is logged in and doesn't have a default org ID or it's different from their current,
+        //  show the control
+        if (CURRENT_USER.session_id) {
+            const setDefaultOrganism = document.querySelector('#set-default-organism');
+            const shouldHide = CURRENT_USER.default_org_id === currently_selected_org_id;
+            setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
         }
     });
 
