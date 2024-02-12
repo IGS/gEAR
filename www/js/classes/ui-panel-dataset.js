@@ -266,16 +266,15 @@ class DatasetPanel extends Dataset {
     async cache_displays(){
         // cache all owner/user displays for this panel;
         // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-        let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
-            .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
-        ).then((res) => res.map((r) => r.value));
+        const {user, owner} = await this.get_dataset_displays(CURRENT_USER.session_id, this.id)
 
-        if (CURRENT_USER.id === this.user_id) {
-            owner_displays = [];
+        // Filter only the single-gene displays
+        if (this.is_multigene) {
+            this.user_displays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+            this.owner_displays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
         }
-
-        this.owner_displays = owner_displays;
-        this.user_displays = user_displays;
+        this.user_displays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+        this.owner_displays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
 
         this.register_events();
     }
@@ -423,7 +422,7 @@ class DatasetPanel extends Dataset {
 
             // check for any URLs in the description
             const ldesc_with_urls = ldesc.replace(/https?:\/\/[^\s]+/g, "<a href='$&'>$&</a>");
-            
+
             const infobox_html = infobox_tmpl.render({
                 dataset_id: id,
                 primary_key,
@@ -431,7 +430,7 @@ class DatasetPanel extends Dataset {
                 ldesc_with_urls,
                 schematic_image,
             });
-            
+
             $("#modals_c").html(infobox_html);
             $(`#dataset_${primary_key}_info`).modal("show");
         });
@@ -540,7 +539,7 @@ class DatasetPanel extends Dataset {
         const dataset_id = this.id;
         const payload = {
             genecart_id: projection_source,
-            session_id: session_id,
+            session_id: CURRENT_USER.session_id,
             algorithm,
         };
         const other_opts = {}
@@ -552,7 +551,7 @@ class DatasetPanel extends Dataset {
             const response = await axios.post(`api/projectr/${dataset_id}/output_file`, payload, other_opts);
             // If file was not found, put some loading text in the plot
             if (! response.data.projection_id) {
-                this.show_loading("Please wait. Plot generation may take a few minutes as projections need to be generated beforehand.");
+                this.show_loading("Plot generation may take a few minutes as projections need to be generated beforehand.");
             }
             payload.projection_id = response.data.projection_id ? response.data.projection_id : null;
         } catch (e) {

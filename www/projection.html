@@ -149,16 +149,23 @@
 
                 <div id="projection_algorithm_c" class="form-group form-group-sm"  data-toggle="tooltip" data-placement="right" title="Choose which projection algorithm to use">
                   <h3>Select Algorithm</h3>
-                  <div class="form-check">
+                  <!-- TODO: Add help text for each algorithm (consult Carlo) -->
+                  <div class="form-check" id="pca_algo_form_check">
                     <input class="form-check-input" type="radio" name="projection_algo" id="pca_algo" value="pca" checked>
                     <label class="form-check-label" for="pca_algo">
                       Principal Component Analysis (PCA)
                     </label>
                   </div>
-                  <div class="form-check">
+                  <div class="form-check" id="nmf_algo_form_check">
                     <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="nmf">
                     <label class="form-check-label" for="nmf_algo">
-                      Non-Negative Matrix factorization (NMF)
+                      Least-squares optimiazation for NMF
+                    </label>
+                  </div>
+                  <div class="form-check" id="fixednmf_algo_form_check">
+                    <input class="form-check-input" type="radio" name="projection_algo" id="fixednmf_algo" value="fixednmf">
+                    <label class="form-check-label" for="fixednmf_algo">
+                      Fixed gene weights in NMF re-run
                     </label>
                   </div>
                   <div class="form-check" id="binary_algo_form_check" style="display:none;">
@@ -228,9 +235,7 @@
               </div>
               <div class="form-group form-group-sm">
                 <button id="submit_search_projection" class="js-search btn btn-secondary btn-sm">Search projections</button>
-                <button id="share_search" class="btn btn-default btn-sm btn-outline-secondary" style="display:none;" data-toggle="popover" data-placement="bottom" title="Share projection search"><i class="fa fa-share-alt"></i></button>
               </div>
-              <div id="share_confirm"></div>
             </div><!-- end #search_container -->
 
             <div id="search_results_c" class="item search_result_c search_result_c_DISABLED" style="height:calc(90vh - 240px);">
@@ -273,6 +278,11 @@
               Main panel of active page
             ------------------------------------------->
             <div id="viewport_main" class="main_column form-row">
+              <div class="alert-info alert" role="alert" id="functional_not_supported_alert" style="display:none;">
+                <p>
+                  Functional annotation information is not available for projection patterns.
+                </p>
+              </div>
               <div id="highly_expressed_genes_card" class="card bg-light mb-3 w-50" style="display:none;">
                 <h5 class="card-header"></h5>  <!-- filled in with JS -->
                 <div class="card-body row">
