@@ -35,6 +35,7 @@ def main():
             exp = pd.read_table(filepath, sep='\t', index_col=0, header=0)
             exp_obs = list(exp.columns)
             exp_genes= list(exp.index)
+            exp = None
 
             # Read in expressions as AnnData object
             adata = sc.read(filepath, first_column_names=True, cache=False).transpose()
