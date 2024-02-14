@@ -10,8 +10,6 @@ from flask_restful import Resource
 
 from werkzeug.utils import secure_filename
 
-from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene
-
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')

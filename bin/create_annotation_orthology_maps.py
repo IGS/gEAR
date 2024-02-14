@@ -34,10 +34,11 @@ Output format:
 
 Dataframe where:
 
-  - Source identifier (index)
+  - Source identifier
   - Source gene symbol
   - Target identifier
   - Target gene symbol
+  - Number of orthology algorithms supporting this mapping
 
 """
 
@@ -88,21 +89,21 @@ def main():
             #  their own annotation references, since they are only provisional in Ensembl. (think atoh1b in zebrafish)
             #  We can only skip them.
 
-            # Add ensmbl gene symbols for query and target genes
-            orthomap_df_filtered["query_ensembl_gene_symbol"] = orthomap_df_filtered["query_gene_id"].map(lambda x: refannot[tx1].get(x, {}).get('gene_symbol', None))
-            orthomap_df_filtered["target_ensembl_gene_symbol"] = orthomap_df_filtered["target_gene_id"].map(lambda x: refannot[tx2].get(x, {}).get('gene_symbol', None))
+            # Add ensmbl ids and gene symbols for query and target genes
+            orthomap_df_filtered["id1"] = orthomap_df_filtered["query_gene_id"].map(lambda x: refannot[tx1].get(x, {}).get('ensembl_id', None))
+            orthomap_df_filtered["id2"] = orthomap_df_filtered["target_gene_id"].map(lambda x: refannot[tx2].get(x, {}).get('ensembl_id', None))
+
+            orthomap_df_filtered["gs1"] = orthomap_df_filtered["query_gene_id"].map(lambda x: refannot[tx1].get(x, {}).get('gene_symbol', None))
+            orthomap_df_filtered["gs2"] = orthomap_df_filtered["target_gene_id"].map(lambda x: refannot[tx2].get(x, {}).get('gene_symbol', None))
 
             # drop rows where the query or target gene symbols are missing
-            orthomap_df_filtered = orthomap_df_filtered.dropna(subset=["query_ensembl_gene_symbol", "target_ensembl_gene_symbol"])
+            orthomap_df_filtered = orthomap_df_filtered.dropna(subset=["id1", "id2"])
 
-            # rename columns to match the expected output (id1, gs1, id2, gs2, algorithms_match_count)
-            orthomap_df_filtered = orthomap_df_filtered.rename(columns={"query_ensembl_gene_symbol": "id1",
-                                                                        "query_gene_symbol": "gs1",
-                                                                        "target_ensembl_gene_symbol": "id2",
-                                                                        "target_gene_symbol": "gs2",
-                                                                        "algorithms_match_count": "algorithms_match_count"})
             # drop the query and target taxon ids
             orthomap_df_filtered = orthomap_df_filtered.drop(columns=["query_taxon_id", "target_taxon_id"])
+
+            # reorder the columns
+            orthomap_df_filtered = orthomap_df_filtered[["id1", "gs1", "id2", "gs2", "algorithms_match_count"]]
 
             # Write the dataframe to an h5 file
             h5_file_path = os.path.abspath("{0}/orthomap.{1}.ensembl__{2}.ensembl.hdf5".format(

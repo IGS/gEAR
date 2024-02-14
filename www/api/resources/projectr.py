@@ -270,8 +270,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             raise Exception("Dataset was not found in the database. Please contact a gEAR admin.")
 
         if not genecart.organism_id == ds.organism_id:
-            orthomap_file = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
-            loading_df = map_dataframe_genes(loading_df, orthomap_file)
+            ortholog_files = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
+            loading_df = map_dataframe_genes(loading_df, ortholog_files[0])
     except Exception as e:
         print(str(e), file=fh)
         return {"success": -1, "message": str(e)}

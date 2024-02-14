@@ -12,8 +12,6 @@ from plotly.utils import PlotlyJSONEncoder
 
 from werkzeug.utils import secure_filename
 
-from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_multiple_genes
-
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 LOG10_TRANSFORMED_DATASETS = [

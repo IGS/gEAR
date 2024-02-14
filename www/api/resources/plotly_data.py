@@ -17,8 +17,6 @@ from werkzeug.utils import secure_filename
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene
-
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 TWO_LEVELS_UP = 2

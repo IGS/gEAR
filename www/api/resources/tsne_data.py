@@ -20,8 +20,6 @@ from matplotlib import cm
 
 from werkzeug.utils import secure_filename
 
-from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene
-
 sc.settings.set_figure_params(dpi=100)
 sc.settings.verbosity = 0
 
