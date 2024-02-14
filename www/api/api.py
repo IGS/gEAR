@@ -27,6 +27,7 @@ from resources.top_pca_genes import TopPCAGenes
 from resources.available_display_types import AvailableDisplayTypes, MGAvailableDisplayTypes
 from resources.aggregations import Aggregations
 from resources.analyses import Analyses
+from resources.orthologs import Orthologs
 from resources.dataset_display import DatasetDisplay
 from resources.gene_symbols import GeneSymbols
 from resources.tsne_data import TSNEData
@@ -49,6 +50,7 @@ api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayType
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')
 api.add_resource(Aggregations, '/h5ad/<dataset_id>/aggregations')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
+api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<display_id>')
