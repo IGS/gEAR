@@ -226,7 +226,9 @@ class TileGrid {
                 const errorElement = errorHTML.querySelector('p');
                 errorElement.textContent = message;
                 cardImage.append(errorHTML);
-                return
+
+                // skip to the next tile
+                continue;
             }
 
             // Get the first ortholog for each gene (needed for multigene plots, and initial single-gene plots).

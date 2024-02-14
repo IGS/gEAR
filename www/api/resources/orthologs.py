@@ -4,20 +4,6 @@ import os, sys
 import geardb
 from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene, map_multiple_genes
 
-def check_all_genes_in_dataset(adata, gene_symbols):
-    """
-    Check if all the given gene symbols are present in the dataset.
-
-    Parameters:
-    adata (AnnData): Annotated data object.
-    gene_symbols (list): List of gene symbols to check.
-
-    Returns:
-    bool: True if all gene symbols are present, False otherwise.
-    """
-    gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-    return gene_filter.all()
-
 def normalize_searched_gene(gene_list, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
     for g in gene_list:
@@ -25,7 +11,7 @@ def normalize_searched_gene(gene_list, chosen_gene):
             return g
     return None
 
-def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
+def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org=False):
     """
     Retrieves the mapped gene symbol for a given gene symbol, gene organism ID, and dataset organism ID.
 
@@ -33,51 +19,84 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id):
         gene_symbol (str): The gene symbol to be mapped.
         gene_organism_id (str): The organism ID of the gene.
         dataset_organism_id (str): The organism ID of the dataset.
+        exclusive_org (bool, optional): Flag indicating whether to only consider orthologs from the gene organism.
+            Defaults to False.
 
     Returns:
-        list: A list of mapped gene symbols.
+        list or dict: The mapped gene symbol(s) if found, otherwise an empty list or dict.
 
+    Raises:
+        Exception: If no orthologous mapping is found for the given gene symbol.
     """
-    if gene_organism_id and gene_organism_id != dataset_organism_id:
-        ortholog_file = get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")
-        return map_single_gene(gene_symbol, ortholog_file)
+
+    # Determine if we need to get a single ortholog file or multiple
+    is_single_ortholog_file_needed = gene_organism_id and gene_organism_id != dataset_organism_id
+
+    if is_single_ortholog_file_needed:
+        # Get a single ortholog file
+        ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
+        if not exclusive_org:
+            ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+
     else:
-        for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
-            try:
-                mapped_genes = map_single_gene(gene_symbol, ortholog_file)
-                if mapped_genes:
-                    return mapped_genes
-            except:
-                continue
+        # Get multiple ortholog files from the dataset
+        ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+
+    for ortholog_file in ortholog_files:
+        mapped_genes = map_single_gene(gene_symbol, ortholog_file)
+        if mapped_genes:
+            return mapped_genes
+
+        # At this point, we have an empty list or dict, so we should continue to the next ortholog file
+        if gene_organism_id and exclusive_org:
+            raise Exception(f"No orthologous mapping found for the given gene symbols {gene_symbol}.")
+        continue
     return []
 
-def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id):
+
+def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id, exclusive_org=False):
     """
-    Maps a list of gene symbols to their orthologous symbols in a given organism.
+    Retrieves the mapped gene symbols for the given gene symbols, gene organism ID, and dataset organism ID.
 
     Args:
-        gene_symbols (list): List of gene symbols to be mapped.
-        gene_organism_id (str): ID of the organism corresponding to the gene symbols.
-        dataset_organism_id (str): ID of the organism corresponding to the dataset.
+        gene_symbols (list): List of gene symbols to map.
+        gene_organism_id (str): Organism ID of the gene.
+        dataset_organism_id (str): Organism ID of the dataset.
+        exclusive_org (bool, optional): Flag indicating whether to only consider orthologs from the gene organism.
+            Defaults to False.
 
     Returns:
-        dict: A dictionary mapping the input gene symbols to their orthologous symbols.
-    """
-    if gene_organism_id and gene_organism_id != dataset_organism_id:
-        ortholog_file = get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")
+        dict: A dictionary containing the mapped gene symbols as keys and their corresponding orthologs as values.
 
-        return map_multiple_genes(gene_symbols, ortholog_file)
+    Raises:
+        Exception: If no orthologous mapping is found for the given gene symbols.
+    """
+    # Determine if we need to get a single ortholog file or multiple
+    is_single_ortholog_file_needed = gene_organism_id and gene_organism_id != dataset_organism_id
+
+    if is_single_ortholog_file_needed:
+        # Get a single ortholog file
+        ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
+        if not exclusive_org:
+            ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+
     else:
-        for ortholog_file in get_ortholog_files_from_dataset(dataset_organism_id, "ensembl"):
-            try:
-                mapped_gene_symbols_dict =  map_multiple_genes(gene_symbols, ortholog_file)
-                # ? Should we check all and return the dict with the most matches
-                if len(mapped_gene_symbols_dict):
-                    return mapped_gene_symbols_dict
-            except Exception as e:
-                print(str(e), file=sys.stderr)
-                continue
-    raise Exception("No orthologous mapping found for the given gene symbols. {}".format(gene_symbols))
+        # Get multiple ortholog files from the dataset
+        ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+
+    for ortholog_file in ortholog_files:
+        mapped_genes_dict = map_multiple_genes(gene_symbols, ortholog_file)
+
+        # If any keys have a non-empty list, return the dict
+        if any([len(v) > 0 for v in mapped_genes_dict.values()]):
+            return mapped_genes_dict
+        # At this point, we have an empty list or dict, so we should continue to the next ortholog file
+        if gene_organism_id and exclusive_org:
+            raise Exception(f"No orthologous mapping found for the given gene symbols {gene_symbols}.")
+        continue
+
+    return {gene: [] for gene in gene_symbols}
+
 
 def check_gene_in_dataset(adata, gene_symbol):
     """
@@ -103,6 +122,7 @@ class Orthologs(Resource):
     def get(self, dataset_id):
         gene_symbol = request.args.get('gene_symbol', None)
         gene_organism_id = request.args.get('gene_organism_id', None)
+        exclusive_org = request.args.get('exclusive_org', "false") # If true, and mapping is not found, return an error. If false, loop through other organisms
 
         if not gene_symbol:
             return {"error": "No gene symbol provided."}, 400
@@ -112,6 +132,8 @@ class Orthologs(Resource):
 
         if gene_organism_id:
             gene_organism_id = int(gene_organism_id)
+
+        exclusive_org = True if exclusive_org.lower() == "true" else False
 
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
@@ -139,19 +161,26 @@ class Orthologs(Resource):
             else:
                 return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
 
-        if check_gene_in_dataset(adata, gene_symbol):
-            normalized_gene = normalize_gene(gene_symbol)
-            mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
-        else:
-            try:
-                mapped_gene_symbols = get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id)
-            except Exception as e:
-                print(str(e), file=sys.stderr)
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be mapped to the dataset organism."}
+        # Perform orthology mapping.
+        try:
+            mapped_gene_symbols = get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org)
+        except Exception as e:
+            if exclusive_org:
+                return {"success": -1, "message": str(e)}
+            else:
+                return {"error": str(e)}, 400
 
-            # Filter out genes that are not in the dataset
-            normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(adata, mapped_gene_symbol)]
-            mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
+        # Filter out genes that are not in the dataset
+        normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(adata, mapped_gene_symbol)]
+        mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
+
+        # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
+        if not normalized_mapped_genes:
+            if check_gene_in_dataset(adata, gene_symbol):
+                normalized_gene = normalize_gene(gene_symbol)
+                if not normalized_gene:
+                    return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
+                mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
 
         return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
 
@@ -162,6 +191,7 @@ class Orthologs(Resource):
         gene_symbols = req.get('gene_symbols', None)
         analysis = req.get('analysis', None)
         gene_organism_id = req.get('gene_organism_id', None)
+        exclusive_org = req.get('exclusive_org', "false") # If true, only check this organism. If false, loop through other organisms
 
         if not gene_symbols:
             return {"error": "No gene symbols provided."}, 400
@@ -171,6 +201,8 @@ class Orthologs(Resource):
 
         if gene_organism_id:
             gene_organism_id = int(gene_organism_id)
+
+        exclusive_org = True if exclusive_org.lower() == "true" else False
 
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
@@ -196,14 +228,37 @@ class Orthologs(Resource):
                 normalized_gene = normalize_gene(gene_symbol)
                 if normalized_gene:
                     mapped_gene_symbols_dict[gene_symbol] = normalized_gene
-        else:
-            # Perform orthology mapping
-            mapped_gene_symbols_dict = get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id)
 
-            # for each mapped gene symbol, verify the mapped genes are in the dataset and normalize to those genes
-            for gene_symbol in gene_symbols:
-                normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(adata, mapped_gene_symbol)]
-                mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
+            return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
+
+        # Perform orthology mapping.
+        try:
+            mapped_gene_symbols_dict = get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id, exclusive_org)
+        except Exception as e:
+            if exclusive_org:
+                return {"success": -1, "message": str(e)}
+            else:
+                return {"error": str(e)}, 400
+
+        genes_not_mapped = []
+
+        # for each mapped gene symbol, verify the mapped genes are in the dataset and normalize to those genes
+        for gene_symbol in gene_symbols:
+            normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(adata, mapped_gene_symbol)]
+
+            if not normalized_mapped_genes:
+                genes_not_mapped.append(gene_symbol)
+                continue
+
+            mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
+
+        # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
+        for gene_symbol in genes_not_mapped:
+            if check_gene_in_dataset(adata, gene_symbol):
+                normalized_gene = normalize_gene(gene_symbol)
+                mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
+            else:
+                mapped_gene_symbols_dict[gene_symbol] = []
 
         # Return a dictionary where the key is the original gene symbol name and the mapping is a list of orthologs
         return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
