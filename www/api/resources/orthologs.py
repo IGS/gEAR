@@ -178,9 +178,9 @@ class Orthologs(Resource):
         if not normalized_mapped_genes:
             if check_gene_in_dataset(adata, gene_symbol):
                 normalized_gene = normalize_gene(gene_symbol)
-                if not normalized_gene:
-                    return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
                 mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
+            else:
+                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
 
         return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
 
