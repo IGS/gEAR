@@ -8,14 +8,6 @@ The ortholog mappings are stored in HDF5 files, and contain the following column
 - id2: Ensembl ID of the gene in the second organism
 - gs2: Gene symbol of the gene in the second organism
 - algorithms_match_count: The number of algorithms that matched the orthologous gene symbols. Used to rank the orthologous gene symbols.
--
-
-The id1 and gs1 columns are unique and have a one-to-one mapping to id2/gs2, despite there potentially being multiple orthologous genes for a given gene in the second organism.
-Because of this, we will use the id1 and gs2 columns as the primary keys for the orthologous mapping dictionary.
-Also, we need to search the inverse orthologous mapping file to get the mapped gene if the search was on an isoform instead of the original dictionary.
-
-For instance, if we search ATOH1 in human, we should get atoh1a and atoh1c in zebrafish. If we search Atoh1a in zebrafish, we should get ATOH1 in human.
-
 """
 
 
@@ -184,7 +176,7 @@ def map_single_gene(gene_symbol:str, orthomap_file: Path):
     # Check if case-insensitive gene symbol is in dictionary
     lc_gene_symbol = gene_symbol.lower()
 
-    # returns the list of all isoforms
+    # returns the list of all orthologs
     return orthomap_df[orthomap_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
 
 def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:

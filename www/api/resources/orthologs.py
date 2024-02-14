@@ -205,5 +205,5 @@ class Orthologs(Resource):
                 normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(adata, mapped_gene_symbol)]
                 mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
 
-        # Return a dictionary where the key is the original gene symbol name and the mapping is a list of ortholog isoforms
+        # Return a dictionary where the key is the original gene symbol name and the mapping is a list of orthologs
         return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200

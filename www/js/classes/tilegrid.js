@@ -199,7 +199,7 @@ class TileGrid {
             const tileId = tile.tile.tile_id;
             const tileElement = document.getElementById(`tile_${tileId}`);
 
-            // Clear the tile content so isoform dropdown does not duplicate
+            // Clear the tile content so ortholog dropdown does not duplicate
             const optionContent = tileElement.querySelector('.content');
             optionContent.replaceChildren();
 
@@ -212,9 +212,9 @@ class TileGrid {
             }
 
             // Make a list out of the first ortholog for each gene and flatten the list
-            tile.isoformsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
+            tile.orthologsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
 
-            if (tile.isoformsToPlot.length === 0) {
+            if (tile.orthologsToPlot.length === 0) {
                 const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
                 // render a warning image
                 // Fill in card-image with error message
@@ -229,16 +229,16 @@ class TileGrid {
                 return
             }
 
-            // Get the first isoform for each gene (needed for multigene plots, and initial single-gene plots).
-            const isoforms = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()[0]).flat();
+            // Get the first ortholog for each gene (needed for multigene plots, and initial single-gene plots).
+            const orthologs = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()[0]).flat();
 
-            // Render ortholog dropdown if in single-gene view and there is more than one isoform for the gene
-            if (!isMultigene && tile.isoformsToPlot.length > 1) {
-                tile.renderOrthologDropdown(tile.isoformsToPlot);
+            // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
+            if (!isMultigene && tile.orthologsToPlot.length > 1) {
+                tile.renderOrthologDropdown(tile.orthologsToPlot);
             }
 
             // Plot and render the display
-            await tile.renderDisplay(isoforms, null, svgScoringMethod);
+            await tile.renderDisplay(orthologs, null, svgScoringMethod);
 
         }
     }
@@ -255,7 +255,7 @@ class DatasetTile {
         this.controller = new AbortController(); // Create new controller for new set of frames
 
         this.orthologs = null;
-        this.isoformsToPlot = null;
+        this.orthologsToPlot = null;
 
         this.tile = this.generateTile();
         this.tile.html = this.generateTileHTML();
@@ -493,42 +493,42 @@ class DatasetTile {
         }
     }
 
-    renderOrthologDropdown(isoforms) {
-        const orthoTemplate = document.getElementById('tmpl-tile-grid-isoform-dropdown');
+    renderOrthologDropdown(orthologs) {
+        const orthoTemplate = document.getElementById('tmpl-tile-grid-ortholog-dropdown');
         const orthoHTML = orthoTemplate.content.cloneNode(true);
 
-        const orthoElement = orthoHTML.querySelector('.js-isoform-dropdown');
+        const orthoElement = orthoHTML.querySelector('.js-ortholog-dropdown');
         orthoElement.dataset.datasetId = this.dataset.id;
 
-        // Populate the dropdown-items with the isoforms
+        // Populate the dropdown-items with the orthologs
         const dropdownContent = orthoHTML.querySelector('.dropdown-content');
         dropdownContent.replaceChildren();
 
-        for (const isoform of isoforms) {
-            const isoformItem = document.createElement("a");
-            isoformItem.classList.add("dropdown-item");
-            isoformItem.textContent = isoform;
+        for (const ortholog of orthologs) {
+            const orthologItem = document.createElement("a");
+            orthologItem.classList.add("dropdown-item");
+            orthologItem.textContent = ortholog;
 
-            // If isoform is clicked, render display using that isoform
-            isoformItem.addEventListener("click", async (event) => {
+            // If ortholog is clicked, render display using that ortholog
+            orthologItem.addEventListener("click", async (event) => {
                 // Set clicked item as active
                 const allItems = dropdownContent.querySelectorAll('.dropdown-item');
                 for (const item of allItems) {
                     item.classList.remove("is-active");
                 }
-                isoformItem.classList.add("is-active");
+                orthologItem.classList.add("is-active");
 
-                const isoform = event.currentTarget.textContent;
-                this.isoformsToPlot = [isoform];
+                const ortholog = event.currentTarget.textContent;
+                this.orthologsToPlot = [ortholog];
 
                 // close dropdown
                 orthoElement.classList.remove('is-active');
 
-                await this.renderDisplay(this.isoformsToPlot, this.currentDisplayId, this.svgScoringMethod);
+                await this.renderDisplay(this.orthologsToPlot, this.currentDisplayId, this.svgScoringMethod);
 
             });
 
-            dropdownContent.append(isoformItem);
+            dropdownContent.append(orthologItem);
         }
 
         // Make first dropdown item active
