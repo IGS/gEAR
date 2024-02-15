@@ -1,7 +1,17 @@
 let CURRENT_USER;
 let SIDEBAR_COLLAPSED = false;
+let SITE_PREFS = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // load the site preferences JSON file, then call any functions which need it
+    getDomainPreferences().then((result) => {
+        SITE_PREFS = result;
+        console.log(SITE_PREFS);
+
+        //loadPlugins();
+    });
+
+
     // Add listeners for any elements which have generic close controls
     // NOTE: ".delete" has Bulma CSS associated, which overwrites mdi icon classes
     (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
@@ -160,6 +170,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkForLogin();
 });
+
+const getDomainPreferences = async () => {
+    const response = await fetch('/site_domain_prefs.json');
+    return response.json();
+}
 
 // From: http://stackoverflow.com/a/21903119/1368079
 // Use example:
