@@ -85,11 +85,11 @@ ul#go-terms li {
 
 /* Dropdown settings */
 
-.tile .dropdown-content {
+.js-tile .dropdown-content {
     width: max-content;
 }
 
-.tile .dropdown-item {
+.js-tile .dropdown-item {
     padding: 0.125rem 1rem;
 }
 
