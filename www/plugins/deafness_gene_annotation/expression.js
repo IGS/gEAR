@@ -112,11 +112,8 @@ function deafness_plugin_gene_change() {
     let deafness_gene_annotation_html = document.getElementById('deafness_gene_annotation_html_c').innerHTML;
     oselector_c.insertAdjacentHTML('afterend', deafness_gene_annotation_html);
 
-    console.log("Element inserted!");
-    
-
     // then destroy the initial placement
-    //document.getElementById("deafness_gene_annotation_html_c").remove();
+    document.getElementById("deafness_gene_annotation_html_c").remove();
 
     // get the data files
     fetch("./plugins/deafness_gene_annotation/impc_data.json")
