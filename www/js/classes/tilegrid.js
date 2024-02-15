@@ -107,7 +107,9 @@ class TileGrid {
 
         selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
 
-        const maxRows = Math.max(...tiles.map(tile => tile.tile.end_row));
+        console.log(this.tiles);
+
+        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.end_row));
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
 
         // Build the CSS grid using the start_row, start_col, end_row, and end_col properties of each tile
@@ -224,6 +226,11 @@ class DatasetTile {
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
         this.tile = this.generateTile();
+
+        // Set the end row and end col based on the start row and start col
+        this.tile.end_row = this.tile.start_row + this.tile.height,
+        this.tile.end_col = this.tile.start_col + this.tile.width,
+
         this.tile.html = this.generateTileHTML();
 
         this.performingProjection = false;  // Indicates whether a projection is currently being performed
@@ -246,11 +253,8 @@ class DatasetTile {
             width: this.type === "single" ? grid_width : mg_grid_width,
             // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
             height: this.type === "single" ? grid_height : mg_grid_height,
-
             start_row: this.type === "single" ? start_row : mg_start_row,
-            end_row: this.start_row + this.height,
             start_col: this.type === "single" ? start_col : mg_start_col,
-            end_col: this.start_col + this.width,
             tile_id: `${id}_${grid_position}_${this.type}`,
             used: false,
             title,
