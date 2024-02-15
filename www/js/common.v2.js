@@ -43,10 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // If the user has agreed to the site's beta status, don't show the modal
-    const beta_cookie = Cookies.get('gear_beta_agreed');
-    if (beta_cookie != "true") {
-        document.querySelector('#beta-site-modal').classList.add('is-active');
+    const betaSiteModal = document.getElementById('beta-site-modal');
+    const betaCookie = Cookies.get('gear_beta_agreed');
+    if (betaCookie != "true") {
+        betaSiteModal.classList.add('is-active');
     }
+
+    /**
+     * Temporary code to handle the warning modal while in beta mode
+     */
+    document.getElementById('beta-modal-agree').addEventListener('click', () => {
+        Cookies.set('gear_beta_agreed', 'true', { expires: 7 });
+        betaSiteModal.classList.remove('is-active');
+    });
 
 /**
  * Controls for the left navbar visibility
@@ -136,18 +145,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const navbar_toggler = document.querySelector('#navbar-toggler');
+    const navbarToggler = document.querySelector('#navbar-toggler');
 
-    navbar_toggler.addEventListener('click', (event) => {
+    navbarToggler.addEventListener('click', (event) => {
         if (SIDEBAR_COLLAPSED == false) {
             hideNavbarElementsWithAnimation();
             SIDEBAR_COLLAPSED = true;
             Cookies.set('gear_sidebar_collapsed', true, { expires: 7 });
-        } else {
-            showNavbarElementsWithAnimation();
-            SIDEBAR_COLLAPSED = false;
-            Cookies.set('gear_sidebar_collapsed', false, { expires: 7 });
+            return;
         }
+        showNavbarElementsWithAnimation();
+        SIDEBAR_COLLAPSED = false;
+        Cookies.set('gear_sidebar_collapsed', false, { expires: 7 });
     });
 
     // now, if the page was initially loaded check and see if this has already been toggled via a cookie
@@ -167,6 +176,29 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * / End controls for the left navbar visibility
  */
+
+    /*************************************************************************************
+     Code related to the login process, which is available in the header across all pages.
+    *************************************************************************************/
+
+    document.getElementById('submit-login').addEventListener('click', (event) => {
+        event.preventDefault(); // Prevent the default form submission
+
+        // reset any UI elements
+        document.getElementById('user-email-help').classList.add('is-hidden');
+        document.getElementById('user-password-help').classList.add('is-hidden');
+
+        // try to log in
+        doLogin();
+    });
+
+    document.getElementById('submit-logout').addEventListener('click', (event) => {
+        // Clear session information and redirect to home page
+        Cookies.remove('gear_session_id');
+        CURRENT_USER = undefined;
+        window.location.replace('./index.html');
+    });
+
 
     checkForLogin();
 });
@@ -220,36 +252,6 @@ const closeAllModals = () => {
         closeModal($modal);
     });
 }
-
-/**
- * Temporary code to handle the warning modal while in beta mode
- */
-document.getElementById('beta-modal-agree').addEventListener('click', () => {
-    Cookies.set('gear_beta_agreed', 'true', { expires: 7 });
-    document.querySelector('#beta-site-modal').classList.remove('is-active');
-});
-
-/*************************************************************************************
- Code related to the login process, which is available in the header across all pages.
-*************************************************************************************/
-
-document.getElementById('submit-login').addEventListener('click', (event) => {
-    event.preventDefault(); // Prevent the default form submission
-
-    // reset any UI elements
-    document.getElementById('user-email-help').classList.add('is-hidden');
-    document.getElementById('user-password-help').classList.add('is-hidden');
-
-    // try to log in
-    doLogin();
-});
-
-document.getElementById('submit-logout').addEventListener('click', (event) => {
-    // Clear session information and redirect to home page
-    Cookies.remove('gear_session_id');
-    CURRENT_USER = undefined;
-    window.location.replace('./index.html');
-});
 
 /**
  * Checks if the user is logged in and performs necessary UI updates.
@@ -816,6 +818,17 @@ const apiCallsMixin = {
      */
     async fetchOrganismList() {
         const {data} = await axios.post(`/cgi/get_organism_list.cgi`);
+        return data;
+    },
+    /**
+     * Fetches orthologs for a given dataset and gene symbols.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string[]} geneSymbols - An array of gene symbols.
+     * @returns {Promise<any>} - A promise that resolves to the fetched ortholog data.
+     */
+    async fetchOrthologs(datasetId, geneSymbols, geneOrganismId=null) {
+        const payload = { session_id: this.sessionId, gene_symbols:geneSymbols, gene_organism_id: geneOrganismId };
+        const {data} = await axios.post(`/api/h5ad/${datasetId}/orthologs`, payload);
         return data;
     },
     /**

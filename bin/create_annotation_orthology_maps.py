@@ -2,7 +2,7 @@
 
 """
 
-Transforms a directory of orthology and ID mapping files into a data structure (h5) we can 
+Transforms a directory of orthology and ID mapping files into a data structure (h5) we can
 more rapidly access.
 
 Expected files:
@@ -34,10 +34,11 @@ Output format:
 
 Dataframe where:
 
-  - Source identifier (index)
+  - Source identifier
   - Source gene symbol
   - Target identifier
   - Target gene symbol
+  - Number of orthology algorithms supporting this mapping
 
 """
 
@@ -59,7 +60,7 @@ def main():
                  9606: 2,
                  10090: 1,
                  10116: 6,
-                 6239: 8
+    #             6239: 8
     }
 
     # load each of the annotations
@@ -67,9 +68,10 @@ def main():
     for taxon_id in taxon_ids:
         annotation_file_path = "{0}/id.map.{1}.tab".format(args.input_directory, taxon_id)
         refannot[taxon_id] = load_annotation(annotation_file_path)
-            
+
     orthofile_path = "{0}/ORTHOLOGY-ALLIANCE_COMBINED.tsv".format(args.input_directory)
-    orthomap = load_orthomap(orthofile_path)
+    orthomap_df = load_orthomap_df(orthofile_path)
+
 
     #orthomap.10090.ensembl.93__7955.ensembl.95.hdf5
 
@@ -78,47 +80,49 @@ def main():
             if tx1 == tx2:
                 continue
 
-            identifiers = list()
-            annot = {'gs1': [], 'id2': [], 'gs2': []}
-
             print("\t\tProcessing orthomap between {0} and {1}".format(tx1, tx2), file=sys.stderr)
 
-            for g1_id in orthomap[tx1][tx2]:
-                # For some reason there are identifiers in the ortholog map which aren't found in
-                #  their own annotation references, such as ZFIN:ZDB-GENE-041111-196 (as of 2022-09-12
-                #  We can only skip them.
-                if g1_id in refannot[tx1]:
-                    g2_id = orthomap[tx1][tx2][g1_id]['winning_id']
-                    
-                    if g2_id in refannot[tx2]:
-                        identifiers.append(refannot[tx1][g1_id]['ensembl_id'])
-                        annot['gs1'].append(refannot[tx1][g1_id]['gene_symbol'])
-                        annot['id2'].append(refannot[tx2][g2_id]['ensembl_id'])
-                        annot['gs2'].append(refannot[tx2][g2_id]['gene_symbol'])
-                    else:
-                        print("WARN: feature ({0}) found in ortholog mapping but has no entry in taxon ({1}) reference file".format(g2_id, tx2))
-                        continue
-                else:
-                    print("WARN: feature ({0}) found in ortholog mapping but has no entry in taxon ({1}) reference file".format(g1_id, tx1))
-                    continue
+            # filter dataframe to only include the query and target taxon ids
+            orthomap_df_filtered = orthomap_df[(orthomap_df["query_taxon_id"] == str(tx1)) & (orthomap_df["target_taxon_id"] == str(tx2))].copy()
 
+            # For some reason there are identifiers in the ortholog map which aren't found in
+            #  their own annotation references, since they are only provisional in Ensembl. (think atoh1b in zebrafish)
+            #  We can only skip them.
+
+            # Add ensmbl ids and gene symbols for query and target genes
+            orthomap_df_filtered["id1"] = orthomap_df_filtered["query_gene_id"].map(lambda x: refannot[tx1].get(x, {}).get('ensembl_id', None))
+            orthomap_df_filtered["id2"] = orthomap_df_filtered["target_gene_id"].map(lambda x: refannot[tx2].get(x, {}).get('ensembl_id', None))
+
+            orthomap_df_filtered["gs1"] = orthomap_df_filtered["query_gene_id"].map(lambda x: refannot[tx1].get(x, {}).get('gene_symbol', None))
+            orthomap_df_filtered["gs2"] = orthomap_df_filtered["target_gene_id"].map(lambda x: refannot[tx2].get(x, {}).get('gene_symbol', None))
+
+            # drop rows where the query or target gene symbols are missing
+            orthomap_df_filtered = orthomap_df_filtered.dropna(subset=["id1", "id2"])
+
+            # drop the query and target taxon ids
+            orthomap_df_filtered = orthomap_df_filtered.drop(columns=["query_taxon_id", "target_taxon_id"])
+
+            # reorder the columns
+            orthomap_df_filtered = orthomap_df_filtered[["id1", "gs1", "id2", "gs2", "algorithms_match_count"]]
+
+            # Write the dataframe to an h5 file
             h5_file_path = os.path.abspath("{0}/orthomap.{1}.ensembl__{2}.ensembl.hdf5".format(
                 args.output_directory, taxon_ids[tx1], taxon_ids[tx2]))
-            df = pd.DataFrame(annot, index=identifiers)
-            df.to_hdf(os.path.basename(h5_file_path), os.path.dirname(h5_file_path))
-    
+
+            orthomap_df_filtered.to_hdf(h5_file_path, key="orthomap", mode="w")
+
 def load_annotation(fpath):
     """
     There can be duplicates in the annotation. For example:
 
-    NCBITaxon:7955	ENSDARG00000009582	ZFIN:ZDB-GENE-050517-19	abcc6b.1	
+    NCBITaxon:7955	ENSDARG00000009582	ZFIN:ZDB-GENE-050517-19	abcc6b.1
     NCBITaxon:7955	ENSDARG00000105403	ZFIN:ZDB-GENE-050517-19	abcc6b.1
 
     Both gene identifiers have the  same gene symbol but map to different Ensembl IDs. Each
     instance of this I checked showed the older Ensembl ID to have been removed
     from the Ensembl database and replaced by the newer one.
 
-    Found a few instances of weirdness. For example, in their annotation files, one 
+    Found a few instances of weirdness. For example, in their annotation files, one
     rat identifier is annotated with both mouse and rat ensembl id:
 
     NCBITaxon:10116	ENSMUSG00000018326	RGD:61998	Ywhab	56011
@@ -140,7 +144,7 @@ def load_annotation(fpath):
 
         if line_num == 1:
             continue
-        
+
         line = line.rstrip()
         cols = line.split("\t")
         feat_ids = cols[2].split(',')
@@ -158,47 +162,27 @@ def load_annotation(fpath):
 
     return annotation
 
-def load_orthomap(fpath):
+def load_orthomap_df(fpath):
     """
     The Genome Alliance orthology map can contain multiple matches for any query, even
-    against the same target genome. For each pairing this currently filters out the one
-    with the most tools matching. In the case of a tie, the first gene is chosen.
+    against the same target genome. This function returns a dataframe with all of the
+    matches for the query genome.
     """
-    omap = dict()
-    line_num = 0
-    for line in open(fpath):
-        if line[0] == '#':
-            continue
 
-        line_num += 1
+    # create the dataframe from the orthology file
+    o_df = pd.read_csv(fpath, sep="\t", comment="#", header=0)
+    o_df = o_df.dropna()
 
-        if line_num == 1:
-            continue
-        
-        line = line.rstrip()
-        cols = line.split("\t")
+    # create a second dataframe with just the query and target taxon ids and gene ids
+    final_o_df = pd.DataFrame()
+    final_o_df["query_taxon_id"] = o_df["Gene1SpeciesTaxonID"].str.split(":").str[1]
+    final_o_df["query_gene_id"] = o_df["Gene1ID"]
+    final_o_df["target_taxon_id"] = o_df["Gene2SpeciesTaxonID"].str.split(":").str[1]
+    final_o_df["target_gene_id"] = o_df["Gene2ID"]
+    final_o_df["algorithms_match_count"] = o_df["AlgorithmsMatch"]
 
-        gene1_id  = cols[0]
-        gene1_tax = int(cols[2].split(":")[1])
-        gene2_id  = cols[4]
-        gene2_tax = int(cols[6].split(":")[1])
-        algos_match = int(cols[9])
+    return final_o_df
 
-        if gene1_tax not in omap:
-            omap[gene1_tax] = dict()
-
-        if gene2_tax not in omap[gene1_tax]:
-            omap[gene1_tax][gene2_tax] = dict()
-
-        if gene1_id not in omap:
-            omap[gene1_tax][gene2_tax][gene1_id] = {'match_count': 0, 'winning_id': None}
-
-        if algos_match > omap[gene1_tax][gene2_tax][gene1_id]['match_count']:
-            omap[gene1_tax][gene2_tax][gene1_id] = {'match_count': algos_match, 'winning_id': gene2_id}
-
-    return omap
-    
-        
 if __name__ == '__main__':
     main()
 

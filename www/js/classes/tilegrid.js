@@ -83,12 +83,6 @@ class TileGrid {
             }
             document.querySelector(selector).append(tilegridHTML);
         }
-
-        // Make all card-header titles the same height
-        //const cardHeaderTitles = document.querySelectorAll(`${selector} .card-header`);
-        //const cardHeaderTitleHeight = Math.max(...Array.from(cardHeaderTitles).map(e => e.offsetHeight));
-        //cardHeaderTitles.forEach(e => e.style.height = `${cardHeaderTitleHeight}px`);
-
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -194,17 +188,61 @@ class TileGrid {
             throw new Error("Gene symbol or symbols are required to render displays.");
         }
 
+        // Adapt geneSymbols to an array if it is not already
         let geneSymbolInput = geneSymbols;
         if (!isMultigene) {
-            geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols[0] : geneSymbols;
+            geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols : [geneSymbols];
         }
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
         for (const tile of this.tiles) {
-            await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod);
-        }
+            const tileId = tile.tile.tile_id;
+            const tileElement = document.getElementById(`tile_${tileId}`);
 
-        // await Promise.allSettled(this.tiles.map( async tile => await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod)));
+            // Clear the tile content so ortholog dropdown does not duplicate
+            const optionContent = tileElement.querySelector('.content');
+            optionContent.replaceChildren();
+
+            await tile.getOrthologs(geneSymbolInput)
+
+            // If no genes were found, then raise an error
+            // This should never happen as geneSymbolInput should be a key in the orthologs object
+            if (Object.keys(tile.orthologs).length === 0) {
+                throw new Error("Should never happen. Please contact the gEAR team.");
+            }
+
+            // Make a list out of the first ortholog for each gene and flatten the list
+            tile.orthologsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
+
+            if (tile.orthologsToPlot.length === 0) {
+                const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
+                // render a warning image
+                // Fill in card-image with error message
+                const cardImage = tileElement.querySelector('.card-image');
+                cardImage.replaceChildren();
+
+                const template = document.getElementById('tmpl-tile-grid-error');
+                const errorHTML = template.content.cloneNode(true);
+                const errorElement = errorHTML.querySelector('p');
+                errorElement.textContent = message;
+                cardImage.append(errorHTML);
+
+                // skip to the next tile
+                continue;
+            }
+
+            // Get the first ortholog for each gene (needed for multigene plots, and initial single-gene plots).
+            const orthologs = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()[0]).flat();
+
+            // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
+            if (!isMultigene && tile.orthologsToPlot.length > 1) {
+                tile.renderOrthologDropdown(tile.orthologsToPlot);
+            }
+
+            // Plot and render the display
+            await tile.renderDisplay(orthologs, null, svgScoringMethod);
+
+        }
     }
 };
 
@@ -218,6 +256,8 @@ class DatasetTile {
 
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+        this.orthologs = null;
+        this.orthologsToPlot = null;
 
         this.tile = this.generateTile();
         this.tile.html = this.generateTileHTML();
@@ -278,6 +318,27 @@ class DatasetTile {
         this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
 
         return tileHTML;
+    }
+
+    /**
+     * Retrieves orthologs for the given gene symbols.
+     * @param {Array<string>} geneSymbols - The gene symbols to retrieve orthologs for.
+     * @returns {Promise<void>} - A promise that resolves when the orthologs are fetched.
+     */
+    async getOrthologs(geneSymbols) {
+        if (this.orthologs) {
+            this.orthologs = null;
+        }
+
+        const geneOrganismId = CURRENT_USER.default_org_id || null;
+
+        try {
+            const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
+
+            this.orthologs = data.mapping;
+        } catch (error) {
+            logErrorInConsole(error);
+        }
     }
 
     /**
@@ -434,6 +495,89 @@ class DatasetTile {
         }
     }
 
+    renderOrthologDropdown(orthologs) {
+        const orthoTemplate = document.getElementById('tmpl-tile-grid-ortholog-dropdown');
+        const orthoHTML = orthoTemplate.content.cloneNode(true);
+
+        const orthoElement = orthoHTML.querySelector('.js-ortholog-dropdown');
+        orthoElement.dataset.datasetId = this.dataset.id;
+
+        // Populate the dropdown-items with the orthologs
+        const dropdownContent = orthoHTML.querySelector('.dropdown-content');
+        dropdownContent.replaceChildren();
+
+        for (const ortholog of orthologs) {
+            const orthologItem = document.createElement("a");
+            orthologItem.classList.add("dropdown-item");
+            orthologItem.textContent = ortholog;
+
+            // If ortholog is clicked, render display using that ortholog
+            orthologItem.addEventListener("click", async (event) => {
+                // Set clicked item as active
+                const allItems = dropdownContent.querySelectorAll('.dropdown-item');
+                for (const item of allItems) {
+                    item.classList.remove("is-active");
+                }
+                orthologItem.classList.add("is-active");
+
+                const ortholog = event.currentTarget.textContent;
+                this.orthologsToPlot = [ortholog];
+
+                // close dropdown
+                orthoElement.classList.remove('is-active');
+
+                await this.renderDisplay(this.orthologsToPlot, this.currentDisplayId, this.svgScoringMethod);
+
+            });
+
+            dropdownContent.append(orthologItem);
+        }
+
+        // Make first dropdown item active
+        const firstItem = dropdownContent.querySelector('.dropdown-item');
+        firstItem.classList.add("is-active");
+
+        // Add event listener to dropdown trigger
+        orthoElement.querySelector(".dropdown-trigger button").addEventListener("click", (event) => {
+            const item = event.currentTarget;
+            const triggerElt = item.parentElement;
+
+            // close other dropdowns
+            for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                if (triggerElt !== dropdown.querySelector('.dropdown-trigger')) {
+                    dropdown.classList.remove('is-active');
+                }
+            };
+
+            const arrow = item.querySelector('i');
+
+            // Close dropdown if already active
+            if (orthoElement.classList.contains('is-active')) {
+                orthoElement.classList.remove('is-active');
+                arrow.classList.replace('mdi-chevron-up', 'mdi-chevron-down');
+                return;
+            }
+
+            orthoElement.classList.add('is-active');
+            arrow.classList.replace('mdi-chevron-down', 'mdi-chevron-up');
+
+        });
+
+        // Click off dropdown to close
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.dropdown')) {
+                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                    dropdown.classList.remove('is-active');
+                }
+            }
+        });
+
+        // Add dropdown to tile
+        const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
+        const cardContent = tileElement.querySelector('.content');
+        cardContent.append(orthoHTML);
+    }
+
     /**
      * Adds dropdown information to a tile element.
      *
@@ -470,14 +614,14 @@ class DatasetTile {
                     // Zoom panel to take up all of "#result-panel-grid"
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");  
+                        createToast("This feature is not yet implemented.", "is-warning");
                     });
                     break;
                 case "info":
                     // Modal for dataset information
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");  
+                        createToast("This feature is not yet implemented.", "is-warning");
                     });
                     break;
                 case "publication":
@@ -500,7 +644,7 @@ class DatasetTile {
                     // Modal for notes
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");  
+                        createToast("This feature is not yet implemented.", "is-warning");
                     });
                     break;
                 case "single-cell":
@@ -623,14 +767,14 @@ class DatasetTile {
 
     /**
      * Renders the display for a given gene symbol.
-     * @param {string} geneSymbol - The gene symbol to render the display for.
+     * @param {string} geneSymbolInput - The gene symbol(s) to render the display for.
      * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
      * @param {string} svgScoringMethod - The SVG scoring method to use.
      * @throws {Error} If geneSymbol is not provided.
      * @returns {Promise<void>} A promise that resolves when the display is rendered.
      */
-    async renderDisplay(geneSymbol, displayId=null, svgScoringMethod="gene") {
-        if (!geneSymbol) {
+    async renderDisplay(geneSymbolInput, displayId=null, svgScoringMethod="gene") {
+        if (!geneSymbolInput) {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
 
@@ -638,7 +782,7 @@ class DatasetTile {
             displayId = this.defaultDisplayId;
         };
 
-        this.geneSymbol = geneSymbol;
+        geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
         this.svgScoringMethod = svgScoringMethod;
 
         this.resetAbortController();
@@ -702,9 +846,9 @@ class DatasetTile {
 
         // Add gene or genes to plot config
         if (this.type === "multi") {
-            display.plotly_config.gene_symbols = geneSymbol;
+            display.plotly_config.gene_symbols = geneSymbolInput;
         } else {
-            display.plotly_config.gene_symbol = geneSymbol;
+            display.plotly_config.gene_symbol = geneSymbolInput;
         }
         const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
         //cardContent.classList.add("loader");
