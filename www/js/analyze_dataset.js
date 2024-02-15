@@ -46,6 +46,7 @@ window.onload=() => {
         // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
         await get_dataset_info($("#dataset_id").val());
         load_preliminary_figures($("#dataset_id").val());
+
     });
 
     // This series traps the <enter> key within each form and fires a click event on
@@ -110,7 +111,13 @@ window.onload=() => {
     });
 
     $("#btn_louvain_rerun_with_groups").on('click', function() {
-        var duplicate_count = current_analysis.marker_genes.count_and_highlight_duplicates();
+        $('#marker_genes_group_labels td.group_user_label input').removeClass('duplicate');
+        if ($("#louvain_merge_clusters").is(':checked') ) {
+            check_dependencies_and_run(run_analysis_louvain);
+            return;
+        }
+
+        const duplicate_count = current_analysis.marker_genes.count_and_highlight_duplicates();
         if (duplicate_count == 0) {
             check_dependencies_and_run(run_analysis_louvain);
         }
@@ -192,12 +199,24 @@ window.onload=() => {
         if ($(this).find(':selected').data('analysis-id') == "0") {
             reset_workbench();
 
+            $("#primary_analysis_notification").hide();
             $("#analysis_action_c").hide();
             $("#analysis_status_info").text("");
             $("#analysis_status_info_c").hide();
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").hide();
+
+            current_analysis = new Analysis({'dataset_id': $("#dataset_id").val(),
+            'type': 'primary',
+            'dataset_is_raw': true});
+            // Need to reload prelim step so qc_by_mito toggle will work
+            $("#dataset_info").show();
+            load_preliminary_figures($("#dataset_id").val());
+
+            $('#analysis_id').selectpicker('refresh');
+            $("#stored_analyses_c").show(10);
+
             return;
         }
         show_working("Loading stored analysis");
@@ -208,8 +227,9 @@ window.onload=() => {
         const analysis_type = $(this).find(':selected').data('analysis-type');
 
         load_stored_analysis($(this).find(':selected').data('analysis-id'),
-         analysis_type,
-         $(this).find(':selected').data('dataset-id'));
+            analysis_type,
+            $(this).find(':selected').data('dataset-id')
+        );
 
         if (analysis_type == 'user_unsaved') {
             $("#primary_analysis_notification").hide();
@@ -218,7 +238,9 @@ window.onload=() => {
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").show();
-        } else if (analysis_type == 'user_saved') {
+            return;
+        }
+        if (analysis_type == 'user_saved') {
             $("#primary_analysis_notification").hide();
             $("#analysis_action_c").hide();
             $("#analysis_status_info").text("This analysis is stored in your profile.");
@@ -226,7 +248,9 @@ window.onload=() => {
             $("#btn_make_public_copy").show();
             $("#btn_delete_saved_analysis").show();
             $("#btn_delete_unsaved_analysis").hide();
-        } else if (analysis_type == 'public') {
+            return;
+        }
+        if (analysis_type == 'public') {
             $("#primary_analysis_notification").hide();
             $("#analysis_action_c").hide();
             $("#analysis_status_info").text("Changes made to this public analysis will spawn a local copy within your profile.");
@@ -234,7 +258,9 @@ window.onload=() => {
             $("#btn_make_public_copy").hide();
             $("#btn_delete_saved_analysis").hide();
             $("#btn_delete_unsaved_analysis").hide();
-        } else if (analysis_type == 'primary') {
+            return;
+        }
+        if (analysis_type == 'primary') {
             $("#primary_analysis_notification").show();
             $("#analysis_action_c").hide();
             $("#analysis_status_info_c").hide();
@@ -832,7 +858,7 @@ async function get_dataset_info(dataset_id) {
         update_selected_dataset(ds);
         $("#dataset_info").show();
         $("#analysis_list_c").show();
-        analysis_labels = current_analysis.get_saved_analyses_list(ds.id, 0);
+        analysis_labels = current_analysis.get_saved_analyses_list(ds.id, 0, 'sc_workbench');
         done_working();
     }).fail((xhr, status, msg) => {
         report_error("Failed to access dataset");
@@ -1010,9 +1036,11 @@ function reset_workbench() {
     $("div.empty_on_change").empty();
     $("tbody.empty_on_change").empty();
     $("input#new_analysis_label").val('');
+    $('#top_genes strong').empty();
 
     // Hide any non-analysis-flow steps
     $("#analysis_sbs_tsne").hide();
+    $("#group_labels_c").hide();
 
     // Toggle the tool buttons to hide them in the UI
     $('.tooltoggle').bootstrapToggle('off');
@@ -1072,25 +1100,50 @@ function run_analysis_louvain() {
     show_working("Computing Louvain clusters");
     $("#analysis_louvain div.image_result_c").empty();
 
-    var compute_louvain = true;
+    const is_same_louvain_params = (current_analysis.louvain.n_neighbors == $("#louvain_n_neighbors").val()
+    && current_analysis.louvain.resolution == $("#louvain_resolution").val())
 
-    current_analysis.group_labels = [];
-    $("input[name='group_labels[]']").each(function() {
-        current_analysis.group_labels.push($(this).val());
-    });
-    // update gene comparison options to include new labels
-    current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
+    let compute_louvain = true;
 
-    // TODO: check parameters to be sure we don't need to recluster
-    if (current_analysis.louvain.calculated == true) {
-        if (current_analysis.louvain.n_neighbors == $("#louvain_n_neighbors").val() &&
-            current_analysis.louvain.resolution == $("#louvain_resolution").val()) {
-            compute_louvain = false;
-        }
+    const old_labels = [...current_analysis.group_labels];  // shallow-copy
+    const new_labels = [];
+    const kept_labels = [];
+
+    // It is not safe to reuse group labels if the clustering params were changed
+    if (is_same_louvain_params) {
+        $("input[name='group_labels[]']").each(function() {
+            new_labels.push($(this).val());
+
+            // Do we keep this cluster?
+            const this_row = $(this).closest("tr");
+            const this_check = $(this_row).children("td.group_keep_chk").children("input");
+            if ($(this_check).is(":checked")) {
+                kept_labels.push(true);
+            } else {
+                kept_labels.push(false);
+            }
+        });
     }
 
-    var plot_tsne = 0;
-    var plot_umap = 0;
+    const cluster_info = [];
+
+    if (current_analysis.louvain.calculated == true && is_same_louvain_params) {
+        compute_louvain = false;
+        current_analysis["group_labels"].forEach((v, i) => {
+            cluster_info.push({
+                "old_label": old_labels[i]
+                , "new_label": new_labels[i]
+                , "keep": kept_labels[i]
+            })
+        });
+    }
+
+    if (compute_louvain == true) {
+        $("#group_labels_c").hide();
+    }
+
+    let plot_tsne = 0;
+    let plot_umap = 0;
 
     if ($("#dimensionality_reduction_method_tsne").is(":checked")) {
         plot_tsne = 1;
@@ -1104,13 +1157,13 @@ function run_analysis_louvain() {
         type: "POST",
         url: "./cgi/h5ad_generate_louvain.cgi",
         data: {'dataset_id': current_analysis.dataset_id, 'analysis_id': current_analysis.id,
-               'analysis_type': current_analysis.type, 'session_id': current_analysis.user_session_id,
-               'resolution': $("#louvain_resolution").val(),
-               'compute_louvain': compute_louvain,
-               'plot_tsne': plot_tsne,
-               'plot_umap': plot_umap,
-               'group_labels': JSON.stringify(current_analysis.group_labels)
-              },
+                'analysis_type': current_analysis.type, 'session_id': current_analysis.user_session_id,
+                'resolution': $("#louvain_resolution").val(),
+                'compute_louvain': compute_louvain,
+                'plot_tsne': plot_tsne,
+                'plot_umap': plot_umap,
+                'cluster_info': JSON.stringify(cluster_info),
+                },
         dataType: "json",
         success: function(data) {
             if (data['success'] == 1) {
@@ -1121,11 +1174,21 @@ function run_analysis_louvain() {
                 current_analysis.louvain.plot_umap = plot_umap;
                 current_analysis.louvain.update_ui(current_analysis);
 
+                if (data["group_labels"].length) {
+                    // Update the group labels for the analysis, marker genes, and gene comparison
+                    current_analysis.group_labels = []
+                    current_analysis.marker_genes.populate_marker_genes_labels(current_analysis, data)
+
+                    // Now update the labels so they work with gene comparison
+                    current_analysis.group_labels = data['group_labels'].map(x => x.genes);
+                    current_analysis.gene_comparison.populate_group_selectors(current_analysis.group_labels);
+                }
+
+
                 $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain clusters computed");
                 $('#louvain_run_c .js-next-step').show();  // Show that next toggle can be clicked
             } else {
-                $('#btn_louvain_run').attr("disabled", false);
                 done_working("Louvain cluster compute failed.");
             }
         },

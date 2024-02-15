@@ -14,6 +14,11 @@ TODOs:
 - hide the annotation panel when multi-gene searches are displayed
 - check if the user has a stored default profile and select that one if none were passed (index page too)
 - If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
+- Page currently doesn't seem to be submitting history events
+- Entire annotation section should be collapsible, leaving only gene name and product
+- Scrolling of datasets in collection should still show gene list
+- When changing genes the tiles need to show 'loading' states before redrawing
+- When changing scopes the tiles need to show 'loading' states before redrawing
 */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,12 +36,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
+        let previously_manual_genes = manually_entered_genes;
 
         if (search_term_string.length > 0) {
-            // split the string into an array of genes by spaces or commas
             manually_entered_genes = search_term_string.split(/[ ,]+/);
-            selected_genes = [...new Set([...selected_genes, ...manually_entered_genes])];
+        } else {
+            manually_entered_genes = [];
         }
+
+        // if any genes have been removed since last time, we need to remove them from the selected_genes array
+        manually_entered_genes.forEach((gene) => {
+            previously_manual_genes = previously_manual_genes.filter((g) => g !== gene);
+        });
+
+        previously_manual_genes.forEach((gene) => {
+            selected_genes.delete(gene);
+        });
+
+        selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
     document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
@@ -47,12 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
             annotation_panel.classList.remove('is-hidden');
             toggle_icon.classList.remove('mdi-chevron-down');
             toggle_icon.classList.add('mdi-chevron-up');
+            return;
 
-        } else {
-            annotation_panel.classList.add('is-hidden');
-            toggle_icon.classList.remove('mdi-chevron-up');
-            toggle_icon.classList.add('mdi-chevron-down');
         }
+        annotation_panel.classList.add('is-hidden');
+        toggle_icon.classList.remove('mdi-chevron-up');
+        toggle_icon.classList.add('mdi-chevron-down');
     });
 
     // add event listener for when the submit-expression-search button is clicked
@@ -66,6 +83,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // update multigene/single gene
         is_multigene = document.querySelector('#single-multi-multi').checked;
+
+        // if multigene, clear the selected gene symbol and hide the gene-result-list container
+        document.getElementById("gene-result-list-c").classList.remove('is-hidden');
+        document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
+        document.getElementById("annotation-panel").classList.remove('is-hidden');
+        document.getElementById("scoring-method-div").classList.remove('is-hidden');
+        if (is_multigene) {
+            currently_selected_gene_symbol = null;
+            document.getElementById("gene-result-list-c").classList.add('is-hidden');
+            document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
+            document.getElementById("annotation-panel").classList.add('is-hidden');
+            document.getElementById("scoring-method-div").classList.add('is-hidden');
+        }
+
 
         try {
             const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
@@ -90,19 +121,16 @@ document.addEventListener('DOMContentLoaded', () => {
             showOrganismSelectorToolip();
             document.querySelector('#set-default-organism').classList.add('is-hidden');
             return;
-        } else {
-            hideOrganismSelectorToolip();
-            updateAnnotationDisplay();
+        }
+        hideOrganismSelectorToolip();
+        updateAnnotationDisplay();
 
-            // If the user is logged in and doesn't have a default org ID or it's different from their current,
-            //  show the control
-            if (CURRENT_USER.session_id) {
-                if (CURRENT_USER.default_org_id === undefined || CURRENT_USER.default_org_id !== currently_selected_org_id) {
-                    document.querySelector('#set-default-organism').classList.remove('is-hidden');
-                } else {
-                    document.querySelector('#set-default-organism').classList.add('is-hidden');
-                }
-            }
+        // If the user is logged in and doesn't have a default org ID or it's different from their current,
+        //  show the control
+        if (CURRENT_USER.session_id) {
+            const setDefaultOrganism = document.querySelector('#set-default-organism');
+            const shouldHide = CURRENT_USER.default_org_id === currently_selected_org_id;
+            setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
         }
     });
 
@@ -150,16 +178,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/**
+ * Fetches gene annotations.
+ * @param {Function} callback - The callback function to be executed after fetching gene annotations.
+ * @returns {Promise<void>} - A promise that resolves when the gene annotations are fetched.
+ */
 const fetchGeneAnnotations = async (callback) => {
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
-            selected_genes.join(','),
+            Array.from(selected_genes).join(','),
             document.querySelector('#gene-search-exact-match').checked
         );
 
-        //console.log(annotation_data);
+        // console.log(annotation_data);
 
-        document.querySelector('#gene-result-count').innerHTML = Object.keys(annotation_data).length;
+        const gene_result_count_elt = document.getElementById("gene-result-count");
+        gene_result_count_elt.innerHTML = Object.keys(annotation_data).length;
+        gene_result_count_elt.parentElement.classList.remove('is-hidden');
 
         if (Object.keys(annotation_data).length === 0) {
             const no_history_template = document.querySelector('#tmpl-gene-result-none-found');
@@ -226,7 +261,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
     if (url_params_passed) {
-        if (selected_dc_share_id && selected_genes.length > 0) {
+        if (selected_dc_share_id && selected_genes.size > 0) {
             document.querySelector('#submit-expression-search').click();
         }
     }
@@ -242,8 +277,8 @@ const parseGeneCartURLParams = () => {
     const gene_symbols = getUrlParameter('gene_symbol');
     if (gene_symbols) {
         document.querySelector('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
-        selected_genes = gene_symbols.split(',');
-
+        selected_genes = new Set(gene_symbols.split(','));
+        manually_entered_genes = Array.from(selected_genes);
         url_params_passed = true;
     }
 
@@ -313,8 +348,8 @@ const setupTileGrid = async (layout_share_id) => {
         // But we are using a string for clarity.
         if (is_multigene) {
             // Don't render yet if a gene is not selected
-            if (selected_genes.length) {
-                await tilegrid.renderDisplays(selected_genes, is_multigene);
+            if (selected_genes.size) {
+                await tilegrid.renderDisplays(Array.from(selected_genes), is_multigene);
             }
         } else {
             // Don't render yet if a gene is not selected
@@ -415,14 +450,12 @@ const updateAnnotationDisplay = () => {
             document.querySelector('#go-terms').appendChild(row);
         }
     }
-
-
 }
 
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (selected_genes.length + manually_entered_genes.length === 0) {
+    if (selected_genes.size + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }

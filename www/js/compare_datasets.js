@@ -598,7 +598,6 @@ const loadGeneCarts = async () => {
         }*/
 
     } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
 }
 
@@ -1091,9 +1090,10 @@ const updateGeneOptions = (geneSymbols) => {
         geneSelectElt.append(option);
     }
 
-    // Update the nice-select2 element to reflect this.
-    // This function is always called in the 1st view, so only update that
-    geneSelect.update();
+	// TODO: Had to disable geneSelect.update() until a gene cart is selected. This is a temporary adjustment to save memory
+
+    // Update the nice-select2 element to reflect select options
+    //geneSelect.update();
 
 	geneSelectElt.parentElement.classList.remove("is-loading");
 
@@ -1204,6 +1204,11 @@ const updatePlotAnnotations = (genes) => {
 // For plotting options, populate select menus with category groups
 const updateSeriesOptions = (classSelector, seriesArray) => {
 
+	if (!seriesArray.length) {
+		createToast("No categorical data series found for this dataset. Please choose another dataset or contact the gEAR team.");
+		return;
+	}
+
     for (const elt of document.getElementsByClassName(classSelector)) {
         elt.replaceChildren();
 
@@ -1223,6 +1228,7 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
 }
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
+	createToast("Gene cart saved successfully", "is-success");
 }
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

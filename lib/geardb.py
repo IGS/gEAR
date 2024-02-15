@@ -69,6 +69,32 @@ this.domain_label = _read_domain_label()
 this.domain_short_label = _read_domain_short_label()
 this.links_out = _read_domain_links_out()
 
+def get_analysis(analysis, dataset_id, session_id):
+    """Return analysis object based on various factors."""
+    # If an analysis is posted we want to read from its h5ad
+    if analysis:
+        user = get_user_from_session_id(session_id)
+        user_id = None
+        if user:
+            user_id = user.id
+
+        ana = Analysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=user_id)
+
+        if 'type' in analysis:
+            ana.type = analysis['type']
+        else:
+            ana.discover_type(current_user_id=user_id)
+    else:
+        ds = Dataset(id=dataset_id, has_h5ad=1)
+        h5_path = ds.get_file_path()
+
+        # Let's not fail if the file isn't there
+        if not os.path.exists(h5_path):
+            raise FileNotFoundError("No h5 file found for this dataset")
+        ana = Analysis(type='primary', dataset_id=dataset_id)
+    return ana
+
 def get_dataset_by_id(id=None, include_shape=None):
     """
     Given a dataset ID string this returns a Dataset object with all attributes
