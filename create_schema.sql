@@ -357,12 +357,12 @@ CREATE TABLE layout_members (
        dataset_id               VARCHAR(50) NOT NULL,
        grid_position            INT NOT NULL,
        mg_grid_position         INT NOT NULL,
-       start_col                INT,
-       mg_start_col             INT,
+       start_col                INT NOT NULL DEFAULT 1,
+       mg_start_col             INT NOT NULL DEFAULT 1,
        grid_width               INT NOT NULL DEFAULT 4,
        mg_grid_width            INT NOT NULL DEFAULT 12,
-       start_row                INT,
-       mg_start_row             INT,
+       start_row                INT NOT NULL DEFAULT 1,
+       mg_start_row             INT NOT NULL DEFAULT 1,
        grid_height              INT NOT NULL DEFAULT 1, -- height is number of rows spanned, which is not based on a grid
        mg_grid_height           INT NOT NULL DEFAULT 1,
        math_preference          VARCHAR(50), -- options: 'raw', 'log2', 'log10'

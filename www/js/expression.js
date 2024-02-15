@@ -340,7 +340,6 @@ const setupTileGrid = async (layout_share_id) => {
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
-        tilegrid.generateTileGrid(is_multigene);
         tilegrid.applyTileGrid(is_multigene);
         await tilegrid.addDefaultDisplays();
 

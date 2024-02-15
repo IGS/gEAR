@@ -36,15 +36,6 @@ div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
     margin-top: 50px;
 }
-div#result-panel-grid .card {
-    /* https://github.com/jgthms/bulma/issues/218 */
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-div#result-panel-grid .card-content {
-    height: 100%;
-}
 section#annotation-panel,
 section#result-panel {
     background-color: #fbfcfd;
@@ -80,6 +71,12 @@ ul#go-terms {
 }
 ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
+}
+
+#result-panel-grid {
+    display: grid;
+    column-gap: 0.50rem;
+    row-gap: 0.50rem;
 }
 
 .card-image .svg svg {

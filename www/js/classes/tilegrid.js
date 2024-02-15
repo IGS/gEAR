@@ -18,10 +18,8 @@ class TileGrid {
         this.layout = [];   // this.getLayout();
 
         this.maxCols = 12 // highest number of columns in a row
-        this.maxRows = 3 // highest number of rows in a column
 
         this.tiles = [];
-        this.tilegrid = [] // this.generateTileGrid();
         this.selector = selector;
 
         //this.applyTileGrid();
@@ -57,150 +55,80 @@ class TileGrid {
      * Applies the tile grid to the specified selector element.
      */
     applyTileGrid() {
-        const tilegrid = this.tilegrid;
         const selector = this.selector;
 
         // Clear selector element
-        document.querySelector(selector).replaceChildren();
+        const selectorElt = document.querySelector(selector);
+        selectorElt.replaceChildren();
 
-        // All child tiles fit into a single parent in a vertical sense.
-        // If "is-vertical" is present, all children tiles will be stacked vertically
-        // If "tile" class does not have "is-vertical", then children tiles will be stacked horizontally
-        // A fully horizontal row of tiles will have a "is-ancestor" class
+        const tiles = [];
 
-        let thisAncestorTiles = new Set();  // Set of tiles that are in the same ancestor
-        let startingHeight = 0
+        for (const dataset of this.layout) {
+            const datasetTile = new DatasetTile(dataset, is_multigene);
+            tiles.push(datasetTile);
+        }
+        this.tiles = tiles;
 
-        for (let h = 0; h < this.tilegrid.length; h++) {
-            // Add all tiles in the row to the set of used tiles
-            for (const datasetTile of this.tilegrid[h]) {
-                if (datasetTile) thisAncestorTiles.add(datasetTile);
-            }
+        // sort by grid position
+        this.tiles.sort((a, b) => a.tile.grid_position - b.tile.grid_position);
 
-            // Create "is-ancestor" blocks.  Check if the every tile end_row is equal to the current row
-            const isAncestor = tilegrid[h].every(dt => dt?.tile.end_row === h + 1);
-            const tilegridHTML = document.createElement('div');
-            tilegridHTML.classList.add('tile', 'is-ancestor');
-            if (isAncestor) {
-                tilegridHTML.classList.add('is-ancestor');
+        // Legacy mode - if all tiles have start_col = 1, then we are in legacy mode
+        // These layouts were generated only with a "width" property
+        const legacyMode = this.tiles.every(tile => tile.tile.start_col === 1);
 
-                // if all used tiles are the same height, then create parent tile and add to ancestor
-                const tileHeight = tilegrid[h][0].tile.height;
-                if (tilegrid[h].every(tile => tile?.tile.height === tileHeight)) {
-                    for (const datasetTile of thisAncestorTiles) {
-                        const tile = datasetTile.tile;
-                        const tileChildHTML = tile.html;
+        // If in legacy mode, then we need to calculate the start_col and end_col and start_row and end_row
+        if (legacyMode) {
+            let currentCol = 1;
+            let currentRow = 1;
+            const maxEndCol = 13;   // 12 grid slots. CSS grid is 1-indexed, so 13 is the max
+            for (const tile of this.tiles) {
+                const tileWidth = Number(tile.tile.width);
+                const tileHeight = Number(tile.tile.height);
 
-                        const tileParentHTML = document.createElement('div');
-                        tileParentHTML.classList.add('tile', 'is-parent', 'p-1', `is-${tile.width}`);
-                        tileParentHTML.append(tileChildHTML);
-
-                        tilegridHTML.append(tileParentHTML);
-                    }
-                } else {
-                    // If all used tiles are not the same height, then check if there is a tile that spans the entire ancestor height
-
-                    // Find the tiles that span the entire ancestor height
-                    const maxHeightTile = [...thisAncestorTiles].find(dt => dt?.tile.start_row === startingHeight && dt?.tile.end_row === h + 1);
-                    if (maxHeightTile) {
-
-                        // Create parent tile, and append to the left of the ancestor group
-                        const tileParentHTML = document.createElement('div');
-                        tileParentHTML.classList.add('tile', 'is-parent', 'p-1', `is-${maxHeightTile.tile.width}`);
-                        tilegridHTML.append(tileParentHTML);
-                        const tileChildHTML = maxHeightTile.tile.html;
-                        tileParentHTML.append(tileChildHTML);
-                        tilegridHTML.prepend(tileParentHTML);
-                        // remove from usedTiles
-                        thisAncestorTiles.delete(maxHeightTile);
-
-
-                        const remaningWidth = this.maxCols - maxHeightTile.tile.width;
-                        this.renderVerticalTileNest(remaningWidth);
-
-                    }
+                // If end_col is greater than 13, then this tile is in the next row
+                if (currentCol + tileWidth > maxEndCol) {
+                    currentCol = 1;
+                    currentRow++;
                 }
 
 
-                thisAncestorTiles = new Set();
-                startingHeight = h + 1;
-                document.querySelector(selector).append(tilegridHTML);
+                tile.tile.start_col = currentCol;
+                tile.tile.end_col = currentCol + tileWidth;
+                tile.tile.start_row = currentRow;
+                tile.tile.end_row = currentRow + tileHeight;
 
+                currentCol += tileWidth;
             }
         }
 
-        //console.log(tilegrid)
-        //const subarrays = this.convertTileGridToSubarrays();
-        //console.log(subarrays);
+        // Add grid template information to the selector element.
+        // Max col is going to be 12 (since width is stored as 12-col format in db),
+        // and max row is max(end_row)
+
+        selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
+
+        const maxRows = Math.max(...tiles.map(tile => tile.tile.end_row));
+        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
+
+        // Build the CSS grid using the start_row, start_col, end_row, and end_col properties of each tile
+        for (const datasetTile of this.tiles) {
+            // Get HTML for the tile
+            const tile = datasetTile.tile;
+            const tileChildHTML = tile.html;
+
+            // Add the tile to the selector element
+            selectorElt.append(tileChildHTML);
+
+            // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
+            const tileElement = document.getElementById(`tile_${tile.tile_id}`);
+            tileElement.style.gridArea = `${tile.start_row} / ${tile.start_col} / ${tile.end_row} / ${tile.end_col}`;
+
+
+
+        }
 
         return;
 
-
-        for (const row of tilegrid) {
-            const tilegridHTML = document.createElement('div');
-            tilegridHTML.classList.add('tile', 'is-ancestor');
-            for (const col of row) {
-                const tile = col.tile;
-                const tileChildHTML = tile.html;
-
-                const tileParentHTML = document.createElement('div');
-                tileParentHTML.classList.add('tile', 'is-parent', 'p-1', `is-${tile.width}`);
-                tileParentHTML.append(tileChildHTML);
-
-                tilegridHTML.append(tileParentHTML);
-            }
-            document.querySelector(selector).append(tilegridHTML);
-        }
-
-    }
-
-    renderVerticalTileNest(remaningWidth) {
-
-        // for the remaining tiles, create "is-vertical" tile.
-        const verticalTile = document.createElement('div');
-        verticalTile.classList.add('tile', 'is-vertical', `is-${remaningWidth}`);
-
-    }
-
-    renderHorizontalTileNest() {
-
-    }
-
-    convertTileGridToSubarrays() {
-        const subarrays = [];
-        const visited = new Set();
-
-        for (let h = 0; h < this.tilegrid.length; h++) {
-            for (let w = 0; w < this.tilegrid[h].length; w++) {
-                const tile = this.tilegrid[h][w];
-                if (!visited.has(tile)) {
-                    visited.add(tile);
-
-                    const subarray = [];
-                    let width = 0;
-                    let height = 0;
-
-                    // Find the width and height of the block
-                    while (w + width < this.tilegrid[h].length && this.tilegrid[h][w + width] === tile) {
-                        width++;
-                    }
-                    while (h + height < this.tilegrid.length && this.tilegrid[h + height][w] === tile) {
-                        height++;
-                    }
-
-                    // Add the block to the subarray
-                    for (let k = h; k < h + height; k++) {
-                        for (let l = w; l < w + width; l++) {
-                            subarray.push(this.tilegrid[k][l]);
-                        }
-                    }
-
-                    subarrays.push(subarray);
-                }
-            }
-        }
-
-        return subarrays;
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -216,83 +144,6 @@ class TileGrid {
         } catch (error) {
             throw error;
         }
-    }
-
-
-    /**
-     * Generates the tile grid based on the layout and dataset information.
-     *
-     * @param {boolean} is_multigene - Indicates whether the grid is for a multigene view.
-     */
-    generateTileGrid(is_multigene = false) {
-
-        const tiles = [];
-        //const tilegrid = [];
-
-        for (const dataset of this.layout) {
-            const datasetTile = new DatasetTile(dataset, is_multigene);
-            tiles.push(datasetTile);
-        }
-
-        // sort by grid position
-        tiles.sort((a, b) => a.dataset.grid_position - b.dataset.grid_position);
-
-        this.tiles = tiles;
-
-        // Initialize an empty grid
-        let arrayHeight = 1
-        let tilegrid = Array(arrayHeight).fill().map(() => Array(this.maxCols).fill(null));
-
-        for (const datasetTile of tiles) {
-            const width = datasetTile.tile.width;
-            const height = datasetTile.tile.height;
-
-            let placed = false;
-
-            while (!placed) {
-                for (let h = 0; h < tilegrid.length; h++) {
-                    for (let w = 0; w < tilegrid[h].length; w++) {
-                        // Check if the tile fits in the current position
-                        if (tilegrid[h][w] === null && h + height <= tilegrid.length && w + width <= tilegrid[h].length) {
-                            // Fill the grid with the tile
-                            for (let fill_k = h; fill_k < h + height; fill_k++) {
-                                for (let fill_w = w; fill_w < w + width; fill_w++) {
-                                    tilegrid[fill_k][fill_w] = datasetTile;
-                                }
-                            }
-                            placed = true;
-
-                            // Keep track of the start and end positions of the tile
-                            datasetTile.tile.start_row = h;
-                            datasetTile.tile.start_col = w;
-                            datasetTile.tile.end_row = h + height;
-                            datasetTile.tile.end_col = w + width;
-
-                            break;
-                        }
-                    }
-                    if (placed) break;
-                }
-
-                // If the tile couldn't be placed because it exceeds the grid height, increase the grid height
-                if (!placed) {
-                    arrayHeight++;
-                    const newGrid = Array(arrayHeight).fill().map(() => Array(this.maxCols).fill(null));
-
-                    // Copy the old grid into the new grid
-                    for (let h = 0; h < tilegrid.length; h++) {
-                        for (let w = 0; w < tilegrid[h].length; w++) {
-                            newGrid[h][w] = tilegrid[h][w];
-                        }
-                    }
-
-                    // Replace the old grid with the new grid
-                    tilegrid = newGrid;
-                }
-            }
-        }
-
-        this.tilegrid = tilegrid;
     }
 
     /**
@@ -382,8 +233,51 @@ class DatasetTile {
         this.orthologs = null;
         this.orthologsToPlot = null;
 
-        this.tile = this.generateTile();
-        this.tile.html = this.generateTileHTML();
+    }
+
+    /**
+     * Generates a tile object based on the current dataset and tile type.
+     * @returns {Object} The generated tile object.
+     */
+    generateTile() {
+        const { id, grid_position, mg_grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height, start_row, mg_start_row, start_col, mg_start_col } = this.dataset;
+        return {
+            grid_position: this.type === "single" ? grid_position : mg_grid_position,
+            width: this.type === "single" ? grid_width : mg_grid_width,
+            // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
+            height: this.type === "single" ? grid_height : mg_grid_height,
+
+            start_row: this.type === "single" ? start_row : mg_start_row,
+            end_row: this.start_row + this.height,
+            start_col: this.type === "single" ? start_col : mg_start_col,
+            end_col: this.start_col + this.width,
+            tile_id: `${id}_${grid_position}_${this.type}`,
+            used: false,
+            title,
+        };
+    }
+
+    /**
+     * Adds the dataset title to the modal.
+     *
+     * @param {HTMLElement} modalHTML - The HTML element representing the modal.
+     */
+    generateTileHTML() {
+        const tile = this.tile;
+
+        const template = document.getElementById('tmpl-tile-grid-tile');
+        const tileHTML = template.content.cloneNode(true);
+
+        // Set tile id & title
+        const tileElement = tileHTML.querySelector('.js-tile');
+        tileElement.id = `tile_${tile.tile_id}`;
+
+        const tileTitle = tileHTML.querySelector('.card-header-title');
+        tileTitle.textContent = tile.title;
+
+        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
+
+        return tileHTML;
     }
 
     /**
@@ -402,28 +296,6 @@ class DatasetTile {
         }
     }
 
-    /**
-     * Adds the dataset title to the modal.
-     *
-     * @param {HTMLElement} modalHTML - The HTML element representing the modal.
-     */
-    generateTileHTML() {
-        const tile = this.tile;
-
-        const template = document.getElementById('tmpl-tile-grid-tile');
-        const tileHTML = template.content.cloneNode(true);
-
-        // Set tile id & title
-        const tileElement = tileHTML.querySelector('.tile');
-        tileElement.id = `tile_${tile.tile_id}`;
-
-        const tileTitle = tileHTML.querySelector('.card-header-title');
-        tileTitle.textContent = tile.title;
-
-        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
-
-        return tileHTML;
-    }
 
     /**
      * Retrieves orthologs for the given gene symbols.
@@ -761,47 +633,6 @@ class DatasetTile {
         modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
 
         return modalHTML;
-    }
-
-    /**
-     * Generates a tile object based on the current dataset and tile type.
-     * @returns {Object} The generated tile object.
-     */
-    generateTile() {
-        const { id, grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height } = this.dataset;
-        return {
-            width: this.type === "single" ? grid_width : mg_grid_width,
-            // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
-            //height: this.type === "single" ? grid_height : mg_grid_height,
-            height: 1,
-            tile_id: `${id}_${grid_position}_${this.type}`,
-            used: false,
-            title,
-        };
-    }
-
-    /**
-     * Generates the HTML representation of a tile.
-     * @returns {HTMLElement} The HTML element representing the tile.
-     *
-     * Note: Tile html template comes from /include/tile-grid/tile.html
-     */
-    generateTileHTML() {
-        const tile = this.tile;
-
-        const template = document.getElementById('tmpl-tile-grid-tile');
-        const tileHTML = template.content.cloneNode(true);
-
-        // Set tile id & title
-        const tileElement = tileHTML.querySelector('.tile');
-        tileElement.id = `tile_${tile.tile_id}`;
-
-        const tileTitle = tileHTML.querySelector('.card-header-title');
-        tileTitle.textContent = tile.title;
-
-        this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
-
-        return tileHTML;
     }
 
     /**

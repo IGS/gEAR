@@ -965,7 +965,7 @@ class Layout:
         self.members = list()
 
         qry = """
-              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.mg_grid_position
+              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.mg_grid_position,
               lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
               lm.start_row, lm.mg_start_row, lm.grid_height, lm.mg_grid_height
                 FROM layout_members lm
