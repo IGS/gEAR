@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         SITE_PREFS = result;
         console.log(SITE_PREFS);
 
-        //loadPlugins();
+        loadPlugins();
     });
 
 
@@ -508,6 +508,49 @@ const createToast = (msg, levelClass="is-danger") => {
             event.target.remove();
         }
     });
+}
+
+const loadPlugins = () => {
+    let page_name = location.pathname.replace(/^\//, '');
+
+    if (page_name == "") {
+        page_name = 'index.html';
+    }
+
+    const head = document.getElementsByTagName('head')[0];
+    const body = document.getElementsByTagName('body')[0];
+
+    for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
+        if (plugin_page_names.includes(page_name)) {
+            var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
+
+            // create a hidden element at the end of the document and put it there
+            var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
+            var plugin_html_element = document.createElement('div');
+            plugin_html_element.id = plugin_name + "_html_c";
+            //plugin_html_element.style = "display: none;"
+            body.append(plugin_html_element)
+            
+            fetch(plugin_import_html_url)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById(`${plugin_name}_html_c`).innerHTML = data;
+                });
+
+            var plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
+            var style = document.createElement('link');
+            style.href = plugin_import_css_url;
+            style.type = 'text/css';
+            style.rel = 'stylesheet';
+            head.append(style);
+
+            var plugin_import_js_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".js";
+            var script = document.createElement('script');
+            script.src = plugin_import_js_url;
+            script.type = 'text/javascript';
+            head.append(script);
+        }
+    }
 }
 
 /**
