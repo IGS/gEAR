@@ -1,4 +1,3 @@
-
 import base64
 import io
 import os
@@ -324,7 +323,25 @@ class TSNEData(Resource):
                 except:
                     pass
 
-        selected = adata[:, gene_filter]
+        # Filter genes and slice the adata to get a dataframe
+        # with expression and its observation metadata
+        try:
+            selected = adata[:, gene_filter].to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata[:, gene_filter]
+
+        # Close adata so that we do not have a stale opened object
+        if adata.isbacked:
+            adata.file.close()
+
+        # If selected name in adata.var is also an observation column append _orig to the column name
+        selected_gene = gene_symbols[0]
+        if selected_gene in selected.obs.columns:
+            selected.obs["{}_orig".format(selected_gene)] = selected.obs[selected_gene]
+            # delete the original column
+            selected.obs.drop(selected_gene, axis=1, inplace=True)
+
         df = selected.to_df()
         success = 1
         message = ""
@@ -333,16 +350,16 @@ class TSNEData(Resource):
             message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
 
         # Drop duplicate gene symbols so that only 1 ensemble ID is used in scanpy
-        adata.var = adata.var.reset_index().set_index('gene_symbol')
+        selected.var = selected.var.reset_index().set_index('gene_symbol')
         # Currently the ensembl_id column is still called 'index', which could be confusing when looking at the new .index
         # Rename to end the confusion
-        adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
+        selected.var = selected.var.rename(columns={selected.var.columns[0]: "ensembl_id"})
         # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
         if len(df.columns) > 1:
             scanpy_copy = ana.dataset_path().replace('.h5ad', '.scanpy_dups_removed.h5ad')
             if os.path.exists(scanpy_copy):
                 os.remove(scanpy_copy)
-            adata = adata[:, adata.var.index.duplicated() == False].copy(filename=scanpy_copy)
+            selected = selected[:, selected.var.index.duplicated() == False].copy(filename=scanpy_copy)
 
         io_fig = None
         try:
@@ -364,10 +381,10 @@ class TSNEData(Resource):
             try:
                 algo = get_projection_algorithm(dataset_id, projection_id)
                 if algo == "pca":
-                    median = np.median(adata[:, gene_symbol].X.squeeze())
-                    sort_order = np.argsort(np.abs(median - adata[:, gene_symbol].X.squeeze()))
-                    ordered_obs = adata.obs.iloc[sort_order].index
-                    adata = adata[ordered_obs, :].copy()
+                    median = np.median(selected[:, gene_symbol].X.squeeze())
+                    sort_order = np.argsort(np.abs(median - selected[:, gene_symbol].X.squeeze()))
+                    ordered_obs = selected.obs.iloc[sort_order].index
+                    selected = selected[ordered_obs, :].copy()
                     plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
                     plot_vcenter = median
                     expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
@@ -378,7 +395,7 @@ class TSNEData(Resource):
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
         if colorize_by:
-            color_category = True if is_categorical(adata.obs[colorize_by]) else False
+            color_category = True if is_categorical(selected.obs[colorize_by]) else False
 
             if color_category:
                 # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
@@ -386,31 +403,31 @@ class TSNEData(Resource):
 
                 ## why 2?  Handles the cases of a stringified "{}" or actual keyed JSON
                 if colors is not None and len(colors) > 2:
-                    adata.uns[color_idx_name] = [colors[idx] for idx in adata.obs[colorize_by].cat.categories]
+                    selected.uns[color_idx_name] = [colors[idx] for idx in selected.obs[colorize_by].cat.categories]
 
-                elif color_idx_name in adata.obs:
+                elif color_idx_name in selected.obs:
                     # Alternative method.  Associate with hexcodes already stored in the dataframe
                     # Making the assumption that these values are hexcodes
-                    grouped = adata.obs.groupby([colorize_by, color_idx_name])
+                    grouped = selected.obs.groupby([colorize_by, color_idx_name])
                     # Ensure one-to-one mapping between category and hexcodes
-                    if len(adata.obs[colorize_by].unique()) == len(grouped):
+                    if len(selected.obs[colorize_by].unique()) == len(grouped):
                         # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
-                        color_hex = adata.obs[color_idx_name].unique().tolist()
+                        color_hex = selected.obs[color_idx_name].unique().tolist()
                         if re.search(COLOR_HEX_PTRN, color_hex[0]):
                             color_map = {name[0]:name[1] for name, group in grouped}
-                            adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+                            selected.uns[color_idx_name] = [color_map[k] for k in selected.obs[colorize_by].cat.categories]
 
                 if colorblind_mode:
                     # build a cividis color map for the colorblind mode
-                    cb_colors = get_colorblind_scale(len(adata.obs[colorize_by].unique()))
-                    color_map = {name:cb_colors[idx] for idx, name in enumerate(adata.obs[colorize_by].cat.categories)}
-                    adata.uns[color_idx_name] = [color_map[k] for k in adata.obs[colorize_by].cat.categories]
+                    cb_colors = get_colorblind_scale(len(selected.obs[colorize_by].unique()))
+                    color_map = {name:cb_colors[idx] for idx, name in enumerate(selected.obs[colorize_by].cat.categories)}
+                    selected.uns[color_idx_name] = [color_map[k] for k in selected.obs[colorize_by].cat.categories]
 
                 # Calculate the number of columns in the legend (if applicable)
-                num_cols = calculate_num_legend_cols(len(adata.obs[colorize_by].unique()))
+                num_cols = calculate_num_legend_cols(len(selected.obs[colorize_by].unique()))
 
                 # Get for legend order.
-                colorize_by_order = adata.obs[colorize_by].unique()
+                colorize_by_order = selected.obs[colorize_by].unique()
 
             """
             NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
@@ -425,7 +442,7 @@ class TSNEData(Resource):
 
             # If plotting by group the plot dimensions need to be determined
             if plot_by_group:
-                column_order = adata.obs[plot_by_group].unique()
+                column_order = selected.obs[plot_by_group].unique()
                 group_len = len(column_order)
                 num_plots = group_len + 2
 
@@ -440,8 +457,8 @@ class TSNEData(Resource):
                 io_fig = plt.figure(figsize=(figwidth,figheight))
                 spec = io_fig.add_gridspec(ncols=max_cols, nrows=max_rows)
 
-                adata.obs["gene_expression"] = [float(x) for x in adata[:,adata.var.index.isin([gene_symbol])].X]
-                max_expression = max(adata.obs["gene_expression"].tolist())
+                selected.obs["gene_expression"] = [float(x) for x in selected[:,selected.var.index.isin([gene_symbol])].X]
+                max_expression = max(selected.obs["gene_expression"].tolist())
 
                 row_counter = 0
                 col_counter = 0
@@ -453,9 +470,9 @@ class TSNEData(Resource):
                 for _,name in enumerate(column_order):
                     # Copy gene expression dataseries to observation
                     # Filter only expression values for a particular group.
-                    adata.obs["split_by_group"] = adata.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
+                    selected.obs["split_by_group"] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
                     f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(adata, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    sc.pl.embedding(selected, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     rename_axes_labels(f, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -465,7 +482,7 @@ class TSNEData(Resource):
                 # Add total gene plot and color plots
                 if not skip_gene_plot:
                     f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
+                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f_gene, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
                     rename_axes_labels(f_gene, x_axis, y_axis)
                     col_counter += 1
                     # Increment row_counter when the previous row is filled.
@@ -473,7 +490,7 @@ class TSNEData(Resource):
                         row_counter += 1
                         col_counter = 0
                 f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
+                sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False)
                 rename_axes_labels(f_color, x_axis, y_axis)
                 if color_category:
                     (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
@@ -487,11 +504,11 @@ class TSNEData(Resource):
                 if skip_gene_plot:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(6, 4))
-                    if color_category and len(adata.obs[colorize_by].cat.categories) > 10:
+                    if color_category and len(selected.obs[colorize_by].cat.categories) > 10:
                         io_fig = plt.figure(figsize=(13, 4))
                     spec = io_fig.add_gridspec(ncols=1, nrows=1)
                     f1 = io_fig.add_subplot(spec[0,0])
-                    sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
+                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False)
                     rename_axes_labels(f1, x_axis, y_axis)
                     if color_category:
                         (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
@@ -506,10 +523,10 @@ class TSNEData(Resource):
                     spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
                     f1 = io_fig.add_subplot(spec[0,0])
                     f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+                    sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, ax=f1, show=False, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
                     # BUG: the line below throws error with stacktrace
                     # ValueError: To copy an AnnData object in backed mode, pass a filename: `.copy(filename='myfilename.h5ad')`. To load the object into memory, use `.to_memory()
-                    sc.pl.embedding(adata, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
+                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False)
                     rename_axes_labels(f1, x_axis, y_axis)
                     rename_axes_labels(f2, x_axis, y_axis)
                     if color_category:
@@ -520,12 +537,12 @@ class TSNEData(Resource):
                             f2.get_legend().remove()  # Remove legend added by scanpy
 
         else:
-            io_fig = sc.pl.embedding(adata, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
+            io_fig = sc.pl.embedding(selected, basis=basis, color=[gene_symbol], color_map=expression_color, return_fig=True, use_raw=False, sort_order=plot_sort_order, vcenter=plot_vcenter)
             rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
 
-        # Close adata so that we do not have a stale opened object
-        if adata.isbacked:
-            adata.file.close()
+        # Close selected so that we do not have a stale opened object
+        if selected.isbacked:
+            selected.file.close()
 
         io_pic = io.BytesIO()
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
