@@ -266,15 +266,16 @@ class DatasetPanel extends Dataset {
     async cache_displays(){
         // cache all owner/user displays for this panel;
         // If user is the owner, do not duplicate their displays as it can cause the HTML ID to duplicate
-        const {user, owner} = await this.get_dataset_displays(CURRENT_USER.session_id, this.id)
+        let [owner_displays, user_displays] = await Promise.allSettled([this.user_id, CURRENT_USER.id]
+            .map( (user_id)=> this.get_dataset_displays(user_id, this.id))
+        ).then((res) => res.map((r) => r.value));
 
-        // Filter only the single-gene displays
-        if (this.is_multigene) {
-            this.user_displays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
-            this.owner_displays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbols'));
+        if (CURRENT_USER.id === this.user_id) {
+            owner_displays = [];
         }
-        this.user_displays = user.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
-        this.owner_displays = owner.filter( display => display.plotly_config.hasOwnProperty('gene_symbol'));
+
+        this.owner_displays = owner_displays;
+        this.user_displays = user_displays;
 
         this.register_events();
     }
