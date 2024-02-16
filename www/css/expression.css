@@ -79,8 +79,16 @@ ul#go-terms li {
     row-gap: 0.50rem;
 }
 
-.card-image .svg svg {
+#result-panel-grid .card-image {
+    height: 100%
+}
+
+#result-panel-grid .card-image .svg svg {
     margin-top:10%;
+}
+
+#result-panel-grid .js-plotly-plot {
+    /*height: 100%;*/
 }
 
 /* Dropdown settings */
@@ -109,3 +117,5 @@ ul#go-terms li {
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
 }
+
+

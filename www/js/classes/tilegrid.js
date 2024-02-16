@@ -165,6 +165,9 @@ class TileGrid {
             geneSymbolInput = Array.isArray(geneSymbols) ? geneSymbols : [geneSymbols];
         }
 
+        // sort tiles by height, ascending.  This should help cases where taller plots render as same height as shorter plots
+        this.tiles.sort((a, b) => a.tile.height - b.tile.height);
+
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
         for (const tile of this.tiles) {
             const tileId = tile.tile.tile_id;
@@ -717,7 +720,7 @@ class DatasetTile {
                     const displayId = parseInt(displayElement.dataset.displayId);
                     // Render display
                     if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
-                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
+                    this.renderDisplay(this.geneSymbol, displayId, this.tile.height, this.svgScoringMethod);
 
                     // Close modal
                     closeModal(modalDiv);
@@ -873,7 +876,7 @@ class DatasetTile {
 
         try {
             if (plotlyPlots.includes(display.plot_type)) {
-                await this.renderPlotlyDisplay(display, otherOpts);
+                await this.renderPlotlyDisplay(display, this.tile.height, otherOpts);
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display, otherOpts);
             } else if (display.plot_type === "svg") {
@@ -881,7 +884,7 @@ class DatasetTile {
             } else if (display.plot_type === "epiviz") {
                 await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
-                await this.renderMultiGeneDisplay(display, otherOpts);
+                await this.renderMultiGeneDisplay(display, this.tile.height, otherOpts);
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
@@ -1007,7 +1010,7 @@ class DatasetTile {
         return epivizTracksTemplate;
     }
 
-    async renderMultiGeneDisplay(display, otherOpts) {
+    async renderMultiGeneDisplay(display, heightMultiplier, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -1050,8 +1053,9 @@ class DatasetTile {
         const expressionDisplayConf = postPlotlyConfig.expression;
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
-        Plotly.relayout(plotlyPreview.id , customLayout)
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        customLayout.height *= heightMultiplier;
+        Plotly.relayout(plotlyPreview.id , customLayout);
 
         const legendTitle = document.getElementById("legend_title_container");
         if (legendTitle) {
@@ -1063,7 +1067,7 @@ class DatasetTile {
 
     }
 
-    async renderPlotlyDisplay(display, otherOpts) {
+    async renderPlotlyDisplay(display, heightMultiplier, otherOpts) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
@@ -1097,8 +1101,13 @@ class DatasetTile {
         const expressionDisplayConf = postPlotlyConfig.expression;
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
-        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
-        Plotly.relayout(plotlyPreview.id, customLayout)
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
+        customLayout.height *= heightMultiplier;
+
+        console.log(heightMultiplier);
+        console.log(customLayout);
+
+        Plotly.relayout(plotlyPreview.id, customLayout);
     }
 
     async renderScanpyDisplay(display, otherOpts) {
