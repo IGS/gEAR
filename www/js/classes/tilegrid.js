@@ -106,9 +106,6 @@ class TileGrid {
         // and max row is max(end_row)
 
         selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
-
-        console.log(this.tiles);
-
         const maxRows = Math.max(...this.tiles.map(tile => tile.tile.end_row));
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
 
@@ -1051,10 +1048,10 @@ class DatasetTile {
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const custonConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
-        Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, custonConfig);
-        const custonLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
-        Plotly.relayout(plotlyPreview.id , custonLayout)
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
+        Plotly.relayout(plotlyPreview.id , customLayout)
 
         const legendTitle = document.getElementById("legend_title_container");
         if (legendTitle) {
@@ -1098,10 +1095,10 @@ class DatasetTile {
         }
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
-        const custonConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
-        Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, custonConfig);
-        const custonLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
-        Plotly.relayout(plotlyPreview.id, custonLayout)
+        const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
+        Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
+        const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout")
+        Plotly.relayout(plotlyPreview.id, customLayout)
     }
 
     async renderScanpyDisplay(display, otherOpts) {
