@@ -45,14 +45,6 @@ def main():
             print("Reading genes file: {0}".format(filepath), file=sys.stderr, flush=True)
             var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
 
-    # Read in expressions as AnnData object in a memory-efficient manner
-    print("Creating AnnData object with obs and var", file=sys.stderr, flush=True)
-    adata = sc.AnnData(obs=var, var=obs)
-    print("Reading expression matrix file: {0}".format(expression_matrix_path), file=sys.stderr, flush=True)    
-    reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=500)
-    adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
-    print("Finished reading expression matrix file", file=sys.stderr, flush=True)
-
     for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
         if str_type in obs.columns:
             obs[str_type] = pd.Categorical(obs[str_type])
@@ -61,9 +53,14 @@ def main():
         if num_type in obs.columns:
             obs[num_type] = pd.to_numeric(obs[num_type])
 
-    # Assign genes and observations to AnnData object
-    adata.var = var
-    adata.obs = obs
+    # Read in expressions as AnnData object in a memory-efficient manner
+    print("Creating AnnData object with obs and var", file=sys.stderr, flush=True)
+    adata = sc.AnnData(obs=var, var=obs)
+    print("Reading expression matrix file: {0}".format(expression_matrix_path), file=sys.stderr, flush=True)    
+    reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=500)
+    adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
+    print("Finished reading expression matrix file", file=sys.stderr, flush=True)
+    adata = adata.transpose()
 
     adata.write(args.output_file)
             
