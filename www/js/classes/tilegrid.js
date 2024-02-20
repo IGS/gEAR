@@ -1104,9 +1104,6 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         customLayout.height *= heightMultiplier;
 
-        console.log(heightMultiplier);
-        console.log(customLayout);
-
         Plotly.relayout(plotlyPreview.id, customLayout);
     }
 
