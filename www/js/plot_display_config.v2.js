@@ -195,6 +195,7 @@ const postPlotlyConfig = {
             }, layout:{
                 dragMode: "select"
                 , height: window.innerHeight * 0.8
+                , autosize: true
             }
         }
     ]
