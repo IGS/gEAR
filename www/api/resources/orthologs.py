@@ -227,7 +227,7 @@ class Orthologs(Resource):
             for gene_symbol in gene_symbols:
                 normalized_gene = normalize_gene(gene_symbol)
                 if normalized_gene:
-                    mapped_gene_symbols_dict[gene_symbol] = normalized_gene
+                    mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
 
             return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
 
