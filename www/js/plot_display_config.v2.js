@@ -129,6 +129,7 @@ const postPlotlyConfig = {
                 ]
             }, layout: {
                 height: window.innerHeight * 0.5,
+                autosize: true,
                 modebar: {
                     orientation: "h"
                 }
