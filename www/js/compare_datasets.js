@@ -291,7 +291,7 @@ function load_comparison_graph() {
 		$("#ticket_error_msg").text(data.error);
 		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
 	}).fail((data) => {
-		$("#ticket_error_msg").text("Something unexpected occurred. Please contact a gEAR admin.);
+		$("#ticket_error_msg").text("Something unexpected occurred. Please contact a gEAR admin.");
 		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
 	});
 }
