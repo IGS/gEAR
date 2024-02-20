@@ -128,7 +128,7 @@ const postPlotlyConfig = {
                     "resetViewMapbox"
                 ]
             }, layout: {
-                height: 450,
+                height: window.innerHeight * 0.5,
                 modebar: {
                     orientation: "h"
                 }
