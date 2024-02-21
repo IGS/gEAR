@@ -821,7 +821,11 @@ const apiCallsMixin = {
      * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
      */
     async fetchGeneCarts(cartType=null) {
-        const payload = {session_id: this.sessionId, cart_type: cartType};
+        const payload = {session_id: this.sessionId};
+        if (cartType) {
+            payload.cart_type = cartType;
+        }
+
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
     },
