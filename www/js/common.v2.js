@@ -530,7 +530,7 @@ const loadPlugins = () => {
             plugin_html_element.id = plugin_name + "_html_c";
             //plugin_html_element.style = "display: none;"
             body.append(plugin_html_element)
-            
+
             fetch(plugin_import_html_url)
                 .then(response => response.text())
                 .then(data => {
@@ -826,7 +826,7 @@ const apiCallsMixin = {
      * @param {string} cartType - The type of gene cart to fetch.
      * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
      */
-    async fetchGeneCarts(cartType) {
+    async fetchGeneCarts(cartType=null) {
         const payload = {session_id: this.sessionId, cart_type: cartType};
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
