@@ -208,24 +208,18 @@ const getDomainPreferences = async () => {
     return response.json();
 }
 
-// From: http://stackoverflow.com/a/21903119/1368079
-// Use example:
-//   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
-//   then:      var tech = getUrlParameter('technology');
-//              var blog = getUrlParameter('blog');
+/**
+ * Retrieves the value of a URL parameter.
+ * @param {string} sParam - The name of the parameter to retrieve.
+ * @returns {string|null} - The value of the parameter, or null if it doesn't exist.
+ */
 const getUrlParameter = (sParam) => {
-    const sPageURL = decodeURIComponent(window.location.search.substring(1));
-    const sURLVariables = sPageURL.split('&');
-    let sParameterName;
-    let i;
 
-    for (i = 0; i < sURLVariables.length; i++) {
-        sParameterName = sURLVariables[i].split('=');
-
-        if (sParameterName[0] === sParam) {
-            return sParameterName[1] === undefined ? true : sParameterName[1];
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has(sParam)) {
+        return urlParams.get(sParam);
     }
+    return null;
 }
 
 /**
