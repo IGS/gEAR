@@ -128,6 +128,8 @@ const postPlotlyConfig = {
                     "resetViewMapbox"
                 ]
             }, layout: {
+                height: window.innerHeight * 0.5,
+                autosize: true,
                 modebar: {
                     orientation: "h"
                 }
@@ -193,6 +195,7 @@ const postPlotlyConfig = {
             }, layout:{
                 dragMode: "select"
                 , height: window.innerHeight * 0.8
+                , autosize: true
             }
         }
     ]

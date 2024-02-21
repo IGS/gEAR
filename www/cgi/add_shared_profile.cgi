@@ -58,7 +58,10 @@ def main():
 
         for member in layout_members:
             # add the datasets of that layout to the user's copy
-            add_datasets_to_shared_profile(cursor, new_layout_id, member['dataset_id'], member['grid_position'], member['grid_width'], member['mg_grid_width'], member['math_preference'])
+            add_datasets_to_shared_profile(cursor, new_layout_id, member['dataset_id'], member['grid_position'], member['mg_grid_position'],
+                                           member['start_col'], member['mg_start_col'], member['grid_width'], member['mg_grid_width'],
+                                           member['start_row'], member['mg_start_row'], member['grid_height'], member['mg_grid_height'],
+                                           member['math_preference'])
             cnx.commit()
 
             # if dataset is private, add it to the user's "Shared with me" area
@@ -119,7 +122,10 @@ def get_layout_name(cursor, layout_id):
 
 def get_layout_members(cursor, layout_id):
     query = """
-        SELECT lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width, lm.math_preference, d.is_public
+        SELECT lm.dataset_id, lm.grid_position, lm.mg_grid_position,
+        lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
+        lm.start_row, lm.mg_start_row, lm.grid_height,
+        lm.mg_grid_height, lm.math_preference, d.is_public
         FROM layout_members lm
         JOIN dataset d ON lm.dataset_id=d.id
         WHERE layout_id = %s
@@ -128,13 +134,20 @@ def get_layout_members(cursor, layout_id):
     layout_datasets = []
     for row in cursor:
         layout_datasets.append({
-              'dataset_id': row[0],
-              'grid_position': row[1],
-              'grid_width': row[2],
-              'mg_grid_width': row[3],
-              'math_preference': row[4],
-              'access': row[5]
-          })
+                'dataset_id': row[0],
+                'grid_position': row[1],
+                'mg_grid_position': row[2],
+                'start_col': row[3],
+                'mg_start_col': row[4],
+                'grid_width': row[5],
+                'mg_grid_width': row[6],
+                'start_row': row[7],
+                'mg_start_row': row[8],
+                'grid_height': row[9],
+                'mg_grid_height': row[10],
+                'math_preference': row[11],
+                'access': row[12]
+            })
     return layout_datasets
 
 def add_shared_profile(cursor, layout_name, current_user_id):
@@ -146,13 +159,20 @@ def add_shared_profile(cursor, layout_name, current_user_id):
     cursor.execute(qry, (layout_name, current_user_id,))
     return cursor.lastrowid
 
-def add_datasets_to_shared_profile(cursor, new_layout_id, dataset_id, grid_position, grid_width, mg_grid_width, math_preference):
+def add_datasets_to_shared_profile(cursor, new_layout_id, dataset_id, grid_position, mg_grid_position,
+                                   start_col, mg_start_col, grid_width, mg_grid_width,
+                                   start_row, mg_start_row, grid_height, mg_grid_height, math_preference):
     qry = """
         INSERT INTO layout_members
-        (layout_id, dataset_id, grid_position, grid_width, mg_grid_width, math_preference)
-        VALUES (%s, %s, %s, %s, %s)
+        (layout_id, dataset_id, grid_position, mg_grid_position,
+        start_col, mg_start_col, grid_width, mg_grid_width,
+        start_row, mg_start_row, grid_height, mg_grid_height, math_preference)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s)
     """
-    cursor.execute(qry, (new_layout_id, dataset_id, grid_position, grid_width, mg_grid_width, math_preference,))
+    cursor.execute(qry, (new_layout_id, dataset_id, grid_position, mg_grid_position,
+                         start_col, mg_start_col, grid_width, mg_grid_width,
+                         start_row, mg_start_row, grid_height, mg_grid_height, math_preference))
 
 
 def get_user_id_from_session_id(cursor, session_id):

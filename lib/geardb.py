@@ -928,10 +928,14 @@ class Layout:
         cursor = conn.get_cursor()
 
         qry = """
-              INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, mg_grid_width)
+              INSERT INTO layout_members (layout_id, dataset_id, grid_position, mg_grid_position,
+              start_col, mg_start_col, grid_width, mg_grid_width,
+              start_row, mg_start_row, grid_height, mg_grid_height)
               VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.grid_width, member.mg_grid_width))
+        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.mg_grid_position,
+                             member.start_col, member.mg_start_col, member.grid_width, member.mg_grid_width,
+                             member.start_row, member.mg_start_row, member.grid_height, member.mg_grid_height))
         member.id = cursor.lastrowid
         self.members.append(member)
 
@@ -961,7 +965,9 @@ class Layout:
         self.members = list()
 
         qry = """
-              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.grid_width, lm.mg_grid_width
+              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.mg_grid_position,
+              lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
+              lm.start_row, lm.mg_start_row, lm.grid_height, lm.mg_grid_height
                 FROM layout_members lm
                      JOIN dataset d ON lm.dataset_id=d.id
                WHERE lm.layout_id = %s
@@ -971,7 +977,10 @@ class Layout:
         cursor.execute(qry, (self.id,))
 
         for row in cursor:
-            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2], grid_width=row[3], mg_grid_width=row[4])
+            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2],
+                                mg_grid_position=row[3], start_col=row[4], mg_start_col=row[5],
+                                grid_width=row[6], mg_grid_width=row[7], start_row=row[8],
+                                mg_start_row=row[9], grid_height=row[10], mg_grid_height=row[11])
             self.members.append(lm)
 
         cursor.close()
@@ -1909,8 +1918,15 @@ class DatasetCollection:
         each of the datasets according to that layout:
 
           - grid_position
+          - mg-grid_position
+          - start_col
+          - mg_start_col
           - grid_width
           - mg_grid_width
+          - start_row
+          - mg_start_row
+          - grid_height
+          - mg_grid_height
 
         """
         if layout is None:
@@ -1924,8 +1940,15 @@ class DatasetCollection:
         for d in self.datasets:
             if d.id in lm_idx:
                 d.grid_position = lm_idx[d.id].grid_position
+                d.mg_grid_position = lm_idx[d.id].mg_grid_position
+                d.start_col = lm_idx[d.id].start_col
+                d.mg_start_col = lm_idx[d.id].mg_start_col
                 d.grid_width = lm_idx[d.id].grid_width
                 d.mg_grid_width = lm_idx[d.id].mg_grid_width
+                d.start_row = lm_idx[d.id].start_row
+                d.mg_start_row = lm_idx[d.id].mg_start_row
+                d.grid_height = lm_idx[d.id].grid_height
+                d.mg_grid_height = lm_idx[d.id].mg_grid_height
 
     def filter_by_types(self, types=None):
         """
@@ -2771,12 +2794,19 @@ class GeneCartCollection:
 
 
 class LayoutMember:
-    def __init__(self, id=None, dataset_id=None, grid_position=None, grid_width=None, mg_grid_width=None):
+    def __init__(self, id=None, dataset_id=None, grid_position=None, mg_grid_position=None, start_col=None, mg_start_col=None, grid_width=None, mg_grid_width=None, start_row=None, mg_start_row=None, grid_height=None, mg_grid_height=None):
         self.id = id
         self.dataset_id = dataset_id
         self.grid_position = grid_position
+        self.mg_grid_position = mg_grid_position
+        self.start_col = start_col  # if not provided, fill into layout where it fits
+        self.mg_start_col = mg_start_col
         self.grid_width = grid_width
         self.mg_grid_width = mg_grid_width
+        self.start_row = start_row  # if not provided, fill into layout where it fits
+        self.mg_start_row = mg_start_row
+        self.grid_height = grid_height
+        self.mg_grid_height = mg_grid_height
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2812,11 +2842,13 @@ class LayoutMember:
 
         if self.id is None:
             lm_insert_qry = """
-            INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, mg_grid_width)
+            INSERT INTO layout_members (layout_id, dataset_id, grid_position, mg_grid_position, start_col, mg_start_col, grid_width, mg_grid_width, start_row, mg_start_row, grid_height, mg_grid_height)
             VALUES (%s, %s, %s, %s)
             """
-            cursor.execute(lm_insert_qry, (layout.id, self.dataset_id, self.grid_position,
-                                           self.grid_width, self.mg_grid_width))
+            cursor.execute(lm_insert_qry, (layout.id, self.dataset_id, self.grid_position, self.mg_grid_position,
+                                            self.start_col, self.mg_start_col, self.grid_width,
+                                            self.mg_grid_width, self.start_row, self.mg_start_row,
+                                            self.grid_height, self.mg_grid_height))
             self.id = cursor.lastrowid
         else:
             # ID already populated

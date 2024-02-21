@@ -44,6 +44,10 @@ html, body {
     width: 15em;
 }
 
+.navbar-dropdown {
+    width: max-content;
+}
+
 /* -------------------- */
 /* -= Left navbar section =- */
 

@@ -51,7 +51,7 @@ def main():
         for d_id, d_width in zip(d_ids, d_widths):
             # TODO: Address mg_grid_width as well
             qry = """ UPDATE layout_members
-                      SET grid_position = %s, grid_width = %s
+                      SET grid_position = %s, grid_width = %s, grid_height = 1,
                       WHERE layout_id = %s
                         AND dataset_id = %s
             """
