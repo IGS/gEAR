@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners to the DC selectors even if they don't exist yet
     document.addEventListener('click', (event) => {
+        // SAdkins - This can be changed to just .dropdown-dc-item, and use "currnetTarget" instead of "target"
         if (event.target.classList.contains('dropdown-dc-item') ||
             event.target.classList.contains('dc-item-label') ||
             event.target.classList.contains('dc-item-tag')) {
