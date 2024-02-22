@@ -80,7 +80,7 @@ def main():
 
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
-        gctypes = ["unweighted-list", "weighted-list"]
+        gctypes = ["unweighted-list", "weighted-list", "labeled-list"]
         gctypes_result = dict()
         for cart_type in gctypes:
             subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
