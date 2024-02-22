@@ -71,6 +71,30 @@
                   </label>
                 </div>
               </div>
+              <div class="columns">
+                <div id="algorithm-c" class="field column">
+                  <label class="label">Select algorithm</label>
+                  <div class="control">
+                    <div class="select is-small">
+                      <select id="algorithm">
+                        <option value="pca_algo">Principal Component Analysis (PCA)</option>
+                        <option value="nmf_algo">Least-squares optimiazation for NMF</option>
+                        <option value="fixednmf_algo">ixed gene weights in NMF re-run</option>
+                        <option value="binary_algo">Binary Gene Count</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div id="weights-c" class="field column is-hidden">
+                  <label class="label">Select weights</label>
+                  <div class="control">
+                    <div class="select is-small">
+                      <select id="weights" multiple>
+                        <!-- pattern weights go here -->
+                      </select>
+                    </div>
+                </div>
+              </div>
             </div>
             <div id="results-main-c" class="columns">
               <div id="gene-result-list-c" class="column is-narrow is-fullheight p-0">

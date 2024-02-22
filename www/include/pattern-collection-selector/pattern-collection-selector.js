@@ -7,9 +7,7 @@
 // - weights - The individual patterns
 
 let patternsCartData = null;
-let patternsCartLabelIndex = {};    // key is the share_id, value is the label
-
-let selectedPattern = {shareId: null, label: null};
+let selectedPattern = {shareId: null, label: null}; // This is used by the script that includes this file
 
 // Add event listener to dropdown trigger
 document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
@@ -39,9 +37,6 @@ document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click'
     // clear pattern lists and pattern list areas
     document.querySelector('#dropdown-content-pattern-lists').innerHTML = '';
 
-    // reset the label container
-    document.querySelector('#pattern-select-dropdown-dynamic-selections').innerHTML = '';
-
     const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
     categorySelectors.forEach((element) => {
         element.classList.remove('is-selected');
@@ -69,51 +64,83 @@ document.querySelector('#dropdown-pattern-list-search-input').addEventListener('
     });
 
     document.querySelector('#dropdown-content-pattern-lists').innerHTML = '';
-    const pattern_list_item_template = document.querySelector('#tmpl-pattern-list-item');
+    const patternListItemTemplate = document.querySelector('#tmpl-pattern-list-item');
 
     for (const cart_type in patternsCartData) {
         for (const cart of patternsCartData[cart_type]) {
             if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
-                const row = pattern_list_item_template.content.cloneNode(true);
-                row.querySelector('.pattern-list-item-label').textContent = cart.label;
-                row.querySelector('.ul-li').dataset.shareId = cart.share_id;
-                row.querySelector('.ul-li').dataset.patterns = patternsCartData[cart.share_id].join(',');
-
-                if (selectedPattern.shareId == cart.share_id) {
-                    row.querySelector('.ul-li').classList.add('is-selected');
-                } else {
-                    row.querySelector('.ul-li').classList.remove('is-selected');
-                }
-
-                document.querySelector('#dropdown-content-pattern-lists').appendChild(row);
-
-                // Event listeners
-                row.querySelector('.dropdown-pattern-list-item').click((event) => {
-                    setActivePatternCart(row);
-                });
-
+                const row = patternListItemTemplate.content.cloneNode(true);
+                createPatternListItem(row, cart);
             }
         }
     }
 });
 
+const createPatternListItem = (item, cart) => {
+    const gctype = cart.gctype;
+    const num_genes = cart.num_genes;
+    const text = `${cart.label} (${num_genes} genes)`;
+
+    item.querySelector('.pattern-list-item-label').textContent = text;
+    item.querySelector('.ul-li').dataset.shareId = cart.share_id;
+    item.querySelector('.ul-li').dataset.label = cart.label;
+
+    if (selectedPattern.shareId == cart.share_id) {
+        item.querySelector('.ul-li').classList.add('is-selected');
+        item.querySelector('.ul-li').classList.remove('is-clickable');
+    } else {
+        item.querySelector('.ul-li').classList.remove('is-selected');
+        item.querySelector('.ul-li').classList.add('is-clickable');
+    }
+
+    // create tag
+    item.querySelector('.tag').textContent = gctype;
+    // give tags different colors based on the gctype
+    if (gctype === "unweighted-list") {
+        item.querySelector('.tag').classList.add('is-info');
+    } else if (gctype === "weighted-list") {
+        item.querySelector('.tag').classList.add('is-success');
+    } else if (gctype === "labeled-list") {
+        item.querySelector('.tag').classList.add('is-warning');
+    }
+
+    document.querySelector('#dropdown-content-pattern-lists').appendChild(item);
+
+    // Get item after it's been added to the DOM
+    const row = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${cart.share_id}"]`);
+
+    // Event listeners
+    row.addEventListener("click", (event) => {
+        // uncheck all the existing rows
+        const rows = document.querySelectorAll('.dropdown-pattern-list-item');
+        rows.forEach((row) => {
+            row.classList.remove('is-selected');
+            row.classList.add('is-clickable');
+        });
+
+        selectedPattern.shareId = row.dataset.shareId;
+        selectedPattern.label = row.dataset.label;
+
+        row.classList.add('is-selected');
+        row.classList.remove('is-clickable');
+
+        updatePatternListSelectorLabel();
+
+        // close the dropdown
+        document.querySelector('#dropdown-pattern-lists').classList.remove('is-active');
+    });
+}
+
 /**
- * Fetches pattern data from the server and performs necessary operations.
- * @param {Function} callback - Optional callback function to be executed after data is fetched.
- * @returns {Promise<void>} - A promise that resolves when the data is fetched and processed.
+ * Fetches patterns data asynchronously and executes a callback function.
+ * @param {Function} callback - The callback function to be executed after fetching patterns data.
+ * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched successfully.
  */
 const fetchPatternsData = async (callback) => {
     try {
         patternsCartData = await apiCallsMixin.fetchGeneCarts();
         document.querySelector('#dropdown-pattern-lists').classList.remove('is-loading');
         document.querySelector('#dropdown-pattern-lists').classList.remove('is-disabled');
-
-        // Build the pattern cart label index for ease of use
-        for (const cart_type in patternsCartData) {
-            for (const cart of patternsCartData[cart_type]) {
-                patternsCartLabelIndex[cart.share_id] = cart.label;
-            }
-        }
 
         if (callback) {
             callback();
@@ -124,31 +151,10 @@ const fetchPatternsData = async (callback) => {
     }
 }
 
-const setActivePatternCart = (cartRow) => {
-
-    // populate the pattern list from this cart
-    const patterns = cartRow.dataset.patterns.split(',');
-    const patternItemTemplate = document.querySelector('#tmpl-pattern-item');
-
-    for (const pattern of patterns.sort()) {
-        const pattern_row = patternItemTemplate.content.cloneNode(true);
-        pattern_row.querySelector('.pattern-item-label').textContent = pattern;
-    }
-
-    for (const patternDiv of document.querySelectorAll('.dropdown-pattern-item')) {
-        const pattern = patternDiv.querySelector('.pattern-item-label').textContent;
-
-        if (selectedPattern.label === pattern) {
-            patternDiv.classList.add('is-selected');
-            patternDiv.classList.remove('is-clickable');
-        } else {
-            patternDiv.classList.remove('is-selected');
-            patternDiv.classList.add('is-clickable');
-
-        }
-    }
-}
-
+/**
+ * Sets the active pattern cart category and updates the pattern list accordingly.
+ * @param {string} category - The category of the pattern cart.
+ */
 const setActivePatternCartCategory = (category) => {
     // clear the pattern list
     document.getElementById('dropdown-pattern-list-search-input').value = '';
@@ -181,49 +187,25 @@ const setActivePatternCartCategory = (category) => {
     }
 
     for (const entry of data) {
-        const gctype = entry.gctype;
-        const num_genes = entry.num_genes;
-        const text = `${entry.label} (${num_genes} genes)`;
-
         const row = patternListItemTemplate.content.cloneNode(true);
-        row.querySelector('.pattern-list-item-label').textContent = text;
-        row.querySelector('.ul-li').dataset.shareId = entry.share_id;
-
-        if (selectedPattern.shareId === entry.share_id) {
-            row.querySelector('.ul-li').classList.add('is-selected');
-            row.querySelector('.ul-li').classList.remove('is-clickable');
-        } else {
-            row.querySelector('.ul-li').classList.remove('is-selected');
-            row.querySelector('.ul-li').classList.add('is-clickable');
-        }
-
-        // create tag
-        row.querySelector('.tag').textContent = gctype;
-        // give tags different colors based on the gctype
-        if (gctype === "unweighted-list") {
-            row.querySelector('.tag').classList.add('is-info');
-        } else if (gctype === "weighted-list") {
-            row.querySelector('.tag').classList.add('is-success');
-        } else if (gctype === "labeled-list") {
-            row.querySelector('.tag').classList.add('is-warning');
-        }
-
-        document.querySelector('#dropdown-content-pattern-lists').appendChild(row);
+        createPatternListItem(row, entry);
     }
 }
 
+/**
+ * Updates the selected pattern list with the given share ID and updates the pattern list selector label.
+ * @param {string} shareId - The share ID to set for the selected pattern.
+ */
 const selectPatternList = (shareId) => {
     selectedPattern.shareId = shareId;
+    selectedPattern.label = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.label;
     updatePatternListSelectorLabel();
 }
 
+/**
+ * Updates the pattern list select drop down label.
+ */
 const updatePatternListSelectorLabel = () => {
-    // Updates the pattern list select drop down label
-
     const shareId = selectedPattern.shareId;
-    if (shareId) {
-        document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = selectedPattern.label;
-    } else {
-        document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
-    }
+    document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = shareId ? selectedPattern.label : 'Quick search using pattern sources';
 }
