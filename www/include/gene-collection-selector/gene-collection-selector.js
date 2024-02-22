@@ -245,11 +245,14 @@ const setActiveGeneCartCategory = (category) => {
 
     document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
 
+    let recentChosen = false;
+
     switch (category) {
         case 'favorites':
             data = gene_cart_data.domain_carts;
             break;
         case 'recent':
+            recentChosen = true;
             break;
         case 'saved':
             data = gene_cart_data.user_carts;
@@ -257,6 +260,11 @@ const setActiveGeneCartCategory = (category) => {
         case 'shared':
             data = gene_cart_data.shared_carts;
             break;
+    }
+
+    if (recentChosen) {
+        // prevent from breaking
+        return;
     }
 
     for (const entry of data) {

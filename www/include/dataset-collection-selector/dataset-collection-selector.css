@@ -1,36 +1,23 @@
 /* Prevent the dropdown from overflowing the left side of the screen */
 /* TODO: This was only tested on index.html.  It does not work well on expression.html + it's a hacky solution */
-#dropdown-dc div.dropdown-menu {
-    width: 60vw;
+
+#dropdown-dc .dropdown-content {
+    width: 45vw;
 }
-@media (min-width: 1320px) {
-    #dropdown-dc div.dropdown-menu {
-        width: 55vw;
-    }
-}
-@media (min-width: 1440px) {
-    #dropdown-dc div.dropdown-menu {
-        width: 50vw;
-    }
-}
-@media (min-width: 1580px) {
-    #dropdown-dc div.dropdown-menu {
-        width: 45vw;
-    }
-}
-div.dropdown-item h3 {
+
+#dropdown-dc .dropdown-item h3 {
     font-weight: bold;
     font-size: 120%;
 }
-div.dropdown-item div.column.is-scrollable {
+#dropdown-dc .dropdown-item div.column.is-scrollable {
     max-height: 40vh;
     overflow-y: scroll;
 }
-div.ul-li {
+#dropdown-dc .ul-li {
     border-radius: 0.5em;
     padding: 0.4em;
     margin-bottom: 0.2em;
 }
-div.ul-li.is-selected {
+#dropdown-dc .ul-li.is-selected {
     background-color: #EFEDF7;
 }
