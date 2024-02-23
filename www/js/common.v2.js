@@ -6,8 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
-        console.log(SITE_PREFS);
-
         loadPlugins();
     });
 
@@ -806,8 +804,8 @@ const apiCallsMixin = {
      * @param {array} gene_symbols - comma-separated string of gene symbols
      * @returns {Promise<any>} - A promise that resolves to the data of the gene annotations.
      */
-    async fetchGeneAnnotations(gene_symbols, exact_match) {
-        const payload = { session_id: this.sessionId, search_gene_symbol: gene_symbols, exact_match: exact_match };
+    async fetchGeneAnnotations(gene_symbols, exact_match, layout_share_id, is_multigene) {
+        const payload = { session_id: this.sessionId, search_gene_symbol: gene_symbols, exact_match: exact_match, is_multi: is_multigene, layout_share_id: layout_share_id };   
         const {data} = await axios.post(`/cgi/search_genes.cgi`, convertToFormData(payload));
         return data;
     },
