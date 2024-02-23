@@ -4,6 +4,8 @@ import sys
 import urllib
 from json import JSONEncoder
 
+from gear.serverconfig import ServerConfig
+
 # Overrides the json module so JSONEncoder.default() automatically checks for to_json()
 #  in any class to be directly serializable.
 #  Ref: https://stackoverflow.com/a/38764817/1368079
@@ -37,12 +39,18 @@ class UserHistory:
         self.label = label
         self.url = url
 
+        server_config = ServerConfig().parse()
+        self.user_history_enabled = server_config.getboolean('history', 'enable_user_history')
+        self.history_count = server_config.getint('history', 'history_count')
+
     def _serialize_json(self):
         # Called when json modules attempts to serialize
         return self.__dict__
 
     def add_record(self, user_id=None, entry_category=None, label=None, **kwargs):
         """
+        Returns False unless user_history is enabled in the server config.
+
         Adds a history record for a user action to the DB. Arguments needed for all types:
 
             user_id, entry_category, label
@@ -56,6 +64,9 @@ class UserHistory:
             'projection_run' -> patterns, algo, gene_cart, multi, layout_share_id
 
         """
+        if not self.user_history_enabled:
+            return False
+
         match entry_category:
             case 'dataset_search':
                 if 'search_terms' in kwargs:
