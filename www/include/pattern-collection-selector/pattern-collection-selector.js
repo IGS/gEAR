@@ -7,7 +7,7 @@
 // - weights - The individual patterns
 
 let patternsCartData = null;
-let selectedPattern = {shareId: null, label: null}; // This is used by the script that includes this file
+let selectedPattern = {shareId: null, label: null, gctype: null}; // This is used by the script that includes this file
 
 // Add event listener to dropdown trigger
 document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
@@ -84,6 +84,7 @@ const createPatternListItem = (item, cart) => {
     item.querySelector('.pattern-list-item-label').textContent = text;
     item.querySelector('.ul-li').dataset.shareId = cart.share_id;
     item.querySelector('.ul-li').dataset.label = cart.label;
+    item.querySelector('.ul-li').dataset.gctype = gctype;
 
     if (selectedPattern.shareId == cart.share_id) {
         item.querySelector('.ul-li').classList.add('is-selected');
@@ -107,10 +108,10 @@ const createPatternListItem = (item, cart) => {
     document.querySelector('#dropdown-content-pattern-lists').appendChild(item);
 
     // Get item after it's been added to the DOM
-    const row = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${cart.share_id}"]`);
+    const thisItem = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${cart.share_id}"]`);
 
     // Event listeners
-    row.addEventListener("click", (event) => {
+    thisItem.addEventListener("click", (event) => {
         // uncheck all the existing rows
         const rows = document.querySelectorAll('.dropdown-pattern-list-item');
         rows.forEach((row) => {
@@ -118,11 +119,12 @@ const createPatternListItem = (item, cart) => {
             row.classList.add('is-clickable');
         });
 
-        selectedPattern.shareId = row.dataset.shareId;
-        selectedPattern.label = row.dataset.label;
+        selectedPattern.shareId = thisItem.dataset.shareId;
+        selectedPattern.label = thisItem.dataset.label;
+        selectedPattern.gctype = thisItem.dataset.gctype;
 
-        row.classList.add('is-selected');
-        row.classList.remove('is-clickable');
+        thisItem.classList.add('is-selected');
+        thisItem.classList.remove('is-clickable');
 
         updatePatternListSelectorLabel();
 
@@ -186,6 +188,11 @@ const setActivePatternCartCategory = (category) => {
         return;
     }
 
+    if (!data) {
+        // User may be logged out and selected "saved"
+        return;
+    }
+
     for (const entry of data) {
         const row = patternListItemTemplate.content.cloneNode(true);
         createPatternListItem(row, entry);
@@ -199,6 +206,7 @@ const setActivePatternCartCategory = (category) => {
 const selectPatternList = (shareId) => {
     selectedPattern.shareId = shareId;
     selectedPattern.label = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.label;
+    selectedPattern.gctype = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.gctype;
     updatePatternListSelectorLabel();
 }
 

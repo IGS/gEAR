@@ -177,6 +177,11 @@ const setActiveDCCategory = (category) => {
         return;
     }
 
+    if (!data) {
+        // User may be logged out and selected "saved"
+        return;
+    }
+
     // sort the data by label before iterating
     data.sort((a, b) => {
         if (a.label < b.label) {return -1}

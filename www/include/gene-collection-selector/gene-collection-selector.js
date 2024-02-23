@@ -267,6 +267,11 @@ const setActiveGeneCartCategory = (category) => {
         return;
     }
 
+    if (!data) {
+        // User may be logged out and selected "saved"
+        return;
+    }
+
     for (const entry of data) {
         const row = gene_list_item_template.content.cloneNode(true);
         row.querySelector('.gene-list-item-label').textContent = entry.label;
