@@ -163,6 +163,7 @@ class UserHistory:
                  SELECT entry_date, entry_category, label, url
                    FROM user_history
                   WHERE user_id = %s
+                  ORDER BY entry_date DESC
         """
 
         if entry_category:
