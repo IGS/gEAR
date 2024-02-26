@@ -206,24 +206,18 @@ const getDomainPreferences = async () => {
     return response.json();
 }
 
-// From: http://stackoverflow.com/a/21903119/1368079
-// Use example:
-//   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
-//   then:      var tech = getUrlParameter('technology');
-//              var blog = getUrlParameter('blog');
+/**
+ * Retrieves the value of a URL parameter.
+ * @param {string} sParam - The name of the parameter to retrieve.
+ * @returns {string|null} - The value of the parameter, or null if it doesn't exist.
+ */
 const getUrlParameter = (sParam) => {
-    const sPageURL = decodeURIComponent(window.location.search.substring(1));
-    const sURLVariables = sPageURL.split('&');
-    let sParameterName;
-    let i;
 
-    for (i = 0; i < sURLVariables.length; i++) {
-        sParameterName = sURLVariables[i].split('=');
-
-        if (sParameterName[0] === sParam) {
-            return sParameterName[1] === undefined ? true : sParameterName[1];
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has(sParam)) {
+        return urlParams.get(sParam);
     }
+    return null;
 }
 
 /**
@@ -483,7 +477,9 @@ const createToast = (msg, levelClass="is-danger") => {
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", toast);
+        if (document.querySelector(".js-toast.notification:last-of-type") ) {
+            document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", toast);
+        }
         // Position new toast under previous toast with CSS
         toast.style.setProperty("top", `${(numToasts * 70) + 30}px`);
     } else {
@@ -528,7 +524,7 @@ const loadPlugins = () => {
             plugin_html_element.id = plugin_name + "_html_c";
             //plugin_html_element.style = "display: none;"
             body.append(plugin_html_element)
-            
+
             fetch(plugin_import_html_url)
                 .then(response => response.text())
                 .then(data => {
@@ -824,8 +820,12 @@ const apiCallsMixin = {
      * @param {string} cartType - The type of gene cart to fetch.
      * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
      */
-    async fetchGeneCarts(cartType) {
-        const payload = {session_id: this.sessionId, cart_type: cartType};
+    async fetchGeneCarts(cartType=null) {
+        const payload = {session_id: this.sessionId};
+        if (cartType) {
+            payload.cart_type = cartType;
+        }
+
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
     },
@@ -870,6 +870,28 @@ const apiCallsMixin = {
     async fetchOrthologs(datasetId, geneSymbols, geneOrganismId=null) {
         const payload = { session_id: this.sessionId, gene_symbols:geneSymbols, gene_organism_id: geneOrganismId };
         const {data} = await axios.post(`/api/h5ad/${datasetId}/orthologs`, payload);
+        return data;
+    },
+    /**
+     * Fetches the pattern element list from the server.
+     * @param {string} sourceID - The ID of the source.
+     * @param {string} scope - The scope of the pattern element list.
+     * @returns {Promise<any>} - A promise that resolves to the pattern element list data.
+     */
+    async fetchPatternElementList(sourceID, scope) {
+        const payload = { source_id: sourceID, scope };
+        const {data} = await axios.post(`/cgi/get_pattern_element_list.cgi`, convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches pattern weighted genes from the server.
+     * @param {string} sourceId - The ID of the source.
+     * @param {string} patternId - The ID of the pattern.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchPatternWeightedGenes(sourceId, patternId) {
+        const payload = {source_id: sourceId, pattern_id: patternId};
+        const {data} = await axios.post(`/cgi/get_pattern_weighted_genes.cgi`, convertToFormData(payload));
         return data;
     },
     /**

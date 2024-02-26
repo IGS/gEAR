@@ -199,6 +199,13 @@ async def fetch_one(client, payload):
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+
+        #TODO: Figure out how to get the response status code and payload to print to stderr
+        if response.status != 200:
+            # print payload to stderr
+            print("ERROR: POST request to {} failed with status code {}".format(endpoint, response.status), file=sys.stderr)
+            print("ERROR: Payload was: {}".format(payload), file=sys.stderr)
+
         return await response.json()
 
 def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh):
@@ -387,6 +394,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+
         try:
             results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size))
         except Exception as e:

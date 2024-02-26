@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners to the DC selectors even if they don't exist yet
     document.addEventListener('click', (event) => {
+        // SAdkins - This can be changed to just .dropdown-dc-item, and use "currnetTarget" instead of "target"
         if (event.target.classList.contains('dropdown-dc-item') ||
             event.target.classList.contains('dc-item-label') ||
             event.target.classList.contains('dc-item-tag')) {
@@ -150,6 +151,8 @@ const setActiveDCCategory = (category) => {
 
     document.querySelector('#dropdown-content-dc').innerHTML = '';
 
+    let recentChosen = false;
+
     switch (category) {
         case 'domain':
             data = dataset_collection_data.domain_layouts;
@@ -159,6 +162,7 @@ const setActiveDCCategory = (category) => {
             break;
         case 'recent':
             //data = dataset_collection_data.recent_layouts;
+            recentChosen = true;
             break;
         case 'group':
             data = dataset_collection_data.group_layouts;
@@ -166,6 +170,16 @@ const setActiveDCCategory = (category) => {
         case 'shared':
             data = dataset_collection_data.shared_layouts;
             break;
+    }
+
+    if (recentChosen) {
+        // prevent from breaking
+        return;
+    }
+
+    if (!data) {
+        // User may be logged out and selected "saved"
+        return;
     }
 
     // sort the data by label before iterating

@@ -64,7 +64,7 @@ def index():
             write_entry("projectr", "ERROR", description)
         else:
             print(description, file=sys.stderr)
-        abort(500, description=description)
+        return abort(500, description=description)
 
     if loading_df.empty:
         description = "Loading (pattern) dataframe is empty."
@@ -72,7 +72,7 @@ def index():
             write_entry("projectr", "ERROR", description)
         else:
             print(description, file=sys.stderr)
-        abort(500, description=description)
+        return abort(500, description=description)
 
     if cloud_logging:
         write_entry("projectr", "INFO", "TARGET_DF SHAPE - {}".format(target_df.shape))
@@ -103,7 +103,7 @@ def index():
             write_entry("projectr", "ERROR", description)
         else:
             print(description, file=sys.stderr)
-        abort(500, description=description)
+        return abort(500, description=description)
 
     return jsonify(projection_patterns_df.to_json(orient="split"))
 

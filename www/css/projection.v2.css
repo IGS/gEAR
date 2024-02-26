@@ -1,0 +1,94 @@
+/*
+    Colors from template
+
+    Highlighted background color: fbfcfd
+    Highlighted background border: e9eef1
+*/
+
+div.card-content {
+    background-color: white;
+    color: black;
+    min-height: 20em;
+}
+div#gene-result-list-c {
+    border-right: 1px solid #e9eef1;
+}
+div#gene-result-list-c h3 {
+    font-weight: bold;
+    font-size: 90%;
+}
+div#results-main-c {
+    border-top: 1px solid rgb(220, 220, 220);
+    margin-top: 50px;
+}
+div#result-panel-grid .card {
+    /* https://github.com/jgthms/bulma/issues/218 */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+div#result-panel-grid .card-content {
+    height: 100%;
+}
+section#result-panel {
+    background-color: #fbfcfd;
+    border: 1px solid #e9eef1;
+}
+span.option-label {
+    font-weight: bold;
+    font-size: 90%;
+}
+ul#gene-result-list {
+    list-style: none;
+}
+ul#gene-result-list li {
+    padding: 0.3em 0 0.3em 1em;
+    border-top: 1px solid #e9eef1;
+    font-size: 90%;
+}
+ul#gene-result-list li:last-child {
+    border-bottom: 1px solid #e9eef1;
+}
+ul#gene-result-list li.is-selected {
+    /* TODO: Make this a variable */
+    background-color: #483285;
+    color: white;
+}
+ul#go-terms {
+    max-height: 17em;
+    overflow-y: scroll;
+}
+ul#go-terms li {
+    border-bottom: 1px solid #e9eef1;
+}
+
+.card-image .svg svg {
+    margin-top:10%;
+}
+
+/* Dropdown settings */
+
+.tile .dropdown-content {
+    width: max-content;
+}
+
+.tile .dropdown-item {
+    padding: 0.125rem 1rem;
+}
+
+.js-modal-display figure {
+    border-color: darkgray;
+    border-width: thin;
+    border-style: solid;
+}
+
+.js-modal-display.is-selected figure{
+    border-color: lightblue;
+    border-width: thick;
+    border-style: solid;
+
+}
+
+.js-choose-display-modal .modal-content {
+    width: 70%; /* make wider, which makes preview images larger */
+}

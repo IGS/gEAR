@@ -23,6 +23,7 @@ def main():
     print('Content-Type: application/json\n\n')
 
     # Handle unweighted genecarts which are not saved to tabfile.
+    # NOTE: Does not check db for existence of unweighted genecart
     if scope == "unweighted-list":
         result.append({"label":"unweighted"})
         print(json.dumps(result))

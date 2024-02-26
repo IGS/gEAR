@@ -1,0 +1,296 @@
+"use strict";
+
+// NOTE: This component depends on common.js and on Bulma CSS being imported in the parent HTML file
+
+// Terminology:
+// - patterns - The pattern source data
+// - weights - The individual patterns
+
+let patternsCartData = null;
+let selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []}; // This is used by the script that includes this file
+
+// Add event listener to dropdown trigger
+document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
+    const item = event.currentTarget;
+    item.closest(".dropdown").classList.toggle('is-active');
+});
+
+// Add event listeners to the pattern list category selectors
+const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
+categorySelectors.forEach((element) => {
+    element.addEventListener('click', (event) => {
+        const category = event.target.dataset.category;
+        setActivePatternCartCategory(category);
+
+        categorySelectors.forEach((element) => {
+            element.classList.remove('is-selected');
+            element.classList.add('is-clickable');
+        });
+
+        event.target.classList.add('is-selected');
+        event.target.classList.remove('is-clickable');
+    });
+});
+
+document.querySelector('#dropdown-pattern-list-proceed').addEventListener('click', (event) => {
+    updatePatternListSelectorLabel();
+
+    // close the dropdown
+    document.querySelector('#dropdown-pattern-lists').classList.remove('is-active');
+});
+
+// Add a click listener to the dropdown-pattern-list-cancel button
+document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click', (event) => {
+    // clear pattern lists and pattern list areas
+    document.querySelector('#dropdown-content-pattern-lists').innerHTML = '';
+
+    const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
+    categorySelectors.forEach((element) => {
+        element.classList.remove('is-selected');
+        element.classList.add('is-clickable');
+    });
+
+    // clear the patterns-manually-entered input element
+    document.querySelector('#dropdown-pattern-list-search-input').value = '';
+    document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern Lists';
+
+    // and finally the related pattern lists and patterns
+    selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
+});
+
+// Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
+document.querySelector('#dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
+    const search_term = event.target.value;
+
+    if (search_term.length <= 2) {return}
+
+    const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
+    categorySelectors.forEach((element) => {
+        element.classList.remove('is-selected');
+        element.classList.add('is-clickable');
+    });
+
+    document.querySelector('#dropdown-content-pattern-lists').innerHTML = '';
+    const patternListItemTemplate = document.querySelector('#tmpl-pattern-list-item');
+
+    for (const cart_type in patternsCartData) {
+        for (const cart of patternsCartData[cart_type]) {
+            if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
+                const row = patternListItemTemplate.content.cloneNode(true);
+                createPatternListItem(row, cart);
+            }
+        }
+    }
+});
+
+const createPatternListItem = (item, cart) => {
+    const gctype = cart.gctype;
+    const num_genes = cart.num_genes;
+    const text = `${cart.label} (${num_genes} genes)`;
+
+    item.querySelector('.pattern-list-item-label').textContent = text;
+    item.querySelector('.ul-li').dataset.shareId = cart.share_id;
+    item.querySelector('.ul-li').dataset.label = cart.label;
+    item.querySelector('.ul-li').dataset.gctype = gctype;
+
+    if (selectedPattern.shareId == cart.share_id) {
+        item.querySelector('.ul-li').classList.add('is-selected');
+        item.querySelector('.ul-li').classList.remove('is-clickable');
+    } else {
+        item.querySelector('.ul-li').classList.remove('is-selected');
+        item.querySelector('.ul-li').classList.add('is-clickable');
+    }
+
+    // create tag
+    item.querySelector('.tag').textContent = gctype;
+    // give tags different colors based on the gctype
+    if (gctype === "unweighted-list") {
+        item.querySelector('.tag').classList.add('is-info');
+    } else if (gctype === "weighted-list") {
+        item.querySelector('.tag').classList.add('is-success');
+    } else if (gctype === "labeled-list") {
+        item.querySelector('.tag').classList.add('is-warning');
+    }
+
+    // if unweighted list, hide the arrow-right icon
+    if (gctype === "unweighted-list") {
+        item.querySelector('.dropdown-pattern-list-icon').classList.add('is-hidden');
+    }
+
+    document.querySelector('#dropdown-content-pattern-lists').appendChild(item);
+
+    // Get item after it's been added to the DOM
+    const thisItem = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${cart.share_id}"]`);
+
+    // Event listener to select the pattern list and get the weights for the pattern.  Populate the weights dropdown with the weights.
+    thisItem.addEventListener("click", (event) => {
+        // uncheck all the existing rows
+        const rows = document.querySelectorAll('.dropdown-pattern-list-item');
+        rows.forEach((row) => {
+            row.classList.remove('is-selected');
+            row.classList.add('is-clickable');
+        });
+
+        selectedPattern.shareId = event.currentTarget.dataset.shareId;
+        selectedPattern.label = event.currentTarget.dataset.label;
+        selectedPattern.gctype = event.currentTarget.dataset.gctype;
+        selectedPattern.selectedWeights = [];
+
+        event.currentTarget.classList.add('is-selected');
+        event.currentTarget.classList.remove('is-clickable');
+
+
+        populatePatternWeights();
+    });
+}
+
+/**
+ * Fetches patterns data asynchronously and executes a callback function.
+ * @param {Function} callback - The callback function to be executed after fetching patterns data.
+ * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched successfully.
+ */
+const fetchPatternsData = async (callback) => {
+    try {
+        patternsCartData = await apiCallsMixin.fetchGeneCarts();
+        document.querySelector('#dropdown-pattern-lists').classList.remove('is-loading');
+        document.querySelector('#dropdown-pattern-lists').classList.remove('is-disabled');
+
+        if (callback) {
+            callback();
+        }
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/**
+ * Sets the active pattern cart category and updates the pattern list accordingly.
+ * @param {string} category - The category of the pattern cart.
+ */
+const setActivePatternCartCategory = (category) => {
+    // clear the pattern list
+    document.getElementById('dropdown-pattern-list-search-input').value = '';
+
+    const patternListItemTemplate = document.querySelector('#tmpl-pattern-list-item');
+    let data = null;
+
+    document.querySelector('#dropdown-content-pattern-lists').innerHTML = '';
+
+    let recentChosen = false;
+
+    switch (category) {
+        case 'favorites':
+            data = patternsCartData.domain_carts;
+            break;
+        case 'recent':
+            recentChosen = true;
+            break;
+        case 'saved':
+            data = patternsCartData.user_carts;
+            break;
+        case 'shared':
+            data = patternsCartData.shared_carts;
+            break;
+    }
+
+    // Prevent from breaking for now
+    if (recentChosen) {
+        return;
+    }
+
+    if (!data) {
+        // User may be logged out and selected "saved"
+        return;
+    }
+
+    for (const entry of data) {
+        const row = patternListItemTemplate.content.cloneNode(true);
+        createPatternListItem(row, entry);
+    }
+}
+
+/**
+ * Populates the weights dropdown with data fetched from the API.
+ * @returns {Promise<void>} A promise that resolves once the weights dropdown is populated.
+ */
+const populatePatternWeights = async () => {
+    // data is a list of weight and top/buttom genes (if weighted-list)
+    const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
+
+    // Use the weight info to populate the weights dropdown (tmpl-weight-item)
+    document.querySelector('#dropdown-content-weights').innerHTML = '';
+    const weightListItemTemplate = document.querySelector('#tmpl-weight-item');
+    for (const weight of data) {
+        const row = weightListItemTemplate.content.cloneNode(true);
+        row.querySelector('.weight-item-label').textContent = weight.label;
+
+        row.querySelector('.ul-li').dataset.label = weight.label;
+        // These only show up for weighted lsits
+        if (weight.top_up) {
+            row.querySelector('.ul-li').dataset.top_up = weight.top_up;
+            row.querySelector('.ul-li').dataset.top_down = weight.top_down;
+        }
+
+        // All weights are selected by default
+        selectedPattern.selectedWeights = data;
+
+        // If there is just one weight, we are obviously going to select it
+        if (data.length === 1) {
+            row.querySelector('.ul-li').classList.add("is-disabled");
+            row.querySelector('.icon').classList.add("is-hidden");
+        }
+
+        document.querySelector('#dropdown-content-weights').appendChild(row);
+
+        const thisRow = document.querySelector(`.dropdown-weight-item[data-label="${weight.label}"]`);
+
+        // Event listener to select the weight and update the selectedPattern.selectedWeights
+        // Multiple weights can be selected
+
+        thisRow.addEventListener("click", (event) => {
+            // create object from event.currentTarget.dataset
+            const obj = {};
+            for (const key in event.currentTarget.dataset) {
+                obj[key] = event.currentTarget.dataset[key];
+            }
+
+            if (event.currentTarget.classList.contains('is-selected')) {
+                event.currentTarget.classList.remove('is-selected');
+                selectedPattern.selectedWeights = selectedPattern.selectedWeights.filter((weight) => weight.label !== obj.label);
+                // change mdi-plus to mdi-minus
+                event.currentTarget.querySelector('.mdi').classList.remove('mdi-check');
+                event.currentTarget.querySelector('.mdi').classList.add('mdi-plus');
+            } else {
+                event.currentTarget.classList.add('is-selected');
+
+                selectedPattern.selectedWeights.push(obj);
+                // change mdi-minus to mdi-plus
+                event.currentTarget.querySelector('.mdi').classList.remove('mdi-plus');
+                event.currentTarget.querySelector('.mdi').classList.add('mdi-check');
+            }
+        });
+
+    }
+
+    // If gctype is unweighted-list, then hide the weights dropdown but populate the selectedPattern.selectedWeights with the weight label
+}
+
+/**
+ * Updates the selected pattern list with the given share ID and updates the pattern list selector label.
+ * @param {string} shareId - The share ID to set for the selected pattern.
+ */
+const selectPatternList = (shareId) => {
+    selectedPattern.shareId = shareId;
+    selectedPattern.label = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.label;
+    selectedPattern.gctype = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.gctype;
+    updatePatternListSelectorLabel();
+}
+
+/**
+ * Updates the pattern list select drop down label.
+ */
+const updatePatternListSelectorLabel = () => {
+    const shareId = selectedPattern.shareId;
+    document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = shareId ? selectedPattern.label : 'Quick search using pattern sources';
+}
