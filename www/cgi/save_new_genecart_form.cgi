@@ -15,6 +15,7 @@ abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 import geardb
+from gear.userhistory import UserHistory
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
@@ -146,6 +147,15 @@ def main():
 
     result = { 'id': gc.id }
     print(json.dumps(result))
+
+    if gc.user_id:
+        history = UserHistory()
+        history.add_record(
+            user_id=gc.user_id,
+            entry_category='gene_cart_added',
+            label="Gene cart added: '{0}'".format(gc.label),
+            gene_cart_share_id=gc.share_id
+        )
 
 if __name__ == '__main__':
     main()
