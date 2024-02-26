@@ -15,6 +15,7 @@ import sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.userhistory import UserHistory
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -39,6 +40,16 @@ def main():
         }
 
     print(json.dumps(result))
+
+    # Log the addition
+    if user is not None:
+        history = UserHistory()
+        history.add_record(
+            user_id=user.id,
+            entry_category='layout_added',
+            label="Profile added: '{0}'".format(layout.label),
+            layout_share_id=layout.share_id
+        )
 
 if __name__ == '__main__':
     main()

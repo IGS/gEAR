@@ -3,6 +3,8 @@
 let url_params_passed = false;
 let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
+//let selected_dc_share_id = null;
+//let selected_dc_label = "";
 let is_multigene = false;
 let annotation_data = null;
 let manually_entered_genes = [];
@@ -190,7 +192,9 @@ const fetchGeneAnnotations = async (callback) => {
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             Array.from(selected_genes).join(','),
-            document.querySelector('#gene-search-exact-match').checked
+            document.querySelector('#gene-search-exact-match').checked,
+            selected_dc_share_id,
+            is_multigene
         );
 
         // console.log(annotation_data);
