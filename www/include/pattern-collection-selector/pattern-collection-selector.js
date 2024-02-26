@@ -7,7 +7,7 @@
 // - weights - The individual patterns
 
 let patternsCartData = null;
-let selectedPattern = {shareId: null, label: null, gctype: null}; // This is used by the script that includes this file
+let selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []}; // This is used by the script that includes this file
 
 // Add event listener to dropdown trigger
 document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
@@ -32,6 +32,13 @@ categorySelectors.forEach((element) => {
     });
 });
 
+document.querySelector('#dropdown-pattern-list-proceed').addEventListener('click', (event) => {
+    updatePatternListSelectorLabel();
+
+    // close the dropdown
+    document.querySelector('#dropdown-pattern-lists').classList.remove('is-active');
+});
+
 // Add a click listener to the dropdown-pattern-list-cancel button
 document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click', (event) => {
     // clear pattern lists and pattern list areas
@@ -48,7 +55,7 @@ document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click'
     document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern Lists';
 
     // and finally the related pattern lists and patterns
-    selectedPattern = {shareId: null, label: null};
+    selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
 });
 
 // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
@@ -105,12 +112,17 @@ const createPatternListItem = (item, cart) => {
         item.querySelector('.tag').classList.add('is-warning');
     }
 
+    // if unweighted list, hide the arrow-right icon
+    if (gctype === "unweighted-list") {
+        item.querySelector('.dropdown-pattern-list-icon').classList.add('is-hidden');
+    }
+
     document.querySelector('#dropdown-content-pattern-lists').appendChild(item);
 
     // Get item after it's been added to the DOM
     const thisItem = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${cart.share_id}"]`);
 
-    // Event listeners
+    // Event listener to select the pattern list and get the weights for the pattern.  Populate the weights dropdown with the weights.
     thisItem.addEventListener("click", (event) => {
         // uncheck all the existing rows
         const rows = document.querySelectorAll('.dropdown-pattern-list-item');
@@ -119,17 +131,16 @@ const createPatternListItem = (item, cart) => {
             row.classList.add('is-clickable');
         });
 
-        selectedPattern.shareId = thisItem.dataset.shareId;
-        selectedPattern.label = thisItem.dataset.label;
-        selectedPattern.gctype = thisItem.dataset.gctype;
+        selectedPattern.shareId = event.currentTarget.dataset.shareId;
+        selectedPattern.label = event.currentTarget.dataset.label;
+        selectedPattern.gctype = event.currentTarget.dataset.gctype;
+        selectedPattern.selectedWeights = [];
 
-        thisItem.classList.add('is-selected');
-        thisItem.classList.remove('is-clickable');
+        event.currentTarget.classList.add('is-selected');
+        event.currentTarget.classList.remove('is-clickable');
 
-        updatePatternListSelectorLabel();
 
-        // close the dropdown
-        document.querySelector('#dropdown-pattern-lists').classList.remove('is-active');
+        populatePatternWeights();
     });
 }
 
@@ -197,6 +208,72 @@ const setActivePatternCartCategory = (category) => {
         const row = patternListItemTemplate.content.cloneNode(true);
         createPatternListItem(row, entry);
     }
+}
+
+/**
+ * Populates the weights dropdown with data fetched from the API.
+ * @returns {Promise<void>} A promise that resolves once the weights dropdown is populated.
+ */
+const populatePatternWeights = async () => {
+    // data is a list of weight and top/buttom genes (if weighted-list)
+    const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
+
+    // Use the weight info to populate the weights dropdown (tmpl-weight-item)
+    document.querySelector('#dropdown-content-weights').innerHTML = '';
+    const weightListItemTemplate = document.querySelector('#tmpl-weight-item');
+    for (const weight of data) {
+        const row = weightListItemTemplate.content.cloneNode(true);
+        row.querySelector('.weight-item-label').textContent = weight.label;
+
+        row.querySelector('.ul-li').dataset.label = weight.label;
+        // These only show up for weighted lsits
+        if (weight.top_up) {
+            row.querySelector('.ul-li').dataset.top_up = weight.top_up;
+            row.querySelector('.ul-li').dataset.top_down = weight.top_down;
+        }
+
+        // All weights are selected by default
+        selectedPattern.selectedWeights = data;
+
+        // If there is just one weight, we are obviously going to select it
+        if (data.length === 1) {
+            row.querySelector('.ul-li').classList.add("is-disabled");
+            row.querySelector('.icon').classList.add("is-hidden");
+        }
+
+        document.querySelector('#dropdown-content-weights').appendChild(row);
+
+        const thisRow = document.querySelector(`.dropdown-weight-item[data-label="${weight.label}"]`);
+
+        // Event listener to select the weight and update the selectedPattern.selectedWeights
+        // Multiple weights can be selected
+
+        thisRow.addEventListener("click", (event) => {
+            // create object from event.currentTarget.dataset
+            const obj = {};
+            for (const key in event.currentTarget.dataset) {
+                obj[key] = event.currentTarget.dataset[key];
+            }
+
+            if (event.currentTarget.classList.contains('is-selected')) {
+                event.currentTarget.classList.remove('is-selected');
+                selectedPattern.selectedWeights = selectedPattern.selectedWeights.filter((weight) => weight.label !== obj.label);
+                // change mdi-plus to mdi-minus
+                event.currentTarget.querySelector('.mdi').classList.remove('mdi-check');
+                event.currentTarget.querySelector('.mdi').classList.add('mdi-plus');
+            } else {
+                event.currentTarget.classList.add('is-selected');
+
+                selectedPattern.selectedWeights.push(obj);
+                // change mdi-minus to mdi-plus
+                event.currentTarget.querySelector('.mdi').classList.remove('mdi-plus');
+                event.currentTarget.querySelector('.mdi').classList.add('mdi-check');
+            }
+        });
+
+    }
+
+    // If gctype is unweighted-list, then hide the weights dropdown but populate the selectedPattern.selectedWeights with the weight label
 }
 
 /**

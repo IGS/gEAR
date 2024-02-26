@@ -45,7 +45,7 @@
         <hr class="dropdown-divider">
         <div class="dropdown-item">
           <div class="columns is-mobile">
-            <div class="column is-one-third is-scrollable">
+            <div class="column is-one-querter is-scrollable">
               <h3>Saved Items</h3>
               <div id="dropdown-content-pattern-list-category" class="ul-replacement">
                 <div class="ul-li is-clickable" data-category="favorites">
@@ -66,18 +66,33 @@
                 </div>
               </div>
             </div>
-            <div class="column is-two-thirds is-scrollable">
+            <div class="column is-half is-scrollable">
               <h3>Pattern Source</h3>
               <div id="dropdown-content-pattern-lists" class="ul-replacement"></div>
             </div>
+            <div class="column is-one-quarter is-scrollable">
+              <h3>Weights</h3>
+              <div id="dropdown-content-weights" class="ul-replacement"></div>
+            </div>
             <template id="tmpl-pattern-list-item">
-              <div class="ul-li dropdown-pattern-list-item is-clickable columns" data-share-id="" data-patterns="">
-                <div class="column is-one-quarter mr-2 py-0">
+              <div class="ul-li dropdown-pattern-list-item is-clickable columns py-0">
+                <div class="column is-4 p-1">
                   <span class="tag is-light"></span>
                 </div>
-                <div class="column is-three-quarters py-0">
+                <div class="column is-7 p-0">
                   <span class="pattern-list-item-label"></span>
                 </div>
+                <span class="dropdown-pattern-list-icon column is-1 icon is-pulled-right p-0">
+                  <i class="mdi mdi-18px mdi-chevron-right dropdown-pattern-list-item-right-selector"></i>
+                </span>
+              </div>
+            </template>
+            <template id="tmpl-weight-item">
+              <div class="ul-li dropdown-weight-item is-selected">
+                <span class="icon is-pulled-left">
+                  <i class="mdi mdi-18px mdi-check is-clickable mr-2"></i>
+                </span>
+                <span class="weight-item-label"></span>
               </div>
             </template>
           </div>
@@ -89,7 +104,8 @@
           <div class="columns">
             <div class="column is-10"></div>
             <div class="column is-2">
-              <button id="dropdown-pattern-list-cancel" class="button is-secondary is-rounded is-small">Cancel</button>
+              <button id="dropdown-pattern-list-proceed" class="button is-primary is-rounded is-small mb-1">Proceed</button><br />
+              <button id="dropdown-pattern-list-cancel" class="button is-secondary is-rounded is-small">Reset</button>
             </div>
           </div>
         </div>

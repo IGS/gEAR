@@ -6,6 +6,15 @@ let currentlySelectedOrgId = "";
 let isMulti = false;
 let tilegrid = null;
 let svgScoringMethod = 'gene';
+let allWeights = new Set();
+let selectedWeights = new Set();
+
+// imported from pattern-collection-selector.js
+// selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
+
+// imported from dataset-collection-selector.js
+// selected_dc_share_id = null;
+// selected_dc_label = null;
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
@@ -29,6 +38,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // update multi/single pattern
         isMulti = document.querySelector('#single-multi-multi').checked;
+
+        populatePatternResultsList();
 
         // if multi, clear the selected pattern symbol and hide the pattern-result-list container
         document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
@@ -55,25 +66,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         } catch (error) {
             logErrorInConsole(error);
         }
-    });
-
-    // Add event listeners to the pattern result list items even if they don't exist yet
-    document.addEventListener('click', (event) => {
-        if (!event.target.classList.contains('pattern-result-list-item')) {
-            return;
-        }
-
-        const pattern_symbol = event.target.textContent;
-        document.querySelector('#currently-selected-pattern').innerHTML = pattern_symbol;
-
-        // remove is-selected from all the existing rows, then add it to this one
-        const rows = document.querySelectorAll('.pattern-result-list-item');
-        rows.forEach((row) => {
-            row.classList.remove('is-selected');
-        });
-
-        event.target.classList.add('is-selected');
-        selectPatternResult(pattern_symbol);
     });
 
     // Change the svg scoring method when select element is changed
@@ -110,18 +102,52 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both patterns and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if (selected_dc_share_id && selectedPatterns.size > 0) {
+        if (selected_dc_share_id && selectedPattern.shareId !== null) {
             document.querySelector('#submit-projection-search').click();
         }
     }
 }
 
+const populatePatternResultsList = () => {
+    const template = document.querySelector('#tmpl-pattern-result-item');
+    document.querySelector('#pattern-result-list').innerHTML = '';
+
+    for (const weight in allWeights) {
+        const row = template.content.cloneNode(true);
+        row.querySelector('li').innerHTML = weight;
+        row.dataset.weight = weight;
+        document.querySelector('#pattern-result-list').appendChild(row);
+
+        const thisRow = document.querySelector(`.pattern-result-list-item[data-weight="${weight}"]`);
+        thisRow.addEventListener('click', (event) => {
+
+            // remove is-selected from all the existing rows, then add it to this one
+            const rows = document.querySelectorAll('.pattern-result-list-item');
+            for (const row of rows) {
+                row.classList.remove('is-selected');
+            }
+
+            event.currentTarget.classList.add('is-selected');
+            selectPatternResult(weight);
+        });
+
+    }
+
+
+}
+
 
 const parsepatternCartURLParams = () => {
+    // if projection algorithm is passed, set it in #algorithm
+    const projectionAlgorithm = getUrlParameter('projection_algorithm');
+    if (projectionAlgorithm) {
+        document.getElementById('algorithm').value = projectionAlgorithm;
+    }
+
     // handle manually-entered pattern symbols
-    const urlPatterns = getUrlParameter('patterns');
-    if (urlPatterns) {
-        selectedPatterns = new Set(urlPatterns.split(','));
+    const urlWeights = getUrlParameter('projection_patterns');
+    if (urlWeights) {
+        selectedWeights = new Set(urlWeights.split(','));
         urlParamsPassed = true;
     }
 
@@ -129,7 +155,7 @@ const parsepatternCartURLParams = () => {
     const pattern = getUrlParameter('projection_source')
     if (pattern) {
         urlParamsPassed = true;
-        selectPatternLists(pattern); // declared in pattern-collection-selector.js
+        selectPatternList(pattern); // declared in pattern-collection-selector.js
     }
 
     // single or multiple pattern view (convert to boolean)?
@@ -182,7 +208,7 @@ const setupTileGrid = async (layout_share_id) => {
         if (isMulti) {
             // Don't render yet if a pattern is not selected
             if (selected_patterns.size) {
-                await tilegrid.renderDisplays(Array.from(selectedPatterns), isMulti);
+                await tilegrid.renderDisplays(Array.from(selectedWeights), isMulti);
             }
         } else {
             // Don't render yet if a pattern is not selected
@@ -200,8 +226,8 @@ const setupTileGrid = async (layout_share_id) => {
 const validateProjectionSearchForm = () => {
     // User must have either selected a pattern list or entered patterns manually. Either of these
     // will populate the selected_patterns array
-    if (selectedPatterns.size) {
-        createToast('Please enter at least one pattern to proceed');
+    if (selectedPatterns.shareId === null) {
+        createToast('Please enter at least one pattern source to proceed');
         return false;
     }
 

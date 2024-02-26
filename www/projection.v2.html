@@ -38,72 +38,61 @@
 
           <section id="content_c" class="m-3">
             <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
-            <div id="search-bar-c" class="mt-4 ml-3 mb-4">
-              <div class="field has-addons is-grouped mb-0">
+            <div id="search-bar-c" class="mt-4 ml-3 mb-4 columns">
+              <div class="column is-half">
+                <div class="field has-addons is-grouped mb-0">
+                  <!--#include virtual="/include/pattern-collection-selector/pattern-collection-selector.html" -->
+                  <div class="columns">
+                    <div class="column is-1">
+                      <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                    </div>
+                  </div>
 
-                <!--#include virtual="/include/pattern-collection-selector/pattern-collection-selector.html" -->
+                  <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
 
-                <div class="columns">
-                  <div class="column is-1">
-                    <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                  <div class="control">
+                    <button id="submit-projection-search" class="button is-primary ml-3">
+                      <span class="icon is-small">
+                        <i class="mdi mdi-magnify"></i>
+                      </span>
+                    </button>
                   </div>
                 </div>
-
-                <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-
-                <div class="control">
-                  <button id="submit-projection-search" class="button is-primary ml-3">
-                    <span class="icon is-small">
-                      <i class="mdi mdi-magnify"></i>
-                    </span>
-                  </button>
+                <div class="field is-grouped">
+                  <div class="control">
+                    <label class="radio">
+                      <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
+                      Single-pattern Display
+                    </label>
+                    <label class="radio">
+                      <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
+                      Multi-pattern Display
+                    </label>
+                  </div>
                 </div>
-              </div>
-              <div class="field is-grouped">
-                <div class="control">
-                  <label class="radio">
-                    <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
-                    Single-gene Display
-                  </label>
-                  <label class="radio">
-                    <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
-                    Multi-gene Display
-                  </label>
-                </div>
-              </div>
-              <div class="columns">
-                <div id="algorithm-c" class="field column">
+                <div id="algorithm-c" class="field">
                   <label class="label">Select algorithm</label>
                   <div class="control">
                     <div class="select is-small">
                       <select id="algorithm">
                         <option value="pca_algo">Principal Component Analysis (PCA)</option>
                         <option value="nmf_algo">Least-squares optimiazation for NMF</option>
-                        <option value="fixednmf_algo">ixed gene weights in NMF re-run</option>
+                        <option value="fixednmf_algo">Fixed gene weights in NMF re-run</option>
                         <option value="binary_algo">Binary Gene Count</option>
                       </select>
                     </div>
                   </div>
                 </div>
-                <div id="weights-c" class="field column is-hidden">
-                  <label class="label">Select weights</label>
-                  <div class="control">
-                    <div class="select is-small">
-                      <select id="weights" multiple>
-                        <!-- pattern weights go here -->
-                      </select>
-                    </div>
-                </div>
               </div>
             </div>
             <div id="results-main-c" class="columns">
-              <div id="gene-result-list-c" class="column is-narrow is-fullheight p-0">
-                <h3 class="mt-3 ml-3 mr-6 is-hidden">Search<br />results (<span id="gene-result-count"></span>)</h3>
-                <ul id="gene-result-list" class="mt-3"></ul>
-                <template id="tmpl-gene-result-item">
-                  <li class="gene-result-list-item is-clickable pl-4"></li>
+              <div id="pattern-result-list-c" class="column is-narrow is-fullheight p-0">
+                <h3 class="mt-3 ml-3 mr-6 is-hidden">Search<br />results (<span id="pattern-result-count"></span>)</h3>
+                <ul id="pattern-result-list" class="mt-3"></ul>
+                <template id="tmpl-pattern-result-item">
+                  <li class="pattern-result-list-item is-clickable pl-4"></li>
                 </template>
-                <template id="tmpl-gene-result-none-found">
+                <template id="tmpl-pattern-result-none-found">
                   <li class="pl-4">No matches found</li>
                 </template>
               </div>
@@ -113,7 +102,7 @@
                     <span class="option-label pr-1">Scoring method: </span>
                     <div class="control select is-small">
                       <select id="svg-scoring-method">
-                        <option value="gene" selected>Gene scope</option>
+                        <option value="gene" selected>Pattern scope</option>
                         <option value="tissue">Tissue scope</option>
                         <option value="dataset">Sample scope</option>
                       </select>

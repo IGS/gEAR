@@ -1,8 +1,7 @@
 /* Prevent the dropdown from overflowing the left side of the screen */
 /* TODO: This was only tested on index.html.  It does not work well on expression.html + it's a hacky solution */
-
-#dropdown-pattern-lists .dropdown-content {
-    width: 45vw;
+#dropdown-pattern-lists div.dropdown-content {
+    width: 55vw;;
 }
 
 #dropdown-pattern-lists .dropdown-item h3 {

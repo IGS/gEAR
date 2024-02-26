@@ -221,7 +221,7 @@ class TileGrid {
 };
 
 class DatasetTile {
-    constructor(dataset, isMulti = true) {
+    constructor(dataset, isMulti=true, isProjection=false) {
         this.dataset = dataset;
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
@@ -239,6 +239,8 @@ class DatasetTile {
 
         this.orthologs = null;
         this.orthologsToPlot = null;
+
+        this.isProjection = isProjection;
 
     }
 
