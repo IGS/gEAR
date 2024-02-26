@@ -32,7 +32,6 @@ fixed paths have worked fine for decades.
       aiohttp==3.8.3 \
       anndata==0.7.8 \
       aiohttp \
-      biocode==0.10.0 \
       biopython==1.79 \
       cairosvg==2.5.2 \
       dash-bio==1.0.2 \
@@ -44,6 +43,7 @@ fixed paths have worked fine for decades.
       jupyter==1.0.0 \
       kaleido==0.2.1 \
       llvmlite==0.38.0 \
+      matplotlib==3.6.2 \
       mod-wsgi==4.9.0 \
       more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
