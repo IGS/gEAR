@@ -479,7 +479,9 @@ const createToast = (msg, levelClass="is-danger") => {
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", toast);
+        if (document.querySelector(".js-toast.notification:last-of-type") ) {
+            document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", toast);
+        }
         // Position new toast under previous toast with CSS
         toast.style.setProperty("top", `${(numToasts * 70) + 30}px`);
     } else {
@@ -870,6 +872,28 @@ const apiCallsMixin = {
     async fetchOrthologs(datasetId, geneSymbols, geneOrganismId=null) {
         const payload = { session_id: this.sessionId, gene_symbols:geneSymbols, gene_organism_id: geneOrganismId };
         const {data} = await axios.post(`/api/h5ad/${datasetId}/orthologs`, payload);
+        return data;
+    },
+    /**
+     * Fetches the pattern element list from the server.
+     * @param {string} sourceID - The ID of the source.
+     * @param {string} scope - The scope of the pattern element list.
+     * @returns {Promise<any>} - A promise that resolves to the pattern element list data.
+     */
+    async fetchPatternElementList(sourceID, scope) {
+        const payload = { source_id: sourceID, scope };
+        const {data} = await axios.post(`/cgi/get_pattern_element_list.cgi`, convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches pattern weighted genes from the server.
+     * @param {string} sourceId - The ID of the source.
+     * @param {string} patternId - The ID of the pattern.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchPatternWeightedGenes(sourceId, patternId) {
+        const payload = {source_id: sourceId, pattern_id: patternId};
+        const {data} = await axios.post(`/cgi/get_pattern_weighted_genes.cgi`, convertToFormData(payload));
         return data;
     },
     /**
