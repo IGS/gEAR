@@ -21,3 +21,18 @@
 #dropdown-dc .ul-li.is-selected {
     background-color: #EFEDF7;
 }
+
+#dropdown-dc button.is-danger {
+    border-color: #97172e;
+    background-color: white;
+    border-width: 2px;
+}
+
+
+.select.is-danger select, .input.is-danger, .textarea.is-danger{ 
+    border-color: #942400; /* overwrite default success for .select */ 
+} 
+ 
+.select.is-danger:not(:hover)::after { 
+    border-color: #942400; /* overwrite default success for .select */ 
+} 
