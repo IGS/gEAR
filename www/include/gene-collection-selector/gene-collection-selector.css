@@ -18,6 +18,11 @@
         width: 45vw;
     }
 }
+div#dropdown-gene-lists button.is-danger {
+    border-color: #97172e;
+    background-color: white;
+    border-width: 2px;
+}
 div.dropdown-item h3 {
     font-weight: bold;
     font-size: 120%;
