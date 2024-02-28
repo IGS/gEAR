@@ -216,10 +216,10 @@ const selectPatternWeightResult = (weight) => {
 
     // populate top-up and top-down with the array of genes for that weight
     if (obj.top_up) {
-        document.querySelector("#top-up-genes p").textContent = obj.top_up.join(', ');
+        document.querySelector("#top-up-genes p").textContent = obj.top_up;
     }
     if (obj.top_down) {
-        document.querySelector("#top-down-genes p").textContent = obj.top_down.join(', ');
+        document.querySelector("#top-down-genes p").textContent = obj.top_down;
     }
 
 
