@@ -61,6 +61,9 @@ html, body {
 
 #citation_c .card-content {
     font-size: 70%;
+    background-color: white;
+    color: black;
+    min-height: 20em;
 }
 
 #citation_c .card-header-title {

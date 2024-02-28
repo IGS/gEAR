@@ -255,6 +255,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         loading_df = create_unweighted_loading_df(genecart) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
     except Exception as e:
         print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
         return {
             'success': -1
             , 'message': str(e)
@@ -277,10 +279,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             raise Exception("Dataset was not found in the database. Please contact a gEAR admin.")
 
         if not genecart.organism_id == ds.organism_id:
-            ortholog_files = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
-            loading_df = map_dataframe_genes(loading_df, ortholog_files[0])
+            ortholog_file = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
+            loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
         return {"success": -1, "message": str(e)}
 
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
@@ -397,6 +401,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
         try:
             results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size))
+            print("INFO: All fetch tasks have completed", file=fh)
         except Exception as e:
             print(str(e), file=fh)
             # Raises as soon as one "gather" task has an exception
@@ -414,16 +419,18 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             loop.stop() # prevent "Task was destroyed but it is pending!" messages
             loop.close()
 
+        print("INFO: Concatenating results to dataframe", file=fh)
         projection_patterns_df = concat_fetch_results_to_dataframe(results)
 
         del results
         gc.collect()    # trying to clear memory
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
-            print(str(e), file=sys.stderr)
+            message = "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+            print(message, file=sys.stderr)
             return {
                 'success': -1
-                , 'message': "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+                , 'message': message
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
@@ -471,6 +478,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
 
+    print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)
 
     del projection_patterns_df
@@ -513,6 +521,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
     # Remove file lock
+    print("INFO: Removing lock file for {}".format(projection_id), file=fh)
     remove_lock_file(lock_fh, lockfile)
 
     return {

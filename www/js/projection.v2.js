@@ -1,13 +1,10 @@
 'use strict';
 
 let urlParamsPassed = false;
-let currentlySelectedPattern = null;
-let currentlySelectedOrgId = "";
 let isMulti = false;
 let tilegrid = null;
 let svgScoringMethod = 'gene';
-let allWeights = new Set();
-let selectedWeights = new Set();
+let projectionOpts = {patternSource: null, algorithm: null, gctype: null};
 
 // imported from pattern-collection-selector.js
 // selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
@@ -15,6 +12,21 @@ let selectedWeights = new Set();
 // imported from dataset-collection-selector.js
 // selected_dc_share_id = null;
 // selected_dc_label = null;
+
+// Proxy the selectedPattern object to watch for changes to the selectedWeights array
+selectedPattern = new Proxy(selectedPattern, {
+    set: (target, key, value) => {
+        target[key] = value;
+        if (key === "selectedWeights" && value.length < 2) {
+            document.getElementById("single-multi-multi").disabled = true;
+            document.getElementById("single-multi-single").checked = true;
+            isMulti = false;
+        } else {
+            document.getElementById("single-multi-multi").disabled = false;
+        }
+        return true;
+    }
+});
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
@@ -43,23 +55,21 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // if multi, clear the selected pattern symbol and hide the pattern-result-list container
         document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
-        document.getElementById("currently-selected-pattern-header").classList.remove('is-hidden');
         document.getElementById("scoring-method-div").classList.remove('is-hidden');
         if (isMulti) {
-            currentlySelectedPattern = null;
+            currentlySelectedWeight = null;
             document.getElementById("pattern-result-list-c").classList.add('is-hidden');
-            document.getElementById("currently-selected-pattern-header").classList.add('is-hidden');
             document.getElementById("scoring-method-div").classList.add('is-hidden');
         }
 
 
         try {
-            const [tilegridRes] = await setupTileGrid(selected_dc_share_id);
-            tilegrid = tilegridRes.value;
+            tilegrid = await setupTileGrid(selected_dc_share_id);
 
             // auto-select the first pattern in the list
             const first_pattern = document.querySelector('.pattern-result-list-item');
             if (!isMulti && first_pattern) {
+
                 first_pattern.click();
             }
 
@@ -80,7 +90,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
 
         const pattern = listItem.textContent;
-        selectPatternResult(pattern);
+        selectPatternWeightResult(pattern);
     });
 
     // Wait until all pending API calls have completed before checking if we need to search
@@ -102,7 +112,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both patterns and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if (selected_dc_share_id && selectedPattern.shareId !== null) {
+        if (selected_dc_share_id && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
             document.querySelector('#submit-projection-search').click();
         }
     }
@@ -112,13 +122,14 @@ const populatePatternResultsList = () => {
     const template = document.querySelector('#tmpl-pattern-result-item');
     document.querySelector('#pattern-result-list').innerHTML = '';
 
-    for (const weight in allWeights) {
+    for (const weight of selectedPattern.selectedWeights) {
+        const label = weight.label;
         const row = template.content.cloneNode(true);
-        row.querySelector('li').innerHTML = weight;
-        row.dataset.weight = weight;
+        row.querySelector('li').innerHTML = label;
+        row.querySelector('li').dataset.weight = label;
         document.querySelector('#pattern-result-list').appendChild(row);
 
-        const thisRow = document.querySelector(`.pattern-result-list-item[data-weight="${weight}"]`);
+        const thisRow = document.querySelector(`.pattern-result-list-item[data-weight="${label}"]`);
         thisRow.addEventListener('click', (event) => {
 
             // remove is-selected from all the existing rows, then add it to this one
@@ -128,15 +139,14 @@ const populatePatternResultsList = () => {
             }
 
             event.currentTarget.classList.add('is-selected');
-            selectPatternResult(weight);
+            selectPatternWeightResult(label);
         });
-
     }
-
-
 }
 
-
+/**
+ * Parses the URL parameters and updates the UI based on the values.
+ */
 const parsepatternCartURLParams = () => {
     // if projection algorithm is passed, set it in #algorithm
     const projectionAlgorithm = getUrlParameter('projection_algorithm');
@@ -147,7 +157,7 @@ const parsepatternCartURLParams = () => {
     // handle manually-entered pattern symbols
     const urlWeights = getUrlParameter('projection_patterns');
     if (urlWeights) {
-        selectedWeights = new Set(urlWeights.split(','));
+        selectedPattern.selectedWeights = urlWeights.split(',');
         urlParamsPassed = true;
     }
 
@@ -181,12 +191,41 @@ const parseDatasetCollectionURLParams = async () => {
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 }
 
-const selectPatternResult = (pattern_symbol) => {
-    currentlySelectedPattern = pattern_symbol;
+const selectPatternWeightResult = (weight) => {
+
+    // get the selected pattern object
+    const obj = selectedPattern.selectedWeights.find((w) => w.label === weight);
+
+    // if projection algorithm is "nmf", then hide the top_down genes
+    const projectionAlgorithm = document.getElementById('algorithm').value;
+    if (projectionAlgorithm === 'nmf') {
+        document.getElementById('svg-scoring-method').value = 'top_up';
+        document.getElementById('top-down-genes').classList.add('is-hidden');
+    } else {
+        document.getElementById('top-down-genes').classList.remove('is-hidden');
+    }
+
+    // if isMulti=false, show top_up and top_down genes
+    if (isMulti || selectedPattern.gctype === "unweighted-list") {
+        document.getElementById("top-genes-c").classList.add('is-hidden');
+    }
+
+    // clear the top-up and top-down genes
+    document.querySelector("#top-up-genes p").textContent = '';
+    document.querySelector("#top-down-genes p").textContent = '';
+
+    // populate top-up and top-down with the array of genes for that weight
+    if (obj.top_up) {
+        document.querySelector("#top-up-genes p").textContent = obj.top_up.join(', ');
+    }
+    if (obj.top_down) {
+        document.querySelector("#top-down-genes p").textContent = obj.top_down.join(', ');
+    }
+
 
     // Other things can be called next, such as plotting calls
     if (tilegrid) {
-        tilegrid.renderDisplays(currentlySelectedPattern, isMulti, svgScoringMethod);
+        tilegrid.renderDisplays(weight, isMulti, svgScoringMethod, projectionOpts);
     }
 }
 
@@ -196,24 +235,32 @@ const setupTileGrid = async (layout_share_id) => {
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
-        tilegrid.patternrateTileGrid(isMulti);
         tilegrid.applyTileGrid(isMulti);
 
-        await tilegrid.performProjection(); // TODO:
+        const algorithm = document.getElementById('algorithm').value;
+
+        // create projectionOpts object out of selectedPattern.shareId, algorithm, and selectedPattern.gctype
+        projectionOpts = {
+            patternSource: selectedPattern.shareId,
+            algorithm,
+            gctype: selectedPattern.gctype
+        };
+
+        for (const tile of tilegrid.tiles) {
+            tile.enableProjectR();
+        }
 
         await tilegrid.addDefaultDisplays();
 
-        // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_patterns array if single_pattern
-        // But we are using a string for clarity.
+        // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_pattern
+        // We do not render for single-gene searches because the first pattern result is "clicked" and the tilegrid is rendered in the event listener.
+
         if (isMulti) {
             // Don't render yet if a pattern is not selected
             if (selected_patterns.size) {
-                await tilegrid.renderDisplays(Array.from(selectedWeights), isMulti);
-            }
-        } else {
-            // Don't render yet if a pattern is not selected
-            if (currentlySelectedPattern) {
-                await tilegrid.renderDisplays(currentlySelectedPattern, isMulti, svgScoringMethod);
+                // create array of selected weight labels
+                const selectedWeights = Array.from(selectedPattern.selectedWeights).map((w) => w.label);
+                await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, projectionOpts);
             }
         }
     } catch (error) {
@@ -226,14 +273,18 @@ const setupTileGrid = async (layout_share_id) => {
 const validateProjectionSearchForm = () => {
     // User must have either selected a pattern list or entered patterns manually. Either of these
     // will populate the selected_patterns array
-    if (selectedPatterns.shareId === null) {
+    document.querySelector('#dropdown-pattern-lists button').classList.remove('is-danger');
+    if (selectedPattern.shareId === null) {
         createToast('Please enter at least one pattern source to proceed');
+        document.querySelector('#dropdown-pattern-lists button').classList.add('is-danger');
         return false;
     }
 
     // Check if the user has selected any dataset collections
+    document.querySelector('#dropdown-dc button').classList.remove('is-danger');
     if (!selected_dc_share_id) {
         createToast('Please select at least one dataset to proceed');
+        document.querySelector('#dropdown-dc button').classList.add('is-danger');
         return false;
     }
 

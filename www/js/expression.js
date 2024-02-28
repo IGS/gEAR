@@ -351,16 +351,11 @@ const setupTileGrid = async (layout_share_id) => {
         await tilegrid.addDefaultDisplays();
 
         // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_gene
-        // But we are using a string for clarity.
+        // We do not render for single-gene searches because the first gene result is "clicked" and the tilegrid is rendered in the event listener.
         if (is_multigene) {
             // Don't render yet if a gene is not selected
             if (selected_genes.size) {
                 await tilegrid.renderDisplays(Array.from(selected_genes), is_multigene);
-            }
-        } else {
-            // Don't render yet if a gene is not selected
-            if (currently_selected_gene_symbol) {
-                await tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene, svg_scoring_method);
             }
         }
     } catch (error) {

@@ -7,7 +7,6 @@ try:
     # Imports the Google Cloud client library
     from google.cloud import logging
     cloud_logging = True
-
 except:
     pass
 
@@ -18,6 +17,13 @@ app = Flask(__name__)
 
 def write_entry(logger_name, severity, message):
     """Writes log entries to the given logger."""
+
+    global cloud_logging
+
+    if (not cloud_logging):
+        print(message, file=sys.stderr)
+        return
+
     logging_client = logging.Client()
 
     # This log can be found in the Cloud Logging console under 'Custom Logs'.
@@ -48,38 +54,34 @@ def index():
     genecart_id = req_json["genecart_id"]
     dataset_id = req_json["dataset_id"]
 
-    if cloud_logging:
-        write_entry("projectr", "INFO", "Dataset ID: {}".format(dataset_id))
-        write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
-    else:
-        print("Dataset ID: {}".format(dataset_id), file=sys.stderr)
-        print("Genecart ID: {}".format(genecart_id), file=sys.stderr)
+    global cloud_logging
+    try:
+        write_entry("projectr", "DEBUG", "Testing cloud logging.")
+    except Exception as e:
+        cloud_logging = False
+        write_entry("projectr", "DEBUG", "Failed to write to cloud logging: {}".format(str(e)))
+        write_entry("projectr", "DEBUG", "Falling back to stderr logging.")
+
+    write_entry("projectr", "INFO", "Dataset ID: {}".format(dataset_id))
+    write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
+
 
     target_df = pd.read_json(target, orient="split")
     loading_df = pd.read_json(loadings, orient="split")
 
     if target_df.empty:
         description = "Target (dataset) dataframe is empty."
-        if cloud_logging:
-            write_entry("projectr", "ERROR", description)
-        else:
-            print(description, file=sys.stderr)
+        write_entry("projectr", "ERROR", description)
         return abort(500, description=description)
 
     if loading_df.empty:
         description = "Loading (pattern) dataframe is empty."
-        if cloud_logging:
-            write_entry("projectr", "ERROR", description)
-        else:
-            print(description, file=sys.stderr)
+        write_entry("projectr", "ERROR", description)
+
         return abort(500, description=description)
 
-    if cloud_logging:
-        write_entry("projectr", "INFO", "TARGET_DF SHAPE - {}".format(target_df.shape))
-        write_entry("projectr", "INFO", "LOADING_DF SHAPE - {}".format(loading_df.shape))
-    else:
-        print("TARGET_DF SHAPE - {}".format(target_df.shape), file=sys.stderr)
-        print("LOADING_DF SHAPE - {}".format(loading_df.shape), file=sys.stderr)
+    write_entry("projectr", "INFO", "TARGET_DF SHAPE - {}".format(target_df.shape))
+    write_entry("projectr", "INFO", "LOADING_DF SHAPE - {}".format(loading_df.shape))
 
     # https://github.com/IGS/gEAR/issues/442#issuecomment-1317239909
     # Basically this is a stopgap until projectR has an option to remove
@@ -99,10 +101,8 @@ def index():
             raise ValueError("Algorithm {} is not supported".format(algorithm))
     except Exception as e:
         description = str(e)
-        if cloud_logging:
-            write_entry("projectr", "ERROR", description)
-        else:
-            print(description, file=sys.stderr)
+        write_entry("projectr", "ERROR", description)
+
         return abort(500, description=description)
 
     return jsonify(projection_patterns_df.to_json(orient="split"))

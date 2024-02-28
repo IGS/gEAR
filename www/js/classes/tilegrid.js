@@ -52,9 +52,11 @@ class TileGrid {
     }
 
     /**
-     * Applies the tile grid to the specified selector element.
+     * Applies the tile grid layout to the specified selector element.
+     *
+     * @param {boolean} [isMulti=false] - Indicates whether the grid layout supports multiple tiles per grid slot.
      */
-    applyTileGrid() {
+    applyTileGrid(isMulti=false) {
         const selector = this.selector;
 
         // Clear selector element
@@ -64,7 +66,7 @@ class TileGrid {
         const tiles = [];
 
         for (const dataset of this.layout) {
-            const datasetTile = new DatasetTile(dataset, is_multigene);
+            const datasetTile = new DatasetTile(dataset, isMulti);
             tiles.push(datasetTile);
         }
         this.tiles = tiles;
@@ -90,7 +92,6 @@ class TileGrid {
                     currentCol = 1;
                     currentRow++;
                 }
-
 
                 tile.tile.start_col = currentCol;
                 tile.tile.end_col = currentCol + tileWidth;
@@ -121,13 +122,7 @@ class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile_${tile.tile_id}`);
             tileElement.style.gridArea = `${tile.start_row} / ${tile.start_col} / ${tile.end_row} / ${tile.end_col}`;
-
-
-
         }
-
-        return;
-
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -146,15 +141,19 @@ class TileGrid {
     }
 
     /**
-     * Renders the displays for the given gene symbols.
+     * Renders the displays for the given gene symbols in the tile grid.
      *
-     * @param {string|string[]} geneSymbols - The gene symbol or an array of gene symbols.
-     * @param {boolean} [isMultigene=false] - Indicates whether multiple gene symbols are provided.
-     * @param {string} svgScoringMethod - The SVG scoring method.
-     * @throws {Error} If geneSymbols is not provided.
-     * @returns {Promise<void>} A promise that resolves when all displays are rendered.
+     * @param {string|string[]} geneSymbols - The gene symbol or an array of gene symbols to render displays for.
+     * @param {boolean} [isMultigene=false] - Indicates whether the gene symbols represent multiple genes.
+     * @param {string} svgScoringMethod - The SVG scoring method to use for rendering the displays.
+     * @param {object} [projectionOpts={}] - The options for performing projection.
+     * @param {string} [projectionOpts.patternSource] - The pattern source for projection.
+     * @param {string} [projectionOpts.algorithm] - The algorithm for projection.
+     * @param {string} [projectionOpts.gctype] - The gene correlation type for projection.
+     * @returns {Promise<void>} - A promise that resolves when all displays have been rendered.
+     * @throws {Error} - If geneSymbols is not provided or if an error occurs during rendering.
      */
-    async renderDisplays(geneSymbols, isMultigene = false, svgScoringMethod) {
+    async renderDisplays(geneSymbols, isMultigene = false, svgScoringMethod, projectionOpts={}) {
         if (!geneSymbols) {
             throw new Error("Gene symbol or symbols are required to render displays.");
         }
@@ -170,13 +169,37 @@ class TileGrid {
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
         for (const tile of this.tiles) {
+
             const tileId = tile.tile.tile_id;
             const tileElement = document.getElementById(`tile_${tileId}`);
+
+            // If projection mode is enabled, then perform projection
+            if (tile.projectR.modeEnabled) {
+
+                if (!tile.projectR.projectionId) {
+                    const {patternSource, algorithm, gctype} = projectionOpts;
+                    await tile.getProjection(patternSource, algorithm, gctype);
+                }
+
+                if (!tile.projectR.success) {
+                    continue;
+                }
+            }
 
             // Clear the tile content so ortholog dropdown does not duplicate
             const optionContent = tileElement.querySelector('.content');
             optionContent.replaceChildren();
 
+            if (tile.projectR.modeEnabled) {
+                if (tile.projectR.projectionInfo) {
+                    tile.renderProjectionInfo();
+                }
+                // Plot and render the display
+                await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod);
+                continue;
+            }
+
+            // Not projection mode, so get orthologs
             await tile.getOrthologs(geneSymbolInput)
 
             // If no genes were found, then raise an error
@@ -185,22 +208,13 @@ class TileGrid {
                 throw new Error("Should never happen. Please contact the gEAR team.");
             }
 
-            // Make a list out of the first ortholog for each gene and flatten the list
+            // Make a flattened list of all orthologs to plot
             tile.orthologsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
 
             if (tile.orthologsToPlot.length === 0) {
                 const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
-                // render a warning image
                 // Fill in card-image with error message
-                const cardImage = tileElement.querySelector('.card-image');
-                cardImage.replaceChildren();
-
-                const template = document.getElementById('tmpl-tile-grid-error');
-                const errorHTML = template.content.cloneNode(true);
-                const errorElement = errorHTML.querySelector('p');
-                errorElement.textContent = message;
-                cardImage.append(errorHTML);
-
+                createCardMessage(tileId, "danger", message);
                 // skip to the next tile
                 continue;
             }
@@ -210,7 +224,7 @@ class TileGrid {
 
             // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
             if (!isMultigene && tile.orthologsToPlot.length > 1) {
-                tile.renderOrthologDropdown(tile.orthologsToPlot);
+                tile.renderOrthologDropdown();
             }
 
             // Plot and render the display
@@ -221,7 +235,7 @@ class TileGrid {
 };
 
 class DatasetTile {
-    constructor(dataset, isMulti=true, isProjection=false) {
+    constructor(dataset, isMulti=true) {
         this.dataset = dataset;
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
@@ -233,15 +247,18 @@ class DatasetTile {
 
         this.tile.html = this.generateTileHTML();
 
-        this.performingProjection = false;  // Indicates whether a projection is currently being performed
-
         this.controller = new AbortController(); // Create new controller for new set of frames
 
-        this.orthologs = null;
-        this.orthologsToPlot = null;
+        this.orthologs = null;  // Mapping of all orthologs for all gene symbol inputs for this dataset
+        this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
-        this.isProjection = isProjection;
-
+        // Projection information
+        // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
+        // projectionId: string - The ID of the projection returned
+        // projectionInfo: string - The information about the projection (like common genes, etc.)
+        // performingProjection: boolean - Indicates whether a projection is currently being performed.  We do not want to waste resources by performing the same projection multiple times.
+        // success: boolean - Indicates whether the projection was successful
+        this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
     }
 
     /**
@@ -258,7 +275,6 @@ class DatasetTile {
             start_row: this.type === "single" ? start_row : mg_start_row,
             start_col: this.type === "single" ? start_col : mg_start_col,
             tile_id: `${id}_${grid_position}_${this.type}`,
-            used: false,
             title,
         };
     }
@@ -284,6 +300,13 @@ class DatasetTile {
         this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
 
         return tileHTML;
+    }
+
+    /**
+     * Enables the Project R mode.
+     */
+    enableProjectR() {
+        this.projectR.modeEnabled = true;
     }
 
     /**
@@ -324,6 +347,52 @@ class DatasetTile {
         }
     }
 
+    async getProjection(patternSource, algorithm, gctype) {
+        this.resetAbortController();
+        const otherOpts = {}
+        if (this.controller) {
+            otherOpts.signal = this.controller.signal;
+        }
+
+        try {
+            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm);
+            // If file was not found, put some loading text in the plot
+            if (! data.projection_id) {
+                createCardMessage(this.tile.tile_id, "info", "Creating projection. This may take a few minutes.");
+            }
+            this.projection_id = data.projection_id || null;
+        } catch (error) {
+            logErrorInConsole(error);
+            return;
+        }
+
+        this.projectR.performingProjection = true;
+
+        try {
+            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, otherOpts);
+            const message = data.message || null;
+            if (data.success < 1) {
+                // throw error with message
+                throw new Error(message);
+            }
+            this.projectR.projectionId = data.projection_id;
+            this.projectR.projectionInfo = data.message;
+
+        } catch (error) {
+            if (error.name == "CanceledError") {
+                console.info("display draw canceled for previous request");
+                return;
+            }
+
+            createCardMessage(this.tile.tile_id, "danger", error);
+
+            logErrorInConsole(error);
+        } finally {
+            this.projectR.performingProjection = false;
+            this.projectR.success = true;
+        }
+    }
+
     /**
      * Adds the dataset title to the modal.
      *
@@ -337,11 +406,22 @@ class DatasetTile {
     }
 
     /**
-     * Renders the ortholog dropdown for the tile grid.
-     *
-     * @param {Array<string>} orthologs - The list of orthologs to populate the dropdown with.
+     * Renders the projection information for the tile.
      */
-    renderOrthologDropdown(orthologs) {
+    renderProjectionInfo() {
+        const template = document.getElementById('tmpl-tile-grid-projection-info');
+        const projectionInfoHTML = template.content.cloneNode(true);
+        projectionInfoHTML.querySelector("p").textContent = this.projectR.projectionInfo;
+        const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
+        const cardContent = tileElement.querySelector('.js-card-extras');
+
+        cardContent.append(projectionInfoHTML);
+    }
+
+    /**
+     * Renders the ortholog dropdown for the tile grid.
+     */
+    renderOrthologDropdown() {
         const orthoTemplate = document.getElementById('tmpl-tile-grid-ortholog-dropdown');
         const orthoHTML = orthoTemplate.content.cloneNode(true);
 
@@ -352,7 +432,7 @@ class DatasetTile {
         const dropdownContent = orthoHTML.querySelector('.dropdown-content');
         dropdownContent.replaceChildren();
 
-        for (const ortholog of orthologs) {
+        for (const ortholog of this.orthologsToPlot) {
             const orthologItem = document.createElement("a");
             orthologItem.classList.add("dropdown-item");
             orthologItem.textContent = ortholog;
@@ -367,12 +447,11 @@ class DatasetTile {
                 orthologItem.classList.add("is-active");
 
                 const ortholog = event.currentTarget.textContent;
-                this.orthologsToPlot = [ortholog];
 
                 // close dropdown
                 orthoElement.classList.remove('is-active');
 
-                await this.renderDisplay(this.orthologsToPlot, this.currentDisplayId, this.svgScoringMethod);
+                await this.renderDisplay([ortholog], this.currentDisplayId, this.svgScoringMethod);
 
             });
 
@@ -420,7 +499,7 @@ class DatasetTile {
 
         // Add dropdown to tile
         const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
-        const cardContent = tileElement.querySelector('.content');
+        const cardContent = tileElement.querySelector('.js-card-extras');
         cardContent.append(orthoHTML);
     }
 
@@ -801,6 +880,8 @@ class DatasetTile {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
 
+        createCardMessage(this.tile.tile_id, "info", "Loading display...");
+
         if (displayId === null) {
             displayId = this.defaultDisplayId;
         };
@@ -840,17 +921,8 @@ class DatasetTile {
         if (!userDisplay && !ownerDisplay) {
             console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
             // Let the user know that the display config was not found
-            const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
-            cardContent.replaceChildren();
-            const warningMessage = document.createElement("p");
-            warningMessage.classList.add("has-text-warning-dark", "has-background-warning-light", "p-2", "m-2", "has-text-weight-bold");
-            // Add 200 px height and center vertically
-            warningMessage.style.height = "200px";
-            warningMessage.style.display = "flex";
-            warningMessage.style.alignItems = "center";
-            warningMessage.style.justifyContent = "center";
-            warningMessage.textContent = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
-            cardContent.append(warningMessage);
+            const message = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
+            createCardMessage(this.tile.tile_id, "warning", message);
             return;
         }
 
@@ -873,8 +945,11 @@ class DatasetTile {
         } else {
             display.plotly_config.gene_symbol = geneSymbolInput;
         }
-        const cardContent = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
-        //cardContent.classList.add("loader");
+
+        // if projection ran, add the projection info to the plotly config
+        if (this.projectR.modeEnabled && this.projectR.projectionId) {
+            display.plotly_config.projection_id = this.projectR.projectionId;
+        }
 
         try {
             if (plotlyPlots.includes(display.plot_type)) {
@@ -894,15 +969,7 @@ class DatasetTile {
             // we want to ensure other plots load even if one fails
             console.error(error);
             // Fill in card-image with error message
-            cardContent.replaceChildren();
-
-            const template = document.getElementById('tmpl-tile-grid-error');
-            const errorHTML = template.content.cloneNode(true);
-            const errorElement = errorHTML.querySelector('p');
-            errorElement.textContent = error.message;
-            cardContent.append(errorHTML);
-        } finally {
-           // cardContent.classList.remove("loader");
+            createCardMessage(this.tile.tile_id, "danger", error.message);
         }
 
     }
@@ -1143,9 +1210,9 @@ class DatasetTile {
     async renderSVG(display, svgScoringMethod="gene", otherOpts) {
         const datasetId = display.dataset_id;
         const plotConfig = display.plotly_config;
-        const {gene_symbol: geneSymbol} = plotConfig;
+        const {gene_symbol: geneSymbol, projection_id: projectionId} = plotConfig;
 
-        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, otherOpts)
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, projectionId, otherOpts)
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -1158,7 +1225,7 @@ class DatasetTile {
     }
 
     resetAbortController() {
-        if (this.controller && !this.performingProjection) {
+        if (this.controller && !this.projectR.performingProjection) {
             this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
         }
         this.controller = new AbortController(); // Create new controller for new set of frames
@@ -1606,4 +1673,22 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
         }
     }
     return updates;
+}
+
+/**
+ * Creates a card message for a tile.
+ *
+ * @param {string} tileId - The ID of the dataset tile.
+ * @param {string} level - The level of the message to apply to Bulma CSS class (e.g., "info", "warning", "danger").
+ * @param {string} message - The message to be displayed in the card.
+ */
+const createCardMessage = (tileId, level, message) => {
+    const cardContent = document.querySelector(`#tile_${tileId} .card-image`);
+    cardContent.replaceChildren();
+    const messageElt = document.createElement("p");
+    const textLevel = `has-text-${level}-dark`;
+    const bgLevel = `has-background-${level}-light`;
+    messageElt.classList.add(textLevel, bgLevel, "p-2", "m-2", "has-text-weight-bold");
+    messageElt.textContent = message;
+    cardContent.append(messageElt);
 }

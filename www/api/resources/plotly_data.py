@@ -42,7 +42,8 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         projection_adata = sc.read_csv(projection_csv_path)
-    except:
+    except Exception as e:
+        print(str(e), file=sys.stderr)
         raise PlotError("Could not create projection AnnData object from CSV.")
     projection_adata.obs = dataset_adata.obs
     projection_adata.obsm = dataset_adata.obsm

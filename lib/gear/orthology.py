@@ -146,7 +146,11 @@ def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
 
     def get_best_match(id1):
         # Get the best match for the id2 gene symbol
-        best_match = orthomap_df[orthomap_df["id1"] == id1].sort_values("algorithms_match_count", ascending=False).iloc[0]
+        sorted_by_best_match = orthomap_df[orthomap_df["id1"] == id1].sort_values("algorithms_match_count", ascending=False)
+        # If no match, return the original id1
+        if sorted_by_best_match.empty:
+            return id1
+        best_match = sorted_by_best_match.iloc[0]
         return best_match["id2"]
 
 

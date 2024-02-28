@@ -75,10 +75,10 @@
                   <div class="control">
                     <div class="select is-small">
                       <select id="algorithm">
-                        <option value="pca_algo">Principal Component Analysis (PCA)</option>
-                        <option value="nmf_algo">Least-squares optimiazation for NMF</option>
-                        <option value="fixednmf_algo">Fixed gene weights in NMF re-run</option>
-                        <option value="binary_algo">Binary Gene Count</option>
+                        <option value="pca" selected>Principal Component Analysis (PCA)</option>
+                        <option value="nmf">Least-squares optimiazation for NMF</option>
+                        <option value="fixednmf">Fixed gene weights in NMF re-run</option>
+                        <option value="binary">Binary Gene Count</option>
                       </select>
                     </div>
                   </div>
@@ -86,8 +86,8 @@
               </div>
             </div>
             <div id="results-main-c" class="columns">
-              <div id="pattern-result-list-c" class="column is-narrow is-fullheight p-0">
-                <h3 class="mt-3 ml-3 mr-6 is-hidden">Search<br />results (<span id="pattern-result-count"></span>)</h3>
+              <div id="pattern-result-list-c" class="column is-narrow is-fullheight p-0 is-hidden">
+                <h3 class="mt-3 ml-3 mr-6">Select pattern</h3>
                 <ul id="pattern-result-list" class="mt-3"></ul>
                 <template id="tmpl-pattern-result-item">
                   <li class="pattern-result-list-item is-clickable pl-4"></li>
@@ -97,6 +97,17 @@
                 </template>
               </div>
               <section id="result-panel" class="column p-3">
+                <div id="top-genes-c" class="columns is-hidden">
+                  <div id="top-up-genes" class="column is-6">
+                    <h5 class="subtitle is-5">Strongest positive contributors</h5>
+                    <p></p>  <!-- filled in with JS -->
+                  </div>
+                  <div id="top-down-genes" class="column is-6">
+                    <h5 class="subtitle is-5">Strongest negative contributors</h5>
+                    <p></p>  <!-- filled in with JS -->
+                  </div>
+                  <button id="btn-view-weighted-genes" class="button is-small is-primary-outlined">View all genes with weights</button>
+                </div>
                 <div id="result-panel-options">
                   <div id="scoring-method-div">
                     <span class="option-label pr-1">Scoring method: </span>

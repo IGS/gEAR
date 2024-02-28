@@ -212,7 +212,6 @@ const getDomainPreferences = async () => {
  * @returns {string|null} - The value of the parameter, or null if it doesn't exist.
  */
 const getUrlParameter = (sParam) => {
-
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has(sParam)) {
         return urlParams.get(sParam);
@@ -636,6 +635,18 @@ const apiCallsMixin = {
     colorblindMode: null,
 
     /**
+     * Checks for projection using the specified dataset ID, pattern source, algorithm, and other options.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} patternSource - The source of the pattern.
+     * @param {string} algorithm - The algorithm to use for projection.
+     * @returns {Promise<any>} - A promise that resolves to the projection data.
+     */
+    async checkForProjection(datasetId, patternSource, algorithm) {
+        const payload = { session_id: this.sessionId, genecart_id: patternSource, algorithm };
+        const {data} = await axios.post(`api/projectr/${datasetId}/output_file`, payload);
+        return data;
+    },
+    /**
      * Deletes a display.
      * @param {string} displayId - The ID of the display to be deleted.
      * @returns {Promise<null>} - A promise that resolves to null.
@@ -723,6 +734,10 @@ const apiCallsMixin = {
 		const {data} = await axios.post("cgi/get_dataset_comparison.cgi", convertToFormData(payload));
 		return data;
     },
+    /**
+     * Fetches dataset collections.
+     * @returns {Promise<any>} The fetched data.
+     */
     async fetchDatasetCollections() {
         const payload = {session_id: this.sessionId};
         const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
@@ -791,17 +806,25 @@ const apiCallsMixin = {
      * @returns {Promise} - A promise that resolves to the fetched Epiviz display data.
      */
     async fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts={}) {
-        const query = `gene=${geneSymbol}&genome=${genome}`;
-        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${query}`, otherOpts);
+
+        const urlParams = new URLSearchParams();
+        urlParams.append('gene', geneSymbol);
+        urlParams.append('genome', genome);
+
+        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${urlParams.toString()}`, otherOpts);
         return data;
     },
     /**
      * Fetches annotations for the passed gene symbols
-     * @param {array} gene_symbols - comma-separated string of gene symbols
-     * @returns {Promise<any>} - A promise that resolves to the data of the gene annotations.
+     *
+     * @param {string[]} geneSymbols - The gene symbols to search for. Comma-separated.
+     * @param {boolean} exactMatch - Indicates whether to perform an exact match search.
+     * @param {string} layoutShareId - The layout share ID.
+     * @param {boolean} isMulti - Indicates whether multiple gene symbols are being searched.
+     * @returns {Promise<any>} - The fetched gene annotations.
      */
-    async fetchGeneAnnotations(gene_symbols, exact_match, layout_share_id, is_multigene) {
-        const payload = { session_id: this.sessionId, search_gene_symbol: gene_symbols, exact_match: exact_match, is_multi: is_multigene, layout_share_id: layout_share_id };   
+    async fetchGeneAnnotations(geneSymbols, exactMatch, layoutShareId, isMulti) {
+        const payload = { session_id: this.sessionId, search_gene_symbol: geneSymbols, exact_match: exactMatch, is_multi: isMulti, layout_share_id: layoutShareId };
         const {data} = await axios.post(`/cgi/search_genes.cgi`, convertToFormData(payload));
         return data;
     },
@@ -909,15 +932,44 @@ const apiCallsMixin = {
         const {data} = await axios.post(`/api/plot/${datasetId}`, payload, otherOpts);
         return data;
     },
+
     /**
-     * Fetches SVG data for a given dataset ID and gene symbol.
+     * Fetches a projection from the server.
+     *
      * @param {string} datasetId - The ID of the dataset.
-     * @param {string} geneSymbol - The symbol of the gene.
-     * @param {object} [otherOpts={}] - Additional options for the request.
-     * @returns {Promise<any>} - A promise that resolves to the fetched SVG data.
+     * @param {string} projectionId - The ID of the projection.
+     * @param {string} patternSource - The source of the pattern.
+     * @param {string} algorithm - The algorithm used for projection.
+     * @param {string} gctype - The type of gene cart.
+     * @param {Object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise} - A promise that resolves with the fetched data.
      */
-    async fetchSvgData(datasetId, geneSymbol, otherOpts={}) {
-        const {data} = await axios.get(`/api/plot/${datasetId}/svg?gene=${geneSymbol}`, otherOpts);
+    async fetchProjection(datasetId, projectionId, patternSource, algorithm, gctype, otherOpts={}) {
+        const payload = { session_id: this.sessionId, projection_id: projectionId, genecart_id: patternSource, algorithm, scope: gctype};
+        const {data} = await axios.post(`api/projectr/${datasetId}`, payload, otherOpts);
+        return data;
+    },
+
+    /**
+     * Fetches SVG data for a given dataset, gene symbol, and projection ID.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} geneSymbol - The gene symbol.
+     * @param {string} projectionId - The ID of the projection.
+     * @param {Object} [otherOpts={}] - Additional options for the GET request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchSvgData(datasetId, geneSymbol, projectionId=null, otherOpts={}) {
+
+        // create URL Params for the GET request
+        const urlParams = new URLSearchParams();
+        urlParams.append('gene', geneSymbol);
+        if (projectionId) {
+            urlParams.append('projection_id', projectionId);
+        }
+
+        // fetch the data
+        const {data} = await axios.get(`/api/plot/${datasetId}/svg?${urlParams.toString()}`, otherOpts);
+
         return data;
     },
 

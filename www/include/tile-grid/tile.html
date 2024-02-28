@@ -116,7 +116,7 @@
                 </div>
             </div>
         </div>
-        <div class="content columns">
+        <div class="js-card-extras content is-small columns m-0">
             <!-- Extra options, etc go here -->
         </div>
         <div class="card-image"></div>
@@ -157,12 +157,6 @@
     </div>
 </template>
 
-<template id="tmpl-tile-grid-error">
-    <p class="has-text-danger-dark has-background-danger-light p-2 m-2 has-text-weight-bold"
-        style="height: 200px; display: flex; align-items: center; justify-content: center;">
-    </p>
-</template>
-
 <template id="tmpl-tile-grid-choose-display-modal">
     <div class="js-choose-display-modal modal">
         <div class="modal-background"></div>
@@ -190,8 +184,16 @@
     </div>
 </template>
 
+<template id="tmpl-tile-grid-projection-info">
+    <div class="column p-0">
+        <div class="notification is-info p-1">
+            <p></p>
+        </div>
+    </div>
+</template>
+
 <template id="tmpl-tile-grid-ortholog-dropdown">
-    <div class="column is-4">
+    <div class="column is-4 p-0">
         <div class="dropdown js-ortholog-dropdown">
             <div class="dropdown-trigger">
                 <button class="button" aria-haspopup="true">

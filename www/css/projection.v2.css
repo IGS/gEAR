@@ -5,15 +5,10 @@
     Highlighted background border: e9eef1
 */
 
-div.card-content {
-    background-color: white;
-    color: black;
-    min-height: 20em;
-}
-div#gene-result-list-c {
+div#pattern-result-list-c {
     border-right: 1px solid #e9eef1;
 }
-div#gene-result-list-c h3 {
+div#pattern-result-list-c h3 {
     font-weight: bold;
     font-size: 90%;
 }
@@ -38,18 +33,18 @@ span.option-label {
     font-weight: bold;
     font-size: 90%;
 }
-ul#gene-result-list {
+ul#pattern-result-list {
     list-style: none;
 }
-ul#gene-result-list li {
+ul#pattern-result-list li {
     padding: 0.3em 0 0.3em 1em;
     border-top: 1px solid #e9eef1;
     font-size: 90%;
 }
-ul#gene-result-list li:last-child {
+ul#pattern-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
-ul#gene-result-list li.is-selected {
+ul#pattern-result-list li.is-selected {
     /* TODO: Make this a variable */
     background-color: #483285;
     color: white;
@@ -62,17 +57,38 @@ ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
 
-.card-image .svg svg {
+#result-panel-grid {
+    display: grid;
+    column-gap: 0.50rem;
+    row-gap: 0.50rem;
+}
+
+#result-panel-grid .card-image {
+    height: 100%
+}
+
+#result-panel-grid .card-image p {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#result-panel-grid .card-image .svg svg {
     margin-top:10%;
+}
+
+#result-panel-grid .js-plotly-plot {
+    /*height: 100%;*/
 }
 
 /* Dropdown settings */
 
-.tile .dropdown-content {
+.js-tile .dropdown-content {
     width: max-content;
 }
 
-.tile .dropdown-item {
+.js-tile .dropdown-item {
     padding: 0.125rem 1rem;
 }
 

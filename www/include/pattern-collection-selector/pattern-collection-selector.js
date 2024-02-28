@@ -7,7 +7,7 @@
 // - weights - The individual patterns
 
 let patternsCartData = null;
-let selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []}; // This is used by the script that includes this file
+let selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []}; // This is used by the script that includes this file
 
 // Add event listener to dropdown trigger
 document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
@@ -55,7 +55,7 @@ document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click'
     document.querySelector('#dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern Lists';
 
     // and finally the related pattern lists and patterns
-    selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
+    selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []};
 });
 
 // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
@@ -92,6 +92,7 @@ const createPatternListItem = (item, cart) => {
     item.querySelector('.ul-li').dataset.shareId = cart.share_id;
     item.querySelector('.ul-li').dataset.label = cart.label;
     item.querySelector('.ul-li').dataset.gctype = gctype;
+    item.querySelector('.ul-li').dataset.organismId = cart.organism_id;
 
     if (selectedPattern.shareId == cart.share_id) {
         item.querySelector('.ul-li').classList.add('is-selected');

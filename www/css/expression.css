@@ -11,11 +11,6 @@ div#annotation-and-grid-c h3 {
 div#annotation-and-grid-c h3 span {
     font-weight: bold;
 }
-div.card-content {
-    background-color: white;
-    color: black;
-    min-height: 20em;
-}
 div#extended-annotation-panel {
     border: 1px solid #e9eef1;
     border-style: rounded;
@@ -89,6 +84,13 @@ ul#go-terms li {
 
 #result-panel-grid .js-plotly-plot {
     /*height: 100%;*/
+}
+
+#result-panel-grid .card-image p {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Dropdown settings */
