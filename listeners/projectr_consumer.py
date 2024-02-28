@@ -6,12 +6,13 @@ projectr_consumer.py - RabbitMQ messaging consumer
 
 import os, sys, json
 import gc
+from pathlib import Path
 
-lib_path = os.path.abspath(os.path.join('..', 'lib'))
+lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
 sys.path.append(lib_path)
 import gearqueue
 
-www_path = os.path.abspath(os.path.join('..', 'www'))
+www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
 sys.path.append(www_path)
 
 from api.resources.projectr import projectr_callback
@@ -42,11 +43,13 @@ def _on_request(channel, method_frame, properties, body):
 
     with open(stream, "a") as fh:
         print("{} - [x] - Received request for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), flush=True, file=fh)
-        output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh)
+        import pika
 
-        # Send the output back to the Flask API call
         try:
-            import pika
+            # Run the callback function to generate the reply payload
+            output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh)
+
+            # Send the output back to the Flask API call
             channel.basic_publish(
                     exchange=""
                     , routing_key=properties.reply_to
@@ -56,8 +59,17 @@ def _on_request(channel, method_frame, properties, body):
             print("{} - [x] - Publishing response for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), flush=True, file=fh)
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
+            print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
+
+            # Publish an unsuccessful message
+            channel.basic_publish(
+                    exchange=""
+                    , routing_key=properties.reply_to
+                    , body=json.dumps({"success":0, "message":str(e)})
+                    , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
+                    )
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             print("{} - Could not deliver response back to client".format(pid), flush=True, file=fh)
-            print("{} - {}".format(pid, str(e)), flush=True, file=fh)
         finally:
             gc.collect()
 
@@ -94,6 +106,7 @@ class Consumer:
         if self._consumer.should_reconnect:
             self._consumer.stop()
             reconnect_delay = self._get_reconnect_delay()
+            print('{} - Reconnecting after {} seconds'.format(pid, reconnect_delay))
             time.sleep(reconnect_delay)
             self._consumer = gearqueue.AsyncConnection(host=self.host, publisher_or_consumer="consumer", queue_name=queue_name, on_message_callback=_on_request, pid=pid, logfile=stream)
 
@@ -114,4 +127,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
