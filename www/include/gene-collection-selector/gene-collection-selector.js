@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector("#dropdown-gene-lists > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
         item.closest(".dropdown").classList.toggle('is-active');
+
+        // in case it was in errored state
+        document.querySelector('#dropdown-gene-lists button').classList.remove('is-danger');
     });
 
     // Add event listeners to the gene list category selectors
@@ -37,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add event listeners to the gene list selectors even if they don't exist yet
     document.addEventListener('click', (event) => {
         // gene-list-item-label & dropdown-gene-list-item-right-selector both should only show the genes
-        // dropdown-gene-list-item-add should add the entire cartsmpl
+        // dropdown-gene-list-item-add should add the entire cart
 
         if (event.target.classList.contains('gene-list-item-label') ||
             event.target.classList.contains('dropdown-gene-list-item-right-selector')) {

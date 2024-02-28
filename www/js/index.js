@@ -133,13 +133,20 @@ const validateExpressionSearchForm = () => {
     // will populate the selected_genes array
     if (selected_genes.size + manually_entered_genes.length === 0) {
         createToast('Please enter at least one gene to proceed');
+        document.querySelector('#dropdown-gene-lists button').classList.add('is-danger');
         return false;
+    } else {
+        document.querySelector('#dropdown-gene-lists button').classList.remove('is-danger');
     }
 
     // Check if the user has selected any dataset collections
     if (selected_dc_share_id === null) {
         createToast('Please select at least one dataset to proceed');
+        document.querySelector('#dropdown-dc button').classList.add('is-danger');
         return false;
+    } else {
+        document.querySelector('#dropdown-dc button').classList.remove('is-danger');
+    
     }
 
     return true;

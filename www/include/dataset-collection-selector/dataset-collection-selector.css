@@ -21,3 +21,9 @@
 #dropdown-dc .ul-li.is-selected {
     background-color: #EFEDF7;
 }
+
+#dropdown-dc button.is-danger {
+    border-color: #97172e;
+    background-color: white;
+    border-width: 2px;
+}

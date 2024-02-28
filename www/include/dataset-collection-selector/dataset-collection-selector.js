@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDatasetCollectionSelectorLabel();
 
             document.querySelector('#dropdown-dc').classList.remove('is-active');
+            document.querySelector('#dropdown-dc button').classList.remove('is-danger');
         }
     });
 
