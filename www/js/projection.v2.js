@@ -221,7 +221,7 @@ const parsepatternCartURLParams = () => {
  * Parses the URL parameters to extract the dataset collection information.
  * @returns {Promise<void>} A promise that resolves once the dataset collection information is parsed.
  */
-const parseDatasetCollectionURLParams = async () => {
+const parseDatasetCollectionURLParams = () => {
     // handle passed dataset collection
     const layoutShareId = getUrlParameter('layout_id');
 
@@ -238,7 +238,7 @@ const parseDatasetCollectionURLParams = async () => {
  * Selects a pattern weight and performs various actions based on the selected weight.
  * @param {string} label - The selected weight label.
  */
-const selectPatternWeightResult = (label) => {
+const selectPatternWeightResult = async (label) => {
 
     // get the selected pattern object
     const obj = selectedPattern.selectedWeights.find((w) => w.label === label);
@@ -264,15 +264,18 @@ const selectPatternWeightResult = (label) => {
 
     // populate top-up and top-down with the array of genes for that weight
     if (obj.top_up) {
-        document.querySelector("#top-up-genes p").textContent = obj.top_up;
+        // format to add a space after each comma
+        const topUp = obj.top_up.split(',').join(', ');
+        document.querySelector("#top-up-genes p").textContent = topUp;
     }
     if (obj.top_down) {
-        document.querySelector("#top-down-genes p").textContent = obj.top_down;
+        const topDown = obj.top_down.split(',').join(', ');
+        document.querySelector("#top-down-genes p").textContent = topDown;
     }
 
     document.getElementById("btn-view-weighted-genes").classList.remove("is-hidden");
     try {
-        const data = apiCallsMixin.fetchPatternWeightedGenes(selectedPattern.shareId, label);
+        const data = await apiCallsMixin.fetchPatternWeightedGenes(selectedPattern.shareId, label);
         weightedGeneData = data;
     } catch (error) {
         logErrorInConsole(error);

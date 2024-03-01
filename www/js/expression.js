@@ -311,7 +311,7 @@ const parseGeneCartURLParams = () => {
     }
 }
 
-const parseDatasetCollectionURLParams = async () => {
+const parseDatasetCollectionURLParams = () => {
     // handle passed dataset collection
     const layout_share_id = getUrlParameter('layout_id');
 

@@ -97,17 +97,20 @@
                 </template>
               </div>
               <section id="result-panel" class="column p-3">
-                <div id="top-genes-c" class="columns is-hidden">
-                  <div id="top-up-genes" class="column is-6">
-                    <div class="subtitle is-6">Strongest positive contributors</div>
-                    <p class="content is-small"></p>  <!-- filled in with JS -->
+                <div id="top-genes-c" class="is-hidden content">
+                  <div class="columns">
+                    <div id="top-up-genes" class="column is-3">
+                      <div class="has-text-weight-bold">Strongest positive contributors</div>
+                      <p></p>  <!-- filled in with JS -->
+                    </div>
+                    <div id="top-down-genes" class="column is-3">
+                      <div class="has-text-weight-bold">Strongest negative contributors</div>
+                      <p></p>  <!-- filled in with JS -->
+                    </div>
                   </div>
-                  <div id="top-down-genes" class="column is-6">
-                    <div class="subtitle is-6">Strongest negative contributors</div>
-                    <p class="content is-small"></p>  <!-- filled in with JS -->
-                  </div>
-                  <button id="btn-view-weighted-genes" class="button is-small is-primary-outlined">View all genes with weights</button>
+                  <button id="btn-view-weighted-genes" class="button is-small is-primary is-outlined">View all genes with weights</button>
                 </div>
+
                 <div id="result-panel-options">
                   <div id="scoring-method-div">
                     <span class="option-label pr-1">Scoring method: </span>
