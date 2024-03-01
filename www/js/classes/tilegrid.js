@@ -168,9 +168,17 @@ class TileGrid {
         this.tiles.sort((a, b) => a.tile.height - b.tile.height);
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
-        this.tiles.map(async tile => {
-            await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
-        });
+        //this.tiles.map(async tile => {
+            //await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
+        //});
+
+        for (const tile of this.tiles) {
+            try {
+                await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
+            } catch (error) {
+                continue;
+            }
+        }
     }
 };
 
@@ -307,12 +315,13 @@ class DatasetTile {
 
         // If no genes were found, then raise an error
         // This should never happen as geneSymbolInput should be a key in the orthologs object
-        if (Object.keys(this.orthologs).length === 0) {
+        if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
+            createCardMessage(tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
             throw new Error("Should never happen. Please contact the gEAR team.");
         }
 
         // Make a flattened list of all orthologs to plot
-        this.orthologsToPlot = Object.keys(tile.orthologs).map(g => this.orthologs[g].sort()).flat();
+        this.orthologsToPlot = Object.keys(this.orthologs).map(g => this.orthologs[g].sort()).flat();
 
         if (this.orthologsToPlot.length === 0) {
             const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";

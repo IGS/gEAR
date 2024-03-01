@@ -125,6 +125,7 @@ def create_orthology_df(orthomap_file: Path):
     try:
         orthomap_df = pd.read_hdf(str(orthomap_file), key="orthomap")
     except Exception as e:
+        print("Error reading orthologous mapping file {1}: {0}".format(e, orthomap_file), file=sys.stderr)
         raise Exception("Error reading orthologous mapping file: {0}".format(e))
     return orthomap_df
 
