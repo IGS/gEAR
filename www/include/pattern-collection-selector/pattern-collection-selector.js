@@ -43,6 +43,7 @@ document.querySelector('#dropdown-pattern-list-proceed').addEventListener('click
 document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click', (event) => {
     // clear pattern lists and pattern list areas
     document.querySelector('#dropdown-content-pattern-lists').innerHTML = '';
+    document.querySelector('#dropdown-content-weights').innerHTML = '';
 
     const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
     categorySelectors.forEach((element) => {
@@ -82,6 +83,54 @@ document.querySelector('#dropdown-pattern-list-search-input').addEventListener('
         }
     }
 });
+
+document.getElementById("dropdown-pattern-list-clear-weights").addEventListener("click", (event) => {
+    // uncheck all the existing rows
+    const rows = document.querySelectorAll('.dropdown-weight-item');
+
+    if (rows[0].classList.contains('is-disabled')) return;  // If there is only one weight, we can't clear it
+
+    rows.forEach((row) => {
+        row.classList.remove('is-selected');
+    });
+
+    selectedPattern.selectedWeights = [];
+});
+
+document.getElementById("dropdown-pattern-list-top5-weights").addEventListener("click", (event) => {
+    // Get the labels of the first 5 weights and select them
+    const rows = document.querySelectorAll('.dropdown-weight-item');
+    const labels = Array.from(rows).slice(0, 5).map((row) => row.dataset.label);
+    selectedPattern.selectedWeights = [];
+
+    selectPatternWeights(labels);
+
+});
+document.getElementById("dropdown-pattern-list-top10-weights").addEventListener("click", (event) => {
+    // Get the labels of the first 10 weights and select them
+    const rows = document.querySelectorAll('.dropdown-weight-item');
+    const labels = Array.from(rows).slice(0, 10).map((row) => row.dataset.label);
+    selectedPattern.selectedWeights = [];
+
+    selectPatternWeights(labels);
+});
+
+document.getElementById("dropdown-pattern-list-top20-weights").addEventListener("click", (event) => {
+    // Get the labels of the first 20 weights and select them
+    const rows = document.querySelectorAll('.dropdown-weight-item');
+    const labels = Array.from(rows).slice(0, 20).map((row) => row.dataset.label);
+    selectedPattern.selectedWeights = [];
+
+    selectPatternWeights(labels);
+});
+document.getElementById("dropdown-pattern-list-all-weights").addEventListener("click", (event) => {
+    const rows = document.querySelectorAll('.dropdown-weight-item');
+    const labels = Array.from(rows).map((row) => row.dataset.label);
+    selectedPattern.selectedWeights = [];
+
+    selectPatternWeights(labels);
+});
+
 
 const createPatternListItem = (item, cart) => {
     const gctype = cart.gctype;
@@ -139,6 +188,20 @@ const createPatternListItem = (item, cart) => {
 
         event.currentTarget.classList.add('is-selected');
         event.currentTarget.classList.remove('is-clickable');
+
+        // These buttons have no bearing on unweighted lists
+        document.getElementById("dropdown-pattern-list-clear-weights").classList.remove('is-hidden');
+        document.getElementById("dropdown-pattern-list-top5-weights").classList.remove('is-hidden');
+        document.getElementById("dropdown-pattern-list-top10-weights").classList.remove('is-hidden');
+        document.getElementById("dropdown-pattern-list-top20-weights").classList.remove('is-hidden');
+        document.getElementById("dropdown-pattern-list-all-weights").classList.remove('is-hidden');
+        if (gctype === "unweighted-list") {
+            document.getElementById("dropdown-pattern-list-clear-weights").classList.add('is-hidden');
+            document.getElementById("dropdown-pattern-list-top5-weights").classList.add('is-hidden');
+            document.getElementById("dropdown-pattern-list-top10-weights").classList.add('is-hidden');
+            document.getElementById("dropdown-pattern-list-top20-weights").classList.add('is-hidden');
+            document.getElementById("dropdown-pattern-list-all-weights").classList.add('is-hidden');
+        }
 
 
         populatePatternWeights();
@@ -219,6 +282,9 @@ const populatePatternWeights = async () => {
     // data is a list of weight and top/buttom genes (if weighted-list)
     const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
 
+    // All weights are selected by default
+    selectedPattern.selectedWeights = data;
+
     // Use the weight info to populate the weights dropdown (tmpl-weight-item)
     document.querySelector('#dropdown-content-weights').innerHTML = '';
     const weightListItemTemplate = document.querySelector('#tmpl-weight-item');
@@ -232,9 +298,6 @@ const populatePatternWeights = async () => {
             row.querySelector('.ul-li').dataset.top_up = weight.top_up;
             row.querySelector('.ul-li').dataset.top_down = weight.top_down;
         }
-
-        // All weights are selected by default
-        selectedPattern.selectedWeights = data;
 
         // If there is just one weight, we are obviously going to select it
         if (data.length === 1) {
@@ -262,19 +325,21 @@ const populatePatternWeights = async () => {
                 // change mdi-plus to mdi-minus
                 event.currentTarget.querySelector('.mdi').classList.remove('mdi-check');
                 event.currentTarget.querySelector('.mdi').classList.add('mdi-plus');
-            } else {
-                event.currentTarget.classList.add('is-selected');
-
-                selectedPattern.selectedWeights.push(obj);
-                // change mdi-minus to mdi-plus
-                event.currentTarget.querySelector('.mdi').classList.remove('mdi-plus');
-                event.currentTarget.querySelector('.mdi').classList.add('mdi-check');
+                return;
             }
-        });
+            event.currentTarget.classList.add('is-selected');
 
+            // This is done so that the Proxy object can detect the change
+            const currentWeights = selectedPattern.selectedWeights;
+            currentWeights.push(obj);
+            selectedPattern.selectedWeights = currentWeights;
+
+            // change mdi-minus to mdi-plus
+            event.currentTarget.querySelector('.mdi').classList.remove('mdi-plus');
+            event.currentTarget.querySelector('.mdi').classList.add('mdi-check');
+        });
     }
 
-    // If gctype is unweighted-list, then hide the weights dropdown but populate the selectedPattern.selectedWeights with the weight label
 }
 
 /**
@@ -282,10 +347,34 @@ const populatePatternWeights = async () => {
  * @param {string} shareId - The share ID to set for the selected pattern.
  */
 const selectPatternList = (shareId) => {
+    const foundPattern = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`)
+    if (!foundPattern) {
+        console.error(`Pattern with share ID ${shareId} not found`);
+        return;
+    }
     selectedPattern.shareId = shareId;
     selectedPattern.label = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.label;
     selectedPattern.gctype = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).dataset.gctype;
+
+    // click the pattern list to select it
+    document.querySelector(`.dropdown-pattern-list-item[data-share-id="${shareId}"]`).click();
+
     updatePatternListSelectorLabel();
+}
+
+const selectPatternWeights = (labels) => {
+
+    // uncheck all the existing rows
+    const rows = document.querySelectorAll('.dropdown-weight-item');
+    rows.forEach((row) => {
+        row.classList.remove('is-selected');
+    });
+
+    // select our labels
+    for (const label of labels) {
+        document.querySelector(`.dropdown-weight-item[data-label="${label}"]`).click();
+    }
+
 }
 
 /**

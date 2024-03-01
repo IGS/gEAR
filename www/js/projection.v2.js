@@ -5,6 +5,7 @@ let isMulti = false;
 let tilegrid = null;
 let svgScoringMethod = 'gene';
 let projectionOpts = {patternSource: null, algorithm: null, gctype: null};
+let weightedGeneData = null;
 
 // imported from pattern-collection-selector.js
 // selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
@@ -17,17 +18,38 @@ let projectionOpts = {patternSource: null, algorithm: null, gctype: null};
 selectedPattern = new Proxy(selectedPattern, {
     set: (target, key, value) => {
         target[key] = value;
-        if (key === "selectedWeights" && value.length < 2) {
-            document.getElementById("single-multi-multi").disabled = true;
-            document.getElementById("single-multi-single").checked = true;
-            isMulti = false;
-        } else {
+        if (key === "selectedWeights") {
             document.getElementById("single-multi-multi").disabled = false;
+            if(value.length < 2) {
+                document.getElementById("single-multi-multi").disabled = true;
+                document.getElementById("single-multi-single").checked = true;
+                isMulti = false;
+            }
+        } else if (key === "gctype") {
+            // Adjust algorithm options based on gctype
+            const algorithmElt = document.getElementById('algorithm');
+            algorithmElt.querySelector('option[value="nmf"]').disabled = false;
+            algorithmElt.querySelector('option[value="fixednmf"]').disabled = false;
+            algorithmElt.querySelector('option[value="binary"]').disabled = true;
+
+            if (value === "unweighted-list") {
+                algorithmElt.querySelector('option[value="nmf"]').disabled = true;
+                algorithmElt.querySelector('option[value="fixednmf"]').disabled = true;
+                algorithmElt.querySelector('option[value="binary"]').disabled = false;
+            }
         }
+
+
+
         return true;
     }
 });
 
+/**
+ * Handles the UI updates specific to the page login.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the UI updates are completed.
+ */
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // Set the page header title
@@ -57,11 +79,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
         document.getElementById("scoring-method-div").classList.remove('is-hidden');
         if (isMulti) {
-            currentlySelectedWeight = null;
             document.getElementById("pattern-result-list-c").classList.add('is-hidden');
             document.getElementById("scoring-method-div").classList.add('is-hidden');
         }
-
 
         try {
             tilegrid = await setupTileGrid(selected_dc_share_id);
@@ -118,12 +138,29 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 }
 
+/**
+ * Sorts an array of strings in ascending order based on the numeric value at the end of each string. (i.e. PC1, PC2, etc.)
+ *
+ * @param {string} a - The first string to compare.
+ * @param {string} b - The second string to compare.
+ * @returns {number} The difference between the numeric values at the end of the strings.
+ */
+const customNumericSort = (a, b) => {
+    // NOTE: Ignores the leading string altogether, so this still applies even if that is not consistent.
+    return (Number(a.match(/(\d+)$/g)[0]) - Number((b.match(/(\d+)$/g)[0])));
+}
+
+/**
+ * Populates the pattern results list with weights.
+ */
 const populatePatternResultsList = () => {
     const template = document.querySelector('#tmpl-pattern-result-item');
     document.querySelector('#pattern-result-list').innerHTML = '';
 
-    for (const weight of selectedPattern.selectedWeights) {
-        const label = weight.label;
+    // sort the selectedWeights array based on the numeric value at the end of each string
+    const sortedLabels = selectedPattern.selectedWeights.map((weight) => weight.label).sort(customNumericSort);
+
+    for (const label of sortedLabels) {
         const row = template.content.cloneNode(true);
         row.querySelector('li').innerHTML = label;
         row.querySelector('li').dataset.weight = label;
@@ -154,11 +191,14 @@ const parsepatternCartURLParams = () => {
         document.getElementById('algorithm').value = projectionAlgorithm;
     }
 
-    // handle manually-entered pattern symbols
-    const urlWeights = getUrlParameter('projection_patterns');
-    if (urlWeights) {
-        selectedPattern.selectedWeights = urlWeights.split(',');
-        urlParamsPassed = true;
+    // single or multiple pattern view (convert to boolean)?
+    // NOTE: This will be adjusted if the pattern only has one weight
+    const isMultiParam = getUrlParameter('multipattern_plots');
+    isMulti = isMultiParam === '1';
+    if (isMulti) {
+        document.querySelector('#single-multi-multi').checked = true;
+    } else {
+        document.querySelector('#single-multi-single').checked = true;
     }
 
     // handle passed pattern lists
@@ -168,16 +208,19 @@ const parsepatternCartURLParams = () => {
         selectPatternList(pattern); // declared in pattern-collection-selector.js
     }
 
-    // single or multiple pattern view (convert to boolean)?
-    const isMultiParam = getUrlParameter('multipattern_plots');
-    isMulti = isMultiParam === '1';
-    if (isMulti) {
-        document.querySelector('#single-multi-multi').checked = true;
-    } else {
-        document.querySelector('#single-multi-single').checked = true;
+    // handle manually-entered pattern symbols
+    const urlWeights = getUrlParameter('projection_patterns');
+    if (pattern && urlWeights) {
+        // Cannot have weights without a source pattern
+        const labels = urlWeights.split(',');
+        selectPatternWeights(labels);
     }
 }
 
+/**
+ * Parses the URL parameters to extract the dataset collection information.
+ * @returns {Promise<void>} A promise that resolves once the dataset collection information is parsed.
+ */
 const parseDatasetCollectionURLParams = async () => {
     // handle passed dataset collection
     const layoutShareId = getUrlParameter('layout_id');
@@ -191,10 +234,14 @@ const parseDatasetCollectionURLParams = async () => {
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 }
 
-const selectPatternWeightResult = (weight) => {
+/**
+ * Selects a pattern weight and performs various actions based on the selected weight.
+ * @param {string} label - The selected weight label.
+ */
+const selectPatternWeightResult = (label) => {
 
     // get the selected pattern object
-    const obj = selectedPattern.selectedWeights.find((w) => w.label === weight);
+    const obj = selectedPattern.selectedWeights.find((w) => w.label === label);
 
     // if projection algorithm is "nmf", then hide the top_down genes
     const projectionAlgorithm = document.getElementById('algorithm').value;
@@ -206,6 +253,7 @@ const selectPatternWeightResult = (weight) => {
     }
 
     // if isMulti=false, show top_up and top_down genes
+    document.getElementById("top-genes-c").classList.remove('is-hidden');
     if (isMulti || selectedPattern.gctype === "unweighted-list") {
         document.getElementById("top-genes-c").classList.add('is-hidden');
     }
@@ -222,13 +270,27 @@ const selectPatternWeightResult = (weight) => {
         document.querySelector("#top-down-genes p").textContent = obj.top_down;
     }
 
+    document.getElementById("btn-view-weighted-genes").classList.remove("is-hidden");
+    try {
+        const data = apiCallsMixin.fetchPatternWeightedGenes(selectedPattern.shareId, label);
+        weightedGeneData = data;
+    } catch (error) {
+        logErrorInConsole(error);
+        document.getElementById("btn-view-weighted-genes").classList.add("is-hidden");
+    }
 
     // Other things can be called next, such as plotting calls
     if (tilegrid) {
-        tilegrid.renderDisplays(weight, isMulti, svgScoringMethod, projectionOpts);
+        tilegrid.renderDisplays(label, isMulti, svgScoringMethod, projectionOpts);
     }
 }
 
+/**
+ * Sets up the tile grid for projection.
+ *
+ * @param {string} layout_share_id - The share ID of the layout.
+ * @returns {Promise<TileGrid>} - A promise that resolves to the initialized TileGrid object.
+ */
 const setupTileGrid = async (layout_share_id) => {
     const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
     try {
@@ -255,13 +317,10 @@ const setupTileGrid = async (layout_share_id) => {
         // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_pattern
         // We do not render for single-gene searches because the first pattern result is "clicked" and the tilegrid is rendered in the event listener.
 
-        if (isMulti) {
-            // Don't render yet if a pattern is not selected
-            if (selected_patterns.size) {
-                // create array of selected weight labels
-                const selectedWeights = Array.from(selectedPattern.selectedWeights).map((w) => w.label);
-                await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, projectionOpts);
-            }
+        if (isMulti && selectedPattern.selectedWeights.length) {
+            // create array of selected weight labels
+            const selectedWeights = Array.from(selectedPattern.selectedWeights).map((w) => w.label);
+            await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, projectionOpts);
         }
     } catch (error) {
         logErrorInConsole(error);
@@ -270,6 +329,11 @@ const setupTileGrid = async (layout_share_id) => {
     }
 }
 
+/**
+ * Validates the projection search form.
+ *
+ * @returns {boolean} Returns true if the form is valid, otherwise false.
+ */
 const validateProjectionSearchForm = () => {
     // User must have either selected a pattern list or entered patterns manually. Either of these
     // will populate the selected_patterns array
@@ -290,3 +354,15 @@ const validateProjectionSearchForm = () => {
 
     return true;
 }
+
+document.getElementById('btn-view-weighted-genes').addEventListener('click', (event) => {
+    let htmlStream = "<table>";
+    // Gather genes and weights and show in new page
+    for (const row of weightedGeneData) {
+        htmlStream += `<tr><td>${row["gene"]}</td><td>${row["weight"]}</td></tr>`;
+    }
+    htmlStream += "</table>"
+    const tab = window.open('about:blank', '_blank');
+    tab.document.write(htmlStream);
+    tab.document.close();
+});

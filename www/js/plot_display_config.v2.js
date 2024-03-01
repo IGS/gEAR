@@ -152,13 +152,6 @@ const postPlotlyConfig = {
                     y: 0.8,
                 }
             }
-        }, {
-            plot_type: "heatmap"
-            , layout:{
-                margin: {
-                    b: 10
-                }
-            }
         }
     ]
     , curator: [

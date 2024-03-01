@@ -248,7 +248,11 @@ class MultigeneDashData(Resource):
             }
 
         # ADATA - Observations are rows, genes are columns
-        selected = adata
+        try:
+            selected = adata.to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata
 
         # These plot types filter to only the specific genes.
         # The other plot types use all genes and rather annotate the specific ones.
@@ -374,16 +378,16 @@ class MultigeneDashData(Resource):
 
             mg.modify_volcano_plot(fig, query_val, ref_val, ensm2genesymbol, downcolor, upcolor)
 
-            if selected_gene_symbols:
+            if gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
-                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, selected_gene_symbols)
+                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
                 mg.add_gene_annotations_to_volcano_plot(fig, normalized_genes_list, annotate_nonsignificant)
 
         elif plot_type == "quadrant":
             # Get list of normalized genes before dataframe filtering takes place
-            if selected_gene_symbols:
+            if gene_symbols:
                 dataset_genes = adata.var['gene_symbol'].unique().tolist()
-                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, selected_gene_symbols)
+                normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
             try:
                 key, control_val, compare1_val, compare2_val = mg.validate_quadrant_conditions(ref_condition, compare_group1, compare_group2)
                 df = mg.prep_quadrant_dataframe(selected
@@ -407,7 +411,7 @@ class MultigeneDashData(Resource):
 
             fig = mg.create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale)
             # Annotate selected genes
-            if selected_gene_symbols:
+            if gene_symbols:
                 genes_not_found, genes_none_none = mg.add_gene_annotations_to_quadrant_plot(fig, normalized_genes_list)
                 if genes_not_found:
                     success = 2

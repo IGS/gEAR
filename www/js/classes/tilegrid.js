@@ -168,69 +168,9 @@ class TileGrid {
         this.tiles.sort((a, b) => a.tile.height - b.tile.height);
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
-        for (const tile of this.tiles) {
-
-            const tileId = tile.tile.tile_id;
-            const tileElement = document.getElementById(`tile_${tileId}`);
-
-            // If projection mode is enabled, then perform projection
-            if (tile.projectR.modeEnabled) {
-
-                if (!tile.projectR.projectionId) {
-                    const {patternSource, algorithm, gctype} = projectionOpts;
-                    await tile.getProjection(patternSource, algorithm, gctype);
-                }
-
-                if (!tile.projectR.success) {
-                    continue;
-                }
-            }
-
-            // Clear the tile content so ortholog dropdown does not duplicate
-            const optionContent = tileElement.querySelector('.content');
-            optionContent.replaceChildren();
-
-            if (tile.projectR.modeEnabled) {
-                if (tile.projectR.projectionInfo) {
-                    tile.renderProjectionInfo();
-                }
-                // Plot and render the display
-                await tile.renderDisplay(geneSymbolInput, null, svgScoringMethod);
-                continue;
-            }
-
-            // Not projection mode, so get orthologs
-            await tile.getOrthologs(geneSymbolInput)
-
-            // If no genes were found, then raise an error
-            // This should never happen as geneSymbolInput should be a key in the orthologs object
-            if (Object.keys(tile.orthologs).length === 0) {
-                throw new Error("Should never happen. Please contact the gEAR team.");
-            }
-
-            // Make a flattened list of all orthologs to plot
-            tile.orthologsToPlot = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()).flat();
-
-            if (tile.orthologsToPlot.length === 0) {
-                const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
-                // Fill in card-image with error message
-                createCardMessage(tileId, "danger", message);
-                // skip to the next tile
-                continue;
-            }
-
-            // Get the first ortholog for each gene (needed for multigene plots, and initial single-gene plots).
-            const orthologs = Object.keys(tile.orthologs).map(g => tile.orthologs[g].sort()[0]).flat();
-
-            // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
-            if (!isMultigene && tile.orthologsToPlot.length > 1) {
-                tile.renderOrthologDropdown();
-            }
-
-            // Plot and render the display
-            await tile.renderDisplay(orthologs, null, svgScoringMethod);
-
-        }
+        this.tiles.map(async tile => {
+            await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
+        });
     }
 };
 
@@ -325,6 +265,74 @@ class DatasetTile {
         }
     }
 
+
+    /**
+     * Processes a tile for rendering display.
+     * @param {Object} projectionOpts - The projection options.
+     * @param {string} geneSymbolInput - The gene symbol input.
+     * @param {string} svgScoringMethod - The SVG scoring method.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     */
+    async processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod) {
+        const tileId = this.tile.tile_id;
+        const tileElement = document.getElementById(`tile_${tileId}`);
+
+        // If projection mode is enabled, then perform projection
+        if (this.projectR.modeEnabled) {
+            if (!this.projectR.projectionId) {
+                const {patternSource, algorithm, gctype} = projectionOpts;
+                await this.getProjection(patternSource, algorithm, gctype);
+            }
+
+            if (!this.projectR.success) {
+                return;
+            }
+        }
+
+        // Clear the tile content so ortholog dropdown does not duplicate
+        const optionContent = tileElement.querySelector('.content');
+        optionContent.replaceChildren();
+
+        if (this.projectR.modeEnabled) {
+            if (this.projectR.projectionInfo) {
+                this.renderProjectionInfo();
+            }
+            // Plot and render the display
+            await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
+            return;
+        }
+
+        // Not projection mode, so get orthologs
+        await this.getOrthologs(geneSymbolInput)
+
+        // If no genes were found, then raise an error
+        // This should never happen as geneSymbolInput should be a key in the orthologs object
+        if (Object.keys(this.orthologs).length === 0) {
+            throw new Error("Should never happen. Please contact the gEAR team.");
+        }
+
+        // Make a flattened list of all orthologs to plot
+        this.orthologsToPlot = Object.keys(tile.orthologs).map(g => this.orthologs[g].sort()).flat();
+
+        if (this.orthologsToPlot.length === 0) {
+            const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
+            // Fill in card-image with error message
+            createCardMessage(tileId, "danger", message);
+            // skip to the next tile
+            return;
+        }
+
+        // Get the first ortholog for each gene (needed for multigene plots, and initial single-gene plots).
+        const orthologs = Object.keys(this.orthologs).map(g => this.orthologs[g].sort()[0]).flat();
+
+        // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
+        if (!this.isMulti && this.orthologsToPlot.length > 1) {
+            this.renderOrthologDropdown();
+        }
+
+        // Plot and render the display
+        await this.renderDisplay(orthologs, null, svgScoringMethod);
+    }
 
     /**
      * Retrieves orthologs for the given gene symbols.

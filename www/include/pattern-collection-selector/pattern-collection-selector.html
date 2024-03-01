@@ -102,7 +102,17 @@
         </div>
         <div class="dropdown-item">
           <div class="columns">
-            <div class="column is-10"></div>
+            <div class="column is-10">
+              <p class="is-size-7">Weight selection shortcuts</p>
+              <div class="buttons">
+                <button id="dropdown-pattern-list-clear-weights" class="button is-light is-rounded is-small is-hidden">Clear weights</button>
+                <button id="dropdown-pattern-list-top5-weights" class="button is-light is-rounded is-small is-hidden">Top 5</button>
+                <button id="dropdown-pattern-list-top10-weights" class="button is-light is-rounded is-small is-hidden">Top 10</button>
+                <button id="dropdown-pattern-list-top20-weights" class="button is-light is-rounded is-small is-hidden">Top 20</button>
+                <button id="dropdown-pattern-list-all-weights" class="button is-light is-rounded is-small is-hidden">All weights</button>
+              </div>
+
+            </div>
             <div class="column is-2">
               <button id="dropdown-pattern-list-proceed" class="button is-primary is-rounded is-small mb-1">Proceed</button><br />
               <button id="dropdown-pattern-list-cancel" class="button is-secondary is-rounded is-small">Reset</button>
