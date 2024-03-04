@@ -38,9 +38,6 @@ selectedPattern = new Proxy(selectedPattern, {
                 algorithmElt.querySelector('option[value="binary"]').disabled = false;
             }
         }
-
-
-
         return true;
     }
 });

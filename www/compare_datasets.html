@@ -24,9 +24,6 @@
   <!-- Fancy animation effects -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
-  <!-- Fancy select elements -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
-
   <!-- Tree view/grid -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.css">
@@ -243,7 +240,7 @@
                 </div>
 
                 <div class="content columns">
-                  <span class="has-text-weight-medium column">Log transformation</span>
+                  <span class="has-text-weight-medium column">Report output as </span>
                   <div class="control is-expanded column">
                     <div class="select is-fullwidth">
                       <select class="js-compare-log-base" id="log_base">
@@ -339,7 +336,7 @@
               <div class="content">
                 <div class="title is-6">Data filters</div>
                 <div class="is-flex is-justify-content-space-between pr-3">
-                  <span>Log transformation</span>
+                  <span>Report output as</span>
                   <span id="log_base_post" class="has-text-weight-semibold"></span>
                 </div>
                 <div class="is-flex is-justify-content-space-between pr-3">
@@ -378,28 +375,29 @@
               </div>
             </div>
 
-            <p>Please select a collection of genes (left dropdown) or an individual gene (right dropdown) to add to list of selected genes</p>
-
-            <!-- BUG: https://github.com/mar10/wunderbaum/issues/57 -->
-            <div class="columns">
-              <div class="column is-6">
-                <input class="input" id="genecart_query" type="text" placeholder="Enter a gene collection" autofocus="" />
-                <div id="genecart_tree" class="wb-skeleton wb-initializing js-tree"></div>
-                <p class="help">Only genes also found in the dataset will be added to the selection of genes.</p>
-              </div>
-              <div id="gene_select_c" class="column is-4">
-                <div class="select is-fullwidth">
-                  <select class="js-gene-select" id="gene_select" multiple></select>
+            <div id="search-bar-c" class="mt-4 ml-3 mb-4">
+              <div class="field has-addons is-grouped mb-0">
+                <div class="control has-icons-left has-icons-right mr-0">
+                  <input class="input" type="input" id="genes_manually_entered" placeholder="Type here to search using specific gene symbols">
+                  <span class="icon is-small is-left">
+                    <i class="mdi mdi-magnify"></i>
+                  </span>
                 </div>
+                <!-- div with the text 'OR' centered vertically. this is awkward -->
+                <div class="columns">
+                  <div class="column is-1">
+                    <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                  </div>
+                </div>
+
+                <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
               </div>
-            </div>
-            <!-- Gene cart button -->
-            <div id="gene_cart_btn_c" class="is-hidden is-flex is-flex-grow-1 is-align-items-end is-justify-content-end">
-              <button id="gene_cart_btn" class="button is-primary is-outlined" data-target="gene_table_modal">
+
+              <button id="gene_list_btn" class="button is-primary is-outlined" data-target="gene_table_modal">
                 <span class="icon">
                   <i class="mdi mdi-file-table-box-multiple"></i>
                 </span>
-                <span>View and save genes</span>
+                <span>View and save selected genes</span>
               </button>
             </div>
           </div>
@@ -469,9 +467,6 @@
       </footer>
     </div>
   </div>
-
-  <!-- fancy select elements -->
-  <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>
 
   <!-- Tree view/grid -->
   <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.umd.min.js"></script>

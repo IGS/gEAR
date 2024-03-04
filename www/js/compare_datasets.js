@@ -50,7 +50,10 @@ let datasetId;
 let organismId;	// Used for saving as gene cart
 let compareData;;
 let selectedGeneData;
-let geneSelect;
+let manuallyEnteredGenes = new Set();
+
+// imported from gene-collection-selector.js
+// let selected_genes = new Set();
 
 // Storing user's plot text edits, so they can be restored if user replots
 let titleText = null;
@@ -100,12 +103,6 @@ const datasetTree = new DatasetTree({
 			classElt.replaceChildren();
 		}
 
-    	// Creates gene select instance that allows for multiple selection
-		geneSelect = createGeneSelectInstance("gene_select", geneSelect);
-		// Populate gene select element
-		await geneSelectUpdate()
-
-
 		// Create facet widget, which will refresh filters
 		facetWidget = await createFacetWidget(datasetId, null, {});
 		document.getElementById("facet_content").classList.remove("is-hidden");
@@ -117,53 +114,6 @@ const datasetTree = new DatasetTree({
 
 		compareSeriesElt.parentElement.classList.remove("is-loading");
 
-    })
-});
-
-const geneCartTree = new GeneCartTree({
-    element: document.getElementById("genecart_tree")
-    , searchElement: document.getElementById("genecart_query")
-    , selectCallback: (async (e) => {
-        if (e.node.type !== "genecart") {
-            return;
-        }
-
-        // Get gene symbols from gene cart
-        const geneCartId = e.node.data.orig_id;
-        const geneCartMembers = await fetchGeneCartMembers(geneCartId);
-        const geneCartSymbols = geneCartMembers.map((item) => item.label);
-
-        // Normalize gene symbols to lowercase
-        const geneSelectSymbols = geneSelect.data.map((opt) => opt.value);
-        const geneCartSymbolsLowerCase = geneCartSymbols.map((x) => x.toLowerCase());
-
-        const geneSelectedOptions = geneSelect.selectedOptions.map((opt) => opt.data.value);
-
-        // Get genes from gene cart that are present in dataset's genes.  Preserve casing of dataset's genes.
-        const geneCartIntersection = geneSelectSymbols.filter((x) => geneCartSymbolsLowerCase.includes(x.toLowerCase()));
-        // Add in already selected genes (union)
-        const geneSelectIntersection = [...new Set(geneCartIntersection.concat(geneSelectedOptions))];
-
-        // change all options to be unselected
-        const origSelect = document.getElementById("gene_select");
-        for (const opt of origSelect.options) {
-            opt.removeAttribute("selected");
-        }
-
-        // Assign intersection genes to geneSelect "selected" options
-        for (const gene of geneSelectIntersection) {
-            const opt = origSelect.querySelector(`option[value="${gene}"]`);
-            try {
-                opt.setAttribute("selected", "selected");
-            } catch (error) {
-                // sanity check
-                const msg = `Could not add gene ${gene} to gene select.`;
-                console.warn(msg);
-            }
-        }
-
-        geneSelect.update();
-        trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
     })
 });
 
@@ -193,29 +143,24 @@ const appendGeneTagButton = (geneTagElt) => {
     deleteBtnElt.classList.add("delete", "is-small");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
-        // Remove gene from geneSelect
+        // Remove gene from selected_genes
         const gene = event.target.parentNode.textContent;
-        const geneSelectElt = document.getElementById("gene_select");
-        geneSelectElt.querySelector(`option[value="${gene}"]`).removeAttribute("selected");
-
-        geneSelect.update();
-        trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
+		selected_genes.delete(gene);
+		event.target.parentNode.remove();
     });
-
-    // ? Should i add ellipses for too many genes? Should I make the box collapsable?
 }
 
-const chooseGene = (event) => {
+const chooseGenes = (event) => {
     // Triggered when a gene is selected
 
     // Delete existing tags
     const geneTagsElt = document.getElementById("gene_tags");
     geneTagsElt.replaceChildren();
 
-    if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
+	if (selected_genes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
-    const sortedGenes = geneSelect.selectedOptions.map((opt) => opt.data.value).sort();
+	const sortedGenes = Array.from(selected_genes).sort();
     for (const opt in sortedGenes) {
         const geneTagElt = document.createElement("span");
         geneTagElt.classList.add("tag", "is-primary", "mx-1");
@@ -225,12 +170,9 @@ const chooseGene = (event) => {
     }
 
     document.getElementById("gene_tags_c").classList.remove("is-hidden");
-    if (!geneSelect.selectedOptions.length) {
-        document.getElementById("gene_tags_c").classList.add("is-hidden");
-    }
 
     // If more than 10 tags, hide the rest and add a "show more" button
-    if (geneSelect.selectedOptions.length > 10) {
+    if (selected_genes.size > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
             geneTags[i].classList.add("is-hidden");
@@ -238,7 +180,7 @@ const chooseGene = (event) => {
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
         showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
-        const numToDisplay = geneSelect.selectedOptions.length - 10;
+        const numToDisplay = selected_genes.size - 10;
         showMoreBtnElt.textContent = `+${numToDisplay} more`;
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
@@ -256,7 +198,9 @@ const chooseGene = (event) => {
 
 const clearGenes = (event) => {
     document.getElementById("clear_genes_btn").classList.add("is-loading");
-    geneSelect.clear();
+	document.getElementById("gene_tags").replaceChildren();
+	selected_genes.clear();
+	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
 	updatePlotAnnotations([]);
     document.getElementById("clear_genes_btn").classList.remove("is-loading");
 }
@@ -289,24 +233,6 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     });
     document.getElementById("selected_facets_loader").classList.add("is-hidden")
     return facetWidget;
-}
-
-const createGeneSelectInstance = (idSelector, geneSelect=null) => {
-    // NOTE: Updating the list of genes can be memory-intensive if there are a lot of genes
-    // and (I've noticed) if multiple select2 elements for genes are present.
-
-    // If object exists, just update it with the revised data and return
-    if (geneSelect) {
-        geneSelect.update();
-        return geneSelect;
-    }
-
-    return NiceSelect.bind(document.getElementById(idSelector), {
-        placeholder: 'To search, start typing a gene name',
-        searchtext: 'To search, start typing a gene name',
-        searchable: true,
-        allowClear: true,
-    });
 }
 
 const downloadSelectedGenes = (event) => {
@@ -390,57 +316,6 @@ const fetchDatasets = async () => {
     }
 }
 
-/* Fetch gene collection members */
-const fetchGeneCartMembers = async (geneCartId) => {
-    try {
-        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
-        if (!success) {
-            throw new Error("Could not fetch gene collection members. You can still enter genes manually.");
-        }
-        return gene_symbols;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene collection members. You can still enter genes manually.";
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-/* Fetch gene collections */
-const fetchGeneCarts = async () => {
-    const cartType = "unweighted-list";
-    try {
-        return await apiCallsMixin.fetchGeneCarts(cartType);
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene collections. You can still enter genes manually.";
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-const fetchGeneSymbols = async (datasetId, analysisId) => {
-	try {
-		const data = await apiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
-		return [...new Set(data.gene_symbols)]; // Dataset may have a gene repeated in it, so resolve this.
-	} catch (error) {
-		logErrorInConsole(error);
-		const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
-		createToast(msg);
-		return [];
-	}
-}
-
-const geneSelectUpdate = async (analysisId=null) => {
-    // Populate gene select element
-    try {
-        const geneSymbols = await fetchGeneSymbols(datasetId, analysisId);
-        updateGeneOptions(geneSymbols); // Come from curator specific code
-    } catch (error) {
-		logErrorInConsole(error);
-	}
-}
-
 const getComparisons = async (event) => {
 
 	// set loading icon
@@ -468,11 +343,11 @@ const getComparisons = async (event) => {
 		plotDataToGraph(compareData);
 
 		// If any genes selected, update plot annotations (since plot was previously purged)
-		const sortedGenes = geneSelect.selectedOptions.map((opt) => opt.data.value).sort();
+		const sortedGenes = Array.from(selected_genes).sort();
 		updatePlotAnnotations(sortedGenes);
 
         // Show button to add genes to gene cart
-        document.getElementById("gene_cart_btn_c").classList.remove("is-hidden");
+        document.getElementById("gene_list_btn").classList.remove("is-hidden");
 
 		// Hide this view
 		document.getElementById("content_c").classList.add("is-hidden");
@@ -561,43 +436,6 @@ const loadDatasetTree = async () => {
         datasetTree.generateTree();
     } catch (error) {
         document.getElementById("dataset_s_failed").classList.remove("is-hidden");
-    }
-}
-
-/* Transform and load gene collection data into a "tree" format */
-const loadGeneCarts = async () => {
-    try {
-        const geneCartData = await fetchGeneCarts();
-        const carts = {};
-        const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
-        let cartsFound = false;
-
-        // Loop through the different types of gene collections and add them to the carts object
-        for (const ctype of cartTypes) {
-            carts[ctype] = [];
-
-            if (geneCartData[`${ctype}_carts`].length > 0) {
-                cartsFound = true;
-
-                for (const item of geneCartData[`${ctype}_carts`]) {
-					const fullLabel = `${item.label} (${item.num_genes} genes)`; // Add number of genes to label
-                    carts[ctype].push({value: item.id, text: fullLabel });
-                };
-            }
-        }
-
-        geneCartTree.domainGeneCarts = carts.domain;
-        geneCartTree.userGeneCarts = carts.user;
-        geneCartTree.groupGeneCarts = carts.group;
-        geneCartTree.sharedGeneCarts = carts.shared;
-        geneCartTree.publicGeneCarts = carts.public;
-        geneCartTree.generateTree();
-        /*if (!cartsFound ) {
-            // ? Put some warning if carts not found
-            $('#gene_cart_container').show();
-        }*/
-
-    } catch (error) {
     }
 }
 
@@ -1071,34 +909,6 @@ const sortGeneTable = (mode) => {
     }
 }
 
-const updateGeneOptions = (geneSymbols) => {
-
-    const geneSelectElt = document.getElementById("gene_select");
-    geneSelectElt.replaceChildren();
-
-	geneSelectElt.parentElement.classList.add("is-loading");
-
-    // Append empty placeholder element
-    const firstOption = document.createElement("option");
-    firstOption.textContent = "Please select a gene";
-    geneSelectElt.append(firstOption);
-
-    for (const gene of geneSymbols.sort()) {
-        const option = document.createElement("option");
-        option.textContent = gene;
-        option.value = gene;
-        geneSelectElt.append(option);
-    }
-
-	// TODO: Had to disable geneSelect.update() until a gene cart is selected. This is a temporary adjustment to save memory
-
-    // Update the nice-select2 element to reflect select options
-    //geneSelect.update();
-
-	geneSelectElt.parentElement.classList.remove("is-loading");
-
-}
-
 // For a given categorical series (e.g. "celltype"), add checkboxes for each category
 const updateGroupOptions = (selectorId, groupsArray, series) => {
 
@@ -1150,7 +960,9 @@ const updatePlotAnnotations = (genes) => {
 
 	// Reset all trace colors
 	for (const trace of plotData) {
-		trace.marker.color = trace.marker.origColor;
+		trace.id.forEach((element, i) => {
+			trace.marker.color[i] = trace.marker.origColor[i];
+		});
 	}
 
 	genes.forEach((gene) => {
@@ -1366,13 +1178,8 @@ document.getElementById("edit_params").addEventListener("click", (event) => {
 
 document.getElementById("clear_genes_btn").addEventListener("click", clearGenes);
 
-const geneSelectElts = document.querySelectorAll("select.js-gene-select");
-for (const geneSelectElt of geneSelectElts) {
-    geneSelectElt.addEventListener("change", chooseGene);
-}
-
 // code from Bulma documentation to handle modals
-document.getElementById("gene_cart_btn").addEventListener("click", ($trigger) => {
+document.getElementById("gene_list_btn").addEventListener("click", ($trigger) => {
     const closestButton = $trigger.target.closest(".button");
     const modal = closestButton.dataset.target;
     const $target = document.getElementById(modal);
@@ -1400,6 +1207,29 @@ document.getElementById("save_genecart_btn").addEventListener("click", (event) =
     event.target.classList.remove("is-loading");
 });
 
+// handle when the dropdown-gene-list-search-input input box is changed
+document.getElementById('genes_manually_entered').addEventListener('change', (event) => {
+    const searchTermString = event.target.value;
+    const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
+
+    // Remove genes that have been deleted from the selected_genes set
+    for (const gene of manuallyEnteredGenes) {
+        if (!newManuallyEnteredGenes.has(gene)) {
+            selected_genes.delete(gene);
+        }
+    }
+
+    // Add new genes to the selected_genes set
+    for (const gene of newManuallyEnteredGenes) {
+        selected_genes.add(gene);
+    }
+
+    manuallyEnteredGenes = newManuallyEnteredGenes;
+    chooseGenes(null);
+});
+
+document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
+
 document.getElementById("download_selected_genes_btn").addEventListener("click", downloadSelectedGenes);
 
 /* --- Entry point --- */
@@ -1418,14 +1248,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
         createToast("Not logged in so saving gene carts is disabled.");
-        document.getElementById("gene_cart_btn").disabled = true;
+        document.getElementById("gene_list_btn").disabled = true;
     }
 
 
 	try {
 		await Promise.all([
 			loadDatasetTree(),
-			loadGeneCarts()
+			fetchGeneCartData()
 		]);
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);

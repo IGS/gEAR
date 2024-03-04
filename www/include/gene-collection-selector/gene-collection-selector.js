@@ -221,7 +221,7 @@ const setActiveGeneCart = (cart_row, mode) => {
     }
 
     for (const gene_div of document.querySelectorAll('.dropdown-gene-item')) {
-        let gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
+        const gene_symbol = gene_div.querySelector('.gene-item-label').textContent;
 
         if (selected_genes.has(gene_symbol)) {
             gene_div.classList.add('is-selected');
