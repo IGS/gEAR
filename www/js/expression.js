@@ -7,7 +7,7 @@ let currently_selected_org_id = "";
 //let selected_dc_label = "";
 let is_multigene = false;
 let annotation_data = null;
-let manually_entered_genes = [];
+let manually_entered_genes = new Set();
 let tilegrid = null;
 let svg_scoring_method = 'gene';
 
@@ -38,24 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // handle when the dropdown-gene-list-search-input input box is changed
     document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
-        let previously_manual_genes = manually_entered_genes;
+        const new_manually_entered_genes = search_term_string.length > 0 ? new Set(search_term_string.split(/[ ,]+/)) : new Set();
 
-        if (search_term_string.length > 0) {
-            manually_entered_genes = search_term_string.split(/[ ,]+/);
-        } else {
-            manually_entered_genes = [];
+        // Remove genes that have been deleted from the selectedGenes set
+        for (const gene of manually_entered_genes) {
+            if (!new_manually_entered_genes.has(gene)) {
+                selected_genes.delete(gene);
+            }
         }
 
-        // if any genes have been removed since last time, we need to remove them from the selected_genes array
-        manually_entered_genes.forEach((gene) => {
-            previously_manual_genes = previously_manual_genes.filter((g) => g !== gene);
-        });
+        // Add new genes to the selectedGenes set
+        for (const gene of new_manually_entered_genes) {
+            selected_genes.add(gene);
+        }
 
-        previously_manual_genes.forEach((gene) => {
-            selected_genes.delete(gene);
-        });
-
-        selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
+        manually_entered_genes = new_manually_entered_genes;
     });
 
     document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
@@ -285,7 +282,7 @@ const parseGeneCartURLParams = () => {
     if (gene_symbols) {
         document.querySelector('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
         selected_genes = new Set(gene_symbols.split(','));
-        manually_entered_genes = Array.from(selected_genes);
+        manually_entered_genes = selected_genes;
         url_params_passed = true;
     }
 
@@ -456,7 +453,7 @@ const updateAnnotationDisplay = () => {
 const validateExpressionSearchForm = () => {
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
-    if (selected_genes.size + manually_entered_genes.length === 0) {
+    if (selected_genes.size + manually_entered_genes.size === 0) {
         createToast('Please enter at least one gene to proceed');
         return false;
     }
