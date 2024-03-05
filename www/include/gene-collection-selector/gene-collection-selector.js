@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // and finally the related gene lists and genes
         selected_carts.clear();
-        selected_gene.clear();
+        selected_genes.clear();
     });
 
     document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
