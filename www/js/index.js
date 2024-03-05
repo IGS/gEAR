@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previously_manual_genes.forEach((gene) => {
             selected_genes.delete(gene);
         });
-        
+
         selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
@@ -146,7 +146,7 @@ const validateExpressionSearchForm = () => {
         return false;
     } else {
         document.querySelector('#dropdown-dc button').classList.remove('is-danger');
-    
+
     }
 
     return true;
@@ -157,6 +157,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         populateUserHistoryTable();
     }
 
-    fetchGeneCartData();
-    fetchDatasetCollections();
+    await Promise.all([
+        fetchGeneCartData(),
+        fetchDatasetCollections()
+    ]);
 }
