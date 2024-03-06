@@ -98,8 +98,8 @@ document.getElementById("dropdown-pattern-list-clear-weights").addEventListener(
     if (rows[0].classList.contains('is-disabled')) return;  // If there is only one weight, we can't clear it
 
     for (const row of rows ) {
-        row.classList.replace("is-selected", "is-clickable");
-        row.classList.replace("mdi-check", "mdi-plus");
+        row.classList.remove("is-selected");
+        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
     };
 
     selectedPattern.selectedWeights = [];
@@ -113,8 +113,8 @@ document.getElementById("dropdown-pattern-list-top5-weights").addEventListener("
 
     // Some labels may already be selected, so we need to clear them first
     for (const row of rows ) {
-        row.classList.replace("is-selected", "is-clickable");
-        row.classList.replace("mdi-check", "mdi-plus");
+        row.classList.remove("is-selected");
+        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
     };
 
     selectPatternWeights(labels);
@@ -127,8 +127,8 @@ document.getElementById("dropdown-pattern-list-top10-weights").addEventListener(
     selectedPattern.selectedWeights = [];
 
     for (const row of rows ) {
-        row.classList.replace("is-selected", "is-clickable");
-        row.classList.replace("mdi-check", "mdi-plus");
+        row.classList.remove("is-selected");
+        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
     };
 
     selectPatternWeights(labels);
@@ -141,8 +141,8 @@ document.getElementById("dropdown-pattern-list-top20-weights").addEventListener(
     selectedPattern.selectedWeights = [];
 
     for (const row of rows ) {
-        row.classList.replace("is-selected", "is-clickable");
-        row.classList.replace("mdi-check", "mdi-plus");
+        row.classList.remove("is-selected");
+        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
     };
 
 
@@ -154,8 +154,8 @@ document.getElementById("dropdown-pattern-list-all-weights").addEventListener("c
     selectedPattern.selectedWeights = [];
 
     for (const row of rows ) {
-        row.classList.replace("is-selected", "is-clickable");
-        row.classList.replace("mdi-check", "mdi-plus");
+        row.classList.remove("is-selected");
+        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
     };
 
     selectPatternWeights(labels);
