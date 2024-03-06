@@ -474,7 +474,7 @@ const createToast = (msg, levelClass="is-danger") => {
         toast.style.setProperty("top", `${(numToasts * 70) + 30}px`);
     } else {
         // Otherwise prepend to top of main content
-        document.getElementById("main_c").prepend(toast);
+        document.getElementById("main-c").prepend(toast);
     }
 
     // For a success message, remove it after 3 seconds

@@ -365,9 +365,9 @@ const getComparisons = async (event) => {
         document.getElementById("gene_list_btn").classList.remove("is-hidden");
 
 		// Hide this view
-		document.getElementById("content_c").classList.add("is-hidden");
+		document.getElementById("content-c").classList.add("is-hidden");
 		// Generate and display "post-plotting" view/container
-		document.getElementById("post_plot_content_c").classList.remove("is-hidden");
+		document.getElementById("post-plot-content-c").classList.remove("is-hidden");
 
 	} catch (error) {
 		console.error(error);
@@ -1184,9 +1184,9 @@ for (const classElt of document.getElementsByClassName("js-plot-btn")) {
 document.getElementById("edit_params").addEventListener("click", (event) => {
     event.target.classList.add("is-loading");
     // Hide this view
-    document.getElementById("content_c").classList.remove("is-hidden");
+    document.getElementById("content-c").classList.remove("is-hidden");
     // Generate and display "post-plotting" view/container
-    document.getElementById("post_plot_content_c").classList.add("is-hidden");
+    document.getElementById("post-plot-content-c").classList.add("is-hidden");
 
     event.target.classList.remove("is-loading");
 })
