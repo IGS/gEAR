@@ -93,13 +93,14 @@ document.getElementById('dropdown-pattern-list-search-input').addEventListener('
 
 document.getElementById("dropdown-pattern-list-clear-weights").addEventListener("click", (event) => {
     // uncheck all the existing rows
-    const rows = document.querySelectorAll('.dropdown-weight-item');
+    const rows = document.getElementsByClassName('dropdown-weight-item');
 
     if (rows[0].classList.contains('is-disabled')) return;  // If there is only one weight, we can't clear it
 
-    rows.forEach((row) => {
-        row.classList.remove('is-selected');
-    });
+    for (const row of rows ) {
+        row.classList.replace("is-selected", "is-clickable");
+        row.classList.replace("mdi-check", "mdi-plus");
+    };
 
     selectedPattern.selectedWeights = [];
 });
@@ -110,6 +111,12 @@ document.getElementById("dropdown-pattern-list-top5-weights").addEventListener("
     const labels = Array.from(rows).slice(0, 5).map((row) => row.dataset.label);
     selectedPattern.selectedWeights = [];
 
+    // Some labels may already be selected, so we need to clear them first
+    for (const row of rows ) {
+        row.classList.replace("is-selected", "is-clickable");
+        row.classList.replace("mdi-check", "mdi-plus");
+    };
+
     selectPatternWeights(labels);
 
 });
@@ -118,6 +125,11 @@ document.getElementById("dropdown-pattern-list-top10-weights").addEventListener(
     const rows = document.getElementsByClassName('dropdown-weight-item');
     const labels = Array.from(rows).slice(0, 10).map((row) => row.dataset.label);
     selectedPattern.selectedWeights = [];
+
+    for (const row of rows ) {
+        row.classList.replace("is-selected", "is-clickable");
+        row.classList.replace("mdi-check", "mdi-plus");
+    };
 
     selectPatternWeights(labels);
 });
@@ -128,12 +140,23 @@ document.getElementById("dropdown-pattern-list-top20-weights").addEventListener(
     const labels = Array.from(rows).slice(0, 20).map((row) => row.dataset.label);
     selectedPattern.selectedWeights = [];
 
+    for (const row of rows ) {
+        row.classList.replace("is-selected", "is-clickable");
+        row.classList.replace("mdi-check", "mdi-plus");
+    };
+
+
     selectPatternWeights(labels);
 });
 document.getElementById("dropdown-pattern-list-all-weights").addEventListener("click", (event) => {
     const rows = document.getElementsByClassName('dropdown-weight-item');
     const labels = Array.from(rows).map((row) => row.dataset.label);
     selectedPattern.selectedWeights = [];
+
+    for (const row of rows ) {
+        row.classList.replace("is-selected", "is-clickable");
+        row.classList.replace("mdi-check", "mdi-plus");
+    };
 
     selectPatternWeights(labels);
 });
