@@ -63,7 +63,14 @@ document.querySelector('#dropdown-pattern-list-cancel').addEventListener('click'
 document.querySelector('#dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
     const search_term = event.target.value;
 
-    if (search_term.length <= 2) {return}
+    if (search_term.length === 0) {
+        // clear the gene list
+        document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
+        document.querySelector('#dropdown-content-genes').innerHTML = '';
+        return;
+    } else if (search_term.length <= 2) {
+        return;
+    }
 
     const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
     categorySelectors.forEach((element) => {
