@@ -72,7 +72,7 @@ document.getElementById('dropdown-pattern-list-search-input').addEventListener('
         return;
     }
 
-    const categorySelectors = document.querySelector('#dropdown-content-pattern-list-category .ul-li');
+    const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
     categorySelectors.forEach((element) => {
         element.classList.remove('is-selected');
         element.classList.add('is-clickable');
