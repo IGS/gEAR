@@ -20,6 +20,10 @@ Returns {'user_carts': [
                         {'id': 3122, 'label': 'my_gene_cart'}
                         {'id': 4113, 'label': 'my_gene_cart'}
                        ],
+         'recent_carts': [
+                        {'id': 3122, 'label': 'my_gene_cart'}
+                        {'id': 4113, 'label': 'my_gene_cart'}
+                       ],            
          'shared_carts': [
                         {'id': 1212, 'label': 'my_gene_cart'}
                        ],
@@ -37,6 +41,8 @@ of general interest.
 - User carts are those owned by the user.
 
 - Group carts are any shared with a group the user belongs to.
+
+- Recent carts are any the user recently created.
 
 - Shared carts are those explicitly shared with the current user by URL, even
 if private.  This list will usually only contain one cart since the system
@@ -64,19 +70,20 @@ def main():
     current_user = geardb.get_user_from_session_id(session_id)
 
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
-               'shared_carts':[], 'user_carts':[] }
+               'recent_carts':[], 'shared_carts':[], 'user_carts':[] }
 
     # Track the cart IDs already stored so we don't duplicate
     cart_ids_found = set()
 
-    domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
+    domain_carts = geardb.GeneCartCollection().get_domain()
     user_carts = []
     group_carts = []
     if current_user:
-        user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
-        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
-    shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
-    public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
+        user_carts = geardb.GeneCartCollection().get_by_user(user=current_user)
+        group_carts = geardb.GeneCartCollection().get_by_user_groups(user=current_user)
+    recent_carts = geardb.GeneCartCollection().get_by_user_recent(user=current_user, n=10)
+    shared_carts = geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id])
+    public_carts = geardb.GeneCartCollection().get_public()
 
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
@@ -86,12 +93,14 @@ def main():
             subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
             subset_user_carts = filter_by_cart_type(user_carts, cart_type)
             subset_group_carts = filter_by_cart_type(group_carts, cart_type)
+            subset_recent_carts = filter_by_cart_type(recent_carts, cart_type)
             subset_shared_carts = filter_by_cart_type(shared_carts, cart_type)
             subset_public_carts = filter_by_cart_type(public_carts, cart_type)
 
             gctypes_result[cart_type] = { 'domain_carts':subset_domain_carts,
                 'group_carts':subset_group_carts,
                 'public_carts':subset_public_carts,
+                'recent_carts':subset_recent_carts,
                 'shared_carts':subset_shared_carts,
                 'user_carts':subset_user_carts }
 
@@ -103,12 +112,14 @@ def main():
         domain_carts = filter_by_cart_type(domain_carts, filter_cart_type)
         user_carts = filter_by_cart_type(user_carts, filter_cart_type)
         group_carts = filter_by_cart_type(group_carts, filter_cart_type)
+        recent_carts = filter_by_cart_type(recent_carts, filter_cart_type)
         shared_carts = filter_by_cart_type(shared_carts, filter_cart_type)
         public_carts = filter_by_cart_type(public_carts, filter_cart_type)
 
     result = { 'domain_carts':domain_carts,
                 'group_carts':group_carts,
                 'public_carts':public_carts,
+                'recent_carts':recent_carts,
                 'shared_carts':shared_carts,
                 'user_carts':user_carts }
 

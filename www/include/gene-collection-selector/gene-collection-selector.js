@@ -239,6 +239,8 @@ const setActiveGeneCart = (cart_row, mode) => {
 }
 
 const setActiveGeneCartCategory = (category) => {
+    console.log(gene_cart_data);
+
     // clear the gene list
     document.querySelector('#dropdown-content-genes').innerHTML = '';
     document.querySelector('#dropdown-gene-list-search-input').value = '';
@@ -248,14 +250,12 @@ const setActiveGeneCartCategory = (category) => {
 
     document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
 
-    let recentChosen = false;
-
     switch (category) {
         case 'favorites':
             data = gene_cart_data.domain_carts;
             break;
         case 'recent':
-            recentChosen = true;
+            data = gene_cart_data.recent_carts;
             break;
         case 'saved':
             data = gene_cart_data.user_carts;
@@ -263,11 +263,6 @@ const setActiveGeneCartCategory = (category) => {
         case 'shared':
             data = gene_cart_data.shared_carts;
             break;
-    }
-
-    if (recentChosen) {
-        // prevent from breaking
-        return;
     }
 
     if (!data) {
