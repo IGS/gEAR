@@ -69,6 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
 
+        if (search_term.length === 0) {
+            document.querySelector('#dropdown-content-dc').innerHTML = '';
+        }
+
         if (search_term.length <= 2) {return}
 
         const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
