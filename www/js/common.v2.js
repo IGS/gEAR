@@ -60,87 +60,78 @@ document.addEventListener('DOMContentLoaded', () => {
  */
     const navbarElementsToAnimate = document.querySelectorAll('.icon-text-part');
 
-    // Collapse the left navigation panel to the smaller version
-    const hideNavbarElementsWithAnimation = () => {
-        // Hide all the menu labels
-        document.querySelectorAll('span.menu-label-text').forEach((element) => {
-            element.classList.add('is-hidden');
-        });
-
-        navbarElementsToAnimate.forEach((element) => {
-            // Add the CSS class to trigger the hide animation
-            element.classList.add('hidden-sidenavbar');
-            // Remove the show animation class if it was previously added
-            element.classList.remove('shown-sidenavbar');
-        });
-
-        // hide the citation element
-        document.getElementById("citation-c").classList.add("is-hidden");
-
-        // Show the smaller logo
-        document.getElementById("navbar-logo-normal").classList.add("is-hidden");
-        document.getElementById("navbar-logo-small").classList.remove("is-hidden");
-
-        // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-left");
-        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-right");
-
-        // Hiding the span.icon-text-part causes the menu to narrow
-        document.querySelectorAll('span.icon-text-part').forEach((element) => {
-            element.classList.add('is-hidden');
-        });
-
-        // activate the tooltips since the menu labels are hidden
-        document.querySelectorAll('span.icon-image-part').forEach((element) => {
-            element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
-        });
-
-        // build the tooltips based on the values of the actual menu labels
-        document.querySelectorAll('span.icon-image-part').forEach((element) => {
-            const text = element.parentNode.querySelector('span.icon-text-part').textContent;
-            element.setAttribute('data-tooltip', text);
+    /**
+     * Toggles a class on the selected elements.
+     *
+     * @param {string} selector - The CSS selector for the elements to toggle the class on.
+     * @param {string} className - The class name to toggle.
+     * @param {boolean} add - Whether to add or remove the class. If true, the class will be added; if false, the class will be removed.
+     */
+    const toggleClass = (selector, className, add) => {
+        document.querySelectorAll(selector).forEach((element) => {
+            if (add) {
+                element.classList.add(className);
+            } else {
+                element.classList.remove(className);
+            }
         });
     }
 
-    // Expand the left navigation panel to the larger version
-    const showNavbarElementsWithAnimation = () => {
-        // Show all the menu labels
-        document.querySelectorAll('span.menu-label-text').forEach((element) => {
-            element.classList.remove('is-hidden');
+    /**
+     * Handles tooltips for elements with the class 'icon-image-part'.
+     * @param {boolean} add - Indicates whether to add or remove tooltips.
+     */
+    const handleTooltips = (add) => {
+        document.querySelectorAll('span.icon-image-part').forEach((element) => {
+            if (add) {
+                const text = element.parentNode.querySelector('span.icon-text-part').textContent;
+                element.setAttribute('data-tooltip', text);
+                element.classList.add('has-tooltip-right', 'has-tooltip-arrow');
+            } else {
+                element.removeAttribute('data-tooltip');
+                element.classList.remove('has-tooltip-right', 'has-tooltip-arrow');
+            }
         });
+    }
+
+    /**
+     * Hides the navbar elements with animation.
+     */
+    const hideNavbarElementsWithAnimation = () => {
+        toggleClass('span.menu-label-text', 'is-hidden', true);
+        toggleClass('span.icon-text-part', 'is-hidden', true);
+        toggleClass('#navbar-logo-normal', 'is-hidden', true);
+        toggleClass('#navbar-logo-small', 'is-hidden', false);
+        toggleClass('#citation-c', 'is-hidden', true);
+        toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", false);
+        toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", true);
 
         navbarElementsToAnimate.forEach((element) => {
-            // Add the CSS class to trigger the show animation
+            element.classList.add('hidden-sidenavbar');
+            element.classList.remove('shown-sidenavbar');
+        });
+
+        handleTooltips(true);
+    }
+
+    /**
+     * Shows the navbar elements with animation.
+     */
+    const showNavbarElementsWithAnimation = () => {
+        toggleClass('span.menu-label-text', 'is-hidden', false);
+        toggleClass('span.icon-text-part', 'is-hidden', false);
+        toggleClass('#navbar-logo-normal', 'is-hidden', false);
+        toggleClass('#navbar-logo-small', 'is-hidden', true);
+        toggleClass('#citation-c', 'is-hidden', false);
+        toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
+        toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", false);
+
+        navbarElementsToAnimate.forEach((element) => {
             element.classList.add('shown-sidenavbar');
-            // Remove the hide animation class if it was previously added
             element.classList.remove('hidden-sidenavbar');
         });
 
-        // show the citation element
-        document.getElementById("citation-c").classList.remove("is-hidden");
-
-        // Show the larger logo
-        document.getElementById("navbar-logo-small").classList.add("is-hidden");
-        document.getElementById("navbar-logo-normal").classList.remove("is-hidden");
-
-        // Change the toggle arrow direction
-        document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-right");
-        document.querySelector("#navbar-toggler i").classList.add("mdi-arrow-collapse-left");
-
-        // Hiding the span.icon-text-part causes the menu to narrow
-        document.querySelectorAll('span.icon-text-part').forEach((element) => {
-            element.classList.remove('is-hidden');
-        });
-
-        // hide the tooltips since the menu labels are visible
-        document.querySelectorAll('span.icon-image-part').forEach((element) => {
-            element.classList.remove('has-tooltip-right', 'has-tooltip-arrow');
-        });
-
-        // remove the menu tooltips since the actual labels are visible
-        document.querySelectorAll('span.icon-image-part').forEach((element) => {
-            element.removeAttribute('data-tooltip');
-        });
+        handleTooltips(false);
     }
 
     const navbarToggler = document.querySelector('#navbar-toggler');
