@@ -113,7 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#dropdown-gene-list-search-input').addEventListener('keyup', (event) => {
         const search_term = event.target.value;
 
-        if (search_term.length <= 2) {return}
+        if (search_term.length === 0) {
+            // clear the gene list
+            document.querySelector('#dropdown-content-gene-lists').innerHTML = '';
+            document.querySelector('#dropdown-content-genes').innerHTML = '';
+            return;
+        } else if (search_term.length <= 2) {
+            return;
+        }
 
         const categorySelectors = document.querySelectorAll('#dropdown-content-gene-list-category .ul-li');
         categorySelectors.forEach((element) => {
@@ -131,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const row = gene_list_item_template.content.cloneNode(true);
                     row.querySelector('.gene-list-item-label').textContent = cart.label;
                     row.querySelector('.ul-li').dataset.shareId = cart.share_id;
-                    row.querySelector('.ul-li').dataset.genes = gene_cart_data[cart.share_id].join(',');
+                    row.querySelector('.ul-li').dataset.genes = gene_cart_genes[cart.share_id].join(',');
 
                     if (selected_carts.has(cart.share_id)) {
                         row.querySelector('i.toggler').classList.remove('mdi-plus');
@@ -241,8 +248,6 @@ const setActiveGeneCart = (cart_row, mode) => {
 }
 
 const setActiveGeneCartCategory = (category) => {
-    console.log(gene_cart_data);
-
     // clear the gene list
     document.querySelector('#dropdown-content-genes').innerHTML = '';
     document.querySelector('#dropdown-gene-list-search-input').value = '';
