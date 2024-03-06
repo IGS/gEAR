@@ -504,22 +504,12 @@ const chooseAnalysis = async (event) => {
     if (analysisId) {
         await Promise.all([
             plotTypeSelectUpdate(analysisId)
-            , geneSelectUpdate(analysisId)
+            , updateDatasetGenes(analysisId)
         ]);
 
         // Create facet widget
         facetWidget = await createFacetWidget(datasetId, analysisId, {});
     }
-}
-
-/**
- * Chooses a gene based on the given event.
- * @param {Event} event - The event object.
- * @returns {Promise<void>} - A promise that resolves when the gene is chosen.
- */
-const chooseGene = async (event) => {
-    // Each page will deal with this separately
-    curatorSpecifcChooseGene(event);
 }
 
 /* New display has been chosen, so display analysis and plot type options */
@@ -536,7 +526,7 @@ const chooseNewDisplay = async (event) => {
 
     // update genes, analysis, and plot type selects in parallel
     await Promise.all([
-        geneSelectUpdate(),
+        updateDatasetGenes(),
         analysisSelectUpdate(),
         plotTypeSelectUpdate()      // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
 
@@ -602,14 +592,7 @@ const cloneDisplay = async (event, display) => {
     const cloneElt = event.currentTarget;
     cloneElt.classList.add("is-loading");
 
-    // Populate gene select element
-    // Will be overwritten if an analysis was in config
-    try {
-        const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, null);
-        updateGeneOptions(geneSymbols);
-    } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-    }
+    updateDatasetGenes(),
 
     document.getElementById("analysis_select").disabled = false;
     document.getElementById("plot_type_select").disabled = false;
@@ -651,16 +634,13 @@ const cloneDisplay = async (event, display) => {
     // Choose gene from config
     const config = display.plotly_config;
     if (isMultigene) {
-        // Update gene_select with genes from config
-        const geneSymbols = config.gene_symbols;
-        for (const geneSymbol of geneSymbols) {
-            setSelectBoxByValue("gene_select", geneSymbol);
-        }
+        manuallyEnteredGenes = new Set(config.gene_symbols);
+        selected_genes = manuallyEnteredGenes;
+        const geneSymbolString = config.gene_symbols.join(" ");
+        document.getElementById('genes_manually_entered').value = geneSymbolString;
     } else {
-        setSelectBoxByValue("gene_select", config.gene_symbol);
+        selectedGene = config.gene_symbol;
     }
-    geneSelect.update();
-    trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to set the other select2 (single-gene only)
 
     try {
         plotStyle.cloneDisplay(config);
@@ -675,7 +655,7 @@ const cloneDisplay = async (event, display) => {
     document.getElementById("plot_options_s_success").classList.remove("is-hidden");
 
     // Click "submit" button to load plot
-    document.getElementById("plot_btn").click();    // updates geneSelectPost by triggered "click" event
+    document.getElementById("plot_btn").click();
 
 }
 
@@ -804,30 +784,6 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 }
 
 /**
- * Creates a gene select instance.
- * @param {string} idSelector - The ID of the element to bind the gene select instance to.
- * @param {object} geneSelect - The gene select instance to update (optional).
- * @returns {object} - The gene select instance.
- */
-const createGeneSelectInstance = (idSelector, geneSelect=null) => {
-    // NOTE: Updating the list of genes can be memory-intensive if there are a lot of genes
-    // and (I've noticed) if multiple select2 elements for genes are present.
-
-    // If object exists, just update it with the revised data and return
-    if (geneSelect) {
-        geneSelect.update();
-        return geneSelect;
-    }
-
-    return NiceSelect.bind(document.getElementById(idSelector), {
-        placeholder: 'To search, start typing a gene name',
-        searchtext: 'To search, start typing a gene name',
-        searchable: true,
-        allowClear: true,
-    });
-}
-
-/**
  * Creates a plot type select instance.
  * @param {string} idSelector - The ID of the selector element.
  * @param {object} plotTypeSelect - The plot type select object (optional).
@@ -867,9 +823,9 @@ const createPlot = async (event) => {
 
     // Add gene or genes to plot config
     if (isMultigene) {
-        plotStyle.plotConfig["gene_symbols"] = geneSelect.selectedOptions.map(e => e.data.value);
+        plotStyle.plotConfig["gene_symbols"] = Array.from(selected_genes);
     } else {
-        plotStyle.plotConfig["gene_symbol"] = getSelect2Value(geneSelect);
+        plotStyle.plotConfig["gene_symbol"] = selectedGene
     }
 
     await curatorSpecifcCreatePlot(plotType);
@@ -934,20 +890,6 @@ const formatColorscaleOptionText = (option, text, isContinuous=false) => {
     text_span.textContent = text;
     fragment.append(text_span);
     return fragment;
-}
-
-/**
- * Updates the gene select element with gene symbols.
- * @param {string|null} analysisId - The analysis ID (optional).
- * @returns {Promise<void>} - A promise that resolves when the gene select element is updated.
- */
-const geneSelectUpdate = async (analysisId=null) => {
-    try {
-        const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
-        updateGeneOptions(geneSymbols); // Come from curator specific code
-    } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-    }
 }
 
 /**
@@ -1523,42 +1465,17 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
 }
 
 /**
- * Updates the gene options in the gene select element.
- *
- * @param {Array<string>} geneSymbols - The array of gene symbols.
+ * Updates the gene select element with gene symbols.
+ * @param {string|null} analysisId - The analysis ID (optional).
+ * @returns {Promise<void>} - A promise that resolves when the gene select element is updated.
  */
-const updateGeneOptions = (geneSymbols) => {
-
-    const geneSelectElt = document.getElementById("gene_select");
-    geneSelectElt.replaceChildren();
-
-    const selectors = document.querySelectorAll(".select > .js-gene-select");
-    for (const elt of selectors) {
-        elt.parentElement.classList.add("is-loading");
+const updateDatasetGenes = async (analysisId=null) => {
+    try {
+        const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
+        curatorSpecificUpdateDatasetGenes(geneSymbols);
+    } catch (error) {
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
     }
-
-    // Append empty placeholder element
-    const firstOption = document.createElement("option");
-    firstOption.textContent = "Please select a gene";
-    geneSelectElt.append(firstOption);
-
-    for (const gene of geneSymbols.sort()) {
-        const option = document.createElement("option");
-        option.textContent = gene;
-        option.value = gene;
-        geneSelectElt.append(option);
-    }
-
-    curatorSpecificUpdateGeneOptions(geneSymbols);
-
-    // Update the nice-select2 element to reflect this.
-    // This function is always called in the 1st view, so only update that
-    geneSelect.update();
-
-    for (const elt of selectors) {
-        elt.parentElement.classList.remove("is-loading");
-    }
-
 }
 
 /**
@@ -1664,11 +1581,6 @@ const validateRequirements = (event) => {
 document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
 document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
 document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
-
-const geneSelectElts = document.querySelectorAll("select.js-gene-select");
-for (const geneSelectElt of geneSelectElts) {
-    geneSelectElt.addEventListener("change", chooseGene);
-}
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {

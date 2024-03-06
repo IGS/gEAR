@@ -364,16 +364,16 @@
         </div>
         <div class="column is-three-quarters has-background-white-bis is-flex is-flex-direction-column">
           <div id="plot_container" class="content is-flex-shrink-1"></div>
+          <div class="buttons">
+            <button id="gene_list_btn" class="button is-primary is-outlined" data-target="gene_table_modal">
+              <span class="icon">
+                <i class="mdi mdi-file-table-box-multiple"></i>
+              </span>
+              <span>View and save selected genes</span>
+            </button>
+          </div>
           <div id="gene_annotation_container" class="content is-flex is-flex-direction-column">
             <div class="title is-5">Highlight specific genes</div>
-
-            <div id="gene_tags_c" class="box is-hidden">
-              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
-              <div id="gene_tags" class="tags"></div>
-              <div class="is-pulled-right">
-                <button id="clear_genes_btn" class="is-pulled-right content button is-primary is-outlined"> Clear selection</button>
-              </div>
-            </div>
 
             <div id="search-bar-c" class="mt-4 ml-3 mb-4">
               <div class="field has-addons is-grouped mb-0">
@@ -392,14 +392,17 @@
 
                 <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
               </div>
-
-              <button id="gene_list_btn" class="button is-primary is-outlined" data-target="gene_table_modal">
-                <span class="icon">
-                  <i class="mdi mdi-file-table-box-multiple"></i>
-                </span>
-                <span>View and save selected genes</span>
-              </button>
             </div>
+
+            <div id="gene_tags_c" class="box is-hidden">
+              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
+              <div id="gene_tags" class="tags"></div>
+              <div class="buttons">
+                <button id="clear_genes_btn" class="button is-primary is-outlined"> Clear selection</button>
+              </div>
+              <p>Note that only genes found in the dataset will be highlighted.</p>
+            </div></p>
+
           </div>
         </div>
       </section>

@@ -147,6 +147,21 @@ const appendGeneTagButton = (geneTagElt) => {
         const gene = event.target.parentNode.textContent;
 		selected_genes.delete(gene);
 		event.target.parentNode.remove();
+
+		// Remove checkmark from gene lists dropdown
+        // Remove checkmark from gene lists dropdown
+        const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
+        if (!geneListLabel) {
+            return;
+        }
+        const geneListElt = geneListLabel.parentElement;
+        const geneListI = geneListElt.querySelector("i.toggler")
+        if (!geneListI.classList.contains("mdi-check")) {
+            return;
+        }
+        geneListI.classList.replace("mdi-check", "mdi-plus");
+        geneListI.classList.replace("gene-list-item-remove", "gene-list-item-add");
+        geneListElt.classList.remove("is-selected");
     });
 }
 

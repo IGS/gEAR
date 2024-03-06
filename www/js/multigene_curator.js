@@ -2,9 +2,12 @@
 
 const isMultigene = 1;
 
-let geneSelect = null;
+// imported from gene-collection-selector.js
+// let selected_genes = new Set();
 
-let selectedGenes = []; // genes selected from plot "select" utility
+let manuallyEnteredGenes = new Set();
+
+let plotSelectedGenes = []; // genes selected from plot "select" utility
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
@@ -107,7 +110,6 @@ class GenesAsAxisHandler extends PlotHandler {
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container", "is-max-desktop");
         plotlyPreview.id = "plotly_preview";
-        console.log(plotlyPreview);
         plotContainer.append(plotlyPreview);
         Plotly.purge("plotly_preview"); // clear old Plotly plots
 
@@ -257,7 +259,7 @@ class GenesAsAxisHandler extends PlotHandler {
                 input.value = catColumn;
                 input.classList.add("js-dash-clusterbar-checkbox");
                 label.appendChild(input);
-                label.innerHTML += catColumn;
+                label.innerHTML += ` ${catColumn}`;
                 clusterbarElt.appendChild(label);
 
                 classElt.appendChild(clusterbarElt);
@@ -593,53 +595,6 @@ class GenesAsDataHandler extends PlotHandler {
     }
 }
 
-const geneCartTree = new GeneCartTree({
-    element: document.getElementById("genecart_tree")
-    , searchElement: document.getElementById("genecart_query")
-    , selectCallback: (async (e) => {
-        if (e.node.type !== "genecart") {
-            return;
-        }
-
-        // Get gene symbols from gene cart
-        const geneCartId = e.node.data.orig_id;
-        const geneCartMembers = await fetchGeneCartMembers(geneCartId);
-        const geneCartSymbols = geneCartMembers.map((item) => item.label);
-
-        // Normalize gene symbols to lowercase
-        const geneSelectSymbols = geneSelect.data.map((opt) => opt.value);
-        const geneCartSymbolsLowerCase = geneCartSymbols.map((x) => x.toLowerCase());
-
-        const geneSelectedOptions = geneSelect.selectedOptions.map((opt) => opt.data.value);
-
-        // Get genes from gene cart that are present in dataset's genes.  Preserve casing of dataset's genes.
-        const geneCartIntersection = geneSelectSymbols.filter((x) => geneCartSymbolsLowerCase.includes(x.toLowerCase()));
-        // Add in already selected genes (union)
-        const geneSelectIntersection = [...new Set(geneCartIntersection.concat(geneSelectedOptions))];
-
-        // change all options to be unselected
-        const origSelect = document.getElementById("gene_select");
-        for (const opt of origSelect.options) {
-            opt.removeAttribute("selected");
-        }
-
-        // Assign intersection genes to geneSelect "selected" options
-        for (const gene of geneSelectIntersection) {
-            const opt = origSelect.querySelector(`option[value="${gene}"]`);
-            try {
-                opt.setAttribute("selected", "selected");
-            } catch (error) {
-                // sanity check
-                const msg = `Could not add gene ${gene} to gene select.`;
-                console.warn(msg);
-            }
-        }
-
-        geneSelect.update();
-        trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
-    })
-});
-
 const adjustGeneTableLabels = (plotType) => {
     const geneX = document.getElementById("tbl_gene_x");
     const geneY = document.getElementById("tbl_gene_y");
@@ -662,50 +617,62 @@ const appendGeneTagButton = (geneTagElt) => {
     deleteBtnElt.classList.add("delete", "is-small");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
-        // Remove gene from geneSelect
+        // Remove gene from selected_genes
         const gene = event.target.parentNode.textContent;
-        const geneSelectElt = document.getElementById("gene_select");
-        geneSelectElt.querySelector(`option[value="${gene}"]`).removeAttribute("selected");
+		selected_genes.delete(gene);
+		event.target.parentNode.remove();
 
-        geneSelect.update();
-        trigger(document.getElementById("gene_select"), "change"); // triggers chooseGene() to load tags
+        // Remove checkmark from gene lists dropdown
+        const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
+        if (!geneListLabel) {
+            return;
+        }
+        const geneListElt = geneListLabel.parentElement;
+        const geneListI = geneListElt.querySelector("i.toggler")
+        if (!geneListI.classList.contains("mdi-check")) {
+            return;
+        }
+        geneListI.classList.replace("mdi-check", "mdi-plus");
+        geneListI.classList.replace("gene-list-item-remove", "gene-list-item-add");
+        geneListElt.classList.remove("is-selected");
     });
 
-    // ? Should i add ellipses for too many genes? Should I make the box collapsable?
 }
 
 const clearGenes = (event) => {
     document.getElementById("clear_genes_btn").classList.add("is-loading");
-    geneSelect.clear();
+	document.getElementById("gene_tags").replaceChildren();
+	selected_genes.clear();
+	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
     document.getElementById("clear_genes_btn").classList.remove("is-loading");
 }
 
-const curatorSpecifcChooseGene = (event) => {
-    // Triggered when a gene is selected
+/**
+ * Triggered when a gene is selected.
+ *
+ * @param {Event} event - The event object.
+ */
+const chooseGenes = (event) => {
 
     // Delete existing tags
     const geneTagsElt = document.getElementById("gene_tags");
     geneTagsElt.replaceChildren();
 
-    if (!geneSelect.selectedOptions.length) return;   // Do not trigger after initial population
+	if (selected_genes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
-    const sortedGenes = geneSelect.selectedOptions.map((opt) => opt.data.value).sort();
+	const sortedGenes = Array.from(selected_genes).sort();
     for (const opt in sortedGenes) {
         const geneTagElt = document.createElement("span");
-        geneTagElt.classList.add("tag", "is-primary");
+        geneTagElt.classList.add("tag", "is-primary", "mx-1");
         geneTagElt.textContent = sortedGenes[opt];
         appendGeneTagButton(geneTagElt);
         geneTagsElt.appendChild(geneTagElt);
     }
 
     document.getElementById("gene_tags_c").classList.remove("is-hidden");
-    if (!geneSelect.selectedOptions.length) {
-        document.getElementById("gene_tags_c").classList.add("is-hidden");
-    }
 
-    // Cannot plot if 2+ genes are not selected
-    if (geneSelect.selectedOptions.length < 2) {
+    if (selected_genes.size < 2) {
         document.getElementById("gene_s_failed").classList.remove("is-hidden");
         document.getElementById("gene_s_success").classList.add("is-hidden");
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
@@ -716,7 +683,7 @@ const curatorSpecifcChooseGene = (event) => {
     }
 
     // If more than 10 tags, hide the rest and add a "show more" button
-    if (geneSelect.selectedOptions.length > 10) {
+    if (selected_genes.size > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
             geneTags[i].classList.add("is-hidden");
@@ -724,7 +691,7 @@ const curatorSpecifcChooseGene = (event) => {
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
         showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
-        const numToDisplay = geneSelect.selectedOptions.length - 10;
+        const numToDisplay = selected_genes.size - 10;
         showMoreBtnElt.textContent = `+${numToDisplay} more`;
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
@@ -734,15 +701,10 @@ const curatorSpecifcChooseGene = (event) => {
             event.target.remove();
         });
         geneTagsElt.appendChild(showMoreBtnElt);
-
     }
-
 
     document.getElementById("gene_s_failed").classList.add("is-hidden");
     document.getElementById("gene_s_success").classList.remove("is-hidden");
-
-    // Force validation check to see if plot button should be enabled
-    //trigger(document.querySelector(".js-plot-req"), "change");
 
     document.getElementById("continue_to_plot_options").classList.remove("is-hidden");
 
@@ -754,8 +716,7 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 }
 
 const curatorSpecifcDatasetTreeCallback = async () => {
-    // Creates gene select instance that allows for multiple selection
-    geneSelect = createGeneSelectInstance("gene_select", geneSelect);
+    //pass
 }
 
 const curatorSpecificNavbarUpdates = () => {
@@ -770,8 +731,7 @@ const curatorSpecificNavbarUpdates = () => {
 }
 
 const curatorSpecificOnLoad = async () => {
-    // Load gene carts
-    await loadGeneCarts();
+    await fetchGeneCartData();
 }
 
 const curatorSpecificPlotStyle = (plotType) => {
@@ -789,7 +749,7 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
     return plotType;
 }
 
-const curatorSpecificUpdateGeneOptions = async (geneSymbols) => {
+const curatorSpecificUpdateDatasetGenes = async (geneSymbols) => {
     //pass
 }
 
@@ -830,7 +790,7 @@ const downloadSelectedGenes = (event) => {
 	let fileContents = `gene_symbol\t${xLabel}\t${yLabel}\n`;
 
     // Entering genes and info now.
-    selectedGenes.forEach((gene) => {
+    plotSelectedGenes.forEach((gene) => {
         fileContents +=
             `${gene.gene_symbol}\t`
             + `${gene.x}\t`
@@ -864,35 +824,6 @@ const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
     }
 }
 
-/* Fetch gene collections */
-const fetchGeneCarts = async () => {
-    const cartType = "unweighted-list";
-    try {
-        return await apiCallsMixin.fetchGeneCarts(cartType);
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene collections. You can still enter genes manually.";
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
-/* Fetch gene collection members */
-const fetchGeneCartMembers = async (geneCartId) => {
-    try {
-        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
-        if (!success) {
-            throw new Error("Could not fetch gene collection members. You can still enter genes manually.");
-        }
-        return gene_symbols;
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch gene collection members. You can still enter genes manually.";
-        createToast(msg);
-        throw new Error(msg);
-    }
-}
-
 const getCategoryColumns = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
@@ -916,50 +847,12 @@ const invertLogFunction = (value, base=10) => {
     return base ** value;
 }
 
-/* Transform and load gene collection data into a "tree" format */
-const loadGeneCarts = async () => {
-    try {
-        const geneCartData = await fetchGeneCarts();
-        const carts = {};
-        const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
-        let cartsFound = false;
-
-        // Loop through the different types of gene collections and add them to the carts object
-        for (const ctype of cartTypes) {
-            carts[ctype] = [];
-
-            if (geneCartData[`${ctype}_carts`].length > 0) {
-                cartsFound = true;
-
-                for (const item of geneCartData[`${ctype}_carts`]) {
-					const fullLabel = `${item.label} (${item.num_genes} genes)`; // Add number of genes to label
-                    carts[ctype].push({value: item.id, text: fullLabel });
-                };
-            }
-        }
-
-        geneCartTree.domainGeneCarts = carts.domain;
-        geneCartTree.userGeneCarts = carts.user;
-        geneCartTree.groupGeneCarts = carts.group;
-        geneCartTree.sharedGeneCarts = carts.shared;
-        geneCartTree.publicGeneCarts = carts.public;
-        geneCartTree.generateTree();
-        /*if (!cartsFound ) {
-            // ? Put some warning if carts not found
-            $('#gene_cart_container').show();
-        }*/
-
-    } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-    }
-
-}
 
 const populateGeneTable = (data, plotType) => {
-    selectedGenes = [];
+    plotSelectedGenes = [];
 
     for (const pt of data.points) {
-        selectedGenes.push({
+        plotSelectedGenes.push({
             gene_symbol: pt.data.text[pt.pointNumber],
             ensembl_id: pt.data.customdata[pt.pointNumber], // Ensembl ID stored in "customdata" property
             x: pt.data.x[pt.pointNumber].toFixed(1),
@@ -968,13 +861,13 @@ const populateGeneTable = (data, plotType) => {
     };
 
     // Sort in alphabetical order
-    selectedGenes.sort();
+    plotSelectedGenes.sort();
 
 
     const geneTableBody = document.getElementById("gene_table_body");
     geneTableBody.replaceChildren();
 
-    for (const gene of selectedGenes) {
+    for (const gene of plotSelectedGenes) {
         const row = document.createElement("tr");
         row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.x}</td><td>${gene.y}</td>`;
         geneTableBody.appendChild(row);
@@ -991,7 +884,7 @@ const saveGeneCart = () => {
         , is_public: 0
     });
 
-    for (const sg of selectedGenes) {
+    for (const sg of plotSelectedGenes) {
         const gene = new Gene({
             id: sg.ensembl_id, // Ensembl ID stored in "customdata" property
             gene_symbol: sg.gene_symbol,
@@ -1251,3 +1144,26 @@ document.getElementById("save_genecart_btn").addEventListener("click", (event) =
 });
 
 document.getElementById("download_selected_genes_btn").addEventListener("click", downloadSelectedGenes);
+
+// handle when the dropdown-gene-list-search-input input box is changed
+document.getElementById('genes_manually_entered').addEventListener('change', (event) => {
+    const searchTermString = event.target.value;
+    const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
+
+    // Remove genes that have been deleted from the selected_genes set
+    for (const gene of manuallyEnteredGenes) {
+        if (!newManuallyEnteredGenes.has(gene)) {
+            selected_genes.delete(gene);
+        }
+    }
+
+    // Add new genes to the selected_genes set
+    for (const gene of newManuallyEnteredGenes) {
+        selected_genes.add(gene);
+    }
+
+    manuallyEnteredGenes = newManuallyEnteredGenes;
+    chooseGenes(null);
+});
+
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', chooseGenes);

@@ -5,8 +5,7 @@
 
 const isMultigene = 0;
 
-let geneSelect = null;
-let geneSelectPost = null;
+let selectedGene = null;
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
@@ -624,6 +623,33 @@ class SvgHandler extends PlotHandler {
 
 }
 
+
+/**
+ * Function to handle the selection of a gene.
+ */
+const chooseGene = () => {
+
+    // Cannot plot if no gene is selected
+    if (!validateGeneSelected()){
+        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+        document.getElementById("gene_s_success").classList.add("is-hidden");
+        document.getElementById("current_gene").textContent = "";
+        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+            plotBtn.disabled = true;
+        }
+        return;
+    }
+
+    document.getElementById("gene_s_failed").classList.add("is-hidden");
+    document.getElementById("gene_s_success").classList.remove("is-hidden");
+    // Display current selected gene
+    document.getElementById("current_gene_c").classList.remove("is-hidden");
+    document.getElementById("current_gene").textContent = selectedGene;
+    // Force validationcheck to see if plot button should be enabled
+    trigger(document.querySelector(".js-plot-req"), "change");
+    document.getElementById("plot_options_s").click();
+}
+
 /**
  * Applies color to an SVG chart based on the provided data and plot configuration.
  * @param {Object} chartData - The data used to color the chart.
@@ -708,62 +734,61 @@ const colorSVG = (chartData, plotConfig) => {
 }
 
 /**
- * Handles the event when a select element is updated in the curatorSpecifcChooseGene function.
- * If one select element was updated, it ensures the other is updated as well.
- * It copies data from one select2 to the other and renders the dropdown for the other select2.
- * If no gene is selected, it disables the plot button and displays an error message.
- * @param {Event} event - The event object triggered by the select element update.
+ * Creates an autocomplete instance.
+ * @param {string} selector - The selector for the input element.
+ * @param {Array} dataSource - The data source for autocomplete suggestions.
+ * @param {Object} otherAutocomplete - The linked autocomplete instance.
+ * @returns {Object} - The created autocomplete instance.
  */
-const curatorSpecifcChooseGene = (event) => {
-    // If one select element was updated ensure the other is updated as well
-    const select2 = event.target.id === "gene_select" ? geneSelect : geneSelectPost;
-    const oppSelect2 = event.target.id === "gene_select" ? geneSelectPost : geneSelect;
-    const oppEltId = event.target.id === "gene_select" ? "gene_select_post" : "gene_select";
-
-    if (!select2.selectedOptions.length) return;   // Do not trigger after initial population
-
-    const val = getSelect2Value(select2);
-
-    // NOTE: I thought about updating the select2 element directly with updateSelectValue()
-    // but this triggers the "change" event for the regular "select" element, which causes a max stack call error
-    setSelectBoxByValue(oppEltId, val);
-
-    // copy data from one select2 to the other
-    // Render the dropdown for the other select2
-    oppSelect2.data = select2.data;
-    oppSelect2.options = select2.options;
-    oppSelect2.selectedOptions = select2.selectedOptions;
-
-    // Recreate update() function without the extractData() call, which is causing noticeable slowdown/hanging
-    if (oppSelect2.dropdown) {
-        const open = oppSelect2.dropdown.classList.contains("open");
-        oppSelect2.dropdown.parentNode.removeChild(oppSelect2.dropdown);
-        oppSelect2.create();
-
-        if (open) {
-        triggerClick(oppSelect2.dropdown);
+const createAutocomplete = (selector, dataSource, otherAutocomplete) => {
+    const autoCompleteJS =  new autoComplete({
+        linkedAutocomplete: otherAutocomplete,
+        selector,
+        placeHolder: "Enter a gene",
+        data: {
+            src: dataSource,
+            cache: true,
+        },
+        resultItem: {
+            class: "dropdown-item",
+            highlight: true,
+        },
+        resultsList: {
+            class: "dropdown-content",
+            element: (list, data) => {
+                if (data.results.length) {
+                    return;
+                }
+                // Create "No Results" message element
+                const message = document.createElement("div");
+                // Add class to the created element
+                message.setAttribute("class", "no_result");
+                // Add message text content
+                message.innerHTML = `<span>Found No Results for "${data.query}"</span>`;
+                // Append message element to the results list
+                list.prepend(message);
+            },
+            noResults: true,
+        },
+        events: {
+            input: {
+                selection: (event) => {
+                    // change the input value to the selected value
+                    const selection = event.detail.selection.value;
+                    autoCompleteJS.input.value = selection;
+                    if (otherAutocomplete) {
+                        otherAutocomplete.input.value = selection;
+                    }
+                    if (autoCompleteJS.linkedAutocomplete) {
+                        autoCompleteJS.linkedAutocomplete.input.value = selection;
+                    }
+                    selectedGene = selection;
+                    chooseGene();
+                }
+            }
         }
-    }
-
-    // Cannot plot if no gene is selected
-    if (!validateGeneSelected()){
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-        document.getElementById("gene_s_success").classList.add("is-hidden");
-        document.getElementById("current_gene").textContent = "";
-        for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
-            plotBtn.disabled = true;
-        }
-        return;
-    }
-
-    document.getElementById("gene_s_failed").classList.add("is-hidden");
-    document.getElementById("gene_s_success").classList.remove("is-hidden");
-    // Display current selected gene
-    document.getElementById("current_gene_c").classList.remove("is-hidden");
-    document.getElementById("current_gene").textContent = val;
-    // Force validationcheck to see if plot button should be enabled
-    trigger(document.querySelector(".js-plot-req"), "change");
-    document.getElementById("plot_options_s").click();
+    });
+    return autoCompleteJS
 }
 
 /**
@@ -790,16 +815,10 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 
 /**
  * Callback function for curator specific dataset tree.
- * Creates gene select2 elements for both views.
  * @returns {void}
  */
 const curatorSpecifcDatasetTreeCallback = () => {
-
-    // Not providing the object in the argument could duplicate the nice-select2 structure if called multiple times
-    geneSelect = createGeneSelectInstance("gene_select", geneSelect);
-    geneSelectPost = createGeneSelectInstance("gene_select_post", geneSelectPost);
     document.getElementById("current_gene").textContent = "";
-
 }
 
 /**
@@ -854,21 +873,16 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
 }
 
 /**
- * Updates the gene options in the curator specific section.
+ * Updates the dataset genes for the curator.
  *
- * @param {Array<string>} geneSymbols - The array of gene symbols to update the options with.
+ * @param {Array<string>} geneSymbols - The gene symbols to update.
  */
-const curatorSpecificUpdateGeneOptions = (geneSymbols) => {
-    // copy to "#gene_select_post"
-    const geneSelectEltPost = document.getElementById("gene_select_post");
-    geneSelectEltPost.replaceChildren();
-    for (const gene of geneSymbols.sort()) {
-        const option = document.createElement("option");
-        option.textContent = gene;
-        option.value = gene;
-        geneSelectEltPost.append(option);
-    }
+const curatorSpecificUpdateDatasetGenes = (geneSymbols) => {
+    const geneAutocomplete = createAutocomplete("#gene_autocomplete", geneSymbols);
+    const genePostAutocomplete = createAutocomplete("#gene_autocomplete_post", geneSymbols, geneAutocomplete);
 
+    // Set the otherAutocomplete reference for geneAutocomplete after genePostAutocomplete has been created
+    geneAutocomplete.linkedAutocomplete = genePostAutocomplete;
 }
 
 /**
@@ -1497,8 +1511,5 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
  * @returns {boolean} Returns true if a gene is selected, false otherwise.
  */
 const validateGeneSelected = () => {
-    if (document.getElementById("gene_select").value === "Please select a gene") {
-        return false;
-    }
-    return true;
+    return (selectedGene ? true : false);
 }

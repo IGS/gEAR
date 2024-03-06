@@ -21,6 +21,9 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
+        <!-- Autocomplete -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.02.min.css">
+
         <!-- Fancy animation effects -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
@@ -249,9 +252,7 @@
           <div class="js-step-collapsable mt-3" id="gene_collapsable">
             <div class="columns">
               <div id="gene_select_c" class="column is-4">
-                <div class="select is-fullwidth">
-                  <select class="js-gene-select" id="gene_select"></select>
-              </div>
+                <input class="input js-autocomplete" id="gene_autocomplete" type="text" placeholder="Enter a gene" autofocus="" />
             </div>
           </div>
         </section>
@@ -307,9 +308,7 @@
                   <div class="field">
                     <label class="label has-text-weight-medium">Change gene</label>
                     <div class="control">
-                      <div class="select is-fullwidth">
-                        <select class="js-gene-select" id="gene_select_post"></select>
-                      </div>
+                      <input class="input js-autocomplete" id="gene_autocomplete_post" type="text" placeholder="Enter a gene" autofocus="" />
                     </div>
                   </div>
                   <section id="post_plot_adjustments" class="content"></section>
@@ -393,6 +392,9 @@
 
     <!--#include virtual="/include/curator_common.html" -->
 
+
+  <!-- autocomplete -->
+  <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
 
   <!-- fancy select elements -->
   <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>

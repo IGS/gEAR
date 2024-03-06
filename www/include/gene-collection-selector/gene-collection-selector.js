@@ -66,8 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (selected_genes.has(gene_symbol)) {
                 selected_genes.delete(gene_symbol);
+                row_div.querySelector('i.toggler').classList.replace("gene-list-item-remove", "gene-list-item-add")
             } else {
                 selected_genes.add(gene_symbol);
+                row_div.querySelector('i.toggler').classList.replace("gene-list-item-add", "gene-list-item-remove")
             }
 
             row_div.classList.toggle('is-selected');
@@ -97,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // and finally the related gene lists and genes
         selected_carts.clear();
-        selected_gene.clear();
+        selected_genes.clear();
     });
 
     document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {

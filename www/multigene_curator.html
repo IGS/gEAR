@@ -240,25 +240,32 @@
             </span>
           </h5>
           <div class="js-step-collapsable mt-3" id="gene_collapsable">
-            <p>Please select a collection of genes (left dropdown) or an individual gene (right dropdown) to add to list of selected genes</p>
+            <p>Genes entered manually or chosen from an existing gene list will be added to your group of selected genes to plot. Note that only genes or orthologs found in the dataset will appear in the plot.</p>
 
-            <!-- BUG: https://github.com/mar10/wunderbaum/issues/57 -->
-            <div class="columns">
-              <div class="column is-6">
-                <input class="input" id="genecart_query" type="text" placeholder="Enter a gene collection" autofocus="" />
-                <div id="genecart_tree" class="wb-skeleton wb-initializing js-tree"></div>
-                <p class="help">Only genes also found in the dataset will be added to the selection of genes.</p>
-              </div>
-              <div id="gene_select_c" class="column is-4">
-                <div class="select is-fullwidth">
-                  <select class="js-gene-select" id="gene_select" multiple></select>
+            <div id="search-bar-c" class="mt-4 ml-3 mb-4">
+              <div class="field has-addons is-grouped mb-0">
+                <div class="control has-icons-left has-icons-right mr-0">
+                  <input class="input" type="input" id="genes_manually_entered" placeholder="Type here to search using specific gene symbols">
+                  <span class="icon is-small is-left">
+                    <i class="mdi mdi-magnify"></i>
+                  </span>
                 </div>
+                <!-- div with the text 'OR' centered vertically. this is awkward -->
+                <div class="columns">
+                  <div class="column is-1">
+                    <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                  </div>
+                </div>
+
+                <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
               </div>
             </div>
             <div id="gene_tags_c" class="box is-hidden">
               <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
               <div id="gene_tags" class="tags"></div>
-              <button id="clear_genes_btn" class="content button is-primary is-outlined"> Clear selection</button>
+              <div class="buttons">
+                <button id="clear_genes_btn" class="button is-primary is-outlined"> Clear selection</button>
+              </div>
             </div>
             <div id="continue_to_plot_options" class="content has-text-weight-semibold is-hidden">
               You can click on the "Select plotting options" section at any time
