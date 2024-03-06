@@ -127,7 +127,7 @@ class GenesAsAxisHandler extends PlotHandler {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);   // HIGH MEM/CPU with heatmap no matrixplot
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly_preview", custonLayout)
 
