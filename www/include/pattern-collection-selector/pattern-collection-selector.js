@@ -183,10 +183,10 @@ const createPatternListItem = (item, cart) => {
     thisItem.addEventListener("click", (event) => {
         // uncheck all the existing rows
         const rows = document.getElementsByClassName('dropdown-pattern-list-item');
-        rows.forEach((row) => {
+        for (const row of rows) {
             row.classList.remove('is-selected');
             row.classList.add('is-clickable');
-        });
+        };
 
         selectedPattern.shareId = event.currentTarget.dataset.shareId;
         selectedPattern.label = event.currentTarget.dataset.label;
@@ -373,9 +373,9 @@ const selectPatternWeights = (labels) => {
 
     // uncheck all the existing rows
     const rows = document.getElementsByClassName('.dropdown-weight-item');
-    rows.forEach((row) => {
+    for (const row of rows) {
         row.classList.remove('is-selected');
-    });
+    };
 
     // select our labels
     for (const label of labels) {
