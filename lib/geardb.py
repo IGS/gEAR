@@ -2766,6 +2766,37 @@ class GeneCartCollection:
         cursor.close()
         conn.close()
         return self.carts
+    
+    def get_by_user_recent(self, user=None, n=None):
+        conn = Connection()
+        cursor = conn.get_cursor(use_dict=True)
+
+        qry = """
+              SELECT gc.id, gc.user_id, gc.organism_id, gc.gctype, gc.label, gc.ldesc, gc.share_id,
+                     gc.is_public, gc.is_domain, gc.date_added, f.id as folder_id, f.parent_id,
+                     f.label as folder_label
+                FROM gene_cart gc
+                     LEFT JOIN folder_member fm ON fm.item_id=gc.id
+                     LEFT JOIN folder f ON f.id=fm.folder_id
+               WHERE gc.user_id = %s
+                 AND (fm.item_type = 'genecart' or fm.item_type is NULL)
+            ORDER BY gc.date_added DESC
+        """
+        cursor.execute(qry, (user.id,))
+
+        rows_returned = 0
+
+        for row in cursor:
+            cart = self._row_to_cart_object(row)
+            self.carts.append(cart)
+            rows_returned += 1
+
+            if n is not None and rows_returned >= n:
+                break
+
+        cursor.close()
+        conn.close()
+        return self.carts
 
     def get_domain(self):
         conn = Connection()
