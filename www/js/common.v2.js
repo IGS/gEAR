@@ -75,11 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // hide the citation element
-        document.querySelector("#citation_c").classList.add("is-hidden");
+        document.getElementById("citation-c").classList.add("is-hidden");
 
         // Show the smaller logo
-        document.querySelector("#navbar-logo-normal").classList.add("is-hidden");
-        document.querySelector("#navbar-logo-small").classList.remove("is-hidden");
+        document.getElementById("navbar-logo-normal").classList.add("is-hidden");
+        document.getElementById("navbar-logo-small").classList.remove("is-hidden");
 
         // Change the toggle arrow direction
         document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-left");
@@ -117,11 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // show the citation element
-        document.querySelector("#citation_c").classList.remove("is-hidden");
+        document.getElementById("citation-c").classList.remove("is-hidden");
 
         // Show the larger logo
-        document.querySelector("#navbar-logo-small").classList.add("is-hidden");
-        document.querySelector("#navbar-logo-normal").classList.remove("is-hidden");
+        document.getElementById("navbar-logo-small").classList.add("is-hidden");
+        document.getElementById("navbar-logo-normal").classList.remove("is-hidden");
 
         // Change the toggle arrow direction
         document.querySelector("#navbar-toggler i").classList.remove("mdi-arrow-collapse-right");

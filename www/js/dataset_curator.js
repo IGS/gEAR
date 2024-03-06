@@ -827,7 +827,7 @@ const curatorSpecifcDatasetTreeCallback = () => {
 const curatorSpecificNavbarUpdates = () => {
 	document.getElementById("page-header-label").textContent = "Single-gene Curator";
 
-    for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+    for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
         elt.classList.remove("is-active");
     }
 

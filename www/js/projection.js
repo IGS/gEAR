@@ -53,7 +53,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById('page-header-label').textContent = 'Projection Search';
 
     // Set current sidebar menu item to active
-	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
 

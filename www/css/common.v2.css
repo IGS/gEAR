@@ -51,22 +51,22 @@ html, body {
 /* -------------------- */
 /* -= Left navbar section =- */
 
-#primary_nav {
+#primary-nav {
     height: max-content;
 }
 
-#citation_c {
+#citation-c {
     max-width: 200px;
 }
 
-#citation_c .card-content {
+#citation-c .card-content {
     font-size: 70%;
     background-color: white;
     color: black;
     min-height: 20em;
 }
 
-#citation_c .card-header-title {
+#citation-c .card-header-title {
     font-size: 90%;
 }
 

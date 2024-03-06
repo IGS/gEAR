@@ -723,7 +723,7 @@ const curatorSpecificNavbarUpdates = () => {
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Multi-gene Displays";
 
-    for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+    for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
         elt.classList.remove("is-active");
     }
 

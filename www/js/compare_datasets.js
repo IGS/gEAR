@@ -1252,7 +1252,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-	for (const elt of document.querySelectorAll("#primary_nav .menu-list a.is-active")) {
+	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
 
