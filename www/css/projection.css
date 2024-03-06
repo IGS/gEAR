@@ -1,232 +1,110 @@
-div#dataset_grid {
-  display: flex;
-  flex-wrap: wrap;
+/*
+    Colors from template
+
+    Highlighted background color: fbfcfd
+    Highlighted background border: e9eef1
+*/
+
+div#pattern-result-list-c {
+    border-right: 1px solid #e9eef1;
 }
-div.dataset_c {
-  border: 1px solid #6d5777;
-  border-radius: 5px;
-  padding: 0;
-  margin: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-div.dataset_header {
-  background-color: var(--dataset-panel-header-bg-color);
-  color: white;
-  padding: 3px;
-  margin: 0;
-  min-height: 50px;
-  max-height: 100px;
-  font-size: 100%;
-  font-weight: bold;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-  flex: 1 0 auto;
-}
-div.dataset_header_menu {
-  padding-left: 5px;
-}
-div.dataset_cc {
-  margin-bottom: 10px;
-  padding: 0 5px 0 5px;
-  display: flex;
-}
-div.dataset-status-container {
-  position: relative;
-  align-items: center;
-  text-align: center;
-  width: 100%;
-  background:rgb(179, 186, 206, 0.6); /* using this way to make transparent, so that hover child elts are not affected */
-  overflow-wrap: normal;
-  flex: 1 0 auto;
-}
-div.dataset-status-container h2 {
-  width: 100%;
-  color: #2f103e;
-  position: absolute;
-  bottom: calc(100% - 50%);
-  opacity: 0.6;
-}
-div.h5ad-container {
-  height: 350px;
-}
-.js-search:hover,
-.js-exact-match:hover,
-.js-multipattern:hover,
-.js-gene-cart-icon:hover {
-  cursor: pointer;
-}
-div#search_container {
-  background-color: rgb(255, 255, 255);
-  width: 100%;
-}
-div#search_container h3 {
-  margin-top: 25px;
-}
-div.search_result_c {
-  display: block;
-}
-div#search_results .list-group-item-active {
-  background-color: var(--main-search-list-selected-gene);
-  color: white;
-}
-div.h5ad-svg-container {
-    position: relative;
-    height: 350px;
-}
-div.h5ad-svg-container-zoomed {
-    position: relative;
-    height: 60vh;
-}
-div.svg-content {
-  display: flex;
-  position: absolute;
-  height: 98%;
-  max-height: 80vh;
-  width: 100%;
-  left: 0;
-  top: 0;
-}
-div.svg-content > svg {
-    flex: 1;
-}
-div.svg-content svg:first-child {
-    margin-top: 35px;
-}
-div#templates_c {
-  display: none;
-}
-div.textarea-ldesc table {
-    width: 100%;
-    border-collapse: collapse;
-}
-div.textarea-ldesc table td,
-div.textarea-ldesc table th {
-    padding-left: 3px;
-}
-div.textarea-ldesc table td {
-    border: 1px solid rgb(50,50,50);
-}
-div.textarea-ldesc table th {
+div#pattern-result-list-c h3 {
     font-weight: bold;
+    font-size: 90%;
 }
-img.modal-display-loading {
-    height: 50px;
+div#results-main-c {
+    border-top: 1px solid rgb(220, 220, 220);
+    margin-top: 50px;
 }
-img#selected_gene_cart_loading {
-    height: 20px;
+div#result-panel-grid .card {
+    /* https://github.com/jgthms/bulma/issues/218 */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
-input#exact_match_input {
-  width: 5em;
+div#result-panel-grid .card-content {
+    height: 100%;
 }
-label#exact_match_p,
-label#coloring_p,
-label#custom_coloring_p {
-  font-weight: 400;
+section#result-panel {
+    background-color: #fbfcfd;
+    border: 1px solid #e9eef1;
 }
-li.dataset-link-cellxgene {
-    list-style-image: url('../img/dataset_link_icons/cellxgene.png');
-    list-style-position: inside;
-}
-li.dataset-link-general {
-    list-style-image: url('../img/dataset_link_icons/general.png');
-    list-style-position: inside;
-}
-li.dataset-link-singlecellportal {
-    list-style-image: url('../img/dataset_link_icons/singlecellportal.png');
-    list-style-position: inside;
-}
-li.dropdown-submenu {
-  position: relative;
-}
-li.dropdown-submenu > .dropdown-menu {
-  top: 0;
-  left: 100%;
-  margin-top: 0px;
-  margin-left: 0px;
-}
-li.dropdown-submenu:hover > .dropdown-menu {
-  display: block;
-}
-nav#profile_selector_c {
-    margin-top: 10px;
-}
-p#dataset_browse_label {
-    margin-top: 20px;
-    padding-left: 30px;
-}
-p#dataset_browse_label a {
-    font-size: 120%;
+span.option-label {
     font-weight: bold;
-    color: var(--banner-bg-color);
+    font-size: 90%;
 }
-svg {
-  max-width: 100%;
-  max-height: 100%;
+ul#pattern-result-list {
+    list-style: none;
 }
-svg.svg-gradient-container {
-  z-index: -1;
+ul#pattern-result-list li {
+    padding: 0.3em 0 0.3em 1em;
+    border-top: 1px solid #e9eef1;
+    font-size: 90%;
 }
-table#annot-go_terms td {
-  padding: 3px;
+ul#pattern-result-list li:last-child {
+    border-bottom: 1px solid #e9eef1;
 }
-
-div#tip {
-  display: absolute;
-  background: white;
-  padding: 3px;
-  border: 1px solid black;
-  border-radius: 5px;
+ul#pattern-result-list li.is-selected {
+    /* TODO: Make this a variable */
+    background-color: #483285;
+    color: white;
 }
-.grid-width-8 {
-  padding-bottom: 36%;
+ul#go-terms {
+    max-height: 17em;
+    overflow-y: scroll;
 }
-.grid-width-12 {
-  padding-bottom: 24%;
-}
-
-/* For SVG */
-.axis path,
-.axis tick,
-.axis line {
-  fill: none;
-  stroke: none;
+ul#go-terms li {
+    border-bottom: 1px solid #e9eef1;
 }
 
-.modal-display:hover {
-  cursor: pointer;
+#result-panel-grid {
+    display: grid;
+    column-gap: 0.50rem;
+    row-gap: 0.50rem;
 }
 
-.active-display {
-  border: solid #401362;
+#result-panel-grid .card-image {
+    height: 100%
 }
 
-.btn-purple {
-  color: white;
-  background-color: #562a6f;
-  border-color: #562a6f;
+#result-panel-grid .card-image p {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.datasetbox-menu li {
-  white-space: nowrap;
-  padding-right: 5px !important;  /* Give some cushion to the longest submenu name */
+#result-panel-grid .card-image .svg svg {
+    margin-top:10%;
 }
 
-#submit_search_projection {
-  background-color: var(--main-section-launcher-bg-color-active);
+#result-panel-grid .js-plotly-plot {
+    /*height: 100%;*/
 }
 
-#projection_pattern_select_all,#projection_pattern_deselect_all {
-  color: var(--main-section-launcher-bg-color-active);
-  text-decoration: underline;
+/* Dropdown settings */
+
+.js-tile .dropdown-content {
+    width: max-content;
 }
 
-#projection_pattern_select_all:hover,#projection_pattern_deselect_all:hover {
-  background-color: var(--main-section-launcher-bg-color-active);
-  color: white;
+.js-tile .dropdown-item {
+    padding: 0.125rem 1rem;
 }
 
-#projectr_paper_link {
-  color: white;
+.js-modal-display figure {
+    border-color: darkgray;
+    border-width: thin;
+    border-style: solid;
+}
+
+.js-modal-display.is-selected figure{
+    border-color: lightblue;
+    border-width: thick;
+    border-style: solid;
+
+}
+
+.js-choose-display-modal .modal-content {
+    width: 70%; /* make wider, which makes preview images larger */
 }

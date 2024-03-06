@@ -168,6 +168,7 @@ class TileGrid {
         this.tiles.sort((a, b) => a.tile.height - b.tile.height);
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
+        // Orthology mapping also seems to fail due to file locking as well.
         //this.tiles.map(async tile => {
             //await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
         //});
