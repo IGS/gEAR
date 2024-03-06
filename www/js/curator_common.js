@@ -597,10 +597,22 @@ const cloneDisplay = async (event, display) => {
     document.getElementById("analysis_select").disabled = false;
     document.getElementById("plot_type_select").disabled = false;
 
+    const config = display.plotly_config;
+
     // analyses
     await analysisSelectUpdate();
-    // TODO update analysis select with config analysis
-
+    if (config.analysis_id) {
+        analysisObj = {id: config.analysis_id};
+    } else if (config.analysis) {
+        analysisObj = config.analysis;
+    }
+    // select analysis
+    if (analysisObj) {
+        setSelectBoxByValue("analysis_select", analysisObj.id);
+        analysisSelect.update();
+        await chooseAnalysis();
+        // NOTE: Analysis will not be chosen if the user cannot access it (i.e. owner curation, private analysis)
+    }
 
     // plot types
 
@@ -632,7 +644,6 @@ const cloneDisplay = async (event, display) => {
     }
 
     // Choose gene from config
-    const config = display.plotly_config;
     if (isMultigene) {
         manuallyEnteredGenes = new Set(config.gene_symbols);
         selected_genes = manuallyEnteredGenes;
