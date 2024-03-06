@@ -1,11 +1,5 @@
 /* This file contains CSS that is common to both of the curator pages. */
 
-/* This section tends to be shrunk too much in the flexbox layout */
-#post_plot_configuration_c {
-    height: 25vh;
-    overflow-y: auto;
-}
-
 /* reflecting gEAR "select" form CSS to "nice-select" elements */
 .select .nice-select {
     background-color: #EFEDF7;
@@ -42,10 +36,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-#post_plot_content_c {
-    height:92vh;
 }
 
 #post_plot_customize {
