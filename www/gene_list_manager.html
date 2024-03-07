@@ -6,7 +6,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <title>gEAR gene collection manager</title>
+    <title>gEAR gene list manager</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Pragma" content="no-cache">
@@ -28,7 +28,7 @@
     <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
     <!--Page-specific CSS here -->
-    <script>document.write('<link rel="stylesheet" href="css/gene_collection_manager.' + (new Date()).getTime() + '.css" />');</script>
+    <script>document.write('<link rel="stylesheet" href="css/gene_list_manager.' + (new Date()).getTime() + '.css" />');</script>
 </head>
 <body>
     <!--[if lt IE 7]>
@@ -40,9 +40,9 @@
         <section id="main-c" class="column pl-0 pt-0">
             <!--#include virtual="/include/header_bar.html" -->
             <section id="content-c" class="m-3 container">
-                <article id="not_logged_in_msg" class="message is-danger is-hidden">
+                <article id="not-logged-in-msg" class="message is-danger is-hidden">
                     <div class="message-body">
-                        You must be logged in as a user to create new gene collections.
+                        You must be logged in as a user to create new gene lists.
                     </div>
                 </article>
 
@@ -51,21 +51,21 @@
                         <!-- Create new gene cart button -->
                         <div class="field">
                             <div class="control">
-                                <button id="create_new_gene_collection" class="button is-primary is-fullwidth">
+                                <button id="create-new-gene-list" class="button is-primary is-fullwidth">
                                     <span class="icon">
                                         <i class="mdi mdi-plus"></i>
                                     </span>
-                                    <span>Create new gene collection</span>
+                                    <span>Create new gene list</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- search field -->
                         <div class="field">
-                            <label class="label">Find gene collections</label>
+                            <label class="label">Find gene lists</label>
                             <div class="control has-icons-right">
-                                <input id="search_terms" class="input" type="text" placeholder="Keyword search">
-                                <span class="icon is-hidden is-right is-clickable" id="search_clear">
+                                <input id="search-terms" class="input" type="text" placeholder="Keyword search">
+                                <span class="icon is-hidden is-right is-clickable" id="search-clear">
                                     <i class="mdi mdi-close-circle"></i>
                                 </span>
                             </div>
@@ -73,7 +73,7 @@
 
                         <!-- filter options -->
                         <div class="field">
-                            <div id="controls_ownership" class="js-filter-subsection is-clickable">
+                            <div id="controls-ownership" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold js-expandable-control">
                                     <span>Ownership</span>
                                     <span class="icon is-pulled-right">
@@ -83,16 +83,16 @@
                                 <hr class="my-2 has-background-grey-lighter">
                                 <ul class="js-expandable-target">
                                     <li class="js-all-selector">All</li>
-                                    <li class="js-selected" id="your_gene_collection_filter" data-dbval="yours">Your collections</li>
-                                    <li data-dbval="group">Group-affiliated collections</li>
-                                    <li data-dbval="shared">Collections shared with you</li>
-                                    <li data-dbval="public">Public collections</li>
+                                    <li class="js-selected" id="your-gene-list-filter" data-dbval="yours">Your lists</li>
+                                    <li data-dbval="group">Group-affiliated lists</li>
+                                    <li data-dbval="shared">Lists shared with you</li>
+                                    <li data-dbval="public">Public lists</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div class="field">
-                            <div id="controls_organism" class="js-filter-subsection is-clickable">
+                            <div id="controls-organism" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold  js-expandable-control">
                                     <span>Organism</span>
                                     <span class="icon is-pulled-right">
@@ -100,7 +100,7 @@
                                     </span>
                                 </p>
                                 <hr class="my-2 has-background-grey-lighter">
-                                <ul class="js-expandable-target" id="organism_choices">
+                                <ul class="js-expandable-target" id="organism-choices">
                                     <li class="js-all-selector js-selected">All</li>
                                     <!-- list built by js -->
                                 </ul>
@@ -108,7 +108,7 @@
                         </div>
 
                         <div class="field">
-                            <div id="controls_date_added" class="js-filter-subsection is-clickable">
+                            <div id="controls-date-added" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold  js-expandable-control">
                                     <span>Date added</span>
                                     <span class="icon is-pulled-right">
@@ -129,32 +129,32 @@
 
                     <div class="column is-four-fifths">
 
-                        <!-- create collection view -->
-                        <section id="create_collection_container" class="is-hidden">
-                            <section id="new collection_cards" class="columns">
+                        <!-- create list view -->
+                        <section id="create-list-container" class="is-hidden">
+                            <section id="new-list-cards" class="columns">
                                 <div class="card column has-background-light is-flex is-flex-direction-column">
                                     <header class="card-header">
-                                        <p class="card-header-title has-text-dark js-new-collection-header" id="new_collection_unweighted_header">
-                                            Unweighted gene collection
+                                        <p class="card-header-title has-text-dark js-new-list-header" id="new-list-unweighted-header">
+                                            Unweighted gene list
                                         </p>
                                     </header>
                                     <div class="card-content is-flex-grow-1">
                                         <div class="content has-text-dark">
-                                            This is a list of gene symbols only, possibly the most common type of gene collection.
+                                            This is a list of gene symbols only, possibly the most common type of gene list.
                                         </div>
                                     </div>
                                     <footer class="card-footer">
                                         <div class="buttons card-footer-item">
-                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_paste_unweighted_list">Paste list of genes</button>
-                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_upload_unweighted_list">Upload file</button>
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-paste-unweighted-list">Paste list of genes</button>
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-upload-unweighted-list">Upload file</button>
                                         </div>
                                     </footer>
                                 </div>
 
                                 <div class="card column has-background-light is-flex is-flex-direction-column">
                                     <header class="card-header">
-                                        <p class="card-header-title has-text-dark js-new-collection-header" id="new_collection_weighted_header">
-                                            Weighted gene collection
+                                        <p class="card-header-title has-text-dark js-new-list-header" id="new-list-weighted-header">
+                                            Weighted gene list
                                         </p>
                                     </header>
                                     <div class="card-content is-flex-grow-1">
@@ -164,15 +164,15 @@
                                     </div>
                                     <footer class="card-footer">
                                         <div class="buttons card-footer-item">
-                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_upload_weighted_list">Upload file</button>
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-upload-weighted-list">Upload file</button>
                                         </div>
                                     </footer>
                                 </div>
 
                                 <div class="card column has-background-light is-flex is-flex-direction-column">
                                     <header class="card-header">
-                                        <p class="card-header-title has-text-dark js-new-collection-header" id="new_collection_labeled_header">
-                                            Labeled gene collection
+                                        <p class="card-header-title has-text-dark js-new-list-header" id="new-list-labeled-header">
+                                            Labeled gene list
                                         </p>
                                     </header>
                                     <div class="card-content is-flex-grow-1">
@@ -183,32 +183,32 @@
                                     </div>
                                     <footer class="card-footer">
                                         <div class="buttons card-footer-item">
-                                            <button class="button is-primary js-upload-gc-btn" id="btn_gc_upload_labeled_list" disabled>Upload file</button>
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-upload-labeled-list" disabled>Upload file</button>
                                         </div>
                                     </footer>
                                 </div>
                             </section>
 
                             <!-- New gene cart form -->
-                            <div class="section is-hidden" id="new_collection_form_c">
-                                <div class="is-5 title">New gene collection information</div>
-                                <input type="hidden" id="new_collection_upload_type" name="new_collection_upload_type" value="" />
+                            <div class="section is-hidden" id="new-list-form-c">
+                                <div class="is-5 title">New gene list information</div>
+                                <input type="hidden" id="new-list-upload-type" name="new-list-upload-type" value="" />
 
                                 <div class="columns">
                                     <div class="column is-5">
                                         <div class="field">
-                                            <label class="label" for="new_collection_label">Name of collection</label>
+                                            <label class="label" for="new-list-label">Name of list</label>
                                             <div class="control">
-                                                <input type="text" class="input" id="new_collection_label" name="new_collection_label" placeholder="" />
+                                                <input type="text" class="input" id="new-list-label" name="new-list-label" placeholder="" />
                                             </div>
                                         </div>
                                     </div>
                                     <div class="column is-4">
                                     <div class="field">
-                                            <label class="label" for="new_collection_organism_id">Organism</label>
+                                            <label class="label" for="new-list-organism-id">Organism</label>
                                             <div class="control">
                                                 <div class="select">
-                                                    <select id="new_collection_organism_id" name="new_collection_organism_id"></select>
+                                                    <select id="new-list-organism-id" name="new-list-organism-id"></select>
                                                 </div>
                                             </div>
                                         </div>
@@ -217,27 +217,27 @@
                                         <div class="field">
                                             <p class="label">Visibility</p>
                                             <!-- toggle switch --->
-                                            <input type="checkbox" class="switch is-primary" name="new_collection_visibility" id="new_collection_visibility"/>
-                                            <label for="new_collection_visibility"></label>
+                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility"/>
+                                            <label for="new-list-visibility"></label>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="field">
-                                    <label class="label" for="new_collection_ldesc">Longer description</label>
+                                    <label class="label" for="new-list-ldesc">Longer description</label>
                                     <div class="control">
-                                        <textarea class="textarea" id="new_collection_ldesc" name="new_collection_ldesc" rows="3"></textarea>
+                                        <textarea class="textarea" id="new-list-ldesc" name="new-list-ldesc" rows="3"></textarea>
                                     </div>
                                 </div>
-                                <div class="field" id="new_collection_upload_c">
+                                <div class="field" id="new-list-upload-c">
                                     <label class="label">Upload gene list
-                                        <a id="collection_upload_reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="collection_upload_reqs_modal">Click for requirements</a>
+                                        <a id="list-upload-reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</a>
 
                                     </label>
                                     <div class="field">
                                         <div class="control">
-                                            <div id="file_upload_c" class="file">
-                                                <label for="new_collection_file" class="file-label">
-                                                    <input class="file-input" name="new_collection_file" type="file" id="new_collection_file"/>
+                                            <div id="file-upload-c" class="file">
+                                                <label for="new-list-file" class="file-label">
+                                                    <input class="file-input" name="new-list-file" type="file" id="new-list-file"/>
                                                     <span class="file-cta">
                                                         <span class="file-icon">
                                                             <i class="mdi mdi-upload"></i>
@@ -247,30 +247,30 @@
                                                         </span>
                                                     </span>
                                                 </label>
-                                                <span class="file-name is-hidden" id="new_collection_file_name"></span>
+                                                <span class="file-name is-hidden" id="new-list-file-name"></span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="field is-hidden" id="new_collection_pasted_genes_c">
-                                    <label class="label" for="new_collection_pasted_genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
+                                <div class="field is-hidden" id="new-list-pasted-genes-c">
+                                    <label class="label" for="new-list-pasted-genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
                                     <div class="control">
-                                        <textarea class="textarea" id="new_collection_pasted_genes" name="new_collection_pasted_genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
+                                        <textarea class="textarea" id="new-list-pasted-genes" name="new-list-pasted-genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
                                     </div>
                                 </div>
                                 <div class="field is-grouped">
                                     <p class="control">
-                                        <button class="button is-primary" id="btn_new_collection_save">Save</button>
+                                        <button class="button is-primary" id="btn-new-list-save">Save</button>
                                     </p>
                                     <p class="control">
-                                        <button class="button is-primary is-outlined" id="btn_new_collection_cancel">Cancel</button>
+                                        <button class="button is-primary is-outlined" id="btn-new-list-cancel">Cancel</button>
                                     </p>
                                 </div>
                             </div>
                         </section>
 
                         <!-- Count and view control -->
-                        <section id="view_controls" class="level">
+                        <section id="view-controls" class="level">
                             <div class="level-left">
                                 <div class="level-item">
                                     <div class="field is-horizontal">
@@ -279,17 +279,17 @@
                                         </div>
                                         <div class="field-body">
                                             <div class="buttons has-addons" role="group" aria-label="Gene cart list view preference">
-                                                <button type="button" id="btn_table_view" class="js-view-btn button is-small is-gear-bg-secondary" aria-label="Table view" data-tooltip-content="Table view">
+                                                <button type="button" id="btn-table-view" class="js-view-btn button is-small is-gear-bg-secondary" aria-label="Table view" data-tooltip-content="Table view">
                                                     <span class="icon is-small">
                                                         <i class="mdi mdi-table-column"></i>
                                                     </span>
                                                 </button>
-                                                <button type="button" id="btn_list_view_compact" class="js-view-btn button is-small is-dark" aria-label="Compact list view" data-tooltip-content="List view - Compact">
+                                                <button type="button" id="btn-list-view-compact" class="js-view-btn button is-small is-dark" aria-label="Compact list view" data-tooltip-content="List view - Compact">
                                                     <span class="icon is-small">
                                                         <i class="mdi mdi-format-list-bulleted"></i>
                                                     </span>
                                                 </button>
-                                                <button type="button" id="btn_list_view_expanded" class="js-view-btn button is-small is-dark" aria-label="Expanded list view" data-tooltip-content="List view - Expanded">
+                                                <button type="button" id="btn-list-view-expanded" class="js-view-btn button is-small is-dark" aria-label="Expanded list view" data-tooltip-content="List view - Expanded">
                                                     <span class="icon is-small">
                                                         <i class="mdi mdi-window-maximize"></i>
                                                     </span>
@@ -303,7 +303,7 @@
                                     <div class="field">
                                         <div class="control">
                                             <div class="select is-small">
-                                                <select name="sort_by" id="sort_by">
+                                                <select name="sort-by" id="sort-by">
                                                     <option value="relevance">Relevance</option>
                                                     <option value="title">Gene cart title</option>
                                                     <option value="date_added" selected>Date created</option>
@@ -317,22 +317,22 @@
 
                             <div class="level-right">
                                 <div class="level-item">
-                                    <div id="gc_count_label_c" class="is-hidden">
-                                        <span id="gc_count_label">Showing <span id="result_range"></span> of <span id="result_count"></span> <span id="result_label"></span></span>
+                                    <div id="gc-count-label-c" class="is-hidden">
+                                        <span id="gc-count-label">Showing <span id="result-range"></span> of <span id="result-count"></span> <span id="result-label"></span></span>
                                     </div>
                                 </div>
                                 <div class="level-item">
                                     <!-- ? May change to numbers if genecarts get too numerous -->
-                                    <nav id="pagination_container" class="pagination is-small" role="navigation" aria-label="pagination">
+                                    <nav id="pagination-container" class="pagination is-small" role="navigation" aria-label="pagination">
                                     </nav>
                                 </div>
                             </div>
 
-                        </section> <!-- #view_controls -->
+                        </section> <!-- #view-controls -->
 
                         <!-- results view -->
-                        <section id="results_container">
-                            <table id="results_table" class="table is-narrow is-striped is-fullwidth">
+                        <section id="results-container">
+                            <table id="results-table" class="table is-narrow is-striped is-fullwidth">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
@@ -345,7 +345,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template id="results_table_view">
+                                    <template id="results-table-view">
                                         <tr>
                                             <td class="js-display-title"></td>
                                             <td class="js-display-visibility"></td>
@@ -359,8 +359,8 @@
                                 </tbody>
                             </table>
 
-                            <div id="results_list_div" class="is-hidden">
-                                <template id="results_list_view">
+                            <div id="results-list-div" class="is-hidden">
+                                <template id="results-list-view">
                                     <!-- parts filled in by js -->
                                     <div class="js-gc-list-element">
                                         <!-- title section -->
@@ -369,7 +369,7 @@
                                                 <div class="js-display-version js-display-title">
                                                     <p class="has-text-weight-bold"></p>
                                                 </div>
-                                                <div id="editable_title_c" class="js-editable-version js-editable-title is-hidden">
+                                                <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
                                                     <div class="field">
                                                         <span class="has-text-weight-semibold">Title</span>
                                                         <input type="text" class="input"/>
@@ -403,7 +403,7 @@
                                                 </div>
                                                 <div class="js-editable-version js-editable-organism is-hidden">
                                                     <div class="field">
-                                                        <label class="label" for="result_gc_id_${geneCollectionId}_editable_organism_id">Organism</label>
+                                                        <label class="label" for="result-gc-id-${geneListId}-editable-organism-id">Organism</label>
                                                         <div class="control">
                                                             <div class="select">
                                                                 <select></select>
@@ -453,12 +453,12 @@
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-danger js-delete-gc" data-tooltip-content="Delete collection">
+                                                                <button class="button is-small is-outlined is-danger js-delete-gc" data-tooltip-content="Delete list">
                                                                     <span class="icon is-small"><i class="mdi mdi-delete"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download collection as tsv">
+                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv">
                                                                     <span class="icon is-small"><i class="mdi mdi-download"></i></span>
                                                                 </button>
                                                             </p>
@@ -468,19 +468,19 @@
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit collection metadata">
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata">
                                                                     <span class="icon is-small"><i class="mdi mdi-pencil"></i></span>
                                                                 </button>
                                                             </p>
                                                         </div>
                                                         <div class="field has-addons" role="group">
                                                             <p class="control">
-                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" data-gc-id="${geneCollectionId}">
+                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" data-gc-id="${geneListId}">
                                                                     <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" data-gc-id="${geneCollectionId}">
+                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" data-gc-id="${geneListId}">
                                                                     <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
                                                                 </button>
                                                             </p>
@@ -530,7 +530,7 @@
                                 </template>
                             </div>
                         </section>
-                        <nav id="below_pagination_container" class="pagination is-small is-pulled-right" role="navigation" aria-label="pagination">
+                        <nav id="below-pagination-container" class="pagination is-small is-pulled-right" role="navigation" aria-label="pagination">
                         </nav>
 
 
@@ -541,7 +541,7 @@
         </section>
     </div>
 
-    <div class="modal" id="collection_upload_reqs_modal">
+    <div class="modal" id="list-upload-reqs-modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
@@ -552,7 +552,7 @@
             <!-- Content ... -->
                 <div class="content">
 
-                <template id="unweighted_example">
+                <template id="unweighted-example">
                     <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
                     <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
 
@@ -567,7 +567,7 @@
                     </p>
                 </template>
 
-                <template id="weighted_example">
+                <template id="weighted-example">
                     <ul>
                         <li>File upload must be in CSV, TAB, or Excel-format only.</li>
                         <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
@@ -621,7 +621,7 @@
                     </table>
                 </template>
 
-                <template id="labeled_example">
+                <template id="labeled-example">
                     <ul>
                         <li>File upload must be in Excel-format only.</li>
                         <li>A header row of columns is required.</li>
@@ -687,7 +687,7 @@
     <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     <!-- Page-specific JS file here -->
-    <script>document.write('<script src="js/gene_collection_manager.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/gene_list_manager.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

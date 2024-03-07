@@ -85,7 +85,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const sessionId = CURRENT_USER.session_id;
 
 	if (! sessionId ) {
-        document.getElementById("not_logged_in_msg").classList.remove("is-hidden");
+        document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
         return;
     }
 

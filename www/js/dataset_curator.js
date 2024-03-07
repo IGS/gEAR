@@ -144,9 +144,9 @@ class PlotlyHandler extends PlotHandler {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container", "is-max-desktop");
-        plotlyPreview.id = "plotly_preview";
+        plotlyPreview.id = "plotly-preview";
         plotContainer.append(plotlyPreview);
-        Plotly.purge("plotly_preview"); // clear old Plotly plots
+        Plotly.purge("plotly-preview"); // clear old Plotly plots
 
         if (!plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
@@ -155,9 +155,9 @@ class PlotlyHandler extends PlotHandler {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", plotJson.data, plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly-preview", plotJson.data, plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
-        Plotly.relayout("plotly_preview", custonLayout)
+        Plotly.relayout("plotly-preview", custonLayout)
 
         // If any categorical series in ".js_plot_req", and the series has more then 20 groups, display a warning about overcrowding
         const plotlyReqSeries = document.getElementsByClassName("js_plot_req");

@@ -33,4 +33,4 @@ After a plot has been generated, you can specify the dimensions and scale of the
 
 ## Volcano plot things
 
-After a volcano plot has been generated, you can use the lasso tool or the rectangular selection tool to select some gene datapoints within the plot.  These selected genes will show in a new panel, where you can assign a name to this gene collection and save as a new gene cart.
+After a volcano plot has been generated, you can use the lasso tool or the rectangular selection tool to select some gene datapoints within the plot.  These selected genes will show in a new panel, where you can assign a name to this gene list and save as a new gene cart.

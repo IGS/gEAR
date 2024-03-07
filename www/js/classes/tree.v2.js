@@ -145,12 +145,12 @@ class ProjectionSourceTree extends Tree {
 
 
     getTotalWeightedCarts() {
-        // get the total number of weighted gene collections
+        // get the total number of weighted gene lists
         return Object.keys(this["weighted-list"]).reduce((acc, curr) => acc + this["weighted-list"][curr].length, 0);
     }
 
     getTotalUnweightedCarts() {
-        // get the total number of unweighted gene collections
+        // get the total number of unweighted gene lists
         return Object.keys(this["unweighted-list"]).reduce((acc, curr) => acc + this["unweighted-list"][curr].length, 0);
     }
 
@@ -161,21 +161,21 @@ class ProjectionSourceTree extends Tree {
         // [PARENT_ID, [POSITIONAL_ARGS], {KEY_VALUE_ARGS}]
         const treeData = [
             [null, [], {key: "unweighted_genes_node", title: `Unweighted Genes (${this.getTotalUnweightedCarts()})`, type: "folder"}],
-            ["unweighted_genes_node", [], {key: "uw_domain_node", title: `Highlighted gene collections (${this["unweighted-list"].domainGeneCarts.length})`, type: "folder"}],
-            ["unweighted_genes_node", [], {key: "uw_user_node", title: `Your gene collections (${this["unweighted-list"].userGeneCarts.length})`, type: "folder"}],
-            ["unweighted_genes_node", [], {key: "uw_group_node", title: `Group gene collections (${this["unweighted-list"].groupGeneCarts.length})`, type: "folder"}],
+            ["unweighted_genes_node", [], {key: "uw_domain_node", title: `Highlighted gene lists (${this["unweighted-list"].domainGeneCarts.length})`, type: "folder"}],
+            ["unweighted_genes_node", [], {key: "uw_user_node", title: `Your gene lists (${this["unweighted-list"].userGeneCarts.length})`, type: "folder"}],
+            ["unweighted_genes_node", [], {key: "uw_group_node", title: `Group gene lists (${this["unweighted-list"].groupGeneCarts.length})`, type: "folder"}],
             ["unweighted_genes_node", [], {key: "uw_shared_node", title: `Gene collections shared with you (${this["unweighted-list"].sharedGeneCarts.length})`, type: "folder"}],
             ["unweighted_genes_node", [], {key: "uw_public_node", title: `Public collections from other users (${this["unweighted-list"].publicGeneCarts.length})`, type: "folder"}],
             [null, [], {key: "weighted_genes_node", title: `Weighted Genes (${this.getTotalWeightedCarts()})`, type: "folder"}],
-            ['weighted_genes_node', [], {key: 'w_domain_node', title: `Highlighted gene collections (${this["weighted-list"].domainGeneCarts.length})`, type: "folder"}],
-            ['weighted_genes_node', [], {key: "w_user_node", title: `Your gene collections (${this["weighted-list"].userGeneCarts.length})`, type: "folder"}],
-            ['weighted_genes_node', [], {key: "w_group_node", title: `Group gene collections (${this["weighted-list"].groupGeneCarts.length})`, type: "folder"}],
+            ['weighted_genes_node', [], {key: 'w_domain_node', title: `Highlighted gene lists (${this["weighted-list"].domainGeneCarts.length})`, type: "folder"}],
+            ['weighted_genes_node', [], {key: "w_user_node", title: `Your gene lists (${this["weighted-list"].userGeneCarts.length})`, type: "folder"}],
+            ['weighted_genes_node', [], {key: "w_group_node", title: `Group gene lists (${this["weighted-list"].groupGeneCarts.length})`, type: "folder"}],
             ['weighted_genes_node', [], {key: "w_shared_node", title: `Gene collections shared with you (${this["weighted-list"].sharedGeneCarts.length})`, type: "folder"}],
             ['weighted_genes_node', [], {key: "w_public_node", title: `Public collections from other users (${this["weighted-list"].publicGeneCarts.length})`, type: "folder"}],
         ];
 
         // ? Currently item.value is the gene cart share ID,
-        // ? but for unweighted gene collections it is the db ID.
+        // ? but for unweighted gene lists it is the db ID.
         // ? Is it worth refactoring so that the item.value is the db ID for both types?
         // ? If so, then item.value will need to ensure that no duplicates occur.
         // ? Could make use of "data" attribute in the tree node to store the original value and cart share ID.
@@ -307,9 +307,9 @@ class GeneCartTree extends Tree {
         // [PARENT_ID, [POSITIONAL_ARGS], {KEY_VALUE_ARGS}]
 
         const treeData = [
-            [null, [], {key: "domain_node", title: `Highlighted gene collections (${this.domainGeneCarts.length})`, type: "folder"}],
-            [null, [], {key: "user_node", title: `Your gene collections (${this.userGeneCarts.length})`, type: "folder"}],
-            [null, [], {key: "group_node", title: `Group gene collections (${this.groupGeneCarts.length})`, type: "folder"}],
+            [null, [], {key: "domain_node", title: `Highlighted gene lists (${this.domainGeneCarts.length})`, type: "folder"}],
+            [null, [], {key: "user_node", title: `Your gene lists (${this.userGeneCarts.length})`, type: "folder"}],
+            [null, [], {key: "group_node", title: `Group gene lists (${this.groupGeneCarts.length})`, type: "folder"}],
             [null, [], {key: "shared_node", title: `Gene collections shared with you (${this.sharedGeneCarts.length})`, type: "folder"}],
             [null, [], {key: "public_node", title: `Public collections from other users (${this.publicGeneCarts.length})`, type: "folder"}],
         ];

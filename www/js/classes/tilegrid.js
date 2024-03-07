@@ -72,13 +72,13 @@ class TileGrid {
         this.tiles = tiles;
 
         // sort by grid position
-        this.tiles.sort((a, b) => a.tile.grid_position - b.tile.grid_position);
+        this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        // Legacy mode - if all tiles have start_col = 1, then we are in legacy mode
+        // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
         // These layouts were generated only with a "width" property
-        const legacyMode = this.tiles.every(tile => tile.tile.start_col === 1);
+        const legacyMode = this.tiles.every(tile => tile.tile.startCol === 1);
 
-        // If in legacy mode, then we need to calculate the start_col and end_col and start_row and end_row
+        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
         if (legacyMode) {
             let currentCol = 1;
             let currentRow = 1;
@@ -87,16 +87,16 @@ class TileGrid {
                 const tileWidth = Number(tile.tile.width);
                 const tileHeight = Number(tile.tile.height);
 
-                // If end_col is greater than 13, then this tile is in the next row
+                // If endCol is greater than 13, then this tile is in the next row
                 if (currentCol + tileWidth > maxEndCol) {
                     currentCol = 1;
                     currentRow++;
                 }
 
-                tile.tile.start_col = currentCol;
-                tile.tile.end_col = currentCol + tileWidth;
-                tile.tile.start_row = currentRow;
-                tile.tile.end_row = currentRow + tileHeight;
+                tile.tile.startCol = currentCol;
+                tile.tile.endCol = currentCol + tileWidth;
+                tile.tile.startRow = currentRow;
+                tile.tile.endRow = currentRow + tileHeight;
 
                 currentCol += tileWidth;
             }
@@ -104,13 +104,13 @@ class TileGrid {
 
         // Add grid template information to the selector element.
         // Max col is going to be 12 (since width is stored as 12-col format in db),
-        // and max row is max(end_row)
+        // and max row is max(endRow)
 
         selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
-        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.end_row));
+        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow));
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
 
-        // Build the CSS grid using the start_row, start_col, end_row, and end_col properties of each tile
+        // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
             // Get HTML for the tile
             const tile = datasetTile.tile;
@@ -120,8 +120,8 @@ class TileGrid {
             selectorElt.append(tileChildHTML);
 
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
-            const tileElement = document.getElementById(`tile_${tile.tile_id}`);
-            tileElement.style.gridArea = `${tile.start_row} / ${tile.start_col} / ${tile.end_row} / ${tile.end_col}`;
+            const tileElement = document.getElementById(`tile-${tile.tileId}`);
+            tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
         }
     }
 
@@ -190,9 +190,9 @@ class DatasetTile {
         this.typeInt = isMulti ? 1 : 0;
         this.tile = this.generateTile();
 
-        // Set the end row and end col based on the start row and start col
-        this.tile.end_row = this.tile.start_row + this.tile.height,
-        this.tile.end_col = this.tile.start_col + this.tile.width,
+        // Set the end row and end col based on the startow and startCol
+        this.tile.endRow = this.tile.startRow + this.tile.height,
+        this.tile.endCol = this.tile.startCol + this.tile.width,
 
         this.tile.html = this.generateTileHTML();
 
@@ -217,13 +217,13 @@ class DatasetTile {
     generateTile() {
         const { id, grid_position, mg_grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height, start_row, mg_start_row, start_col, mg_start_col } = this.dataset;
         return {
-            grid_position: this.type === "single" ? grid_position : mg_grid_position,
+            gridPosition: this.type === "single" ? grid_position : mg_grid_position,
             width: this.type === "single" ? grid_width : mg_grid_width,
             // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
             height: this.type === "single" ? grid_height : mg_grid_height,
-            start_row: this.type === "single" ? start_row : mg_start_row,
-            start_col: this.type === "single" ? start_col : mg_start_col,
-            tile_id: `${id}_${grid_position}_${this.type}`,
+            startRow: this.type === "single" ? start_row : mg_start_row,
+            startCol: this.type === "single" ? start_col : mg_start_col,
+            tileId: `${id}-${grid_position}-${this.type}`,
             title,
         };
     }
@@ -241,7 +241,7 @@ class DatasetTile {
 
         // Set tile id & title
         const tileElement = tileHTML.querySelector('.js-tile');
-        tileElement.id = `tile_${tile.tile_id}`;
+        tileElement.id = `tile-${tile.tileId}`;
 
         const tileTitle = tileHTML.querySelector('.card-header-title');
         tileTitle.textContent = tile.title;
@@ -283,8 +283,8 @@ class DatasetTile {
      * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
      */
     async processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod) {
-        const tileId = this.tile.tile_id;
-        const tileElement = document.getElementById(`tile_${tileId}`);
+        const tileId = this.tile.tileId;
+        const tileElement = document.getElementById(`tile-${tileId}`);
 
         // If projection mode is enabled, then perform projection
         if (this.projectR.modeEnabled) {
@@ -365,6 +365,13 @@ class DatasetTile {
         }
     }
 
+    /**
+     * Retrieves the projection for the given pattern source, algorithm, and gctype.
+     * @param {string} patternSource - The pattern source.
+     * @param {string} algorithm - The algorithm to use for projection.
+     * @param {string} gctype - The gctype.
+     * @returns {Promise<void>} A promise that resolves when the projection is retrieved.
+     */
     async getProjection(patternSource, algorithm, gctype) {
         this.resetAbortController();
         const otherOpts = {}
@@ -376,7 +383,7 @@ class DatasetTile {
             const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm);
             // If file was not found, put some loading text in the plot
             if (! data.projection_id) {
-                createCardMessage(this.tile.tile_id, "info", "Creating projection. This may take a few minutes.");
+                createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
             }
             this.projection_id = data.projection_id || null;
         } catch (error) {
@@ -402,7 +409,7 @@ class DatasetTile {
                 return;
             }
 
-            createCardMessage(this.tile.tile_id, "danger", error);
+            createCardMessage(this.tile.tileId, "danger", error);
 
             logErrorInConsole(error);
         } finally {
@@ -430,7 +437,7 @@ class DatasetTile {
         const template = document.getElementById('tmpl-tile-grid-projection-info');
         const projectionInfoHTML = template.content.cloneNode(true);
         projectionInfoHTML.querySelector("p").textContent = this.projectR.projectionInfo;
-        const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
         const cardContent = tileElement.querySelector('.js-card-extras');
 
         cardContent.append(projectionInfoHTML);
@@ -516,7 +523,7 @@ class DatasetTile {
         });
 
         // Add dropdown to tile
-        const tileElement = document.getElementById(`tile_${this.tile.tile_id}`);
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
         const cardContent = tileElement.querySelector('.js-card-extras');
         cardContent.append(orthoHTML);
     }
@@ -549,7 +556,7 @@ class DatasetTile {
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
                         this.renderChooseDisplayModal();    // TODO: Need to add after displays are retrieved
-                        const modalElt = document.getElementById(`choose-display-modal_${this.tile.tile_id}`);
+                        const modalElt = document.getElementById(`choose-display-modal_${this.tile.tileId}`);
                         openModal(modalElt);
                     });
                     break;
@@ -733,7 +740,7 @@ class DatasetTile {
         const modalHTML = modalTemplate.content.cloneNode(true);
 
         const modalDiv = modalHTML.querySelector('.modal');
-        modalDiv.id = `choose-display-modal_${this.tile.tile_id}`;
+        modalDiv.id = `choose-display-modal_${this.tile.tileId}`;
 
         return modalHTML;
     }
@@ -898,7 +905,7 @@ class DatasetTile {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
 
-        createCardMessage(this.tile.tile_id, "info", "Loading display...");
+        createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
             displayId = this.defaultDisplayId;
@@ -940,7 +947,7 @@ class DatasetTile {
             console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
             // Let the user know that the display config was not found
             const message = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
-            createCardMessage(this.tile.tile_id, "warning", message);
+            createCardMessage(this.tile.tileId, "warning", message);
             return;
         }
 
@@ -987,7 +994,7 @@ class DatasetTile {
             // we want to ensure other plots load even if one fails
             console.error(error);
             // Fill in card-image with error message
-            createCardMessage(this.tile.tile_id, "danger", error.message);
+            createCardMessage(this.tile.tileId, "danger", error.message);
         }
 
     }
@@ -1017,8 +1024,8 @@ class DatasetTile {
         const extendRangeRatio = 10;
 
         // generate the epiviz panel + tracks
-        const epiviznav = document.querySelector(`#epiviznav_${this.tile.tile_id}`);
-        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        const epiviznav = document.querySelector(`#epiviznav_${this.tile.tileId}`);
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
 
         if (!epiviznav) {
@@ -1055,13 +1062,13 @@ class DatasetTile {
         const epivizHTML = template.content.cloneNode(true);
         // Add in properties to the epiviz container
         const epivizContainer = epivizHTML.querySelector('.epiviz-container');
-        epivizContainer.id = `epiviz_${this.tile.tile_id}`;
+        epivizContainer.id = `epiviz_${this.tile.tileId}`;
         const epivizDataSource = epivizHTML.querySelector('epiviz-data-source');
-        epivizDataSource.id = `${this.tile.tile_id}epivizds`;
+        epivizDataSource.id = `${this.tile.tileId}epivizds`;
         epivizDataSource.setAttribute("provider-url", plotConfig.dataserver);
 
         const epivizNavigation = epivizHTML.querySelector('epiviz-navigation');
-        epivizNavigation.id = `${this.tile.tile_id}_epiviznav`;
+        epivizNavigation.id = `${this.tile.tileId}_epiviznav`;
         // the chr, start and end should come from query - map gene to genomic position.
         epivizNavigation.setAttribute("chr", data.chr);
         epivizNavigation.setAttribute("start", epivizNavStart(data, extendRangeRatio));
@@ -1112,7 +1119,7 @@ class DatasetTile {
         }
         const {plot_json: plotJson} = data;
 
-        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
@@ -1120,7 +1127,7 @@ class DatasetTile {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container");
-        plotlyPreview.id = `tile_${this.tile.tile_id}_plotly_preview`;
+        plotlyPreview.id = `tile-${this.tile.tileId}_plotly-preview`;
         plotContainer.append(plotlyPreview);
         Plotly.purge(plotlyPreview.id); // clear old Plotly plots
 
@@ -1168,7 +1175,7 @@ class DatasetTile {
         }
         const {plot_json: plotJson} = data;
 
-        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
@@ -1176,7 +1183,7 @@ class DatasetTile {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container");
-        plotlyPreview.id = `tile_${this.tile.tile_id}_plotly_preview`;
+        plotlyPreview.id = `tile-${this.tile.tileId}_plotly-preview`;
         plotContainer.append(plotlyPreview);
         Plotly.purge(plotlyPreview.id); // clear old Plotly plots
 
@@ -1208,13 +1215,13 @@ class DatasetTile {
         }
         const {image} = data;
 
-        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image");
-        tsnePreview.id = `tile_${this.tile.tile_id}_tsne_preview`;;
+        tsnePreview.id = `tile-${this.tile.tileId}_tsne_preview`;;
         plotContainer.append(tsnePreview);
 
         if (image) {
@@ -1234,11 +1241,11 @@ class DatasetTile {
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
-        const plotContainer = document.querySelector(`#tile_${this.tile.tile_id} .card-image`);
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
-        colorSVG(data, plotConfig.colors, datasetId, this.tile.tile_id, svgScoringMethod);
+        colorSVG(data, plotConfig.colors, datasetId, this.tile.tileId, svgScoringMethod);
 
     }
 
@@ -1279,7 +1286,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
     const NA_FIELD_COLOR = '#808080';
 
     // Load SVG file and set up the window
-    const cardImage = document.querySelector(`#tile_${tileId} .card-image`);
+    const cardImage = document.querySelector(`#tile-${tileId} .card-image`);
 
     // create a legend div
     const legendDiv = document.createElement('div');
@@ -1518,8 +1525,8 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
 
-    const card = document.querySelector(`#tile_${tileId}.card`);
-    const node = document.querySelector(`#tile_${tileId} .legend`);
+    const card = document.querySelector(`#tile-${tileId}.card`);
+    const node = document.querySelector(`#tile-${tileId} .legend`);
     // Create our legend svg
     const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
@@ -1532,7 +1539,7 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
     // Define our gradient shape
     const linearGradient = defs
         .append('linearGradient')
-        .attr('id', `tile_${tileId}-linear-gradient`)
+        .attr('id', `tile-${tileId}-linear-gradient`)
         .attr('x1', '0%')
         .attr('y1', '0%')
         .attr('x2', '100%')
@@ -1604,7 +1611,7 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
         .attr('height', 10) // quarter of viewport height
         .style(
             'fill',
-            `url(#tile_${tileId}-linear-gradient)`
+            `url(#tile-${tileId}-linear-gradient)`
         );
 
     const xScale = new_d3
@@ -1701,7 +1708,7 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
  * @param {string} message - The message to be displayed in the card.
  */
 const createCardMessage = (tileId, level, message) => {
-    const cardContent = document.querySelector(`#tile_${tileId} .card-image`);
+    const cardContent = document.querySelector(`#tile-${tileId} .card-image`);
     cardContent.replaceChildren();
     const messageElt = document.createElement("p");
     const textLevel = `has-text-${level}-dark`;

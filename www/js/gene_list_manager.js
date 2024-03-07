@@ -4,7 +4,7 @@ let firstSearch = true;
 let isAddFormOpen = false;
 const resultsPerPage = 20;
 
-// TODO - Add transformation code for quick gene collection transformations
+// TODO - Add transformation code for quick gene list transformations
 
 // Floating UI function alias. See https://floating-ui.com/docs/getting-started#umd
 // Subject to change if we ever need these common names for other things.
@@ -15,26 +15,26 @@ const offset = window.FloatingUIDOM.offset;
 const arrow = window.FloatingUIDOM.arrow;
 
 /**
- * Adds event listeners for various actions related to gene collections.
+ * Adds event listeners for various actions related to gene lists.
  * @function
  * @returns {void}
  */
-const addGeneCollectionEventListeners = () => {
+const addGeneListEventListeners = () => {
 
     // Unweighted gene lists
-    setupGeneListToggle("js-gc-unweighted-gene-list-toggle", './cgi/get_unweighted_gene_cart_preview.cgi', createUnweightedGeneCollectionTable);
+    setupGeneListToggle("js-gc-unweighted-gene-list-toggle", './cgi/get_unweighted_gene_cart_preview.cgi', createUnweightedGeneListTable);
 
     // Weighted gene lists
-    setupGeneListToggle("js-gc-weighted-gene-list-toggle", './cgi/get_weighted_gene_cart_preview.cgi', createWeightedGeneCollectionPreview);
+    setupGeneListToggle("js-gc-weighted-gene-list-toggle", './cgi/get_weighted_gene_cart_preview.cgi', createWeightedGeneListPreview);
 
     // Labeled gene lists
     // NOT IMPLEMENTED YET
 
-    // Expand and collapse gene collection view
+    // Expand and collapse gene list view
     for (const classElt of document.getElementsByClassName("js-expand-box")) {
         classElt.addEventListener("click", (e) => {
             const gcId = e.currentTarget.dataset.gcId;
-            const selector = `#result_gc_id_${gcId} .js-expandable-view`;
+            const selector = `#result-gc-id-${gcId} .js-expandable-view`;
             const expandableViewElts = document.querySelectorAll(selector);
             for (const classElt of expandableViewElts) {
                 classElt.classList.toggle("is-hidden");
@@ -58,8 +58,8 @@ const addGeneCollectionEventListeners = () => {
             const shareId = e.currentTarget.dataset.gcShareId;
 
             if (gctype == "unweighted-list") {
-                const gene_symbols = await fetchGeneCartMembers(gcId);
-                const fileContents = gene_symbols.map(gene => gene.label).join("\n");
+                const {gene_symbols: geneSymbols} = await fetchGeneCartMembers(gcId);
+                const fileContents = geneSymbols.map(gene => gene.label).join("\n");
 
                 const element = document.createElement("a");
                 element.setAttribute(
@@ -100,7 +100,7 @@ const addGeneCollectionEventListeners = () => {
                 throw Error("Not implemented yet");
 
             } else {
-                throw Error(`Invalid gene collection type: ${gctype}`);
+                throw Error(`Invalid gene list type: ${gctype}`);
             }
 
         });
@@ -111,7 +111,7 @@ const addGeneCollectionEventListeners = () => {
 
             const shareId = e.currentTarget.value;
             const currentUrl = window.location.href;
-            const currentPage = currentUrl.lastIndexOf("gene_collection_manager.html");
+            const currentPage = currentUrl.lastIndexOf("gene_list_manager.html");
             const shareUrl = `${currentUrl.substring(0, currentPage)}p?c=${shareId}`;
             const gcId = e.currentTarget.dataset.gcId;
 
@@ -120,11 +120,11 @@ const addGeneCollectionEventListeners = () => {
         });
     }
 
-    // Cancel button for editing a gene collection
+    // Cancel button for editing a gene list
     for (const classElt of document.getElementsByClassName("js-edit-gc-cancel")) {
         classElt.addEventListener("click", (e) => {
             const gcId = e.currentTarget.dataset.gcId;
-            const selectorBase = `#result_gc_id_${gcId}`;
+            const selectorBase = `#result-gc-id-${gcId}`;
 
             // Show editable versions where there are some and hide the display versions
             for (const classElt of document.querySelectorAll(`${selectorBase} .js-editable-version`)) {
@@ -135,32 +135,32 @@ const addGeneCollectionEventListeners = () => {
             };
 
             // Reset any unsaved/edited values
-            const visibility = document.querySelector(`${selectorBase}_editable_visibility`).dataset.originalVal;
-            document.querySelector(`${selectorBase}_editable_visibility`).value = visibility;
+            const visibility = document.querySelector(`${selectorBase}-editable-visibility`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-visibility`).value = visibility;
 
-            const title = document.querySelector(`${selectorBase}_editable_title`).dataset.originalVal;
-            document.querySelector(`${selectorBase}_editable_title`).value = title;
+            const title = document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-title`).value = title;
 
-            const orgId = document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal;
-            document.querySelector(`${selectorBase}_editable_organism_id`).value = orgId;
+            const orgId = document.querySelector(`${selectorBase}-editable-organism-id`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-organism-id`).value = orgId;
 
             document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
 
         });
     }
 
-    // Save button for editing a gene collection
+    // Save button for editing a gene list
     for (const classElt of document.getElementsByClassName("js-edit-gc-save")) {
         classElt.addEventListener("click", async (e) => {
             const gcId = e.currentTarget.dataset.gcId;
-            const selectorBase = `#result_gc_id_${gcId}`;
+            const selectorBase = `#result-gc-id-${gcId}`;
             //
-            const newVisibility = document.querySelector(`${selectorBase}_editable_visibility`).checked;
+            const newVisibility = document.querySelector(`${selectorBase}-editable-visibility`).checked;
             // convert "true/false" visibility to 1/0
             const intNewVisibility = newVisibility ? 1 : 0;
-            const newTitle = document.querySelector(`${selectorBase}_editable_title`).value;
-            const newOrgId = document.querySelector(`${selectorBase}_editable_organism_id`).value;
-            const newLdesc = document.querySelector(`${selectorBase}_editable_ldesc`).value;
+            const newTitle = document.querySelector(`${selectorBase}-editable-title`).value;
+            const newOrgId = document.querySelector(`${selectorBase}-editable-organism-id`).value;
+            const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
                 const {data} = await axios.post('./cgi/save_genecart_changes.cgi', convertToFormData({
@@ -172,46 +172,46 @@ const addGeneCollectionEventListeners = () => {
                     'ldesc': newLdesc || ""
                 }));
 
-                createToast("Gene collection changes saved", "is-success");
+                createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
                 logErrorInConsole(error);
-                createToast("Failed to save gene collection changes");
+                createToast("Failed to save gene list changes");
                 return;
             } finally {
                 document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
             }
 
             // Update the UI for the new values
-            document.querySelector(`${selectorBase}_editable_visibility`).dataset.isPublic = newVisibility;
+            document.querySelector(`${selectorBase}-editable-visibility`).dataset.isPublic = newVisibility;
             if (newVisibility) {
-                document.querySelector(`${selectorBase}_display_visibility`).textContent = "Public gene collection";
-                document.querySelector(`${selectorBase}_table_visibility`).textContent = "Public";
-                document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-danger");
-                document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-light", "is-primary");
-                document.querySelector(`${selectorBase}_table_visibility`).classList.remove("has-background-danger");
-                document.querySelector(`${selectorBase}_table_visibility`).classList.add("has-background-primary-light");
+                document.querySelector(`${selectorBase}-display-visibility`).textContent = "Public gene list";
+                document.querySelector(`${selectorBase}-table-visibility`).textContent = "Public";
+                document.querySelector(`${selectorBase}-display-visibility`).classList.remove("is-danger");
+                document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-light", "is-primary");
+                document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-danger");
+                document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-primary-light");
 
             } else {
-                document.querySelector(`${selectorBase}_display_visibility`).textContent = "Private gene collection";
-                document.querySelector(`${selectorBase}_table_visibility`).textContent = "Private";
-                document.querySelector(`${selectorBase}_display_visibility`).classList.remove("is-light", "is-primary");
-                document.querySelector(`${selectorBase}_display_visibility`).classList.add("is-danger");
-                document.querySelector(`${selectorBase}_table_visibility`).classList.remove("has-background-primary-light");
-                document.querySelector(`${selectorBase}_table_visibility`).classList.add("has-background-danger");
+                document.querySelector(`${selectorBase}-display-visibility`).textContent = "Private gene list";
+                document.querySelector(`${selectorBase}-table-visibility`).textContent = "Private";
+                document.querySelector(`${selectorBase}-display-visibility`).classList.remove("is-light", "is-primary");
+                document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-danger");
+                document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-primary-light");
+                document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-danger");
             }
 
-            document.querySelector(`${selectorBase}_editable_title`).dataset.originalVal = newTitle;
-            document.querySelector(`${selectorBase}_display_title`).textContent = newTitle;
-            document.querySelector(`${selectorBase}_table_title`).textContent = newTitle;
+            document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal = newTitle;
+            document.querySelector(`${selectorBase}-display-title`).textContent = newTitle;
+            document.querySelector(`${selectorBase}-table-title`).textContent = newTitle;
 
-            document.querySelector(`${selectorBase}_editable_ldesc`).dataset.originalVal = newLdesc;
-            document.querySelector(`${selectorBase}_display_ldesc`).textContent = newLdesc || "No description entered";;
+            document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal = newLdesc;
+            document.querySelector(`${selectorBase}-display-ldesc`).textContent = newLdesc || "No description entered";;
 
-            document.querySelector(`${selectorBase}_display_organism`).textContent =
-                document.querySelector(`${selectorBase}_editable_organism_id > option[value='${newOrgId}']`).textContent;
-            document.querySelector(`${selectorBase}_table_organism`).textContent = document.querySelector(`${selectorBase}_display_organism`).textContent;
-            document.querySelector(`${selectorBase}_editable_organism_id`).dataset.originalVal = newOrgId;
+            document.querySelector(`${selectorBase}-display-organism`).textContent =
+                document.querySelector(`${selectorBase}-editable-organism-id > option[value='${newOrgId}']`).textContent;
+            document.querySelector(`${selectorBase}-table-organism`).textContent = document.querySelector(`${selectorBase}-display-organism`).textContent;
+            document.querySelector(`${selectorBase}-editable-organism-id`).dataset.originalVal = newOrgId;
 
             // Put interface back to view mode.
             toggleEditableMode(true, selectorBase);
@@ -219,16 +219,16 @@ const addGeneCollectionEventListeners = () => {
         });
     }
 
-    // Toggle editable mode when edit button is clicked for a gene collection
+    // Toggle editable mode when edit button is clicked for a gene list
     for (const classElt of document.getElementsByClassName("js-edit-gc")) {
         classElt.addEventListener("click", async (e) => {
 
             const gcId = e.currentTarget.dataset.gcId;
-            const selectorBase = `#result_gc_id_${gcId}`;
+            const selectorBase = `#result-gc-id-${gcId}`;
 
             // copy the organism selection list for this row
-            const editableOrganismIdElt = document.querySelector(`${selectorBase}_editable_organism_id`);
-            editableOrganismIdElt.innerHTML = document.getElementById("new_collection_organism_id").innerHTML;
+            const editableOrganismIdElt = document.querySelector(`${selectorBase}-editable-organism-id`);
+            editableOrganismIdElt.innerHTML = document.getElementById("new-list-organism-id").innerHTML;
 
             // Remove the "select an organism" option
             editableOrganismIdElt.removeChild(editableOrganismIdElt.firstChild);
@@ -236,7 +236,7 @@ const addGeneCollectionEventListeners = () => {
             // set the current value as selected
             editableOrganismIdElt.value = editableOrganismIdElt.dataset.originalVal;
 
-            const editableVisibilityElt = document.querySelector(`${selectorBase}_editable_visibility`);
+            const editableVisibilityElt = document.querySelector(`${selectorBase}-editable-visibility`);
 
             const isPublic = parseBool(editableVisibilityElt.dataset.isPublic);
 
@@ -260,82 +260,82 @@ const addGeneCollectionEventListeners = () => {
     // Redirect to gene expression search
     for (const classElt of document.getElementsByClassName("js-view-gc")) {
         classElt.addEventListener("click", (e) => {
-            window.location = `./p?c=${e.currentTarget.value}`;
+            // ! Currently redirects to blank page
+            window.open(`./p?c=${e.currentTarget.value}`, '_blank');
         });
     }
 }
 
 /**
- * Adds gene collection display elements to DOM.
- * @param {string} geneCollectionId - The ID of the gene collection.
- * @param {string} gctype - The type of gene collection.
+ * Adds gene list display elements to DOM.
+ * @param {string} geneListId - The ID of the gene list.
+ * @param {string} gctype - The type of gene list.
  * @param {string} shareId - The ID of the share.
  * @param {number} geneCount - The number of genes.
  */
-const addPreviewGenesToGeneCollection = (geneCollectionId, gctype, shareId, geneCount) => {
-    const geneCollectionPreviewGenesContainer = document.getElementById(`${geneCollectionId}_preview_genes_container`);
+const addPreviewGenesToGeneList = (geneListId, gctype, shareId, geneCount) => {
+    const geneListPreviewGenesContainer = document.getElementById(`${geneListId}-preview-genes-container`);
     const button = document.createElement('button');
     button.className = 'button is-small is-dark is-outlined';
-    button.title = 'Show gene collection';
-    button.dataset.gcId = geneCollectionId;
+    button.title = 'Show gene list';
+    button.dataset.gcId = geneListId;
     button.dataset.gcShareId = shareId;
     button.innerHTML = `<span class="icon is-small"><i class="mdi mdi-format-list-bulleted"></i></span>`;
 
+    const elt = document.createElement("span");
+    elt.id = `btn-gc-${geneListId}-text`;
+    elt.dataset.offState = elt.textContent
+    button.append(elt);
+
     if (gctype === "weighted-list") {
         button.classList.add("js-gc-weighted-gene-list-toggle");
-        const elt = document.createElement("span");
-        elt.id = `btn_gc_${geneCollectionId}_text`;
+
         elt.textContent = `Info`;
-        elt.dataset.offState = elt.textContent
-        button.append(elt);
     } else if (gctype === "unweighted-list") {
         button.classList.add("js-gc-unweighted-gene-list-toggle");
-        const elt = document.createElement("span");
-        elt.id = `btn_gc_${geneCollectionId}_text`;
+
         elt.textContent = `${geneCount} genes`;
-        elt.dataset.offState = elt.textContent
-        button.append(elt);
     } else if (gctype === "labeled-list") {
         // Not implemented yet
         button.classList.add("js-gc-labeled-gene-list-toggle");
     } else {
-        throw Error(`Invalid gene collection type: ${gctype}`);
+        throw Error(`Invalid gene list type: ${gctype}`);
     }
 
-    geneCollectionPreviewGenesContainer.append(button);
+    geneListPreviewGenesContainer.append(button);
 
 }
 
 /**
- * Adds public/private visibility information to a gene collection display container in the DOM.
- * @param {string} geneCollectionId - The ID of the gene collection display container.
- * @param {boolean} isPublic - A boolean indicating whether the gene collection is public or private.
+ * Adds public/private visibility information to a gene list display container in the DOM.
+ * @param {string} geneListId - The ID of the gene list display container.
+ * @param {boolean} isPublic - A boolean indicating whether the gene list is public or private.
  * @returns {void}
  */
-const addVisibilityInfoToGeneCollection = (geneCollectionId, isPublic) => {
+const addVisibilityInfoToGeneList = (geneListId, isPublic) => {
 
-    // add gene collection public/private info to DOM
-    const geneCollectionDisplayContainer = document.getElementById(`${geneCollectionId}_display_visibility`);
-    const geneCollectionDisplaySpan = document.createElement("span");
-    geneCollectionDisplaySpan.classList.add("tag");
-    geneCollectionDisplaySpan.id = `result_gc_id_${geneCollectionId}_display_visibility`;
-    const geneCollectionTableVisibility = document.getElementById(`result_gc_id_${geneCollectionId}_table_visibility`);
+    // add gene list public/private info to DOM
+    const geneListDisplayContainer = document.getElementById(`${geneListId}-display-visibility`);
+    const geneListDisplaySpan = document.createElement("span");
+    geneListDisplaySpan.classList.add("tag");
+    geneListDisplaySpan.id = `result-gc-id-${geneListId}-display-visibility`;
+    const geneListTableVisibility = document.getElementById(`result-gc-id-${geneListId}-table-visibility`);
 
     if (isPublic) {
-        geneCollectionDisplaySpan.classList.add("is-primary", "is-light");
-        geneCollectionDisplaySpan.textContent = "Public gene collection";
-        geneCollectionTableVisibility.classList.add("has-background-primary-light");
-        geneCollectionTableVisibility.textContent = "Public";
+        geneListDisplaySpan.classList.add("is-primary", "is-light");
+        geneListDisplaySpan.textContent = "Public gene list";
+        geneListTableVisibility.classList.add("has-background-primary-light");
+        geneListTableVisibility.textContent = "Public";
     } else {
-        geneCollectionDisplaySpan.classList.add("is-danger");
-        geneCollectionDisplaySpan.textContent = "Private gene collection";
-        geneCollectionTableVisibility.classList.add("has-background-danger");
-        geneCollectionTableVisibility.textContent = "Private";
+        geneListDisplaySpan.classList.add("is-danger");
+        geneListDisplaySpan.textContent = "Private gene list";
+        geneListTableVisibility.classList.add("has-background-danger");
+        geneListTableVisibility.textContent = "Private";
     }
-    geneCollectionDisplayContainer.appendChild(geneCollectionDisplaySpan);
+    geneListDisplayContainer.appendChild(geneListDisplaySpan);
 
     // Toggle switch (public is checked, private is unchecked)
-    const visibilitySwitch = document.getElementById(`result_gc_id_${geneCollectionId}_editable_visibility`);
+    const visibilitySwitch = document.getElementById(`result-gc-id-${geneListId}-editable-visibility`);
 
     visibilitySwitch.addEventListener("change", (e) => {
         const isPublic = e.currentTarget.checked;
@@ -424,35 +424,35 @@ const createActionTooltips = (referenceElement) => {
 }
 
 /**
- * Creates a confirmation popover for deleting a gene collection.
+ * Creates a confirmation popover for deleting a gene list.
  */
 const createDeleteConfirmationPopover = () => {
     const deleteButtons = document.getElementsByClassName("js-delete-gc");
     for (const button of deleteButtons) {
         button.addEventListener('click', (e) => {
             // remove existing popovers
-            const existingPopover = document.getElementById('delete_gc_popover');
+            const existingPopover = document.getElementById('delete-gc-popover');
             if (existingPopover) {
                 existingPopover.remove();
             }
 
             // Create popover content
             const popoverContent = document.createElement('article');
-            popoverContent.id = 'delete_gc_popover';
+            popoverContent.id = 'delete-gc-popover';
             popoverContent.classList.add("message", "is-danger");
             popoverContent.setAttribute("role", "tooltip");
             popoverContent.innerHTML = `
                 <div class='message-header'>
-                    <p>Remove collection</p>
+                    <p>Remove list</p>
                 </div>
                 <div class='message-body'>
-                    <p>Are you sure you want to delete this gene collection?</p>
+                    <p>Are you sure you want to delete this gene list?</p>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
-                            <button id='confirm_gc_delete' class='button is-danger'>Delete</button>
+                            <button id='confirm-gc-delete' class='button is-danger'>Delete</button>
                         </p>
                         <p class="control">
-                            <button id='cancel_gc_delete' class='button' value='cancel_delete'>Cancel</button>
+                            <button id='cancel-gc-delete' class='button' value='cancel_delete'>Cancel</button>
                         </p>
                     </div>
                 </div>
@@ -503,16 +503,16 @@ const createDeleteConfirmationPopover = () => {
             // Show popover
             document.body.appendChild(popoverContent);
 
-            // Store the gene collection ID to delete
+            // Store the gene list ID to delete
             const gcIdToDelete = e.currentTarget.value;
 
             // Add event listener to cancel button
-            document.getElementById('cancel_gc_delete').addEventListener('click', () => {
+            document.getElementById('cancel-gc-delete').addEventListener('click', () => {
                 popoverContent.remove();
             });
 
             // Add event listener to confirm button
-            document.getElementById('confirm_gc_delete').addEventListener('click', async () => {
+            document.getElementById('confirm-gc-delete').addEventListener('click', async () => {
 
                 try {
                     const {data} = await axios.post('./cgi/remove_gene_cart.cgi', convertToFormData({
@@ -521,12 +521,12 @@ const createDeleteConfirmationPopover = () => {
                     }));
 
                     if (data['success'] == 1) {
-                        const resultElement = document.getElementById(`result_gc_id_${gcIdToDelete}`);
+                        const resultElement = document.getElementById(`result-gc-id-${gcIdToDelete}`);
                         resultElement.style.transition = 'opacity 1s';
                         resultElement.style.opacity = 0;
                         resultElement.remove();
 
-                        createToast("Gene collection deleted", "is-success");
+                        createToast("Gene list deleted", "is-success");
 
                         // This can affect page counts, so we need to re-run the search
                         submitSearch();
@@ -536,7 +536,7 @@ const createDeleteConfirmationPopover = () => {
                     }
                 } catch (error) {
                     logErrorInConsole(error);
-                    createToast("Failed to delete gene collection");
+                    createToast("Failed to delete gene list");
                 } finally {
                     popoverContent.remove();
                 }
@@ -581,13 +581,13 @@ const createPaginationEllipsis = () => {
 }
 
 /**
- * Creates an unweighted gene collection table.
+ * Creates an unweighted gene list table.
  *
  * @param {HTMLElement} infoContainer - The container element where the table will be appended.
  * @param {Object} data - The gene information data.
  * @param {Object} data.gene_info - The gene information object. The keys are Ensembl IDs and the values are gene symbols and descriptions.
  */
-const createUnweightedGeneCollectionTable = (infoContainer, data) => {
+const createUnweightedGeneListTable = (infoContainer, data) => {
     const table = document.createElement("table");
     table.classList.add("table", "is-narrow", "is-hoverable", "is-fullwidth");
     infoContainer.appendChild(table);
@@ -644,15 +644,15 @@ const createUnweightedGeneCollectionTable = (infoContainer, data) => {
 }
 
 /**
- * Creates a preview of a weighted gene collection.
+ * Creates a preview of a weighted gene list.
  *
- * @param {HTMLElement} infoContainer - The container element where the gene collection preview will be appended.
- * @param {Object} data - The data object containing information about the gene collection.
- * @param {number} data.num_genes - The number of genes in the collection.
- * @param {string[]} data.weights - The names of the weights in the gene collection.
+ * @param {HTMLElement} infoContainer - The container element where the gene list preview will be appended.
+ * @param {Object} data - The data object containing information about the gene list.
+ * @param {number} data.num_genes - The number of genes in the list.
+ * @param {string[]} data.weights - The names of the weights in the gene list.
  */
-const createWeightedGeneCollectionPreview = (infoContainer, data) => {
-    // List the number of genes as well as the names of weights in the gene collection
+const createWeightedGeneListPreview = (infoContainer, data) => {
+    // List the number of genes as well as the names of weights in the gene list
     const geneCount = data.num_genes;
     const weights = data.weights;
 
@@ -672,13 +672,13 @@ const createWeightedGeneCollectionPreview = (infoContainer, data) => {
  * Fetches the members of a gene cart.
  * @param {string} geneCartId - The ID of the gene cart.
  * @returns {Promise<Array<string>>} - A promise that resolves to an array of gene symbols.
- * @throws {Error} - If the gene collection members cannot be fetched.
+ * @throws {Error} - If the gene list members cannot be fetched.
  */
 const fetchGeneCartMembers = async (geneCartId) => {
     try {
         const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
         if (!success) {
-            throw new Error("Could not fetch gene collection members.");
+            throw new Error("Could not fetch gene list members.");
         }
         return gene_symbols;
     } catch (error) {
@@ -688,15 +688,15 @@ const fetchGeneCartMembers = async (geneCartId) => {
     }
 }
 
-// Callbacks after attempting to save a gene collection
-const geneCollectionFailure = (gc, message) => {
+// Callbacks after attempting to save a gene list
+const geneListFailure = (gc, message) => {
     logErrorInConsole(message);
-    createToast("Failed to save gene collection");
+    createToast("Failed to save gene list");
 }
 
-const geneCollectionSaved = (gc) => {
-    document.getElementById("create_new_gene_collection").click(); // resets form also
-    createToast("Gene collection saved", "is-success");
+const geneListSaved = (gc) => {
+    document.getElementById("create-new-gene-list").click(); // resets form also
+    createToast("Gene list saved", "is-success");
     submitSearch();
 }
 
@@ -708,28 +708,28 @@ const geneCollectionSaved = (gc) => {
 const loadOrganismList = async () => {
     try {
         const {data} = await axios.get('./cgi/get_organism_list.cgi');
-        const organismChoices = document.getElementById("organism_choices");    // <ul> element
+        const organismChoices = document.getElementById("organism-choices");    // <ul> element
         for (const organism of data.organisms) {
             const li = document.createElement("li");
             li.dataset.dbval = organism.id;
             li.textContent = organism.label;
             organismChoices.appendChild(li);
         }
-        const newCollectionOrganismSelect = document.getElementById("new_collection_organism_id");    // <select> element
-        newCollectionOrganismSelect.innerHTML = "";
+        const newListOrganismSelect = document.getElementById("new-list-organism-id");    // <select> element
+        newListOrganismSelect.innerHTML = "";
 
         for (const organism of data.organisms) {
             const option = document.createElement("option");
             option.value = organism.id;
             option.textContent = organism.label;
-            newCollectionOrganismSelect.appendChild(option);
+            newListOrganismSelect.appendChild(option);
         }
         // Add default "select an organism" option
         const defaultOption = document.createElement("option");
         defaultOption.value = "";
         defaultOption.textContent = "Select an organism";
         defaultOption.selected = true;
-        newCollectionOrganismSelect.prepend(defaultOption);
+        newListOrganismSelect.prepend(defaultOption);
 
     } catch (error) {
         logErrorInConsole(error);
@@ -759,12 +759,12 @@ const parseBool = (boolStr) => {
 const processSearchResults = (data) => {
 
 
-    const resultsContainer = document.getElementById("results_container");
+    const resultsContainer = document.getElementById("results-container");
 
     // If there are no results, display a message
     if (data.gene_carts.length === 0) {
         const noResultsMessage = document.createElement("p");
-        noResultsMessage.id = "no_results_message";
+        noResultsMessage.id = "no-results-message";
 
         noResultsMessage.className = "has-text-centered";
         noResultsMessage.textContent = "No results found.";
@@ -772,16 +772,16 @@ const processSearchResults = (data) => {
         return;
     }
 
-    const tableResultsBody = document.querySelector("#results_table tbody");
-    const tableTamplate = document.getElementById("results_table_view")
+    const tableResultsBody = document.querySelector("#results-table tbody");
+    const tableTamplate = document.getElementById("results-table-view")
 
-    const resultsListDiv = document.getElementById("results_list_div");
-    const listTemplate = document.getElementById("results_list_view");
+    const resultsListDiv = document.getElementById("results-list-div");
+    const listTemplate = document.getElementById("results-list-view");
 
     // data.gene_carts is a list of JSON strings
     for (const gcString of data.gene_carts) {
         const gc = JSON.parse(gcString);
-        const geneCollectionId = gc.id;
+        const geneListId = gc.id;
         const gctype = gc.gctype;
         let gctypeLabel;
         switch (gc.gctype) {
@@ -795,7 +795,7 @@ const processSearchResults = (data) => {
                 gctypeLabel = "Labeled";
                 break;
             default:
-                throw Error(`Invalid gene collection type: ${gc.gctype}`);
+                throw Error(`Invalid gene list type: ${gc.gctype}`);
         }
         const label = gc.label;
         const longDesc = gc.ldesc || "";
@@ -817,9 +817,9 @@ const processSearchResults = (data) => {
         const tableResultsView = tableTamplate.content.cloneNode(true)
 
         // Set properties for multiple elements
-        setElementProperties(tableResultsView, ".js-display-title", { id: `result_gc_id_${geneCollectionId}_table_title`, textContent: label });
-        setElementProperties(tableResultsView, ".js-display-visibility", { id: `result_gc_id_${geneCollectionId}_table_visibility` });
-        setElementProperties(tableResultsView, ".js-display-organism", { id: `result_gc_id_${geneCollectionId}_table_organism`, textContent: organism });
+        setElementProperties(tableResultsView, ".js-display-title", { id: `result-gc-id-${geneListId}-table-title`, textContent: label });
+        setElementProperties(tableResultsView, ".js-display-visibility", { id: `result-gc-id-${geneListId}-table-visibility` });
+        setElementProperties(tableResultsView, ".js-display-organism", { id: `result-gc-id-${geneListId}-table-organism`, textContent: organism });
         setElementProperties(tableResultsView, ".js-display-owner", { textContent: userName });
         setElementProperties(tableResultsView, ".js-display-date-added", { textContent: shortDateAdded });
         setElementProperties(tableResultsView, ".js-display-gctype", { textContent: gctypeLabel });
@@ -834,19 +834,19 @@ const processSearchResults = (data) => {
         const listResultsView = listTemplate.content.cloneNode(true)
 
         // Set properties for multiple elements
-        setElementProperties(listResultsView, ".js-gc-list-element", { id: `result_gc_id_${geneCollectionId}`, dataset: { gcId: geneCollectionId } });
+        setElementProperties(listResultsView, ".js-gc-list-element", { id: `result-gc-id-${geneListId}`, dataset: { gcId: geneListId } });
         // title section
-        setElementProperties(listResultsView, ".js-display-title p", { id: `result_gc_id_${geneCollectionId}_display_title`, textContent: label });
-        setElementProperties(listResultsView, ".js-editable-title input", { id: `result_gc_id_${geneCollectionId}_editable_title`, dataset: { originalVal: label }, value: label });
-        setElementProperties(listResultsView, ".js-expand-box", { dataset: { gcId: geneCollectionId } });
+        setElementProperties(listResultsView, ".js-display-title p", { id: `result-gc-id-${geneListId}-display-title`, textContent: label });
+        setElementProperties(listResultsView, ".js-editable-title input", { id: `result-gc-id-${geneListId}-editable-title`, dataset: { originalVal: label }, value: label });
+        setElementProperties(listResultsView, ".js-expand-box", { dataset: { gcId: geneListId } });
         // visibility/other metadata section
-        setElementProperties(listResultsView, ".js-display-visibility", { id: `${geneCollectionId}_display_visibility` });
-        setElementProperties(listResultsView, ".js-editable-visibility input", { id: `result_gc_id_${geneCollectionId}_editable_visibility`, checked: isPublic, dataset: { isPublic } });
-        setElementProperties(listResultsView, ".js-editable-visibility label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_visibility`, textContent: isPublic ? "Public" : "Private" });
+        setElementProperties(listResultsView, ".js-display-visibility", { id: `${geneListId}-display-visibility` });
+        setElementProperties(listResultsView, ".js-editable-visibility input", { id: `result-gc-id-${geneListId}-editable-visibility`, checked: isPublic, dataset: { isPublic } });
+        setElementProperties(listResultsView, ".js-editable-visibility label", { htmlFor: `result-gc-id-${geneListId}-editable-visibility`, textContent: isPublic ? "Public" : "Private" });
         // organism section
-        setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `result_gc_id_${geneCollectionId}_display_organism`, textContent: organism });
-        setElementProperties(listResultsView, ".js-editable-organism select", { id: `result_gc_id_${geneCollectionId}_editable_organism_id`, dataset: { originalVal: organismId }, value: organismId });
-        setElementProperties(listResultsView, ".js-editable-organism label", { htmlFor: `result_gc_id_${geneCollectionId}_editable_organism_id` });
+        setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `result-gc-id-${geneListId}-display-organism`, textContent: organism });
+        setElementProperties(listResultsView, ".js-editable-organism select", { id: `result-gc-id-${geneListId}-editable-organism-id`, dataset: { originalVal: organismId }, value: organismId });
+        setElementProperties(listResultsView, ".js-editable-organism label", { htmlFor: `result-gc-id-${geneListId}-editable-organism-id` });
         // owner section
         setElementProperties(listResultsView, ".js-display-owner span:last-of-type", { textContent: userName });
         setElementProperties(listResultsView, ".js-editable-owner input", { value: userName });
@@ -855,48 +855,48 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-editable-date-added input", { value: dateAdded });
         // action buttons section
         setElementProperties(listResultsView, ".js-view-gc", { value: shareId });
-        setElementProperties(listResultsView, ".js-delete-gc", { value: geneCollectionId, dataset: { isOwner } });
-        setElementProperties(listResultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneCollectionId, gcType: gctype } });
-        setElementProperties(listResultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneCollectionId } });
-        setElementProperties(listResultsView, ".js-edit-gc", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
-        setElementProperties(listResultsView, ".js-edit-gc-save", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
-        setElementProperties(listResultsView, ".js-edit-gc-cancel", { value: geneCollectionId, dataset: { gcId: geneCollectionId } });
-        // gene collection type section
+        setElementProperties(listResultsView, ".js-delete-gc", { value: geneListId, dataset: { isOwner } });
+        setElementProperties(listResultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneListId, gcType: gctype } });
+        setElementProperties(listResultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneListId } });
+        setElementProperties(listResultsView, ".js-edit-gc", { value: geneListId, dataset: { gcId: geneListId } });
+        setElementProperties(listResultsView, ".js-edit-gc-save", { value: geneListId, dataset: { gcId: geneListId } });
+        setElementProperties(listResultsView, ".js-edit-gc-cancel", { value: geneListId, dataset: { gcId: geneListId } });
+        // gene list type section
         setElementProperties(listResultsView, ".js-display-gctype span:last-of-type", { textContent: gctypeLabel });
         setElementProperties(listResultsView, ".js-editable-gctype input", { value: gctypeLabel });
         // long description section
-        setElementProperties(listResultsView, ".js-display-ldesc", { id: `result_gc_id_${geneCollectionId}_display_ldesc_container` });
-        setElementProperties(listResultsView, ".js-editable-ldesc textarea", { id: `result_gc_id_${geneCollectionId}_editable_ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
+        setElementProperties(listResultsView, ".js-display-ldesc", { id: `result-gc-id-${geneListId}-display-ldesc-container` });
+        setElementProperties(listResultsView, ".js-editable-ldesc textarea", { id: `result-gc-id-${geneListId}-editable-ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
         // preview genes stuff
-        setElementProperties(listResultsView, ".js-preview-genes-button-container", { id: `${geneCollectionId}_preview_genes_container` });
-        setElementProperties(listResultsView, ".js-preview-genes-container", { id: `${geneCollectionId}_gene_container` });
+        setElementProperties(listResultsView, ".js-preview-genes-button-container", { id: `${geneListId}-preview-genes-container` });
+        setElementProperties(listResultsView, ".js-preview-genes-container", { id: `${geneListId}-gene-container` });
 
         // Append the cloned template to the results container
         resultsListDiv.appendChild(listResultsView);
 
         // EXTRA STUFF TO BOTH VIEWS
 
-        addVisibilityInfoToGeneCollection(geneCollectionId, isPublic);
+        addVisibilityInfoToGeneList(geneListId, isPublic);
 
-        addPreviewGenesToGeneCollection(geneCollectionId, gctype, shareId, geneCount);
+        addPreviewGenesToGeneList(geneListId, gctype, shareId, geneCount);
 
-        // Add weighted or unweighted gene collection to DOM
-        const geneCollectionIdContainer = document.getElementById(`${geneCollectionId}_gene_container`);
+        // Add weighted or unweighted gene list to DOM
+        const geneListIdContainer = document.getElementById(`${geneListId}-gene-container`);
         const geneInfoContainer = document.createElement("div");
-        geneInfoContainer.id = `gc_${geneCollectionId}_gene_info`;
-        geneCollectionIdContainer.appendChild(geneInfoContainer);
+        geneInfoContainer.id = `gc-${geneListId}-gene-info`;
+        geneListIdContainer.appendChild(geneInfoContainer);
 
         // Add ldesc if it exists
-        const ldescContainer = document.getElementById(`result_gc_id_${geneCollectionId}_display_ldesc_container`);
+        const ldescContainer = document.getElementById(`result-gc-id-${geneListId}-display-ldesc-container`);
         const ldescElt = document.createElement("p");
-        ldescElt.id = `result_gc_id_${geneCollectionId}_display_ldesc`;
+        ldescElt.id = `result-gc-id-${geneListId}-display-ldesc`;
         ldescElt.textContent = longDesc || "No description entered";
         ldescContainer.appendChild(ldescElt);
 
     }
 
     // Hide some buttons if user is not owner
-    updateGeneCollectionListButtons();
+    updateGeneListListButtons();
 
     for (const tooltipElt of document.getElementsByClassName("tooltip")) {
         // Remove any existing tooltips
@@ -920,17 +920,17 @@ const processSearchResults = (data) => {
         }
     }
 
-    // Create tooltips for gene collection view buttons
+    // Create tooltips for gene list view buttons
     const viewBtns = document.getElementsByClassName("js-view-btn");
     for (const classElt of viewBtns) {
         applyTooltip(classElt, createActionTooltips(classElt), "bottom");
     }
 
-    // Initiialize delete gene collection popover for each delete button
+    // Initiialize delete gene list popover for each delete button
     createDeleteConfirmationPopover();
 
-    // All event listeners for all gene collection elements
-    addGeneCollectionEventListeners();
+    // All event listeners for all gene list elements
+    addGeneListEventListeners();
 }
 
 /**
@@ -943,18 +943,18 @@ const processSearchResults = (data) => {
  * Finally, adds the "is-hidden" class to the form and pasted genes container, and sets isAddFormOpen to false.
  */
 const resetAddForm = () => {
-    document.getElementById("btn_new_collection_save").classList.remove("is-loading");
+    document.getElementById("btn-new-list-save").classList.remove("is-loading");
 
-    document.getElementById("new_collection_label").value = "";
-    document.getElementById("new_collection_ldesc").value = "";
-    document.getElementById("new_collection_pasted_genes").value = "";
-    document.getElementById("new_collection_file").value = "";
-    document.getElementById("new_collection_file_name").value = "";
+    document.getElementById("new-list-label").value = "";
+    document.getElementById("new-list-ldesc").value = "";
+    document.getElementById("new-list-pasted-genes").value = "";
+    document.getElementById("new-list-file").value = "";
+    document.getElementById("new-list-file-name").value = "";
 
-    document.getElementById("new_collection_visibility").checked = false;
-    document.getElementById("new_collection_visibility").closest(".field").querySelector("label").textContent = "Private";
+    document.getElementById("new-list-visibility").checked = false;
+    document.getElementById("new-list-visibility").closest(".field").querySelector("label").textContent = "Private";
 
-    for (const classElt of document.getElementsByClassName("js-new-collection-header")) {
+    for (const classElt of document.getElementsByClassName("js-new-list-header")) {
         classElt.classList.remove('has-background-primary', 'has-text-white');
         classElt.classList.add("has-text-dark");
     }
@@ -964,22 +964,20 @@ const resetAddForm = () => {
     }
 
     // Currently this is not implemented yet
-    document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-labeled-list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
+    document.getElementById("new-list-upload-c").classList.remove("is-hidden");
 
-    document.getElementById("new_collection_form_c").classList.add("is-hidden");
-    document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
-    document.getElementById("new_collection_file_name").classList.add("is-hidden");
+    document.getElementById("new-list-form-c").classList.add("is-hidden");
+    document.getElementById("new-list-pasted-genes-c").classList.add("is-hidden");
+    document.getElementById("new-list-file-name").classList.add("is-hidden");
 
-    for (const classElt of document.querySelectorAll("#new_collection_form_c .js-validation-help")) {
-        console.log(classElt);
+    for (const classElt of document.querySelectorAll("#new-list-form-c .js-validation-help")) {
         classElt.remove();
     }
 
     // Remove all "is-danger" classes from form fields
-    for (const classElt of document.querySelectorAll("#new_collection_form_c .is-danger")) {
-        console.log(classElt);
+    for (const classElt of document.querySelectorAll("#new-list-form-c .is-danger")) {
         classElt.classList.remove("is-danger");
     }
 
@@ -1030,16 +1028,16 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
             const button = e.currentTarget;
             const gcId = e.currentTarget.dataset.gcId;
             const shareId = e.currentTarget.dataset.gcShareId;
-            const geneCollectionIdContainer = document.getElementById(`${gcId}_gene_container`);
-            const previewText = document.getElementById(`btn_gc_${gcId}_text`)
+            const geneListIdContainer = document.getElementById(`${gcId}-gene-container`);
+            const previewText = document.getElementById(`btn-gc-${gcId}-text`)
 
             // Toggle gene container visibility
-            if (geneCollectionIdContainer.classList.contains("is-hidden")) {
+            if (geneListIdContainer.classList.contains("is-hidden")) {
                 button.classList.remove("is-outlined");
 
                 // If the preview table already exists, just show it
-                if (document.querySelector(`#gc_${gcId}_gene_info > .js-info-container`)) {
-                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
+                if (document.querySelector(`#gc-${gcId}-gene-info > .js-info-container`)) {
+                    geneListIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
 
                     button.querySelector("i").classList.add("mdi-eye-off");
                     button.querySelector("i").classList.remove("mdi-format-list-bulleted");
@@ -1061,11 +1059,11 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
 
                     const infoContainer = document.createElement("div");
                     infoContainer.classList.add("js-info-container");
-                    document.getElementById(`gc_${gcId}_gene_info`).appendChild(infoContainer);
+                    document.getElementById(`gc-${gcId}-gene-info`).appendChild(infoContainer);
 
                     handleData(infoContainer, data);
 
-                    geneCollectionIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
+                    geneListIdContainer.classList.remove("is-hidden");    // TODO: add animate CSS with fade in
 
                     button.querySelector("i").classList.add("mdi-eye-off");
                     button.querySelector("i").classList.remove("mdi-format-list-bulleted");
@@ -1073,14 +1071,14 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
 
                 } catch (error) {
                     logErrorInConsole(error);
-                    createToast("Failed to load gene collection preview")
+                    createToast("Failed to load gene list preview")
                 } finally {
                     button.classList.remove("is-loading");
                 }
 
                 return;
             }
-            geneCollectionIdContainer.classList.add("is-hidden");
+            geneListIdContainer.classList.add("is-hidden");
             button.classList.add("is-outlined");
             button.blur();
             button.querySelector("i").classList.remove("mdi-eye-off");
@@ -1094,13 +1092,13 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
 const setupPagination = (pagination) => {
 
         // Update result count and label
-        document.getElementById("result_count").textContent = pagination.total_results;
-        document.getElementById("result_label").textContent = pagination.total_results == 1 ? " result" : " results";
-        document.getElementById("gc_count_label_c").classList.remove("is-hidden");
+        document.getElementById("result-count").textContent = pagination.total_results;
+        document.getElementById("result-label").textContent = pagination.total_results == 1 ? " result" : " results";
+        document.getElementById("gc-count-label-c").classList.remove("is-hidden");
 
         const firstResult = pagination.total_results > 0 ? (pagination.current_page - 1) * resultsPerPage + 1 : 0;
         const lastResult = Math.min(pagination.current_page * resultsPerPage, pagination.total_results);
-        document.getElementById("result_range").textContent = `${firstResult} - ${lastResult}`;
+        document.getElementById("result-range").textContent = `${firstResult} - ${lastResult}`;
 
         // Update pagination buttons
         for (const classElt of document.getElementsByClassName("pagination")) {
@@ -1165,9 +1163,9 @@ const setupPagination = (pagination) => {
 
 
 /**
- * Displays an action note for a gene collection.
+ * Displays an action note for a gene list.
  *
- * @param {string} gcId - The ID of the gene collection.
+ * @param {string} gcId - The ID of the gene list.
  * @param {string} shareUrl - The URL to be copied to the clipboard.
  * @returns {void}
  */
@@ -1175,7 +1173,7 @@ const showGcActionNote = (gcId, shareUrl) => {
     // sanitize shareUrl
     shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    const noteSelector = `#result_gc_id_${gcId} span.js-gc-action-note`;
+    const noteSelector = `#result-gc-id-${gcId} span.js-gc-action-note`;
     const noteSelecterElt = document.querySelector(noteSelector);
 
     noteSelecterElt.innerHTML = copyToClipboard(shareUrl) ? "URL copied to clipboard" : `Failed to copy to clipboard. URL: ${shareUrl}`;
@@ -1188,7 +1186,7 @@ const showGcActionNote = (gcId, shareUrl) => {
 }
 
 /**
- * Submits a search for gene collections based on the user's search terms and filter options.
+ * Submits a search for gene lists based on the user's search terms and filter options.
  * @function
  * @returns {void}
  */
@@ -1200,39 +1198,39 @@ const submitSearch = async (page) => {
     }
 
     // Clear any existing results
-    const resultsListDiv = document.getElementById("results_list_div");
-    for (const elt of resultsListDiv.querySelectorAll(":not(#results_list_view)")) {
+    const resultsListDiv = document.getElementById("results-list-div");
+    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
         elt.remove()
     }
 
-    const resultsTableBody = document.querySelector("#results_table tbody");
-    for (const elt of resultsTableBody.querySelectorAll(":not(#results_table_view)")) {
+    const resultsTableBody = document.querySelector("#results-table tbody");
+    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
         elt.remove()
     }
 
     // remove "no results" message if it exists
-    if (document.getElementById("no_results_message")) {
-        document.getElementById("no_results_message").remove();
+    if (document.getElementById("no-results-message")) {
+        document.getElementById("no-results-message").remove();
     }
 
-    const searchTerms = document.getElementById("search_terms").value;
+    const searchTerms = document.getElementById("search-terms").value;
 
     // If this is the first time searching with terms, set the sort by to relevance
     if (searchTerms && firstSearch) {
-        document.getElementById("sort_by").value = 'relevance';
+        document.getElementById("sort-by").value = 'relevance';
         firstSearch = false;
     }
 
     const searchCriteria = {
         'session_id': CURRENT_USER.session_id,
         'search_terms': searchTerms,
-        'sort_by': document.getElementById("sort_by").value
+        'sort_by': document.getElementById("sort-by").value
     };
 
     // collect the filter options the user defined
-    searchCriteria.organism_ids = buildFilterString('controls_organism');
-    searchCriteria.date_added = buildFilterString('controls_date_added');
-    searchCriteria.ownership = buildFilterString('controls_ownership');
+    searchCriteria.organism_ids = buildFilterString('controls-organism');
+    searchCriteria.date_added = buildFilterString('controls-date-added');
+    searchCriteria.ownership = buildFilterString('controls-ownership');
     searchCriteria.limit = resultsPerPage;
     searchCriteria.page = page || 1;
 
@@ -1243,7 +1241,7 @@ const submitSearch = async (page) => {
         setupPagination(data.pagination);
     } catch (error) {
         logErrorInConsole(error);
-        createToast("Failed to search gene collections");
+        createToast("Failed to search gene lists");
     } finally {
         // show pagination
         for (const classElt of document.getElementsByClassName("pagination")) {
@@ -1266,11 +1264,11 @@ const toggleEditableMode = (hideEditable, selectorBase="") => {
 }
 
 /**
- * Updates the visibility of edit and delete buttons for each gene collection in the result list based on the current user's ID.
+ * Updates the visibility of edit and delete buttons for each gene list in the result list based on the current user's ID.
  * @function
  * @returns {void}
  */
-const updateGeneCollectionListButtons = () => {
+const updateGeneListListButtons = () => {
     const gcListElements = document.getElementsByClassName("js-gc-list-element");
 
     for (const classElt of gcListElements) {
@@ -1283,8 +1281,8 @@ const updateGeneCollectionListButtons = () => {
             deleteButton.parentElement.remove();    // remove .control element to prevent heavy line where button was
             editButton.parentElement.remove()
 
-            const geneCollectionId = classElt.dataset.gcId;
-            const selectorBase = `#result_gc_id_${geneCollectionId}`;
+            const geneListId = classElt.dataset.gcId;
+            const selectorBase = `#result-gc-id-${geneListId}`;
 
             // Delete all editable elements to prevent editing in the DOM
             for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
@@ -1298,7 +1296,7 @@ const updateGeneCollectionListButtons = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// User settings has no "active" state for the sidebar
-	document.querySelector("#header_bar .navbar-item").textContent = "Gene Collection Manager";
+	document.getElementById("page-header-label").textContent = "Gene List Manager";
 	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
@@ -1308,14 +1306,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const sessionId = CURRENT_USER.session_id;
 
 	if (! sessionId ) {
-        document.getElementById("not_logged_in_msg").classList.remove("is-hidden");
-        document.getElementById("create_new_gene_collection").classList.add("is-hidden");
-        document.getElementById("create_new_gene_collection").setAttribute("disabled", "disabled");
-        // only show public gene collections option
-        for (const elt of document.querySelectorAll("#controls_ownership li:not([data-dbval='public'])")) {
+        document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
+        document.getElementById("create-new-gene-list").classList.add("is-hidden");
+        document.getElementById("create-new-gene-list").setAttribute("disabled", "disabled");
+        // only show public gene lists option
+        for (const elt of document.querySelectorAll("#controls-ownership li:not([data-dbval='public'])")) {
             elt.remove();
         }
-        document.querySelector("#controls_ownership li[data-dbval='public']").classList.add("js-selected");
+        document.querySelector("#controls-ownership li[data-dbval='public']").classList.add("js-selected");
     }
 
     await loadOrganismList();
@@ -1363,8 +1361,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 };
 
-// validate that #new_collection_label input has a value
-document.getElementById("new_collection_label").addEventListener("blur", (e) => {
+// validate that #new-list-label input has a value
+document.getElementById("new-list-label").addEventListener("blur", (e) => {
     e.target.classList.remove("is-danger");
     // Remove small helper text under input
     const helperText = e.target.parentElement.querySelector("p.help");
@@ -1383,16 +1381,16 @@ document.getElementById("new_collection_label").addEventListener("blur", (e) => 
     e.target.parentElement.appendChild(newHelperElt);
 });
 
-document.getElementById("search_clear").addEventListener("click", () => {
-    document.getElementById("search_terms").value = "";
+document.getElementById("search-clear").addEventListener("click", () => {
+    document.getElementById("search-terms").value = "";
     submitSearch();
 });
 
-// Search for gene collections using the supplied search terms
-const searchTermsElt = document.getElementById("search_terms");
+// Search for gene lists using the supplied search terms
+const searchTermsElt = document.getElementById("search-terms");
 searchTermsElt.addEventListener("keyup", (event) => {
     const searchTerms = searchTermsElt.value;
-    const searchClearElt = document.getElementById("search_clear");
+    const searchClearElt = document.getElementById("search-clear");
     searchClearElt.classList.add("is-hidden");
     if (searchTerms) {
         searchClearElt.classList.remove("is-hidden");
@@ -1403,109 +1401,109 @@ searchTermsElt.addEventListener("keyup", (event) => {
 });
 
 // Changing sort by criteria should update the search results
-document.getElementById("sort_by").addEventListener("change", () => {
+document.getElementById("sort-by").addEventListener("change", () => {
     submitSearch();
 });
 
-const btnCreateCartToggle = document.getElementById("create_new_gene_collection");
+const btnCreateCartToggle = document.getElementById("create-new-gene-list");
 btnCreateCartToggle.addEventListener("click", () => {
-    const createCollectionContainer = document.getElementById("create_collection_container");
-    const gcViewport = document.getElementById("results_container");
-    const viewControls = document.getElementById("view_controls");
-    const newCartVisibility = document.getElementById("new_collection_visibility");
-    const belowPagination = document.getElementById("below_pagination_container");
+    const createListContainer = document.getElementById("create-list-container");
+    const gcViewport = document.getElementById("results-container");
+    const viewControls = document.getElementById("view-controls");
+    const newCartVisibility = document.getElementById("new-list-visibility");
+    const belowPagination = document.getElementById("below-pagination-container");
 
-    if (createCollectionContainer.classList.contains("is-hidden")) {
-        createCollectionContainer.classList.remove("is-hidden"); // TODO: Add animation with fade in/out
+    if (createListContainer.classList.contains("is-hidden")) {
+        createListContainer.classList.remove("is-hidden"); // TODO: Add animation with fade in/out
         gcViewport.classList.add("is-hidden");
         viewControls.classList.add("is-hidden");
         belowPagination.classList.add("is-hidden");
-        btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-undo-variant"></i></span> <span>Cancel new collection</span>`;
+        btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-undo-variant"></i></span> <span>Cancel new list</span>`;
         newCartVisibility.checked = false; // bootstrap toggle off
         newCartVisibility.closest(".field").querySelector("label").textContent = "Private";
         return;
     }
-    createCollectionContainer.classList.add("is-hidden");
+    createListContainer.classList.add("is-hidden");
     gcViewport.classList.remove("is-hidden");   // TODO: Add animation with fade in/out
     viewControls.classList.remove("is-hidden"); // TODO: Add animation with fade in/out
     belowPagination.classList.remove("is-hidden");
-    btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-plus"></i></span> <span>Create new gene collection</span>`;
+    btnCreateCartToggle.innerHTML =`<span class="icon"><i class="mdi mdi-plus"></i></span> <span>Create new gene list</span>`;
     resetAddForm();
 });
 
 // If an upload method is clicked, show the appropriate form and hide the others
-document.getElementById("btn_gc_paste_unweighted_list").addEventListener("click", () => {
-    document.getElementById("new_collection_unweighted_header").classList.add('has-background-primary', "has-text-white");
-    document.getElementById("new_collection_unweighted_header").classList.remove("has-text-dark");
+document.getElementById("btn-gc-paste-unweighted-list").addEventListener("click", () => {
+    document.getElementById("new-list-unweighted-header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new-list-unweighted-header").classList.remove("has-text-dark");
 
-    document.getElementById("btn_gc_upload_unweighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-unweighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-weighted-list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
-    document.getElementById("new_collection_pasted_genes_c").classList.remove("is-hidden");
+    document.getElementById("new-list-form-c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new-list-pasted-genes-c").classList.remove("is-hidden");
 
-    document.getElementById("new_collection_upload_c").classList.add("is-hidden");
+    document.getElementById("new-list-upload-c").classList.add("is-hidden");
 
-    document.getElementById("new_collection_upload_type").value = "pasted_genes";
+    document.getElementById("new-list-upload-type").value = "pasted_genes";
     isAddFormOpen = true;
 });
 
-document.getElementById("btn_gc_upload_unweighted_list").addEventListener("click", () => {
+document.getElementById("btn-gc-upload-unweighted-list").addEventListener("click", () => {
     if (isAddFormOpen) return;
-    document.getElementById("new_collection_unweighted_header").classList.add('has-background-primary', "has-text-white");
-    document.getElementById("new_collection_unweighted_header").classList.remove("has-text-dark");
+    document.getElementById("new-list-unweighted-header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new-list-unweighted-header").classList.remove("has-text-dark");
 
-    document.getElementById("btn_gc_paste_unweighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-paste-unweighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-weighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-labeled-list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new-list-form-c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
 
-    document.getElementById("new_collection_upload_type").value = "uploaded-unweighted";
-    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
+    document.getElementById("new-list-upload-type").value = "uploaded-unweighted";
+    document.getElementById("new-list-upload-c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
-document.getElementById("btn_gc_upload_weighted_list").addEventListener("click", () => {
+document.getElementById("btn-gc-upload-weighted-list").addEventListener("click", () => {
     if (isAddFormOpen) return;
-    document.getElementById("new_collection_weighted_header").classList.add('has-background-primary', "has-text-white");
-    document.getElementById("new_collection_weighted_header").classList.remove("has-text-dark");
+    document.getElementById("new-list-weighted-header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new-list-weighted-header").classList.remove("has-text-dark");
 
-    document.getElementById("btn_gc_paste_unweighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_unweighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_labeled_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-paste-unweighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-unweighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-labeled-list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new-list-form-c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
 
-    document.getElementById("new_collection_upload_type").value = "uploaded-weighted";
-    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
+    document.getElementById("new-list-upload-type").value = "uploaded-weighted";
+    document.getElementById("new-list-upload-c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
-document.getElementById("btn_gc_upload_labeled_list").addEventListener("click", () => {
+document.getElementById("btn-gc-upload-labeled-list").addEventListener("click", () => {
     if (isAddFormOpen) return;
-    document.getElementById("new_collection_labeled_header").classList.add('has-background-primary', "has-text-white");
-    document.getElementById("new_collection_labeled_header").classList.remove("has-text-dark");
+    document.getElementById("new-list-labeled-header").classList.add('has-background-primary', "has-text-white");
+    document.getElementById("new-list-labeled-header").classList.remove("has-text-dark");
 
-    document.getElementById("btn_gc_paste_unweighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_unweighted_list").setAttribute('disabled', 'disabled');
-    document.getElementById("btn_gc_upload_weighted_list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-paste-unweighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-unweighted-list").setAttribute('disabled', 'disabled');
+    document.getElementById("btn-gc-upload-weighted-list").setAttribute('disabled', 'disabled');
 
-    document.getElementById("new_collection_form_c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
+    document.getElementById("new-list-form-c").classList.remove("is-hidden");   // TODO: Add animation with fade in/out
 
-    document.getElementById("new_collection_upload_type").value = "uploaded-labeled";
-    document.getElementById("new_collection_upload_c").classList.remove("is-hidden");
+    document.getElementById("new-list-upload-type").value = "uploaded-labeled";
+    document.getElementById("new-list-upload-c").classList.remove("is-hidden");
     isAddFormOpen = true;
 });
 
 // If the cancel button is clicked, hide the form and show the upload buttons
-document.getElementById("btn_new_collection_cancel").addEventListener("click", () => {
-    document.getElementById("create_new_gene_collection").click();
-    document.getElementById("new_collection_pasted_genes_c").classList.add("is-hidden");
+document.getElementById("btn-new-list-cancel").addEventListener("click", () => {
+    document.getElementById("create-new-gene-list").click();
+    document.getElementById("new-list-pasted-genes-c").classList.add("is-hidden");
 });
 
 
-const btnNewCartSave = document.getElementById("btn_new_collection_save");
+const btnNewCartSave = document.getElementById("btn-new-list-save");
 btnNewCartSave.addEventListener("click", (e) => {
     // disable button and show indicator that it's loading
     btnNewCartSave.classList.add("is-loading");
@@ -1513,7 +1511,7 @@ btnNewCartSave.addEventListener("click", (e) => {
     let validationFailed = false;
 
     // check required fields
-    const newCartLabel = document.getElementById("new_collection_label");
+    const newCartLabel = document.getElementById("new-list-label");
     if (! newCartLabel.value) {
         newCartLabel.classList.add("is-danger");
         // Add small helper text under input
@@ -1526,7 +1524,7 @@ btnNewCartSave.addEventListener("click", (e) => {
         validationFailed = true;
     }
 
-    const newCartOrganism = document.getElementById("new_collection_organism_id");
+    const newCartOrganism = document.getElementById("new-list-organism-id");
     if (! newCartOrganism.value) {
         newCartOrganism.parentElement.classList.add("is-danger");
         // Add small helper text under input
@@ -1540,9 +1538,9 @@ btnNewCartSave.addEventListener("click", (e) => {
     }
 
     // Was file uploaded or genes pasted?
-    const uploadType = document.getElementById("new_collection_upload_type").value;
+    const uploadType = document.getElementById("new-list-upload-type").value;
     if (uploadType === "pasted_genes") {
-        const newCartPastedGenes = document.getElementById("new_collection_pasted_genes");
+        const newCartPastedGenes = document.getElementById("new-list-pasted-genes");
         if (! newCartPastedGenes.value) {
             newCartPastedGenes.classList.add("is-danger");
             // Add small helper text under input
@@ -1553,7 +1551,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             validationFailed = true;
         }
     } else if (["uploaded-unweighted", "uploaded-weighted", "uploaded-labeled"].includes(uploadType)) {
-        const newCartFile = document.getElementById("new_collection_file");
+        const newCartFile = document.getElementById("new-list-file");
         if (! newCartFile.value) {
             newCartFile.parentElement.parentElement.classList.add("is-danger");
             // Add small helper text under input
@@ -1570,59 +1568,59 @@ btnNewCartSave.addEventListener("click", (e) => {
     }
 
     // Remove all "is-danger" classes from form fields
-    for (const classElt of document.querySelectorAll("#new_collection_form_c .js-validation-help")) {
+    for (const classElt of document.querySelectorAll("#new-list-form-c .js-validation-help")) {
         classElt.remove();
     }
 
     // Remove all "is-danger" classes from form fields
-    for (const classElt of document.querySelectorAll("#new_collection_form_c .is-danger")) {
+    for (const classElt of document.querySelectorAll("#new-list-form-c .is-danger")) {
         classElt.classList.remove("is-danger");
     }
 
     // Passed to CGI script as 1 or 0
-    const isPublic = document.getElementById("new_collection_visibility").checked ? 1 : 0;
+    const isPublic = document.getElementById("new-list-visibility").checked ? 1 : 0;
 
     const payload = {
         'new_cart_label': newCartLabel.value
         , 'new_cart_organism_id': newCartOrganism.value
-        , 'new_cart_ldesc': document.getElementById("new_collection_ldesc").value
+        , 'new_cart_ldesc': document.getElementById("new-list-ldesc").value
         , 'is_public': isPublic
         , 'session_id': CURRENT_USER.session_id
-        , 'new_cart_upload_type': document.getElementById("new_collection_upload_type").value
-        , "new_cart_pasted_genes": document.getElementById("new_collection_pasted_genes").value
+        , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
+        , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
     }
 
     const gc = new GeneCart();
-    gc.addCartToDbFromForm(payload, geneCollectionSaved, geneCollectionFailure);
+    gc.addCartToDbFromForm(payload, geneListSaved, geneListFailure);
     btnNewCartSave.classList.remove("is-loading");
 
 });
 
-document.getElementById("btn_table_view").addEventListener("click", () => {
+document.getElementById("btn-table-view").addEventListener("click", () => {
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
     }
 
-    document.getElementById("btn_table_view").classList.add('is-gear-bg-secondary');
-    document.getElementById("btn_table_view").classList.remove('is-dark');
+    document.getElementById("btn-table-view").classList.add('is-gear-bg-secondary');
+    document.getElementById("btn-table-view").classList.remove('is-dark');
 
-    document.getElementById("results_table").classList.remove("is-hidden");
-    document.getElementById("results_list_div").classList.add("is-hidden");
+    document.getElementById("results-table").classList.remove("is-hidden");
+    document.getElementById("results-list-div").classList.add("is-hidden");
 
 })
 
-document.getElementById("btn_list_view_compact").addEventListener("click", () => {
+document.getElementById("btn-list-view-compact").addEventListener("click", () => {
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
     }
 
-    document.getElementById("btn_list_view_compact").classList.add('is-gear-bg-secondary');
-    document.getElementById("btn_list_view_compact").classList.remove('is-dark');
+    document.getElementById("btn-list-view-compact").classList.add('is-gear-bg-secondary');
+    document.getElementById("btn-list-view-compact").classList.remove('is-dark');
 
-    document.getElementById("results_table").classList.add("is-hidden");
-    document.getElementById("results_list_div").classList.remove("is-hidden");
+    document.getElementById("results-table").classList.add("is-hidden");
+    document.getElementById("results-list-div").classList.remove("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -1637,17 +1635,17 @@ document.getElementById("btn_list_view_compact").addEventListener("click", () =>
 
 });
 
-document.getElementById("btn_list_view_expanded").addEventListener("click", () => {
+document.getElementById("btn-list-view-expanded").addEventListener("click", () => {
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
     }
 
-    document.getElementById("btn_list_view_expanded").classList.add('is-gear-bg-secondary');
-    document.getElementById("btn_list_view_expanded").classList.remove('is-dark');
+    document.getElementById("btn-list-view-expanded").classList.add('is-gear-bg-secondary');
+    document.getElementById("btn-list-view-expanded").classList.remove('is-dark');
 
-    document.getElementById("results_table").classList.add("is-hidden");
-    document.getElementById("results_list_div").classList.remove("is-hidden");
+    document.getElementById("results-table").classList.add("is-hidden");
+    document.getElementById("results-list-div").classList.remove("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -1683,39 +1681,39 @@ for (const elt of document.querySelectorAll(".js-expandable-control")) {
 
 
 // Adjust the visibility label of the new cart form when the toggle is clicked
-document.getElementById("new_collection_visibility").addEventListener("change", (e) => {
+document.getElementById("new-list-visibility").addEventListener("change", (e) => {
     const isPublic = e.currentTarget.checked;
     e.currentTarget.dataset.isPublic = isPublic;
     e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
 });
 
 // When user uploads file, update the file name in the form
-document.getElementById("new_collection_file").addEventListener("change", (e) => {
+document.getElementById("new-list-file").addEventListener("change", (e) => {
     const file = e.currentTarget.files[0];
     console.log(file);
-    document.getElementById("new_collection_file_name").textContent = file.name;
-    console.log(document.getElementById("new_collection_file_name"));
-    document.getElementById("new_collection_file_name").classList.remove("is-hidden");
+    document.getElementById("new-list-file-name").textContent = file.name;
+    console.log(document.getElementById("new-list-file-name"));
+    document.getElementById("new-list-file-name").classList.remove("is-hidden");
 });
 
 // Show modal of upload requirements if clicked
-document.getElementById("collection_upload_reqs").addEventListener("click", (e) => {
+document.getElementById("list-upload-reqs").addEventListener("click", (e) => {
     e.preventDefault();
     const modalId = e.target.dataset.target;
     const modalElt = document.getElementById(modalId);
     openModal(modalElt);
 
-    const listType = document.getElementById("new_collection_upload_type").value;
+    const listType = document.getElementById("new-list-upload-type").value;
 
     if (listType === "uploaded-unweighted") {
         document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
-            document.getElementById("unweighted_example").innerHTML;
+            document.getElementById("unweighted-example").innerHTML;
     } else if (listType === "uploaded-weighted") {
         document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
-            document.getElementById("weighted_example").innerHTML;
+            document.getElementById("weighted-example").innerHTML;
     } else if (listType === "uploaded-labeled") {
         document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
-            document.getElementById("labeled_example").innerHTML;
+            document.getElementById("labeled-example").innerHTML;
 
     } else {
         throw new Error("Unsupported file-upload list type");

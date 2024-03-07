@@ -174,9 +174,9 @@ When testing the front-end, it is important to test in the same way a user would
 
 #### Dataset Explorer
 
-#### Gene Collection Manager
+#### Gene List Manager
 
-* New Gene Collection
+* New Gene List
   * Validation check on new label
   * Validation check on save (label and organism)
   * Cancel redirects correctly
@@ -188,7 +188,7 @@ When testing the front-end, it is important to test in the same way a user would
   * Facet filters - Select two
   * Facet filters - Select All
   * Facet filter - not logged in only show Public
-* Existing Gene Collection
+* Existing Gene List
   * Expand + Collapse
   * Expand/Collapse All
   * Edit - Save change

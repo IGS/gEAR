@@ -467,9 +467,9 @@ const createToast = (msg, levelClass="is-danger") => {
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
-        if (document.querySelector(".js-toast.notification:last-of-type") ) {
-            document.querySelector(".js-toast.notification:last-of-type").insertAdjacentElement("afterend", toast);
-        }
+        const notifications = document.querySelectorAll(".js-toast.notification")
+        const notification = notifications[notifications.length - 1];
+        notification.insertAdjacentElement("afterend", toast);
         // Position new toast under previous toast with CSS
         toast.style.setProperty("top", `${(numToasts * 70) + 30}px`);
     } else {
@@ -479,7 +479,8 @@ const createToast = (msg, levelClass="is-danger") => {
 
     // For a success message, remove it after 3 seconds
     if (levelClass === "is-success") {
-        const notification = document.querySelector(".js-toast.notification:last-of-type");
+        const notifications = document.querySelectorAll(".js-toast.notification")
+        const notification = notifications[notifications.length - 1];
         notification.classList.remove("animate__fadeInUp");
         notification.classList.remove("animate__faster");
         notification.classList.add("animate__fadeOutDown");

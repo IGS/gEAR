@@ -1,7 +1,7 @@
 #!/usr/bin/env mocha
 
 /*
-    Unit tests for gene_collection_manager.js
+    Unit tests for gene_list_manager.js
 */
 
 // Some setup help by https://publishing-project.rivendellweb.net/testing-front-end-with-mocha-and-playwright-2/
@@ -13,14 +13,14 @@ import { browsers, gearBase, login, loginFailure, setupBrowserContext, teardownB
 
 let page;
 
-const gearUrl = `${gearBase}/gene_collection_manager.html`;
+const gearUrl = `${gearBase}/gene_list_manager.html`;
 
 /**
- * Mocks the search gene collections API endpoint for testing purposes.
+ * Mocks the search gene lists API endpoint for testing purposes.
  * @param {Object} page - The page object.
  * @returns {Promise<void>}
  */
-const mockSearchGeneCollections = async (page) => {
+const mockSearchGeneLists = async (page) => {
     await page.route(`${gearBase}/cgi/search_gene_carts.cgi`, async route => {
         const json = {
             "success": 1,
@@ -28,7 +28,7 @@ const mockSearchGeneCollections = async (page) => {
             "gene_carts": [
                 "{\"id\": 334, \"user_id\": 1, \"gctype\": \"unweighted-list\", \"label\": \"Unweighted test\", \"organism_id\": 1, \"ldesc\": \"This is the unweighted description\", \"share_id\": \"06c1cdd3\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2023-11-01 17:10:36\", \"genes\": [\"0610040J01Rik\", \"Zkscan1\", \"1500011K16Rik\", \"1700025G04Rik\", \"Zfp60\", \"1810037I17Rik\", \"2010111I01Rik\", \"2300009A05Rik\", \"Zfp24\", \"Zdhhc2\", \"4931406P16Rik\", \"Ypel2\", \"5031439G07Rik\", \"Wwp1\", \"Wsb2\", \"Wls\", \"Wasf1\", \"Vwc2\", \"Vwa1\", \"Aatk\", \"Vps36\", \"Vps37b\", \"Abca8a\", \"Vldlr\", \"Abhd4\", \"Vcl\", \"Utrn\", \"Acsbg1\", \"Usp1\", \"Adam10\", \"Adam17\", \"Adam23\", \"Adamts17\", \"Adamts5\", \"Ung\", \"Unc119\", \"Adgrg6\", \"Ucp2\", \"Ado\", \"Ado\", \"Uchl1\", \"Adra2c\", \"Afap1l2\", \"Ubl3\", \"Ube2e2\", \"Ube2c\", \"Ahr\", \"Ak3\", \"Ak6\", \"Tyms\", \"Akr1b8\", \"Twf1\", \"Alcam\", \"Alad\", \"Tubg1\", \"Ttyh1\", \"Ttyh2\", \"Tst\", \"Tspo\", \"Angpt2\", \"Ank3\", \"Tspan18\", \"Tspan13\", \"Tspan15\", \"Tspan17\", \"Tsc22d4\", \"Anxa2\", \"Trim2\", \"Trim13\", \"Arfip1\", \"Trappc2\", \"Arhgap19\", \"Arhgap24\", \"Arhgap32\", \"Arhgap39\", \"Arhgef10\", \"Arhgef28\", \"Tpst1\", \"Tppp3\", \"Tpp1\", \"Arid5b\", \"Tpd52\", \"Tox\", \"Arl8a\", \"Arnt2\", \"Top2a\", \"Arrdc3\", \"Art3\", \"Arvcf\", \"Arvcf\", \"Arxes2\", \"Tns3\", \"Asb8\", \"Aspa\", \"Asrgl1\", \"Atad2\", \"Asxl3\", \"Tnik\", \"Atad2\", \"Tnfrsf21\", \"Atg3\", \"Tnfaip6\", \"Tmpo\", \"Atp1b1\", \"Tmod2\", \"Tmem9b\", \"Tmem63b\", \"Atp8a1\", \"Aurkb\", \"Tmem245\", \"B4galt6\", \"Bach1\", \"Bambi\", \"Tmem117\", \"Tm7sf3\", \"Bcas1\", \"Tk1\", \"Tjp1\", \"Bcl7a\", \"Thtpa\", \"Bicd1\", \"Bin3\", \"Birc5\", \"Tgfbr3\", \"Borcs5\", \"Bpnt1\", \"Tex30\", \"Tdrkh\", \"Tead1\", \"Bzw2\", \"Tcp11l1\", \"Tcf19\", \"Tbx2\", \"Cab39l\", \"Cadm1\", \"Cadm4\", \"Camk2d\", \"Tbc1d10a\", \"Tax1bp3\", \"Capg\", \"Tanc2\", \"Capn5\", \"Taldo1\", \"Tagln2\", \"Taf13\", \"Tacc1\", \"Syt11\", \"Syngr1\", \"Cbx6\", \"Svip\", \"Ccdc13\", \"Ccdc28b\", \"Stx7\", \"Strbp\", \"Ccna2\", \"Ccnd1\", \"Ccnb2\", \"Stmn2\", \"Ccser2\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 159, \"organism\": \"Mus musculus\", \"is_owner\": true}",
                 "{\"id\": 332, \"user_id\": 1, \"gctype\": \"weighted-list\", \"label\": \"Weighted test\", \"organism_id\": 1, \"ldesc\": \"This is the weighted description\", \"share_id\": \"b5102349\", \"is_public\": 0, \"is_domain\": null, \"date_added\": \"2023-10-24 14:32:04\", \"genes\": [\"0610025J13Rik\", \"0610030E20Rik\", \"0610030E20Rik\", \"0610033M10Rik\", \"0610040B10Rik\", \"1110002L01Rik\", \"1110008L16Rik\", \"1110008P14Rik\", \"1110017D15Rik\", \"1110020A21Rik\", \"1110032F04Rik\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 11, \"organism\": \"Mus musculus\", \"is_owner\": true}",
-                "{\"id\": 202, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"demo gene collection\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"2fe67c37\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2022-02-16 14:27:24\", \"genes\": [\"Pde1c\", \"Nav1\", \"Zfp37\", \"Chl1\", \"Mak16\", \"Gab1\", \"Stard9\", \"Farp2\", \"Galnt6\", \"Hjurp\", \"Sept9\", \"Gm14150\", \"Gm16139\", \"Gm35013\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 14, \"organism\": \"Mus musculus\", \"is_owner\": false}",
+                "{\"id\": 202, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"demo gene list\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"2fe67c37\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2022-02-16 14:27:24\", \"genes\": [\"Pde1c\", \"Nav1\", \"Zfp37\", \"Chl1\", \"Mak16\", \"Gab1\", \"Stard9\", \"Farp2\", \"Galnt6\", \"Hjurp\", \"Sept9\", \"Gm14150\", \"Gm16139\", \"Gm35013\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 14, \"organism\": \"Mus musculus\", \"is_owner\": false}",
                 //"{\"id\": 28, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"test1\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"1c9b8f1c\", \"is_public\": 0, \"is_domain\": null, \"date_added\": \"2021-11-23 18:52:36\", \"genes\": [\"arrdc2\", \"kdelr2b\", \"magt1\", \"fosb\", \"aplp2\", \"ak2\", \"szrd1\", \"tmem14ca\", \"cav2\", \"nap1l1\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 10, \"organism\": \"Mus musculus\", \"is_owner\": false}"
             ],
             "pagination": {
@@ -45,18 +45,18 @@ const mockSearchGeneCollections = async (page) => {
 }
 
 /**
- * Mocks the search gene collections function for a user who is not logged in.
+ * Mocks the search gene lists function for a user who is not logged in.
  * @param {Page} page - The page object for the test.
  * @returns {Promise<void>}
  */
-const mockSearchGeneCollectionsNotLoggedIn = async (page) => {
+const mockSearchGeneListsNotLoggedIn = async (page) => {
     await page.route(`${gearBase}/cgi/search_gene_carts.cgi`, async route => {
         const json = {
             "success": 1,
             "problem": "",
             "gene_carts": [
                 "{\"id\": 334, \"user_id\": 1, \"gctype\": \"unweighted-list\", \"label\": \"Unweighted test\", \"organism_id\": 1, \"ldesc\": \"This is the unweighted description\", \"share_id\": \"06c1cdd3\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2023-11-01 17:10:36\", \"genes\": [\"0610040J01Rik\", \"Zkscan1\", \"1500011K16Rik\", \"1700025G04Rik\", \"Zfp60\", \"1810037I17Rik\", \"2010111I01Rik\", \"2300009A05Rik\", \"Zfp24\", \"Zdhhc2\", \"4931406P16Rik\", \"Ypel2\", \"5031439G07Rik\", \"Wwp1\", \"Wsb2\", \"Wls\", \"Wasf1\", \"Vwc2\", \"Vwa1\", \"Aatk\", \"Vps36\", \"Vps37b\", \"Abca8a\", \"Vldlr\", \"Abhd4\", \"Vcl\", \"Utrn\", \"Acsbg1\", \"Usp1\", \"Adam10\", \"Adam17\", \"Adam23\", \"Adamts17\", \"Adamts5\", \"Ung\", \"Unc119\", \"Adgrg6\", \"Ucp2\", \"Ado\", \"Ado\", \"Uchl1\", \"Adra2c\", \"Afap1l2\", \"Ubl3\", \"Ube2e2\", \"Ube2c\", \"Ahr\", \"Ak3\", \"Ak6\", \"Tyms\", \"Akr1b8\", \"Twf1\", \"Alcam\", \"Alad\", \"Tubg1\", \"Ttyh1\", \"Ttyh2\", \"Tst\", \"Tspo\", \"Angpt2\", \"Ank3\", \"Tspan18\", \"Tspan13\", \"Tspan15\", \"Tspan17\", \"Tsc22d4\", \"Anxa2\", \"Trim2\", \"Trim13\", \"Arfip1\", \"Trappc2\", \"Arhgap19\", \"Arhgap24\", \"Arhgap32\", \"Arhgap39\", \"Arhgef10\", \"Arhgef28\", \"Tpst1\", \"Tppp3\", \"Tpp1\", \"Arid5b\", \"Tpd52\", \"Tox\", \"Arl8a\", \"Arnt2\", \"Top2a\", \"Arrdc3\", \"Art3\", \"Arvcf\", \"Arvcf\", \"Arxes2\", \"Tns3\", \"Asb8\", \"Aspa\", \"Asrgl1\", \"Atad2\", \"Asxl3\", \"Tnik\", \"Atad2\", \"Tnfrsf21\", \"Atg3\", \"Tnfaip6\", \"Tmpo\", \"Atp1b1\", \"Tmod2\", \"Tmem9b\", \"Tmem63b\", \"Atp8a1\", \"Aurkb\", \"Tmem245\", \"B4galt6\", \"Bach1\", \"Bambi\", \"Tmem117\", \"Tm7sf3\", \"Bcas1\", \"Tk1\", \"Tjp1\", \"Bcl7a\", \"Thtpa\", \"Bicd1\", \"Bin3\", \"Birc5\", \"Tgfbr3\", \"Borcs5\", \"Bpnt1\", \"Tex30\", \"Tdrkh\", \"Tead1\", \"Bzw2\", \"Tcp11l1\", \"Tcf19\", \"Tbx2\", \"Cab39l\", \"Cadm1\", \"Cadm4\", \"Camk2d\", \"Tbc1d10a\", \"Tax1bp3\", \"Capg\", \"Tanc2\", \"Capn5\", \"Taldo1\", \"Tagln2\", \"Taf13\", \"Tacc1\", \"Syt11\", \"Syngr1\", \"Cbx6\", \"Svip\", \"Ccdc13\", \"Ccdc28b\", \"Stx7\", \"Strbp\", \"Ccna2\", \"Ccnd1\", \"Ccnb2\", \"Stmn2\", \"Ccser2\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 159, \"organism\": \"Mus musculus\", \"is_owner\": false}",
-                "{\"id\": 202, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"demo gene collection\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"2fe67c37\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2022-02-16 14:27:24\", \"genes\": [\"Pde1c\", \"Nav1\", \"Zfp37\", \"Chl1\", \"Mak16\", \"Gab1\", \"Stard9\", \"Farp2\", \"Galnt6\", \"Hjurp\", \"Sept9\", \"Gm14150\", \"Gm16139\", \"Gm35013\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 14, \"organism\": \"Mus musculus\", \"is_owner\": false}",
+                "{\"id\": 202, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"demo gene list\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"2fe67c37\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2022-02-16 14:27:24\", \"genes\": [\"Pde1c\", \"Nav1\", \"Zfp37\", \"Chl1\", \"Mak16\", \"Gab1\", \"Stard9\", \"Farp2\", \"Galnt6\", \"Hjurp\", \"Sept9\", \"Gm14150\", \"Gm16139\", \"Gm35013\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 14, \"organism\": \"Mus musculus\", \"is_owner\": false}",
             ],
             "pagination": {
                 "total_results": 2,
@@ -72,11 +72,11 @@ const mockSearchGeneCollectionsNotLoggedIn = async (page) => {
 }
 
 /**
- * Mocks the behavior of searching for gene collections when no results are found.
+ * Mocks the behavior of searching for gene lists when no results are found.
  * @param {Page} page - The page object used for mocking the route.
  * @returns {Promise<void>}
  */
-const mockSearchGeneCollectionsNothingFound = async (page) => {
+const mockSearchGeneListsNothingFound = async (page) => {
     await page.route(`${gearBase}/cgi/search_gene_carts.cgi`, async route => {
         const json = {
             "success": 1,
@@ -95,13 +95,13 @@ const mockSearchGeneCollectionsNothingFound = async (page) => {
     });
 }
 
-// ? should i just make this a handler to edit the JSON from mockSearchGeneCollectionsNothingFound before fulfilling?
+// ? should i just make this a handler to edit the JSON from mockSearchGeneListsNothingFound before fulfilling?
 /**
- * Mocks the behavior of saving a new gene collection.
+ * Mocks the behavior of saving a new gene list.
  * @param {Page} page - The page object for testing.
  * @returns {Promise<void>}
  */
-const mockSaveNewGeneCollection = async (page) => {
+const mockSaveNewGeneList = async (page) => {
     await page.route(`${gearBase}/cgi/save_new_genecart_form.cgi`, async route => {
         const json = {
             "id": 2
@@ -129,7 +129,7 @@ const mockSaveNewGeneCollection = async (page) => {
     })
 }
 
-const mockSaveGeneCollectionChanges = async (page) => {
+const mockSaveGeneListChanges = async (page) => {
     await page.route(`${gearBase}/cgi/save_genecart_changes.cgi`, async route => {
         const json = {
             "gene_cart": "{\"id\": 334, \"user_id\": 1, \"gctype\": \"unweighted-list\", \"label\": \"updated test\", \"organism_id\": 1, \"ldesc\": \"This is the unweighted description\", \"share_id\": \"06c1cdd3\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2023-11-01 17:10:36\", \"genes\": [\"0610040J01Rik\", \"Zkscan1\", \"1500011K16Rik\", \"1700025G04Rik\", \"Zfp60\", \"1810037I17Rik\", \"2010111I01Rik\", \"2300009A05Rik\", \"Zfp24\", \"Zdhhc2\", \"4931406P16Rik\", \"Ypel2\", \"5031439G07Rik\", \"Wwp1\", \"Wsb2\", \"Wls\", \"Wasf1\", \"Vwc2\", \"Vwa1\", \"Aatk\", \"Vps36\", \"Vps37b\", \"Abca8a\", \"Vldlr\", \"Abhd4\", \"Vcl\", \"Utrn\", \"Acsbg1\", \"Usp1\", \"Adam10\", \"Adam17\", \"Adam23\", \"Adamts17\", \"Adamts5\", \"Ung\", \"Unc119\", \"Adgrg6\", \"Ucp2\", \"Ado\", \"Ado\", \"Uchl1\", \"Adra2c\", \"Afap1l2\", \"Ubl3\", \"Ube2e2\", \"Ube2c\", \"Ahr\", \"Ak3\", \"Ak6\", \"Tyms\", \"Akr1b8\", \"Twf1\", \"Alcam\", \"Alad\", \"Tubg1\", \"Ttyh1\", \"Ttyh2\", \"Tst\", \"Tspo\", \"Angpt2\", \"Ank3\", \"Tspan18\", \"Tspan13\", \"Tspan15\", \"Tspan17\", \"Tsc22d4\", \"Anxa2\", \"Trim2\", \"Trim13\", \"Arfip1\", \"Trappc2\", \"Arhgap19\", \"Arhgap24\", \"Arhgap32\", \"Arhgap39\", \"Arhgef10\", \"Arhgef28\", \"Tpst1\", \"Tppp3\", \"Tpp1\", \"Arid5b\", \"Tpd52\", \"Tox\", \"Arl8a\", \"Arnt2\", \"Top2a\", \"Arrdc3\", \"Art3\", \"Arvcf\", \"Arvcf\", \"Arxes2\", \"Tns3\", \"Asb8\", \"Aspa\", \"Asrgl1\", \"Atad2\", \"Asxl3\", \"Tnik\", \"Atad2\", \"Tnfrsf21\", \"Atg3\", \"Tnfaip6\", \"Tmpo\", \"Atp1b1\", \"Tmod2\", \"Tmem9b\", \"Tmem63b\", \"Atp8a1\", \"Aurkb\", \"Tmem245\", \"B4galt6\", \"Bach1\", \"Bambi\", \"Tmem117\", \"Tm7sf3\", \"Bcas1\", \"Tk1\", \"Tjp1\", \"Bcl7a\", \"Thtpa\", \"Bicd1\", \"Bin3\", \"Birc5\", \"Tgfbr3\", \"Borcs5\", \"Bpnt1\", \"Tex30\", \"Tdrkh\", \"Tead1\", \"Bzw2\", \"Tcp11l1\", \"Tcf19\", \"Tbx2\", \"Cab39l\", \"Cadm1\", \"Cadm4\", \"Camk2d\", \"Tbc1d10a\", \"Tax1bp3\", \"Capg\", \"Tanc2\", \"Capn5\", \"Taldo1\", \"Tagln2\", \"Taf13\", \"Tacc1\", \"Syt11\", \"Syngr1\", \"Cbx6\", \"Svip\", \"Ccdc13\", \"Ccdc28b\", \"Stx7\", \"Strbp\", \"Ccna2\", \"Ccnd1\", \"Ccnb2\", \"Stmn2\", \"Ccser2\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 159, \"organism\": \"Mus musculus\", \"is_owner\": false}",
@@ -140,11 +140,11 @@ const mockSaveGeneCollectionChanges = async (page) => {
 }
 
 /**
- * Mocks the delete gene collection functionality.
+ * Mocks the delete gene list functionality.
  * @param {Page} page - The page object.
  * @returns {Promise<void>}
  */
-const mockDeleteGeneCollection = async (page) => {
+const mockDeleteGeneList = async (page) => {
     await page.route(`${gearBase}/cgi/remove_gene_cart.cgi`, async route => {
         const json = {
             "success": 1
@@ -158,7 +158,7 @@ const mockDeleteGeneCollection = async (page) => {
             "problem": "",
             "gene_carts": [
                 "{\"id\": 332, \"user_id\": 1, \"gctype\": \"weighted-list\", \"label\": \"Weighted test\", \"organism_id\": 1, \"ldesc\": \"This is the weighted description\", \"share_id\": \"b5102349\", \"is_public\": 0, \"is_domain\": null, \"date_added\": \"2023-10-24 14:32:04\", \"genes\": [\"0610025J13Rik\", \"0610030E20Rik\", \"0610030E20Rik\", \"0610033M10Rik\", \"0610040B10Rik\", \"1110002L01Rik\", \"1110008L16Rik\", \"1110008P14Rik\", \"1110017D15Rik\", \"1110020A21Rik\", \"1110032F04Rik\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 11, \"organism\": \"Mus musculus\", \"is_owner\": true}",
-                "{\"id\": 202, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"demo gene collection\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"2fe67c37\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2022-02-16 14:27:24\", \"genes\": [\"Pde1c\", \"Nav1\", \"Zfp37\", \"Chl1\", \"Mak16\", \"Gab1\", \"Stard9\", \"Farp2\", \"Galnt6\", \"Hjurp\", \"Sept9\", \"Gm14150\", \"Gm16139\", \"Gm35013\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 14, \"organism\": \"Mus musculus\", \"is_owner\": false}",
+                "{\"id\": 202, \"user_id\": 2, \"gctype\": \"unweighted-list\", \"label\": \"demo gene list\", \"organism_id\": 1, \"ldesc\": null, \"share_id\": \"2fe67c37\", \"is_public\": 1, \"is_domain\": null, \"date_added\": \"2022-02-16 14:27:24\", \"genes\": [\"Pde1c\", \"Nav1\", \"Zfp37\", \"Chl1\", \"Mak16\", \"Gab1\", \"Stard9\", \"Farp2\", \"Galnt6\", \"Hjurp\", \"Sept9\", \"Gm14150\", \"Gm16139\", \"Gm35013\"], \"folder_id\": null, \"folder_parent_id\": null, \"folder_label\": null, \"user_name\": \"Test Armstrong\", \"gene_count\": 14, \"organism\": \"Mus musculus\", \"is_owner\": false}",
             ],
             "pagination": {
                 "total_results": 2,
@@ -174,12 +174,12 @@ const mockDeleteGeneCollection = async (page) => {
 }
 
 /**
- * Mocks the unweighted gene collection preview.
+ * Mocks the unweighted gene list preview.
  *
  * @param {Page} page - The page object.
- * @returns {Promise<void>} - A promise that resolves when the gene collection preview is mocked.
+ * @returns {Promise<void>} - A promise that resolves when the gene list preview is mocked.
  */
-const mockUnweightedGeneCollectionPreview = async (page) => {
+const mockUnweightedGeneListPreview = async (page) => {
     await page.route(`${gearBase}/cgi/get_unweighted_gene_cart_preview.cgi`, async route => {
         const json = {
                 "success": 1,
@@ -211,18 +211,18 @@ const mockUnweightedGeneCollectionPreview = async (page) => {
 }
 
 /**
- * Mocks the weighted gene collection preview by intercepting a network request and returning a predefined JSON response.
+ * Mocks the weighted gene list preview by intercepting a network request and returning a predefined JSON response.
  * @param {Page} page - The page object representing the browser page.
  * @returns {Promise<void>} - A promise that resolves when the network request is intercepted and fulfilled.
  */
-const mockWeightedGeneCollectionPreview = async (page) => {
+const mockWeightedGeneListPreview = async (page) => {
     await page.route(`${gearBase}/cgi/get_weighted_gene_cart_preview.cgi`, async route => {
         const json = {"preview_json": [], "success": 1, "num_genes": 5486, "weights": ["FC"]}
         await route.fulfill({ json });
     })
 }
 
-const mockDownloadUnweightedGeneCollectionMembers = async (page) => {
+const mockDownloadUnweightedGeneListMembers = async (page) => {
     await page.route(`${gearBase}/cgi/get_gene_cart_members.cgi`, async route => {
         const json = {
             "gene_symbols": [
@@ -289,7 +289,7 @@ const mockDownloadUnweightedGeneCollectionMembers = async (page) => {
     })
 }
 
-describe('Gene Collection Manager', function () {
+describe('Gene List Manager', function () {
     this.retries(3);
     this.timeout(10000);    // default is 2000
 
@@ -316,7 +316,7 @@ describe('Gene Collection Manager', function () {
 
             it('Checks that page is returned', () => {
                 // Ensure response has table element
-                const controlFacet = page.locator("css=#controls_ownership");
+                const controlFacet = page.locator("css=#controls-ownership");
                 expect(controlFacet).toBeDefined();
             });
 
@@ -329,10 +329,10 @@ describe('Gene Collection Manager', function () {
                 await expect(incorrectPw).toBeVisible();
             });
 
-            describe("New Gene Collection", () => {
+            describe("New Gene List", () => {
                 it("should not appear if not logged in", async () => {
                     // Check that the form is hidden
-                    await expect(page.getByRole("button", {name: "Create new gene collection"})).not.toBeVisible();
+                    await expect(page.getByRole("button", {name: "Create new gene list"})).not.toBeVisible();
                 });
 
                 describe("logged in", () => {
@@ -340,106 +340,106 @@ describe('Gene Collection Manager', function () {
                         await login(page, gearUrl);
                     });
 
-                    it('should validate #new_collection_label input on blur', async function () {
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    it('should validate #new-list-label input on blur', async function () {
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
                         await page.getByRole("button", {name: "Paste list of genes"}).click();
 
                         // Trigger the blur event
-                        const label = await page.locator("css=#new_collection_label");
+                        const label = await page.locator("css=#new-list-label");
                         await label.click();
-                        await page.locator("css=#new_collection_ldesc").click();
+                        await page.locator("css=#new-list-ldesc").click();
 
-                        // Check that the correct class was added/removed from #new_collection_label
+                        // Check that the correct class was added/removed from #new-list-label
                         // Check that the helper text was added/removed
                         await expect(label).toHaveClass(/is-danger/);
                         await expect(page.getByText("Please enter a value")).toBeVisible();
                     });
 
-                    it('should validate #new_collection_label input on save', async function () {
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    it('should validate #new-list-label input on save', async function () {
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
                         await page.getByRole("button", {name: "Paste list of genes"}).click();
 
                         // Trigger the click event
-                        await page.locator("css=#btn_new_collection_save").click();
+                        await page.locator("css=#btn-new-list-save").click();
 
-                        await expect(page.locator("css=#new_collection_label")).toHaveClass(/is-danger/);
+                        await expect(page.locator("css=#new-list-label")).toHaveClass(/is-danger/);
 
-                        const parent = page.locator("css=.control:has(#new_collection_label)")
+                        const parent = page.locator("css=.control:has(#new-list-label)")
                             .filter({ has: page.getByText("Please enter a value") });
 
                         await expect(parent).toBeVisible();
                     });
 
-                    it("should validate #new_collection_pasted_genes input on save", async function () {
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    it("should validate #new-list-pasted-genes input on save", async function () {
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
                         await page.getByRole("button", {name: "Paste list of genes"}).click();
 
                         // Trigger the click event
-                        await page.locator("css=#btn_new_collection_save").click();
+                        await page.locator("css=#btn-new-list-save").click();
 
-                        await expect(page.locator("css=#new_collection_label")).toHaveClass(/is-danger/);
+                        await expect(page.locator("css=#new-list-label")).toHaveClass(/is-danger/);
 
-                        const parent = page.locator("css=.control:has(#new_collection_pasted_genes)")
+                        const parent = page.locator("css=.control:has(#new-list-pasted-genes)")
                             .filter({ has: page.getByText("Please enter a value") });
 
                         await expect(parent).toBeVisible();
                     });
 
-                    it("should validate #new_collection_file input on save", async function () {
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
-                        await page.locator("css=#btn_gc_upload_unweighted_list").click();
+                    it("should validate #new-list-file input on save", async function () {
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
+                        await page.locator("css=#btn-gc-upload-unweighted-list").click();
 
                         // Trigger the click event
-                        await page.locator("css=#btn_new_collection_save").click();
+                        await page.locator("css=#btn-new-list-save").click();
 
-                        await expect(page.locator("css=.file:has(#new_collection_file)")).toHaveClass(/is-danger/);
+                        await expect(page.locator("css=.file:has(#new-list-file)")).toHaveClass(/is-danger/);
                         await expect(page.getByText("Please select a file")).toBeVisible();
                     });
 
                     it('should validate organism select on save', async function () {
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
                         await page.getByRole("button", {name: "Paste list of genes"}).click();
 
                         // Trigger the click event
-                        await page.locator("css=#btn_new_collection_save").click();
+                        await page.locator("css=#btn-new-list-save").click();
 
-                        await expect(page.locator("css=.select:has(#new_collection_organism_id)")).toHaveClass(/is-danger/);
+                        await expect(page.locator("css=.select:has(#new-list-organism-id)")).toHaveClass(/is-danger/);
                         await expect(page.getByText("Please select an organism")).toBeVisible();
                     });
 
-                    it("should hide #new_collection_form_c on cancel", async function () {
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
+                    it("should hide #new-list-form-c on cancel", async function () {
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
                         await page.getByRole("button", {name: "Paste list of genes"}).click();
 
                         // Trigger the click event
-                        await page.locator("css=#btn_new_collection_cancel").click();
+                        await page.locator("css=#btn-new-list-cancel").click();
 
                         // Check that the form is hidden
-                        await expect(page.locator("css=#new_collection_form_c")).not.toBeVisible();
+                        await expect(page.locator("css=#new-list-form-c")).not.toBeVisible();
                     });
 
-                    it("should show new gene collection in results after save", async function () {
-                        await mockSaveNewGeneCollection(page);
+                    it("should show new gene list in results after save", async function () {
+                        await mockSaveNewGeneList(page);
 
-                        await page.getByRole("button", {name: "Create new gene collection"}).click();
+                        await page.getByRole("button", {name: "Create new gene list"}).click();
                         await page.getByRole("button", {name: "Paste list of genes"}).click();
 
                         // Populate label, genes, and organism
-                        await page.locator("css=#new_collection_label").fill("new test");
-                        await page.locator("css=#new_collection_pasted_genes").fill("Pou4f3, Sox2");
-                        await page.locator("css=#new_collection_organism_id").selectOption({ label:"Mouse" });
+                        await page.locator("css=#new-list-label").fill("new test");
+                        await page.locator("css=#new-list-pasted-genes").fill("Pou4f3, Sox2");
+                        await page.locator("css=#new-list-organism-id").selectOption({ label:"Mouse" });
 
                         // Trigger the click event
-                        await page.locator("css=#btn_new_collection_save").click();
+                        await page.locator("css=#btn-new-list-save").click();
 
                         // Check that the form is hidden
-                        await expect(page.locator("css=#new_collection_form_c")).not.toBeVisible();
+                        await expect(page.locator("css=#new-list-form-c")).not.toBeVisible();
 
                         // Check that the search results were updated
-                        await expect(page.locator("css=#gc_count_label")).toContainText("result");  // 1 result
+                        await expect(page.locator("css=#gc-count-label")).toContainText("result");  // 1 result
 
-                        // Check that the new gene collection is in the results
-                        const resultsTable = page.locator("css=#results_table");
+                        // Check that the new gene list is in the results
+                        const resultsTable = page.locator("css=#results-table");
                         await expect(resultsTable.getByText("new test")).toBeVisible();
                     });
 
@@ -447,42 +447,42 @@ describe('Gene Collection Manager', function () {
 
             });
 
-            describe("Gene Collection Search", () => {
+            describe("Gene List Search", () => {
                 describe("Search Results", () => {
 
                     beforeEach("Mocking search", async () => {
-                        await mockSearchGeneCollections(page);
+                        await mockSearchGeneLists(page);
                     });
 
-                    it('should clear search terms on #search_clear click', async () => {
-                        // Set the #search_terms value
-                        await page.locator("css=#search_terms").fill("test");
+                    it('should clear search terms on #search-clear click', async () => {
+                        // Set the #search-terms value
+                        await page.locator("css=#search-terms").fill("test");
                         await page.keyboard.up("t")
                         // Trigger the click event
-                        await page.locator("css=#search_clear").click();
-                        // Check that the #search_terms value was cleared
-                        await expect(page.locator("css=#search_terms")).toHaveValue("");
+                        await page.locator("css=#search-clear").click();
+                        // Check that the #search-terms value was cleared
+                        await expect(page.locator("css=#search-terms")).toHaveValue("");
                     });
 
-                    it('should search after enter clicked for #search_terms', async () => {
+                    it('should search after enter clicked for #search-terms', async () => {
                         // Trigger the keyup event
-                        await page.locator("css=#search_terms").type("test");
+                        await page.locator("css=#search-terms").type("test");
                         await page.keyboard.up("Enter");
                         // Check that submitSearch() was called if the key was "Enter"
-                        await expect(page.locator("css=#gc_count_label")).toContainText("results");
+                        await expect(page.locator("css=#gc-count-label")).toContainText("results");
                     });
 
-                    it('should update search results on #sort_by change', async () => {
+                    it('should update search results on #sort-by change', async () => {
                         // Perform a search
-                        await page.locator("css=#search_terms").fill("test");
+                        await page.locator("css=#search-terms").fill("test");
                         await page.keyboard.up("Enter");
                         // Trigger the change event
-                        await page.locator("css=#sort_by").selectOption("Gene cart title");
+                        await page.locator("css=#sort-by").selectOption("Gene cart title");
                         // Check that the search results were updated
-                        await expect(page.locator("css=#gc_count_label")).toContainText("results");
+                        await expect(page.locator("css=#gc-count-label")).toContainText("results");
                     });
 
-                    it("should deselect other #controls_date_added facets if one is selected", async () => {
+                    it("should deselect other #controls-date-added facets if one is selected", async () => {
                         const anyTimeOption = page.getByText("Any time");
                         const lastWeekOption = page.getByText("Within last week");
                         const lastMonthOption = page.getByText("Within last month");
@@ -501,85 +501,85 @@ describe('Gene Collection Manager', function () {
                     it("should deselect non-All facets if All is selected", async () => {
                         await login(page, gearUrl);
 
-                        const groupAffiliatedOption = page.getByText("Group-affiliated collections");
-                        const yourCollectionsOption = page.getByText("Your collections");
-                        const allFacet = page.locator("css=#controls_ownership .js-all-selector");
+                        const groupAffiliatedOption = page.getByText("Group-affiliated lists");
+                        const yourListsOption = page.getByText("Your lists");
+                        const allFacet = page.locator("css=#controls-ownership .js-all-selector");
 
                         // Selecting should deselect "All"
                         await groupAffiliatedOption.click();
                         // TODO: detecting the class seems to be flaky when all tests are run
                         await expect(groupAffiliatedOption).toHaveClass(/js-selected/);
-                        await expect(yourCollectionsOption).toHaveClass(/js-selected/);
+                        await expect(yourListsOption).toHaveClass(/js-selected/);
                         await expect(allFacet).not.toHaveClass(/js-selected/);
 
                         // Switching to All should deselect all others
                         await allFacet.click();
                         await expect(allFacet).toHaveClass(/js-selected/);
                         await expect(groupAffiliatedOption).not.toHaveClass(/js-selected/);
-                        await expect(yourCollectionsOption).not.toHaveClass(/js-selected/);
+                        await expect(yourListsOption).not.toHaveClass(/js-selected/);
                     });
 
-                    it("should only show public gene collections when not logged in", async () => {
-                        await mockSearchGeneCollectionsNotLoggedIn(page);
-                        // Only 2 public gene collections from our mocked response
+                    it("should only show public gene lists when not logged in", async () => {
+                        await mockSearchGeneListsNotLoggedIn(page);
+                        // Only 2 public gene lists from our mocked response
                         await expect(page.locator("css=.js-gc-list-element")).toHaveCount(2);
                     })
 
-                    describe("Gene collection actions", () => {
+                    describe("Gene list actions", () => {
 
                         it("should show the table view when that button is clicked", async () => {
-                            await page.locator("css=#btn_table_view").click();
-                            await expect(page.locator("css=#results_table")).toBeVisible();
-                            await expect(page.locator("css=#results_list_div")).not.toBeVisible();
+                            await page.locator("css=#btn-table-view").click();
+                            await expect(page.locator("css=#results-table")).toBeVisible();
+                            await expect(page.locator("css=#results-list-div")).not.toBeVisible();
                             await expect(page.getByText("This is the unweighted description")).not.toBeVisible();
                             await expect(page.getByText("This is the weighted description")).not.toBeVisible();
                         });
 
                         it("should expand/collapse all results when those buttons are clicked", async () => {
                             // Expand all
-                            await page.locator("css=#btn_list_view_expanded").click();
+                            await page.locator("css=#btn-list-view-expanded").click();
                             await expect(page.getByText("This is the unweighted description")).toBeVisible();
                             await expect(page.getByText("This is the weighted description")).toBeVisible();
-                            await expect(page.locator("css=#results_table")).not.toBeVisible();
+                            await expect(page.locator("css=#results-table")).not.toBeVisible();
                             // Collapse all
-                            await page.locator("css=#btn_list_view_compact").click();
+                            await page.locator("css=#btn-list-view-compact").click();
                             await expect(page.getByText("This is the unweighted description")).not.toBeVisible();
                             await expect(page.getByText("This is the weighted description")).not.toBeVisible();
-                            await expect(page.locator("css=#results_table")).not.toBeVisible();
+                            await expect(page.locator("css=#results-table")).not.toBeVisible();
 
                         });
 
                         it("should expand/collapse individual results when those buttons are clicked", async () => {
                             // switch to list view
-                            await page.locator("css=#btn_list_view_compact").click();
+                            await page.locator("css=#btn-list-view-compact").click();
 
                             // Expand
-                            await page.locator("css=#result_gc_id_334 .js-expand-box").click();
+                            await page.locator("css=#result-gc-id-334 .js-expand-box").click();
                             await expect(page.getByText("This is the unweighted description")).toBeVisible();
                             await expect(page.getByText("This is the weighted description")).not.toBeVisible();
 
                             // Collapse
-                            await page.locator("css=#result_gc_id_334 .js-expand-box").click();
+                            await page.locator("css=#result-gc-id-334 .js-expand-box").click();
                             await expect(page.getByText("This is the unweighted description")).not.toBeVisible();
                         })
 
                         it("edit and delete buttons should not appear if not logged in", async () => {
-                            await mockSearchGeneCollectionsNotLoggedIn(page);
+                            await mockSearchGeneListsNotLoggedIn(page);
                             // Check that the form is hidden
-                            const resultsTable = page.locator("css=#results_table");
+                            const resultsTable = page.locator("css=#results-table");
                             await expect(resultsTable.getByText("Unweighted test")).toBeVisible();
-                            await expect(page.locator("css=#result_gc_id_334 .js-edit-gc")).not.toBeVisible();
-                            await expect(page.locator("css=#result_gc_id_334 .js-delete-gc")).not.toBeVisible();
+                            await expect(page.locator("css=#result-gc-id-334 .js-edit-gc")).not.toBeVisible();
+                            await expect(page.locator("css=#result-gc-id-334 .js-delete-gc")).not.toBeVisible();
                         });
 
                         it("should show unweighted genes in table when preview genes button is clicked", async () => {
                             // switch to list view
-                            await page.locator("css=#btn_list_view_compact").click();
+                            await page.locator("css=#btn-list-view-compact").click();
 
-                            await mockUnweightedGeneCollectionPreview(page);
+                            await mockUnweightedGeneListPreview(page);
 
-                            const previewBtn = page.locator("css=#result_gc_id_334 .js-preview-genes-button-container");
-                            const previewContainer = page.locator("css=#result_gc_id_334 .js-preview-genes-container");
+                            const previewBtn = page.locator("css=#result-gc-id-334 .js-preview-genes-button-container");
+                            const previewContainer = page.locator("css=#result-gc-id-334 .js-preview-genes-container");
 
                             await expect(previewBtn).toHaveText("159 genes");
                             await previewBtn.getByText("159 genes").click();
@@ -595,12 +595,12 @@ describe('Gene Collection Manager', function () {
 
                         it("should show weighted gene infomation when preview genes button is clicked", async () => {
                             // switch to list view
-                            await page.locator("css=#btn_list_view_compact").click();
+                            await page.locator("css=#btn-list-view-compact").click();
 
-                            await mockWeightedGeneCollectionPreview(page);
+                            await mockWeightedGeneListPreview(page);
 
-                            const previewBtn = page.locator("css=#result_gc_id_332 .js-preview-genes-button-container");
-                            const previewContainer = page.locator("css=#result_gc_id_332 .js-preview-genes-container");
+                            const previewBtn = page.locator("css=#result-gc-id-332 .js-preview-genes-button-container");
+                            const previewContainer = page.locator("css=#result-gc-id-332 .js-preview-genes-container");
 
                             await expect(previewBtn).toHaveText("Info");
                             await previewBtn.getByText("Info").click();
@@ -618,101 +618,101 @@ describe('Gene Collection Manager', function () {
                                 await login(page, gearUrl);
 
                                 // switch to list view
-                                await page.locator("css=#btn_list_view_compact").click();
+                                await page.locator("css=#btn-list-view-compact").click();
                             });
 
                             it("edit and delete buttons should not appear for datasets user does not own", async () => {
                                 // Check that the form is hidden
-                                const resultsList = page.locator("css=#results_list_div");
+                                const resultsList = page.locator("css=#results-list-div");
                                 await expect(resultsList.getByText("Unweighted test")).toBeVisible();
-                                await expect(page.locator("css=#result_gc_id_202 .js-edit-gc")).not.toBeVisible();
-                                await expect(page.locator("css=#result_gc_id_202 .js-delete-gc")).not.toBeVisible();
+                                await expect(page.locator("css=#result-gc-id-202 .js-edit-gc")).not.toBeVisible();
+                                await expect(page.locator("css=#result-gc-id-202 .js-delete-gc")).not.toBeVisible();
                             });
 
                             it("should show edit form when edit button is clicked", async () => {
-                                await page.locator("css=#result_gc_id_334 .js-edit-gc").click();
-                                await expect(page.locator("css=#result_gc_id_334_editable_title")).toBeVisible();
+                                await page.locator("css=#result-gc-id-334 .js-edit-gc").click();
+                                await expect(page.locator("css=#result-gc-id-334-editable-title")).toBeVisible();
                             });
 
-                            it("should update gene collection when save button is clicked", async () => {
-                                await page.locator("css=#result_gc_id_334 .js-edit-gc").click();
-                                await page.locator("css=#result_gc_id_334_editable_title").fill("updated test");
+                            it("should update gene list when save button is clicked", async () => {
+                                await page.locator("css=#result-gc-id-334 .js-edit-gc").click();
+                                await page.locator("css=#result-gc-id-334-editable-title").fill("updated test");
 
-                                await mockSaveGeneCollectionChanges(page);
+                                await mockSaveGeneListChanges(page);
 
-                                await page.locator("css=#result_gc_id_334 .js-edit-gc-save").click();
-                                await expect(page.locator("css=#result_gc_id_334_editable_title")).not.toBeVisible();
+                                await page.locator("css=#result-gc-id-334 .js-edit-gc-save").click();
+                                await expect(page.locator("css=#result-gc-id-334-editable-title")).not.toBeVisible();
                                 // Check that the search results were updated
-                                await expect(page.locator("css=#gc_count_label")).toContainText("results");
-                                // Check that the updated gene collection is in the results
-                                const resultsList = page.locator("css=#results_list_div");
+                                await expect(page.locator("css=#gc-count-label")).toContainText("results");
+                                // Check that the updated gene list is in the results
+                                const resultsList = page.locator("css=#results-list-div");
                                 await expect(resultsList.getByText("updated test")).toBeVisible();
                             });
 
                             it("should hide edit form when cancel button is clicked", async () => {
-                                await page.locator("css=#result_gc_id_334 .js-edit-gc").click();
-                                await page.locator("css=#result_gc_id_334 .js-edit-gc-cancel").click();
-                                await expect(page.locator("css=#result_gc_id_334_editable_title")).not.toBeVisible();
+                                await page.locator("css=#result-gc-id-334 .js-edit-gc").click();
+                                await page.locator("css=#result-gc-id-334 .js-edit-gc-cancel").click();
+                                await expect(page.locator("css=#result-gc-id-334-editable-title")).not.toBeVisible();
                             });
 
-                            it("should delete gene collection when delete button is clicked", async () => {
-                                // deleting gene collection with ID 334
-                                await page.locator("css=#result_gc_id_334 .js-delete-gc").click();
-                                await expect(page.getByText("Remove collection")).toBeVisible();
+                            it("should delete gene list when delete button is clicked", async () => {
+                                // deleting gene list with ID 334
+                                await page.locator("css=#result-gc-id-334 .js-delete-gc").click();
+                                await expect(page.getByText("Remove list")).toBeVisible();
 
-                                await mockDeleteGeneCollection(page);
+                                await mockDeleteGeneList(page);
 
-                                await page.locator("css=#confirm_gc_delete").click();
-                                await expect(page.getByText("Remove collection")).not.toBeVisible();
-                                // Check that the search results were updated and the deleted gene collection is gone
-                                await expect(page.locator("css=#gc_count_label")).toContainText("results");
+                                await page.locator("css=#confirm-gc-delete").click();
+                                await expect(page.getByText("Remove list")).not.toBeVisible();
+                                // Check that the search results were updated and the deleted gene list is gone
+                                await expect(page.locator("css=#gc-count-label")).toContainText("results");
                                 await expect(page.locator("css=.js-gc-list-element")).toHaveCount(2);
                                 await expect(page.getByText("Unweighted test")).not.toBeVisible();
                             });
 
-                            it("should cancel delete gene collection when cancel button is clicked", async () => {
-                                await page.locator("css=#result_gc_id_334 .js-delete-gc").click();
-                                await expect(page.getByText("Remove collection")).toBeVisible();
-                                await page.locator("css=#cancel_gc_delete").click();
-                                await expect(page.getByText("Remove collection")).not.toBeVisible();
-                                // Ensure the gene collection is still there
-                                const resultsList = page.locator("css=#results_list_div");
+                            it("should cancel delete gene list when cancel button is clicked", async () => {
+                                await page.locator("css=#result-gc-id-334 .js-delete-gc").click();
+                                await expect(page.getByText("Remove list")).toBeVisible();
+                                await page.locator("css=#cancel-gc-delete").click();
+                                await expect(page.getByText("Remove list")).not.toBeVisible();
+                                // Ensure the gene list is still there
+                                const resultsList = page.locator("css=#results-list-div");
                                 await expect(resultsList.getByText("Unweighted test")).toBeVisible();
                             });
 
                             // TODO: How to test copied to clipboard?
                             it.skip("should copy share link when copy button is clicked", async () => {
-                                await page.locator("css=#result_gc_id_334 .js-share-gc").click();
+                                await page.locator("css=#result-gc-id-334 .js-share-gc").click();
                                 await expect(page.getByText("URL copied to clipboard")).toBeVisible();
                             });
 
                             it("should redirect to gene search view when view button is clicked", async () => {
-                                const viewBtn = page.locator("css=#result_gc_id_334 .js-view-gc");
+                                const viewBtn = page.locator("css=#result-gc-id-334 .js-view-gc");
                                 const shareId = await viewBtn.getAttribute("value");
                                 await viewBtn.click();
                                 // On new page now.  Share ID should be in the URL
                                 expect(page.url()).toContain(shareId);
                             });
 
-                            it("should download unweighted gene collection when download button is clicked", async () => {
-                                await mockDownloadUnweightedGeneCollectionMembers(page);
+                            it("should download unweighted gene list when download button is clicked", async () => {
+                                await mockDownloadUnweightedGeneListMembers(page);
                                 // Start waiting for download before clicking. Note no await.
                                 const downloadPromise = page.waitForEvent('download');
 
-                                await page.locator("css=#result_gc_id_334 .js-download-gc").click();
+                                await page.locator("css=#result-gc-id-334 .js-download-gc").click();
                                 const download = await downloadPromise;
                                 // Wait for the download process to complete and save the downloaded file somewhere.
                                 await download.saveAs(`/tmp/${download.suggestedFilename()}`);
                                 // TODO: How to test downloaded file contents?
                             })
 
-                            it("should download weighted gene collection when download button is clicked", async () => {
+                            it("should download weighted gene list when download button is clicked", async () => {
                                 // don't need to mock here has it outputs an attachment
 
                                 // Start waiting for download before clicking. Note no await.
                                 const downloadPromise = page.waitForEvent('download');
 
-                                await page.locator("css=#result_gc_id_332 .js-download-gc").click();
+                                await page.locator("css=#result-gc-id-332 .js-download-gc").click();
                                 const download = await downloadPromise;
                                 // Wait for the download process to complete and save the downloaded file somewhere.
                                 await download.saveAs(`/tmp/${download.suggestedFilename()}`);
@@ -725,12 +725,12 @@ describe('Gene Collection Manager', function () {
 
                 describe("No Search Results", () => {
                     beforeEach("Mocking search", async () => {
-                        await mockSearchGeneCollectionsNothingFound(page);
+                        await mockSearchGeneListsNothingFound(page);
                     });
 
                     it('should display "No results found" when no results are found', async () => {
                         // Perform a search
-                        await page.locator("css=#search_terms").fill("test");
+                        await page.locator("css=#search-terms").fill("test");
                         await page.keyboard.up("Enter");
                         // Check that the search results were updated
                         await expect(page.getByText("No results found")).toBeVisible();

@@ -109,9 +109,9 @@ class GenesAsAxisHandler extends PlotHandler {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container", "is-max-desktop");
-        plotlyPreview.id = "plotly_preview";
+        plotlyPreview.id = "plotly-preview";
         plotContainer.append(plotlyPreview);
-        Plotly.purge("plotly_preview"); // clear old Plotly plots
+        Plotly.purge("plotly-preview"); // clear old Plotly plots
 
         if (!this.plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
@@ -127,9 +127,9 @@ class GenesAsAxisHandler extends PlotHandler {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);   // HIGH MEM/CPU with heatmap no matrixplot
+        Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);   // HIGH MEM/CPU with heatmap no matrixplot
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
-        Plotly.relayout("plotly_preview", custonLayout)
+        Plotly.relayout("plotly-preview", custonLayout)
 
         document.getElementById("legend_title_container").classList.remove("is-hidden");
         if (this.plotType === "dotplot") {
@@ -409,9 +409,9 @@ class GenesAsDataHandler extends PlotHandler {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreviewElt = document.createElement("div");
         plotlyPreviewElt.classList.add("container", "is-max-desktop");
-        plotlyPreviewElt.id = "plotly_preview";
+        plotlyPreviewElt.id = "plotly-preview";
         plotContainer.append(plotlyPreviewElt);
-        Plotly.purge("plotly_preview"); // clear old Plotly plots
+        Plotly.purge("plotly-preview"); // clear old Plotly plots
 
         if (!this.plotJson) {
             createToast("Could not retrieve plot information. Cannot make plot.");
@@ -420,14 +420,14 @@ class GenesAsDataHandler extends PlotHandler {
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
-        Plotly.newPlot("plotly_preview", this.plotJson.data, this.plotJson.layout, custonConfig);
+        Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
-        Plotly.relayout("plotly_preview", custonLayout)
+        Plotly.relayout("plotly-preview", custonLayout)
 
         // Show button to add genes to gene cart
         document.getElementById("gene_cart_btn_c").classList.remove("is-hidden");
 
-        const plotlyPreview = document.getElementById("plotly_preview");
+        const plotlyPreview = document.getElementById("plotly-preview");
 
         // Append small note about using the Plotly selection utilities
         const plotlyNote = document.createElement("div");

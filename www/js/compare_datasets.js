@@ -608,13 +608,13 @@ const plotDataToGraph = (data) => {
 	// Noticed container within our "column" will make full-width go beyond the screen
 
 	const plotlyPreview = document.createElement("div");
-	plotlyPreview.id = "plotly_preview";
+	plotlyPreview.id = "plotly-preview";
 	plotlyPreview.classList.add("container", "is-max-desktop");
 	plotContainer.append(plotlyPreview);
 
-	Plotly.purge("plotly_preview"); // clear old Plotly plots
+	Plotly.purge("plotly-preview"); // clear old Plotly plots
 
-	Plotly.newPlot("plotly_preview", plotData, layout, config);
+	Plotly.newPlot("plotly-preview", plotData, layout, config);
 
 	// If plot data is selected, create the right-column table and do other misc things
 	plotlyPreview.on("plotly_selected", (eventData) => {
@@ -672,7 +672,7 @@ const plotDataToGraph = (data) => {
 	});
 
 	const plotlyNote = document.createElement("div");
-	plotlyNote.id = "tip_on_editing";
+	plotlyNote.id = "tip-on-editing";
 	plotlyNote.classList.add("notification", "content", "is-info", "is-light");
 	plotlyNote.innerHTML = `<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
 
@@ -935,13 +935,13 @@ const updateGroupOptions = (selectorId, groupsArray, series) => {
 
 		const checkbox = document.createElement("input");
 		checkbox.type = "checkbox";
-		checkbox.id = `${selectorId}_${group}`;
+		checkbox.id = `${selectorId}-${group}`;
 		checkbox.name = group;
 		checkbox.value = group;
 
 		const label = document.createElement("label");
 		label.classList.add("checkbox");
-		label.htmlFor = `${selectorId}_${group}`;
+		label.htmlFor = `${selectorId}-${group}`;
 		label.textContent = ` ${group}`;
 		label.prepend(checkbox);
 
@@ -965,7 +965,7 @@ const updateGroupOptions = (selectorId, groupsArray, series) => {
 const updatePlotAnnotations = (genes) => {
 	// Take genes to search for and highlight their datapoint in the plot
 
-	const plotlyPreview = document.getElementById("plotly_preview");
+	const plotlyPreview = document.getElementById("plotly-preview");
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
