@@ -3,35 +3,35 @@
 // When password and repeated password are not the same, add a tooltip
 for (const classElt of document.getElementsByClassName("js-password")) {
     classElt.addEventListener("keyup", () => {
-        const newPasswordElt = document.getElementById("new_password");
-        const repeatPasswordElt = document.getElementById("repeat_password");
+        const newPasswordElt = document.getElementById("new-password");
+        const repeatPasswordElt = document.getElementById("repeat-password");
 
         if (newPasswordElt.value !== repeatPasswordElt.value) {
             repeatPasswordElt.classList.add("is-danger");
             repeatPasswordElt.classList.remove("is-success");
-            document.getElementById("password_match").classList.add("is-hidden");
-            document.getElementById("password_no_match").classList.remove("is-hidden");
+            document.getElementById("password-match").classList.add("is-hidden");
+            document.getElementById("password-no-match").classList.remove("is-hidden");
             // disable submit button
-            document.getElementById("submit_preferences").disabled = true;
+            document.getElementById("submit-preferences").disabled = true;
             return;
         }
         repeatPasswordElt.classList.add("is-success");
         repeatPasswordElt.classList.remove("is-danger");
-        document.getElementById("password_match").classList.remove("is-hidden");
-        document.getElementById("password_no_match").classList.add("is-hidden");
+        document.getElementById("password-match").classList.remove("is-hidden");
+        document.getElementById("password-no-match").classList.add("is-hidden");
         // enable submit button
-        document.getElementById("submit_preferences").disabled = false;
+        document.getElementById("submit-preferences").disabled = false;
     });
 }
 
 // Toggle if password is visible or not
-document.getElementById("show_password").addEventListener("click", () => {
-    const newPasswordElt = document.getElementById("new_password");
+document.getElementById("show-password").addEventListener("click", () => {
+    const newPasswordElt = document.getElementById("new-password");
     newPasswordElt.type = newPasswordElt.type === "password" ? "text" : "password";
 });
 
 // submit the form
-document.getElementById("submit_preferences").addEventListener("click", async (event) => {
+document.getElementById("submit-preferences").addEventListener("click", async (event) => {
     // Prevent page refresh
     event.preventDefault();
 
@@ -43,9 +43,9 @@ document.getElementById("submit_preferences").addEventListener("click", async (e
         help_id: CURRENT_USER.help_id,
         email: document.getElementById("email").value,
         institution: document.getElementById("institution").value,
-        colorblind_mode: document.getElementById("colorblind_mode").checked,
-        want_updates: document.getElementById("want_updates").checked,
-        new_password: document.getElementById("new_password").value,
+        colorblind_mode: document.getElementById("colorblind-mode").checked,
+        want_updates: document.getElementById("want-updates").checked,
+        new_password: document.getElementById("new-password").value,
     };
 
     try {
@@ -92,7 +92,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Get the user's settings from the server
     document.getElementById("email").value = CURRENT_USER.email;
     document.getElementById("institution").value = CURRENT_USER.institution;
-    document.getElementById("colorblind_mode").checked = CURRENT_USER.colorblind_mode;
-    document.getElementById("want_updates").checked = CURRENT_USER.updates_wanted;
+    document.getElementById("colorblind-mode").checked = CURRENT_USER.colorblind_mode;
+    document.getElementById("want-updates").checked = CURRENT_USER.updates_wanted;
 
 };
