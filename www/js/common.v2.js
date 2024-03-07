@@ -507,30 +507,33 @@ const loadPlugins = () => {
 
     for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
         if (plugin_page_names.includes(page_name)) {
-            var plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
+            const plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
 
             // create a hidden element at the end of the document and put it there
-            var plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
-            var plugin_html_element = document.createElement('div');
+            const plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
+            let plugin_html_element = document.createElement('div');
             plugin_html_element.id = plugin_name + "_html_c";
             //plugin_html_element.style = "display: none;"
-            body.append(plugin_html_element)
+            //body.append(plugin_html_element);
 
             fetch(plugin_import_html_url)
-                .then(response => response.text())
+                .then(response => {
+                    body.append(plugin_html_element);
+                    return response.text();
+                })
                 .then(data => {
-                    document.getElementById(`${plugin_name}_html_c`).innerHTML = data;
+                    document.getElementById(plugin_html_element.id).innerHTML = data;
                 });
 
-            var plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
-            var style = document.createElement('link');
+            const plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
+            let style = document.createElement('link');
             style.href = plugin_import_css_url;
             style.type = 'text/css';
             style.rel = 'stylesheet';
             head.append(style);
 
-            var plugin_import_js_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".js";
-            var script = document.createElement('script');
+            const plugin_import_js_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".js";
+            let script = document.createElement('script');
             script.src = plugin_import_js_url;
             script.type = 'text/javascript';
             head.append(script);
