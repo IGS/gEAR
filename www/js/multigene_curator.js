@@ -439,13 +439,13 @@ class GenesAsDataHandler extends PlotHandler {
         plotlyPreview.on("plotly_selected", async (eventData) => {
 
             // Hide selected genes table and disable unweighted radio button if no genes are selected
-            document.getElementById("tbl_selected_genes").classList.add("is-hidden");
-            document.getElementById("download_selected_genes_btn").classList.add("is-hidden");
+            document.getElementById("tbl-selected-genes").classList.add("is-hidden");
+            document.getElementById("download-selected-genes-btn").classList.add("is-hidden");
             document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
             document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
             if (eventData?.points.length) {
-                document.getElementById("tbl_selected_genes").classList.remove("is-hidden");
-                document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
+                document.getElementById("tbl-selected-genes").classList.remove("is-hidden");
+                document.getElementById("download-selected-genes-btn").classList.remove("is-hidden");
                 document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
                 document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
 
@@ -456,7 +456,7 @@ class GenesAsDataHandler extends PlotHandler {
             // Highlight table rows that match searched genes
             const searchedGenes = this.plotConfig.gene_symbols;
             if (searchedGenes) {
-                const geneTableBody = document.getElementById("gene_table_body");
+                const geneTableBody = document.getElementById("gene-table-body");
                 // Select the first column (gene_symbols) in each row
                 for (const row of geneTableBody.children) {
                     const tableGene = row.children[0].textContent;
@@ -596,8 +596,8 @@ class GenesAsDataHandler extends PlotHandler {
 }
 
 const adjustGeneTableLabels = (plotType) => {
-    const geneX = document.getElementById("tbl_gene_x");
-    const geneY = document.getElementById("tbl_gene_y");
+    const geneX = document.getElementById("tbl-gene-x");
+    const geneY = document.getElementById("tbl-gene-y");
 
     // Adjust headers to the plot type
     if (plotType === "quadrant") {
@@ -864,7 +864,7 @@ const populateGeneTable = (data, plotType) => {
     plotSelectedGenes.sort();
 
 
-    const geneTableBody = document.getElementById("gene_table_body");
+    const geneTableBody = document.getElementById("gene-table-body");
     geneTableBody.replaceChildren();
 
     for (const gene of plotSelectedGenes) {
@@ -878,7 +878,7 @@ const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
         session_id: sessionId
-        , label: document.getElementById("new_genecart_label").value
+        , label: document.getElementById("new-genecart-label").value
         , gctype: "unweighted-list"
         , organism_id:  organismId
         , is_public: 0
@@ -920,7 +920,7 @@ const saveWeightedGeneCart = () => {
 
 	const gc = new WeightedGeneCart({
 		session_id: sessionId
-		, label:  document.getElementById("new_genecart_label").value
+		, label:  document.getElementById("new-genecart-label").value
 		, gctype: 'weighted-list'
 		, organism_id: organismId
 		, is_public: 0
@@ -962,7 +962,7 @@ const sortGeneTable = (mode) => {
 	let shouldSwitch;
 	let dir;
 	let switchcount = 0;
-	table = document.getElementById("tbl_selected_genes");
+	table = document.getElementById("tbl-selected-genes");
 
 	switching = true;
 	// Set the sorting direction to ascending:
@@ -1123,12 +1123,12 @@ document.getElementById("gene_cart_btn").addEventListener("click", ($trigger) =>
 
 });
 
-document.getElementById("new_genecart_label").addEventListener("input", (event) => {
-    const saveBtn = document.getElementById("save_genecart_btn");
+document.getElementById("new-genecart-label").addEventListener("input", (event) => {
+    const saveBtn = document.getElementById("save-genecart-btn");
     saveBtn.disabled = event.target.value ? false : true;
 });
 
-document.getElementById("save_genecart_btn").addEventListener("click", (event) => {
+document.getElementById("save-genecart-btn").addEventListener("click", (event) => {
     event.preventDefault();
     event.target.classList.add("is-loading");
     // get value of genecart radio button group
@@ -1143,7 +1143,7 @@ document.getElementById("save_genecart_btn").addEventListener("click", (event) =
     event.target.classList.remove("is-loading");
 });
 
-document.getElementById("download_selected_genes_btn").addEventListener("click", downloadSelectedGenes);
+document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
 
 // handle when the dropdown-gene-list-search-input input box is changed
 document.getElementById('genes_manually_entered').addEventListener('change', (event) => {

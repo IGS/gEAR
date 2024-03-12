@@ -407,7 +407,7 @@ const datasetTree = new DatasetTree({
         if (e.node.type !== "dataset") {
             return;
         }
-        document.getElementById("current_dataset_c").classList.remove("is-hidden");
+        document.getElementById("current-dataset-c").classList.remove("is-hidden");
         document.getElementById("current_dataset").textContent = e.node.title;
         document.getElementById("current_dataset_post").textContent = e.node.title;
 
@@ -433,7 +433,7 @@ const datasetTree = new DatasetTree({
             elt.classList.add("is-hidden");
         }
 
-        document.getElementById("dataset_s_success").classList.remove("is-hidden");
+        document.getElementById("dataset-s-success").classList.remove("is-hidden");
 
         // displays
         const {userDisplays, ownerDisplays} = await curatorApiCallsMixin.fetchDatasetDisplays(datasetId);
@@ -1103,7 +1103,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
-        document.getElementById("dataset_s_failed").classList.remove("is-hidden");
+        document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 
 }
