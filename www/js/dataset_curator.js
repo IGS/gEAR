@@ -87,13 +87,15 @@ class PlotlyHandler extends PlotHandler {
                 renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}_color`);
+                    // Sometimes we need to escape the group name
+                    // Found a case where the group in config was truncated compared to the (older) dataset's actual group
+                    // But there are cases where the group name should not be escaped (such as if slashes are in the name)
                     try {
-                        // Found a case where the group in config was truncated compared to the (older) dataset's actual group
+                        const colorField = document.getElementById(`${group}_color`);
                         colorField.value = color;
                     } catch (error) {
-                        console.warn(`Could not set color for ${group} to ${color}.`);
-                        // pass
+                        const colorField = document.getElementById(`${CSS.escape(group)}_color`);
+                        colorField.value = color;
                     }
                 }
             } catch (error) {
@@ -318,6 +320,10 @@ class ScanpyHandler extends PlotHandler {
         , "js-tsne-skip-gene-plot":"skip_gene_plot"
         , "js-tsne-horizontal-legend":"horizontal_legend"
         , "js-tsne-marker-size":"marker_size"
+        , "js-tsne-color-palette":"expression_palette"
+        , "js-tsne-reverse-palette":"reverse_palette"
+        , "js-tsne-two-way-palette":"two_way_palette"
+        , "js-tsne-center-around-median":"center_around_median"
     }
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -375,16 +381,28 @@ class ScanpyHandler extends PlotHandler {
                 }
             }
 
-
             // Handle colors
             if (config["colors"]) {
                 renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}_color`);
-                    colorField.value = color;
+                    // Sometimes we need to escape the group name
+                    // Found a case where the group in config was truncated compared to the (older) dataset's actual group
+                    // But there are cases where the group name should not be escaped (such as if slashes are in the name)
+                    try {
+                        const colorField = document.getElementById(`${group}_color`);
+                        colorField.value = color;
+                    } catch (error) {
+                        const colorField = document.getElementById(`${CSS.escape(group)}_color`);
+                        colorField.value = color;
+                    }
                 }
             }
+        }
+
+        if (config["expression_palette"]) {
+            setSelectBoxByValue("color_palette_post", config["expression_palette"]);
+            //colorscaleSelect.update();
         }
 
         if (config["plot_by_group"]) {
@@ -405,6 +423,21 @@ class ScanpyHandler extends PlotHandler {
             }
             for (const classElt of document.getElementsByClassName("js-tsne-override-marker-size")) {
                 classElt.checked = true;
+            }
+        }
+
+        // If skip gene plot is checked, disable the expression palette, reverse palette, and two-way palette
+        if (config["skip_gene_plot"]) {
+            for (const classElt of document.getElementsByClassName("js-tsne-expression-palette")) {
+                classElt.disabled = true;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-reverse-palette")) {
+                classElt.disabled = true;
+                classElt.checked = false;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-two-way-palette")) {
+                classElt.disabled = true;
+                classElt.checked = false;
             }
         }
     }
@@ -433,7 +466,7 @@ class ScanpyHandler extends PlotHandler {
         plotContainer.append(tsnePreview);
 
         if (image) {
-            document.getElementById("tsne_preview").setAttribute("src", `data:image/png;base64,${image}`);
+            document.getElementById("tsne_preview").setAttribute("src", `data:image/webp;base64,${image}`);
         } else {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
@@ -453,6 +486,8 @@ class ScanpyHandler extends PlotHandler {
 
         prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/tsne_static.html");
         postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/tsne_static.html");
+
+        loadColorscaleSelect(true, true);
     }
 
     /**
@@ -493,6 +528,13 @@ class ScanpyHandler extends PlotHandler {
         // If override marker size is not checked, ensure it does not get passed to the scanpy code
         if (!(document.getElementById("override_marker_size_post").checked)) {
             this.plotConfig["marker_size"] = null;
+        }
+
+        // If skip gene plot is checked, ensure expression palette, reverse palette, and two-way palette do not get passed to the scanpy code
+        if (document.getElementById("skip_gene_plot_post").checked) {
+            this.plotConfig["expression_palette"] = null;
+            this.plotConfig["reverse_palette"] = false;
+            this.plotConfig["two_way_palette"] = false;
         }
     }
 
@@ -1373,6 +1415,24 @@ const setupScanpyOptions = async () => {
         elt.addEventListener("change", (event) => {
             for (const targetElt of markerSize) {
                 targetElt.disabled = event.target.checked ? false : true;
+            }
+        });
+    }
+
+    // If skip gene plot is checked, disable the expression palette, reverse palette, and two-way palette options
+    for (const elt of skipGenePlot) {
+        elt.addEventListener("change", (event) => {
+            const colorPaletteElts = document.getElementsByClassName("js-tsne-color-palette");
+            const reversePaletteElts = document.getElementsByClassName("js-tsne-reverse-palette");
+            const twoWayPaletteElts = document.getElementsByClassName("js-tsne-two-way-palette");
+
+            for (const targetElt of [...colorPaletteElts, ...reversePaletteElts, ...twoWayPaletteElts]) {
+                targetElt.disabled = event.target.checked ? true : false;
+            }
+
+            for (const targetElt of [...reversePaletteElts, ...twoWayPaletteElts]) {
+                targetElt.checked = false;
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         });
     }

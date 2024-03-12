@@ -27,7 +27,7 @@
     </span>
 </p>
 
-<p class="is-flex is-justify-content-space-between pr-3">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Plot per category group</span>
     <span class="select is-small">
         <select class="js-tsne-plot-by-series" id="plot_by_group_series_post" disabled></select>
@@ -35,7 +35,7 @@
 </p>
 <p class="help">Split samples into category groups, then create plots per group.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Number of subplot columns</span>
     <input class="js-tsne-max-columns" id="max_columns_post" type="number" min="0" max="9" value="3" disabled/>
 </p>
@@ -51,7 +51,7 @@
     <input class="js-tsne-horizontal-legend" id="horizontal_legend_post" type="checkbox" disabled>
 </label>
 
-<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+<label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
     <span class="has-text-weight-medium">Override marker size auto-scaling</span>
     <input class="js-tsne-override-marker-size" id="override_marker_size_post" type="checkbox">
 </label>
@@ -60,3 +60,32 @@
     <span class="has-text-weight-medium">Choose marker size</span>
     <input class="js-tsne-marker-size" id="marker_size_post" type="range" min="1" max="100" value="25" disabled/>
 </p>
+
+<p class="is-flex is-justify-content-space-between pr-3">
+    <span class="has-text-weight-medium">Expression color palette</span>
+    <span class="select is-small">
+        <select class="js-tsne-color-palette" id="color_palette_post"></select>
+    </span>
+</p>
+<!-- Until I get it working
+<div class="field">
+    <label class="label has-text-weight-medium">Expression color palette</label>
+    <div class="control">
+        <div class="select is-fullwidth">
+            <select class="js-tsne-color-palette" id="color_palette_post" disabled></select>
+        </div>
+    </div>
+</div> -->
+<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <span class="has-text-weight-medium">Reverse palette</span>
+    <input class="js-tsne-reverse-palette" id="reverse_palette_post" type="checkbox">
+</label>
+<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <span class="has-text-weight-medium">Check to bring data extremes to foreground</span>
+    <input class="js-tsne-two-way-palette" id="two_way_palette_post" type="checkbox">
+</label>
+<label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
+    <span class="has-text-weight-medium">Center colorscale around median expression value</span>
+    <input class="js-tsne-center-around-median" id="center_around_median_post" type="checkbox">
+</label>
+<p class="help">Good when combined with a diverging colorscale.</p>

@@ -67,7 +67,7 @@ const datasetTree = new DatasetTree({
         if (e.node.type !== "dataset") {
             return;
         }
-        document.getElementById("current_dataset_c").classList.remove("is-hidden");
+        document.getElementById("current-dataset-c").classList.remove("is-hidden");
         document.getElementById("current_dataset").textContent = e.node.title;
         document.getElementById("current_dataset_post").textContent = e.node.title;
 
@@ -118,7 +118,7 @@ const datasetTree = new DatasetTree({
 });
 
 const adjustGeneTableLabels = () => {
-    const geneFoldchanges = document.getElementById("tbl_gene_foldchanges");
+    const geneFoldchanges = document.getElementById("tbl-gene-foldchanges");
 	geneFoldchanges.replaceChildren();
 	const log_base = document.getElementById("log_base").value;
 
@@ -450,7 +450,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
-        document.getElementById("dataset_s_failed").classList.remove("is-hidden");
+        document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 }
 
@@ -620,14 +620,14 @@ const plotDataToGraph = (data) => {
 	plotlyPreview.on("plotly_selected", (eventData) => {
 
 		// Hide selected genes table and disable unweighted radio button if no genes are selected
-		document.getElementById("tbl_selected_genes").classList.add("is-hidden");
-		document.getElementById("download_selected_genes_btn").classList.add("is-hidden");
+		document.getElementById("tbl-selected-genes").classList.add("is-hidden");
+		document.getElementById("download-selected-genes-btn").classList.add("is-hidden");
 		document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
 		document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
 
 		if (eventData?.points.length) {
-			document.getElementById("tbl_selected_genes").classList.remove("is-hidden");
-			document.getElementById("download_selected_genes_btn").classList.remove("is-hidden");
+			document.getElementById("tbl-selected-genes").classList.remove("is-hidden");
+			document.getElementById("download-selected-genes-btn").classList.remove("is-hidden");
 			document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
 			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
 
@@ -644,7 +644,7 @@ const plotDataToGraph = (data) => {
 
 		// Highlight table rows that match searched genes
 		if (searchedGenes) {
-			const geneTableBody = document.getElementById("gene_table_body");
+			const geneTableBody = document.getElementById("gene-table-body");
 			// Select the first column (gene_symbols) in each row
 			for (const row of geneTableBody.children) {
 				const tableGene = row.children[0].textContent;
@@ -704,7 +704,7 @@ const populateGeneTable = (data) => {
 		selectedGeneData.sort((a, b) => a.pval - b.pval);
 
 
-    const geneTableBody = document.getElementById("gene_table_body");
+    const geneTableBody = document.getElementById("gene-table-body");
     geneTableBody.replaceChildren();
 
     for (const gene of selectedGeneData) {
@@ -714,14 +714,14 @@ const populateGeneTable = (data) => {
     }
 
 	// If not statistical test, hide p-value column (deleting can cause issues with subsequent calls to this function)
-	const pvalColumn = document.getElementById("tbl_gene_pvalues");
+	const pvalColumn = document.getElementById("tbl-gene-pvalues");
 	pvalColumn.classList.remove("is-hidden");
-	for (const pvalCell of document.querySelectorAll("#tbl_selected_genes tbody tr td:nth-child(2)")) {
+	for (const pvalCell of document.querySelectorAll("#tbl-selected-genes tbody tr td:nth-child(2)")) {
 		pvalCell.classList.remove("is-hidden");
 	}
 	if (!statisticalTest) {
 		pvalColumn.classList.add("is-hidden");
-		for (const pvalCell of document.querySelectorAll("#tbl_selected_genes tbody tr td:nth-child(2)")) {
+		for (const pvalCell of document.querySelectorAll("#tbl-selected-genes tbody tr td:nth-child(2)")) {
 			pvalCell.classList.add("is-hidden");
 		}
 	}
@@ -768,7 +768,7 @@ const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
         session_id: sessionId
-        , label: document.getElementById("new_genecart_label").value
+        , label: document.getElementById("new-genecart-label").value
         , gctype: "unweighted-list"
         , organism_id:  organismId
         , is_public: 0
@@ -795,7 +795,7 @@ const saveWeightedGeneCart = () => {
 
 	const gc = new WeightedGeneCart({
 		session_id: sessionId
-		, label:  document.getElementById("new_genecart_label").value
+		, label:  document.getElementById("new-genecart-label").value
 		, gctype: 'weighted-list'
 		, organism_id: organismId
 		, is_public: 0
@@ -825,7 +825,7 @@ const sortGeneTable = (mode) => {
 	let shouldSwitch;
 	let dir;
 	let switchcount = 0;
-	table = document.getElementById("tbl_selected_genes");
+	table = document.getElementById("tbl-selected-genes");
 
 	switching = true;
 	// Set the sorting direction to ascending:
@@ -1202,12 +1202,12 @@ document.getElementById("gene_list_btn").addEventListener("click", ($trigger) =>
 
 });
 
-document.getElementById("new_genecart_label").addEventListener("input", (event) => {
-    const saveBtn = document.getElementById("save_genecart_btn");
+document.getElementById("new-genecart-label").addEventListener("input", (event) => {
+    const saveBtn = document.getElementById("save-genecart-btn");
     saveBtn.disabled = event.target.value ? false : true;
 });
 
-document.getElementById("save_genecart_btn").addEventListener("click", (event) => {
+document.getElementById("save-genecart-btn").addEventListener("click", (event) => {
     event.preventDefault();
     event.target.classList.add("is-loading");
     // get value of genecart radio button group
@@ -1245,7 +1245,7 @@ document.getElementById('genes_manually_entered').addEventListener('change', (ev
 
 document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
 
-document.getElementById("download_selected_genes_btn").addEventListener("click", downloadSelectedGenes);
+document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {

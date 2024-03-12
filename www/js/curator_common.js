@@ -690,52 +690,6 @@ const createAnalysisSelectInstance = (idSelector, analysisSelect=null) => {
 }
 
 /**
- * Creates a canvas gradient for the given element.
- *
- * @param {HTMLCanvasElement} elem - The canvas element.
- */
-const createCanvasGradient = (elem) => {
-    // Get ID of canvas element and remove "gradient_" from the name
-    const id = elem.id.replace("gradient_", "");
-    // Get the colorscale info for the given element (object is in plot_display_config.js)
-    const data = paletteInformation[id];
-
-    const ctx = elem.getContext("2d");  // canvas element
-    const grid = ctx.createLinearGradient(0, 0, elem.width, 0);    // Fill across but not down
-    // Add the colors to the gradient
-    for (const color of data) {
-        grid.addColorStop(color[0], color[1]);
-    }
-    // Fill the canvas with the gradient
-    ctx.fillStyle = grid;
-    ctx.fillRect(0, 0, elem.width, 20);
-}
-
-/**
- * Creates a color scale on a canvas element based on the given data.
- * @param {HTMLCanvasElement} elem - The canvas element to create the color scale on.
- */
-const createCanvasScale = (elem) => {
-    // Get ID of canvas element and remove "gradient_" from the name
-    const id = elem.id.replace("gradient_", "");
-    // Get the colorscale info for the given element (object is in plot_display_config.js)
-    const data = paletteInformation[id];
-
-    const elemWidth = elem.width;
-    const ctx = elem.getContext("2d");  // canvas element
-    // Add the colors to the scale
-    const { length } = data;
-    const width = elemWidth/length;   // 150 is length of canvas
-    for (const color of data) {
-        ctx.fillStyle = color[1];
-        // The length/length+1 is to account for the fact that the last color has a value of 1.0
-        // Otherwise the last color would be cut off
-        const x = color[0] * (length/(length+1)) * elemWidth;
-        ctx.fillRect(x, 0, width, 20);
-    }
-}
-
-/**
  * Creates a color scale select instance.
  * If the colorscaleSelect object exists, it updates it with the revised data and returns it.
  * Otherwise, it creates a new NiceSelect instance with the provided options.
@@ -876,10 +830,9 @@ const disableCheckboxLabel = (checkboxElt, state) => {
  *
  * @param {Object} option - The option object.
  * @param {string} text - The text to be displayed.
- * @param {boolean} [isContinuous=false] - Indicates if the colorscale is continuous.
  * @returns {DocumentFragment} - The formatted option text.
  */
-const formatColorscaleOptionText = (option, text, isContinuous=false) => {
+const formatColorscaleOptionText = (option, text) => {
 
     const fragment = document.createDocumentFragment();
     const canvas = document.createElement("canvas");
@@ -888,12 +841,6 @@ const formatColorscaleOptionText = (option, text, isContinuous=false) => {
     canvas.height = 20;
     canvas.classList.add("js-palette-canvas");
 
-    // BUG: Gradient does not show in the nice-select2 rendered option
-    if (isContinuous) {
-        createCanvasGradient(canvas);
-    } else {
-        createCanvasScale(canvas);
-    }
     fragment.append(canvas);
 
     const text_span = document.createElement("span");
@@ -1019,12 +966,13 @@ const includePlotParamOptions = async () => {
 }
 
 /**
- * Loads the colorscale select options based on the given plot type.
+ * Loads the colorscale select options based on the given parameters.
  *
- * @param {boolean} isContinuous - Indicates whether the plot type is continuous or discrete.
+ * @param {boolean} [isContinuous=false] - Indicates whether the plot uses continuous colorscales.
+ * @param {boolean} [isScanpy=false] - Indicates whether the plot is a scanpy plot.
  * @returns {void}
  */
-const loadColorscaleSelect = (isContinuous=false) => {
+const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
 
     let filteredPalettes = availablePalettes;
 
@@ -1041,6 +989,10 @@ const loadColorscaleSelect = (isContinuous=false) => {
         for (const option of palette.options) {
             const optionElt = document.createElement("option");
             optionElt.value = option.value;
+            // if the plot is a scanpy plot, then the colorscales are in plotly2MatplotlibNames
+            if (isScanpy) {
+                optionElt.value  = plotly2MatplotlibNames[option.value]
+            }
             // Add canvas element information to option, which is converted to innerHTML by nice-select2._renderItem
             optionElt.append(formatColorscaleOptionText(optionElt, option.text, isContinuous));
             optgroup.append(optionElt);
@@ -1049,8 +1001,20 @@ const loadColorscaleSelect = (isContinuous=false) => {
     }
 
 
-    // set default to purples
-    setSelectBoxByValue("color_palette_post", isContinuous ? "purp" : "d3");
+    // set default color
+    let defaultColor = "d3";
+    if (isContinuous) {
+        defaultColor = "purp";
+        if (isMultigene) {
+            // I personally don't like purp for multigene plots
+            defaultColor = "bluered";
+        }
+    }
+    if (isScanpy) {
+        defaultColor = "YlOrRd";
+    }
+
+    setSelectBoxByValue("color_palette_post", defaultColor);
 
     return;
 

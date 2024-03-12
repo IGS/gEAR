@@ -6,9 +6,9 @@ import re
 import sys
 from math import ceil
 from pathlib import Path
-from time import sleep
 
 import geardb
+import matplotlib as mpl
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -57,6 +57,15 @@ def calculate_num_legend_cols(group_len):
     """Determine number of columns legend should have in tSNE plot."""
     return ceil(group_len / NUM_LEGENDS_PER_COL)
 
+def create_bluered_colorscale():
+    """Create the continuous plotly bluered colorscale."""
+    bluered = mcolors.LinearSegmentedColormap.from_list("bluered", [(0, "blue"), (1, "red")])
+    bluered_r = bluered.reversed()
+
+    # register the color map with matplotlib
+    register_colormap("bluered", bluered)
+    register_colormap("bluered_r", bluered_r)
+
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
     from matplotlib import cm
@@ -102,13 +111,27 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
 
 def create_projection_pca_colorscale():
     """Create a diverging colorscale but with black in the middle range."""
-    from matplotlib.colors import LinearSegmentedColormap
 
     # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
     nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
     colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
-    return LinearSegmentedColormap.from_list("projection_pca", list(zip(nodes, colors)))
+    return mcolors.LinearSegmentedColormap.from_list("projection_pca", list(zip(nodes, colors)))
 
+def create_two_way_sorting(adata, gene_symbol):
+    """
+    Sorts the data in `adata` based on the absolute difference between the median value of `gene_symbol` and the values in `adata`.
+
+    Parameters:
+        adata (AnnData): Annotated data matrix.
+        gene_symbol (str): Symbol of the gene to sort by.
+
+    Returns:
+        AnnData: Sorted data matrix.
+    """
+    median = np.median(adata[:, gene_symbol].X.squeeze())
+    sort_order = np.argsort(np.abs(median - adata[:, gene_symbol].X.squeeze()))
+    ordered_obs = adata.obs.iloc[sort_order].index
+    return adata[ordered_obs, :]
 
 def get_colorblind_scale(n_colors):
     """Get a colorblind friendly colorscale (Viridis). Return n colors spaced equidistantly."""
@@ -174,6 +197,14 @@ def sort_legend(figure, sort_order, horizontal_legend=False):
 
     return (new_handles, new_labels)
 
+def register_colormap(name, cmap):
+    """Handle changes to matplotlib colormap interface in 3.6."""
+    try:
+        if name not in mpl.colormaps:
+            mpl.colormaps.register(cmap, name=name)
+    except AttributeError:
+        mpl.cm.register_cmap(name, cmap)
+
 # Rename axes labels to be whatever x and y fields were passed in
 # If axis labels are from an analysis, just use default embedding labels
 def rename_axes_labels(ax, x_axis, y_axis):
@@ -198,6 +229,9 @@ class TSNEData(Resource):
         skip_gene_plot = req.get('skip_gene_plot', False)
         plot_by_group = req.get('plot_by_group', None) # One expression plot per group
         max_columns = req.get('max_columns')   # Max number of columns before plotting to a new row
+        expression_palette = req.get('expression_palette', "YlOrRd")
+        reverse_palette = req.get('reverse_palette', False)
+        two_way_palette = req.get('two_way_palette', False) # If true, data extremes are in the forefront
         colors = req.get('colors')
         order = req.get('order', {})
         x_axis = req.get('x_axis', 'tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
@@ -206,6 +240,7 @@ class TSNEData(Resource):
         flip_y = req.get('flip_y', False)
         horizontal_legend = req.get('horizontal_legend', False)
         marker_size = req.get("marker_size", None)
+        center_around_median = req.get("center_around_median", False)
         filters = req.get('obs_filters', {})    # dict of lists
         session_id = request.cookies.get('gear_session_id')
         user = geardb.get_user_from_session_id(session_id)
@@ -367,6 +402,9 @@ class TSNEData(Resource):
                 os.remove(scanpy_copy)
             selected = selected[:, selected.var.index.duplicated() == False].copy(filename=scanpy_copy)
 
+        # Set the saved figure dpi based on the number of observations in the dataset after filtering
+        sc.settings.set_figure_params(dpi_save=int(150 + (selected.shape[0] / 500)))
+
         io_fig = None
         try:
             basis = PLOT_TYPE_TO_BASIS[plot_type]
@@ -381,21 +419,33 @@ class TSNEData(Resource):
             marker_size = int(marker_size)
 
         # Reverse cividis so "light" is at 0 and 'dark' is at incresing expression
-        expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else "YlOrRd")
+        if reverse_palette:
+            expression_palette += "_r"
 
-        # In projections, reorder so that the strongest weights (positive or negative) appear in forefront of plot
-        plot_sort_order = True
+        plot_sort_order = True   # scanpy auto-sorts by highest value by default
         plot_vcenter = None
+
+        if center_around_median:
+            plot_vcenter = np.median(selected[:, selected_gene].X.squeeze())
+
+        if two_way_palette:
+            selected = create_two_way_sorting(selected, selected_gene)
+            plot_sort_order = False
+
+        if expression_palette.startswith("bluered"):
+            create_bluered_colorscale()
+
+        expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else expression_palette)
+
+        # In projections, PCA is more meaningful with two-way sorting
         if projection_id:
             try:
                 algo = get_projection_algorithm(dataset_id, projection_id)
                 if algo == "pca":
-                    median = np.median(selected[:, selected_gene].X.squeeze())
-                    sort_order = np.argsort(np.abs(median - selected[:, selected_gene].X.squeeze()))
-                    ordered_obs = selected.obs.iloc[sort_order].index
-                    selected = selected[ordered_obs, :]
-                    plot_sort_order = False # scanpy auto-sorts by highest value by default so we need to override that
-                    plot_vcenter = median
+                    selected = create_two_way_sorting(selected, selected_gene)
+                    plot_sort_order = False
+                    # Since this is a diverging scale we want the center to be the median
+                    plot_vcenter = np.median(selected[:, selected_gene].X.squeeze())
                     expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
             except Exception as e:
                 print(str(e), file=sys.stderr)
@@ -554,7 +604,7 @@ class TSNEData(Resource):
 
         io_pic = io.BytesIO()
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
-        io_fig.savefig(io_pic, format='png', bbox_inches="tight")
+        io_fig.savefig(io_pic, format='webp', bbox_inches="tight")
         io_pic.seek(0)
         plt.close() # Prevent zombie plots, which can cause issues
 

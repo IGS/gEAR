@@ -1225,7 +1225,7 @@ class DatasetTile {
         plotContainer.append(tsnePreview);
 
         if (image) {
-            document.getElementById(tsnePreview.id ).setAttribute("src", `data:image/png;base64,${image}`);
+            document.getElementById(tsnePreview.id ).setAttribute("src", `data:image/webp;base64,${image}`);
         } else {
             console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
             return;

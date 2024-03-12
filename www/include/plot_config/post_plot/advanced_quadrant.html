@@ -18,7 +18,7 @@
         <select class="js-plot-req js-compare-groups js-dash-compare2" id="compare2_group_post"></select>
     </span>
 </p>
-<p class="is-flex is-justify-content-space-between pr-3">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Reference</span>
     <span class="select is-small">
         <select class="js-plot-req js-compare-groups js-dash-reference" id="reference_group_post"></select>
@@ -26,17 +26,17 @@
 </p>
 <p class="help">All conditions must come from the same category.</p>
 
-<p class="is-flex is-justify-content-space-between pr-3">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
   <span class="has-text-weight-medium">Fold-change cutoff</span>
   <input class="js-dash-fc-cutoff" id="fc_cutoff_post" type="number" value="2" min="0" />
 </p>
 <p class="help">Choose the fold-change threshold that a query/reference comparison must exceed to be included. This value will be log2-transformed in plot.</p>
-<p class="is-flex is-justify-content-space-between pr-3 checkbox">
+<p class="is-flex is-justify-content-space-between pr-3 mb-1c heckbox">
   <span class="has-text-weight-medium">FDR cutoff</span>
   <input class="js-dash-fdr-cutoff" id="fdr_cutoff_post" type="number" value="0.05" min="0" max="1" />
 </p>
 <p class="help">Choose the FDR (or qval) threshold a query/reference comparison must be under to be considered. Used in tandem with FDR cutoff.</p>
-<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+<label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
   <span class="has-text-weight-medium">Include genes with FC of 0</span>
   <input class="js-dash-include-zero-fc" id="include_zero_fc_post" type="checkbox" checked>
 </label>

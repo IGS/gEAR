@@ -1,4 +1,4 @@
-<section id="clustering_section_post" class="js-plot-config-section py-3">
+<section id="clustering_section_post" class="js-plot-config-section py-3 mb-1">
     <span class="subtitle is-4 is-underlined">Clustering</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Distance metric</span>
@@ -13,14 +13,14 @@
     </p>
     <p class="help">Select the metric to compute the pairwise distance for genes, and if applicable, observations.</p>
 
-    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
         <span class="has-text-weight-medium">Cluster observation samples</span>
         <input class="js-dash-cluster-obs" id="cluster_obs_post" type="checkbox">
     </label>
     <div class="alert alert-warning is-hidden" id="cluster_obs_warning">This dataset has more than 1000 observations, which may lead to the clustering step failing.  Please consider filtering your dataset categories beforehand.</div>
     <p class="help">NOTE: Disables sorting by primary and secondary categories.</p>
 
-    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
         <span class="has-text-weight-medium">Cluster genes</span>
         <input class="js-dash-cluster-genes" id="cluster_genes_post" type="checkbox">
     </label>
@@ -42,13 +42,13 @@
         <input class="js-dash-matrixplot" id="matrixplot_post" type="checkbox" checked>
     </label>
 
-    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
         <span class="has-text-weight-medium">Center mean expression around zero</span>
         <input class="js-dash-center-mean" id="center_around_zero_post" type="checkbox">
     </label>
     <p class="help">Choosing a diverging colorscale is recommended when enabling this option, and a sequential colorscale when disabling this option.</p>
 
-    <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
         <span class="has-text-weight-medium">Flip genes and observation axes</span>
         <input class="js-dash-flip-axes" id="flip_axes_post" type="checkbox">
     </label>
@@ -69,7 +69,7 @@
         <input class="js-dash-enable-subsampling" id="enable_subsampling_post" type="checkbox">
     </label>
 
-    <p class="is-flex is-justify-content-space-between pr-3">
+    <p class="is-flex is-justify-content-space-between pr-3 mb-1">
         <span class="has-text-weight-medium">Subsampling limit</span>
         <input class="js-dash-subsampling-limit" id="subsampling_limit_post" type="number" value="0" min="0" disabled/>
     </p>
