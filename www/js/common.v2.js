@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
         loadPlugins();
+
+        // Replace "gEAR" in the page title with the "domain_short_display_label" from the site preferences
+        const pageTitle = document.title;
+        document.title = pageTitle.replace("gEAR", SITE_PREFS.domain_short_display_label);
     });
 
 
