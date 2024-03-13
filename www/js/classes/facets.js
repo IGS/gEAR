@@ -6,8 +6,8 @@ class FacetWidget {
         this.aggregations = aggregations || {}; // Counts of all categories (filter)
         this.filters = filters || {};   // Selected categories and values
         this.onFilterChange = onFilterChange || {}; // Callback function when a filter is changed
-        this.facetContainer =  facetContainer || document.getElementById('facet_c');
-        this.selectedFacetsTags = selectedFacetsTags || document.getElementById('selected_facets_tags');
+        this.facetContainer =  facetContainer || document.getElementById('facet-c');
+        this.selectedFacetsTags = selectedFacetsTags || document.getElementById('selected-facets-tags');
         this.filterHeaderExtraClasses = filterHeaderExtraClasses || 'has-background-primary-dark has-text-primary-light';
         this.init();
     }

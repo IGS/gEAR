@@ -1151,13 +1151,7 @@ class DatasetTile {
         customLayout.height *= heightMultiplier;
         Plotly.relayout(plotlyPreview.id , customLayout);
 
-        const legendTitle = document.getElementById("legend_title_container");
-        if (legendTitle) {
-            legendTitle.classList.remove("is-hidden");
-            if (plotType === "dotplot") {
-                legendTitle.classList.add("is-hidden");
-            }
-        }
+
 
     }
 

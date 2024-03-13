@@ -162,11 +162,13 @@ def main():
     config = json.loads(plotly_config)
     config["plot_type"] = plot_type
 
+    alt_url = "http://localhost/api/plot/{}".format(dataset_id)
+
     image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
 
     if is_local:
-        url = "http://localhost/api/plot/{}".format(dataset_id)
+        url = alt_url
 
     try:
         if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
@@ -188,6 +190,25 @@ def main():
     except Exception as e:
         print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
         print(str(e), file=sys.stderr)
+
+    if not image_success:
+        try:
+            print("Attempting to use alt_url: {}".format(alt_url), file=sys.stderr)
+            url = alt_url
+            if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+                image_success = make_static_plotly_graph(filename, config, url)
+            elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
+                url += "/mg_dash"
+                image_success = make_static_plotly_graph(filename, config, url)
+            elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
+                url += "/tsne"
+                image_success = make_static_tsne_graph(filename, config, url)
+            elif plot_type.lower() in ["svg"]:
+                url += "/svg"
+                image_success = make_static_svg(filename, dataset_id)
+        except Exception as e:
+            print("Error with plotting dataset {} using alt_url".format(dataset_id), file=sys.stderr)
+            print(str(e), file=sys.stderr)
 
     if not image_success:
         print("Could not create static image file for display id {}".format(display_id), file=sys.stderr)

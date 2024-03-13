@@ -3,13 +3,15 @@
 class User {
     constructor ({id, user_name, email, institution, colorblind_mode, updates_wanted, is_admin,
                   help_id, date_created, session_id, default_profile_share_id, default_org_id} = {}) {
+
+        // SAdkins - I would love to make these properties camelCase as per JS convention, but that would be an effort to fix in all code that uses this class.
         this.id = id;
         this.user_name = user_name;
         this.email = email;
         this.institution = institution;
         this.colorblind_mode = colorblind_mode === 1;
         this.updates_wanted = updates_wanted === 1;
-        // Note: Store is_admin as boolean in database rather than 0/1?
+        // ?: Store is_admin as boolean in database rather than 0/1?
         this.is_admin = is_admin === 1;
         this.help_id = help_id;
         this.date_created = date_created;

@@ -1,4 +1,4 @@
-<div class="dropdown mb-3" id="plotly_param_dropdown">
+<div class="dropdown mb-3" id="plotly-param-dropdown">
     <div class="dropdown-trigger">
         <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
             <span>Select parameters to edit </span>
@@ -31,132 +31,123 @@
     </div>
 </div>
 
-<section id="x_axis_section_post" class="js-plot-config-section is-hidden">
+<section id="x-axis-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4">X-axis</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
-            <select class="js-plot-req js-plot-order js-plotly-x-axis" id="x_axis_series_post"></select>
+            <select class="js-plot-req js-plot-order js-plotly-x-axis" id="x-axis-series-post"></select>
         </span>
     </p>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Title</span>
-        <input class="js-plotly-x-title" id="x_axis_title_post" class="input" type="text" placeholder="Name axis title">
+        <input class="js-plotly-x-title" id="x-axis-title-post" class="input" type="text" placeholder="Name axis title">
     </p>
     <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
         <span class="has-text-weight-medium">Hide tickmarks</span>
-        <input class="js-plotly-hide-x-ticks" id="hide_x_ticks_post" type="checkbox">
+        <input class="js-plotly-hide-x-ticks" id="hide-x-ticks-post" type="checkbox">
     </label>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Axis min boundary</span>
-        <input class="js-x-range js-plotly-x-min" id="xmin_value_post" type="number" />
+        <input class="js-x-range js-plotly-x-min" id="xmin-value-post" type="number" />
     </p>
     <p class="is-flex is-justify-content-space-between pr-3 mb-1">
         <span class="has-text-weight-medium">Axis max boundary</span>
-        <input class="js-x-range js-plotly-x-max" id="xmax_value_post" type="number" />
+        <input class="js-x-range js-plotly-x-max" id="xmax-value-post" type="number" />
     </p>
     <p class="help">Set X-axis plotting range to display. Both min and max must be filled in to work.</p>
 </section>
 
-<section id="y_axis_section_post" class="js-plot-config-section is-hidden">
+<section id="y-axis-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4">Y-axis</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
-            <select class="js-plot-req js-plot-order js-plotly-y-axis" id="y_axis_series_post"></select>
+            <select class="js-plot-req js-plot-order js-plotly-y-axis" id="y-axis-series-post"></select>
         </span>
     </p>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Title</span>
-        <input class="js-plotly-y-title" id="x_axis_title_post" class="input" type="text" placeholder="Name axis title">
+        <input class="js-plotly-y-title" id="y-axis-title-post" class="input" type="text" placeholder="Name axis title">
     </p>
     <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
         <span class="has-text-weight-medium">Hide tickmarks</span>
-        <input class="js-plotly-hide-y-ticks" id="hide_y_ticks_post" type="checkbox">
+        <input class="js-plotly-hide-y-ticks" id="hide-y-ticks-post" type="checkbox">
     </label>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Axis min boundary</span>
-        <input class="js-y-range js-plotly-y-min" id="ymin_value_post" type="number" />
+        <input class="js-y-range js-plotly-y-min" id="ymin-value-post" type="number" />
     </p>
     <p class="is-flex is-justify-content-space-between pr-3 mb-1">
         <span class="has-text-weight-medium">Axis max boundary</span>
-        <input class="js-y-range js-plotly-y-max" id="ymax_value_post" type="number" />
+        <input class="js-y-range js-plotly-y-max" id="ymax-value-post" type="number" />
     </p>
     <p class="help">Set Y-axis plotting range to display. Both min and max must be filled in to work.</p>
 </section>
 
-<section id="color_section_post" class="js-plot-config-section is-hidden">
+<section id="color-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4">Color</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
-            <select class="js-plotly-color" id="color_series_post"></select>
+            <select class="js-plotly-color" id="color-series-post"></select>
         </span>
     </p>
     <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
         <span class="has-text-weight-medium">Hide legend</span>
-        <input class="js-plotly-hide-legend" id="hide_legend_post" type="checkbox">
+        <input class="js-plotly-hide-legend" id="hide-legend-postpost" type="checkbox">
     </label>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Color palette</span>
         <span class="select is-small">
-            <select class="js-plotly-color-palette" id="color_palette_post" disabled></select>
+            <select class="js-plotly-color-palette" id="color-palette-post" disabled></select>
         </span>
     </p>
-    <!-- Until I get it working
-    <div class="field">
-        <label class="label has-text-weight-medium">Color palette</label>
-        <div class="control">
-            <div class="select is-fullwidth">
-                <select class="js-plotly-color-palette" id="color_palette_post" disabled></select>
-            </div>
-        </div>
-    </div> -->
     <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
         <span class="has-text-weight-medium">Reverse palette</span>
-        <input class="js-plotly-reverse-palette" id="reverse_palette_post" type="checkbox" disabled>
+        <input class="js-plotly-reverse-palette" id="reverse-palette-post" type="checkbox" disabled>
     </label>
 </section>
 
-<section id="size_section_post" class="js-plot-config-section is-hidden">
+<section id="size-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4">Marker Size</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Series</span>
         <span class="select is-small">
-            <select class="js-plotly-size" id="size_series_post"></select>
+            <select class="js-plotly-size" id="size-series-post"></select>
         </span>
     </p>
     <p class="is-flex is-justify-content-space-between pr-3 mb-1">
         <span class="has-text-weight-medium">Min marker size</span>
-        <input class="js-plotly-marker-size" id="marker_size_post" type="range" min="1" max="15" />
+        <input class="js-plotly-marker-size" id="marker-size-post" type="range" min="1" max="15" />
     </p>
     <p class="help">Uniformly increase or decrease size of markers</p>
 </section>
 
-<section id="subplots_section_post" class="js-plot-config-section is-hidden">
+<section id="subplots-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4">Subplots</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Row series</span>
         <span class="select is-small">
-            <select class="js-plot-order js-plotly-facet-row" id="facet_row_series_post"></select>
+            <select class="js-plot-order js-plotly-facet-row" id="facet-row-series-post"></select>
         </span>
     </p>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Column series</span>
         <span class="select is-small">
-            <select class="js-plot-order js-plotly-facet-col" id="facet_col_series_post"></select>
+            <select class="js-plot-order js-plotly-facet-col" id="facet-col-series-post"></select>
         </span>
     </p>
 </section>
 
-<section id="misc_section_post" class="js-plot-config-section is-hidden">
+<section id="misc-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4">Miscellaneous</span>
     <p class="is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Hover annotation</span>
         <span class="select is-small">
-            <select class="js-plotly-label" id="label_series_post"></select>
+            <select class="js-plotly-label" id="label-series-post"></select>
         </span>
     </p>
     <!-- Include plot-specific HTML here -->
-    <section class="js-plot-specific-options" id="post_plot_specific_options"></section>
+    <section class="js-plot-specific-options" id="post-plot-specific-options"></section>
 </section>

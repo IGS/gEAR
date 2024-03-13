@@ -43,8 +43,8 @@ describe('Multigene Curator', function () {
             it("should populate the dataset list", async () => {
                 it("should populate the dataset list", async () => {
                     await mockGetDatasetList(page);
-                    const datasetInput = page.locator("css=#dataset_query");
-                    const datasetTree = page.locator("css=#dataset_tree");
+                    const datasetInput = page.locator("css=#dataset-query");
+                    const datasetTree = page.locator("css=#dataset-tree");
                     await expect(datasetTree).toBeVisible();
                     await expect(datasetTree.locator("css=.wb-row")).toHaveCount(4);    // 3 categories + root
                     await datasetInput.fill("Hertzano");
@@ -69,9 +69,9 @@ describe('Multigene Curator', function () {
 
                 beforeEach("Selecting a dataset", async () => {
                     await mockGetDatasetList(page);
-                    const datasetInput = page.locator("css=#dataset_query");
+                    const datasetInput = page.locator("css=#dataset-query");
                     await datasetInput.fill("Hertzano");
-                    const datasetTree = page.locator("css=#dataset_tree");
+                    const datasetTree = page.locator("css=#dataset-tree");
                     await datasetTree.getByText("P2, mouse, scRNA-seq, cochlea (Hertzano/Ament)").click();
 
                     await mockGetDatasetGenes(page);

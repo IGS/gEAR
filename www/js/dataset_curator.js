@@ -69,7 +69,7 @@ class PlotlyHandler extends PlotHandler {
                 renderOrderSortableSeries(series);
             }
 
-            document.getElementById("order_section").classList.remove("is-hidden");
+            document.getElementById("order-section").classList.remove("is-hidden");
         }
 
         // Handle filters
@@ -91,10 +91,10 @@ class PlotlyHandler extends PlotHandler {
                     // Found a case where the group in config was truncated compared to the (older) dataset's actual group
                     // But there are cases where the group name should not be escaped (such as if slashes are in the name)
                     try {
-                        const colorField = document.getElementById(`${group}_color`);
+                        const colorField = document.getElementById(`${group}-color`);
                         colorField.value = color;
                     } catch (error) {
-                        const colorField = document.getElementById(`${CSS.escape(group)}_color`);
+                        const colorField = document.getElementById(`${CSS.escape(group)}-color`);
                         colorField.value = color;
                     }
                 }
@@ -105,13 +105,12 @@ class PlotlyHandler extends PlotHandler {
         }
 
         if (config["color_palette"]) {
-            setSelectBoxByValue("color_palette_post", config["color_palette"]);
-            //colorscaleSelect.update();
+            setSelectBoxByValue("color-palette-post", config["color_palette"]);
         }
 
         // Handle vlines
         if (config["vlines"]) {
-            const vLinesBody = document.getElementById("vlines_body");
+            const vLinesBody = document.getElementById("vlines-body");
             const vlineField = document.querySelector(".js-plotly-vline-field");
             // For each vline object create and populate a new vline field
             for (const vlineObj in config["vlines"]) {
@@ -139,7 +138,7 @@ class PlotlyHandler extends PlotHandler {
             return;
         }
 
-        const plotContainer = document.getElementById("plot_container");
+        const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -162,9 +161,9 @@ class PlotlyHandler extends PlotHandler {
         Plotly.relayout("plotly-preview", custonLayout)
 
         // If any categorical series in ".js_plot_req", and the series has more then 20 groups, display a warning about overcrowding
-        const plotlyReqSeries = document.getElementsByClassName("js_plot_req");
+        const plotlyReqSeries = document.getElementsByClassName("js-plot-req");
         const overcrowdedSeries = [...plotlyReqSeries].filter((series) => {
-            const seriesName = series.id.replace("_color", "");
+            const seriesName = series.id.replace("-color", "");
             const seriesGroups = levels[seriesName];
             return seriesGroups.length > 20;
         });
@@ -173,7 +172,7 @@ class PlotlyHandler extends PlotHandler {
         }
         const overcrowdedSeriesWarning = document.createElement("article");
         overcrowdedSeriesWarning.classList.add("message", "is-warning");
-        overcrowdedSeriesWarning.id = "overcrowded_series_warning";
+        overcrowdedSeriesWarning.id = "overcrowded-series-warning";
         overcrowdedSeriesWarning.innerHTML = `
                 <div class="message-body">
                     <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
@@ -182,7 +181,7 @@ class PlotlyHandler extends PlotHandler {
         plotContainer.prepend(overcrowdedSeriesWarning);
 
         // Add event listener to delete button
-        const deleteButton = document.getElementById("overcrowded_series_warning").querySelector(".delete");
+        const deleteButton = document.getElementById("overcrowded-series-warning").querySelector(".delete");
         deleteButton.addEventListener("click", (event) => {
             event.target.parentElement.parentElement.remove();
         });
@@ -195,18 +194,18 @@ class PlotlyHandler extends PlotHandler {
      * @returns {Promise<void>} A promise that resolves when the plot HTML is loaded.
      */
     async loadPlotHtml() {
-        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
         prePlotOptionsElt.replaceChildren();
 
-        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
         prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/single_gene_plotly.html");
         postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/single_gene_plotly.html");
 
         // populate advanced options for specific plot types
-        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
-        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+        const prePlotSpecificOptionsElt = document.getElementById("plot-specific-options");
+        const postPlotSpecificOptionselt = document.getElementById("post-plot-specific-options");
 
         // Load color palette select options
         if (["violin"].includes(this.plotType)) {
@@ -256,7 +255,7 @@ class PlotlyHandler extends PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("color_series_post").value;
+        const colorSeries = document.getElementById("color-series-post").value;
         if (colorSeries && colorElts.length) {
             // Input is either color mapping or just the series
             this.plotConfig["colors"] = {};
@@ -348,7 +347,7 @@ class ScanpyHandler extends PlotHandler {
                 renderOrderSortableSeries(series);
             }
 
-            document.getElementById("order_section").classList.remove("is-hidden");
+            document.getElementById("order-section").classList.remove("is-hidden");
         }
 
         // Handle filters
@@ -390,10 +389,10 @@ class ScanpyHandler extends PlotHandler {
                     // Found a case where the group in config was truncated compared to the (older) dataset's actual group
                     // But there are cases where the group name should not be escaped (such as if slashes are in the name)
                     try {
-                        const colorField = document.getElementById(`${group}_color`);
+                        const colorField = document.getElementById(`${group}-color`);
                         colorField.value = color;
                     } catch (error) {
-                        const colorField = document.getElementById(`${CSS.escape(group)}_color`);
+                        const colorField = document.getElementById(`${CSS.escape(group)}-color`);
                         colorField.value = color;
                     }
                 }
@@ -401,8 +400,7 @@ class ScanpyHandler extends PlotHandler {
         }
 
         if (config["expression_palette"]) {
-            setSelectBoxByValue("color_palette_post", config["expression_palette"]);
-            //colorscaleSelect.update();
+            setSelectBoxByValue("color-palette-post", config["expression_palette"]);
         }
 
         if (config["plot_by_group"]) {
@@ -457,16 +455,16 @@ class ScanpyHandler extends PlotHandler {
             return;
         }
 
-        const plotContainer = document.getElementById("plot_container");
+        const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image");
-        tsnePreview.id = "tsne_preview";
+        tsnePreview.id = "tsne-preview";
         plotContainer.append(tsnePreview);
 
         if (image) {
-            document.getElementById("tsne_preview").setAttribute("src", `data:image/webp;base64,${image}`);
+            document.getElementById("tsne-preview").setAttribute("src", `data:image/webp;base64,${image}`);
         } else {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
@@ -478,10 +476,10 @@ class ScanpyHandler extends PlotHandler {
      * @returns {Promise<void>} A promise that resolves when the plot HTML is loaded.
      */
     async loadPlotHtml() {
-        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
         prePlotOptionsElt.replaceChildren();
 
-        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
         prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/tsne_static.html");
@@ -508,11 +506,11 @@ class ScanpyHandler extends PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("colorize_legend_by_post").textContent;
+        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
         if (colorSeries && colorElts.length) {
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {
-                const group = field.id.replace("_color", "");
+                const group = field.id.replace("-color", "");
                 this.plotConfig["colors"][group] = field.value;
             })
         }
@@ -526,12 +524,12 @@ class ScanpyHandler extends PlotHandler {
         }
 
         // If override marker size is not checked, ensure it does not get passed to the scanpy code
-        if (!(document.getElementById("override_marker_size_post").checked)) {
+        if (!(document.getElementById("override-marker-size-post").checked)) {
             this.plotConfig["marker_size"] = null;
         }
 
         // If skip gene plot is checked, ensure expression palette, reverse palette, and two-way palette do not get passed to the scanpy code
-        if (document.getElementById("skip_gene_plot_post").checked) {
+        if (document.getElementById("skip-gene-plot-post").checked) {
             this.plotConfig["expression_palette"] = null;
             this.plotConfig["reverse_palette"] = false;
             this.plotConfig["two_way_palette"] = false;
@@ -607,7 +605,7 @@ class SvgHandler extends PlotHandler {
         } catch (error) {
             return;
         }
-        const plotContainer = document.getElementById("plot_container");
+        const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, this.plotConfig["colors"]);
@@ -618,13 +616,13 @@ class SvgHandler extends PlotHandler {
      * @returns {Promise<void>} A promise that resolves once the plot HTML is loaded and the DOM elements are updated.
      */
     async loadPlotHtml() {
-        document.getElementById("facet_content").classList.add("is-hidden");
-        document.getElementById("selected_facets").classList.add("is-hidden");
+        document.getElementById("facet-content").classList.add("is-hidden");
+        document.getElementById("selected-facets").classList.add("is-hidden");
 
-        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
         prePlotOptionsElt.replaceChildren();
 
-        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
         prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/svg.html");
@@ -637,12 +635,12 @@ class SvgHandler extends PlotHandler {
     populatePlotConfig() {
         this.plotConfig["colors"] = {};   // Reset plot config
 
-        this.plotConfig["colors"]["low_color"] = document.getElementById("low_color").value;
-        this.plotConfig["colors"]["mid_color"] = document.getElementById("mid_color").value;
-        this.plotConfig["colors"]["high_color"] = document.getElementById("high_color").value;
+        this.plotConfig["colors"]["low_color"] = document.getElementById("low-color").value;
+        this.plotConfig["colors"]["mid_color"] = document.getElementById("mid-color").value;
+        this.plotConfig["colors"]["high_color"] = document.getElementById("high-color").value;
 
         // If user did not choose a mid-color, set it as null instead of to black
-        if (!(document.getElementById("enable_mid_color").checked)) {
+        if (!(document.getElementById("enable-mid-color").checked)) {
             this.plotConfig["colors"]["mid_color"] = null;
         }
 
@@ -673,23 +671,23 @@ const chooseGene = () => {
 
     // Cannot plot if no gene is selected
     if (!validateGeneSelected()){
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-        document.getElementById("gene_s_success").classList.add("is-hidden");
-        document.getElementById("current_gene").textContent = "";
+        document.getElementById("gene-s-failed").classList.remove("is-hidden");
+        document.getElementById("gene-s-success").classList.add("is-hidden");
+        document.getElementById("current-gene").textContent = "";
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
             plotBtn.disabled = true;
         }
         return;
     }
 
-    document.getElementById("gene_s_failed").classList.add("is-hidden");
-    document.getElementById("gene_s_success").classList.remove("is-hidden");
+    document.getElementById("gene-s-failed").classList.add("is-hidden");
+    document.getElementById("gene-s-success").classList.remove("is-hidden");
     // Display current selected gene
-    document.getElementById("current_gene_c").classList.remove("is-hidden");
-    document.getElementById("current_gene").textContent = selectedGene;
+    document.getElementById("current-gene-c").classList.remove("is-hidden");
+    document.getElementById("current-gene").textContent = selectedGene;
     // Force validationcheck to see if plot button should be enabled
     trigger(document.querySelector(".js-plot-req"), "change");
-    document.getElementById("plot_options_s").click();
+    document.getElementById("plot-options-s").click();
 }
 
 /**
@@ -743,7 +741,7 @@ const colorSVG = (chartData, plotConfig) => {
 
 
     // Load SVG file and set up the window
-    const svg = document.getElementById("plot_container");
+    const svg = document.getElementById("plot-container");
     const snap = Snap(svg);
     const svg_path = `datasets_uploaded/${datasetId}.svg`;
     Snap.load(svg_path, async (path) => {
@@ -860,7 +858,7 @@ const curatorSpecifcCreatePlot = async (plotType) => {
  * @returns {void}
  */
 const curatorSpecifcDatasetTreeCallback = () => {
-    document.getElementById("current_gene").textContent = "";
+    document.getElementById("current-gene").textContent = "";
 }
 
 /**
@@ -920,8 +918,8 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
  * @param {Array<string>} geneSymbols - The gene symbols to update.
  */
 const curatorSpecificUpdateDatasetGenes = (geneSymbols) => {
-    const geneAutocomplete = createAutocomplete("#gene_autocomplete", geneSymbols);
-    const genePostAutocomplete = createAutocomplete("#gene_autocomplete_post", geneSymbols, geneAutocomplete);
+    const geneAutocomplete = createAutocomplete("#gene-autocomplete", geneSymbols);
+    const genePostAutocomplete = createAutocomplete("#gene-autocomplete-post", geneSymbols, geneAutocomplete);
 
     // Set the otherAutocomplete reference for geneAutocomplete after genePostAutocomplete has been created
     geneAutocomplete.linkedAutocomplete = genePostAutocomplete;
@@ -1019,8 +1017,8 @@ const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
  * @param {string} seriesName - The name of the series.
  */
 const renderColorPicker = (seriesName) => {
-    const colorsContainer = document.getElementById("colors_container");
-    const colorsSection = document.getElementById("colors_section");
+    const colorsContainer = document.getElementById("colors-container");
+    const colorsSection = document.getElementById("colors-section");
 
     colorsSection.classList.add("is-hidden");
     colorsContainer.replaceChildren();
@@ -1059,7 +1057,7 @@ const renderColorPicker = (seriesName) => {
 
         const colorInput = document.createElement("input");
         colorInput.classList.add("js-plot-color");
-        colorInput.id = `${group}_color`;
+        colorInput.id = `${group}-color`;
         colorInput.type = "color";
         colorInput.value = groupColor;
         colorInput.setAttribute("aria-label", "Select a color");
@@ -1082,13 +1080,13 @@ const setupPlotlyOptions = async () => {
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
-        document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
     // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    allColumns = allColumns.filter((col) => !col.includes("-colors"));
     for (const key in levels) {
-        if (key.includes("_colors")) {
+        if (key.includes("-colors")) {
             delete levels[key];
         }
     }
@@ -1158,7 +1156,7 @@ const setupPlotlyOptions = async () => {
         // If x-axis is categorical, enable jitter plots
         for (const elt of xAxisSeriesElts) {
             elt.addEventListener("change", (event) => {
-                const vLinesContainer = document.getElementById("vlines_container")
+                const vLinesContainer = document.getElementById("vlines-container")
                 if ((catColumns.includes(event.target.value))) {
                     vLinesContainer.classList.add("is-hidden");
                     // Remove all but first existing vline
@@ -1178,21 +1176,21 @@ const setupPlotlyOptions = async () => {
 
 
         // Vertical line add and remove events
-        const vLinesBody = document.getElementById("vlines_body");
+        const vLinesBody = document.getElementById("vlines-body");
         const vLineField = document.querySelector(".js-plotly-vline-field");
-        document.getElementById("vline_add_btn").addEventListener("click", (event) => {
+        document.getElementById("vline-add-btn").addEventListener("click", (event) => {
             vLinesBody.append(vLineField.cloneNode(true));
             // clear the values of the clone
             document.querySelector(".js-plotly-vline-field:last-of-type .js-plotly-vline-pos").value = "";
             document.querySelector(".js-plotly-vline-field:last-of-type .js-plotly-vline-style-select").value = "solid";
             // NOTE: Currently if original is set before cloning, values are copied to clone
-            document.getElementById("vline_remove_btn").disabled = false;
+            document.getElementById("vline-remove-btn").disabled = false;
         })
-        document.getElementById("vline_remove_btn").addEventListener("click", (event) => {
+        document.getElementById("vline-remove-btn").addEventListener("click", (event) => {
             // Remove last vline
             const lastVLine = document.querySelector(".js-plotly-vline-field:last-of-type");
             lastVLine.remove();
-            if (vLineField.length < 2) document.getElementById("vline_remove_btn").disabled = true;
+            if (vLineField.length < 2) document.getElementById("vline-remove-btn").disabled = true;
         })
     }
 
@@ -1212,12 +1210,11 @@ const setupPlotlyOptions = async () => {
                     legendElt.disabled = false;
                     disableCheckboxLabel(legendElt, false);
                 }
-                document.getElementById("color_palette_post").disabled = true;
-                //colorscaleSelect.disable()
+                document.getElementById("color-palette-post").disabled = true;
             } else {
                 // remove color picker
-                const colorsContainer = document.getElementById("colors_container");
-                const colorsSection = document.getElementById("colors_section");
+                const colorsContainer = document.getElementById("colors-container");
+                const colorsSection = document.getElementById("colors-section");
                 colorsSection.classList.add("is-hidden");
                 colorsContainer.replaceChildren();
 
@@ -1230,8 +1227,7 @@ const setupPlotlyOptions = async () => {
                     legendElt.checked = false;
                     disableCheckboxLabel(legendElt, true);
                 }
-                document.getElementById("color_palette_post").disabled = false;
-                //colorscaleSelect.enable()
+                document.getElementById("color-palette-post").disabled = false;
             }
         })
     }
@@ -1242,15 +1238,15 @@ const setupPlotlyOptions = async () => {
     for (const elt of plotOrderElts) {
         elt.addEventListener("change", (event) => {
             const paramId = event.target.id;
-            const param = paramId.replace("_series", "").replace("_post", "");
+            const param = paramId.replace("-series", "").replace("-post", "");
             // NOTE: continuous series will be handled in the function
             updateOrderSortable();
         });
     }
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
-    const xSeries = document.getElementById("x_axis_series");
-    const ySeries = document.getElementById("y_axis_series");
+    const xSeries = document.getElementById("x-axis-series");
+    const ySeries = document.getElementById("y-axis-series");
     if (xSeries.value) {
         // If value is categorical, disable min and max boundaries
         for (const elt of [...document.getElementsByClassName("js-plotly-x-min"), ...document.getElementsByClassName("js-plotly-x-max")]) {
@@ -1267,7 +1263,7 @@ const setupPlotlyOptions = async () => {
     }
 
     // Setup the dropdown menu on the post-plot view
-    const plotlyDropdown = document.getElementById("plotly_param_dropdown");
+    const plotlyDropdown = document.getElementById("plotly-param-dropdown");
     plotlyDropdown.addEventListener("click", (event) => {
         event.stopPropagation();    // This prevents the document from being clicked as well.
         plotlyDropdown.classList.toggle("is-active");
@@ -1284,7 +1280,7 @@ const setupPlotlyOptions = async () => {
         }
     });
 
-    const plotlyDropdownMenuItems = document.querySelectorAll("#plotly_param_dropdown .dropdown-item");
+    const plotlyDropdownMenuItems = document.querySelectorAll("#plotly-param-dropdown .dropdown-item");
     for (const item of plotlyDropdownMenuItems) {
         item.addEventListener("click", showPostPlotlyParamSubsection);
     }
@@ -1302,14 +1298,14 @@ const setupScanpyOptions = async () => {
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
-        document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
 
     // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    allColumns = allColumns.filter((col) => !col.includes("-colors"));
     for (const key in levels) {
-        if (key.includes("_colors")) {
+        if (key.includes("-colors")) {
             delete levels[key];
         }
     }
@@ -1374,8 +1370,8 @@ const setupScanpyOptions = async () => {
                 renderColorPicker(event.target.value);
                 return;
             }
-            const colorsContainer = document.getElementById("colors_container");
-            const colorsSection = document.getElementById("colors_section");
+            const colorsContainer = document.getElementById("colors-container");
+            const colorsSection = document.getElementById("colors-section");
             colorsSection.classList.add("is-hidden");
             colorsContainer.replaceChildren();
             return;
@@ -1401,11 +1397,11 @@ const setupScanpyOptions = async () => {
     }
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
-    if (document.getElementById("x_axis_series").value) {
-        trigger(document.getElementById("x_axis_series"), "change");
+    if (document.getElementById("x-axis-series").value) {
+        trigger(document.getElementById("x-axis-series"), "change");
     }
-    if (document.getElementById("y_axis_series").value) {
-        trigger(document.getElementById("y_axis_series"), "change");
+    if (document.getElementById("y-axis-series").value) {
+        trigger(document.getElementById("y-axis-series"), "change");
     }
 
     // If override marker size is checked, enable the marker size field
@@ -1459,11 +1455,11 @@ const setupSVGOptions = () => {
 
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
-    if (document.getElementById("low_color").value) {
-        trigger(document.getElementById("low_color"), "change");
+    if (document.getElementById("low-color").value) {
+        trigger(document.getElementById("low-color"), "change");
     }
-    if (document.getElementById("high_color").value) {
-        trigger(document.getElementById("high_color"), "change");
+    if (document.getElementById("high-color").value) {
+        trigger(document.getElementById("high-color"), "change");
     }
 }
 
@@ -1478,22 +1474,22 @@ const showPostPlotlyParamSubsection = (event) => {
 
     switch (event.target.textContent.trim()) {
         case "X-axis":
-            document.getElementById("x_axis_section_post").classList.remove("is-hidden");
+            document.getElementById("x-axis-section-post").classList.remove("is-hidden");
             break;
         case "Y-axis":
-            document.getElementById("y_axis_section_post").classList.remove("is-hidden");
+            document.getElementById("y-axis-section-post").classList.remove("is-hidden");
             break;
         case "Color":
-            document.getElementById("color_section_post").classList.remove("is-hidden");
+            document.getElementById("color-section-post").classList.remove("is-hidden");
             break;
         case "Marker Size":
-            document.getElementById("size_section_post").classList.remove("is-hidden");
+            document.getElementById("size-section-post").classList.remove("is-hidden");
             break;
         case "Subplots":
-            document.getElementById("subplots_section_post").classList.remove("is-hidden");
+            document.getElementById("subplots-section-post").classList.remove("is-hidden");
             break;
         default:
-            document.getElementById("misc_section_post").classList.remove("is-hidden");
+            document.getElementById("misc-section-post").classList.remove("is-hidden");
             break;
     }
     event.preventDefault(); // Prevent "link" clicking from "a" elements

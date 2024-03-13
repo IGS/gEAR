@@ -499,48 +499,45 @@ const createToast = (msg, levelClass="is-danger") => {
     });
 }
 
-const loadPlugins = () => {
-    let page_name = location.pathname.replace(/^\//, '');
-
-    if (page_name == "") {
-        page_name = 'index.html';
-    }
-
+const loadPlugin = (pluginName, pageName, pluginImportBasename) => {
     const head = document.getElementsByTagName('head')[0];
     const body = document.getElementsByTagName('body')[0];
 
-    for (const [plugin_name, plugin_page_names] of Object.entries(SITE_PREFS['enabled_plugins'])) {
-        if (plugin_page_names.includes(page_name)) {
-            const plugin_import_basename = page_name.replace(/\.[^/.]+$/, "");
+    // create a hidden element at the end of the document and put it there
+    const pluginImportHtmlUrl = `./plugins/${pluginName}/${pageName}`;
+    const pluginHtmlElement = document.createElement('div');
+    pluginHtmlElement.id = `${pluginName}_html_c`;  // TODO: rename in kebab-case, which requires fixing in plugin HTML and JS files
 
-            // create a hidden element at the end of the document and put it there
-            const plugin_import_html_url = "./plugins/" + plugin_name + "/" + page_name;
-            let plugin_html_element = document.createElement('div');
-            plugin_html_element.id = plugin_name + "_html_c";
-            //plugin_html_element.style = "display: none;"
-            //body.append(plugin_html_element);
+    fetch(pluginImportHtmlUrl)
+        .then(response => {
+            body.append(pluginHtmlElement);
+            return response.text();
+        })
+        .then(data => {
+            document.getElementById(pluginHtmlElement.id).innerHTML = data;
+        });
 
-            fetch(plugin_import_html_url)
-                .then(response => {
-                    body.append(plugin_html_element);
-                    return response.text();
-                })
-                .then(data => {
-                    document.getElementById(plugin_html_element.id).innerHTML = data;
-                });
+    const pluginImportCssUrl = `./plugins/${pluginName}/${pluginImportBasename}.css`;
+    const style = document.createElement('link');
+    style.href = pluginImportCssUrl;
+    style.type = 'text/css';
+    style.rel = 'stylesheet';
+    head.append(style);
 
-            const plugin_import_css_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".css";
-            let style = document.createElement('link');
-            style.href = plugin_import_css_url;
-            style.type = 'text/css';
-            style.rel = 'stylesheet';
-            head.append(style);
+    const pluginImportJsUrl = `./plugins/${pluginName}/${pluginImportBasename}.js`;
+    const script = document.createElement('script');
+    script.src = pluginImportJsUrl;
+    script.type = 'text/javascript';
+    head.append(script);
+}
 
-            const plugin_import_js_url = "./plugins/" + plugin_name + "/" + plugin_import_basename + ".js";
-            let script = document.createElement('script');
-            script.src = plugin_import_js_url;
-            script.type = 'text/javascript';
-            head.append(script);
+const loadPlugins = () => {
+    const pageName = location.pathname.replace(/^\//, '') || 'index.html';
+    const pluginImportBasename = pageName.replace(/\.[^/.]+$/, "");
+
+    for (const [pluginName, pluginPageNames] of Object.entries(SITE_PREFS['enabled_plugins'])) {
+        if (pluginPageNames.includes(pageName)) {
+            loadPlugin(pluginName, pageName, pluginImportBasename);
         }
     }
 }

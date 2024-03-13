@@ -17,7 +17,6 @@ let analysisObj = null;
 
 let analysisSelect = null;
 let plotTypeSelect = null;
-let colorscaleSelect = null;
 
 /*
 ! Quick note -
@@ -123,7 +122,7 @@ const curatorApiCallsMixin = {
         try {
             await super.deleteDisplay(displayId);
             // Remove display card
-            const displayCard = document.getElementById(`${displayId}_display`);
+            const displayCard = document.getElementById(`${displayId}-display`);
             displayCard.remove();
         } catch (error) {
             logErrorInConsole(error);
@@ -381,7 +380,7 @@ const curatorApiCallsMixin = {
             elt.textContent = "Set as Default";
         }
 
-        const currentDefaultElt = document.getElementById(`${displayId}_default`);
+        const currentDefaultElt = document.getElementById(`${displayId}-default`);
         currentDefaultElt.disabled = true;
         currentDefaultElt.textContent = "Default";
     }
@@ -401,15 +400,15 @@ Object.setPrototypeOf(curatorApiCallsMixin, apiCallsMixin);
  * @param {Function} options.selectCallback - The callback function to be called when a dataset is selected.
  */
 const datasetTree = new DatasetTree({
-    element: document.getElementById("dataset_tree")
-    , searchElement: document.getElementById("dataset_query")
+    element: document.getElementById("dataset-tree")
+    , searchElement: document.getElementById("dataset-query")
     , selectCallback: (async (e) => {
         if (e.node.type !== "dataset") {
             return;
         }
         document.getElementById("current-dataset-c").classList.remove("is-hidden");
-        document.getElementById("current_dataset").textContent = e.node.title;
-        document.getElementById("current_dataset_post").textContent = e.node.title;
+        document.getElementById("current-dataset").textContent = e.node.title;
+        document.getElementById("current-dataset-post").textContent = e.node.title;
 
         const newDatasetId = e.node.data.dataset_id;
         organismId = e.node.data.organism_id;
@@ -422,8 +421,8 @@ const datasetTree = new DatasetTree({
         datasetId = newDatasetId;
 
         // Click to get to next step
-        document.getElementById("load_plot_s").click();
-        document.getElementById('new_display').classList.add("is-loading");
+        document.getElementById("load-plot-s").click();
+        document.getElementById('new-display').classList.add("is-loading");
 
         // Clear "success/failure" icons
         for (const elt of document.getElementsByClassName("js-step-success")) {
@@ -444,14 +443,14 @@ const datasetTree = new DatasetTree({
             defaultDisplayId = -1;  // Cannot make any display a default.
         }
         renderDisplayCards(userDisplays, ownerDisplays, defaultDisplayId);
-        document.getElementById('new_display').classList.remove("is-loading");
-        document.getElementById('new_display').disabled = false;
+        document.getElementById('new-display').classList.remove("is-loading");
+        document.getElementById('new-display').disabled = false;
 
         // Clear (and update) options within nice-select2 structure.
         // Not providing the object will duplicate the nice-select2 structure
         analysisObj = null;
-        analysisSelect = createAnalysisSelectInstance("analysis_select", analysisSelect);
-        plotTypeSelect = createPlotTypeSelectInstance("plot_type_select", plotTypeSelect);
+        analysisSelect = createAnalysisSelectInstance("analysis-select", analysisSelect);
+        plotTypeSelect = createPlotTypeSelectInstance("plot-type-select", plotTypeSelect);
 
         // Call any curator-specific callbacks
         await curatorSpecifcDatasetTreeCallback();
@@ -466,14 +465,14 @@ const analysisSelectUpdate = async () => {
     try {
         const {publicAnalyses, privateAnalyses} = await curatorApiCallsMixin.fetchAnalyses(datasetId);
         updateAnalysesOptions(privateAnalyses, publicAnalyses);
-        document.getElementById("analysis_type_select_c_success").classList.remove("is-hidden");   // Default analysis is good
+        document.getElementById("analysis-type-select-c-success").classList.remove("is-hidden");   // Default analysis is good
     } catch (error) {
         // Show failure state things.
-        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
-        document.getElementById("analysis_type_select_c_failed").classList.remove("is-hidden");
-        document.getElementById('new_display').classList.remove("is-loading"); // Don't give impression display is still loading
+        document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
+        document.getElementById("analysis-type-select-c-failed").classList.remove("is-hidden");
+        document.getElementById('new-display').classList.remove("is-loading"); // Don't give impression display is still loading
     } finally {
-        document.getElementById("load_plot_s_success").classList.remove("is-hidden");
+        document.getElementById("load-plot-s-success").classList.remove("is-hidden");
     }
 
 }
@@ -489,8 +488,8 @@ const chooseAnalysis = async (event) => {
     const analysisText = (analysisId?.length) ? analysisId : "Primary Analysis";
 
     // Display current selected analysis
-    document.getElementById("current_analysis").textContent = analysisText;
-    document.getElementById("current_analysis_post").textContent = analysisText;
+    document.getElementById("current-analysis").textContent = analysisText;
+    document.getElementById("current-analysis-post").textContent = analysisText;
 
 
     // NOTE: For now, we can just pass analysis id only to tSNE and be fine
@@ -519,10 +518,10 @@ const chooseAnalysis = async (event) => {
  * @returns {Promise<void>} - A promise that resolves when the display is updated.
  */
 const chooseNewDisplay = async (event) => {
-    document.getElementById('new_display').classList.add("is-loading");
-    document.getElementById("analysis_select").disabled = false;
+    document.getElementById('new-display').classList.add("is-loading");
+    document.getElementById("analysis-select").disabled = false;
 
-    document.getElementById("plot_type_select").disabled = false;
+    document.getElementById("plot-type-select").disabled = false;
 
     // update genes, analysis, and plot type selects in parallel
     await Promise.all([
@@ -532,8 +531,8 @@ const chooseNewDisplay = async (event) => {
 
     ]);
 
-    document.getElementById('new_display').classList.remove("is-loading");
-    document.getElementById("plot_type_s").click();
+    document.getElementById('new-display').classList.remove("is-loading");
+    document.getElementById("plot-type-s").click();
 }
 
 /**
@@ -548,36 +547,36 @@ const choosePlotType = async (event) => {
     // Do not display if default opt is chosen
     const plotType = getSelect2Value(plotTypeSelect)
     if (plotType === "nope") {
-        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
-        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
+        document.getElementById("plot-type-s-success").classList.add("is-hidden");
         return;
     }
 
-    document.getElementById("plot_type_select_c_failed").classList.add("is-hidden");
-    document.getElementById("plot_type_select_c_success").classList.remove("is-hidden");
+    document.getElementById("plot-type-select-c-failed").classList.add("is-hidden");
+    document.getElementById("plot-type-select-c-success").classList.remove("is-hidden");
 
-    document.getElementById("plot_type_s_failed").classList.add("is-hidden");
-    document.getElementById("plot_type_s_success").classList.remove("is-hidden");
+    document.getElementById("plot-type-s-failed").classList.add("is-hidden");
+    document.getElementById("plot-type-s-success").classList.remove("is-hidden");
 
-    document.getElementById("plot_options_s_failed").classList.add("is-hidden");
-    document.getElementById("plot_options_s_success").classList.add("is-hidden");
+    document.getElementById("plot-options-s-failed").classList.add("is-hidden");
+    document.getElementById("plot-options-s-success").classList.add("is-hidden");
 
     // Display current selected plot type
-    document.getElementById("current_plot_type_c").classList.remove("is-hidden");
-    document.getElementById("current_plot_type").textContent = plotType;
+    document.getElementById("current-plot-type-c").classList.remove("is-hidden");
+    document.getElementById("current-plot-type").textContent = plotType;
 
     // Create facet widget, which will refresh filters
     facetWidget = await createFacetWidget(datasetId, null, {});
-    document.getElementById("facet_content").classList.remove("is-hidden");
-    document.getElementById("selected_facets").classList.remove("is-hidden");
+    document.getElementById("facet-content").classList.remove("is-hidden");
+    document.getElementById("selected-facets").classList.remove("is-hidden");
 
     // Reset sortable lists
-    document.getElementById("order_section").classList.add("is-hidden");
-    document.getElementById("order_container").replaceChildren();
+    document.getElementById("order-section").classList.add("is-hidden");
+    document.getElementById("order-container").replaceChildren();
 
 
     await includePlotParamOptions();
-    document.getElementById("gene_s").click();
+    document.getElementById("gene-s").click();
 }
 
 
@@ -594,8 +593,8 @@ const cloneDisplay = async (event, display) => {
 
     updateDatasetGenes(),
 
-    document.getElementById("analysis_select").disabled = false;
-    document.getElementById("plot_type_select").disabled = false;
+    document.getElementById("analysis-select").disabled = false;
+    document.getElementById("plot-type-select").disabled = false;
 
     const config = display.plotly_config;
 
@@ -608,7 +607,7 @@ const cloneDisplay = async (event, display) => {
     }
     // select analysis
     if (analysisObj) {
-        setSelectBoxByValue("analysis_select", analysisObj.id);
+        setSelectBoxByValue("analysis-select", analysisObj.id);
         analysisSelect.update();
         await chooseAnalysis();
         // NOTE: Analysis will not be chosen if the user cannot access it (i.e. owner curation, private analysis)
@@ -627,16 +626,16 @@ const cloneDisplay = async (event, display) => {
             setPlotTypeDisabledState(plotType, isAllowed);
         }
 
-        setSelectBoxByValue("plot_type_select", plotType);
+        setSelectBoxByValue("plot-type-select", plotType);
         plotTypeSelect.update();
         await choosePlotType();
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
         console.error(error);
-        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_s_success").classList.add("is-hidden");
-        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");
+        document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
+        document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
+        document.getElementById("plot-type-s-success").classList.add("is-hidden");
+        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
 
         return;
     } finally {
@@ -648,7 +647,7 @@ const cloneDisplay = async (event, display) => {
         manuallyEnteredGenes = new Set(config.gene_symbols);
         selected_genes = manuallyEnteredGenes;
         const geneSymbolString = config.gene_symbols.join(" ");
-        document.getElementById('genes_manually_entered').value = geneSymbolString;
+        document.getElementById('genes-manually-entered').value = geneSymbolString;
     } else {
         selectedGene = config.gene_symbol;
     }
@@ -663,10 +662,10 @@ const cloneDisplay = async (event, display) => {
     }
 
     // Mark plot params as success
-    document.getElementById("plot_options_s_success").classList.remove("is-hidden");
+    document.getElementById("plot-options-s-success").classList.remove("is-hidden");
 
     // Click "submit" button to load plot
-    document.getElementById("plot_btn").click();
+    document.getElementById("plot-btn").click();
 
 }
 
@@ -718,10 +717,10 @@ const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
  * @returns {FacetWidget} The created facet widget.
  */
 const createFacetWidget = async (datasetId, analysisId, filters) => {
-    document.getElementById("selected_facets_loader").classList.remove("is-hidden")
+    document.getElementById("selected-facets-loader").classList.remove("is-hidden")
 
     const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
-    document.getElementById("num_selected").textContent = totalCount;
+    document.getElementById("num-selected").textContent = totalCount;
 
 
     const facetWidget = new FacetWidget({
@@ -732,7 +731,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
                 try {
                     const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
                     facetWidget.updateAggregations(aggregations);
-                    document.getElementById("num_selected").textContent = totalCount;
+                    document.getElementById("num-selected").textContent = totalCount;
                 } catch (error) {
                     logErrorInConsole(error);
                 }
@@ -744,7 +743,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
             updateOrderSortable();
         }
     });
-    document.getElementById("selected_facets_loader").classList.add("is-hidden")
+    document.getElementById("selected-facets-loader").classList.add("is-hidden")
     return facetWidget;
 }
 
@@ -826,31 +825,6 @@ const disableCheckboxLabel = (checkboxElt, state) => {
 }
 
 /**
- * Formats the option text for a colorscale.
- *
- * @param {Object} option - The option object.
- * @param {string} text - The text to be displayed.
- * @returns {DocumentFragment} - The formatted option text.
- */
-const formatColorscaleOptionText = (option, text) => {
-
-    const fragment = document.createDocumentFragment();
-    const canvas = document.createElement("canvas");
-    canvas.id = `gradient_${option.value}`;
-    canvas.width = 100;
-    canvas.height = 20;
-    canvas.classList.add("js-palette-canvas");
-
-    fragment.append(canvas);
-
-    const text_span = document.createElement("span");
-    text_span.classList.add("pl-1");
-    text_span.textContent = text;
-    fragment.append(text_span);
-    return fragment;
-}
-
-/**
  * Retrieves updates and additions to the plot from the plot_display_config JS object.
  *
  * @param {Object[]} plotConfObj - The plot configuration object.
@@ -898,9 +872,9 @@ const getPlotConfigValueFromClassName = (className) => {
  */
 const getPlotOrderFromSortable = () => {
     const order = {};
-    for (const elt of document.getElementById("order_container").children) {
+    for (const elt of document.getElementById("order-container").children) {
         const series = elt.querySelector("p").textContent;
-        const serialized = sortable(`#${CSS.escape(series)}_order_list`, 'serialize')[0].items;
+        const serialized = sortable(`#${CSS.escape(series)}-order-list`, 'serialize')[0].items;
         // Sort by "sortable" index position
         order[series] = serialized.map((val) => val.label);
     }
@@ -942,11 +916,11 @@ const includePlotParamOptions = async () => {
     plotStyle = curatorSpecificPlotStyle(plotType);
     if (!plotStyle) {
         console.warn(`Plot type ${plotType} not recognized.`)
-        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_s_success").classList.add("is-hidden");
+        document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
+        document.getElementById("plot-type-s-success").classList.add("is-hidden");
         return;
     }
-    document.getElementById("plot_type_s_failed").classList.add("is-hidden");
+    document.getElementById("plot-type-s-failed").classList.add("is-hidden");
 
 
     // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
@@ -993,11 +967,10 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
             if (isScanpy) {
                 optionElt.value  = plotly2MatplotlibNames[option.value]
             }
-            // Add canvas element information to option, which is converted to innerHTML by nice-select2._renderItem
-            optionElt.append(formatColorscaleOptionText(optionElt, option.text, isContinuous));
+            optionElt.textContent = option.text;
             optgroup.append(optionElt);
         }
-        document.getElementById("color_palette_post").append(optgroup);
+        document.getElementById("color-palette-post").append(optgroup);
     }
 
 
@@ -1014,11 +987,9 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
         defaultColor = "YlOrRd";
     }
 
-    setSelectBoxByValue("color_palette_post", defaultColor);
+    setSelectBoxByValue("color-palette-post", defaultColor);
 
     return;
-
-    //colorscaleSelect = createColorscaleSelectInstance("color_palette_post", colorscaleSelect);
 
 }
 
@@ -1088,10 +1059,10 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
         }
         plotTypeSelect.update();
     } catch (error) {
-        document.getElementById("plot_type_s_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_select_c_failed").classList.remove("is-hidden");
-        document.getElementById("plot_type_s_success").classList.add("is-hidden");
-        document.getElementById("plot_type_select_c_success").classList.add("is-hidden");;
+        document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
+        document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
+        document.getElementById("plot-type-s-success").classList.add("is-hidden");
+        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");;
     }
 }
 
@@ -1104,8 +1075,8 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
  * @returns {Promise<void>} - A promise that resolves when the display cards are rendered.
  */
 const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId) => {
-    const userDisplaysElt = document.getElementById("user_displays");
-    const ownerDisplaysElt = document.getElementById("owner_displays");
+    const userDisplaysElt = document.getElementById("user-displays");
+    const ownerDisplaysElt = document.getElementById("owner-displays");
 
     // Empty existing displays
     userDisplaysElt.replaceChildren();
@@ -1143,26 +1114,26 @@ const renderDisplayCards = async (userDisplays, ownerDisplays, defaultDisplayId)
  * @param {string} series - The series to render.
  */
 const renderOrderSortableSeries = (series) => {
-    const orderContainer = document.getElementById("order_container");
+    const orderContainer = document.getElementById("order-container");
 
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
 
     // Start with a fresh template
-    const orderElt = document.getElementById(`${series}_order`);
+    const orderElt = document.getElementById(`${series}-order`);
     if (orderElt) {
         orderElt.remove();
     }
 
     // Create parent template
     // Designed so the title is a full row and the draggables are 50% width
-    const parentList = `<ul id="${series}_order_list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
+    const parentList = `<ul id="${series}-order-list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
 
     const orderDiv = document.createElement("div");
-    orderDiv.id = `${series}_order`;
+    orderDiv.id = `${series}-order`;
     orderDiv.classList.add("columns", "is-multiline");
     orderDiv.innerHTML = `
-        <p id="${series}_order_title" class="has-text-weight-bold column is-full">${series}</p>
+        <p id="${series}-order-title" class="has-text-weight-bold column is-full">${series}</p>
         ${parentList}
     `;
     orderContainer.append(orderDiv);
@@ -1175,11 +1146,11 @@ const renderOrderSortableSeries = (series) => {
         const listElt = document.createElement("li");
         listElt.classList.add("has-background-grey-lighter", "has-text-dark");
         listElt.textContent = group;
-        document.getElementById(`${series}_order_list`).append(listElt);
+        document.getElementById(`${series}-order-list`).append(listElt);
     }
 
     // Create sortable for this series
-    sortable(`#${series}_order_list`, {
+    sortable(`#${series}-order-list`, {
         hoverClass: "has-text-weight-bold"
         , itemSerializer(item, container) {
             item.label = item.node.textContent
@@ -1210,7 +1181,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     const template = document.getElementById("owner-display-card");
     const displayCard = template.content.cloneNode(true);
     const displayCardElt = displayCard.querySelector(".column");
-    displayCardElt.id = `${display.id}_display`;
+    displayCardElt.id = `${display.id}-display`;
 
     const displayCardHeader = displayCard.querySelector(".card-header-title");
     displayCardHeader.textContent = label;
@@ -1230,7 +1201,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
 
     // Edit default properties if this is the default display
     const displayCardDefaultBtn = displayCard.querySelector(".js-display-default");
-    displayCardDefaultBtn.id = `${display.id}_default`;
+    displayCardDefaultBtn.id = `${display.id}-default`;
     if (display.id === defaultDisplayId) {
         displayCardDefaultBtn.textContent = "Default";
         displayCardDefaultBtn.disabled = true;
@@ -1240,7 +1211,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     const displayCardCloneBtn = displayCard.querySelector(".js-display-clone");
     displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display));
 
-    const ownerDisplaysElt = document.getElementById("owner_displays");
+    const ownerDisplaysElt = document.getElementById("owner-displays");
     ownerDisplaysElt.append(displayCard);
 }
 
@@ -1266,7 +1237,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     const template = document.getElementById("user-display-card");
     const displayCard = template.content.cloneNode(true);
     const displayCardElt = displayCard.querySelector(".column");
-    displayCardElt.id = `${display.id}_display`;
+    displayCardElt.id = `${display.id}-display`;
 
     const displayCardHeader = displayCard.querySelector(".card-header-title");
     displayCardHeader.textContent = label;
@@ -1286,7 +1257,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     // Edit default properties if this is the default display
     const displayCardDefaultBtn = displayCard.querySelector(".js-display-default");
-    displayCardDefaultBtn.id = `${display.id}_default`;
+    displayCardDefaultBtn.id = `${display.id}-default`;
     if (display.id === defaultDisplayId) {
         displayCardDefaultBtn.textContent = "Default";
         displayCardDefaultBtn.disabled = true;
@@ -1298,7 +1269,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     const displayCardDeleteBtn = displayCard.querySelector(".js-display-delete");
     displayCardDeleteBtn.addEventListener("click", (event) => curatorApiCallsMixin.deleteDisplay(display.id));
 
-    const userDisplaysElt = document.getElementById("user_displays");
+    const userDisplaysElt = document.getElementById("user-displays");
     userDisplaysElt.append(displayCard);
 }
 
@@ -1325,9 +1296,11 @@ const setPlotEltValueFromConfig = (classSelector, confVal) => {
  */
 const setPlotTypeDisabledState = (plotType, isAllowed) => {
     if (plotType === "tsne/umap_dynamic") {
-        document.getElementById("tsne_dyna_opt").disabled = !isAllowed;
+        document.getElementById("tsne-dyna-opt").disabled = !isAllowed;
     } else {
-        document.getElementById(`${plotType}_opt`).disabled = !isAllowed;
+        // replace _ with - for id
+        const fixedPlotType = plotType.replace("_", "-");
+        document.getElementById(`${fixedPlotType}-opt`).disabled = !isAllowed;
     }
 }
 
@@ -1388,14 +1361,14 @@ const setupValidationEvents = () => {
  * @param {Array} publicAnalyses - The array of public analyses.
  */
 const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
-    const privateAnalysesElt = document.getElementById("private_analyses");
-    const publicAnalysesElt = document.getElementById("public_analyses");
+    const privateAnalysesElt = document.getElementById("private-analyses");
+    const publicAnalysesElt = document.getElementById("public-analyses");
 
     // Empty the old optgroups
     privateAnalysesElt.replaceChildren();
     publicAnalysesElt.replaceChildren();
 
-    const analysisElt = document.getElementById("analysis_select");
+    const analysisElt = document.getElementById("analysis-select");
     analysisElt.parentElement.classList.add("is-loading");
 
     // Show message that no analyses are present if none exist
@@ -1419,16 +1392,12 @@ const updateAnalysesOptions = (privateAnalyses, publicAnalyses) => {
         const option = document.createElement("option");
         option.textContent = analysis.label;
         option.value = analysis.id;
-        //option.dataset.type = analysis.type;
-        //option.dataset.owner_id = analysis.user_id;
         privateAnalysesElt.append(option);
     }
     for (const analysis of publicAnalyses) {
         const option = document.createElement("option");
         option.textContent = analysis.label;
         option.value = analysis.id;
-        //option.dataset.type = analysis.type;
-        //option.dataset.owner_id = analysis.user_id;
         publicAnalysesElt.append(option);
     }
 
@@ -1449,7 +1418,7 @@ const updateDatasetGenes = async (analysisId=null) => {
         const geneSymbols = await curatorApiCallsMixin.fetchGeneSymbols(datasetId, analysisId);
         curatorSpecificUpdateDatasetGenes(geneSymbols);
     } catch (error) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
+        document.getElementById("gene-s-failed").classList.remove("is-hidden");
     }
 }
 
@@ -1485,16 +1454,16 @@ const updateOrderSortable = () => {
     }
 
     for (const series of sortableSet) {
-        // 3. Series is in sortableSet but not seriesSet, remove <series>_order element
+        // 3. Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
-            const orderElt = document.getElementById(`${series}_order`);
+            const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();
         }
     }
 
 
-    const orderContainer = document.getElementById("order_container");
-    const orderSection = document.getElementById("order_section");
+    const orderContainer = document.getElementById("order-container");
+    const orderSection = document.getElementById("order-section");
 
     // Pre-emptively hide the container but show it ass
     if (!orderContainer.children.length) {
@@ -1528,8 +1497,8 @@ const validateRequirements = (event) => {
             for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
                 plotBtn.disabled = false;
             }
-            document.getElementById("plot_options_s_success").classList.remove("is-hidden");
-            document.getElementById("plot_options_s_failed").classList.add("is-hidden");
+            document.getElementById("plot-options-s-success").classList.remove("is-hidden");
+            document.getElementById("plot-options-s-failed").classList.add("is-hidden");
         }
 
     // Perform misc. validation checks
@@ -1549,20 +1518,20 @@ const validateRequirements = (event) => {
     for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
         plotBtn.disabled = true;
     }
-    document.getElementById("plot_options_s_success").classList.add("is-hidden");
-    document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
+    document.getElementById("plot-options-s-success").classList.add("is-hidden");
+    document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
 }
 
-document.getElementById("new_display").addEventListener("click", chooseNewDisplay);
-document.getElementById("analysis_select").addEventListener("change", chooseAnalysis);
-document.getElementById("plot_type_select").addEventListener("change", choosePlotType);
+document.getElementById("new-display").addEventListener("click", chooseNewDisplay);
+document.getElementById("analysis-select").addEventListener("change", chooseAnalysis);
+document.getElementById("plot-type-select").addEventListener("change", choosePlotType);
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
     plotBtn.addEventListener("click", createPlot);
 }
 
-document.getElementById("save_json_config").addEventListener("click", () => {
+document.getElementById("save-json-config").addEventListener("click", () => {
     // Config plot configuration to JSON for sharing (or passing to API by hand)
     const blob = new Blob([JSON.stringify({...plotStyle.plotConfig, plot_type:plotStyle.plotType})]);
     const link = document.createElement("a");
@@ -1570,21 +1539,21 @@ document.getElementById("save_json_config").addEventListener("click", () => {
     link.href = window.URL.createObjectURL(blob);
     link.click()
     // Give confirmation
-    document.getElementById("save_json_config").classList.add("is-success");
+    document.getElementById("save-json-config").classList.add("is-success");
     setTimeout(() => {
-        document.getElementById("save_json_config").classList.remove("is-success");
+        document.getElementById("save-json-config").classList.remove("is-success");
     }, 1000);
 });
 
-document.getElementById("save_display_btn").addEventListener("click", async (event) => {
+document.getElementById("save-display-btn").addEventListener("click", async (event) => {
     // Save new plot display.
-    const label = document.getElementById("new_display_label").value;
+    const label = document.getElementById("new-display-label").value;
     event.target.classList.add("is-loading");
     try {
         const displayId = await curatorApiCallsMixin.saveDatasetDisplay(datasetId, null, label, plotStyle.plotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
 
-        if (document.getElementById("make_default_display_check").checked) {
+        if (document.getElementById("make-default-display-check").checked) {
             apiCallsMixin.saveDefaultDisplay(displayId);
         }
     } catch (error) {
@@ -1594,7 +1563,7 @@ document.getElementById("save_display_btn").addEventListener("click", async (eve
     }
 });
 
-document.getElementById("edit_params").addEventListener("click", (event) => {
+document.getElementById("edit-params").addEventListener("click", (event) => {
     event.target.classList.add("is-loading");
     // Hide this view
     document.getElementById("content-c").classList.remove("is-hidden");
@@ -1637,7 +1606,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const sessionId = CURRENT_USER.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.");
-        document.getElementById("save_display_btn").disabled = true;
+        document.getElementById("save-display-btn").disabled = true;
     }
 
 	try {

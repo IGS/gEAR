@@ -105,25 +105,25 @@
           </h5>
           <div id="current-dataset-c" class="is-hidden">
             Current dataset:
-            <span id="current_dataset"></span>
+            <span id="current-dataset"></span>
           </div>
-          <div class="js-step-collapsable mt-3" id="dataset_collapsable">
-            <input class="input" id="dataset_query" type="text" placeholder="Enter a dataset" autofocus="" />
-            <div id="dataset_tree" class="wb-skeleton wb-initializing js-tree">
+          <div class="js-step-collapsable mt-3" id="dataset-collapsable">
+            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+            <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree">
             </div>
           </div>
         </section>
 
-        <section class="has-background-light section js-step" id="condition_compare_s">
+        <section class="has-background-light section js-step" id="condition-compare-s">
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-compare-horizontal"></i>
             </span>
             <span>Select conditions you want to compare</span>
-            <span id="condition_compare_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="condition-compare-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="condition_compare_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="condition-compare-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
@@ -131,18 +131,18 @@
             </span>
           </h5>
 
-          <div class="js-step-collapsable mt-3" id="condition_compare_collapsable">
-            <div id="facet_content" class="content is-hidden">
-              <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
-              <div class="box" id="selected_facets">
+          <div class="js-step-collapsable mt-3" id="condition-compare-collapsable">
+            <div id="facet-content" class="content is-hidden">
+              <p>Number of selected observations: <span id="num-selected" class="has-text-weight-semibold"></span></p>
+              <div class="box" id="selected-facets">
                 <p> Selected filters:
-                    <span class="loader is-hidden is-inline-flex" id="selected_facets_loader"></span>
+                    <span class="loader is-hidden is-inline-flex" id="selected-facets-loader"></span>
                 </p>
-                <span class="tags" id="selected_facets_tags"></span>
+                <span class="tags" id="selected-facets-tags"></span>
               </div>
 
               <span class="title is-6">Shared filtered conditions</span>
-              <div id="facet_c" class="content"></div>
+              <div id="facet-c" class="content"></div>
             </div>
 
             <div>
@@ -151,7 +151,7 @@
                   <label class="label">Series to compare <span class="has-text-success-dark is-pulled-right">Required</span></label>
                   <div class="control">
                       <div class="select is-fullwidth">
-                          <select class="js-compare" id="compare_series"></select>
+                          <select class="js-compare" id="elect"></select>
                       </div>
                   </div>
                 </div>
@@ -160,33 +160,33 @@
               <div class="columns">
                 <div class="field column is-one-third">
                   <label class="label">X-axis (query) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
-                  <div id="compare_x" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-x">
+                  <div id="compare-x" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-x">
                   </div>
                 </div>
 
                 <div class="field column is-one-third">
                     <label class="label">Y-axis (reference) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
-                    <div id="compare_y" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-y">
+                    <div id="compare-y" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-y">
                     </div>
                 </div>
               </div>
-              <p id="select_compare_series_notification" class="notification is-light"> </p>
+              <p id="select-compare-series-notification" class="notification is-light"> </p>
             </div>
 
           </div>
         </section>
 
 
-        <section class="has-background-light section js-step" id="compare_options_s">
+        <section class="has-background-light section js-step" id="compare-options-s">
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-filter-variant"></i>
             </span>
             <span>Select comparison options</span>
-            <span id="compare_options_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="compare-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="compare_options_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="compare-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
@@ -195,7 +195,7 @@
             <span class="has-text-weight-medium is-pulled-right">Optional</span>
           </h5>
 
-          <div class="js-step-collapsable mt-3" id="compare_options_collapsable">
+          <div class="js-step-collapsable mt-3" id="compare-options-collapsable">
             <div class="columns is-variable is-8">
               <div class="column">
                 <div class="content">
@@ -206,7 +206,7 @@
                   <span class="has-text-weight-medium column">Select test</span>
                   <div class="control is-expanded column">
                     <div class="select is-fullwidth">
-                      <select class="js-compare-statistical-test" id="statistical_test">
+                      <select class="js-compare-statistical-test" id="statistical-test">
                         <option value="" selected="selected">None</option>
                         <option value="t-test">T-test</option>
                         <option value="t-test_overestim_var">T-test (overestimated variance)</option>
@@ -218,14 +218,14 @@
                 <div class="content columns">
                   <span class="has-text-weight-medium column">P-value cutoff</span>
                   <div class="control is-expanded column">
-                    <input id="pval_cutoff" type="number" class="input is-fullwidth js-compare-pval-cutoff" value="0.05" step="0.01" min="0.0" max="1.0" disabled/>
+                    <input id="pval-cutoff" type="number" class="input is-fullwidth js-compare-pval-cutoff" value="0.05" step="0.01" min="0.0" max="1.0" disabled/>
                   </div>
                 </div>
                 <div class="content columns">
                   <span class="has-text-weight-medium column">Cutoff filter</span>
                   <div class="control is-expanded column">
                     <div class="select is-fullwidth" disabled>
-                      <select class="js-compare-cutoff-filter-action" id="cutoff_filter_action" disabled>
+                      <select class="js-compare-cutoff-filter-action" id="cutoff-filter-action" disabled>
                         <option value="colorize" selected="selected">Colorize</option>
                         <option value="filter" selected="selected">Filter out</option>
                       </select>
@@ -243,7 +243,7 @@
                   <span class="has-text-weight-medium column">Report output as </span>
                   <div class="control is-expanded column">
                     <div class="select is-fullwidth">
-                      <select class="js-compare-log-base" id="log_base">
+                      <select class="js-compare-log-base" id="log-base">
                         <option value="raw">None - Raw values</option>
                         <option value="2" selected="selected">Log2</option>
                         <option value="10">Log10</option>
@@ -254,14 +254,14 @@
                 <div class="content columns">
                   <span class="has-text-weight-medium column">Fold Change Cutoff (>=N)</span>
                   <div class="control is-expanded column">
-                    <input id="fc_cutoff" type="number" class="input is-fullwidth js-compare-fc-cutoff" min="0.0" value="2.0" step="0.1"/>
+                    <input id="fc-cutoff" type="number" class="input is-fullwidth js-compare-fc-cutoff" min="0.0" value="2.0" step="0.1"/>
                   </div>
                 </div>
                 <div class="content columns">
                   <span class="has-text-weight-medium column">Standard Deviation</span>
                   <div class="control is-expanded column">
                     <div class="select is-fullwidth">
-                      <select class="js-compare-standard-deviation" id="standard_deviation">
+                      <select class="js-compare-standard-deviation" id="standard-deviation">
                         <option value="0" selected="selected">No filter</option>
                         <option value="1">1 standard deviation</option>
                         <option value="2">2 standard deviations</option>
@@ -273,23 +273,23 @@
             </div>
           </div>
         </section>
-        <button id="plot_btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
+        <button id="plot-btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
       </section>
 
       <section id="post-plot-content-c" class="m-3 columns is-hidden">
-        <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column">
+        <div id="params-summary" class="column has-background-light is-flex is-flex-direction-column">
           <div class="is-flex is-flex-direction-column">
-            <div id="current_info" class="content">
+            <div id="current-info" class="content">
               <div class="content title is-5">
                 <span class="icon">
                   <i class="mdi mdi-text-box-search-outline"></i>
                 </span>
                 <span>Selected Dataset</span>
               </div>
-              <p id="current_dataset_post" class="has-text-weight-semibold"></p>
+              <p id="current-dataset-post" class="has-text-weight-semibold"></p>
             </div>
 
-            <div id="current_conditions" class="content">
+            <div id="current-conditions" class="content">
               <div class="content title is-5">
                 <span class="icon">
                   <i class="mdi mdi-compare-horizontal"></i>
@@ -297,21 +297,21 @@
                 <span>Comparison conditions</span>
               </div>
 
-              <div id="shared_conditions_post_c" class="is-hidden content">
+              <div id="shared-conditions-post-c" class="is-hidden content">
                 <p>Shared conditions</p>
                 <div class="notification is-white p-2"></div>
               </div>
-              <div id="compare_x_post_c" class="content">
+              <div id="compare-x-post-c" class="content">
                 <p>X-axis</p>
                 <div class="notification is-white p-2"></div>
               </div>
-              <div id="compare_y_post_c" class="content">
+              <div id="compare-y-post-c" class="content">
                 <p>Y-axis</p>
                 <div class="notification is-white p-2"></div>
               </div>
             </div>
 
-            <div id="current_plot_options">
+            <div id="current-plot-options">
               <div class="content title is-5">
                 <span class="icon">
                   <i class="mdi mdi-filter-variant"></i>
@@ -322,38 +322,38 @@
                 <div class="title is-6">Significance test</div>
                 <div class="is-flex is-justify-content-space-between pr-3">
                   <span>Test</span>
-                  <span id="statistical_test_post" class="has-text-weight-semibold"></span>
+                  <span id="statistical-test-post" class="has-text-weight-semibold"></span>
                 </div>
                 <div class="is-flex is-justify-content-space-between pr-3">
                   <span>P-value cutoff</span>
-                  <span id="pval_cutoff_post" class="has-text-weight-semibold"></span>
+                  <span id="pval-cutoff-postpost" class="has-text-weight-semibold"></span>
                 </div>
                 <div class="is-flex is-justify-content-space-between pr-3">
                   <span>Cutoff filter</span>
-                  <span id="cutoff_filter_action_post" class="has-text-weight-semibold"></span>
+                  <span id="cutoff-filter-action-post" class="has-text-weight-semibold"></span>
                 </div>
               </div>
               <div class="content">
                 <div class="title is-6">Data filters</div>
                 <div class="is-flex is-justify-content-space-between pr-3">
                   <span>Report output as</span>
-                  <span id="log_base_post" class="has-text-weight-semibold"></span>
+                  <span id="log-base-post" class="has-text-weight-semibold"></span>
                 </div>
                 <div class="is-flex is-justify-content-space-between pr-3">
                   <span>Fold Change Cutoff</span>
-                  <span id="fc_cutoff_post" class="has-text-weight-semibold"></span>
+                  <span id="fc-cutoff-post" class="has-text-weight-semibold"></span>
                 </div>
                 <div class="is-flex is-justify-content-space-between pr-3">
                   <span>Standard Deviation</span>
-                  <span id="standard_deviation_post" class="has-text-weight-semibold"></span>
+                  <span id="standard-deviation-post" class="has-text-weight-semibold"></span>
                 </div>
               </div>
             </div>
 
           </div>
-          <div id="post_plot_actions_container" class="mt-3 columns is-multiline is-flex-grow-1 is-align-content-end">
+          <div id="post-plot-actions-container" class="mt-3 columns is-multiline is-flex-grow-1 is-align-content-end">
             <div class="column is-full">
-              <button id="edit_params" class="button is-medium is-responsive is-fullwidth is-primary">
+              <button id="edit-params" class="button is-medium is-responsive is-fullwidth is-primary">
                 <span class="icon is-pulled-left">
                   <i class="mdi mdi-arrow-left-thick"></i>
                 </span>
@@ -363,22 +363,22 @@
           </div>
         </div>
         <div class="column is-three-quarters has-background-white-bis is-flex is-flex-direction-column">
-          <div id="plot_container" class="content is-flex-shrink-1"></div>
+          <div id="plot-container" class="content is-flex-shrink-1"></div>
           <div class="buttons">
-            <button id="gene_list_btn" class="button is-primary is-outlined" data-target="gene_table_modal">
+            <button id="gene-list-btn" class="button is-primary is-outlined" data-target="gene-table-modal">
               <span class="icon">
                 <i class="mdi mdi-file-table-box-multiple"></i>
               </span>
               <span>View and save selected genes</span>
             </button>
           </div>
-          <div id="gene_annotation_container" class="content is-flex is-flex-direction-column">
+          <div id="gene-annotation-container" class="content is-flex is-flex-direction-column">
             <div class="title is-5">Highlight specific genes</div>
 
             <div id="search-bar-c" class="mt-4 ml-3 mb-4">
               <div class="field has-addons is-grouped mb-0">
                 <div class="control has-icons-left has-icons-right mr-0">
-                  <input class="input" type="input" id="genes_manually_entered" placeholder="Type here to search using specific gene symbols">
+                  <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols">
                   <span class="icon is-small is-left">
                     <i class="mdi mdi-magnify"></i>
                   </span>
@@ -394,11 +394,11 @@
               </div>
             </div>
 
-            <div id="gene_tags_c" class="box is-hidden">
-              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
-              <div id="gene_tags" class="tags"></div>
+            <div id="gene-tags-c" class="box is-hidden">
+              <p class="subtitle is-5" id="genes-selected">Genes selected:</p>
+              <div id="gene-tags" class="tags"></div>
               <div class="buttons">
-                <button id="clear_genes_btn" class="button is-primary is-outlined"> Clear selection</button>
+                <button id="clear-genes-btn" class="button is-primary is-outlined"> Clear selection</button>
               </div>
               <p>Note that only genes found in the dataset will be highlighted.</p>
             </div></p>
@@ -411,7 +411,7 @@
 
 
   <!-- Modal -->
-  <div id="gene_table_modal" class="modal">
+  <div id="gene-table-modal" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
       <header class="modal-card-head has-background-primary">

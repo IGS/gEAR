@@ -1,91 +1,82 @@
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">X-axis</span>
     <span class="select is-small">
-        <select class="js-plot-req js-plot-order js-tsne-x-axis" id="x_axis_series_post"></select>
+        <select class="js-plot-req js-plot-order js-tsne-x-axis" id="x-axis-series-post"></select>
     </span>
 </p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Flip X-axis</span>
-    <input class="js-tsne-flip-x" id="flip_x_post" type="checkbox">
+    <input class="js-tsne-flip-x" id="flip-x-post" type="checkbox">
 </label>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Y-axis</span>
     <span class="select is-small">
-        <select class="js-plot-req js-plot-order js-tsne-y-axis" id="y_axis_series_post"></select>
+        <select class="js-plot-req js-plot-order js-tsne-y-axis" id="y-axis-series-post"></select>
     </span>
 </p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Flip Y-axis</span>
-    <input class="js-tsne-flip-y" id="flip_y_post" type="checkbox">
+    <input class="js-tsne-flip-y" id="flip-y-post" type="checkbox">
 </label>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Colorize samples by</span>
     <span class="select is-small">
-        <select class="js-tsne-colorize-legend-by" id="colorize_legend_by_post"></select>
+        <select class="js-tsne-colorize-legend-by" id="colorize-legend-by-post"></select>
     </span>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Plot per category group</span>
     <span class="select is-small">
-        <select class="js-tsne-plot-by-series" id="plot_by_group_series_post" disabled></select>
+        <select class="js-tsne-plot-by-series" id="plot-by-group-series-post" disabled></select>
     </span>
 </p>
 <p class="help">Split samples into category groups, then create plots per group.</p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Number of subplot columns</span>
-    <input class="js-tsne-max-columns" id="max_columns_post" type="number" min="0" max="9" value="3" disabled/>
+    <input class="js-tsne-max-columns" id="max-columns-post" type="number" min="0" max="9" value="3" disabled/>
 </p>
 <p class="help">Select maximum number of plots per row.</p>
 
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Omit gene expression plot</span>
-    <input class="js-tsne-skip-gene-plot" id="skip_gene_plot_post" type="checkbox">
+    <input class="js-tsne-skip-gene-plot" id="skip-gene-plot-post" type="checkbox">
 </label>
 
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Move legend under plot</span>
-    <input class="js-tsne-horizontal-legend" id="horizontal_legend_post" type="checkbox" disabled>
+    <input class="js-tsne-horizontal-legend" id="horizontal-legend-post" type="checkbox" disabled>
 </label>
 
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
     <span class="has-text-weight-medium">Override marker size auto-scaling</span>
-    <input class="js-tsne-override-marker-size" id="override_marker_size_post" type="checkbox">
+    <input class="js-tsne-override-marker-size" id="override-marker-size-post" type="checkbox">
 </label>
 <p class="help">If unchecked, marker size will scale based on the number of samples present.</p>
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Choose marker size</span>
-    <input class="js-tsne-marker-size" id="marker_size_post" type="range" min="1" max="100" value="25" disabled/>
+    <input class="js-tsne-marker-size" id="marker-size-post" type="range" min="1" max="100" value="25" disabled/>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Expression color palette</span>
     <span class="select is-small">
-        <select class="js-tsne-color-palette" id="color_palette_post"></select>
+        <select class="js-tsne-color-palette" id="color-palette-post"></select>
     </span>
 </p>
-<!-- Until I get it working
-<div class="field">
-    <label class="label has-text-weight-medium">Expression color palette</label>
-    <div class="control">
-        <div class="select is-fullwidth">
-            <select class="js-tsne-color-palette" id="color_palette_post" disabled></select>
-        </div>
-    </div>
-</div> -->
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Reverse palette</span>
-    <input class="js-tsne-reverse-palette" id="reverse_palette_post" type="checkbox">
+    <input class="js-tsne-reverse-palette" id="reverse-palette-post" type="checkbox">
 </label>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Check to bring data extremes to foreground</span>
-    <input class="js-tsne-two-way-palette" id="two_way_palette_post" type="checkbox">
+    <input class="js-tsne-two-way-palette" id="two-way-palette-post" type="checkbox">
 </label>
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
     <span class="has-text-weight-medium">Center colorscale around median expression value</span>
-    <input class="js-tsne-center-around-median" id="center_around_median_post" type="checkbox">
+    <input class="js-tsne-center-around-median" id="center-around-median-post" type="checkbox">
 </label>
 <p class="help">Good when combined with a diverging colorscale.</p>

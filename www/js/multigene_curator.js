@@ -62,7 +62,7 @@ class GenesAsAxisHandler extends PlotHandler {
                 renderOrderSortableSeries(series);
             }
 
-            document.getElementById("order_section").classList.remove("is-hidden");
+            document.getElementById("order-section").classList.remove("is-hidden");
         }
 
         // Handle filters
@@ -72,14 +72,13 @@ class GenesAsAxisHandler extends PlotHandler {
 
         // handle colors
         if (config["color_palette"]) {
-            setSelectBoxByValue("color_palette_post", config["color_palette"]);
-            //colorscaleSelect.update();
+            setSelectBoxByValue("color-palette-post", config["color_palette"]);
         }
 
         // handle clusterbar values
         if (config["clusterbar_fields"]) {
             for (const field of config["clusterbar_fields"]) {
-                const elt = document.querySelector(`#clusterbar_c .js-dash-clusterbar-checkbox[value="${field}"]`);
+                const elt = document.querySelector(`#clusterbar-c .js-dash-clusterbar-checkbox[value="${field}"]`);
                 elt.checked = true;
             }
         }
@@ -102,7 +101,7 @@ class GenesAsAxisHandler extends PlotHandler {
             return;
         }
 
-        const plotContainer = document.getElementById("plot_container");
+        const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -131,26 +130,26 @@ class GenesAsAxisHandler extends PlotHandler {
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly-preview", custonLayout)
 
-        document.getElementById("legend_title_container").classList.remove("is-hidden");
+        document.getElementById("legend-title-container").classList.remove("is-hidden");
         if (this.plotType === "dotplot") {
-            document.getElementById("legend_title_container").classList.add("is-hidden");
+            document.getElementById("legend-title-container").classList.add("is-hidden");
         }
 
     }
 
     async loadPlotHtml() {
-        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
         prePlotOptionsElt.replaceChildren();
 
-        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
         prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/multi_gene_as_axis.html");
         postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/multi_gene_as_axis.html");
 
         // populate advanced options for specific plot types
-        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
-        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+        const prePlotSpecificOptionsElt = document.getElementById("plot-specific-options");
+        const postPlotSpecificOptionselt = document.getElementById("post-plot-specific-options");
 
         // Load color palette select options
         const isContinuous = ["dotplot", "heatmap"].includes(this.plotType) ? true : false;
@@ -180,7 +179,7 @@ class GenesAsAxisHandler extends PlotHandler {
         if (this.plotType === "heatmap") {
             const clusterbarValues = [];
             // They should be synced so just grab the first set of clusterbar values
-            for (const elt of document.querySelectorAll("#clusterbar_c .js-dash-clusterbar-checkbox")) {
+            for (const elt of document.querySelectorAll("#clusterbar-c .js-dash-clusterbar-checkbox")) {
                 if (elt.checked) {
                     clusterbarValues.push(elt.value);
                 }
@@ -299,7 +298,7 @@ class GenesAsAxisHandler extends PlotHandler {
         for (const elt of plotOrderElts) {
             elt.addEventListener("change", (event) => {
                 const paramId = event.target.id;
-                const param = paramId.replace("_series", "").replace("_post", "");
+                const param = paramId.replace("-series", "").replace("-post", "");
                 // NOTE: continuous series will be handled in the function
                 updateOrderSortable();
             });
@@ -402,7 +401,7 @@ class GenesAsDataHandler extends PlotHandler {
             return;
         }
 
-        const plotContainer = document.getElementById("plot_container");
+        const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
         // NOTE: Plot initially is created to a default width but is responsive.
@@ -425,7 +424,7 @@ class GenesAsDataHandler extends PlotHandler {
         Plotly.relayout("plotly-preview", custonLayout)
 
         // Show button to add genes to gene cart
-        document.getElementById("gene_cart_btn_c").classList.remove("is-hidden");
+        document.getElementById("gene-cart-btn-c").classList.remove("is-hidden");
 
         const plotlyPreview = document.getElementById("plotly-preview");
 
@@ -473,18 +472,18 @@ class GenesAsDataHandler extends PlotHandler {
 
     async loadPlotHtml() {
 
-        const prePlotOptionsElt = document.getElementById("plot_options_collapsable");
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
         prePlotOptionsElt.replaceChildren();
 
-        const postPlotOptionsElt = document.getElementById("post_plot_adjustments");
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
         prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/multi_gene_as_data.html");
         postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/multi_gene_as_data.html");
 
         // populate advanced options for specific plot types
-        const prePlotSpecificOptionsElt = document.getElementById("plot_specific_options");
-        const postPlotSpecificOptionselt = document.getElementById("post_plot_specific_options");
+        const prePlotSpecificOptionsElt = document.getElementById("plot-specific-options");
+        const postPlotSpecificOptionselt = document.getElementById("post-plot-specific-options");
 
         // For quadrants and volcanos we load the "series" options in the plot-specific HTML, so that should come first
         if (this.plotType === "quadrant") {
@@ -640,11 +639,11 @@ const appendGeneTagButton = (geneTagElt) => {
 }
 
 const clearGenes = (event) => {
-    document.getElementById("clear_genes_btn").classList.add("is-loading");
-	document.getElementById("gene_tags").replaceChildren();
+    document.getElementById("clear-genes-btn").classList.add("is-loading");
+	document.getElementById("gene-tags").replaceChildren();
 	selected_genes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
-    document.getElementById("clear_genes_btn").classList.remove("is-loading");
+    document.getElementById("clear-genes-btn").classList.remove("is-loading");
 }
 
 /**
@@ -655,7 +654,7 @@ const clearGenes = (event) => {
 const chooseGenes = (event) => {
 
     // Delete existing tags
-    const geneTagsElt = document.getElementById("gene_tags");
+    const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
 	if (selected_genes.size == 0) return;  // Do not trigger after initial population
@@ -670,15 +669,15 @@ const chooseGenes = (event) => {
         geneTagsElt.appendChild(geneTagElt);
     }
 
-    document.getElementById("gene_tags_c").classList.remove("is-hidden");
+    document.getElementById("gene-tags-c").classList.remove("is-hidden");
 
     if (selected_genes.size < 2) {
-        document.getElementById("gene_s_failed").classList.remove("is-hidden");
-        document.getElementById("gene_s_success").classList.add("is-hidden");
+        document.getElementById("gene-s-failed").classList.remove("is-hidden");
+        document.getElementById("gene-s-success").classList.add("is-hidden");
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
             plotBtn.disabled = true;
         }
-        document.getElementById("continue_to_plot_options").classList.add("is-hidden");
+        document.getElementById("continue-to-plot-options").classList.add("is-hidden");
         return;
     }
 
@@ -703,10 +702,10 @@ const chooseGenes = (event) => {
         geneTagsElt.appendChild(showMoreBtnElt);
     }
 
-    document.getElementById("gene_s_failed").classList.add("is-hidden");
-    document.getElementById("gene_s_success").classList.remove("is-hidden");
+    document.getElementById("gene-s-failed").classList.add("is-hidden");
+    document.getElementById("gene-s-success").classList.remove("is-hidden");
 
-    document.getElementById("continue_to_plot_options").classList.remove("is-hidden");
+    document.getElementById("continue-to-plot-options").classList.remove("is-hidden");
 
 }
 
@@ -830,12 +829,12 @@ const getCategoryColumns = async () => {
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
-        document.getElementById("plot_options_s_failed").classList.remove("is-hidden");
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
     // Filter out values we don't want of "levels", like "colors"
     for (const key in levels) {
-        if (key.includes("_colors")) {
+        if (key.includes("-colors")) {
             delete levels[key];
         }
     }
@@ -1112,10 +1111,10 @@ const updateUIAfterGeneCartSaveFailure = (gc, message) => {
     createToast(message);
 }
 
-document.getElementById("clear_genes_btn").addEventListener("click", clearGenes);
+document.getElementById("clear-genes-btn").addEventListener("click", clearGenes);
 
 // code from Bulma documentation to handle modals
-document.getElementById("gene_cart_btn").addEventListener("click", ($trigger) => {
+document.getElementById("gene-cart-btn").addEventListener("click", ($trigger) => {
     const closestButton = $trigger.target.closest(".button");
     const modal = closestButton.dataset.target;
     const $target = document.getElementById(modal);
@@ -1146,7 +1145,7 @@ document.getElementById("save-genecart-btn").addEventListener("click", (event) =
 document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
 
 // handle when the dropdown-gene-list-search-input input box is changed
-document.getElementById('genes_manually_entered').addEventListener('change', (event) => {
+document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
     const searchTermString = event.target.value;
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
