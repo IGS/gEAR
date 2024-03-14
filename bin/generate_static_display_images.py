@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-generate_static_layouts.py - Generate a static plot based on the dataset's layout configurations stored in database
+generate_static_display_images.py - Generate a static plot based on the dataset's display configurations stored in database
 
 Shaun Adkins - sadkins@som.umaryland.edu
 """
