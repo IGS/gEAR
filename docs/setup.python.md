@@ -38,7 +38,7 @@ fixed paths have worked fine for decades.
       Flask==2.1.0 \
       Flask-RESTful==0.3.9 \
       gunicorn \
-      h5py==3.6.0 \
+      h5py==3.9.0 \
       itsdangerous==2.1.2 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
@@ -49,10 +49,10 @@ fixed paths have worked fine for decades.
       mysql-connector-python==8.0.28 \
       numba==0.55.1 \
       numexpr==2.8.1 \
-      numpy==1.21.5 \
+      numpy==1.26.0 \
       opencv-python==4.5.5.64 \
       openpyxl==3.0.10 \
-      pandas==1.4.1 \
+      pandas==1.5.2 \
       Pillow==9.0.1 \
       pika==1.3.1 \
       plotly==5.6.0 \
@@ -60,15 +60,16 @@ fixed paths have worked fine for decades.
       requests==2.27.1 \
       rpy2==3.5.1 \
       sanic \
-      scanpy==1.8.2 \
       scanpy[louvain]==1.8.2 \
       scikit-learn==1.0.2 \
       scipy==1.8.0 \
       SQLAlchemy==1.4.32 \
-      tables==3.7.0 \
+      tables==3.9.2 \
       xlrd==1.2.0
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+
+Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs
 
 Scanpy (or dependencies) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
 
