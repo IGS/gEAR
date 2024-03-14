@@ -53,7 +53,7 @@ fixed paths have worked fine for decades.
       opencv-python==4.5.5.64 \
       openpyxl==3.0.10 \
       pandas==1.5.2 \
-      Pillow==9.0.1 \
+      Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.6.0 \
       python-dotenv==0.20.0 \
