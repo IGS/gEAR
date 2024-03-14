@@ -169,17 +169,10 @@ class TileGrid {
 
         // Sometimes fails to render due to OOM errors, so we want to try each tile individually
         // Orthology mapping also seems to fail due to file locking as well.
-        //this.tiles.map(async tile => {
-            //await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
-        //});
+        this.tiles.map(async tile => {
+            await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
+        });
 
-        for (const tile of this.tiles) {
-            try {
-                await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
-            } catch (error) {
-                continue;
-            }
-        }
     }
 };
 
@@ -317,6 +310,8 @@ class DatasetTile {
         // If no genes were found, then raise an error
         // This should never happen as geneSymbolInput should be a key in the orthologs object
         if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
+            console.log(this)
+
             createCardMessage(tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
             throw new Error("Should never happen. Please contact the gEAR team.");
         }

@@ -121,11 +121,13 @@ def create_orthology_df(orthomap_file: Path):
     Returns:
         pd.DataFrame: The DataFrame containing the orthologous mapping data.
     """
-    # Read HDF5 file using Pandas read_hdf
     try:
-        orthomap_df = pd.read_hdf(str(orthomap_file), key="orthomap")
+        orthomap_df = pd.read_hdf(str(orthomap_file))   # do not need to pass in key, as it is the default (only) key
     except Exception as e:
         print("Error reading orthologous mapping file {1}: {0}".format(e, orthomap_file), file=sys.stderr)
+        # print stack trace
+        import traceback
+        traceback.print_exc()
         raise Exception("Error reading orthologous mapping file: {0}".format(e))
     return orthomap_df
 
@@ -171,7 +173,6 @@ def map_single_gene(gene_symbol:str, orthomap_file: Path):
     Returns:
         list or None: The list of orthologous gene symbol(s) corresponding to the input gene symbol. Returns an empty list if the gene symbol cannot be mapped.
     """
-    # Read HDF5 file using Pandas read_hdf
     orthomap_df = create_orthology_df(orthomap_file)
 
     # Create lowercase gs1 and gs2 columns
@@ -196,8 +197,6 @@ def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
         dict: A dictionary where the keys are the input gene symbols and the values are lists of orthology gene symbols.
               If a gene symbol does not have any orthology gene symbols, its value is set to an empty list.
     """
-
-    # Read HDF5 file using Pandas read_hdf
     orthomap_df = create_orthology_df(orthomap_file)
 
     # Create lowercase gs1 and gs2 columns
