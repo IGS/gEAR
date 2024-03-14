@@ -1866,7 +1866,7 @@ class Dataset:
 
         return self.links
 
-    def get_shape(self, session_id=None):
+    def get_shape(self, session_id=None, tuple_only=False):
         """
         Queries the dataset's source expression matrix in order to get its shape.
 
@@ -1883,6 +1883,8 @@ class Dataset:
             sc.settings.verbosity = 0
             adata = sc.read_h5ad(h5ad_file_path)
             (n_obs, n_vars) = adata.shape
+            if tuple_only:
+                return (n_obs, n_vars)
 
             self.gene_count = n_vars
             self.obs_count = n_obs
@@ -2766,7 +2768,7 @@ class GeneCartCollection:
         cursor.close()
         conn.close()
         return self.carts
-    
+
     def get_by_user_recent(self, user=None, n=None):
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)

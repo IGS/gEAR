@@ -510,10 +510,10 @@ const loadPlugin = (pluginName, pageName, pluginImportBasename) => {
 
     fetch(pluginImportHtmlUrl)
         .then(response => {
-            body.append(pluginHtmlElement);
             return response.text();
         })
         .then(data => {
+            body.append(pluginHtmlElement);
             document.getElementById(pluginHtmlElement.id).innerHTML = data;
         });
 

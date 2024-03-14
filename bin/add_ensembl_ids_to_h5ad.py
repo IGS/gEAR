@@ -88,7 +88,7 @@ def get_df_index(args):
     df = pd.DataFrame(cursor.fetchall(), columns=cursor.column_names)
     # Some Gene's are mapped to multiple ensembl IDs, so we
     # drop the duplicate's and take the first Ensembl ID for now.
-    df.drop_duplicates('gene_symbol', inplace=True)
+    df.drop_duplicates(subset=['gene_symbol'], inplace=True)
     df.set_index('gene_symbol', inplace=True)
 
     cursor.close()

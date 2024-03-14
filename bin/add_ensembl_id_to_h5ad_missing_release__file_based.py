@@ -46,7 +46,7 @@ def main():
                         required=True, help="Fake Ensembl IDs will be generated for any rows whose gene symbols don't match, using this prefix.")
     parser.add_argument('-uec', '--use_ensembl_column', type=str,
                         required=False, help="If the datafile already has an Ensembl column it wasn't indexed with, pass its name here.")
-    
+
 
     args = parser.parse_args()
 
@@ -55,7 +55,7 @@ def main():
 
     ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
     #ensembl_releases = [84, 85]
-    
+
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
 
@@ -88,7 +88,7 @@ def main():
     if args.use_ensembl_column:
         print("INFO: re-indexing file on column ({0})".format(args.use_ensembl_column))
         adata.var = adata.var.set_index(args.use_ensembl_column)
-        
+
         if not args.read_only:
             adata.write(args.output_file)
 
@@ -105,7 +105,7 @@ def main():
         # Query can return different ensembl ids for a gene symbol,
         # we want to drop duplicates so we have only one ensembl id
         # per gene symbol
-        df = df.drop_duplicates('gene_symbol')
+        df = df.drop_duplicates(subset=['gene_symbol'])
         df = df.set_index('gene_symbol')
 
         merged_df = adata.var.join(df, how='inner')
@@ -126,7 +126,7 @@ def main():
     # What if we didn't find any? Throw error and fail
     if best_release is None:
         raise Exception("ERROR: No mappings found (check that the proper organism was passed?)")
-    
+
     # Now we have our best release and ensembl ids for those gene symbols,
     # Get separate adata for those where the gene symbols were mapped and where they weren't
     genes_present_filter = adata.var.index.isin(best_df.index)

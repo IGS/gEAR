@@ -82,7 +82,7 @@ def main():
         # Query can return different ensembl ids for a gene symbol,
         # we want to drop duplicates so we have only one ensembl id
         # per gene symbol
-        df = df.drop_duplicates('gene_symbol')
+        df = df.drop_duplicates(subset=['gene_symbol'])
         df = df.set_index('gene_symbol')
 
         merged_df = adata.var.join(df, how='inner')
