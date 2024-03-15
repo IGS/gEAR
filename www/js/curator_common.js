@@ -296,7 +296,7 @@ const curatorApiCallsMixin = {
             logErrorInConsole(error);
             const msg = "Could not fetch gene symbols for this dataset. Please contact the gEAR team."
             createToast(msg);
-            return [];
+            throw new Error(msg);
         }
     },
 
