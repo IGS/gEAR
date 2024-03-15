@@ -21,38 +21,46 @@ class GeneCart {
           standard way, setting attributes on an instantiated object.
         */
 
-        const gc = this;
-
         try {
             const {data} = await axios.post("./cgi/save_new_genecart_json.cgi", gc);
-            gc.id = data.id
-            if (callback) callback(gc);
+            this.id = data.id
+            if (callback) callback(this);
         } catch (error) {
             const msg = error?.message || "Something went wrong saving genecart to database."
             console.error(msg);
             if (errCallback) {
-                errCallback(gc, msg);
+                errCallback(this, msg);
             }
         }
     }
 
-    async addCartToDbFromForm(formData, callback, errCallback=null) {
+    async addCartToDbFromForm(payload, callback, errCallback=null) {
         /*
           This method is to save a cart by submitting form data.  Once
           completed the object properties are filled in and the callback
           is executed.
         */
 
-        const gc = this;
         try {
-            const {data} = await axios.post("./cgi/save_new_genecart_form.cgi", convertToFormData(formData));
-            gc.id = data.id
-            if (callback) callback(gc);
+
+            const formData = convertToFormData(payload);
+
+            // Properly add the new_cart_file to the form data
+            if (payload?.new_cart_file) {
+                formData.delete("new_cart_file");   // Remove the old one if it exists
+
+                formData.append("new_cart_file", payload.new_cart_file);
+            }
+
+            const {data} = await axios.post("./cgi/save_new_genecart_form.cgi", formData);
+
+            this.id = data.id
+            if (callback) callback(this);
         } catch (error) {
             const msg = error?.message || "Something went wrong saving genecart to database."
             console.error(msg);
             if (errCallback) {
-                errCallback(gc, msg);
+                errCallback(this, msg);
             }
         }
     }

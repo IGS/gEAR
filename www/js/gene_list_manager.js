@@ -1533,7 +1533,6 @@ btnNewCartSave.addEventListener("click", (e) => {
         newHelperElt.textContent = "Please select an organism";
         newCartOrganism.parentElement.appendChild(newHelperElt);
 
-        btnNewCartSave.classList.remove("is-loading");
         validationFailed = true;
     }
 
@@ -1548,6 +1547,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help");
             newHelperElt.textContent = "Please enter a value";
             newCartPastedGenes.parentElement.appendChild(newHelperElt);
+
             validationFailed = true;
         }
     } else if (["uploaded-unweighted", "uploaded-weighted", "uploaded-labeled"].includes(uploadType)) {
@@ -1559,11 +1559,13 @@ btnNewCartSave.addEventListener("click", (e) => {
             newHelperElt.classList.add("help", "has-text-danger-dark", "js-validation-help", "ml-2");
             newHelperElt.textContent = "Please select a file";
             newCartFile.parentElement.appendChild(newHelperElt);
+
             validationFailed = true;
         }
     }
 
     if (validationFailed) {
+        btnNewCartSave.classList.remove("is-loading");
         return;
     }
 
@@ -1588,6 +1590,7 @@ btnNewCartSave.addEventListener("click", (e) => {
         , 'session_id': CURRENT_USER.session_id
         , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
         , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
+        , "new_cart_file": document.getElementById("new-list-file").files[0]
     }
 
     const gc = new GeneCart();
@@ -1690,9 +1693,7 @@ document.getElementById("new-list-visibility").addEventListener("change", (e) =>
 // When user uploads file, update the file name in the form
 document.getElementById("new-list-file").addEventListener("change", (e) => {
     const file = e.currentTarget.files[0];
-    console.log(file);
     document.getElementById("new-list-file-name").textContent = file.name;
-    console.log(document.getElementById("new-list-file-name"));
     document.getElementById("new-list-file-name").classList.remove("is-hidden");
 });
 

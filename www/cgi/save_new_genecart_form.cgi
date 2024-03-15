@@ -30,15 +30,24 @@ def validate_weighted_gene_cart(df):
     # Objects are variable string length.
     if df[df.columns[0]].dtype not in ["string", "object"] \
         or df[df.columns[1]].dtype not in ["string", "object"]:
+        print("The first two columns must be strings", file=sys.stderr)
+        print(df[df.columns[0]].dtype, df[df.columns[1]].dtype, file=sys.stderr)
         return False
 
     # The third column onward must be a numeric weight
     for col in df[df.columns[2:]]:
+        # if column is int, convert to float
+        if df[col].dtype == 'int64':
+            df[col] = df[col].astype('float64')
+
         if df[col].dtype != 'float64':
+            print("The third column onward must be numeric", file=sys.stderr)
+            print(df[col].dtype, file=sys.stderr)
             return False
 
     # The first column has to be unique identifiers
     if not df[df.columns[0]].is_unique:
+        print("First column is not unique", file=sys.stderr)
         return False
 
     return True
