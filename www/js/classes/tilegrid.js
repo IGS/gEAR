@@ -648,6 +648,10 @@ class DatasetTile {
                         item.classList.add("is-hidden");
                     }
                     break;
+                case "download-png":
+                    // Handle when plot type is known
+                    item.classList.add("is-hidden");
+                    break;
                 default:
                     console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${datasetId}.`);
                     break;
@@ -688,16 +692,17 @@ class DatasetTile {
         // Add event listener to dropdown trigger
         tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
             const item = event.currentTarget;
-            if (item.classList.contains('dropdown-trigger')) {
-                // close other dropdowns
-                for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
-                    if (item !== dropdown.querySelector('.dropdown-trigger')) {
-                        dropdown.classList.remove('is-active');
-                    }
-                };
-
-                item.closest(".dropdown").classList.toggle('is-active');
+            if (!item.classList.contains('dropdown-trigger')) {
+                return;
             }
+            // close other dropdowns
+            for (const dropdown of document.querySelectorAll('#result-panel-grid .dropdown')) {
+                if (item !== dropdown.querySelector('.dropdown-trigger')) {
+                    dropdown.classList.remove('is-active');
+                }
+            };
+
+            item.closest(".dropdown").classList.toggle('is-active');
         });
 
         // Click off dropdown to close
@@ -976,6 +981,26 @@ class DatasetTile {
                 await this.renderPlotlyDisplay(display, this.tile.height, otherOpts);
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display, otherOpts);
+
+                // Determine how "download_png" is handled for scanpy plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
+                if (downloadPNG) {
+                    downloadPNG.classList.remove("is-hidden");
+
+                    // get the download URL
+                    const blob = await this.getScanpyPNG(display, otherOpts);
+                    const download = URL.createObjectURL(blob);
+
+                    // download URL
+                    downloadPNG.download = `${this.dataset.id}_${geneSymbolInput}_${display.plot_type}.png`;
+                    downloadPNG.setAttribute('target', '_blank');
+                    downloadPNG.href = download;
+
+                    // save memory (but breaks download)
+                    //URL.revokeObjectURL(download);
+
+                }
+
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, this.svgScoringMethod, otherOpts);
             } else if (display.plot_type === "epiviz") {
@@ -1122,7 +1147,7 @@ class DatasetTile {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container");
-        plotlyPreview.id = `tile-${this.tile.tileId}_plotly-preview`;
+        plotlyPreview.id = `tile-${this.tile.tileId}-plotly-preview`;
         plotContainer.append(plotlyPreview);
         Plotly.purge(plotlyPreview.id); // clear old Plotly plots
 
@@ -1172,7 +1197,7 @@ class DatasetTile {
         // Noticed container within our "column" will make full-width go beyond the screen
         const plotlyPreview = document.createElement("div");
         plotlyPreview.classList.add("container");
-        plotlyPreview.id = `tile-${this.tile.tileId}_plotly-preview`;
+        plotlyPreview.id = `tile-${this.tile.tileId}-plotly-preview`;
         plotContainer.append(plotlyPreview);
         Plotly.purge(plotlyPreview.id); // clear old Plotly plots
 
@@ -1190,6 +1215,14 @@ class DatasetTile {
         Plotly.relayout(plotlyPreview.id, customLayout);
     }
 
+    /**
+     * Renders the Scanpy display on the tile grid.
+     *
+     * @param {Object} display - The display object containing the dataset and plot information.
+     * @param {Object} otherOpts - Additional options for rendering the display.
+     * @returns {Promise<void>} - A promise that resolves when the display is rendered.
+     * @throws {Error} - If there is an error fetching the image data or if the image data is not available.
+     */
     async renderScanpyDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
@@ -1198,28 +1231,72 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
+        plotContainer.replaceChildren();    // erase plot
+
+        const tsnePreview = document.createElement("img");
+        tsnePreview.classList.add("image", "is-fullwidth");
+        tsnePreview.id = `tile-${this.tile.tileId}-tsne-preview`;;
+        plotContainer.append(tsnePreview);
+
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
         const {image} = data;
 
-        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
-        if (!plotContainer) return; // tile was removed before data was returned
-        plotContainer.replaceChildren();    // erase plot
-
-        const tsnePreview = document.createElement("img");
-        tsnePreview.classList.add("image");
-        tsnePreview.id = `tile-${this.tile.tileId}_tsne_preview`;;
-        plotContainer.append(tsnePreview);
-
-        if (image) {
-            document.getElementById(tsnePreview.id ).setAttribute("src", `data:image/webp;base64,${image}`);
-        } else {
+        if (!image) {
             console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
             return;
         }
+
+        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+        // decode base64 image and set as src
+        tsnePreview.src = URL.createObjectURL(blob);
+
+        tsnePreview.onload = () => {
+            // Revoke the object URL to free up memory
+            // ! This does prevent right-click saving though
+            //URL.revokeObjectURL(tsnePreview.src);
+        }
+        return;
     }
+
+
+    /**
+     * Retrieves a PNG image for a Scanpy dataset display.
+     *
+     * @param {Object} display - The display object containing dataset and analysis information.
+     * @param {Object} otherOpts - Additional options for fetching the image.
+     * @returns {Promise<Blob>} - A promise that resolves to a Blob object representing the PNG image.
+     * @throws {Error} - If the image retrieval is unsuccessful or encounters an error.
+     */
+    async getScanpyPNG(display, otherOpts) {
+        const datasetId = display.dataset_id;
+        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
+        const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
+        const plotType = display.plot_type;
+
+        // deep copy plotly_config to avoid modifying the original
+        const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
+        plotConfig.high_dpi = true;
+
+        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+        if (data?.success < 1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+        const {image} = data;
+        if (!image) {
+            console.warn(`Could not retrieve downloadable image for dataset display ${display.id}.`);
+            return;
+        }
+
+        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+
+        return blob;
+    }
+
 
     async renderSVG(display, svgScoringMethod="gene", otherOpts) {
         const datasetId = display.dataset_id;

@@ -464,7 +464,12 @@ class ScanpyHandler extends PlotHandler {
         plotContainer.append(tsnePreview);
 
         if (image) {
-            document.getElementById("tsne-preview").setAttribute("src", `data:image/webp;base64,${image}`);
+            const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+            tsnePreview.src = URL.createObjectURL(blob);
+            tsnePreview.onload = () => {
+                // Revoke the object URL to free up memory
+                URL.revokeObjectURL(tsnePreview.src);
+            }
         } else {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;

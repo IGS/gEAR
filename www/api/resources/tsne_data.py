@@ -20,7 +20,7 @@ from matplotlib import cm
 
 from werkzeug.utils import secure_filename
 
-sc.settings.set_figure_params(dpi=100)
+sc.settings.set_figure_params(dpi_save=150)
 sc.settings.verbosity = 0
 
 PLOT_TYPE_TO_BASIS = {
@@ -243,9 +243,9 @@ class TSNEData(Resource):
         center_around_median = req.get("center_around_median", False)
         filters = req.get('obs_filters', {})    # dict of lists
         session_id = request.cookies.get('gear_session_id')
-        user = geardb.get_user_from_session_id(session_id)
         projection_id = req.get('projection_id', None)    # projection id of csv output
         colorblind_mode = req.get('colorblind_mode', False)
+        high_dpi = req.get('high_dpi', False)
         sc.settings.figdir = '/tmp/'
 
         if not gene_symbol or not dataset_id:
@@ -401,9 +401,6 @@ class TSNEData(Resource):
             if os.path.exists(scanpy_copy):
                 os.remove(scanpy_copy)
             selected = selected[:, selected.var.index.duplicated() == False].copy(filename=scanpy_copy)
-
-        # Set the saved figure dpi based on the number of observations in the dataset after filtering
-        sc.settings.set_figure_params(dpi_save=int(150 + (selected.shape[0] / 500)))
 
         io_fig = None
         try:
@@ -604,7 +601,12 @@ class TSNEData(Resource):
 
         io_pic = io.BytesIO()
         io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
-        io_fig.savefig(io_pic, format='webp', bbox_inches="tight")
+        # Set the saved figure dpi based on the number of observations in the dataset after filtering
+        if high_dpi:
+            dpi = min(150, int(df.shape[0] / 100))
+            sc.settings.set_figure_params(dpi_save=dpi)
+
+        io_fig.savefig(io_pic, format='png', bbox_inches="tight")
         io_pic.seek(0)
         plt.close() # Prevent zombie plots, which can cause issues
 
