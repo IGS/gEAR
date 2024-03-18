@@ -9,6 +9,7 @@ from pathlib import Path
 
 import geardb
 import matplotlib as mpl
+mpl.use("Agg")  # Prevents the need for a display when plotting, also thread-safe
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
@@ -599,19 +600,23 @@ class TSNEData(Resource):
         if selected.isbacked:
             selected.file.close()
 
-        io_pic = io.BytesIO()
-        io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The next line does this with the legend too
-        # Set the saved figure dpi based on the number of observations in the dataset after filtering
-        if high_dpi:
-            dpi = min(150, int(df.shape[0] / 100))
-            sc.settings.set_figure_params(dpi_save=dpi)
+        with io.BytesIO() as io_pic:
+            io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The "savefig" line does this with the legend too
 
-        io_fig.savefig(io_pic, format='png', bbox_inches="tight")
-        io_pic.seek(0)
-        plt.close() # Prevent zombie plots, which can cause issues
+            # Set the saved figure dpi based on the number of observations in the dataset after filtering
+            if high_dpi:
+                dpi = min(150, int(df.shape[0] / 100))
+                sc.settings.set_figure_params(dpi_save=dpi)
+                io_fig.savefig(io_pic, format='png', bbox_inches="tight")
+            else:
+                io_fig.savefig(io_pic, format='webp', bbox_inches="tight")
+            io_pic.seek(0)
+            plt.close() # Prevent zombie plots, which can cause issues
+
+            image = base64.b64encode(io_pic.read()).decode("utf-8")
 
         return {
             "success": success,
             "message": message,
-            "image": base64.b64encode(io_pic.read()).decode("utf-8")
+            "image": image
         }

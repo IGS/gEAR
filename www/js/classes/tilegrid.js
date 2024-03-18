@@ -986,18 +986,22 @@ class DatasetTile {
                 const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
                 if (downloadPNG) {
                     downloadPNG.classList.remove("is-hidden");
-
-                    // get the download URL
-                    const blob = await this.getScanpyPNG(display, otherOpts);
-                    const download = URL.createObjectURL(blob);
-
                     // download URL
                     downloadPNG.download = `${this.dataset.id}_${geneSymbolInput}_${display.plot_type}.png`;
                     downloadPNG.setAttribute('target', '_blank');
-                    downloadPNG.href = download;
+                    return;
+                    //downloadPNG.addEventListener("click", async (event) => {
 
-                    // save memory (but breaks download)
-                    //URL.revokeObjectURL(download);
+                        // get the download URL
+                        const blob = await this.getScanpyPNG(display);
+                        const download = URL.createObjectURL(blob);
+
+                        // TODO: this only sets the href, but does not trigger the download until the user clicks the link again
+                        downloadPNG.href = download;
+
+                        // save memory (but breaks download)
+                        //URL.revokeObjectURL(download);
+                    //});
 
                 }
 
@@ -1251,7 +1255,8 @@ class DatasetTile {
             return;
         }
 
-        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
 
@@ -1268,11 +1273,10 @@ class DatasetTile {
      * Retrieves a PNG image for a Scanpy dataset display.
      *
      * @param {Object} display - The display object containing dataset and analysis information.
-     * @param {Object} otherOpts - Additional options for fetching the image.
      * @returns {Promise<Blob>} - A promise that resolves to a Blob object representing the PNG image.
      * @throws {Error} - If the image retrieval is unsuccessful or encounters an error.
      */
-    async getScanpyPNG(display, otherOpts) {
+    async getScanpyPNG(display) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
@@ -1282,7 +1286,7 @@ class DatasetTile {
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
 
-        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -1292,9 +1296,7 @@ class DatasetTile {
             return;
         }
 
-        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
-
-        return blob;
+        return await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
     }
 
 
