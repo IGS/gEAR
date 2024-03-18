@@ -129,11 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // If the user is logged in and doesn't have a default org ID or it's different from their current,
         //  show the control
-        if (CURRENT_USER.session_id) {
-            const setDefaultOrganism = document.querySelector('#set-default-organism');
-            const shouldHide = CURRENT_USER.default_org_id === currently_selected_org_id;
-            setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
+        if (!CURRENT_USER.session_id) {
+            return;
         }
+        const setDefaultOrganism = document.querySelector('#set-default-organism');
+        const shouldHide = CURRENT_USER.default_org_id === currently_selected_org_id;
+        setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
     });
 
     document.querySelector('#set-default-organism').addEventListener('click', (event) => {
