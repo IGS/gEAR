@@ -25,7 +25,7 @@ def main():
     # Handle unweighted genecarts which are not saved to tabfile.
     # NOTE: Does not check db for existence of unweighted genecart
     if scope == "unweighted-list":
-        result.append({"label":"unweighted"})
+        result.append({"label":"unweighted", "top_up":"", "top_down":"", "binary": True})
         print(json.dumps(result))
         return
 
@@ -39,7 +39,10 @@ def main():
         up_genes = df.nlargest(n=5, columns=[col]).iloc[:, 1].tolist()
         down_genes = df.nsmallest(n=5, columns=[col]).iloc[:, 1].tolist()
 
-        result.append({'label': col, "top_up":",".join(up_genes), "top_down":",".join(down_genes)})
+        # If all values are either 0 or 1, the pattern can be a binary weight
+        binary = all([v in [0, 1] for v in df[col]])
+
+        result.append({'label': col, "top_up":",".join(up_genes), "top_down":",".join(down_genes), "binary": binary})
 
     print(json.dumps(result))
 

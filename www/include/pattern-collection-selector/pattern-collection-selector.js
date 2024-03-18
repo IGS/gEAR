@@ -309,7 +309,7 @@ const setActivePatternCartCategory = (category) => {
  * @returns {Promise<void>} A promise that resolves once the weights dropdown is populated.
  */
 const populatePatternWeights = async () => {
-    // data is a list of weight and top/buttom genes (if weighted-list)
+    // data is a list of weight and top/buttom genes (if weighted-list) and if binary weights
     const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
 
     // All weights are selected by default

@@ -18,6 +18,8 @@ let weightedGeneData = null;
 selectedPattern = new Proxy(selectedPattern, {
     set: (target, key, value) => {
         target[key] = value;
+        const algorithmElt = document.getElementById('algorithm');
+
         if (key === "selectedWeights") {
             document.getElementById("single-multi-multi").disabled = false;
             if(value.length < 2) {
@@ -25,17 +27,18 @@ selectedPattern = new Proxy(selectedPattern, {
                 document.getElementById("single-multi-single").checked = true;
                 isMulti = false;
             }
+            // Enable or disable the "binary" option if all selectedWeights have "binary" property set to True
+            const binary = value.every((w) => w.binary);
+            algorithmElt.querySelector('option[value="binary"]').disabled  = !binary;
+
         } else if (key === "gctype") {
             // Adjust algorithm options based on gctype
-            const algorithmElt = document.getElementById('algorithm');
             algorithmElt.querySelector('option[value="nmf"]').disabled = false;
             algorithmElt.querySelector('option[value="fixednmf"]').disabled = false;
-            algorithmElt.querySelector('option[value="binary"]').disabled = true;
 
             if (value === "unweighted-list") {
                 algorithmElt.querySelector('option[value="nmf"]').disabled = true;
                 algorithmElt.querySelector('option[value="fixednmf"]').disabled = true;
-                algorithmElt.querySelector('option[value="binary"]').disabled = false;
             }
         }
         return true;
