@@ -986,22 +986,12 @@ class DatasetTile {
                 const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
                 if (downloadPNG) {
                     downloadPNG.classList.remove("is-hidden");
-                    // download URL
-                    downloadPNG.download = `${this.dataset.id}_${geneSymbolInput}_${display.plot_type}.png`;
-                    downloadPNG.setAttribute('target', '_blank');
-                    return;
-                    //downloadPNG.addEventListener("click", async (event) => {
 
+                    // Once = true so that the event listener is only called once
+                    downloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        const blob = await this.getScanpyPNG(display);
-                        const download = URL.createObjectURL(blob);
-
-                        // TODO: this only sets the href, but does not trigger the download until the user clicks the link again
-                        downloadPNG.href = download;
-
-                        // save memory (but breaks download)
-                        //URL.revokeObjectURL(download);
-                    //});
+                        await this.getScanpyPNG(display);
+                    }, {once: true});
 
                 }
 
@@ -1269,22 +1259,17 @@ class DatasetTile {
     }
 
 
-    /**
-     * Retrieves a PNG image for a Scanpy dataset display.
-     *
-     * @param {Object} display - The display object containing dataset and analysis information.
-     * @returns {Promise<Blob>} - A promise that resolves to a Blob object representing the PNG image.
-     * @throws {Error} - If the image retrieval is unsuccessful or encounters an error.
-     */
     async getScanpyPNG(display) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
         const plotType = display.plot_type;
+        const geneSymbol = display.plotly_config.gene_symbol;
 
         // deep copy plotly_config to avoid modifying the original
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
+
 
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
         if (data?.success < 1) {
@@ -1296,7 +1281,26 @@ class DatasetTile {
             return;
         }
 
-        return await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+        const download = URL.createObjectURL(blob);
+
+        // create a hidden element that will be clicked to download the PNG
+        const hiddenLink = document.createElement('a');
+        document.body.appendChild(hiddenLink);
+        hiddenLink.classList.add("is-hidden");
+
+        // download URL
+        hiddenLink.download = `${this.dataset.id}_${geneSymbol}_${display.plot_type}.png`;
+        hiddenLink.href = download;
+
+        hiddenLink.setAttribute('target', '_blank');
+
+        // click the hidden link to download the PNG
+        hiddenLink.click();
+
+        // save memory (but breaks download)
+        URL.revokeObjectURL(download);
+        hiddenLink.remove();
     }
 
 

@@ -21,7 +21,6 @@ from matplotlib import cm
 
 from werkzeug.utils import secure_filename
 
-sc.settings.set_figure_params(dpi_save=150)
 sc.settings.verbosity = 0
 
 PLOT_TYPE_TO_BASIS = {
@@ -609,6 +608,8 @@ class TSNEData(Resource):
                 sc.settings.set_figure_params(dpi_save=dpi)
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
+                # Moved this to the end to prevent any issues with the dpi setting
+                sc.settings.set_figure_params(dpi_save=150)
                 io_fig.savefig(io_pic, format='webp', bbox_inches="tight")
             io_pic.seek(0)
             plt.close() # Prevent zombie plots, which can cause issues
