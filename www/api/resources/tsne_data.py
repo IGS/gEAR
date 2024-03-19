@@ -504,17 +504,6 @@ class TSNEData(Resource):
                 # Get for legend order.
                 colorize_by_order = selected.obs[colorize_by].unique()
 
-            """
-            NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
-
-            bbox_to_anchor is the location of the legend relative to the plot frame.
-            If x and y are 0, that is the lower-left corner of the plot.
-            If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
-
-            loc is the portion of the legend that will be at the bbox_to_anchor point.
-            So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
-            """
-
             # If plotting by group the plot dimensions need to be determined
             if plot_by_group:
                 column_order = selected.obs[plot_by_group].unique()
@@ -541,25 +530,16 @@ class TSNEData(Resource):
                     columns.append(group_name)
                     titles.append(name)
 
-                if not skip_gene_plot:
-                    columns.append(selected_gene)
-                    titles.append(selected_gene)
-
-                columns.append(colorize_by)
-                titles.append(None)
-
                 kwargs["ncols"] = max_cols
                 kwargs["vmax"] = max_expression
 
-            else:
-                # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
-                if skip_gene_plot:
-                    columns.append(colorize_by)
-                    titles.append(None)
+            # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
+            if not skip_gene_plot:
+                columns.append(selected_gene)
+                titles.append(selected_gene)
 
-                else:
-                    columns.extend([selected_gene, colorize_by])
-                    titles.extend([selected_gene, None])
+            columns.append(colorize_by)
+            titles.append(None)
 
         else:
             columns.append(selected_gene)
@@ -577,6 +557,18 @@ class TSNEData(Resource):
                 rename_axes_labels(f, x_axis, y_axis)
             last_ax = ax[-1]    # color axes
             if colorize_by and color_category:
+
+                """
+                NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
+
+                bbox_to_anchor is the location of the legend relative to the plot frame.
+                If x and y are 0, that is the lower-left corner of the plot.
+                If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
+
+                loc is the portion of the legend that will be at the bbox_to_anchor point.
+                So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
+                """
+
                 (handles, labels) = sort_legend(last_ax, colorize_by_order, horizontal_legend)
                 last_ax.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
                 if horizontal_legend:
