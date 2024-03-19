@@ -987,11 +987,16 @@ class DatasetTile {
                 if (downloadPNG) {
                     downloadPNG.classList.remove("is-hidden");
 
+                    // Remove any existing event listeners
+                    downloadPNG.removeEventListener("click", async (event) => {
+                        await this.getScanpyPNG(display);
+                    });
+
                     // Once = true so that the event listener is only called once
                     downloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
                         await this.getScanpyPNG(display);
-                    }, {once: true});
+                    });
 
                 }
 

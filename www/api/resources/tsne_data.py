@@ -504,55 +504,48 @@ class TSNEData(Resource):
                 max_cols = num_plots
                 if max_columns:
                     max_cols = min(int(max_columns), num_plots)
-                max_rows = ceil((num_plots) / max_cols)
-
-                # Set up the figure specs
-                figwidth = calculate_figure_width(max_cols)
-                figheight = calculate_figure_height(max_rows)
-                io_fig = plt.figure(figsize=(figwidth,figheight))
-                spec = io_fig.add_gridspec(ncols=max_cols, nrows=max_rows)
 
                 selected.obs["gene_expression"] = [float(x) for x in selected[:,selected.var.index.isin([selected_gene])].X]
                 max_expression = max(selected.obs["gene_expression"].tolist())
-
-                row_counter = 0
-                col_counter = 0
 
                 # Filter expression data by "plot_by_group" group and plot each instance
                 if order and plot_by_group in order:
                     column_order = order[plot_by_group]
 
+                columns = []
+                titles = []
+
                 for _,name in enumerate(column_order):
                     # Copy gene expression dataseries to observation
                     # Filter only expression values for a particular group.
-                    selected.obs["split_by_group"] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
-                    f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(selected, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
-                    rename_axes_labels(f, x_axis, y_axis)
-                    col_counter += 1
-                    # Increment row_counter when the previous row is filled.
-                    if col_counter % max_cols == 0:
-                        row_counter += 1
-                        col_counter = 0
-                # Add total gene plot and color plots
+                    group_name = name + "_split_by_group"
+                    selected.obs[group_name] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
+                    columns.append(group_name)
+                    titles.append(name)
+
                 if not skip_gene_plot:
-                    f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, ax=f_gene, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
-                    rename_axes_labels(f_gene, x_axis, y_axis)
-                    col_counter += 1
-                    # Increment row_counter when the previous row is filled.
-                    if col_counter % max_cols == 0:
-                        row_counter += 1
-                        col_counter = 0
-                f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False, size=marker_size)
-                rename_axes_labels(f_color, x_axis, y_axis)
-                if color_category:
-                    (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
-                    f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                    if horizontal_legend:
-                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                            f_color.get_legend().remove()  # Remove legend added by scanpy
+                    columns.append(selected_gene)
+                    titles.append(selected_gene)
+
+                columns.append(colorize_by)
+                titles.append(None)
+
+                io_fig = sc.pl.embedding(selected, basis=basis, color=columns, color_map=expression_color, show=False, use_raw=False, title=titles, ncols=max_cols, vmax=max_expression, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter, return_fig=True)
+                ax = io_fig.get_axes()
+
+                # rename axes labels
+                if type(ax) == list:
+                    for f in ax:
+                        rename_axes_labels(f, x_axis, y_axis)
+                    last_ax = ax[-1]    # color axes
+                    if color_category:
+                        (handles, labels) = sort_legend(last_ax, colorize_by_order, horizontal_legend)
+                        last_ax.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                        if horizontal_legend:
+                            last_ax.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                            last_ax.get_legend().remove() # Remove legend added by scanpy
+                else:
+                    rename_axes_labels(ax, x_axis, y_axis)
 
             else:
                 # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
@@ -571,7 +564,6 @@ class TSNEData(Resource):
                         if horizontal_legend:
                             io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
                             f1.get_legend().remove()  # Remove legend added by scanpy
-
                 else:
                     # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
                     io_fig = plt.figure(figsize=(13, 4))
