@@ -604,7 +604,7 @@ class TSNEData(Resource):
 
             # Set the saved figure dpi based on the number of observations in the dataset after filtering
             if high_dpi:
-                dpi = min(150, int(df.shape[0] / 100))
+                dpi = max(150, int(df.shape[0] / 100))
                 sc.settings.set_figure_params(dpi_save=dpi)
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
