@@ -2,6 +2,7 @@ from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, sys, fcntl
+from io import StringIO
 import pandas as pd
 import asyncio, aiohttp
 import gc
@@ -102,7 +103,7 @@ def calculate_chunk_size(num_genes, num_samples):
 
 def concat_fetch_results_to_dataframe(res_jsons):
     # Concatenate the dataframes back together again
-    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
+    res_dfs = [pd.read_json(StringIO(res_json), orient="split", dtype="float32") for res_json in res_jsons]
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
@@ -476,7 +477,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             }
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
-    projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
+    projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
 
     print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)
