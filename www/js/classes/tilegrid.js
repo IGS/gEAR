@@ -397,6 +397,7 @@ class DatasetTile {
             }
             this.projectR.projectionId = data.projection_id;
             this.projectR.projectionInfo = data.message;
+            this.projectR.success = true;
 
         } catch (error) {
             if (error.name == "CanceledError") {
@@ -409,7 +410,6 @@ class DatasetTile {
             logErrorInConsole(error);
         } finally {
             this.projectR.performingProjection = false;
-            this.projectR.success = true;
         }
     }
 
