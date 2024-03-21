@@ -27,12 +27,15 @@ def main():
     profile_name = layout.label
     dataset_ids = layout.dataset_ids()
 
+    print("num datasets:", len(dataset_ids))
+
     with open(f"{args.share_id}.tsv", "w") as f:
-        f.write("Profile\tDataset\tSpecies\tDatatype\tNumGenes\tNumCells\t")
+        f.write("Profile\tDataset\tSpecies\tDatatype\tNumGenes\tNumCells\n")
         dataset_collection = geardb.DatasetCollection()
         dataset_collection.get_by_dataset_ids(dataset_ids)
 
         for dataset in dataset_collection.datasets:
+            print(f"Processing {dataset.id}")
             title = dataset.title
             title = f'"{title}"'
             species = dataset.organism
