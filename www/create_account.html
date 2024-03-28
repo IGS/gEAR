@@ -25,7 +25,7 @@
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
         <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/create_account.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -39,6 +39,7 @@
           <section id="content-c" class="m-3">
             
             <div class="columns">
+              <div class="column is-1"></div>
               <div class="column is-6">
                 <p>
                   Creating a free account allows you to save your work, share it with others, 
@@ -47,41 +48,85 @@
 
                 <br />
 
-                <form>
+                <form id="account_creation">
                   <div class="field">
                     <label class="label">Name</label>
-                    <div class="control">
-                      <input class="input" name="user_name" type="text" placeholder="First Last">
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input is-danger" id="first-last" type="text" placeholder="First Last" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-account"></i>
+                      </span>
+                      <span id="first-last-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
                     </div>
+                    <p id="first-last-error-message" class="help is-danger is-hidden">Please enter first and last name</p>
                   </div>
 
                   <div class="field">
                     <label class="label">Institution</label>
-                    <div class="control">
-                      <input class="input" name="institution" type="text" placeholder="Institution">
+                    <div class="control has-icons-left">
+                      <input class="input" id="institution" name="institution" type="text" placeholder="Institution">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-town-hall"></i>
+                      </span>
                     </div>
                   </div>
 
                   <div class="field">
                     <label class="label">Email</label>
-                    <div class="control">
-                      <input class="input" name="email" type="email" placeholder="Enter your email">
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="email" type="email" placeholder="Email input" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-email"></i>
+                      </span>
+                      <span id="email-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
                     </div>
+                    <p id="email-error-message" class="help is-danger is-hidden">This email is invalid</p>
                   </div>
 
                   <div class="field">
                     <label class="label">Password</label>
-                    <div class="control">
-                      <input class="input" name="password1" type="password" placeholder="Enter your password">
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="password1" type="password" placeholder="Enter your password" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-form-textbox-password"></i>
+                      </span>
+                      <span id="password1-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
                     </div>
+                    <p id="password1-error-message" class="help is-danger is-hidden">PWD1 message</p>
                   </div>
 
                   <div class="field">
                     <label class="label">Retype password</label>
-                    <div class="control">
-                      <input class="input" name="password2" type="password" placeholder="Retype your password">
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="password2" type="password" placeholder="Retype your password" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-form-textbox-password"></i>
+                      </span>
+                      <span id="password2-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
                     </div>
+                    <p id="password2-error-message" class="help is-danger is-hidden">PWD2 message</p>
                   </div>
+
+                  <div id="password-requirements-c">
+                    <p>Password requirements: <span id="password-note">(Annoying, we know, but helps ensure your data stay private!)</span></p>
+                    <ul>
+                      <li id="pc-character-limit"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least 8 characters</li>
+                      <li id="pc-upper-char"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one uppercase letter</li>
+                      <li id="pc-lower-char"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one lowercase letter</li>
+                      <li id="pc-number"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one number</li>
+                      <li id="pc-special-char"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one special character</li>
+                    </ul>
+                  </div>
+
+                  <hr />
 
                   <div class="field">
                     <div class="control">
@@ -100,17 +145,17 @@
                       </label>
                     </div>
                   </div>
-              
-                  <br /><br />
+
+                  <br />
 
                   <div class="field">
                     <div class="control">
-                      <button class="button is-primary">Create Account</button>
+                      <button id="btn-account-creation-submit" class="button is-primary">Create Account</button>
                     </div>
                   </div>
                 </form>
               </div>
-              <div class="column is-6">
+              <div class="column is-5">
                 <!-- Second column content here -->
               </div>
             </div> <!-- end form columns -->
@@ -133,6 +178,7 @@
       <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
       <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/create_account.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     </body>
 </html>

@@ -1,9 +1,10 @@
-span.account-creation-error-message {
-    padding-left: 10px;
-    font-weight: bold;
-    color: red;
-    display: none;
+div#password-requirements-c {
+    margin: 1em 0 1em 2em;
 }
-div#account_already_created_c {
-    display: none;
+div#password-requirements-c ul {
+    margin-left: 1em;
+    margin-top: 0.5em;
+}
+span#password-note {
+    font-size: 80%;
 }
