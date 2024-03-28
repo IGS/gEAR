@@ -288,6 +288,7 @@ const parseGeneCartURLParams = () => {
     }
 
     // handle passed gene lists
+    // TODO: - Handle legacy "gene_cart_share_id" parameter
     let gene_lists = [];
     if (getUrlParameter('gene_lists')) {
         gene_lists = getUrlParameter('gene_lists').split(',');
