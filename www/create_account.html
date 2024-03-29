@@ -6,132 +6,179 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>Create an account</title>
+        <title>gEAR - Create account</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
 
         <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
              to be changed for any hosts where gEAR is not at the webserver root.
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-        <script>document.write('<link rel="stylesheet" href="css/create_account.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+        <!--Page-specific CSS here -->
+        <script>document.write('<link rel="stylesheet" href="css/create_account.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
+      <div id="main-layout-c" class="columns is-fullheight">
 
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
- <div id="body_c">
-    <div id="navigation_bar">
-      <!-- content here inserted via JQuery -->
-    </div> <!-- end navigation_bar -->
+        <!--#include virtual="/include/primary_nav.html" -->
 
-    <div id="main_content" class="container-fluid">
-      <div class="row">
-        <div class="col-12 alert-container">
-		  <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" class="m-3">
+            
+            <div class="columns">
+              <div class="column is-1"></div>
+              <div class="column is-6">
+                <p>
+                  Creating a free account allows you to save your work, share it with others, 
+                  and access additional features.
+                </p>
+
+                <br />
+
+                <form id="account_creation">
+                  <div class="field">
+                    <label class="label">Name</label>
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input is-danger" id="first-last" type="text" placeholder="First Last" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-account"></i>
+                      </span>
+                      <span id="first-last-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
+                    </div>
+                    <p id="first-last-error-message" class="help is-danger is-hidden">Please enter first and last name</p>
+                  </div>
+
+                  <div class="field">
+                    <label class="label">Institution</label>
+                    <div class="control has-icons-left">
+                      <input class="input" id="institution" name="institution" type="text" placeholder="Institution">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-town-hall"></i>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="label">Email</label>
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="email" type="email" placeholder="Email input" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-email"></i>
+                      </span>
+                      <span id="email-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
+                    </div>
+                    <p id="email-error-message" class="help is-danger is-hidden">This email is invalid</p>
+                  </div>
+
+                  <div class="field">
+                    <label class="label">Password</label>
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="password1" type="password" placeholder="Enter your password" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-form-textbox-password"></i>
+                      </span>
+                      <span id="password1-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
+                    </div>
+                    <p id="password1-error-message" class="help is-danger is-hidden">PWD1 message</p>
+                  </div>
+
+                  <div class="field">
+                    <label class="label">Retype password</label>
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="password2" type="password" placeholder="Retype your password" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-form-textbox-password"></i>
+                      </span>
+                      <span id="password2-alert-icon" class="icon is-small is-right is-hidden">
+                        <i class="mdi mdi-alert"></i>
+                      </span>
+                    </div>
+                    <p id="password2-error-message" class="help is-danger is-hidden">PWD2 message</p>
+                  </div>
+
+                  <div id="password-requirements-c">
+                    <p>Password requirements: <span id="password-note">(Annoying, we know, but helps ensure your data stay private!)</span></p>
+                    <ul>
+                      <li id="pc-character-limit"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least 8 characters</li>
+                      <li id="pc-upper-char"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one uppercase letter</li>
+                      <li id="pc-lower-char"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one lowercase letter</li>
+                      <li id="pc-number"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one number</li>
+                      <li id="pc-special-char"><span class="icon is-small is-left"><i class="mdi mdi-emoticon-sad-outline"></i></span> At least one special character</li>
+                    </ul>
+                  </div>
+
+                  <hr />
+
+                  <div class="field">
+                    <div class="control">
+                      <label class="checkbox">
+                        <input type="checkbox" name="colorblind_mode" value="yes">
+                        Click to view all plots using a color scheme suitable for those with color-vision deficiencies.
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="control">
+                      <label class="checkbox">
+                        <input type="checkbox" name="email_updates" value="yes">
+                        Get regular email updates?
+                      </label>
+                    </div>
+                  </div>
+
+                  <br />
+
+                  <div class="field">
+                    <div class="control">
+                      <button id="btn-account-creation-submit" class="button is-primary">Create Account</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="column is-5">
+                <!-- Second column content here -->
+              </div>
+            </div> <!-- end form columns -->
+
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
         </div>
-      </div>
-      <div id='main_row' class="row">
-        <div id="sidebar" class="col-2">
-          <!-- nothing in the sidebar yet -->
-        </div> <!-- end #sidebar -->
-        <div id="viewport" class="col-10">
-          <div id="account_creation_container">
-            <h2>Create an account</h2>
-            <p>
-              Use the form below to create a new account.
-            </p>
-            <div id='account_creation_form_c'>
-              <form role="form" name="account_creation" id="account_creation">
-                <div class="form-group">
-                  <label for="inputName">Name</label> <span id="name_invalid" class="account-creation-error-message">Please provide you name</span>
-                  <input type="text" class="form-control" id="inputName" name="inputName" placeholder="First Last">
-                </div>
-                <div class="form-group">
-                  <label for="inputInstitution">Institution</label>
-                  <input type="text" class="form-control" id="inputInstitution" name="inputInstitution" placeholder="Institution">
-                </div>
-                <div class="form-group">
-                  <label for="inputEmail">Email</label>
-                  <span id="email_invalid" class="account-creation-error-message">Please enter a valid email address</span>
-                  <span id="email_already_exists" class="account-creation-error-message">There is already an account associated with this e-mail address</span>
-                  <input type="email" class="form-control" id="inputEmail"  name="inputEmail" placeholder="you@somewhere.foo">
-                </div>
-                <div class="form-group">
-                  <label for="inputPassword">Password</label> <span id="password_invalid" class="account-creation-error-message">Please enter a password</span>
-                  <input type="password" class="form-control" id="inputPassword" name="inputPassword" placeholder="Password">
-                </div>
-                <div class="form-group">
-                  <label for="retypePassword">Retype Password</label> <span id="password_mismatch" class="account-creation-error-message">This does not match your password</span>
-                  <input type="password" class="form-control" id="retypePassword" name="retypePassword" placeholder="Retype your password">
-                </div>
-                <div class="checkbox">
-                  <label><input type="checkbox" id="colorblind_mode" name="colorblind_mode" value="yes">
-                  Check box to view all plots using a colorscheme suitable for those with color-vision deficiencies.
-                  </label>
-                </div>
-                <div class="checkbox">
-                  <label><input type="checkbox" id="getUpdates" name="getUpdates" value="yes"> Get regular e-mail updates?</label>
-                </div>
-                <div class="checkbox">
-                  <label><input type="checkbox" id="rememberMe" name="rememberMe" value="yes"> Remember me</label>
-                </div>
-                <div class="form-group">
-                  <button id='btn_account_creation_submit' class="btn btn-success input-sm">Create account</button>
-                  <button id='btn_account_creation_cancel' class="btn btn-info input-sm">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div> <!-- end #account_creation_container-->
-          <div id='account_already_created_c' class='shown_later'>
-            <p>You already have an account, I'm not sure how you even got to this page.  Good on you for being so exploratory.</p>
-          </div>
-        </div> <!-- end viewport -->
-      </div> <!-- end #main_row -->
-    </div> <!-- end #main_content -->
+      </footer>
 
-    <div id='account_creation_c' class='row'>
-      <!-- content inserted via common.js-->
-    </div>
-    <div style="clear: both;">&nbsp;</div>
+      <script src="js/vendor/js.cookie.js"></script>
+      <script src="js/vendor/jsrender.20181003.min.js"></script>
 
-    <footer>
-      <div id='funding'>
-        <!-- content here inserted via JQuery -->
-      </div>
-    </footer>
- </div> <!-- /body_c -->
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-
-        <script src="js/vendor/js.cookie.js"></script>
-
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/create_account.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-        <!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-        <script>
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-
-          gtag('config', 'UA-59916932-1');
-        </script>
+      <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/create_account.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     </body>
 </html>
