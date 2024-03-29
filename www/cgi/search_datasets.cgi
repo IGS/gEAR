@@ -16,6 +16,7 @@ import cgi
 import json
 import os, sys
 import re
+from math import ceil
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -41,9 +42,23 @@ def main():
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
+    page = form.getvalue('page')    # page starts at 1
+    limit = form.getvalue('limit')
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'datasets': []}
+
+    if page and not page.isdigit():
+        raise ValueError("Page must be a number")
+
+    if page and int(page) < 1:
+        raise ValueError("Page must be greater than 0")
+
+    if limit and not limit.isdigit():
+        raise ValueError("Limit must be a number")
+
+    if limit and int(limit) < 1:
+        raise ValueError("Limit must be greater than 0")
 
     datasets_collection = geardb.DatasetCollection()
     qry_params = []
@@ -52,8 +67,17 @@ def main():
     if user:
         shared_dataset_id_str = get_shared_dataset_id_string(user, cursor)
 
+    froms = []
+    wheres = []
+
+    qry = ""
+
     if custom_list:
         if custom_list == 'most_recent':
+
+            wheres.append("d.marked_for_removal = 0")
+            wheres.append("AND d.load_status = 'completed'")
+
             if user:
                 qry = """
                       SELECT d.id
@@ -64,6 +88,8 @@ def main():
                     ORDER BY d.date_added DESC LIMIT 10
                 """
                 qry_params = [user.id]
+
+                wheres.append("AND d.owner_id = %s OR d.is_public = 1")
             else:
                 qry = """
                       SELECT d.id
@@ -74,12 +100,17 @@ def main():
                     ORDER BY d.date_added DESC LIMIT 10
                 """
                 qry_params = []
+
+                wheres.append("AND d.is_public = 1")
+
+            froms = ["dataset d"]
         else:
             result['success'] = 0
             result['problem'] = "Didn't recognize the custom list requested"
     elif layout_share_id:
         qry = """
-              SELECT d.id, lm.grid_position, lm.grid_width
+              SELECT d.id, lm.grid_position, lm.start_col, lm.grid_width, lm.start_row, lm.grid_height
+                    lm.mg_grid_position, lm.mg_start_col, lm.mg_grid_width, lm.mg_start_row, lm.mg_grid_height
                   FROM dataset d
                        JOIN layout_members lm ON d.id=lm.dataset_id
                        JOIN layout l ON lm.layout_id=l.id
@@ -89,11 +120,18 @@ def main():
                 ORDER BY lm.grid_position
         """
         qry_params = [layout_share_id]
+
+        froms = ["dataset d", "layout_members lm", "layout l"]
+        wheres.append("d.id=lm.dataset_id")
+        wheres.append("AND lm.layout_id=l.id")
+        wheres.append("AND d.marked_for_removal = 0")
+        wheres.append("AND d.load_status = 'completed'")
+        wheres.append(f"AND l.share_id = '{layout_share_id}")
     else:
         selects = ["d.id", "g.user_name"]
         froms = ["dataset d", "guser g"]
         wheres = [
-            "d.owner_id = g.id "
+            "d.owner_id = g.id ",
             "AND d.marked_for_removal = 0 ",
             "AND d.load_status = 'completed'"
         ]
@@ -191,6 +229,15 @@ def main():
             " ".join(orders_by)
         )
 
+    # if a limit is defined, add it to the query
+    if int(limit):
+        qry += " LIMIT {0}".format(limit)
+
+    # if a page is defined, add it to the query
+    if int(page):
+        offset = int(page) - 1
+        qry += " OFFSET {0}".format(offset * int(limit))
+
     if DEBUG_MODE:
         ofh = open('/tmp/dataset.search.debug', 'wt')
         ofh.write("QRY:\n{0}\n".format(qry))
@@ -206,14 +253,24 @@ def main():
         matching_dataset_ids.append(row[0])
 
         if layout_share_id:
-            layout_idx[row[0]] = {'position': row[1], 'width': row[2]}
+            layout_idx[row[0]] = {'position': row[1], 'start_row': row[2], 'width': row[3], 'start_col': row[4], 'grid_height': row[5],
+                                  'mg_grid_position': row[6], 'mg_start_row': row[7], 'mg_grid_width': row[8], 'mg_start_col': row[9], 'mg_grid_height': row[10]
+                                 }
 
-    result['datasets'].extend(datasets_collection.get_by_dataset_ids(matching_dataset_ids))
+    result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
 
     for dataset in result['datasets']:
         if layout_share_id:
             dataset.grid_position = layout_idx[dataset.id]['position']
+            dataset.start_col = layout_idx[dataset.id]['start_col']
             dataset.grid_width = layout_idx[dataset.id]['width']
+            dataset.start_row = layout_idx[dataset.id]['start_row']
+            dataset.grid_height = layout_idx[dataset.id]['grid_height']
+            dataset.mg_grid_position = layout_idx[dataset.id]['mg_grid_position']
+            dataset.mg_start_col = layout_idx[dataset.id]['mg_start_col']
+            dataset.mg_grid_width = layout_idx[dataset.id]['mg_grid_width']
+            dataset.mg_start_row = layout_idx[dataset.id]['mg_start_row']
+            dataset.mg_grid_height = layout_idx[dataset.id]['mg_grid_height']
 
         dataset.get_layouts(user=user)
         if os.path.exists("{0}/{1}.default.png".format(IMAGE_ROOT, dataset.id)):
@@ -225,13 +282,31 @@ def main():
         else:
             dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
 
-    if False:
-       try:
-           #### The relevent block above needs to be put into here once tested.
-           pass
-       except:
-            result['success'] = 0
-            result['problem'] = "There seems to be a database issue."
+    # Get count of total results
+    qry_count = """
+        SELECT COUNT(*)
+        FROM {0}
+        WHERE {1}
+        """.format(
+            ", ".join(froms),
+            " ".join(wheres)
+        )
+
+    # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
+    if search_terms:
+        qry_params.pop(0)
+
+    cursor.execute(qry_count, qry_params)
+
+    # compile pagination information
+    result["pagination"] = {}
+    result["pagination"]['total_results'] = cursor.fetchone()[0]
+    result["pagination"]['current_page'] = int(page) if page else 1
+    result["pagination"]['limit'] = int(limit) if limit else DEFAULT_MAX_RESULTS
+    result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
+    result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
+    result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
+
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

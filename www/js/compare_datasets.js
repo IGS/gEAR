@@ -322,7 +322,7 @@ const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX
 
 const fetchDatasets = async () => {
     try {
-        return await apiCallsMixin.fetchDatasets();
+        return await apiCallsMixin.fetchAllDatasets();
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch datasets. Please contact the gEAR team."
@@ -416,7 +416,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await fetchDatasets();
+        const datasetData = await fetchAllDatasets();
 
         let counter = 0;
 

@@ -163,15 +163,7 @@ const addGeneListEventListeners = () => {
             const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
-                const {data} = await axios.post('./cgi/save_genecart_changes.cgi', convertToFormData({
-                    'session_id': CURRENT_USER.session_id,
-                    'gc_id': gcId,
-                    'visibility': intNewVisibility,
-                    'title': newTitle,
-                    'organism_id': newOrgId,
-                    'ldesc': newLdesc || ""
-                }));
-
+                const data = await apiCallsMixin.saveGeneCartChanges(gcId, intNewVisibility, newTitle, newOrgId, newLdesc);
                 createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
@@ -515,11 +507,7 @@ const createDeleteConfirmationPopover = () => {
             document.getElementById('confirm-gc-delete').addEventListener('click', async () => {
 
                 try {
-                    const {data} = await axios.post('./cgi/remove_gene_cart.cgi', convertToFormData({
-                        'session_id': CURRENT_USER.session_id,
-                        'gene_cart_id': gcIdToDelete
-                    }));
-
+                    const data = await apiCallsMixin.deleteGeneList(gcIdToDelete);
                     if (data['success'] == 1) {
                         const resultElement = document.getElementById(`result-gc-id-${gcIdToDelete}`);
                         resultElement.style.transition = 'opacity 1s';
@@ -707,7 +695,7 @@ const geneListSaved = (gc) => {
  */
 const loadOrganismList = async () => {
     try {
-        const {data} = await axios.get('./cgi/get_organism_list.cgi');
+        const data = await apiCallsMixin.fetchOrganismList();
         const organismChoices = document.getElementById("organism-choices");    // <ul> element
         for (const organism of data.organisms) {
             const li = document.createElement("li");
@@ -754,7 +742,6 @@ const parseBool = (boolStr) => {
 /**
  * Processes search results and updates the DOM with the results view.
  * @param {Object} data - The search results data.
- * @param {string} resultLabel - The label to display for the search results.
  */
 const processSearchResults = (data) => {
 
@@ -778,7 +765,7 @@ const processSearchResults = (data) => {
     const resultsListDiv = document.getElementById("results-list-div");
     const listTemplate = document.getElementById("results-list-view");
 
-    // data.gene_carts is a list of JSON strings
+    // data.gene_carts is a list of JSON strings (different from data.datasets in dataset explorer)
     for (const gcString of data.gene_carts) {
         const gc = JSON.parse(gcString);
         const geneListId = gc.id;
@@ -1094,7 +1081,7 @@ const setupPagination = (pagination) => {
         // Update result count and label
         document.getElementById("result-count").textContent = pagination.total_results;
         document.getElementById("result-label").textContent = pagination.total_results == 1 ? " result" : " results";
-        document.getElementById("gc-count-label-c").classList.remove("is-hidden");
+        document.getElementById("count-label-c").classList.remove("is-hidden");
 
         const firstResult = pagination.total_results > 0 ? (pagination.current_page - 1) * resultsPerPage + 1 : 0;
         const lastResult = Math.min(pagination.current_page * resultsPerPage, pagination.total_results);
@@ -1235,7 +1222,7 @@ const submitSearch = async (page) => {
     searchCriteria.page = page || 1;
 
     try {
-        const {data} = await axios.post('./cgi/search_gene_carts.cgi', convertToFormData(searchCriteria));
+        const data = await apiCallsMixin.fetchGeneLists(searchCriteria)
         processSearchResults(data);
 
         setupPagination(data.pagination);

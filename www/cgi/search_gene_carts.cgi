@@ -155,7 +155,7 @@ def main():
         gc.gene_count = len(gc.genes)
         gc.organism = "{0} {1}".format(row[8], row[9])
         gc.is_owner = True if user and gc.user_id == user.id else False
-        gene_carts.append(gc)
+        gene_carts.append(gc)   # this appends as a JSON dumped string
 
     # Get count of total results
     qry_count = """

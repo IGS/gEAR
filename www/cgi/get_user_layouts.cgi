@@ -49,7 +49,7 @@ Folder support
   - All other profiles where the user has set layout.is_public=1
   - Can have folders but only admins can create them
 
-All profiles and folders should be nested within these 5 top-level options. 
+All profiles and folders should be nested within these 5 top-level options.
 
 # show all profiles and their labels within a folder
 """
@@ -67,13 +67,13 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    no_domain = form.getvalue('no_domain')
+    no_domain = form.getvalue('no_domain', 0)
     session_id = form.getvalue('session_id')
     layout_share_id = form.getvalue('layout_share_id')
     user = geardb.get_user_from_session_id(session_id)
 
     folder_ids_found = set()
-    
+
     if no_domain:
         no_domain = int(no_domain)
 
@@ -87,7 +87,7 @@ def main():
 
     # Everyone can see public ones
     result['public_layouts'] = geardb.LayoutCollection().get_public()
-    
+
     if not no_domain:
         result['domain_layouts'] = geardb.LayoutCollection().get_domains()
 
@@ -106,11 +106,11 @@ def main():
         for l in result[ltype + '_layouts']:
             if l.folder_id:
                 folder_ids_found.add(l.folder_id)
-            
+
             if l.share_id == layout_share_id:
                 result['selected'] = l.id
                 break
-    
+
     if not result['selected']:
         for l in result['user_layouts']:
             if l.is_current:

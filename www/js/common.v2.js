@@ -407,7 +407,8 @@ const logErrorInConsole = (error) => {
         console.error('Request Error:', error.request);
     } else {
         // Something happened in setting up the request that triggered an Error
-        console.error('Setup Error:', error.message);
+        // SAdkins - commenting out since this is typically duplicated in the stack trace
+        // console.error('Setup Error:', error.message);
     }
 
     if (error.config) {
@@ -630,6 +631,33 @@ const apiCallsMixin = {
     sessionId: null,
     colorblindMode: null,
 
+    // TODO: change all server side scripts with "layout id" to "layout share id"
+    // TODO: change all "gene cart" function names to "gene list"
+
+
+    /**
+     * Adds a dataset to a collection.
+     *
+     * @param {string} layoutId - The ID of the layout.
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<any>} - A promise that resolves to the response data.
+     */
+    async addDatasetToCollection(layoutId, datasetId) {
+        const payload = {session_id: this.sessionId, layout_id: layoutId, dataset_id: datasetId};
+        const {data} = await axios.post("cgi/add_dataset_to_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Creates a new dataset collection with the specified name.
+     * @param {string} collectionName - The name of the collection to add.
+     * @returns {Promise<any>} - A promise that resolves with the response data.
+     */
+    async createDatasetCollection(collectionName) {
+        const payload = {session_id: this.sessionId, layout_name: collectionName};
+        const {data} = await axios.post("cgi/add_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+
     /**
      * Checks for projection using the specified dataset ID, pattern source, algorithm, and other options.
      * @param {string} datasetId - The ID of the dataset.
@@ -643,6 +671,29 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Deletes a dataset with the specified dataset ID.
+     *
+     * @param {string} datasetId - The ID of the dataset to be deleted.
+     * @returns {Promise<any>} - A promise that resolves with the response data from the server.
+     */
+    async deleteDataset(datasetId) {
+        const payload = {session_id: this.sessionId, dataset_id: datasetId};
+        const {data} = await axios.post("cgi/remove_dataset.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Deletes a dataset from a collection.
+     *
+     * @param {string} layoutId - The ID of the layout.
+     * @param {string} datasetId - The ID of the dataset to be deleted.
+     * @returns {Promise<any>} - A promise that resolves with the response data.
+     */
+    async deleteDatasetFromCollection(layoutId, datasetId) {
+        const payload = {session_id: this.sessionId, layout_id: layoutId, dataset_id: datasetId};
+        const {data} = await axios.post("cgi/remove_dataset_from_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
      * Deletes a display.
      * @param {string} displayId - The ID of the display to be deleted.
      * @returns {Promise<null>} - A promise that resolves to null.
@@ -651,6 +702,28 @@ const apiCallsMixin = {
         const payload = {session_id: this.sessionId, id: displayId};
         await axios.post("/cgi/delete_dataset_display.cgi", convertToFormData(payload));
         return null;
+    },
+    /**
+     * Deletes a dataset collection with the specified layout ID.
+     *
+     * @param {string} layoutId - The ID of the layout to be deleted.
+     * @returns {Promise<any>} - A promise that resolves with the response data from the server.
+     */
+    async deleteDatasetCollection(layoutId) {
+        const payload = {session_id: this.sessionId, layout_id: layoutId};
+        const {data} = await axios.post("cgi/remove_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Deletes a gene list.
+     *
+     * @param {string} geneListId - The ID of the gene list to be deleted.
+     * @returns {Promise<any>} - A promise that resolves to the response data from the server.
+     */
+    async deleteGeneList(geneListId) {
+        const payload = {session_id: this.sessionId, gene_list_id: geneListId};
+        const {data} = await axios.post("/cgi/remove_gene_cart.cgi", convertToFormData(payload));
+        return data;
     },
     /**
      * Fetches aggregations for a given dataset and analysis.
@@ -731,11 +804,34 @@ const apiCallsMixin = {
 		return data;
     },
     /**
-     * Fetches dataset collections.
+     * Fetches all datasets asynchronously.
      * @returns {Promise<any>} The fetched data.
      */
-    async fetchDatasetCollections() {
+    async fetchAllDatasets() {
         const payload = {session_id: this.sessionId};
+        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches the dataset collection members for a given layout ID.
+     *
+     * @param {string} layoutId - The ID of the layout.
+     * @returns {Promise<any>} - A promise that resolves to the dataset collection members.
+     */
+    async fetchDatasetCollectionMembers(layoutId) {
+        const payload = {session_id: this.sessionId, layout_id: layoutId};
+        const {data} = await axios.post("cgi/get_users_layout_members.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Fetches dataset collections.
+     *
+     * @param {string|null} layoutShareId - The layout share ID.
+     * @param {string|null} noDomain - If 1, the domain layout will not be included in the results.
+     * @returns {Promise<any>} The response data.
+     */
+    async fetchDatasetCollections(layoutShareId=null, noDomain=0) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain};
         const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
         return data;
     },
@@ -773,12 +869,14 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches datasets asynchronously.
-     * @returns {Promise<any>} The fetched data.
+     * Fetches datasets based on the provided search criteria.
+     *
+     * @param {Object} searchCriteria - The search criteria for filtering datasets.
+     * @returns {Promise} A promise that resolves to the fetched datasets.
      */
-    async fetchDatasets() {
-        const payload = {session_id: this.sessionId};
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+    async fetchDatasets(searchCriteria) {
+        const payload = {session_id: this.sessionId, ...searchCriteria};
+        const {data} = await axios.post("/cgi/search_datasets.cgi", convertToFormData(payload));
         return data;
     },
 
@@ -822,6 +920,18 @@ const apiCallsMixin = {
     async fetchGeneAnnotations(geneSymbols, exactMatch, layoutShareId, isMulti) {
         const payload = { session_id: this.sessionId, search_gene_symbol: geneSymbols, exact_match: exactMatch, is_multi: isMulti, layout_share_id: layoutShareId };
         const {data} = await axios.post(`/cgi/search_genes.cgi`, convertToFormData(payload));
+        return data;
+    },
+
+    /**
+     * Fetches gene lists based on the provided search criteria.
+     *
+     * @param {Object} searchCriteria - The search criteria for fetching gene lists.
+     * @returns {Promise} - A promise that resolves to the fetched gene lists.
+     */
+    async fetchGeneLists(searchCriteria) {
+        const payload = {session_id: this.sessionId, ...searchCriteria};
+        const {data} = await axios.post(`/cgi/search_gene_carts.cgi`, convertToFormData(payload));
         return data;
     },
     /**
@@ -1039,6 +1149,22 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Saves the changes made to the dataset information.
+     *
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} visibility - The visibility of the dataset.
+     * @param {string} title - The title of the dataset.
+     * @param {string} pubmedId - The PubMed ID of the dataset.
+     * @param {string} geoId - The GEO ID of the dataset.
+     * @param {string} lDesc - The long description of the dataset.
+     * @returns {Promise<any>} - A promise that resolves to the response data.
+     */
+    async saveDatasetInfoChanges(datasetId, visibility, title, pubmedId, geoId, lDesc) {
+        const payload = {session_id: this.sessionId, dataset_id: datasetId, visibility, title, pubmed_id: pubmedId, geo_id: geoId, ldesc: lDesc};
+        const {data} = await axios.post("/cgi/save_dataset_info_changes.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
      * Saves the default display for a dataset.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} displayId - The ID of the display.
@@ -1051,6 +1177,35 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Saves the dataset collection arrangement.
+     *
+     * @param {string} layoutId - The ID of the layout.
+     * @param {Array} layoutArrangement - The layout arrangement to be saved.
+     * @returns {Promise} - A promise that resolves with the saved data.
+     */
+    async saveDatasetCollectionArrangement(layoutId, layoutArrangement) {
+        const payload = {session_id: this.sessionId, layout_id: layoutId, layout_arrangement: JSON.stringify(layoutArrangement)};
+
+        // TODO: This requires changing the server-side code to now work with the updated layout attributes
+        const {data} = await axios.post("/cgi/save_layout_arrangement.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
+     * Saves the changes made to gene list information.
+     *
+     * @param {string} gcId - The ID of the gene list.
+     * @param {string} visibility - The visibility of the gene list.
+     * @param {string} title - The title of the gene list.
+     * @param {string} organismId - The ID of the organism.
+     * @param {string} ldesc - The description of the gene list.
+     * @returns {Promise<any>} - A promise that resolves to the response data.
+     */
+    async saveGeneListInfoChanges(gcId, visibility, title, organismId, ldesc) {
+        const payload = {session_id: this.sessionId, gc_id: gcId, visibility, title, organism_id: organismId, ldesc};
+        const {data} = await axios.post("/cgi/save_genecart_changes.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
          * Saves the default organism for all annotation views.
          * @param {Object} user - The JS object for the currently-logged in user
          * @returns {Promise<any>} - A promise that resolves to the saved data.
@@ -1059,18 +1214,17 @@ const apiCallsMixin = {
         const payload = {session_id: this.sessionId, default_org_id: user.default_org_id};
         const {data} = await axios.post("/cgi/save_user_default_organism.cgi", convertToFormData(payload));
         return data;
+    },
+    /**
+     * Sets the user's primary dataset collection.
+     *
+     * @param {number} layoutId - The ID of the layout to set as the primary layout.
+     * @returns {Promise<any>} - A promise that resolves with the response data from the server.
+     */
+    async setUserPrimaryDatasetCollection(layoutId) {
+        const payload = {session_id: this.sessionId, layout_id: layoutId};
+        const {data} = await axios.post("/cgi/set_primary_layout.cgi", convertToFormData(payload));
+        return data;
     }
 
 }
-
-// First-class function to handle API calls
-// ? Still deciding if we should do this or leave it up to the individual scripts
-/*const runApiCall = async (apiCall, successFunction, errorFunction, ...args) => {
-    try {
-        const data = await apiCall(...args);
-        return successFunction(data);
-    } catch (error) {
-        logErrorInConsole(error);
-        return errorFunction(error);
-    }
-}*/
