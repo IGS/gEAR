@@ -638,7 +638,7 @@ const apiCallsMixin = {
     /**
      * Adds a dataset to a collection.
      *
-     * @param {string} layoutId - The ID of the layout.
+     * @param {string} layoutShareId - The share ID of the dataset collection.
      * @param {string} datasetId - The ID of the dataset.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
@@ -684,12 +684,12 @@ const apiCallsMixin = {
     /**
      * Deletes a dataset from a collection.
      *
-     * @param {string} layoutId - The ID of the layout.
+     * @param {string} layoutShareId - The share ID of the dataset collection.
      * @param {string} datasetId - The ID of the dataset to be deleted.
      * @returns {Promise<any>} - A promise that resolves with the response data.
      */
-    async deleteDatasetFromCollection(layoutId, datasetId) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId, dataset_id: datasetId};
+    async deleteDatasetFromCollection(layoutShareId, datasetId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, dataset_id: datasetId};
         const {data} = await axios.post("cgi/remove_dataset_from_layout.cgi", convertToFormData(payload));
         return data;
     },
@@ -815,11 +815,11 @@ const apiCallsMixin = {
     /**
      * Fetches the dataset collection members for a given layout ID.
      *
-     * @param {string} layoutId - The ID of the layout.
+     * @param {string} layoutShareId - The share ID of the layout.
      * @returns {Promise<any>} - A promise that resolves to the dataset collection members.
      */
-    async fetchDatasetCollectionMembers(layoutId) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId};
+    async fetchDatasetCollectionMembers(layoutShareId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
         const {data} = await axios.post("cgi/get_users_layout_members.cgi", convertToFormData(payload));
         return data;
     },
@@ -1123,6 +1123,20 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/login.v2.cgi", payload);
         return data;
     },
+
+    /**
+     * Renames a dataset collection.
+     *
+     * @param {string} layoutShareId - The ID of the layout share.
+     * @param {string} collectionName - The new name for the collection.
+     * @returns {Promise<any>} - A promise that resolves with the response data.
+     */
+    async renameDatasetCollection(layoutShareId, collectionName) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, layout_name: collectionName};
+        const {data} = await axios.post("cgi/rename_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+
     /**
      * Saves the dataset display with the specified parameters.
      * @param {string} datasetId - The ID of the dataset.

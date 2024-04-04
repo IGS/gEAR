@@ -24,7 +24,7 @@ import geardb
 from gear.userhistory import UserHistory
 
 # limits the number of matches returned
-DEFAULT_MAX_RESULTS = 200
+DEFAULT_MAX_RESULTS = 20
 IMAGE_ROOT = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
 WEB_IMAGE_ROOT = './img/dataset_previews'
 DEBUG_MODE = False
@@ -42,8 +42,8 @@ def main():
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
-    page = form.getvalue('page')    # page starts at 1
-    limit = form.getvalue('limit')
+    page = form.getvalue('page', "1")    # page starts at 1
+    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'datasets': []}
@@ -109,7 +109,7 @@ def main():
             result['problem'] = "Didn't recognize the custom list requested"
     elif layout_share_id:
         qry = """
-              SELECT d.id, lm.grid_position, lm.start_col, lm.grid_width, lm.start_row, lm.grid_height
+              SELECT d.id, lm.grid_position, lm.start_col, lm.grid_width, lm.start_row, lm.grid_height,
                     lm.mg_grid_position, lm.mg_start_col, lm.mg_grid_width, lm.mg_start_row, lm.mg_grid_height
                   FROM dataset d
                        JOIN layout_members lm ON d.id=lm.dataset_id
@@ -126,7 +126,7 @@ def main():
         wheres.append("AND lm.layout_id=l.id")
         wheres.append("AND d.marked_for_removal = 0")
         wheres.append("AND d.load_status = 'completed'")
-        wheres.append(f"AND l.share_id = '{layout_share_id}")
+        wheres.append("AND l.share_id = %s")
     else:
         selects = ["d.id", "g.user_name"]
         froms = ["dataset d", "guser g"]
@@ -277,10 +277,17 @@ def main():
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
-        elif os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
-            dataset.preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
             dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+
+        # Multi-gene preview image
+        if os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
+            dataset.mg_preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+        else:
+            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+
+        # add if the user is the owner of the dataset
+        dataset.is_owner = True if user and dataset.owner_id == user.id else False
 
     # Get count of total results
     qry_count = """
@@ -301,8 +308,8 @@ def main():
     # compile pagination information
     result["pagination"] = {}
     result["pagination"]['total_results'] = cursor.fetchone()[0]
-    result["pagination"]['current_page'] = int(page) if page else 1
-    result["pagination"]['limit'] = int(limit) if limit else DEFAULT_MAX_RESULTS
+    result["pagination"]['current_page'] = int(page)
+    result["pagination"]['limit'] = int(limit)
     result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
     result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
     result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None

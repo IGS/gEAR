@@ -20,7 +20,7 @@ hr.dataset-list-element-divider {
 
 /* CSS for Floating UI components */
 
-#delete-dataset-popover {
+article[role="tooltip"] {
     width: max-content;
     position: absolute; /* float above everything else to not disrupt layout */
     top: 0;
@@ -44,4 +44,13 @@ hr.dataset-list-element-divider {
     position: absolute;
     top: 0;
     left: 0;
+}
+
+/* Arrangement view as a 12-column grid */
+.arrangement-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: 0px;
+    width: 75%;
+    height: 300px;
 }

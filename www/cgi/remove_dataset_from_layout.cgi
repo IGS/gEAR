@@ -27,13 +27,13 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
-    layout_id = form.getvalue('layout_id')
+    share_id = form.getvalue('layout_share_id')
     result = { 'success': 0, 'error': '' }
-    
+
     user = geardb.get_user_from_session_id(session_id)
-    layout = geardb.Layout(id=layout_id)
+    layout = geardb.get_layout_by_share_id(share_id)
     layout.load()
-    
+
     if user == None:
         result = { 'error':[] }
         result['error'] = "Must be logged in to remove dataset from profile."
@@ -49,6 +49,6 @@ def main():
             result['error'] = error
 
     print(json.dumps(result))
-    
+
 if __name__ == '__main__':
     main()

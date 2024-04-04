@@ -83,7 +83,7 @@
                                 <hr class="my-2 has-background-grey-lighter">
                                 <ul class="js-expandable-target">
                                     <li class="js-all-selector">All</li>
-                                    <li class="js-selected" id="your-gene-list-filter" data-dbval="yours">Your lists</li>
+                                    <li class="js-selected" data-dbval="yours">Your lists</li>
                                     <li data-dbval="group">Group-affiliated lists</li>
                                     <li data-dbval="shared">Lists shared with you</li>
                                     <li data-dbval="public">Public lists</li>
@@ -403,7 +403,7 @@
                                                 </div>
                                                 <div class="js-editable-version js-editable-organism is-hidden">
                                                     <div class="field">
-                                                        <label class="label" for="result-gc-id-${geneListId}-editable-organism-id">Organism</label>
+                                                        <label class="label">Organism</label>
                                                         <div class="control">
                                                             <div class="select">
                                                                 <select></select>
@@ -421,7 +421,7 @@
                                                     <div class="field">
                                                         <label class="label">Owner</label>
                                                         <div class="control">
-                                                            <input class="input is-static" value="${userName}" readonly>
+                                                            <input class="input is-static" readonly>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -434,7 +434,7 @@
                                                     <div class="field">
                                                         <label class="label">Added</label>
                                                         <div class="control">
-                                                            <input class="input is-static" value="${dateAdded}" readonly>
+                                                            <input class="input is-static" readonly>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -477,12 +477,12 @@
                                                         </div>
                                                         <div class="field has-addons" role="group">
                                                             <p class="control">
-                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" data-gc-id="${geneListId}">
+                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" data-gc-id="${geneListId}">
+                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
                                                                 </button>
                                                             </p>

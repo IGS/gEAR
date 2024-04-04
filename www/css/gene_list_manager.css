@@ -20,7 +20,7 @@ hr.gc-list-element-divider {
 
 /* CSS for Floating UI components */
 
-#delete-gc-popover {
+article[role="tooltip"] {
     width: max-content;
     position: absolute; /* float above everything else to not disrupt layout */
     top: 0;

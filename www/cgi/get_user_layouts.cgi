@@ -85,6 +85,8 @@ def main():
                'folders': [],
                'selected': None }
 
+    # ! Worth noting that currently only layouts with 1+ layout members are returned due to the query for datasets
+
     # Everyone can see public ones
     result['public_layouts'] = geardb.LayoutCollection().get_public()
 
@@ -126,6 +128,14 @@ def main():
     result['folders'] = geardb.FolderCollection()
     result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found,
                                                                  folder_type='profile')
+
+    # for each layout, determine if the user is the owner
+    for ltype in ['user', 'domain', 'group', 'shared', 'public']:
+        for l in result[ltype + '_layouts']:
+            l.is_owner = True if user and l.user_id == user.id else False
+            # delete user_id and layout_id from the layout object
+            del l.user_id
+            del l.id
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))

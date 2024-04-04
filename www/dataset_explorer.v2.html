@@ -60,7 +60,7 @@
                             <div id="collection-management-c" class="js-expandable-target">
 
                                 <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-                                <div class="field has-addons js-collection-action-links my-0" role="group">
+                                <div class="field has-addons js-collection-action-links my-0 is-hidden" role="group">
                                     <p class="control">
                                         <button id="btn-set-primary-collection" class="button is-small is-outlined is-info" data-tooltip-content="Make default collection everywhere">
                                             <span class="icon"><i class="mdi mdi-18px mdi-checkbox-marked-circle"></i></span>
@@ -69,6 +69,11 @@
                                     <p class="control">
                                         <button id="btn-view-collection-datasets" class="button is-small is-outlined is-dark" data-tooltip-content="View datasets from this collection">
                                             <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button id="btn-rename-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Rename collection title">
+                                            <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
                                         </button>
                                     </p>
                                     <p class="control">
@@ -113,8 +118,8 @@
                                 </p>
                                 <hr class="my-2 has-background-grey-lighter">
                                 <ul class="js-expandable-target">
-                                    <li class="js-all-selector">All</li>
-                                    <li class="js-selected" id="your-gene-list-filter" data-dbval="yours">Your datasets</li>
+                                    <li class="js-all-selector js-selected">All</li>
+                                    <li data-dbval="yours">Your datasets</li>
                                     <li data-dbval="group">Group-affiliated datasets</li>
                                     <li data-dbval="shared">Datasets shared with you</li>
                                     <li data-dbval="public">Public datasets</li>
@@ -292,6 +297,15 @@
                                                         <label></label>
                                                     </div>
                                                 </div>
+                                                <div class="js-display-version js-display-downloadable"></div>
+                                                <div class="js-editable-version js-editable-downloadable is-hidden">
+                                                    <div class="field">
+                                                        <p class="label">Is downloadable</p>
+                                                        <!-- toggle switch --->
+                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <label></label>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="column is-10">
                                                 <!-- title section -->
@@ -324,7 +338,7 @@
                                                             <div class="field">
                                                                 <label class="label">Organism</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" value="${organism}" readonly>
+                                                                    <input class="input is-static" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -338,7 +352,7 @@
                                                             <div class="field">
                                                                 <label class="label">Owner</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" value="${userName}" readonly>
+                                                                    <input class="input is-static" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -351,7 +365,7 @@
                                                             <div class="field">
                                                                 <label class="label">Type</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" value="${datasetType}" readonly>
+                                                                    <input class="input is-static" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -364,7 +378,7 @@
                                                             <div class="field">
                                                                 <label class="label">Added</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" value="${dateAdded}" readonly>
+                                                                    <input class="input is-static" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -380,7 +394,7 @@
                                                             <div class="field">
                                                                 <label class="label">Annotation source</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" value="${annotSource}" readonly>
+                                                                    <input class="input is-static" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -394,7 +408,7 @@
                                                             <div class="field">
                                                                 <label class="label">Source version</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" value="${annotVersion}" readonly>
+                                                                    <input class="input is-static" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -407,7 +421,7 @@
                                                             <div class="field">
                                                                 <label class="label">Pubmed ID</label>
                                                                 <div class="control">
-                                                                    <input class="input" value="${pubmedId}" readonly>
+                                                                    <input class="input" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -420,7 +434,7 @@
                                                             <div class="field">
                                                                 <label class="label">GEO ID</label>
                                                                 <div class="control">
-                                                                    <input class="input" value="${geoId}" readonly>
+                                                                    <input class="input" readonly>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -481,16 +495,16 @@
                                                                     </div>
                                                                     <div class="dropdown-menu" role="menu">
                                                                         <div class="dropdown-content">
-                                                                            <a class="dropdown-item js-dataset-curator" href="./dataset_curator.html?dataset_id=${datasetId}">
+                                                                            <a class="dropdown-item js-dataset-curator">
                                                                                 <p>Single-gene curator</p>
                                                                             </a>
-                                                                            <a class="dropdown-item js-multigene-viewer" href="./multigene_curator.html?dataset_id=${datasetId}">
+                                                                            <a class="dropdown-item js-multigene-viewer">
                                                                                 <p>Multi-gene curator</p>
                                                                             </a>
-                                                                            <a class="dropdown-item js-compare-tool" href="./compare_datasets.html?dataset_id=${datasetId}">
+                                                                            <a class="dropdown-item js-compare-tool">
                                                                                 <p>Comparison tool</p>
                                                                             </a>
-                                                                            <a class="dropdown-item js-sc-workbench" href="./analyze_dataset.html?dataset_id=${datasetId}">
+                                                                            <a class="dropdown-item js-sc-workbench">
                                                                                 <p>Single-cell analysis workbench</p>
                                                                             </a>
                                                                         </div>
@@ -500,12 +514,12 @@
                                                         </div>
                                                         <div class="field has-addons" role="group">
                                                             <p class="control">
-                                                                <button class="button is-primary js-edit-dataset-save js-editable-version is-hidden" data-dataset-id="${datasetId}">
+                                                                <button class="button is-primary js-edit-dataset-save js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-outlined is-primary js-edit-dataset-cancel js-editable-version is-hidden" data-dataset-id="${datasetId}">
+                                                                <button class="button is-outlined is-primary js-edit-dataset-cancel js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
                                                                 </button>
                                                             </p>
@@ -554,26 +568,32 @@
 
                         <div id="dataset-arrangment-c" class="is-hidden">
                             <p class="content">
-                                Drag to re-arrange the datasets in any orientation you wish, and drag the right side of any dataset to change its width. Then click save.
+                                Drag to re-arrange the datasets in any orientation you wish, and drag the right side of any dataset to change its width or height. Then click "Save".
                             </p>
-                            <div class="form-group">
-                                <button type="button" id="btn-save-layout" class="button is-primary is-sm" data-tooltip-content="Save layout">
-                                    <span class="icon is-small"><i class="mdi mdi-save"></i></span>
-                                    <span>Save</span>
-                                </button>
-                                <!-- CREATE TOAST <span id="arrangement-save-notification">Profile arrangement saved</span>-->
+                            <div class="field">
+                                <div class="control">
+                                    <button type="button" id="btn-save-layout" class="button is-primary" data-tooltip-content="Save layout">
+                                        <span class="icon"><i class="mdi mdi-content-save"></i></span>
+                                        <span>Save</span>
+                                    </button>
+                                    <!-- TODO: CREATE TOAST <span id="arrangement-save-notification">Profile arrangement saved</span>-->
+                                </div>
                             </div>
                             <h4 class="title is-4">Profile arrangement</h4>
-                            <h4 class="subtitle is-4">Single-gene view</h4>
-                            <div id="dataset-arrangement-single"></div>
-                            <h4 class="subtitle is-4">Multi-gene view</h4>
-                            <div id="dataset-arrangement-multi"></div>
+                            <div class="content">
+                                <p class="subtitle is-5 is-underlined">Single-gene view</p>
+                                <div id="dataset-arrangement-single" class="arrangement-grid"></div>
+                            </div>
+                            <div class="content">
+                                <p class="subtitle is-5 is-underlined">Multi-gene view</p>
+                                <div id="dataset-arrangement-multi" class="arrangement-grid"></div>
+                            </div>
                             <template id="dataset-arrangement-view">
                                 <!-- support width and height expansion -->
-                                <div class="js-sortable-tile mr-1 mb-1" data-dataset-id="${datasetId}" >
-                                    <p class="js-sortable-tile-title"><span>{{:title}}</span></p>
+                                <div class="js-sortable-tile" >
+                                    <p class="js-sortable-tile-title"><span></span></p>
                                     <figure class="image">
-                                        <img class="js-sortable-tile-img" src="{{:previewImageUrl}}"/>
+                                        <img class="js-sortable-tile-img"/>
                                     </figure>
                                 </div>
                             </template>
@@ -594,6 +614,9 @@
     <!-- Floating UI for tooltips, popovers, etc -->
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
+
+    <!-- sortable + drag-n-drop -->
+    <script src="https://cdn.jsdelivr.net/npm/html5sortable@0.13.3/dist/html5sortable.min.js"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/classes/dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>

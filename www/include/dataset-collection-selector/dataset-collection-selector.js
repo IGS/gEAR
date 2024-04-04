@@ -140,14 +140,17 @@ const fetchDatasetCollections = async (callback) => {
 const selectDatasetCollection = (share_id) => {
     // reads the DC share_id passed and handles any UI and data updates to make
     //   it preselected
-    selected_dc_share_id = share_id;
-    selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
+    selected_dc_label = "Choose a Dataset Collection"
+    if (share_id) {
+        selected_dc_share_id = share_id;
+        selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
+    }
 
     updateDatasetCollectionSelectorLabel();
 }
 
 const setActiveDCCategory = (category) => {
-    // clear the gene list
+    // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
     document.querySelector('#dropdown-dc-search-input').value = '';
 
@@ -199,7 +202,7 @@ const setActiveDCCategory = (category) => {
         row.querySelector('.dc-item-label').textContent = entry.label;
         row.querySelector('.ul-li').dataset.shareId = entry.share_id;
 
-        let tag_element = row.querySelector('.ul-li .dc-item-tag');
+        const tag_element = row.querySelector('.ul-li .dc-item-tag');
 
         if (entry.folder_label) {
             tag_element.textContent = entry.folder_label;
@@ -214,7 +217,7 @@ const setActiveDCCategory = (category) => {
 
 const updateDatasetCollectionSelectorLabel = () => {
     if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
-        let truncated_label = selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) + '...';
+        const truncated_label = `${selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT)}...`;
         document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
     } else {
         document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
