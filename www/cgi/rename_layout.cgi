@@ -47,7 +47,7 @@ def main():
     layout.label = layout_name
 
     layout.save()
-    result = {'layout_id': layout.id,
+    result = {#'layout_id': layout.id,
                 'layout_label': layout.label,
                 'layout_share_id': layout.share_id
         }
