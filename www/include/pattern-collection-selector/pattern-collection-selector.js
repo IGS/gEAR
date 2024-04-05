@@ -53,7 +53,7 @@ document.getElementById('dropdown-pattern-list-cancel').addEventListener('click'
 
     // clear the patterns-manually-entered input element
     document.getElementById('dropdown-pattern-list-search-input').value = '';
-    document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern Lists';
+    document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
 
     // and finally the related pattern lists and patterns
     selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []};
@@ -65,8 +65,8 @@ document.getElementById('dropdown-pattern-list-search-input').addEventListener('
 
     if (search_term.length === 0) {
         // clear the gene list
-        document.getElementById('dropdown-content-gene-lists').innerHTML = '';
-        document.getElementById('dropdown-content-genes').innerHTML = '';
+        document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
+        document.getElementById('dropdown-content-weights').innerHTML = '';
         return;
     } else if (search_term.length <= 2) {
         return;
@@ -81,8 +81,8 @@ document.getElementById('dropdown-pattern-list-search-input').addEventListener('
     document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
     const patternListItemTemplate = document.getElementById('tmpl-pattern-list-item');
 
-    for (const cart_type in patternsCartData) {
-        for (const cart of patternsCartData[cart_type]) {
+    for (const cartType in patternsCartData) {
+        for (const cart of patternsCartData[cartType]) {
             if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
                 const row = patternListItemTemplate.content.cloneNode(true);
                 createPatternListItem(row, cart);
