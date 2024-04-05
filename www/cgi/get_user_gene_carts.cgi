@@ -23,7 +23,7 @@ Returns {'user_carts': [
          'recent_carts': [
                         {'id': 3122, 'label': 'my_gene_cart'}
                         {'id': 4113, 'label': 'my_gene_cart'}
-                       ],            
+                       ],
          'shared_carts': [
                         {'id': 1212, 'label': 'my_gene_cart'}
                        ],
@@ -81,7 +81,7 @@ def main():
     if current_user:
         user_carts = geardb.GeneCartCollection().get_by_user(user=current_user)
         group_carts = geardb.GeneCartCollection().get_by_user_groups(user=current_user)
-    recent_carts = geardb.GeneCartCollection().get_by_user_recent(user=current_user, n=10)
+        recent_carts = geardb.GeneCartCollection().get_by_user_recent(user=current_user, n=10)
     shared_carts = geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id])
     public_carts = geardb.GeneCartCollection().get_public()
 

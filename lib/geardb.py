@@ -1098,6 +1098,43 @@ class Layout:
         # make sure this member is removed from our internal list too
         self.members = [i for i in self.members if i.dataset_id != dataset_id]
 
+        # TODO: test this later
+
+        """
+        # Adjust start row of remaining members if there is are one or more rows void of members
+        possible_rows = set()
+        possible_mg_rows = set()
+        for lm in self.members:
+            # add the row + span range to the set
+            for i in range(lm.start_row, lm.start_row + lm.grid_height):
+                possible_rows.add(i)
+            for i in range(lm.mg_start_row, lm.mg_start_row + lm.mg_grid_height):
+                possible_mg_rows.add(i)
+
+        # get max row
+        max_row = max([lm.start_row + lm.grid_height for lm in self.members])
+        max_mg_row = max([lm.mg_start_row + lm.mg_grid_height for lm in self.members])
+
+        # get the rows that are not in the set
+        missing_rows = set(range(0, max_row + 1)) - possible_rows
+        missing_mg_rows = set(range(0, max_mg_row + 1)) - possible_mg_rows
+
+        # sort by descending order
+        missing_rows = sorted(list(missing_rows), reverse=True)
+        missing_mg_rows = sorted(list(missing_mg_rows), reverse=True)
+
+        # if there are missing rows, adjust the start_row of the members that are below the missing row
+        for row in missing_rows:
+            for lm in self.members:
+                if lm.start_row >= row:
+                    lm.start_row -= 1
+        for row in missing_mg_rows:
+            for lm in self.members:
+                if lm.mg_start_row >= row:
+                    lm.mg_start_row -= 1
+
+        """
+
         cursor.close()
         conn.commit()
 
@@ -1120,9 +1157,27 @@ class Layout:
             self.id = cursor.lastrowid
         else:
             # ID already populated
-            # Update Layout properties, delete existing members, add current ones
-            # TODO
-            raise Exception("Layout.save() not yet implemented for update mode")
+            conn = Connection()
+            cursor = conn.get_cursor()
+
+            # Update layout properties
+            sql = """
+                  UPDATE layout
+                     SET user_id = %s,
+                         label = %s,
+                         is_current = %s,
+                         is_domain = %s,
+                         share_id = %s
+                   WHERE id = %s
+            """
+            cursor.execute(sql, (
+                self.user_id, self.label, self.is_current,
+                self.is_domain, self.share_id, self.id
+            ))
+
+            conn.commit()
+
+            # TODO: delete existing members, add current ones
 
         cursor.close()
         conn.commit()
@@ -1256,8 +1311,10 @@ class LayoutCollection:
                 folder_parent_id=row[8],
                 folder_label=row[9]
             )
-
             layout.dataset_count = row[10]
+
+            layout.get_members()
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1316,6 +1373,9 @@ class LayoutCollection:
             )
 
             layout.dataset_count = row[10]
+
+            layout.get_members()
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1386,6 +1446,8 @@ class LayoutCollection:
             layout.folder_root_id=folder_id
             layout.dataset_count = row[10]
 
+            layout.get_members()
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1441,6 +1503,7 @@ class LayoutCollection:
             )
 
             layout.dataset_count = row[10]
+            layout.get_members()
             self.layouts.append(layout)
 
         cursor.close()
@@ -1496,6 +1559,8 @@ class LayoutCollection:
             )
 
             layout.dataset_count = row[10]
+            layout.get_members()
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -2656,7 +2721,10 @@ class GeneCartCollection:
         cart.num_genes = len(cart.genes)
         return cart
 
-    def get_by_cart_ids(self, ids=None):
+    def get_by_cart_ids(self, ids=[]):
+        if not ids:
+            raise Exception("No cart IDs provided to get_by_cart_ids")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2683,7 +2751,10 @@ class GeneCartCollection:
         conn.close()
         return self.carts
 
-    def get_by_share_ids(self, share_ids=None):
+    def get_by_share_ids(self, share_ids=[]):
+        if not share_ids:
+            raise Exception("No share_ids provided to get_by_share_ids")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2711,6 +2782,9 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_user(self, user=None):
+        if not user:
+            raise Exception("User not provided to get_by_user")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2741,6 +2815,10 @@ class GeneCartCollection:
         """
         Put here as it will be needed in the future. User groups not yet supported.
         """
+
+        if not user:
+            raise Exception("User not provided to get_by_user_groups")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2770,6 +2848,9 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_user_recent(self, user=None, n=None):
+        if not user:
+            raise Exception("No user provided to get_by_user_recent")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
