@@ -33,36 +33,38 @@ fixed paths have worked fine for decades.
       anndata==0.7.8 \
       aiohttp \
       biopython==1.79 \
-      cairosvg==2.5.2 \
+      cairosvg==2.7.1 \
       dash-bio==1.0.2 \
-      Flask==2.1.0 \
+      Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
       gunicorn \
       h5py==3.9.0 \
       itsdangerous==2.1.2 \
+      jupyterlab==4.0.5 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
-      llvmlite==0.38.0 \
+      llvmlite==0.41.1 \
       matplotlib==3.6.2 \
-      mod-wsgi==4.9.0 \
+      mod-wsgi==4.9.4 \
       more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
-      numba==0.55.1 \
+      numba==0.58.1 \
       numexpr==2.8.1 \
       numpy==1.26.0 \
       opencv-python==4.5.5.64 \
       openpyxl==3.0.10 \
-      pandas==1.5.2 \
+      pandas==1.5.3 \
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.6.0 \
       python-dotenv==0.20.0 \
-      requests==2.27.1 \
+      requests==2.31.0 \
       rpy2==3.5.1 \
       sanic \
       scanpy[louvain]==1.8.2 \
       scikit-learn==1.0.2 \
-      scipy==1.8.0 \
+      scipy==1.11.04 \
+      seaborn==0.12.2 \
       SQLAlchemy==1.4.32 \
       tables==3.9.2 \
       xlrd==1.2.0
