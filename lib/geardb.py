@@ -36,6 +36,10 @@ def _default(self, obj):
 _default.default = JSONEncoder().default
 JSONEncoder.default = _default
 
+# The API will toggle off attributes related to download files for datasets with
+#  IDs in this list.  Hacky, will be integrated into the database for V2.
+downloads_disabled = ['0d66e33e-2470-d093-6eb9-c68ff3d92972', '61023553-4c69-6941-a5f8-8d11acb3ec8a']
+
 def _read_site_domain_config():
     """Convert site domain preferences into a dictionary."""
     this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -100,6 +104,11 @@ def get_dataset_by_id(id=None, include_shape=None):
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
                           has_h5ad=has_h5ad)
+        
+        # hack to disable downloads for certain datasets
+        if dataset.id in downloads_disabled:
+            dataset.has_h5ad = 0
+            dataset.has_tarball = 0
 
     if include_shape == '1':
         dataset.get_shape()
@@ -2006,15 +2015,19 @@ class DatasetCollection:
                 dataset.access = 'access_level'
                 dataset.user_name = row[9]
 
-                if os.path.exists(dataset.get_tarball_path()):
-                    dataset.has_tarball = 1
-                else:
+                if dataset.id in downloads_disabled:
                     dataset.has_tarball = 0
-
-                if os.path.exists(dataset.get_file_path()):
-                    dataset.has_h5ad = 1
-                else:
                     dataset.has_h5ad = 0
+                else:
+                    if os.path.exists(dataset.get_tarball_path()):
+                        dataset.has_tarball = 1
+                    else:
+                        dataset.has_tarball = 0
+
+                    if os.path.exists(dataset.get_file_path()):
+                        dataset.has_h5ad = 1
+                    else:
+                        dataset.has_h5ad = 0
 
                 #  TODO: These all need to be tracked through the code and removed
                 dataset.dataset_id = dataset.id
