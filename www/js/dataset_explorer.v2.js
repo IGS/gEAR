@@ -10,8 +10,7 @@ let firstSearch = true;
 let searchByCollection = false;
 const resultsPerPage = 20;
 
-let selectedCollectionDatasetData = null;
-let datasetCollectionData = null;
+let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
 
 // TODO - Add transformation code for quick dataset transformations
 
@@ -66,13 +65,31 @@ const addDatasetListEventListeners = () => {
 
     for (const classElt of document.getElementsByClassName("js-collection-add-dataset")) {
         classElt.addEventListener("click", async (e) => {
-            const collection = datasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+            let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+
+            // Currently only collectiosn with datasets members will be fetched.
+            // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
+            if (!collection) {
+                collection = {
+                    dataset_count: 0,
+                    folder_id: null,
+                    folder_label: null,
+                    folder_parent_id: null,
+                    is_current: false,
+                    is_domain: false,
+                    is_owner: true,
+                    is_public: false,
+                    label: selected_dc_label,
+                    members: [],
+                    share_id: selected_dc_share_id,
+                }
+            }
 
             const datasetId = e.currentTarget.dataset.datasetId;
-            const dataset = selectedCollectionDatasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
+            const datasetIsPublic = e.currentTarget.dataset.isPublic;
 
             // if dataset is private and the collection is public, then we need to show a popover to confirm to the user the dataset will switch to public.
-            if (!dataset.is_public && collection.is_public) {
+            if (!datasetIsPublic && collection.is_public) {
                 createSwitchDatasetToPublicPopover(classElt, datasetId);
             } else {
                 try {
@@ -80,9 +97,12 @@ const addDatasetListEventListeners = () => {
                     if (!data.success) {
                         throw new Error(data.error);
                     }
+
+                    await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
+                    changeDatasetCollectionCallback();  // Updates the buttons and UI for the selected collection
                     createToast("Dataset added to collection", "is-success");
-                    // disable the button
-                    e.currentTarget.disabled = true;
+
+
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to add dataset to collection");
@@ -96,13 +116,17 @@ const addDatasetListEventListeners = () => {
             const datasetId = e.currentTarget.dataset.datasetId;
 
             try {
-                const data = await apiCallsMixin.removeDatasetFromCollection(selected_dc_share_id, datasetId);
+                const data = await apiCallsMixin.deleteDatasetFromCollection(selected_dc_share_id, datasetId);
                 if (!data.success) {
                     throw new Error(data.error);
                 }
+
+                await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
+                changeDatasetCollectionCallback();  // Updates the buttons and UI for the selected collection
+
                 createToast("Dataset removed from collection", "is-success");
-                // disable button
-                e.currentTarget.disabled = true;
+
+
             } catch (error) {
                 logErrorInConsole(error);
                 createToast("Failed to remove dataset from collection");
@@ -409,27 +433,17 @@ const createActionTooltips = (referenceElement) => {
  * @returns {Promise<void>} A promise that resolves when the function completes.
  */
 const changeDatasetCollectionCallback = async () => {
-
-    // TODO: Ideally "add collection" button should be shown even if a collection has not been selected
-    for (const classElt of document.getElementsByClassName("js-collection-action-links")) {
-        classElt.classList.remove("is-hidden");
-    }
+    // Show action buttons
+    document.getElementById("collection-actions-c").classList.remove("is-hidden");
 
     // The share_id should be updated in the component when a new dataset collection is selected
-    const [datasetData, dcMemberData] = await Promise.all([
-        apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"}),
-        apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id)
-    ]);
-
-    selectedCollectionDatasetData = datasetData;
+    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
 
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
-    datasetCollectionData = [...dataset_collection_data.domain_layouts, ...dataset_collection_data.group_layouts, ...dataset_collection_data.public_layouts, ...dataset_collection_data.shared_layouts, ...dataset_collection_data.user_layouts]
+    flatDatasetCollectionData = [...dataset_collection_data.domain_layouts, ...dataset_collection_data.group_layouts, ...dataset_collection_data.public_layouts, ...dataset_collection_data.shared_layouts, ...dataset_collection_data.user_layouts]
 
     // Find the dataset collection data for the selected share_id
-    let collection = datasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-
-    console.log(collection)
+    let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
 
     // Currently only collectiosn with datasets members will be fetched.
     // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
@@ -452,8 +466,8 @@ const changeDatasetCollectionCallback = async () => {
     const imageUrls = {};
     const titles = {};
     for (const dataset of datasetData.datasets) {
-        const previewImageUrl = datasetCollectionData.preview_image_url || "/img/dataset_previews/missing.png";
-        const mgPreviewImageUrl = datasetCollectionData.mg_preview_image_url || "/img/dataset_previews/missing.png";
+        const previewImageUrl = flatDatasetCollectionData.preview_image_url || "/img/dataset_previews/missing.png";
+        const mgPreviewImageUrl = flatDatasetCollectionData.mg_preview_image_url || "/img/dataset_previews/missing.png";
         imageUrls[dataset.dataset_id] = { previewImageUrl, mgPreviewImageUrl };
         titles[dataset.dataset_id] = dataset.title;
     }
@@ -465,7 +479,7 @@ const changeDatasetCollectionCallback = async () => {
 
     // Update action buttons for the dataset collection or datasets
     updateDatasetCollectionButtons(collection);
-    updateDatasetListButtons(collection, dcMemberData.layout_members);
+    updateDatasetListButtons(collection);
 
     // If selected dataset collection is a "domain" collection, hide the "Arrangment" view button.
     // if arrangement view is active (class "gear-bg-secondary") switch to table view
@@ -484,7 +498,7 @@ const changeDatasetCollectionCallback = async () => {
     }
 
     // JSON parse every layout member
-    const layoutMembers = dcMemberData.layout_members.map((layoutMember) => JSON.parse(layoutMember));
+    const layoutMembers = collection.members
 
     // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
     // These layouts were generated only with a "width" property
@@ -666,7 +680,7 @@ const changeDatasetCollectionCallback = async () => {
         // update grid_position of each dataset based on destination item order
         e.detail.destination.items.forEach((item, idx, array) => {
             const datasetId = item.dataset.datasetId;
-            const dataset = selectedCollectionDatasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
+            const dataset = datasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
             dataset.grid_position = idx + 1;     // 1-indexed
             const gridPosition = dataset.grid_position;
 
@@ -696,7 +710,7 @@ const changeDatasetCollectionCallback = async () => {
         // update grid_position of each dataset based on destination item order
         e.detail.destination.items.forEach((item, idx, array) => {
             const datasetId = item.dataset.datasetId;
-            const dataset = selectedCollectionDatasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
+            const dataset = datasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
             dataset.mg_grid_position = idx + 1;     // 1-indexed
             const gridPosition = dataset.mg_grid_position;
 
@@ -928,18 +942,15 @@ const createDeleteCollectionConfirmationPopover = () => {
                 const data = await apiCallsMixin.deleteDatasetCollection(collectionId);
 
                 if (data['success'] == 1) {
-                    // Re-fetch the dataset collections, which will update the UI via click events
+                    // Re-fetch the dataset collections, which will update in the UI via click events
                     await fetchDatasetCollections()
-                    selectDatasetCollection(null)
 
                     createToast("Dataset collection deleted", "is-success");
 
-                    // Remove the .dropdown-dc-item element
-                    document.getElementById("dropdown-dc-selector-label").textContent = "Choose a Dataset Collection";
-                    document.querySelector(`.dropdown-dc-item[data-share-id=${currShareId}`).remove();
+                    selectDatasetCollection(null);  // performs DatasetCollectionSelectorCallback when label is reset
 
-                    updateDatasetListButtons();
-                    changeDatasetCollectionCallback();
+                    // Override the "show" from the callback. If the collection is deleted, the collection management should be hidden
+                    document.getElementById("collection-actions-c").classList.add("is-hidden");
 
                 } else {
                     const error = data['error'] || "Failed to delete collection";
@@ -950,6 +961,7 @@ const createDeleteCollectionConfirmationPopover = () => {
                 createToast("Failed to delete collection");
             } finally {
                 popoverContent.remove();
+
             }
         });
     });
@@ -1063,14 +1075,10 @@ const createNewCollectionPopover = () => {
                     // ! At this point, the new collection has no layout_members so it will not be fetched if collections are fetched
                     // So we need to update the collection label object manually.
                     dataset_collection_label_index[data['layout_share_id']] = data['layout_label']
-                    selectDatasetCollection(data['layout_share_id'])
-
-                    updateDatasetCollectionSelectorLabel();
 
                     createToast("Dataset collection created", "is-success");
 
-                    updateDatasetListButtons();
-                    changeDatasetCollectionCallback();
+                    selectDatasetCollection(data['layout_share_id']); // performs DatasetCollectionSelectorCallback when label is set
 
                 } else {
                     const error = data['error'] || "Failed to create new collection";
@@ -1197,12 +1205,10 @@ const createRenameCollectionPopover = () => {
                     // In case the collection has no members, it will not be fetched if collections are fetched
                     // So we need to update the collection label object manually.
                     dataset_collection_label_index[data['layout_share_id']] = newName
-                    selectDatasetCollection(selected_dc_share_id)
 
                     createToast("Dataset collection renamed", "is-success");
 
-                    updateDatasetListButtons();
-                    changeDatasetCollectionCallback();
+                    selectDatasetCollection(data['layout_share_id']); // performs DatasetCollectionSelectorCallback when label is set
 
                 } else {
                     const error = data['error'] || "Failed to rename collection";
@@ -1310,6 +1316,8 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
                 const error = data['error'] || "Failed to add dataset to collection";
                 throw new Error(error);
             }
+            await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
+            changeDatasetCollectionCallback();  // Update the buttons and UI for the selected collection
 
         } catch (error) {
             logErrorInConsole(error);
@@ -1530,7 +1538,7 @@ const processSearchResults = (data) => {
         // action buttons section
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
-        setElementProperties(listResultsView, ".js-collection-add-dataset", { dataset: { datasetId } });
+        setElementProperties(listResultsView, ".js-collection-add-dataset", { dataset: { datasetId, isPublic } });
         setElementProperties(listResultsView, ".js-collection-remove-dataset", { dataset: { datasetId } });
         //setElementProperties(listResultsView, ".js-download-dataset", { dataset: { datasetId, } });
         setElementProperties(listResultsView, ".js-share-dataset", { value: shareId, dataset: { datasetId } });
@@ -1571,9 +1579,7 @@ const processSearchResults = (data) => {
 
     }
 
-    // Hide some buttons if user is not owner
-    updateDatasetListButtons();
-
+    // Configure tooltips before manipulating action link buttons
     for (const tooltipElt of document.getElementsByClassName("tooltip")) {
         // Do not remove collection tooltips
         if (tooltipElt.classList.contains("js-collection-tooltip")) {
@@ -1605,6 +1611,9 @@ const processSearchResults = (data) => {
     for (const classElt of viewBtns) {
         applyTooltip(classElt, createActionTooltips(classElt), "bottom");
     }
+
+    // Hide/Remove some buttons if user is not owner
+    updateDatasetListButtons();
 
     // Initiialize delete dataset popover for each delete button
     createDeleteDatasetConfirmationPopover();
@@ -1823,13 +1832,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
  * @function
  * @returns {void}
  */
-const updateDatasetListButtons = (collection=null, datasetMembers=null) => {
-
-    let datasetMembersObj = [];
-    if (datasetMembers) {
-        // JSON parse each dataset member
-        datasetMembersObj = datasetMembers.map(member => JSON.parse(member));
-    }
+const updateDatasetListButtons = (collection=null) => {
 
     const datasetListElements = document.getElementsByClassName("js-dataset-list-element");
     for (const classElt of datasetListElements) {
@@ -1888,7 +1891,7 @@ const updateDatasetListButtons = (collection=null, datasetMembers=null) => {
 
         // if dataset is already in the currently selected collection, remove the "add to collection" button (and vice versa)
         // if dataset is not in the currently selected collection, remove the "remove from collection" button (and vice versa)
-        const datasetInCollection = datasetMembersObj.some(member => member.dataset_id === datasetId);
+        const datasetInCollection = collection.members.some(member => member.dataset_id === datasetId);
         if (datasetInCollection) {
             addToCollectionButton.parentElement.classList.add("is-hidden")
             addToCollectionButton.disabled = true;
@@ -1974,8 +1977,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 e.currentTarget.classList.add("js-selected");
             }
 
-            searchByCollection = false;
-
             submitSearch();
         });
     }
@@ -1995,7 +1996,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 document.getElementById("search-clear").addEventListener("click", () => {
     document.getElementById("search-terms").value = "";
-    searchByCollection = false;
     submitSearch();
 });
 
@@ -2009,7 +2009,6 @@ searchTermsElt.addEventListener("keyup", (event) => {
         searchClearElt.classList.remove("is-hidden");
     }
     if (event.key === "Enter") {
-        searchByCollection = false;
         submitSearch();
     }
 });
@@ -2145,7 +2144,14 @@ for (const elt of document.querySelectorAll(".js-expandable-control")) {
     }
 )};
 
-document.getElementById("btn-view-collection-datasets").addEventListener("click", () => {
-    searchByCollection = true;
+// ! May be removed
+/*document.getElementById("btn-view-collection-datasets").addEventListener("click", () => {
     submitSearch(1)
+});*/
+
+// If checkbox is changed, set the searchByCollection flag
+document.getElementById("filter-only-in-collection").addEventListener("change", (e) => {
+    searchByCollection = e.currentTarget.checked;
+    // If the checkbox is checked, change label accordingly
+    e.currentTarget.closest(".field").querySelector("label").textContent = searchByCollection ? "Yes" : "No"
 });

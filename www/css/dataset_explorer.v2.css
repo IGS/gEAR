@@ -52,5 +52,8 @@ article[role="tooltip"] {
     grid-template-columns: repeat(12, 1fr);
     grid-gap: 0px;
     width: 75%;
-    height: 300px;
+}
+
+.js-sortable-tile {
+    height: 300px;  /* prefer images to be distorted in exchange for consistent height */
 }

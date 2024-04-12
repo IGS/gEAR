@@ -956,7 +956,7 @@ class Layout:
               INSERT INTO layout_members (layout_id, dataset_id, grid_position, mg_grid_position,
               start_col, mg_start_col, grid_width, mg_grid_width,
               start_row, mg_start_row, grid_height, mg_grid_height)
-              VALUES (%s, %s, %s, %s, %s)
+              VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.mg_grid_position,
                              member.start_col, member.mg_start_col, member.grid_width, member.mg_grid_width,

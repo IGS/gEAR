@@ -21,7 +21,7 @@ def main():
 
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    share_id = int(form.getvalue('layout_share_id'))
+    share_id = form.getvalue('layout_share_id')
     dataset_id = form.getvalue('dataset_id')
     result = { 'success': 0, 'error': '' }
 
@@ -41,32 +41,38 @@ def main():
         # get the last start_row and start_col in that row
         row_to_insert = 1
         mg_row_to_insert = 1
-        row_to_insert = max([m.start_row for m in layout.members])
-        mg_row_to_insert = max([m.mg_start_row for m in layout.members])
-
         col_to_insert = 1
         mg_col_to_insert = 1
+        grid_width = 4
+        mg_grid_width = 12
+        grid_height = 1
+        mg_grid_height = 1
 
-        # get max start_col and max_mg_start_col on the last row
-        col_to_insert = max([m.start_col + m.grid_width for m in layout.members if m.start_row == row_to_insert])
-        mg_col_to_insert = max([m.mg_start_col + m.mg_grid_width for m in layout.members if m.mg_start_row == mg_row_to_insert])
+        if len(layout.members) > 0:
+            row_to_insert = max([m.start_row for m in layout.members])
+            mg_row_to_insert = max([m.mg_start_row for m in layout.members])
+
+            # get max start_col and max_mg_start_col on the last row
+            col_to_insert = max([m.start_col + m.grid_width for m in layout.members if m.start_row == row_to_insert])
+            mg_col_to_insert = max([m.mg_start_col + m.mg_grid_width for m in layout.members if m.mg_start_row == mg_row_to_insert])
 
         # If adding this dataset will make the row exceed the grid width, start a new row
-        if col_to_insert > 12:
-            # get grid height of the last row, first start column
-            # Want to ensure that the new row starts below the span of the previous row
-            grid_height = [m.grid_height for m in layout.members if m.start_row == row_to_insert and m.start_col == 1][0]
-            row_to_insert += grid_height
-            col_to_insert = 1
-        if mg_col_to_insert > 12:
-            mg_grid_height = [m.mg_grid_height for m in layout.members if m.mg_start_row == mg_row_to_insert and m.mg_start_col == 1][0]
-            mg_row_to_insert += mg_grid_height
-            mg_col_to_insert = 1
+        if len(layout.members) > 0:
+            if col_to_insert > 12:
+                # get grid height of the last row, first start column
+                # Want to ensure that the new row starts below the span of the previous row
+                grid_height = [m.grid_height for m in layout.members if m.start_row == row_to_insert and m.start_col == 1][0]
+                row_to_insert += grid_height
+                col_to_insert = 1
+            if mg_col_to_insert > 12:
+                mg_grid_height = [m.mg_grid_height for m in layout.members if m.mg_start_row == mg_row_to_insert and m.mg_start_col == 1][0]
+                mg_row_to_insert += mg_grid_height
+                mg_col_to_insert = 1
 
         if user.id == layout.user_id:
             lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, mg_grid_position=gpos,
-                                    start_col=col_to_insert, mg_start_col=mg_col_to_insert, grid_width=4, mg_grid_width=12,
-                                    start_row=row_to_insert, mg_start_row=mg_row_to_insert, grid_height=1, mg_grid_height=1)
+                                    start_col=col_to_insert, mg_start_col=mg_col_to_insert, grid_width=grid_width, mg_grid_width=mg_grid_width,
+                                    start_row=row_to_insert, mg_start_row=mg_row_to_insert, grid_height=grid_height, mg_grid_height=mg_grid_height)
 
 
             layout.add_member(lm)

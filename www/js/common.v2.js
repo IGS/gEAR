@@ -642,8 +642,8 @@ const apiCallsMixin = {
      * @param {string} datasetId - The ID of the dataset.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async addDatasetToCollection(layoutId, datasetId) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId, dataset_id: datasetId};
+    async addDatasetToCollection(layoutShareId, datasetId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, dataset_id: datasetId};
         const {data} = await axios.post("cgi/add_dataset_to_layout.cgi", convertToFormData(payload));
         return data;
     },

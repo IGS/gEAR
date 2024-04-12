@@ -57,42 +57,51 @@
                                 </span>
                             </p>
                             <hr class="my-2 has-background-grey-lighter">
-                            <div id="collection-management-c" class="js-expandable-target">
-
+                            <div id="collection-management-c" class="js-expandable-target mb-3">
                                 <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-                                <div class="field has-addons js-collection-action-links my-0 is-hidden" role="group">
-                                    <p class="control">
-                                        <button id="btn-set-primary-collection" class="button is-small is-outlined is-info" data-tooltip-content="Make default collection everywhere">
-                                            <span class="icon"><i class="mdi mdi-18px mdi-checkbox-marked-circle"></i></span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-view-collection-datasets" class="button is-small is-outlined is-dark" data-tooltip-content="View datasets from this collection">
-                                            <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-rename-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Rename collection title">
-                                            <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-add-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Create a new collection">
-                                            <span class="icon"><i class="mdi mdi-18px mdi-plus"></i></span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-delete-collection" class="button is-small is-danger" data-tooltip-content="Delete collection">
-                                            <span class="icon"><i class="mdi mdi-18px mdi-minus"></i></span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-share-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Get shareable link">
-                                            <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
-                                        </button>
-                                    </p>
+                                <div id="collection-actions-c" class="is-hidden">
+                                    <div class="field has-addons js-collection-action-links my-0" role="group">
+                                        <p class="control">
+                                            <button id="btn-set-primary-collection" class="button is-small is-outlined is-info" data-tooltip-content="Make default collection everywhere">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-checkbox-marked-circle"></i></span>
+                                            </button>
+                                        </p>
+                                        <!-- May be removed <p class="control">
+                                            <button id="btn-view-collection-datasets" class="button is-small is-outlined is-dark" data-tooltip-content="View datasets from this collection">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
+                                            </button>
+                                        </p>-->
+                                        <p class="control">
+                                            <button id="btn-rename-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Rename collection title">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-share-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Get shareable link">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-add-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Create a new collection">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-plus"></i></span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-delete-collection" class="button is-small is-danger" data-tooltip-content="Delete this collection">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-minus"></i></span>
+                                            </button>
+                                        </p>
+                                    </div>
+
+                                    <div class="field mt-1">
+                                        <p class="label is-size-7">Show only selected collection datasets.</p>
+                                        <!-- toggle switch --->
+                                        <input id="filter-only-in-collection" type="checkbox" class="switch is-small is-primary"/>
+                                        <label for="filter-only-in-collection" class="is-size-7">No</label>
+                                    </div>
+                                    <hr class="my-2 has-background-grey-lighter">
                                 </div>
-                                <span id="layout_action_note" class="pull-right">&nbsp;</span>
+
                             </div>
                         </div>
 
@@ -591,8 +600,8 @@
                             <template id="dataset-arrangement-view">
                                 <!-- support width and height expansion -->
                                 <div class="js-sortable-tile" >
-                                    <p class="js-sortable-tile-title"><span></span></p>
                                     <figure class="image">
+                                        <figcaption class="js-sortable-tile-title"><span></span></figcaption>
                                         <img class="js-sortable-tile-img"/>
                                     </figure>
                                 </div>
