@@ -160,31 +160,7 @@ class PlotlyHandler extends PlotHandler {
         const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
         Plotly.relayout("plotly-preview", custonLayout)
 
-        // If any categorical series in ".js_plot_req", and the series has more then 20 groups, display a warning about overcrowding
-        const plotlyReqSeries = document.getElementsByClassName("js-plot-req");
-        const overcrowdedSeries = [...plotlyReqSeries].filter((series) => {
-            const seriesName = series.id.replace("-color", "");
-            const seriesGroups = levels[seriesName];
-            return seriesGroups.length > 20;
-        });
-        if (!overcrowdedSeries.length) {
-            return;
-        }
-        const overcrowdedSeriesWarning = document.createElement("article");
-        overcrowdedSeriesWarning.classList.add("message", "is-warning");
-        overcrowdedSeriesWarning.id = "overcrowded-series-warning";
-        overcrowdedSeriesWarning.innerHTML = `
-                <div class="message-body">
-                    <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
-                </div>
-            `;
-        plotContainer.prepend(overcrowdedSeriesWarning);
-
-        // Add event listener to delete button
-        const deleteButton = document.getElementById("overcrowded-series-warning").querySelector(".delete");
-        deleteButton.addEventListener("click", (event) => {
-            event.target.parentElement.parentElement.remove();
-        });
+        addOvercrowdedSeriesWarning(plotContainer);
 
     }
 
@@ -666,9 +642,43 @@ class SvgHandler extends PlotHandler {
     setupPlotSpecificEvents() {
         setupSVGOptions();
     }
-
 }
 
+/**
+ * Adds a warning message to the plot container if any categorical series value from a series in ".js_plot_req" has more than 20 groups.
+ * This warning message alerts the user that the plot may be difficult to read or render properly.
+ *
+ * @param {HTMLElement} plotContainer - The container element where the warning message will be added.
+ */
+const addOvercrowdedSeriesWarning = (plotContainer) => {
+    const plotlyReqSeries = document.getElementsByClassName("js-plot-req");
+    const overcrowdedSeries = [...plotlyReqSeries].filter((series) => {
+        const seriesValue = series.value;
+        if (!levels[seriesValue]) {
+            return false;
+        }
+        const seriesGroups = levels[seriesValue];
+        return seriesGroups.length > 20;
+    });
+    if (!overcrowdedSeries.length) {
+        return;
+    }
+    const overcrowdedSeriesWarning = document.createElement("article");
+    overcrowdedSeriesWarning.classList.add("message", "is-warning");
+    overcrowdedSeriesWarning.id = "overcrowded-series-warning";
+    overcrowdedSeriesWarning.innerHTML = `
+            <div class="message-body">
+                <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
+            </div>
+        `;
+    plotContainer.prepend(overcrowdedSeriesWarning);
+
+    // Add event listener to delete button
+    const deleteButton = document.getElementById("overcrowded-series-warning").querySelector(".delete");
+    deleteButton.addEventListener("click", (event) => {
+        event.target.parentElement.parentElement.remove();
+    });
+}
 
 /**
  * Function to handle the selection of a gene.
