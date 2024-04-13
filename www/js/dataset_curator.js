@@ -645,7 +645,7 @@ class SvgHandler extends PlotHandler {
 }
 
 /**
- * Adds a warning message to the plot container if any categorical series value from a series in ".js_plot_req" has more than 20 groups.
+ * Adds a warning message to the plot container if any categorical series value from a series in ".js-plot-req" has more than 20 groups.
  * This warning message alerts the user that the plot may be difficult to read or render properly.
  *
  * @param {HTMLElement} plotContainer - The container element where the warning message will be added.
