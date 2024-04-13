@@ -416,7 +416,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets();
 
         let counter = 0;
 
@@ -450,6 +450,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
+		console.log(error);
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 }
