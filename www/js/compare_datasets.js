@@ -450,7 +450,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
-		console.log(error);
+		createToast("Could not fetch datasets. Please contact the gEAR team.");
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 }
@@ -1290,6 +1290,5 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
-
 
 };

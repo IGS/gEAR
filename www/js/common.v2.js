@@ -2,6 +2,12 @@ let CURRENT_USER;
 let SIDEBAR_COLLAPSED = false;
 let SITE_PREFS = null;
 
+// Handle unhandled promise rejections (general catch-all for anything that wasn't caught)
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/unhandledrejection_event
+window.addEventListener("unhandledrejection", function (event) {
+    createToast("Something went wrong. Please contact the gEAR team and provide steps to reproduce.");
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
