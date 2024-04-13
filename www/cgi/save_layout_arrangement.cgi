@@ -49,13 +49,15 @@ def main():
 
         grid_position = 1
         for d_id, d_width in zip(d_ids, d_widths):
-            # TODO: Address mg_grid_width as well
             qry = """ UPDATE layout_members
-                      SET grid_position = %s, grid_width = %s, grid_height = 1,
+                      SET grid_position = %s, mg_grid_position = %s, grid_width = %s, mg_grid_width = 12,
+                      grid_height = 1, mg_grid_height = 1,
+                      start_col = 1, mg_start_col = 1,
+                      start_row = 1, mg_start_row = 1
                       WHERE layout_id = %s
                         AND dataset_id = %s
             """
-            cursor.execute(qry, (grid_position, d_width, layout_id, d_id))
+            cursor.execute(qry, (grid_position, grid_position, d_width, layout_id, d_id))
             grid_position += 1
 
         result = { 'success':1 }
