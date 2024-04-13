@@ -810,7 +810,7 @@ class AnalysisCollection:
                     if os.path.isdir(dir_path):
                         for pipeline_file in (f for f in os.listdir(dir_path) if f.endswith('.pipeline.json')):
                             json_path = "{0}/{1}".format(dir_path, pipeline_file)
-                            json_obj = json.loads(open(json_path).read())
+                            json_obj = json.loads(open(json_path, encoding="utf-8").read())
                             analyses.append(Analysis.from_json(json_obj))
 
         return analyses
