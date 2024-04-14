@@ -72,8 +72,6 @@ Occasionally you may need to purge a queue, so that zombie jobs will not run and
 
 In most cases, the executing code is located in the callback function.  If this code is changed, the consumer daemon must be re-deployed.
 
-Run `sudo service rabbitmq-server restart` to apply changes
-
 ## Troubleshooting
 
 ### (406, "PRECONDITION_FAILED - inequivalent arg 'durable' for queue 'projectr' in vhost '/': received 'false' but current is 'true'")
