@@ -171,11 +171,8 @@ const addDatasetListEventListeners = () => {
             // convert "true/false" visibility to 1/0
             const intNewVisibility = newVisibility ? 1 : 0;
             const newTitle = document.querySelector(`${selectorBase}-editable-title`).value;
-            // TODO: Implement these fields
-            const newPubmedId = null;
-            const newGeoId = null;
-            //const newPubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).value;
-            //const newGeoId = document.querySelector(`${selectorBase}-editable-geo-id`).value;
+            const newPubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).value;
+            const newGeoId = document.querySelector(`${selectorBase}-editable-geo-id`).value;
             const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
@@ -1313,10 +1310,7 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
     // Add event listener to confirm button
     document.getElementById('confirm-dataset-public-toggle').addEventListener('click', async () => {
         try {
-
-            // TODO:
-            // Convert dataset is_public = 1
-            // Add to collection
+            // Add to collection (+ make dataset public = true)
             const data = await apiCallsMixin.addDatasetToCollection(selected_dc_share_id, datasetId, true);
             if (!data.success) {
                 const error = data['error'] || "Failed to add dataset to collection";
@@ -1453,10 +1447,6 @@ const processSearchResults = (data) => {
 
         const previewImageUrl = dataset.preview_image_url || "/img/dataset_previews/missing.png";
 
-        // add collection membership info to dataset
-        // TODO:
-        const collections = dataset.layouts;
-
         const resultDatasetId = `result-dataset-id-${datasetId}`
 
         // TABLE VIEW
@@ -1567,6 +1557,27 @@ const processSearchResults = (data) => {
 
         // Append the cloned template to the results container
         resultsListDiv.appendChild(listResultsView);
+
+        // add collection membership info to dataset
+        const collections = dataset.layouts;
+        for (const collectionString of collections) {
+            const collection = JSON.parse(collectionString);
+            const shareId = collection.share_id;
+            const label = collection.label;
+
+            const collectionListElt = document.querySelector(`#${resultDatasetId} .js-found-in-collections-list`);
+            // Create list element that can link out to the collection
+            const collectionListItem = document.createElement("li");
+            collectionListItem.innerHTML = `
+            <span>
+                <a href="./p?l=${shareId}" target="_blank">
+                    <span>${label}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>
+            </span>
+            `;
+            collectionListElt.appendChild(collectionListItem);
+        }
 
         // EXTRA STUFF TO BOTH VIEWS
 

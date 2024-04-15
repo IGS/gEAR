@@ -273,6 +273,12 @@ def main():
             dataset.mg_grid_height = layout_idx[dataset.id]['mg_grid_height']
 
         dataset.get_layouts(user=user)
+        # delete user_id and layout_id from each dataset layout (security reasons)
+        for l in dataset.layouts:
+            #l.is_owner = True if user and l.user_id == user.id else False
+            del l.user_id
+            del l.id
+
         if os.path.exists("{0}/{1}.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
