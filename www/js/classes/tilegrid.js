@@ -907,6 +907,8 @@ class DatasetTile {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
 
+        this.geneSymbol = geneSymbolInput;  // Store gene symbol for future use (i.e. changing display, etc.)
+
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
@@ -914,8 +916,6 @@ class DatasetTile {
         };
 
         geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
-
-        this.geneSymbol = geneSymbolInput;  // Store gene symbol for future use (i.e. changing display, etc.)
 
         this.svgScoringMethod = svgScoringMethod;
 
