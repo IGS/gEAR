@@ -194,6 +194,8 @@ class DatasetTile {
         this.orthologs = null;  // Mapping of all orthologs for all gene symbol inputs for this dataset
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
+        this.geneSymbol = null;
+
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
         // projectionId: string - The ID of the projection returned
@@ -912,6 +914,9 @@ class DatasetTile {
         };
 
         geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
+
+        this.geneSymbol = geneSymbolInput;  // Store gene symbol for future use (i.e. changing display, etc.)
+
         this.svgScoringMethod = svgScoringMethod;
 
         this.resetAbortController();
