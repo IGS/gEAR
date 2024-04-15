@@ -433,6 +433,7 @@ const createDeleteConfirmationPopover = () => {
             popoverContent.id = 'delete-gc-popover';
             popoverContent.classList.add("message", "is-danger");
             popoverContent.setAttribute("role", "tooltip");
+            popoverContent.style.width = "500px";
             popoverContent.innerHTML = `
                 <div class='message-header'>
                     <p>Remove list</p>

@@ -63,6 +63,7 @@ const addDatasetListEventListeners = () => {
         });
     }
 
+    // TODO: Feature - add dataset to collection multiple times (requires multiple default displays as well)
     for (const classElt of document.getElementsByClassName("js-collection-add-dataset")) {
         classElt.addEventListener("click", async (e) => {
             let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
@@ -75,10 +76,10 @@ const addDatasetListEventListeners = () => {
                     folder_id: null,
                     folder_label: null,
                     folder_parent_id: null,
-                    is_current: false,
-                    is_domain: false,
-                    is_owner: true,
-                    is_public: false,
+                    is_current: 0,
+                    is_domain: 0,
+                    is_owner: 1,
+                    is_public: 0,
                     label: selected_dc_label,
                     members: [],
                     share_id: selected_dc_share_id,
@@ -89,7 +90,7 @@ const addDatasetListEventListeners = () => {
             const datasetIsPublic = e.currentTarget.dataset.isPublic;
 
             // if dataset is private and the collection is public, then we need to show a popover to confirm to the user the dataset will switch to public.
-            if (!datasetIsPublic && collection.is_public) {
+            if (!parseBool(datasetIsPublic) && Boolean(collection.is_public)) {
                 createSwitchDatasetToPublicPopover(classElt, datasetId);
             } else {
                 try {
@@ -453,10 +454,10 @@ const changeDatasetCollectionCallback = async () => {
             folder_id: null,
             folder_label: null,
             folder_parent_id: null,
-            is_current: false,
-            is_domain: false,
-            is_owner: true,
-            is_public: false,
+            is_current: 0,
+            is_domain: 0,
+            is_owner: 1,
+            is_public: 0,
             label: selected_dc_label,
             members: [],
             share_id: selected_dc_share_id,
@@ -481,10 +482,13 @@ const changeDatasetCollectionCallback = async () => {
     updateDatasetCollectionButtons(collection);
     updateDatasetListButtons(collection);
 
+    const isDomain = Boolean(collection.is_domain);
+    const isCurrent = Boolean(collection.is_current);
+
     // If selected dataset collection is a "domain" collection, hide the "Arrangment" view button.
     // if arrangement view is active (class "gear-bg-secondary") switch to table view
     document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
-    if (collection.is_domain) {
+    if (isDomain) {
         document.getElementById("btn-table-view").click();
         document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     }
@@ -492,7 +496,7 @@ const changeDatasetCollectionCallback = async () => {
     // If the selected dataset collection is the current collection, disable the "Set as Primary" button
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
     document.getElementById("btn-set-primary-collection").disabled = false;
-    if (collection.is_current) {
+    if (isCurrent) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
         document.getElementById("btn-set-primary-collection").disabled = true;
     }
@@ -750,9 +754,10 @@ const createDeleteDatasetConfirmationPopover = () => {
             popoverContent.id = 'delete-dataset-popover';
             popoverContent.classList.add("message", "is-danger");
             popoverContent.setAttribute("role", "tooltip");
+            popoverContent.style.width = "500px";
             popoverContent.innerHTML = `
                 <div class='message-header'>
-                    <p>Remove list</p>
+                    <p>Delete dataset</p>
                 </div>
                 <div class='message-body'>
                     <p>Are you sure you want to delete this dataset? This will affect any saved displays and dataset collections for yourself and for other users.</p>
@@ -867,7 +872,7 @@ const createDeleteCollectionConfirmationPopover = () => {
         popoverContent.setAttribute("role", "tooltip");
         popoverContent.innerHTML = `
             <div class='message-header'>
-                <p>Remove list</p>
+                <p>Delete collection</p>
             </div>
             <div class='message-body'>
                 <p>Are you sure you want to delete this dataset collection?</p>
@@ -979,11 +984,11 @@ const createNewCollectionPopover = () => {
         // Create popover content
         const popoverContent = document.createElement('article');
         popoverContent.id = 'add-collection-popover';
-        popoverContent.classList.add("message");
+        popoverContent.classList.add("message", "is-primary");
         popoverContent.setAttribute("role", "tooltip");
         popoverContent.innerHTML = `
             <div class='message-header'>
-                <p>Remove list</p>
+                <p>New collection</p>
             </div>
             <div class='message-body'>
                 <p>Please provide a name for the new dataset collection</p>
@@ -1106,11 +1111,11 @@ const createRenameCollectionPopover = () => {
         // Create popover content
         const popoverContent = document.createElement('article');
         popoverContent.id = 'rename-collection-popover';
-        popoverContent.classList.add("message");
+        popoverContent.classList.add("message", "is-primary");
         popoverContent.setAttribute("role", "tooltip");
         popoverContent.innerHTML = `
             <div class='message-header'>
-                <p>Remove list</p>
+                <p>Rename collection</p>
             </div>
             <div class='message-body'>
                 <p>Please provide a new name for the dataset collection</p>
@@ -1234,11 +1239,12 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
     // Create popover content
     const popoverContent = document.createElement('article');
     popoverContent.id = 'toggle-dataset-to-public-popover';
-    popoverContent.classList.add("message");
+    popoverContent.classList.add("message", "is-warning");
     popoverContent.setAttribute("role", "tooltip");
+    popoverContent.style.width = "500px";
     popoverContent.innerHTML = `
         <div class='message-header'>
-            <p>Remove list</p>
+            <p>Dataset privacy change</p>
         </div>
         <div class='message-body'>
             <p>The selected dataset collection is public, but this dataset is private.
@@ -1311,7 +1317,7 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
             // TODO:
             // Convert dataset is_public = 1
             // Add to collection
-            const data = await apiCallsMixin.addDatasetToCollection(selected_dc_share_id, datasetId);
+            const data = await apiCallsMixin.addDatasetToCollection(selected_dc_share_id, datasetId, true);
             if (!data.success) {
                 const error = data['error'] || "Failed to add dataset to collection";
                 throw new Error(error);
@@ -1809,7 +1815,7 @@ const toggleEditableMode = (hideEditable, selectorBase="") => {
 const updateDatasetCollectionButtons = (collection=null) => {
 
     // If user is not the owner of the collection, remove the delete and rename buttons
-    const isOwner = collection?.is_owner || false;
+    const isOwner = (collection && Boolean(collection.is_owner)) || false;
 
     const collectionRenameButton = document.getElementById("btn-rename-collection");
     const collectionDeleteButton = document.getElementById("btn-delete-collection");
@@ -1880,7 +1886,7 @@ const updateDatasetListButtons = (collection=null) => {
         removeFromCollectionButton.disabled = false;
 
         // if dataset collection is domain, remove the "add to collection" and "remove from collection" buttons
-        if (!collection || collection?.is_domain === 1) {
+        if (!collection || Boolean(collection.is_domain)) {
             addToCollectionButton.parentElement.classList.add("is-hidden")
             removeFromCollectionButton.parentElement.classList.add("is-hidden")
             // disable the buttons

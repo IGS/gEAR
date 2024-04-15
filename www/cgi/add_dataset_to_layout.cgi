@@ -23,7 +23,12 @@ def main():
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('layout_share_id')
     dataset_id = form.getvalue('dataset_id')
+    make_public_str = form.getvalue('make_dataset_public', "false")
     result = { 'success': 0, 'error': '' }
+
+    make_public = False
+    if make_public_str == "true":
+        make_public = True
 
     user = geardb.get_user_from_session_id(session_id)
 
@@ -34,6 +39,44 @@ def main():
         error = "Not able to add to the layout. User must be logged in."
         result['error'] = error
     else:
+        # If make_public is true, set the dataset to public
+        if make_public:
+            dataset = geardb.get_dataset_by_id(dataset_id)
+            dataset.is_public = True
+            dataset.save()
+
+        # Determine if we are in "legacy" mode where every member start_col is 1
+        legacy = False
+        if len(layout.members) > 0:
+            if all([m.start_col == 1 for m in layout.members]):
+                print("Legacy mode found... rebuilding layout member grid positions...", file=sys.stderr)
+                legacy = True
+
+        # If "legacy" mode, adjust the start_col and start_row, as well as mg_start_col and mg_start_row
+        if legacy:
+            current_col = 1
+            current_row = 1
+            current_mg_col = 1
+            current_mg_row = 1
+            for m in layout.members:
+                width = m.grid_width
+                if current_col + width > 13:
+                    current_col = 1
+                    current_row += 1
+                m.start_col = current_col
+                m.start_row = current_row
+                current_col += width
+
+                mg_width = m.mg_grid_width
+                if current_mg_col + mg_width > 13:
+                    current_mg_col = 1
+                    current_mg_row += 1
+                m.mg_start_col = current_mg_col
+                m.mg_start_row = current_mg_row
+                current_mg_col += mg_width
+                # update the member
+                m.save(layout)
+
         # make sure the user owns the layout
         gpos = len(layout.members) + 1
 

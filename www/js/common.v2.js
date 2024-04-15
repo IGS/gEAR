@@ -646,10 +646,11 @@ const apiCallsMixin = {
      *
      * @param {string} layoutShareId - The share ID of the dataset collection.
      * @param {string} datasetId - The ID of the dataset.
+     * @param {boolean} [makeDatasetPublic=false] - Indicates whether the dataset should be made public.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async addDatasetToCollection(layoutShareId, datasetId) {
-        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, dataset_id: datasetId};
+    async addDatasetToCollection(layoutShareId, datasetId, makeDatasetPublic=false) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, dataset_id: datasetId, make_dataset_public: makeDatasetPublic};
         const {data} = await axios.post("cgi/add_dataset_to_layout.cgi", convertToFormData(payload));
         return data;
     },
