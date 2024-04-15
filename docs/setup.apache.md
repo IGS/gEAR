@@ -80,7 +80,7 @@ causes errors.
         AllowOverride None
         Require all granted
     </Directory>
- 
+
     <Directory /var/www/html>
         Options +ExecCGI +Includes
         AddHandler cgi-script .py .cgi
@@ -213,9 +213,9 @@ And then setting this line:
 
     PrivateTmp=false
 
-## Automatic service restarts
+### Automatic service restarts
 
-If you don't want the apache service to flounder in cases where the threads die (such as from OOM killer, then modify:
+If you don't want the apache service to flounder in cases where the threads die (such as from OOM killer), then modify:
 
     /etc/systemd/system/multi-user.target.wants/apache2.service
 
@@ -226,6 +226,8 @@ and change
 to:
 
     Restart=always
+
+Run `sudo systemctl daemon-reload` to apply changes
 
 ## Common errors
 
