@@ -149,7 +149,7 @@ def get_dataset_by_title(title=None, include_shape=None):
     cursor = conn.get_cursor()
 
     qry = """
-         SELECT id, owner_id, title, organism_id, pubmed_id, is_downloadable, geo_id, is_public, is_downloadable, ldesc, date_added,
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
                 dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
                 has_h5ad
            FROM dataset
@@ -161,7 +161,7 @@ def get_dataset_by_title(title=None, include_shape=None):
 
     found = 0
 
-    for (id, owner_id, title, organism_id, pubmed_id, is_downloadable, geo_id, is_public, ldesc, date_added,
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
          has_h5ad) in cursor:
         dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
@@ -370,17 +370,19 @@ def get_user_by_id(user_id):
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
-                 g.is_admin, g.default_org_id, g.is_curator, g.help_id
+                 g.is_admin, g.default_org_id, g.is_curator, g.validation_code,
+                 g.is_validated, g.help_id
             FROM guser g
            WHERE g.id = %s
     """
     cursor.execute(qry, (user_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, validation_code, is_validated, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
+                    default_org_id=default_org_id, is_curator=is_curator,
+                    validation_code=validation_code, is_validated=is_validated, help_id=help_id)
         break
 
     cursor.close()
@@ -399,7 +401,8 @@ def get_user_from_session_id(session_id):
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
-                 g.is_admin, g.default_org_id, g.is_curator, g.help_id
+                 g.is_admin, g.default_org_id, g.is_curator, g.validation_code,
+                 g.is_validated, g.help_id
             FROM guser g
                  JOIN user_session us ON g.id=us.user_id
            WHERE us.session_id = %s
@@ -407,10 +410,11 @@ def get_user_from_session_id(session_id):
     cursor.execute(qry, (session_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, validation_code, is_validated, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
+                    default_org_id=default_org_id, is_curator=is_curator,
+                    validation_code=validation_code, is_validated=is_validated, help_id=help_id)
         break
 
     cursor.close()
@@ -3007,7 +3011,7 @@ class User:
     """
     def __init__(self, id=None, user_name=None, email=None, institution=None, password=None,
                  updates_wanted=None, is_admin=None, default_org_id=None, is_curator=None,
-                 help_id=None):
+                 validation_code=None, is_validated=None, help_id=None):
         self.id = id
         self.user_name = user_name
         self.email = email
@@ -3017,6 +3021,8 @@ class User:
         self.is_admin = is_admin
         self.default_org_id = default_org_id
         self.is_curator = is_curator
+        self.validation_code = validation_code
+        self.is_validated = is_validated
         self.help_id = help_id
 
         # This is a DatasetCollection and is NOT guaranteed to be all the user's datasets
