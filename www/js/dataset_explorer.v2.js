@@ -29,6 +29,14 @@ const arrow = window.FloatingUIDOM.arrow;
  */
 const addDatasetListEventListeners = () => {
 
+    // Add event listener to analysis dropdown trigger
+    for (const classElt of document.querySelectorAll(".js-analysis-dropdown .dropdown-trigger")) {
+        classElt.addEventListener("click", (event) => {
+            const item = event.currentTarget;
+            item.closest(".dropdown").classList.toggle('is-active');
+        });
+    };
+
     // Expand and collapse dataset view
     for (const classElt of document.getElementsByClassName("js-expand-box")) {
         classElt.addEventListener("click", (e) => {
@@ -46,6 +54,21 @@ const addDatasetListEventListeners = () => {
             }
             e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
 
+        });
+    }
+
+    for (const classElt of document.getElementsByClassName("js-download-dataset")) {
+        classElt.addEventListener("click", async (e) => {
+            // download the h5ad
+            const datasetId = e.currentTarget.dataset.datasetId;
+            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+            const {data} = await axios.get(url, {responseType: 'blob'});
+            const blob = new Blob([data], {type: 'application/octet-stream'});
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${datasetId}.h5ad`;
+            a.click();
         });
     }
 
@@ -170,13 +193,18 @@ const addDatasetListEventListeners = () => {
             const newVisibility = document.querySelector(`${selectorBase}-editable-visibility`).checked;
             // convert "true/false" visibility to 1/0
             const intNewVisibility = newVisibility ? 1 : 0;
+
+            const isDownloadable = document.querySelector(`${selectorBase}-editable-downloadable`).checked;
+            // convert "true/false" visibility to 1/0
+            const intIsDownloadable = isDownloadable ? 1 : 0;
+
             const newTitle = document.querySelector(`${selectorBase}-editable-title`).value;
             const newPubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).value;
             const newGeoId = document.querySelector(`${selectorBase}-editable-geo-id`).value;
             const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
-                const data = await apiCallsMixins.saveDatasetChanges(datasetId, intNewVisibility, newTitle, newPubmedId, newGeoId, newLdesc);
+                const data = await apiCallsMixin.saveDatasetInfoChanges(datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
                 createToast("Dataset changes saved", "is-success");
 
             } catch (error) {
@@ -204,6 +232,25 @@ const addDatasetListEventListeners = () => {
                 document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-danger");
                 document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-primary-light");
                 document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-danger");
+            }
+
+            document.querySelector(`${selectorBase}-editable-downloadable`).dataset.isDownloadable = isDownloadable;
+
+            if (isDownloadable) {
+                document.querySelector(`${selectorBase}-display-downloadable`).textContent = "Downloadable";
+                document.querySelector(`${selectorBase}-display-downloadable`).classList.remove("is-dark");
+                document.querySelector(`${selectorBase}-display-downloadable`).classList.add("is-success");
+            } else {
+                document.querySelector(`${selectorBase}-display-downloadable`).textContent = "Not downloadable";
+                document.querySelector(`${selectorBase}-display-downloadable`).classList.remove("is-success");
+                document.querySelector(`${selectorBase}-display-downloadable`).classList.add("is-dark");
+            }
+            const downloadButton = document.querySelector(`${selectorBase}-download-dataset`);
+            if (downloadButton) {
+                // If button exists (has h5ad), update the button visibility
+                downloadButton.dataset.isDownloadable = isDownloadable;
+                downloadButton.disabled = !isDownloadable;
+                downloadButton.parentElement.classList.toggle("is-hidden", !isDownloadable);
             }
 
             document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal = newTitle;
@@ -279,6 +326,28 @@ const addDatasetListEventListeners = () => {
 }
 
 /**
+ * Adds downloadable information to a dataset.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {boolean} isDownloadable - Indicates whether the dataset is downloadable.
+ */
+const addDownloadableInfoToDataset = (datasetId, isDownloadable) => {
+    const datasetDisplayContainer = document.getElementById(`${datasetId}-display-downloadable`);
+    const datasetDisplaySpan = document.createElement("span");
+    datasetDisplaySpan.classList.add("tag");
+    datasetDisplaySpan.id = `result-dataset-id-${datasetId}-display-downloadable`;
+
+    if (isDownloadable) {
+        datasetDisplaySpan.classList.add("is-success");
+        datasetDisplaySpan.textContent = "Downloadable";
+    } else {
+        datasetDisplaySpan.classList.add("is-dark");
+        datasetDisplaySpan.textContent = "Not downloadable";
+    }
+    datasetDisplayContainer.appendChild(datasetDisplaySpan);
+}
+
+/**
  * Adds public/private visibility information to a dataset display container in the DOM.
  * @param {string} datasetId - The ID of the datasetdisplay container.
  * @param {boolean} isPublic - A boolean indicating whether the dataset is public or private.
@@ -313,6 +382,14 @@ const addVisibilityInfoToDataset = (datasetId, isPublic) => {
         const isPublic = e.currentTarget.checked;
         e.currentTarget.dataset.isPublic = isPublic;
         e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
+    });
+
+    const downloadableSwitch = document.getElementById(`result-dataset-id-${datasetId}-editable-downloadable`);
+
+    downloadableSwitch.addEventListener("change", (e) => {
+        const isDownloadable = e.currentTarget.checked;
+        e.currentTarget.dataset.isDownloadable = isDownloadable;
+        e.currentTarget.closest(".field").querySelector("label").textContent = isDownloadable ? "Yes" : "No";
     });
 
 }
@@ -461,12 +538,13 @@ const changeDatasetCollectionCallback = async () => {
         }
     }
 
-    const imageUrls = {};
+    const imageUrls = {"single":{}, "multi":{}};
     const titles = {};
     for (const dataset of datasetData.datasets) {
         const previewImageUrl = flatDatasetCollectionData.preview_image_url || "/img/dataset_previews/missing.png";
         const mgPreviewImageUrl = flatDatasetCollectionData.mg_preview_image_url || "/img/dataset_previews/missing.png";
-        imageUrls[dataset.dataset_id] = { previewImageUrl, mgPreviewImageUrl };
+        imageUrls["single"][dataset.dataset_id] = previewImageUrl;
+        imageUrls["multi"][dataset.dataset_id] = mgPreviewImageUrl;
         titles[dataset.dataset_id] = dataset.title;
     }
 
@@ -535,11 +613,11 @@ const changeDatasetCollectionCallback = async () => {
         };
 
         const multiLayoutArrangement = {
-            mgGridPosition: dataset.mg_grid_position || null,
-            mgStartCol: dataset.mg_start_col || null,
-            mgGridWidth: dataset.mg_grid_width || null,
-            mgStartRow: dataset.mg_start_row || null,
-            mgGridHeight: dataset.mg_grid_height || null,
+            gridPosition: dataset.mg_grid_position || null,
+            startCol: dataset.mg_start_col || null,
+            gridWidth: dataset.mg_grid_width || null,
+            startRow: dataset.mg_start_row || null,
+            gridHeight: dataset.mg_grid_height || null,
             datasetId
         };
 
@@ -567,8 +645,8 @@ const changeDatasetCollectionCallback = async () => {
                 currentMgRow++;
             }
 
-            multiLayoutArrangement.mgStartCol = currentMgCol;
-            multiLayoutArrangement.mgStartRow = currentMgRow;
+            multiLayoutArrangement.startCol = currentMgCol;
+            multiLayoutArrangement.startRow = currentMgRow;
 
             currentMgCol += mgWidth;
 
@@ -579,158 +657,89 @@ const changeDatasetCollectionCallback = async () => {
 
     }
 
-    // Sort the layout arrangements by row and column
-    const sortedSingleLayoutArrangements = Object.values(layoutArrangements.single).sort((a, b) => {
-        if (a.startRow === b.startRow) {
-            return a.startCol - b.startCol;
-        }
-        return a.startRow - b.startRow;
-    });
-    const sortedMultiLayoutArrangements = Object.values(layoutArrangements.multi).sort((a, b) => {
-        if (a.mgStartRow === b.mgStartRow) {
-            return a.mgStartCol - b.mgStartCol;
-        }
-        return a.mgStartRow - b.mgStartRow;
-    });
-
-
-
     const singleGeneArrangementDiv = document.getElementById("dataset-arrangement-single");
     const multiGeneArrangementDiv = document.getElementById("dataset-arrangement-multi");
-    const arrangementViewTemplate = document.getElementById("dataset-arrangement-view");
 
-    // Clear the arrangement views
-    singleGeneArrangementDiv.innerHTML = "";
-    multiGeneArrangementDiv.innerHTML = "";
+    setupLayoutArrangementAdjustable(layoutArrangements.single, imageUrls.single, titles, singleGeneArrangementDiv);
+    setupLayoutArrangementAdjustable(layoutArrangements.multi, imageUrls.multi, titles, multiGeneArrangementDiv);
 
-    for (const layout of sortedSingleLayoutArrangements) {
-        const datasetId = layout.datasetId;
-        const resultDatasetId = `result-dataset-id-${datasetId}`
+    // get width and height of #dataset-arrangement-single
+    const arrangementWidth = singleGeneArrangementDiv.offsetWidth;
+    const arrangementHeight = singleGeneArrangementDiv.offsetHeight;
+    const mgArrangementHeight = multiGeneArrangementDiv.offsetHeight;
 
-        // Create arrangment view tile for single and multi gene views for the dataset
-        const arrangementViewSingle = arrangementViewTemplate.content.cloneNode(true);
+    // NOTE: If user resizes the window, the arrangement view will not be recalculated.
 
-        setElementProperties(arrangementViewSingle, ".js-sortable-tile", { id: `${resultDatasetId}-arrangement-view-single`, dataset: {datasetId} });
-        // add gridArea to each arrangement view
-        arrangementViewSingle.querySelector(".js-sortable-tile").style.gridArea = `${layout.startRow} / ${layout.startCol} / span ${layout.gridHeight} / span ${layout.gridWidth}`;
-        // add dataset title
-        setElementProperties(arrangementViewSingle, ".js-sortable-tile-title span", { textContent: titles[datasetId] });
-        // Add preview image
-        const arrangementViewSingleImg = arrangementViewSingle.querySelector(".js-sortable-tile-img");
-        arrangementViewSingleImg.src = imageUrls[datasetId].previewImageUrl;
-        singleGeneArrangementDiv.appendChild(arrangementViewSingle);
+    // Split width into 12 columns and height into highest number of rows
+    const rowWidth = arrangementWidth / 12;
+    const colHeight = arrangementHeight / currentRow;
+    const mgColHeight = mgArrangementHeight / currentMgRow;
 
-        // For each single and multi layout view add bulma "colunmn" class with proper positioning and width.
-        // The parent container has "is-multiline" class to allow for wrapping
-        // This will be converted into a CSS grid layout when the user saves the arrangement
-        //document.getElementById(`${resultDatasetId}-arrangement-view-single`).classList.add("column", `is-${layout.gridWidth}`);
+    // make tiles draggable
+    interact(".js-sortable-tile").draggable({
+        // keep the element within the area of it's parent
+        modifiers: [
+            interact.modifiers.restrictRect({
+                restriction: 'parent',
+                endOnly: true
+            }),
+            interact.modifiers.snap({
+                // snap to the 12 possible grid columns, and n+1 grid rows.
+                // When dragged to the n+1 row, add a new row to the grid.
+                targets: [
+                    interact.createSnapGrid({ x: rowWidth, y: colHeight }),
+                ],
+                range: Infinity,
+                relativePoints: [{ x: 0, y: 0 }],
+                offset: 'startCoords'
+            })
+        ],
+        listeners: {
+            move (event) {
+                const target = event.target
+                // keep the dragged position in the data-x/data-y attributes
+                const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
+                const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
 
-    }
+                // translate the element
+                target.style.transform = `translate(${x}px, ${y}px)`
 
-    for (const layout of sortedMultiLayoutArrangements) {
-        const datasetId = layout.datasetId;
-        const resultDatasetId = `result-dataset-id-${datasetId}`
-
-        const arrangementViewMulti = arrangementViewTemplate.content.cloneNode(true);
-
-        setElementProperties(arrangementViewMulti, ".js-sortable-tile", { id: `${resultDatasetId}-arrangement-view-multi`, dataset: {datasetId}});
-        arrangementViewMulti.querySelector(".js-sortable-tile").style.gridArea = `${layout.mgStartRow} / ${layout.mgStartCol} / span ${layout.mgGridHeight} / span ${layout.mgGridWidth}`;
-        setElementProperties(arrangementViewMulti, ".js-sortable-tile-title span", { textContent: titles[datasetId] });
-        const arrangementViewMultiImg = arrangementViewMulti.querySelector(".js-sortable-tile-img");
-        arrangementViewMultiImg.src = imageUrls[datasetId].mgPreviewImageUrl;
-        multiGeneArrangementDiv.appendChild(arrangementViewMulti);
-        //document.getElementById(`${resultDatasetId}-arrangement-view-multi`).classList.add("column", `is-${layout.mgGridWidth}`);
-
-    }
-
-    // Make the arrangement views sortable
-    sortable("#dataset-arrangement-single", {
-        forcePlaceholderSize: true,
-        placeholderClass: 'has-background-primary-light',
-    });
-    sortable("#dataset-arrangement-multi", {
-        forcePlaceholderSize: true,
-        placeholderClass: 'has-background-primary-light',
-    });
-
-    document.getElementById("dataset-arrangement-single").addEventListener('sortenter', (e) => {
-        /*
-        detail: {
-            origin: {
-                elementIndex: originElementIndex,
-                index: originIndex,
-                container: originContainer
-            },
-            destination: {
-                container: sortableContainer,
-                itemsBeforeUpdate: destinationItemsBeforeUpdate
-            },
-            item: dragging,
-            originalTarget: target
+                // update the posiion attributes
+                target.setAttribute('data-x', x)
+                target.setAttribute('data-y', y)
+            }
         }
+    });
 
-        */
-        console.log(e.detail)
-        return;
+
+    interact(".js-sortable-tile").resizable({
+        // resize from all edges and corners
+        edges: { left: true, right: true, bottom: true, top: true },
 
     });
 
-    // These event listeners trigger when the user finishes sorting the arrangement view
-    document.getElementById("dataset-arrangement-single").addEventListener('sortupdate', (e) => {
+    // make parents a dropzone
+    interact(".arrangement-grid").dropzone({
+        // only accept elements matching this CSS selector
+        accept: '.js-sortable-tile',
+        // Require a 75% element overlap for a drop to be possible
+        overlap: 0.75,
 
-        // update grid_position of each dataset based on destination item order
-        e.detail.destination.items.forEach((item, idx, array) => {
-            const datasetId = item.dataset.datasetId;
-            const dataset = datasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
-            dataset.grid_position = idx + 1;     // 1-indexed
-            const gridPosition = dataset.grid_position;
+        ondragenter: function (event) {
+            // Make indication that the drop is possible
 
-            // rebuild the grid area based on order
-            // Widths are multiples of 4, heights are 1
-            // max width is 12. CSS grid is 1-indexed, so 13 is the max
-            // If endCol is greater than 13, then this tile is in the next row, cascading down
+            const draggableElement = event.relatedTarget
+            const dropzoneElement = event.target
 
-            const width = dataset.grid_width;
-            const height = dataset.grid_height;
-
-            const startCol = 1 + (gridPosition - 1) * width;
-            const startRow = 1;
-
-            const arrangementView = document.getElementById(`result-dataset-id-${datasetId}-arrangement-view-single`);
-            arrangementView.style.gridArea = `${startRow} / ${startCol} / span ${height} / span ${width}`;
-
-            // update dataset grid properties
-            dataset.start_col = startCol;
-            dataset.start_row = startRow;
-
-
-        })
+            // TODO:
+        },
+        ondrop: function (event) {
+            // Adjust the start and end positions of the dragged element
+            // Reset any "is-overlapping" classes
+            // Check if the element overlaps with another element and make visual cue
+        },
     });
 
-    document.getElementById("dataset-arrangement-multi").addEventListener('sortupdate', (e) => {
-        // update grid_position of each dataset based on destination item order
-        e.detail.destination.items.forEach((item, idx, array) => {
-            const datasetId = item.dataset.datasetId;
-            const dataset = datasetData.datasets.find((dataset) => dataset.dataset_id === datasetId);
-            dataset.mg_grid_position = idx + 1;     // 1-indexed
-            const gridPosition = dataset.mg_grid_position;
-
-            const width = dataset.mg_grid_width;
-            const height = dataset.mg_grid_height;
-
-            const startCol = 1 + (gridPosition - 1) * width;
-            const startRow = 1;
-
-            const arrangementView = document.getElementById(`result-dataset-id-${datasetId}-arrangement-view-multi`);
-            arrangementView.style.gridArea = `${startRow} / ${startCol} / span ${height} / span ${width}`;
-
-            // update dataset grid properties
-            dataset.mg_start_col = startCol;
-            dataset.mg_start_row = startRow;
-
-        })
-
-    });
 }
 
 /**
@@ -1316,6 +1325,8 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
                 const error = data['error'] || "Failed to add dataset to collection";
                 throw new Error(error);
             }
+            submitSearch();
+
             await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
             changeDatasetCollectionCallback();  // Update the buttons and UI for the selected collection
 
@@ -1431,6 +1442,7 @@ const processSearchResults = (data) => {
         const shareId = dataset.share_id;
         const isPublic = Boolean(dataset.is_public);
         const isDownloadable = Boolean(dataset.is_downloadable);
+        const hasH5ad = Boolean(dataset.has_h5ad);
         const dateAdded = new Date(dataset.date_added).toDateString();
         // as YYYY/MM/DD
         const shortDateAdded = new Date(dataset.date_added).toISOString().slice(0, 10);
@@ -1486,10 +1498,9 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-editable-visibility input", { id: `${resultDatasetId}-editable-visibility`, checked: isPublic, dataset: { isPublic } });
         setElementProperties(listResultsView, ".js-editable-visibility label", { htmlFor: `${resultDatasetId}-editable-visibility`, textContent: isPublic ? "Public" : "Private" });
         // downloadable section
-        // TODO: Implement
-        setElementProperties(listResultsView, ".js-display-downloadable", { id: `${datasetId}-display-downloadable` });
+        setElementProperties(listResultsView, ".js-display-downloadable", { id: `${datasetId}-display-downloadable`});
         setElementProperties(listResultsView, ".js-editable-downloadable input", { id: `${resultDatasetId}-editable-downloadable`, checked: isDownloadable, dataset: { downloadable: dataset.is_downloadable } });
-        setElementProperties(listResultsView, ".js-editable-downloadable label", { htmlFor: `${resultDatasetId}-editable-downloadable`, textContent: isDownloadable ? "Downloadable" : "Not downloadable" });
+        setElementProperties(listResultsView, ".js-editable-downloadable label", { htmlFor: `${resultDatasetId}-editable-downloadable`, textContent: isDownloadable ? "Yes" : "No" });
 
         // organism section
         setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `${resultDatasetId}-display-organism`, textContent: organism });
@@ -1517,9 +1528,10 @@ const processSearchResults = (data) => {
                     <i class="mdi mdi-open-in-new"></i>
                 </a>`
         } : { textContent: "Not available" };
+        pubmedProp.id = `${resultDatasetId}-display-pubmed-id`;
 
         setElementProperties(listResultsView, ".js-display-pubmed-id span:last-of-type", pubmedProp);
-        setElementProperties(listResultsView, ".js-editable-pubmed-id input", { value: pubmedId });
+        setElementProperties(listResultsView, ".js-editable-pubmed-id input", { id: `${resultDatasetId}-editable-pubmed-id`, dataset: { originalVal: pubmedId }, value: pubmedId });
 
         // geo id section
         const geoProp = geoId ? {
@@ -1528,15 +1540,17 @@ const processSearchResults = (data) => {
                     <i class="mdi mdi-open-in-new"></i>
                 </a>`
         } : { textContent: "Not available" };
+        geoProp.id = `${resultDatasetId}-display-geo-id`;
+
         setElementProperties(listResultsView, ".js-display-geo-id span:last-of-type", geoProp);
-        setElementProperties(listResultsView, ".js-editable-geo-id input", { value: geoId });
+        setElementProperties(listResultsView, ".js-editable-geo-id input", { id: `${resultDatasetId}-editable-geo-id`, dataset: { originalVal: geoId }, value: geoId });
 
         // action buttons section
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
         setElementProperties(listResultsView, ".js-collection-add-dataset", { dataset: { datasetId, isPublic } });
         setElementProperties(listResultsView, ".js-collection-remove-dataset", { dataset: { datasetId } });
-        //setElementProperties(listResultsView, ".js-download-dataset", { dataset: { datasetId, } });
+        setElementProperties(listResultsView, ".js-download-dataset", { id: `${resultDatasetId}-download-dataset`, dataset: { datasetId, isDownloadable, hasH5ad } });
         setElementProperties(listResultsView, ".js-share-dataset", { value: shareId, dataset: { datasetId } });
         setElementProperties(listResultsView, ".js-edit-dataset", { value: datasetId, dataset: { datasetId } });
         setElementProperties(listResultsView, ".js-edit-dataset-save", { value: datasetId, dataset: { datasetId } });
@@ -1580,7 +1594,7 @@ const processSearchResults = (data) => {
         }
 
         // EXTRA STUFF TO BOTH VIEWS
-
+        addDownloadableInfoToDataset(datasetId, isDownloadable);
         addVisibilityInfoToDataset(datasetId, isPublic);
 
         const datasetImageContainer = document.querySelector(`#${resultDatasetId}-figure img`);
@@ -1669,6 +1683,62 @@ const setElementProperties = (parentNode, selector, properties) => {
     });
 }
 
+/**
+ * Sets up the layout arrangement views based on the provided layout arrangements, image URLs, titles, and arrangementDiv.
+ *
+ * @param {Object} layoutArrangements - The layout arrangements object.
+ * @param {Object} imageUrls - The image URLs object.
+ * @param {Object} titles - The titles object.
+ * @param {HTMLElement} arrangementDiv - The arrangement div element.
+ */
+const setupLayoutArrangementAdjustable = (layoutArrangements, imageUrls, titles, arrangementDiv) => {
+    // Sort the layout arrangements by row and column
+    const sortedLayoutArrangements = Object.values(layoutArrangements).sort((a, b) => {
+        if (a.startRow === b.startRow) {
+            return a.startCol - b.startCol;
+        }
+        return a.startRow - b.startRow;
+    });
+
+    const arrangementViewTemplate = document.getElementById("dataset-arrangement-view");
+
+    // Clear the arrangement views
+    arrangementDiv.innerHTML = "";
+
+    for (const layout of sortedLayoutArrangements) {
+        const datasetId = layout.datasetId;
+        const resultDatasetId = `result-dataset-id-${datasetId}`
+
+        // Create arrangment view tile for single and multi gene views for the dataset
+        const arrangementView = arrangementViewTemplate.content.cloneNode(true);
+
+        setElementProperties(arrangementView, ".js-sortable-tile", { dataset: {datasetId} });
+        // add gridArea to each arrangement view
+        arrangementView.querySelector(".js-sortable-tile").style.gridArea = `${layout.startRow} / ${layout.startCol} / span ${layout.gridHeight} / span ${layout.gridWidth}`;
+        // add dataset title
+        setElementProperties(arrangementView, ".js-sortable-tile-title span", { textContent: titles[datasetId] });
+        // Add preview image
+        const arrangementViewImg = arrangementView.querySelector(".js-sortable-tile-img");
+        arrangementViewImg.src = imageUrls[datasetId];
+        arrangementDiv.appendChild(arrangementView);
+
+        // For each single and multi layout view add bulma "colunmn" class with proper positioning and width.
+        // The parent container has "is-multiline" class to allow for wrapping
+        // This will be converted into a CSS grid layout when the user saves the arrangement
+        //document.getElementById(`${resultDatasetId}-arrangement-view-single`).classList.add("column", `is-${layout.gridWidth}`);
+
+    }
+}
+
+/**
+ * Sets up the pagination UI based on the provided pagination data.
+ *
+ * @param {Object} pagination - The pagination data object.
+ * @param {number} pagination.total_results - The total number of results.
+ * @param {number} pagination.current_page - The current page number.
+ * @param {number} pagination.total_pages - The total number of pages.
+ * @param {number} resultsPerPage - The number of results per page.
+ */
 const setupPagination = (pagination) => {
 
         // Update result count and label
@@ -1860,27 +1930,43 @@ const updateDatasetListButtons = (collection=null) => {
             actionLinks.classList.remove("is-hidden");
         }
 
+        // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
+        const downloadButton = classElt.querySelector("button.js-download-dataset");
+        if (downloadButton) {
+            const hasH5ad = parseBool(downloadButton.dataset.hasH5ad);
+            if (!hasH5ad) {
+                downloadButton.parentElement.remove();
+            }
+        }
+
+        // If button still exists, update its visibility if the dataset is downloadable
+        if (downloadButton) {
+            const isDownloadable = parseBool(downloadButton.dataset.isDownloadable);
+            downloadButton.parentElement.classList.toggle("is-hidden", !isDownloadable);
+            downloadButton.disabled = !isDownloadable;
+        }
+
         // The ability to edit and delete and dataset are currently paired
         const deleteButton = classElt.querySelector("button.js-delete-dataset");
         const editButton = classElt.querySelector("button.js-edit-dataset");
 
         const selectorBase = `#result-dataset-id-${datasetId}`;
 
-        if (!deleteButton) {
-            continue;
+        if (deleteButton) {
+            // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
+            // These will be regenerated when a search triggers processSearchResults
+            if (deleteButton.dataset.isOwner === "false") {
+                deleteButton.parentElement.remove();
+                editButton.parentElement.remove()
+
+                // Remove all editable elements to prevent editing in the DOM
+                for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
+                    editableElt.classList.remove()
+                }
+            };
         }
 
-        // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
-        // These will be regenerated when a search triggers processSearchResults
-        if (deleteButton.dataset.isOwner === "false") {
-            deleteButton.parentElement.remove();
-            editButton.parentElement.remove()
 
-            // Remove all editable elements to prevent editing in the DOM
-            for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
-                editableElt.classList.remove()
-            }
-        }
 
     }
 

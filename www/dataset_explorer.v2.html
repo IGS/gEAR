@@ -475,13 +475,11 @@
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-delete"></i></span>
                                                                 </button>
                                                             </p>
-                                                            <!--TODO: planned
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-download-dataset" data-tooltip-content="Download dataset as h5ad">
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-download"></i></span>
                                                                 </button>
                                                             </p>
-                                                            -->
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-share-dataset" data-tooltip-content="Get shareable link">
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
@@ -504,16 +502,16 @@
                                                                     </div>
                                                                     <div class="dropdown-menu" role="menu">
                                                                         <div class="dropdown-content">
-                                                                            <a class="dropdown-item js-dataset-curator">
+                                                                            <a class="dropdown-item js-dataset-curator" target="_blank">
                                                                                 <p>Single-gene curator</p>
                                                                             </a>
-                                                                            <a class="dropdown-item js-multigene-viewer">
+                                                                            <a class="dropdown-item js-multigene-viewer" target="_blank">
                                                                                 <p>Multi-gene curator</p>
                                                                             </a>
-                                                                            <a class="dropdown-item js-compare-tool">
+                                                                            <a class="dropdown-item js-compare-tool" target="_blank">
                                                                                 <p>Comparison tool</p>
                                                                             </a>
-                                                                            <a class="dropdown-item js-sc-workbench">
+                                                                            <a class="dropdown-item js-sc-workbench" target="_blank">
                                                                                 <p>Single-cell analysis workbench</p>
                                                                             </a>
                                                                         </div>
@@ -521,7 +519,7 @@
                                                                 </div>
                                                             </p>
                                                         </div>
-                                                        <div class="field has-addons" role="group">
+                                                        <div class="field has-addons mt-2" role="group">
                                                             <p class="control">
                                                                 <button class="button is-primary js-edit-dataset-save js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
@@ -600,7 +598,7 @@
                             </div>
                             <template id="dataset-arrangement-view">
                                 <!-- support width and height expansion -->
-                                <div class="js-sortable-tile" >
+                                <div class="js-sortable-tile my-3" >
                                     <figure class="image">
                                         <figcaption class="js-sortable-tile-title"><span></span></figcaption>
                                         <img class="js-sortable-tile-img"/>
@@ -621,12 +619,12 @@
 
     <script src="js/vendor/js.cookie.js"></script>
 
+    <!-- Draggable and resizable elements -->
+    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+
     <!-- Floating UI for tooltips, popovers, etc -->
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
-
-    <!-- sortable + drag-n-drop -->
-    <script src="https://cdn.jsdelivr.net/npm/html5sortable@0.13.3/dist/html5sortable.min.js"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/classes/dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>

@@ -42,8 +42,7 @@ def main():
         # If make_public is true, set the dataset to public
         if make_public:
             dataset = geardb.get_dataset_by_id(dataset_id)
-            dataset.is_public = True
-            dataset.save()
+            dataset.save_change(attribute='is_public', value=1)
 
         # Determine if we are in "legacy" mode where every member start_col is 1
         legacy = False

@@ -57,3 +57,14 @@ article[role="tooltip"] {
 .js-sortable-tile {
     height: 300px;  /* prefer images to be distorted in exchange for consistent height */
 }
+
+.js-sortable-tile figure {
+    height: 100%;
+    width: 100%;
+}
+
+.js-sortable-tile img {
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+}

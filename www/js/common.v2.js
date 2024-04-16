@@ -1173,16 +1173,17 @@ const apiCallsMixin = {
      * Saves the changes made to the dataset information.
      *
      * @param {string} datasetId - The ID of the dataset.
-     * @param {string} visibility - The visibility of the dataset.
+     * @param {string} visibility - The visibility of the dataset. 1 for public, 0 for private.
+     * @param {string} isDownloadable - Indicates if the dataset is downloadable. 1 for downloadable, 0 for not downloadable.
      * @param {string} title - The title of the dataset.
      * @param {string} pubmedId - The PubMed ID of the dataset.
      * @param {string} geoId - The GEO ID of the dataset.
      * @param {string} lDesc - The long description of the dataset.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async saveDatasetInfoChanges(datasetId, visibility, title, pubmedId, geoId, lDesc) {
-        const payload = {session_id: this.sessionId, dataset_id: datasetId, visibility, title, pubmed_id: pubmedId, geo_id: geoId, ldesc: lDesc};
-        const {data} = await axios.post("/cgi/save_dataset_info_changes.cgi", convertToFormData(payload));
+    async saveDatasetInfoChanges(datasetId, visibility, isDownloadable, title, pubmedId, geoId, lDesc) {
+        const payload = {session_id: this.sessionId, dataset_id: datasetId, visibility, is_downloadable: isDownloadable, title, pubmed_id: pubmedId, geo_id: geoId, ldesc: lDesc};
+        const {data} = await axios.post("/cgi/save_datasetinfo_changes.cgi", convertToFormData(payload));
         return data;
     },
     /**
@@ -1215,7 +1216,7 @@ const apiCallsMixin = {
      * Saves the changes made to gene list information.
      *
      * @param {string} gcId - The ID of the gene list.
-     * @param {string} visibility - The visibility of the gene list.
+     * @param {string} visibility - The visibility of the gene list. 1 for public, 0 for private.
      * @param {string} title - The title of the gene list.
      * @param {string} organismId - The ID of the organism.
      * @param {string} ldesc - The description of the gene list.

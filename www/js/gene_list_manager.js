@@ -1077,6 +1077,15 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
     }
 }
 
+/**
+ * Sets up the pagination UI based on the provided pagination data.
+ *
+ * @param {Object} pagination - The pagination data object.
+ * @param {number} pagination.total_results - The total number of results.
+ * @param {number} pagination.current_page - The current page number.
+ * @param {number} pagination.total_pages - The total number of pages.
+ * @param {number} resultsPerPage - The number of results per page.
+ */
 const setupPagination = (pagination) => {
 
         // Update result count and label

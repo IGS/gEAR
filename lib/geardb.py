@@ -108,7 +108,7 @@ def get_dataset_by_id(id=None, include_shape=None):
     cursor = conn.get_cursor()
 
     qry = """
-         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
                 dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
                 has_h5ad
            FROM dataset
@@ -117,11 +117,11 @@ def get_dataset_by_id(id=None, include_shape=None):
     cursor.execute(qry, (id, ))
     dataset = None
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
          has_h5ad) in cursor:
         dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
-                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, ldesc=ldesc,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
@@ -149,7 +149,7 @@ def get_dataset_by_title(title=None, include_shape=None):
     cursor = conn.get_cursor()
 
     qry = """
-         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+         SELECT id, owner_id, title, organism_id, pubmed_id, is_downloadable, geo_id, is_public, is_downloadable, ldesc, date_added,
                 dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
                 has_h5ad
            FROM dataset
@@ -161,11 +161,11 @@ def get_dataset_by_title(title=None, include_shape=None):
 
     found = 0
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+    for (id, owner_id, title, organism_id, pubmed_id, is_downloadable, geo_id, is_public, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
          has_h5ad) in cursor:
         dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
-                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, ldesc=ldesc,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
@@ -370,17 +370,17 @@ def get_user_by_id(user_id):
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
-                 g.is_admin, g.default_org_id, g.is_gear_curator, g.help_id
+                 g.is_admin, g.default_org_id, g.is_curator, g.help_id
             FROM guser g
            WHERE g.id = %s
     """
     cursor.execute(qry, (user_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_gear_curator, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_gear_curator=is_gear_curator, help_id=help_id)
+                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
         break
 
     cursor.close()
@@ -399,7 +399,7 @@ def get_user_from_session_id(session_id):
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
-                 g.is_admin, g.default_org_id, g.is_gear_curator, g.help_id
+                 g.is_admin, g.default_org_id, g.is_curator, g.help_id
             FROM guser g
                  JOIN user_session us ON g.id=us.user_id
            WHERE us.session_id = %s
@@ -407,10 +407,10 @@ def get_user_from_session_id(session_id):
     cursor.execute(qry, (session_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_gear_curator, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_gear_curator=is_gear_curator, help_id=help_id)
+                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
         break
 
     cursor.close()
@@ -641,7 +641,7 @@ class Analysis:
 
 
         # if the user who created it is a gear curator, return that
-        if current_user.is_gear_curator:
+        if current_user.is_curator:
             self.vetting = 'gear'
             return 'gear'
         # Are the current user and dataset owner the same?
@@ -1765,6 +1765,7 @@ class Dataset:
     pubmed_id: str = None
     geo_id: str = None
     is_public: int = None
+    is_downloadable: int = None
     ldesc: str = None
     date_added: datetime.datetime = None
     dtype: str = None
@@ -2060,7 +2061,7 @@ class DatasetCollection:
 
         # I tried but couldn't make this work in a single query with IN () instead.
         qry = """
-           SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
+           SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.is_downloadable, d.ldesc,
                   d.dtype, u.id, u.user_name, d.schematic_image, d.share_id,
                   d.math_default, d.marked_for_removal, d.date_added, d.load_status,
                   IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags,
@@ -2072,7 +2073,7 @@ class DatasetCollection:
                   LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
             WHERE d.id = %s
               AND d.marked_for_removal != 1
-        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
+        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.is_downloadable, d.ldesc,
                    d.dtype, u.id, u.user_name, d.schematic_image, d.share_id,
                    d.math_default, d.marked_for_removal, d.date_added, d.load_status,
                    d.annotation_source, d.annotation_release, d.organism_id
@@ -2081,17 +2082,6 @@ class DatasetCollection:
             cursor.execute(qry, (id,))
 
             for row in cursor:
-                if row[5] == 1:
-                    access_level = 'Public'
-                else:
-                    access_level = 'Private'
-
-                date_added = row[14].isoformat()
-
-                if row[16] == 'NULL':
-                    tag_list = None
-                else:
-                    tag_list = row[16].replace(',', ', ')
 
                 # valid pubmed IDs are numeric
                 m = re.match("\d+", str(row[3]))
@@ -2100,29 +2090,32 @@ class DatasetCollection:
                 else:
                     pubmed_id = None
 
+                date_added = row[15].isoformat()
+
                 dataset = Dataset(id=row[0],
-                                  title=row[1],
-                                  organism_id=row[19],
-                                  pubmed_id=pubmed_id,
-                                  geo_id=row[4],
-                                  is_public=row[5],
-                                  ldesc=row[6],
-                                  dtype=row[7],
-                                  owner_id=row[8],
-                                  schematic_image=row[10],
-                                  share_id=row[11],
-                                  math_default=row[12],
-                                  date_added=date_added,
-                                  load_status=row[15],
-                                  annotation_source=row[17],
-                                  annotation_release=row[18]
+                                title=row[1],
+                                organism_id=row[20],
+                                pubmed_id=pubmed_id,
+                                geo_id=row[4],
+                                is_public=row[5],
+                                is_downloadable=row[6],
+                                ldesc=row[7],
+                                dtype=row[8],
+                                owner_id=row[9],
+                                schematic_image=row[11],
+                                share_id=row[12],
+                                math_default=row[13],
+                                date_added=date_added,
+                                load_status=row[16],
+                                annotation_source=row[18],
+                                annotation_release=row[19]
                 )
 
                 # Add supplemental attributes this method created previously
                 dataset.organism = row[2]
-                dataset.tags = row[16].split(',')
+                dataset.tags = row[17].split(',')
                 dataset.access = 'access_level'
-                dataset.user_name = row[9]
+                dataset.user_name = dataset.owner_id
 
                 if os.path.exists(dataset.get_tarball_path()):
                     dataset.has_tarball = 1
@@ -2173,9 +2166,9 @@ class DatasetCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc,
+              SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
-                     load_status, has_h5ad
+                     load_status, has_h5ad, is_downloadable
                 FROM dataset d
                WHERE d.is_public = 1
                  AND d.marked_for_removal = 0
@@ -2198,7 +2191,7 @@ class DatasetCollection:
         for r in cursor:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
-                              geo_id=r['geo_id'], is_public=r['is_public'], ldesc=r['ldesc'],
+                              geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
                               date_added=r['date_added'], dtype=r['dtype'],
                               schematic_image=r['schematic_image'], share_id=r['share_id'],
                               math_default=r['math_default'], marked_for_removal=r['marked_for_removal'],
@@ -2216,7 +2209,7 @@ class DatasetCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, ldesc,
+              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
                      load_status, has_h5ad
                 FROM dataset d
@@ -2235,7 +2228,7 @@ class DatasetCollection:
         for r in cursor:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
-                              geo_id=r['geo_id'], is_public=r['is_public'], ldesc=r['ldesc'],
+                              geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
                               date_added=r['date_added'], dtype=r['dtype'],
                               schematic_image=r['schematic_image'], share_id=r['share_id'],
                               math_default=r['math_default'], marked_for_removal=r['marked_for_removal'],
@@ -2254,7 +2247,7 @@ class DatasetCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, ldesc,
+              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
                      load_status, has_h5ad
                 FROM dataset d
@@ -2275,7 +2268,7 @@ class DatasetCollection:
         for r in cursor:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
-                              geo_id=r['geo_id'], is_public=r['is_public'], ldesc=r['ldesc'],
+                              geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
                               date_added=r['date_added'], dtype=r['dtype'],
                               schematic_image=r['schematic_image'], share_id=r['share_id'],
                               math_default=r['math_default'], marked_for_removal=r['marked_for_removal'],
@@ -2982,7 +2975,7 @@ class LayoutMember:
         if self.id is None:
             lm_insert_qry = """
             INSERT INTO layout_members (layout_id, dataset_id, grid_position, mg_grid_position, start_col, mg_start_col, grid_width, mg_grid_width, start_row, mg_start_row, grid_height, mg_grid_height)
-            VALUES (%s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(lm_insert_qry, (layout.id, self.dataset_id, self.grid_position, self.mg_grid_position,
                                             self.start_col, self.mg_start_col, self.grid_width,
@@ -2992,7 +2985,15 @@ class LayoutMember:
         else:
             # ID already populated
             # Update Layout properties, delete existing members, add current ones
-            raise Exception("LayoutMember.save() not yet implemented for update mode")
+            lm_update_qry = """
+            UPDATE layout_members
+            SET dataset_id = %s, grid_position = %s, mg_grid_position = %s, start_col = %s, mg_start_col = %s, grid_width = %s, mg_grid_width = %s, start_row = %s, mg_start_row = %s, grid_height = %s, mg_grid_height = %s
+            WHERE id = %s and layout_id = %s
+            """
+            cursor.execute(lm_update_qry, (self.dataset_id, self.grid_position, self.mg_grid_position,
+                                           self.start_col, self.mg_start_col, self.grid_width,
+                                           self.mg_grid_width, self.start_row, self.mg_start_row,
+                                           self.grid_height, self.mg_grid_height, self.id, layout.id))
 
         cursor.close()
         conn.commit()
@@ -3005,7 +3006,7 @@ class User:
     table column name.
     """
     def __init__(self, id=None, user_name=None, email=None, institution=None, password=None,
-                 updates_wanted=None, is_admin=None, default_org_id=None, is_gear_curator=None,
+                 updates_wanted=None, is_admin=None, default_org_id=None, is_curator=None,
                  help_id=None):
         self.id = id
         self.user_name = user_name
@@ -3015,7 +3016,7 @@ class User:
         self.updates_wanted = updates_wanted
         self.is_admin = is_admin
         self.default_org_id = default_org_id
-        self.is_gear_curator = is_gear_curator
+        self.is_curator = is_curator
         self.help_id = help_id
 
         # This is a DatasetCollection and is NOT guaranteed to be all the user's datasets
