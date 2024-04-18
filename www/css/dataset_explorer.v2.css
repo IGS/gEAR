@@ -49,22 +49,31 @@ article[role="tooltip"] {
 /* Arrangement view as a 12-column grid */
 .arrangement-grid {
     display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    grid-gap: 0px;
-    width: 75%;
+    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
+    grid-gap: 0;
+    width: 1090px;  /* grid width + 2*border width */
+    border: 5px solid black;
 }
 
 .js-sortable-tile {
-    height: 300px;  /* prefer images to be distorted in exchange for consistent height */
+    border: 1px solid grey;
 }
 
-.js-sortable-tile figure {
-    height: 100%;
-    width: 100%;
+/* Copied this out of the Bulma "image" properties (normally when .content is present). Keep caption in center and above image */
+.js-sortable-tile figcaption {
+    text-align: center;
+    font-style: italic;
+    position: relative
 }
 
+/* Copied this out of the Bulma "image" properties when an aspect ratio is applied. Goal is to have image fit the tile */
 .js-sortable-tile img {
+    max-width: 100%;
+    bottom: 0;
     height: 100%;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
     width: 100%;
-    object-fit: contain;
 }

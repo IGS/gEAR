@@ -574,9 +574,9 @@
                         <nav id="below-pagination-container" class="pagination is-small is-pulled-right" role="navigation" aria-label="pagination">
                         </nav>
 
-                        <div id="dataset-arrangment-c" class="is-hidden">
+                        <div id="dataset-arrangement-c" class="is-hidden">
                             <p class="content">
-                                Drag to re-arrange the datasets in any orientation you wish, and drag the right side of any dataset to change its width or height. Then click "Save".
+                                Drag to re-arrange the dataset displays in any order you wish. You can also drag the right or bottom edges or corners of any display to change its width or height. Since this is a grid system, tiles may overlap, and you cannot save until all overlaps are resolved. Click "Save" to save this arrangement.
                             </p>
                             <div class="field">
                                 <div class="control">
@@ -588,22 +588,20 @@
                                 </div>
                             </div>
                             <h4 class="title is-4">Profile arrangement</h4>
-                            <div class="content">
+                            <div class="my-3">
                                 <p class="subtitle is-5 is-underlined">Single-gene view</p>
                                 <div id="dataset-arrangement-single" class="arrangement-grid"></div>
                             </div>
-                            <div class="content">
+                            <div class="my-3">
                                 <p class="subtitle is-5 is-underlined">Multi-gene view</p>
                                 <div id="dataset-arrangement-multi" class="arrangement-grid"></div>
                             </div>
-                            <template id="dataset-arrangement-view">
+                            <template id="dataset-arrangement-tile-template">
                                 <!-- support width and height expansion -->
-                                <div class="js-sortable-tile my-3" >
-                                    <figure class="image">
-                                        <figcaption class="js-sortable-tile-title"><span></span></figcaption>
-                                        <img class="js-sortable-tile-img"/>
-                                    </figure>
-                                </div>
+                                <figure class="image js-sortable-tile m-1">
+                                    <img class="js-sortable-tile-img" />
+                                    <figcaption class="js-sortable-tile-title has-background-primary-light"></figcaption>
+                                </figure>
                             </template>
                         </div>
 

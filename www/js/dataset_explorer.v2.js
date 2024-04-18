@@ -22,6 +22,177 @@ const shift = window.FloatingUIDOM.shift;
 const offset = window.FloatingUIDOM.offset;
 const arrow = window.FloatingUIDOM.arrow;
 
+let singleArrangement;
+let multiArrangement;
+
+class LayoutArrangement {
+
+    constructor(isMulti=false) {
+        this.type = isMulti ? "multi" : "single";
+        this.arrangement = [];
+        this.arrangementDiv = document.getElementById(`dataset-arrangement-${this.type}`);
+
+        this.arrangementWidth = 1080; // NOTE: Originally used singleGeneArrangementDiv.offsetWidth, but it is 0 unless the element is visible
+        this.rowWidth = this.arrangementWidth / 12; // Split width into 12 columns
+        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
+    }
+
+    addMember(member) {
+        this.arrangement.push(member);
+    }
+
+    setupArrangementAdjustable() {
+
+        this.maxRow = Math.max(...this.arrangement.map((tile) => tile.startRow + tile.gridHeight)) -1;
+        this.arrangementDiv.style.gridTemplateRows = `repeat(${this.maxRow}, ${this.colHeight}px)`;
+
+        // Sort by row and column
+        this.arrangement.sort((a, b) => {
+            if (a.startRow === b.startRow) {
+                return a.startCol - b.startCol;
+            }
+            return a.startRow - b.startRow;
+        });
+
+        // Clear the arrangement div
+        this.arrangementDiv.innerHTML = "";
+
+        // Add each member to the arrangement div
+        for (const member of this.arrangement) {
+            this.arrangementDiv.appendChild(member.createArrangementTile());
+            member.createInteractable();
+        }
+    }
+}
+
+class LayoutArrangementMember {
+
+    constructor(arrangementObj, datasetId, gridPosition, startCol, startRow, gridWidth, gridHeight) {
+        this.parentArrangement = arrangementObj;
+        this.datasetId = datasetId;
+        this.gridPosition = gridPosition;
+        this.startCol = startCol;
+        this.startRow = startRow;
+        this.gridWidth = gridWidth;
+        this.gridHeight = gridHeight;
+        this.datasetTitle = "";
+        this.image = "";
+        this.tileTemplate = document.getElementById("dataset-arrangement-tile-template");
+        this.selector = `.js-sortable-tile[data-dataset-id="${this.datasetId}"]`;
+        this.snapWidth = this.parentArrangement.rowWidth * 2; // Snap to 1/6 increments for width
+        this.snapHeight = this.parentArrangement.colHeight; // Snap to 1/4 increments for height;
+    }
+
+    createArrangementTile() {
+        const tile = this.tileTemplate.content.cloneNode(true);
+
+        setElementProperties(tile, ".js-sortable-tile", { dataset: {datasetId: this.datasetId} });
+        // add gridAra to tile
+        tile.querySelector(".js-sortable-tile").style.gridArea = `${this.startRow} / ${this.startCol} / span ${this.gridHeight} / span ${this.gridWidth}`;
+        // add dataset title
+        setElementProperties(tile, ".js-sortable-tile-title", { textContent: this.datasetTitle });
+        // add preview image
+        const tileImg = tile.querySelector(".js-sortable-tile-img");
+        tileImg.src = this.image;
+        return tile;
+    }
+
+    createInteractable() {
+        const that = this;  // Preserve this context for event listeners
+
+        this.interactable = interact(this.selector);
+
+        this.interactable.draggable({
+            // keep the element within the area of it's parent
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    restriction: 'parent',  // keep the drag within the parent. If dragged outside, it will snap back
+                    endOnly: true
+                }),
+                interact.modifiers.snap({
+                    // snap to the 12 possible grid columns, and n+1 grid rows.
+                    targets: [
+                        interact.createSnapGrid({ x: that.snapWidth, y: that.snapHeight }),
+                    ],
+                    range: Infinity,
+                    relativePoints: [{ x: 1, y: 1 }],   // snap to the bottom right corner of the element (allows for a 1-to-1 with the grid start row/column)
+                    offset: 'parent'
+                })
+            ],
+            listeners: {
+                move (event) {
+                    const target = event.target
+
+                    // get current style gridArea values (preserve span values)
+                    const rowStart = parseInt(target.style.gridRowStart);
+                    const colStart = parseInt(target.style.gridColumnStart);
+
+                    // These are reported as "span N" in the gridArea style
+                    const rowSpan = parseInt(target.style.gridRowEnd.split(" ")[1]);
+                    const colSpan = parseInt(target.style.gridColumnEnd.split(" ")[1]);
+
+                    const dStartCol = (Math.round(event.delta.x / that.snapWidth) * 2);  // x2 converts to 12 column grid
+                    const dStartRow = Math.round(event.delta.y / that.snapHeight);
+
+                    const newStartCol = colStart + dStartCol;
+                    const newStartRow = rowStart + dStartRow;
+
+                    target.style.gridArea = `${newStartRow} / ${newStartCol} / span ${rowSpan} / span ${colSpan}`;
+
+                    // When dragged to the n+1 row, add a new row to the grid.
+                    const arrangementDiv = target.parentElement;    // AKA this.parentArrangement.arrangementDiv
+                    // get current number of rows in the grid
+                    // it is stored as a string like "repeat(3, 100px)"
+                    const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
+
+                    const lastTileRow = newStartRow + rowSpan -1;
+                    // If the dragged tile's bottom edge is below the last row, add another row to the grid template
+                    if (lastTileRow > arrangementRows) {
+                        arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
+                    }
+                },
+                end (event) {
+                    // Determine if any tiles overlap and provide visual cue
+                }
+            }
+
+        });
+
+        this.interactable.resizable({
+            // resize from only the right and bottom edges (adding top and left adds complexity)
+            edges: { left: false, right: true, bottom: true, top: false },
+            listeners: {
+                move (event) {
+
+                    // get current style gridArea values (at least the ones to preserve)
+                    const rowStart = parseInt(event.target.style.gridRowStart);
+                    const colStart = parseInt(event.target.style.gridColumnStart);
+
+                    // Snap to grid in 1/6 increments for width
+                    const newSpanWidth = (Math.round(event.rect.width / that.parentArrangement.snapWidth) * 2);  // x2 converts to 12 column grid
+                    const newSpanHeight = Math.round(event.rect.height / that.parentArrangement.snapHeight);
+
+                    event.target.style.gridArea = `${rowStart} / ${colStart} / span ${newSpanHeight} / span ${newSpanWidth}`;
+
+                    // When resized to the n+1 row, add a new row to the grid.
+                    const arrangementDiv = event.target.parentElement;    // AKA this.parentArrangement.arrangementDiv
+                    // get current number of rows in the grid
+                    // it is stored as a string like "repeat(3, 100px)"
+                    const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
+
+                    const lastTileRow = rowStart + newSpanHeight -1;
+                    // If the dragged tile's bottom edge is below the last row, add another row to the grid template
+                    if (lastTileRow > arrangementRows) {
+                        arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
+                    }
+                }
+            }
+        });
+
+    }
+
+}
+
 /**
  * Adds event listeners for various actions related to datasets.
  * @function
@@ -560,7 +731,7 @@ const changeDatasetCollectionCallback = async () => {
     const isDomain = Boolean(collection.is_domain);
     const isCurrent = Boolean(collection.is_current);
 
-    // If selected dataset collection is a "domain" collection, hide the "Arrangment" view button.
+    // If selected dataset collection is a "domain" collection, hide the "arrangement" view button.
     // if arrangement view is active (class "gear-bg-secondary") switch to table view
     document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
     if (isDomain) {
@@ -593,33 +764,15 @@ const changeDatasetCollectionCallback = async () => {
     let currentMgRow = 1;
     const maxEndCol = 13;   // 12 grid slots. CSS grid is 1-indexed, so 13 is the max
 
-    const layoutArrangements = {
-        "single": [],   // {datasetId, gridPosition, startCol, startRow, gridWidth, gridHeight}
-        "multi": []     // {datasetId, mgGridPosition, mgStartCol, mgStartRow, mgGridWidth, mgGridHeight}
-    };
+    singleArrangement = new LayoutArrangement();
+    multiArrangement = new LayoutArrangement(true);
 
     for (const dataset of layoutMembers) {
 
         const datasetId = dataset.dataset_id;
 
-        // add layout arrangement info
-        const singleLayoutArrangement = {
-            gridPosition: dataset.grid_position || null,
-            startCol: dataset.start_col || null,
-            gridWidth: dataset.grid_width || null,
-            startRow: dataset.start_row || null,
-            gridHeight: dataset.grid_height || null,
-            datasetId
-        };
-
-        const multiLayoutArrangement = {
-            gridPosition: dataset.mg_grid_position || null,
-            startCol: dataset.mg_start_col || null,
-            gridWidth: dataset.mg_grid_width || null,
-            startRow: dataset.mg_start_row || null,
-            gridHeight: dataset.mg_grid_height || null,
-            datasetId
-        };
+        const singleMember = new LayoutArrangementMember(singleArrangement, datasetId, dataset.grid_position, dataset.start_col, dataset.start_row, dataset.grid_width, dataset.grid_height);
+        const multiMember = new LayoutArrangementMember(multiArrangement, datasetId, dataset.mg_grid_position, dataset.mg_start_col, dataset.mg_start_row, dataset.mg_grid_width, dataset.mg_grid_height);
 
         // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
         // so the arrangement view can be displayed correctly
@@ -632,8 +785,8 @@ const changeDatasetCollectionCallback = async () => {
                 currentRow++;
             }
 
-            singleLayoutArrangement.startCol = currentCol;
-            singleLayoutArrangement.startRow = currentRow;
+            singleMember.startCol = currentCol;
+            singleMember.startRow = currentRow;
 
             currentCol += width;
 
@@ -645,100 +798,26 @@ const changeDatasetCollectionCallback = async () => {
                 currentMgRow++;
             }
 
-            multiLayoutArrangement.startCol = currentMgCol;
-            multiLayoutArrangement.startRow = currentMgRow;
+            multiMember.startCol = currentMgCol;
+            multiMember.startRow = currentMgRow;
 
             currentMgCol += mgWidth;
 
         }
 
-        layoutArrangements.single.push(singleLayoutArrangement);
-        layoutArrangements.multi.push(multiLayoutArrangement);
+        singleMember.datasetTitle = titles[datasetId];
+        multiMember.datasetTitle = titles[datasetId];
 
+        singleMember.image = imageUrls.single[datasetId];
+        multiMember.image = imageUrls.multi[datasetId];
+
+        singleArrangement.addMember(singleMember);
+        multiArrangement.addMember(multiMember);
     }
 
-    const singleGeneArrangementDiv = document.getElementById("dataset-arrangement-single");
-    const multiGeneArrangementDiv = document.getElementById("dataset-arrangement-multi");
+    singleArrangement.setupArrangementAdjustable();
+    multiArrangement.setupArrangementAdjustable();
 
-    setupLayoutArrangementAdjustable(layoutArrangements.single, imageUrls.single, titles, singleGeneArrangementDiv);
-    setupLayoutArrangementAdjustable(layoutArrangements.multi, imageUrls.multi, titles, multiGeneArrangementDiv);
-
-    // get width and height of #dataset-arrangement-single
-    const arrangementWidth = singleGeneArrangementDiv.offsetWidth;
-    const arrangementHeight = singleGeneArrangementDiv.offsetHeight;
-    const mgArrangementHeight = multiGeneArrangementDiv.offsetHeight;
-
-    // NOTE: If user resizes the window, the arrangement view will not be recalculated.
-
-    // Split width into 12 columns and height into highest number of rows
-    const rowWidth = arrangementWidth / 12;
-    const colHeight = arrangementHeight / currentRow;
-    const mgColHeight = mgArrangementHeight / currentMgRow;
-
-    // make tiles draggable
-    interact(".js-sortable-tile").draggable({
-        // keep the element within the area of it's parent
-        modifiers: [
-            interact.modifiers.restrictRect({
-                restriction: 'parent',
-                endOnly: true
-            }),
-            interact.modifiers.snap({
-                // snap to the 12 possible grid columns, and n+1 grid rows.
-                // When dragged to the n+1 row, add a new row to the grid.
-                targets: [
-                    interact.createSnapGrid({ x: rowWidth, y: colHeight }),
-                ],
-                range: Infinity,
-                relativePoints: [{ x: 0, y: 0 }],
-                offset: 'startCoords'
-            })
-        ],
-        listeners: {
-            move (event) {
-                const target = event.target
-                // keep the dragged position in the data-x/data-y attributes
-                const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
-                const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
-
-                // translate the element
-                target.style.transform = `translate(${x}px, ${y}px)`
-
-                // update the posiion attributes
-                target.setAttribute('data-x', x)
-                target.setAttribute('data-y', y)
-            }
-        }
-    });
-
-
-    interact(".js-sortable-tile").resizable({
-        // resize from all edges and corners
-        edges: { left: true, right: true, bottom: true, top: true },
-
-    });
-
-    // make parents a dropzone
-    interact(".arrangement-grid").dropzone({
-        // only accept elements matching this CSS selector
-        accept: '.js-sortable-tile',
-        // Require a 75% element overlap for a drop to be possible
-        overlap: 0.75,
-
-        ondragenter: function (event) {
-            // Make indication that the drop is possible
-
-            const draggableElement = event.relatedTarget
-            const dropzoneElement = event.target
-
-            // TODO:
-        },
-        ondrop: function (event) {
-            // Adjust the start and end positions of the dragged element
-            // Reset any "is-overlapping" classes
-            // Check if the element overlaps with another element and make visual cue
-        },
-    });
 
 }
 
@@ -1683,52 +1762,6 @@ const setElementProperties = (parentNode, selector, properties) => {
     });
 }
 
-/**
- * Sets up the layout arrangement views based on the provided layout arrangements, image URLs, titles, and arrangementDiv.
- *
- * @param {Object} layoutArrangements - The layout arrangements object.
- * @param {Object} imageUrls - The image URLs object.
- * @param {Object} titles - The titles object.
- * @param {HTMLElement} arrangementDiv - The arrangement div element.
- */
-const setupLayoutArrangementAdjustable = (layoutArrangements, imageUrls, titles, arrangementDiv) => {
-    // Sort the layout arrangements by row and column
-    const sortedLayoutArrangements = Object.values(layoutArrangements).sort((a, b) => {
-        if (a.startRow === b.startRow) {
-            return a.startCol - b.startCol;
-        }
-        return a.startRow - b.startRow;
-    });
-
-    const arrangementViewTemplate = document.getElementById("dataset-arrangement-view");
-
-    // Clear the arrangement views
-    arrangementDiv.innerHTML = "";
-
-    for (const layout of sortedLayoutArrangements) {
-        const datasetId = layout.datasetId;
-        const resultDatasetId = `result-dataset-id-${datasetId}`
-
-        // Create arrangment view tile for single and multi gene views for the dataset
-        const arrangementView = arrangementViewTemplate.content.cloneNode(true);
-
-        setElementProperties(arrangementView, ".js-sortable-tile", { dataset: {datasetId} });
-        // add gridArea to each arrangement view
-        arrangementView.querySelector(".js-sortable-tile").style.gridArea = `${layout.startRow} / ${layout.startCol} / span ${layout.gridHeight} / span ${layout.gridWidth}`;
-        // add dataset title
-        setElementProperties(arrangementView, ".js-sortable-tile-title span", { textContent: titles[datasetId] });
-        // Add preview image
-        const arrangementViewImg = arrangementView.querySelector(".js-sortable-tile-img");
-        arrangementViewImg.src = imageUrls[datasetId];
-        arrangementDiv.appendChild(arrangementView);
-
-        // For each single and multi layout view add bulma "colunmn" class with proper positioning and width.
-        // The parent container has "is-multiline" class to allow for wrapping
-        // This will be converted into a CSS grid layout when the user saves the arrangement
-        //document.getElementById(`${resultDatasetId}-arrangement-view-single`).classList.add("column", `is-${layout.gridWidth}`);
-
-    }
-}
 
 /**
  * Sets up the pagination UI based on the provided pagination data.
@@ -1992,13 +2025,9 @@ const updateDatasetListButtons = (collection=null) => {
             continue;
         }
 
-        // if dataset is already in the currently selected collection, remove the "add to collection" button (and vice versa)
         // if dataset is not in the currently selected collection, remove the "remove from collection" button (and vice versa)
         const datasetInCollection = collection.members.some(member => member.dataset_id === datasetId);
-        if (datasetInCollection) {
-            addToCollectionButton.parentElement.classList.add("is-hidden")
-            addToCollectionButton.disabled = true;
-        } else {
+        if (!datasetInCollection) {
             removeFromCollectionButton.parentElement.classList.add("is-hidden")
             removeFromCollectionButton.disabled = true;
         }
@@ -2132,7 +2161,7 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
 
     document.getElementById("results-table").classList.remove("is-hidden");
     document.getElementById("results-list-div").classList.add("is-hidden");
-    document.getElementById("dataset-arrangment-c").classList.add("is-hidden");
+    document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
     // Show pagination in case arrangement view hid the pagination
     for (const classElt of document.getElementsByClassName("pagination")) {
@@ -2153,7 +2182,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
 
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.remove("is-hidden");
-    document.getElementById("dataset-arrangment-c").classList.add("is-hidden");
+    document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
@@ -2186,7 +2215,7 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
 
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.remove("is-hidden");
-    document.getElementById("dataset-arrangment-c").classList.add("is-hidden");
+    document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
@@ -2219,7 +2248,7 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
 
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.add("is-hidden");
-    document.getElementById("dataset-arrangment-c").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-c").classList.remove("is-hidden");
 
     // hide .pagination and #count-label-c
     for (const classElt of document.getElementsByClassName("pagination")) {
@@ -2247,14 +2276,22 @@ for (const elt of document.querySelectorAll(".js-expandable-control")) {
     }
 )};
 
-// ! May be removed
-/*document.getElementById("btn-view-collection-datasets").addEventListener("click", () => {
-    submitSearch(1)
-});*/
-
 // If checkbox is changed, set the searchByCollection flag
 document.getElementById("filter-only-in-collection").addEventListener("change", (e) => {
     searchByCollection = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
     e.currentTarget.closest(".field").querySelector("label").textContent = searchByCollection ? "Yes" : "No"
+});
+
+document.getElementById("btn-save-layout").addEventListener("click", async () => {
+
+    // Get the layout arrangement
+    // TODO:
+
+    const data = await apiCallsMixin.saveDatasetCollectionArrangement(layoutId, layoutArrangement)
+    if (data.success) {
+        createToast("Layout arrangement saved successfully", "is-success");
+    } else {
+        createToast("Failed to save layout arrangement");
+    }
 });

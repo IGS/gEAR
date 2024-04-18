@@ -22,8 +22,6 @@ class TileGrid {
         this.tiles = [];
         this.selector = selector;
 
-        //this.applyTileGrid();
-
     }
 
     /**
@@ -108,6 +106,7 @@ class TileGrid {
 
         selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
         const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow));
+        // TODO: Change min-content to a constant pixel value
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
 
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
