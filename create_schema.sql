@@ -36,9 +36,7 @@ CREATE TABLE guser (
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        default_org_id INT NOT NULL DEFAULT 1,
-       is_curator     TINYINT(1) DEFAULT 0,
-       validation_code VARCHAR(6),
-       is_validated   TINYINT(1) DEFAULT 0
+       is_curator     TINYINT(1) DEFAULT 0
        FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
