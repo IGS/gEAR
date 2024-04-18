@@ -563,25 +563,23 @@ function uuid() {
 }
 
 
-// From: http://stackoverflow.com/a/21903119/1368079
+// From: http://stackoverflow.com/a/21903119/1368079 (2023 Solution) and https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
+
 // Use example:
-//   if URL is: http://dummy.com/?technology=jquery&blog=jquerybyexample
-//   then:      var tech = getUrlParameter('technology');
-//              var blog = getUrlParameter('blog');
+//   const url = "http://dummy.com/?technology=jquery&blog=jquerybyexample"
+//   const parameterName = "blog"
+//   const parameterValue = getUrlParameter(parameterName)
+//   console.log(parameterValue);  // Output: "jquerybyexample"
+
 const getUrlParameter = function getUrlParameter(sParam) {
-    const sPageURL = decodeURIComponent(window.location.search.substring(1));
-    const sURLVariables = sPageURL.split('&');
-    let sParameterName;
-    let i;
+    // create object instance via URLSearchParams built-in function
+    const searchParams = new URLSearchParams(window.location.search)
+    // Boolean that returns either True or null if sParam exists within URL
+    const paramExists = searchParams.has(sParam)
+    // return either the appropriate search parameter or null if it does not exist
+    return paramExists ? searchParams.get(sParam) : null;
+}
 
-    for (i = 0; i < sURLVariables.length; i++) {
-        sParameterName = sURLVariables[i].split('=');
-
-        if (sParameterName[0] === sParam) {
-            return sParameterName[1] === undefined ? true : sParameterName[1];
-        }
-    }
-};
 
 // error should be html message for user. Example: error = '<p>You cannot do that.</p>'
 function display_error_bar(msg, detail) {
