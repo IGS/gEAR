@@ -2168,7 +2168,7 @@ class DatasetCollection:
         qry = """
               SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
-                     load_status, has_h5ad, is_downloadable
+                     load_status, has_h5ad
                 FROM dataset d
                WHERE d.is_public = 1
                  AND d.marked_for_removal = 0
