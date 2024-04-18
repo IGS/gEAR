@@ -156,9 +156,7 @@ class LayoutArrangementMember {
                 }
             }
 
-        });
-
-        this.interactable.resizable({
+        }).resizable({
             // resize from only the right and bottom edges (adding top and left adds complexity)
             edges: { left: false, right: true, bottom: true, top: false },
             listeners: {
@@ -169,8 +167,8 @@ class LayoutArrangementMember {
                     const colStart = parseInt(event.target.style.gridColumnStart);
 
                     // Snap to grid in 1/6 increments for width
-                    const newSpanWidth = (Math.round(event.rect.width / that.parentArrangement.snapWidth) * 2);  // x2 converts to 12 column grid
-                    const newSpanHeight = Math.round(event.rect.height / that.parentArrangement.snapHeight);
+                    const newSpanWidth = (Math.round(event.rect.width / that.snapWidth) * 2);  // x2 converts to 12 column grid
+                    const newSpanHeight = Math.round(event.rect.height / that.snapHeight);
 
                     event.target.style.gridArea = `${rowStart} / ${colStart} / span ${newSpanHeight} / span ${newSpanWidth}`;
 
