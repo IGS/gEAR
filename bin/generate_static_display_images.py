@@ -103,7 +103,7 @@ def make_static_tsne_graph(filename, config, url):
 def main():
 
     uri_identifier = "https://"
-    if sys.argv[2] == "localhost":
+    if sys.argv[1] == "localhost":
         print("Running in localhost mode")
         # set to http
         uri_identifier = "http://"
