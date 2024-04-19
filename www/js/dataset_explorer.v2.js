@@ -151,9 +151,7 @@ class LayoutArrangementMember {
                         arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
                     }
                 },
-                end (event) {
-                    // Determine if any tiles overlap and provide visual cue
-                }
+                end: this.determineGridOverlap
             }
 
         }).resizable({
@@ -183,9 +181,71 @@ class LayoutArrangementMember {
                     if (lastTileRow > arrangementRows) {
                         arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
                     }
-                }
+                },
+                end: this.determineGridOverlap
             }
         });
+
+    }
+
+    determineGridOverlap(event) {
+        // Determine if any tiles overlap with one another on the parent grid and provide visual cue
+
+        const eventRowStart = parseInt(event.target.style.gridRowStart);
+        const eventRowEnd = eventRowStart + parseInt(event.target.style.gridRowEnd.split(" ")[1]);
+        const eventColStart = parseInt(event.target.style.gridColumnStart);
+        const eventColEnd = eventColStart + parseInt(event.target.style.gridColumnEnd.split(" ")[1]);
+
+        // Get all tiles in the arrangement
+        const arrangementDiv = event.target.parentElement;
+        const arrangementTiles = arrangementDiv.querySelectorAll(".js-sortable-tile");
+
+        // Check for overlap with other tiles
+        for (const tile of arrangementTiles) {
+            if (tile === event.target) {
+                continue;
+            }
+
+            // Get the grid area of the current tile and event tile
+            const tileRowStart = parseInt(tile.style.gridRowStart);
+            const tileRowEnd = tileRowStart + parseInt(tile.style.gridRowEnd.split(" ")[1]);
+            const tileColStart = parseInt(tile.style.gridColumnStart);
+            const tileColEnd = tileColStart + parseInt(tile.style.gridColumnEnd.split(" ")[1]);
+
+            // Check for overlap
+            // This reminds me of the video game detection algorithms
+            event.target.classList.remove("js-is-overlapping")
+            event.target.style.opacity = 1;
+            event.target.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
+            event.target.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
+            document.getElementById("btn-save-arrangement").disabled = false;
+
+            if (tileRowStart < eventRowEnd
+                && tileRowEnd > eventRowStart
+                && tileColStart < eventColEnd
+                && tileColEnd > eventColStart) {
+                // Overlap detected
+                event.target.classList.add("js-is-overlapping");
+                event.target.style.opacity = 0.5;
+                event.target.querySelector(".js-sortable-tile-title").classList.add("has-text-danger-light", "has-background-danger-dark");
+                event.target.querySelector(".js-sortable-tile-title").classList.remove("has-background-primary-light");
+                break;
+            }
+
+        }
+
+        // only enable when no tiles have "js-is-overlapping" class
+        if( [...document.querySelectorAll(".js-sortable-tile")].some(tile => tile.classList.contains("js-is-overlapping")) ) {
+            document.getElementById("btn-save-arrangement").disabled = true;
+        } else {
+            // All tiles are valid, clear the "overlap" appearances
+            for (const tile of document.querySelectorAll(".js-sortable-tile")) {
+                tile.classList.remove("js-is-overlapping");
+                tile.style.opacity = 1;
+                tile.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
+                tile.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
+            }
+        }
 
     }
 
@@ -499,14 +559,15 @@ const addDatasetListEventListeners = () => {
  *
  * @param {string} datasetId - The ID of the dataset.
  * @param {boolean} isDownloadable - Indicates whether the dataset is downloadable.
+ * @param {boolean} hasH5ad - Indicates whether the dataset has an H5ad file.
  */
-const addDownloadableInfoToDataset = (datasetId, isDownloadable) => {
+const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
     const datasetDisplayContainer = document.getElementById(`${datasetId}-display-downloadable`);
     const datasetDisplaySpan = document.createElement("span");
     datasetDisplaySpan.classList.add("tag");
     datasetDisplaySpan.id = `result-dataset-id-${datasetId}-display-downloadable`;
 
-    if (isDownloadable) {
+    if (hasH5ad && isDownloadable) {
         datasetDisplaySpan.classList.add("is-success");
         datasetDisplaySpan.textContent = "Downloadable";
     } else {
@@ -1578,6 +1639,11 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-display-downloadable", { id: `${datasetId}-display-downloadable`});
         setElementProperties(listResultsView, ".js-editable-downloadable input", { id: `${resultDatasetId}-editable-downloadable`, checked: isDownloadable, dataset: { downloadable: dataset.is_downloadable } });
         setElementProperties(listResultsView, ".js-editable-downloadable label", { htmlFor: `${resultDatasetId}-editable-downloadable`, textContent: isDownloadable ? "Yes" : "No" });
+        // if h5ad is not present, then disable input and set to "No"
+        if (!hasH5ad) {
+            setElementProperties(listResultsView, ".js-editable-downloadable input", { disabled: true });
+            setElementProperties(listResultsView, ".js-editable-downloadable label", { textContent: "No" });
+        }
 
         // organism section
         setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `${resultDatasetId}-display-organism`, textContent: organism });
@@ -1671,7 +1737,7 @@ const processSearchResults = (data) => {
         }
 
         // EXTRA STUFF TO BOTH VIEWS
-        addDownloadableInfoToDataset(datasetId, isDownloadable);
+        addDownloadableInfoToDataset(datasetId, isDownloadable, hasH5ad);
         addVisibilityInfoToDataset(datasetId, isPublic);
 
         const datasetImageContainer = document.querySelector(`#${resultDatasetId}-figure img`);
@@ -2281,12 +2347,37 @@ document.getElementById("filter-only-in-collection").addEventListener("change", 
     e.currentTarget.closest(".field").querySelector("label").textContent = searchByCollection ? "Yes" : "No"
 });
 
-document.getElementById("btn-save-layout").addEventListener("click", async () => {
+document.getElementById("btn-save-arrangement").addEventListener("click", async () => {
 
-    // Get the layout arrangement
-    // TODO:
+    const singlearrangementTiles = document.querySelectorAll("#dataset-arrangement-single .js-sortable-tile");
+    const multiarrangementTiles = document.querySelectorAll("#dataset-arrangement-multi .js-sortable-tile");
 
-    const data = await apiCallsMixin.saveDatasetCollectionArrangement(layoutId, layoutArrangement)
+    // Get the current grid states for all tiles and put in an object
+
+    const layoutArrangement = {"single": {}, "multi": {}};  // dataset ids as keys
+
+    for (const tile of singlearrangementTiles) {
+        const datasetId = tile.dataset.datasetId;
+        layoutArrangement.single[datasetId] = {
+            "start_row": parseInt(tile.style.gridRowStart),
+            "start_col": parseInt(tile.style.gridColumnStart),
+            "grid_height": parseInt(tile.style.gridRowEnd.split(" ")[1]),
+            "grid_width": parseInt(tile.style.gridColumnEnd.split(" ")[1])
+        }
+    }
+
+    for (const tile of multiarrangementTiles) {
+        const datasetId = tile.dataset.datasetId;
+        layoutArrangement.multi[datasetId] = {
+            "start_row": parseInt(tile.style.gridRowStart),
+            "start_col": parseInt(tile.style.gridColumnStart),
+            "grid_height": parseInt(tile.style.gridRowEnd.split(" ")[1]),
+            "grid_width": parseInt(tile.style.gridColumnEnd.split(" ")[1])
+        }
+    }
+
+
+    const data = await apiCallsMixin.saveDatasetCollectionArrangement(selected_dc_share_id, layoutArrangement)
     if (data.success) {
         createToast("Layout arrangement saved successfully", "is-success");
     } else {

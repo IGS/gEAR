@@ -1198,15 +1198,16 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
         return data;
     },
+
     /**
      * Saves the dataset collection arrangement.
      *
-     * @param {string} layoutId - The ID of the layout.
-     * @param {Array} layoutArrangement - The layout arrangement to be saved.
-     * @returns {Promise} - A promise that resolves with the saved data.
+     * @param {string} layoutShareId - The layout share ID.
+     * @param {Object} layoutArrangement - The layout arrangement object.
+     * @returns {Promise<any>} - A promise that resolves with the response data.
      */
-    async saveDatasetCollectionArrangement(layoutId, layoutArrangement) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId, layout_arrangement: JSON.stringify(layoutArrangement)};
+    async saveDatasetCollectionArrangement(layoutShareId, layoutArrangement) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, layout_arrangement: JSON.stringify(layoutArrangement)};
 
         // TODO: This requires changing the server-side code to now work with the updated layout attributes
         const {data} = await axios.post("/cgi/save_layout_arrangement.cgi", convertToFormData(payload));
