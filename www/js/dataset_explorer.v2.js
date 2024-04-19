@@ -739,7 +739,7 @@ const createActionTooltips = (referenceElement) => {
  * updates the UI based on the selected collection, and handles button actions.
  * @returns {Promise<void>} A promise that resolves when the function completes.
  */
-const changeDatasetCollectionCallback = async () => {
+const changeDatasetCollectionCallback = async (datasetCollectionData) => {
     // Show action buttons
     document.getElementById("collection-actions-c").classList.remove("is-hidden");
 
@@ -747,7 +747,7 @@ const changeDatasetCollectionCallback = async () => {
     const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
 
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
-    flatDatasetCollectionData = [...dataset_collection_data.domain_layouts, ...dataset_collection_data.group_layouts, ...dataset_collection_data.public_layouts, ...dataset_collection_data.shared_layouts, ...dataset_collection_data.user_layouts]
+    flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts]
 
     // Find the dataset collection data for the selected share_id
     let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
@@ -802,7 +802,7 @@ const changeDatasetCollectionCallback = async () => {
 
     // If the selected dataset collection is the current collection, make it look like the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (isCurrent) {
+    if (collection.share_id === Cookies.get('gear_default_domain')) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 
@@ -1511,6 +1511,26 @@ const createPaginationEllipsis = () => {
     li.appendChild(span);
     return li;
 }
+
+const datasetCollectionSelectCallback = (datasetCollectionData) => {
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                changeDatasetCollectionCallback(datasetCollectionData);
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+
+    // Trigger the default dataset collection to be selected in the
+    if (CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    }
+}
+
+
 /**
  * Loads the list of organisms from the server and populates the organism choices and new cart organism ID select elements.
  * @function
@@ -2131,7 +2151,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     await Promise.all([
         loadOrganismList(),
-        fetchDatasetCollections()
+        fetchDatasetCollections(datasetCollectionSelectCallback)
     ]);
 
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
@@ -2176,17 +2196,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             submitSearch();
         });
     }
-
-    // Add mutation observer to watch if #dropdown-dc-selector-label changes
-    const observer = new MutationObserver((mutationsList, observer) => {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                changeDatasetCollectionCallback();
-            }
-        }
-    });
-
-    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
 };
 
