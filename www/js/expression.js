@@ -24,19 +24,9 @@ TODOs:
 */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Set the page header title
-    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
-
-    // Set current sidebar menu item to active
-	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-		elt.classList.remove("is-active");
-	}
-
-	document.querySelector("a[tool='search_expression'").classList.add("is-active");
-
 
     // handle when the dropdown-gene-list-search-input input box is changed
-    document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
+    document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
         const new_manually_entered_genes = search_term_string.length > 0 ? new Set(search_term_string.split(/[ ,]+/)) : new Set();
 
@@ -55,8 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manually_entered_genes = new_manually_entered_genes;
     });
 
-    document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
-        const annotation_panel = document.querySelector('#extended-annotation-panel');
+    document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
+        const annotation_panel = document.getElementById('#extended-annotation-panel');
         const toggle_icon = document.querySelector('#functional-annotation-toggle i');
 
         if (annotation_panel.classList.contains('is-hidden')) {
@@ -72,16 +62,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // add event listener for when the submit-expression-search button is clicked
-    document.querySelector('#submit-expression-search').addEventListener('click', async (event) => {
+    document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
         const status = validateExpressionSearchForm();
 
         if (! status) {
-            console.log("Aborting search");
+            console.warn("Aborting search");
             return;
         }
 
         // update multigene/single gene
-        is_multigene = document.querySelector('#single-multi-multi').checked;
+        is_multigene = document.getElementById('#single-multi-multi').checked;
 
         // if multigene, clear the selected gene symbol and hide the gene-result-list container
         document.getElementById("gene-result-list-c").classList.remove('is-hidden');
@@ -250,6 +240,16 @@ const fetchOrganisms = async (callback) => {
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
+    // Set the page header title
+    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
+
+    // Set current sidebar menu item to active
+	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
+		elt.classList.remove("is-active");
+	}
+
+	document.querySelector("a[tool='search_expression'").classList.add("is-active");
+
     // Wait until all pending API calls have completed before checking if we need to search
     try {
         // SAdkins note - Promise.all fails fast,
@@ -261,6 +261,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         ]);
     } catch (error) {
         logErrorInConsole(error);
+    }
+
+    // Trigger the default dataset collection to be selected in the
+    if (CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
     }
 
     // Now, if URL params were passed and we have both genes and a dataset collection,
@@ -281,7 +286,7 @@ const parseGeneCartURLParams = () => {
     // handle manually-entered gene symbols
     const gene_symbols = getUrlParameter('gene_symbol');
     if (gene_symbols) {
-        document.querySelector('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
+        document.getElementById('#enes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
         selected_genes = new Set(gene_symbols.split(','));
         manually_entered_genes = selected_genes;
         url_params_passed = true;

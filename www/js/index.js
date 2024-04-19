@@ -161,4 +161,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         fetchGeneCartData(),
         fetchDatasetCollections()
     ]);
+
+    // Trigger the default dataset collection to be selected in the
+    if (CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    }
+
 }

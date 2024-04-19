@@ -128,6 +128,10 @@ const fetchDatasetCollections = async (callback) => {
             }
         }
 
+        if (dataset_collection_data.selected) {
+            selectDatasetCollection(dataset_collection_data.selected);
+        }
+
         if (callback) {
             callback();
         }

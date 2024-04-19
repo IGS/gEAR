@@ -62,7 +62,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	document.querySelector("a[tool='projection'").classList.add("is-active");
 
-
     // add event listener for when the submit-projection-search button is clicked
     document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
         const status = validateProjectionSearchForm();
@@ -129,6 +128,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     } catch (error) {
         logErrorInConsole(error);
+    }
+
+    // Trigger the default dataset collection to be selected in the
+    if (CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
     }
 
     // Now, if URL params were passed and we have both patterns and a dataset collection,

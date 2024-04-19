@@ -13,6 +13,7 @@ const resultsPerPage = 20;
 let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
 
 // TODO - Add transformation code for quick dataset transformations
+// TODO - Add superuser edit abilities for "is_curator" users
 
 // Floating UI function alias. See https://floating-ui.com/docs/getting-started#umd
 // Subject to change if we ever need these common names for other things.
@@ -315,7 +316,7 @@ const addDatasetListEventListeners = () => {
         });
     }
 
-    // TODO: Feature - add dataset to collection multiple times (requires multiple default displays as well)
+    // TODO: Feature - add dataset to collection multiple times, with indicator to show how many times it is in the collection
     for (const classElt of document.getElementsByClassName("js-collection-add-dataset")) {
         classElt.addEventListener("click", async (e) => {
             let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
@@ -364,6 +365,7 @@ const addDatasetListEventListeners = () => {
         });
     }
 
+    // TODO: remove last instance of dataset from collection
     for (const classElt of document.getElementsByClassName("js-collection-remove-dataset")) {
         classElt.addEventListener("click", async (e) => {
             const datasetId = e.currentTarget.dataset.datasetId;
@@ -798,12 +800,10 @@ const changeDatasetCollectionCallback = async () => {
         document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     }
 
-    // If the selected dataset collection is the current collection, disable the "Set as Primary" button
+    // If the selected dataset collection is the current collection, make it look like the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    document.getElementById("btn-set-primary-collection").disabled = false;
     if (isCurrent) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
-        document.getElementById("btn-set-primary-collection").disabled = true;
     }
 
     // JSON parse every layout member
@@ -1076,9 +1076,6 @@ const createDeleteCollectionConfirmationPopover = () => {
         // Show popover
         document.body.appendChild(popoverContent);
 
-        // Store the collection ID to delete
-        const collectionId = e.currentTarget.value;
-
         // Add event listener to cancel button
         document.getElementById('cancel-collection-delete').addEventListener('click', () => {
             popoverContent.remove();
@@ -1088,7 +1085,7 @@ const createDeleteCollectionConfirmationPopover = () => {
         document.getElementById('confirm-collection-delete').addEventListener('click', async () => {
 
             try {
-                const data = await apiCallsMixin.deleteDatasetCollection(collectionId);
+                const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
 
                 if (data['success'] == 1) {
                     // Re-fetch the dataset collections, which will update in the UI via click events
@@ -1100,6 +1097,9 @@ const createDeleteCollectionConfirmationPopover = () => {
 
                     // Override the "show" from the callback. If the collection is deleted, the collection management should be hidden
                     document.getElementById("collection-actions-c").classList.add("is-hidden");
+
+                    // Remove the collection from the dropdown so that it cannot be selected again
+                    document.querySelector(`.dropdown-dc-item[data-share-id="${selected_dc_share_id}"]`).remove();
 
                 } else {
                     const error = data['error'] || "Failed to delete collection";
@@ -2383,4 +2383,25 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
     } else {
         createToast("Failed to save layout arrangement");
     }
+});
+
+document.getElementById("btn-set-primary-collection").addEventListener("click", async () => {
+    try {
+        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(selected_dc_share_id)
+        if (data.success) {
+            createToast("Primary collection set successfully", "is-success");
+
+            Cookies.set('gear_default_domain', selected_dc_share_id);
+
+            // Make button outlined to look "official"
+            document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
+
+        } else {
+            throw new Error("Failed to set primary collection");
+        }
+    } catch (e) {
+        createToast(e.message);
+    }
+
+
 });
