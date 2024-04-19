@@ -1,228 +1,79 @@
-.editable-version {
-    display: none;
-}
-.expanded-view-hidden {
-    display: none;
-}
-button.edit_dataset_save {
-    margin-left: 15px;
-}
-div.accessibility_c {
-    margin-top: 5px;
-}
-div.accessibility_c h3 {
-    margin: 0;
-    padding: 0;
-}
-div.alert-container {
-  	position: fixed;
-  	text-align: center;
-  	z-index: 100;
-}
-div.att_buttons {
-    padding-top: 10px;
-}
-div.att_buttons button.disabled {
-    display: none;
-}
-div.dataset_list_element_c {
-    border-radius: 5px;
-    padding: 5px;
-    margin-bottom: 0px;
-}
-div.dataset_list_element_c h5 {
-    color: black;
-    font-weight: bold;
-    font-weight: 110%;
-}
-div#controls {
-    border-right: 1px solid rgb(220,220,220);
-    /* 111px is height of footer, 130 is the expanded profile mgmt box*/
-    height: calc(85vh - 112px + 260px); 
-}
-div#controls_ownership,
-div#controls_profile {
-    margin-top: 20px;
-}
-div#dataset_arrangement_c {
-    display: none;
-}
-div#dataset_arrangement {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    width: 600px;
-}
-div#dataset_arrangement div {
-    /*margin: 3px 3px 3px 0;*/
-    padding: 1px;
-    float: left;
-    width: 196px;
-    height: 200px;
-    text-align: center;
-    overflow: hidden;
-    overflow-wrap: break-word;
-    background: #fff;
-}
-div.filter_subsection {
-    margin-bottom: 20px;
-}
-div#dataset_count_label_c span {
-    font-size: 120%;
-    font-weight: bold;
-    vertical-align: -0.5em;
-}
-div#editable_title_c {
-    margin-bottom: 10px;
-}
-div.editable-version input,
-div.editable-version textarea {
-    width: 95%;
-}
-div#initial_instructions_c {
-    color: white;
-    background-color: var(--main-section-launcher-bg-color-inactive);
-    border-radius: 5px;
-    font-weight: bold;
-}
-div#initial_instructions_body {
-    margin-top: 10px;
-    display: none;
-}
-div#initial_instructions_bar:hover,
-div#initial_instructions_closer:hover {
-    cursor:pointer;
-}
-div.filter_subsection h4,
-div#controls_profile h4 {
-    color: black;
-    padding-bottom: 3px;
-    border-bottom: 2px solid rgb(220,220,220);
-}
-div.form-group {
-    margin-bottom: 5px;
-}
-div#login_checking,
-div#login_warning {
-    padding-bottom: 200px;
-}
-div#login_warning {
-    display: none;
-}
-div#login_checking,
-div#login_warning {
-    margin-top: 50px;
-}
-div#main_panel {
-    min-height: 750px;
-}
-div.profile_control,
-button.profile_control {
-    display: none;
-}
-div#selected_layout_c {
-    margin-bottom: 3px;
-}
-div.sortable_tile {
-    border: 1px solid #2F0F3E;
-}
-div.sortable_tile_title {
-    max-height: 25%;
-}
-div.sortable_tile_title span {
-    background-color: #fff;
-}
-div#view_controls {
-    border-bottom: 1px solid rgb(220, 220, 220);
-    margin-bottom: 15px;
-}
-h3 {
-    margin-bottom: 20px;
-}
-h4.expandable_control:hover {
-    cursor: pointer;
-}
-hr.dataset_list_element_divider {
-    width: 90%;
-    background-color: var(--dataset-panel-header-bg-color);
-}
-input.editable_title {
-    width: 100%;
-}
-select.visibility_selector {
-    width: 95%;
-}
-span.att_label {
-    font-size: 90%;
-    font-weight: bold;
-}
-span#dataset_count_label {
-    display: none;
-}
-span.dataset_action_note,
-span#arrangement_save_notification {
-    padding-left: 10px;
-    padding-top: 5px;
-    display: none;
-}
-span.dataset-expander:hover {
-    cursor: pointer;
-}
-span.label_by_buttons {
-    color: rgb(150,150,150);
-    vertical-align: -0.5em;
-}
-span#layout_action_note {
-    font-size: 80%;
-}
-span#search_clear {
+/* Initial CSS for Floating UI (https://floating-ui.com/docs/migration#positioning-function-change) */
+.floating {
+    width: max-content;
     position: absolute;
-    right: 5px;
     top: 0;
-    bottom: 0;
-    height: 14px;
-    margin: auto;
-    font-size: 14px;
-    cursor: pointer;
-    color: #ccc;
+    left: 0;
 }
-ul.controls_filter_options {
-    margin: 0;
-    padding: 0 0 0 5px;
-    list-style: none;
+
+hr.dataset-list-element-divider {
+    margin-left: auto;
+    margin-right: auto;
 }
-ul.controls_filter_options li {
-    padding: 1px 0 1px 5px;
-    /* need to set an invisible border so clicking
-       doesn't make elements jiggle when the 
-       border appears on the selected version */
-    border: 1px solid white;
-}
-ul.controls_filter_options li:hover {
-    cursor: pointer;
-}
-ul.controls_filter_options li.selected {
+
+/* facets on left */
+.js-selected {
     background-color: #E8EBEE;
     border: 1px solid #E8EBEE;
     border-radius: 4px;
 }
-ul.att_group {
-    list-style: none;
-    margin-left: 20px;
-    padding-left: 0;
+
+/* CSS for Floating UI components */
+
+article[role="tooltip"] {
+    width: max-content;
+    position: absolute; /* float above everything else to not disrupt layout */
+    top: 0;
+    left: 0;
 }
-ul.att_group li {
-    float: left;
-    margin-right: 20px;
-    padding-bottom: 3px;
+
+#arrow {
+    position: absolute;
+    background: inherit;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
 }
-ul.layout_links {
-    list-style: none;
-    padding-left: 20px;
+
+.tooltip {
+    font-weight: bold;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 90%;
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
-ul.layout_links li:hover {
-    cursor: pointer;
+
+/* Arrangement view as a 12-column grid */
+.arrangement-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
+    grid-gap: 0;
+    width: 1090px;  /* grid width + 2*border width */
+    border: 5px solid black;
 }
-ul.layout_links li i {
-    padding-right: 10px;
+
+.js-sortable-tile {
+    border: 1px solid grey;
+}
+
+/* Copied this out of the Bulma "image" properties (normally when .content is present). Keep caption in center and above image */
+.js-sortable-tile figcaption {
+    text-align: center;
+    font-style: italic;
+    position: relative
+}
+
+/* Copied this out of the Bulma "image" properties when an aspect ratio is applied. Goal is to have image fit the tile */
+.js-sortable-tile img {
+    max-width: 100%;
+    bottom: 0;
+    height: 100%;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100%;
 }
