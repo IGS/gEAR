@@ -264,7 +264,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // Trigger the default dataset collection to be selected in the
-    if (CURRENT_USER.default_profile_share_id) {
+    if (!getUrlParameter("layout_id") && CURRENT_USER.default_profile_share_id) {
         selectDatasetCollection(CURRENT_USER.default_profile_share_id);
     }
 
@@ -317,14 +317,14 @@ const parseGeneCartURLParams = () => {
 
 const parseDatasetCollectionURLParams = () => {
     // handle passed dataset collection
-    const layout_share_id = getUrlParameter('layout_id');
+    const layoutShareId = getUrlParameter('layout_id');
 
-    if (!layout_share_id) {
+    if (!layoutShareId) {
         return;
     }
 
-    selected_dc_share_id = layout_share_id;
-    selected_dc_label = dataset_collection_label_index[layout_share_id];
+    selected_dc_share_id = layoutShareId;
+    selected_dc_label = dataset_collection_label_index[layoutShareId];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 }
 
