@@ -6,6 +6,8 @@ let tilegrid = null;
 let svgScoringMethod = 'gene';
 let projectionOpts = {patternSource: null, algorithm: null, gctype: null};
 let weightedGeneData = null;
+let datasetShareId = null;
+let layoutShareId = null;
 
 // imported from pattern-collection-selector.js
 // selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
@@ -62,13 +64,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	document.querySelector("a[tool='projection'").classList.add("is-active");
 
+    datasetShareId = getUrlParameter('share_id');
+    layoutShareId = getUrlParameter('layout_id');
+
     // add event listener for when the submit-projection-search button is clicked
     document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
 
         const status = validateProjectionSearchForm();
 
         if (! status) {
-            console.log("Aborting search");
+            console.info("Aborting search");
             return;
         }
 
@@ -86,7 +91,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
 
         try {
-            tilegrid = await setupTileGrid(selected_dc_share_id);
+            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(selected_dc_share_id);
+            tilegrid =  await setupTileGridFn;
 
             // auto-select the first pattern in the list
             const first_pattern = document.querySelector('.pattern-result-list-item');
@@ -132,7 +138,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // Trigger the default dataset collection to be selected in the
-    if (!getUrlParameter("layout_id") && CURRENT_USER.default_profile_share_id) {
+    if (datasetShareId) {
+        selectDatasetCollection(null);  // Clear the label
+        urlParamsPassed = true;
+    } else if (layoutShareId) {
+        selected_dc_share_id = layoutShareId;
+        selectDatasetCollection(layoutShareId);
+        urlParamsPassed = true;
+    } else if (!layoutShareId && CURRENT_USER.default_profile_share_id) {
         selectDatasetCollection(CURRENT_USER.default_profile_share_id);
     }
 
@@ -143,6 +156,18 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector('#submit-projection-search').click();
         }
     }
+
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                // If the user selects a collection, clear the datasetShareId as scope has changed
+                datasetShareId = null;
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 }
 
 /**
@@ -298,11 +323,11 @@ const selectPatternWeightResult = async (label) => {
 /**
  * Sets up the tile grid for projection.
  *
- * @param {string} layout_share_id - The share ID of the layout.
+ * @param {string} shareId - The share ID of the layout.
  * @returns {Promise<TileGrid>} - A promise that resolves to the initialized TileGrid object.
  */
-const setupTileGrid = async (layout_share_id) => {
-    const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
+const setupTileGrid = async (shareId, type="layout") => {
+    const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
@@ -347,7 +372,7 @@ const setupTileGrid = async (layout_share_id) => {
 const validateProjectionSearchForm = () => {
 
     // User passed in a single dataset share ID.
-    if (getUrlParameter("share_id")) {
+    if (datasetShareId) {
         return true;
     }
 

@@ -53,12 +53,11 @@ def main():
     if search_terms is not None:
         search_terms = search_terms.translate(str.maketrans('','','+-/@'))
 
-    permalink_id = form.getvalue('permalink_share_id')
+    permalink_id = form.getvalue('permalink_share_id')  # dataset permalink
     only_types_str = form.getvalue('only_types')
     sort_order = form.getvalue('order')
     default_domain_label = form.getvalue('default_domain')
 
-    layout_id = None
     only_types = None
 
     if only_types_str:
@@ -85,21 +84,10 @@ def main():
         layout_share_id = form.getvalue('layout_share_id')
         layouts = geardb.LayoutCollection().get_by_share_id(layout_share_id)
         if len(layouts) > 2:
-            raise Exception("More than one layout found with ID {0}".format(layout_id))
+            raise Exception("More than one layout found with share ID {0}".format(layout_share_id))
         if not len(layouts):
-            raise Exception("No layout found with ID {0}".format(layout_id))
+            raise Exception("No layout found with share ID {0}".format(layout_share_id))
         layout = layouts[0]
-        layout.load()
-
-        dsc = geardb.DatasetCollection()
-        dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-        dsc.apply_layout(layout=layout)
-        result['datasets'].extend(dsc.datasets)
-
-    # Was a specific layout ID passed?
-    elif form.getvalue('layout_id') is not None:
-        layout_id = form.getvalue('layout_id')
-        layout = geardb.Layout(id=layout_id)
         layout.load()
 
         dsc = geardb.DatasetCollection()

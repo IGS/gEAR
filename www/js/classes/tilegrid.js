@@ -13,8 +13,9 @@ const new_d3 = d3;
 
 class TileGrid {
 
-    constructor(layoutShareId, selector ) {
-        this.layoutShareId = layoutShareId;
+    constructor(shareId, type="layout", selector ) {
+        this.shareId = shareId;
+        this.type = type;
         this.layout = [];   // this.getLayout();
 
         this.maxCols = 12 // highest number of columns in a row
@@ -68,6 +69,11 @@ class TileGrid {
             tiles.push(datasetTile);
         }
         this.tiles = tiles;
+
+        if (this.type === "dataset") {
+            this.applySingleTileGrid(this.tiles[0].tile, selectorElt);
+            return;
+        }
 
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
@@ -124,6 +130,21 @@ class TileGrid {
         }
     }
 
+    applySingleTileGrid(tile, selectorElt) {
+        selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
+        // TODO: Change min-content to a constant pixel value
+        selectorElt.style.gridTemplateRows = `repeat(1, min-content)`; // this prevents extra space at the bottom of each grid row
+
+        const tileChildHTML = tile.html;
+
+        // Add the tile to the selector element
+        selectorElt.append(tileChildHTML);
+
+        // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
+        const tileElement = document.getElementById(`tile-${tile.tileId}`);
+        tileElement.style.gridArea = "auto";
+    }
+
     // NOTE: This may change if data is returned previously and can be loaded
     /**
      * Retrieves the layout information from the server.
@@ -131,8 +152,10 @@ class TileGrid {
      * @throws {Error} If an error occurs during the API call.
      */
     async getLayout() {
+        const args = this.type === "dataset" ? {permalink_share_id: this.shareId} : {layout_share_id: this.shareId};
+
         try {
-            const data = await apiCallsMixin.fetchDatasetListInfo({layout_share_id: this.layoutShareId})
+            const data = await apiCallsMixin.fetchDatasetListInfo(args);
             return data['datasets'];
         } catch (error) {
             throw error;
