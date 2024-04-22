@@ -64,6 +64,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // add event listener for when the submit-projection-search button is clicked
     document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
+
         const status = validateProjectionSearchForm();
 
         if (! status) {
@@ -344,6 +345,12 @@ const setupTileGrid = async (layout_share_id) => {
  * @returns {boolean} Returns true if the form is valid, otherwise false.
  */
 const validateProjectionSearchForm = () => {
+
+    // User passed in a single dataset share ID.
+    if (getUrlParameter("share_id")) {
+        return true;
+    }
+
     // User must have either selected a pattern list or entered patterns manually. Either of these
     // will populate the selected_patterns array
     document.querySelector('#dropdown-pattern-lists button').classList.remove('is-danger');

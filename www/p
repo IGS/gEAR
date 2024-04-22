@@ -61,7 +61,7 @@ def main():
         params['gene_symbol_exact_match'] = 1
 
     if gene_cart:
-        params['gene_cart_share_id'] = gene_cart
+        params["gene_lists"] = gene_cart
 
     if identifiers_org_id:
         (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')

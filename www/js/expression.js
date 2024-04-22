@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // update multigene/single gene
-        is_multigene = document.getElementById('#single-multi-multi').checked;
+        is_multigene = document.getElementById('single-multi-multi').checked;
 
         // if multigene, clear the selected gene symbol and hide the gene-result-list container
         document.getElementById("gene-result-list-c").classList.remove('is-hidden');
@@ -293,8 +293,14 @@ const parseGeneCartURLParams = () => {
     }
 
     // handle passed gene lists
-    // TODO: - Handle legacy "gene_cart_share_id" parameter
     let gene_lists = [];
+
+    // This is a legacy option
+    if (getUrlParameter('gene_cart_share_id')) {
+        gene_lists.push(getUrlParameter('gene_cart_share_id'));
+        url_params_passed = true;
+    }
+
     if (getUrlParameter('gene_lists')) {
         gene_lists = getUrlParameter('gene_lists').split(',');
         selectGeneLists(gene_lists); // declared in gene-collection-selector.js
@@ -457,7 +463,18 @@ const updateAnnotationDisplay = () => {
     }
 }
 
+/**
+ * Validates the expression search form.
+ *
+ * @returns {boolean} Returns true if the form is valid, false otherwise.
+ */
 const validateExpressionSearchForm = () => {
+
+    // User passed in a single dataset share ID.
+    if (getUrlParameter("share_id")) {
+        return true;
+    }
+
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
     if (selected_genes.size + manually_entered_genes.size === 0) {
