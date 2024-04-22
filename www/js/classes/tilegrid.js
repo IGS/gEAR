@@ -65,13 +65,13 @@ class TileGrid {
         const tiles = [];
 
         for (const dataset of this.layout) {
-            const datasetTile = new DatasetTile(dataset, isMulti);
+            const datasetTile = new DatasetTile(this, dataset, isMulti);
             tiles.push(datasetTile);
         }
         this.tiles = tiles;
 
         if (this.type === "dataset") {
-            this.applySingleTileGrid(this.tiles[0].tile, selectorElt);
+            this.applySingleTileGrid(this.tiles[0], selectorElt);
             return;
         }
 
@@ -130,10 +130,34 @@ class TileGrid {
         }
     }
 
-    applySingleTileGrid(tile, selectorElt) {
+    /**
+     * Applies a single tile grid layout to the specified selector element.
+     *
+     * @param {Object} datasetTile - The DatasetTile object to apply the grid layout to.
+     * @param {HTMLElement} selectorElt - The selector element to apply the grid layout to.
+     * @param {boolean} [isZoomed=false] - Indicates whether the grid layout is a zoomed dataset.
+     * @returns {void}
+     */
+    applySingleTileGrid(datasetTile, selectorElt, isZoomed=false) {
+
+
         selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
-        // TODO: Change min-content to a constant pixel value
         selectorElt.style.gridTemplateRows = `repeat(1, min-content)`; // this prevents extra space at the bottom of each grid row
+
+        // if zoomed, create new DatasetTile object with zoomed flag
+        // SAdkins - I tried to use a "clone node and change ids" approach, but it was not working.
+        const createZoomedTile = () => {
+            const zoomedDatasetTile = new DatasetTile(this, datasetTile.dataset, datasetTile.type === "multi", true);
+            // add gene symbol to zoomed tile
+            zoomedDatasetTile.geneSymbol = datasetTile.geneSymbol;
+            zoomedDatasetTile.currentDisplayId = datasetTile.currentDisplayId;
+            zoomedDatasetTile.svgScoringMethod = datasetTile.svgScoringMethod;
+            return zoomedDatasetTile;
+        }
+
+        const zoomedDatasetTile = createZoomedTile();
+
+        const tile = isZoomed ? zoomedDatasetTile.tile : datasetTile.tile;
 
         const tileChildHTML = tile.html;
 
@@ -143,6 +167,11 @@ class TileGrid {
         // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
         const tileElement = document.getElementById(`tile-${tile.tileId}`);
         tileElement.style.gridArea = "auto";
+
+        if (isZoomed) {
+            zoomedDatasetTile.renderDisplay(zoomedDatasetTile.geneSymbol, zoomedDatasetTile.currentDisplayId, zoomedDatasetTile.svgScoringMethod);
+        }
+
     }
 
     // NOTE: This may change if data is returned previously and can be loaded
@@ -199,11 +228,17 @@ class TileGrid {
 };
 
 class DatasetTile {
-    constructor(dataset, isMulti=true) {
+    constructor(thisTileGrid, dataset, isMulti=true, isZoomed=false) {
         this.dataset = dataset;
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
         this.tile = this.generateTile();
+        this.isZoomed = isZoomed;
+        if (this.isZoomed) {
+            this.tile.tileId = `zoomed-${this.tile.tileId}`;
+        }
+
+        this.parentTileGrid = thisTileGrid;
 
         // Set the end row and end col based on the startow and startCol
         this.tile.endRow = this.tile.startRow + this.tile.height,
@@ -217,6 +252,7 @@ class DatasetTile {
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
         this.geneSymbol = null;
+        this.currentDisplayId = null;
 
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
@@ -246,9 +282,9 @@ class DatasetTile {
     }
 
     /**
-     * Adds the dataset title to the modal.
+     * Generates the HTML representation of a tile.
      *
-     * @param {HTMLElement} modalHTML - The HTML element representing the modal.
+     * @returns {DocumentFragment} The generated HTML fragment.
      */
     generateTileHTML() {
         const tile = this.tile;
@@ -355,7 +391,7 @@ class DatasetTile {
         const orthologs = Object.keys(this.orthologs).map(g => this.orthologs[g].sort()[0]).flat();
 
         // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
-        if (!this.isMulti && this.orthologsToPlot.length > 1) {
+        if (this.type === "single" && this.orthologsToPlot.length > 1) {
             this.renderOrthologDropdown();
         }
 
@@ -557,7 +593,7 @@ class DatasetTile {
     addDropdownInformation(tileElement, tileId, dataset) {
 
         const dropdownMenu = tileElement.querySelector(`#${tileId} .dropdown-menu`);
-        dropdownMenu.id = `dropdown-menu_${tileId}`;
+        dropdownMenu.id = `dropdown-menu-${tileId}`;
         const dropdownContent = dropdownMenu.querySelector(".dropdown-content");
         const dropdownItems = dropdownContent.querySelectorAll('.dropdown-item');
 
@@ -580,10 +616,35 @@ class DatasetTile {
                     });
                     break;
                 case "expand":
-                    // Zoom panel to take up all of "#result-panel-grid"
+                    // Button should not exist for zoomed views
+                    if (this.isZoomed) {
+                        item.remove();
+                        break;
+                    }
+                    // Hide "#result-panel-grid" display and show a new grid with only this tile
                     item.addEventListener("click", (event) => {
-                        // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");
+
+                        document.getElementById("result-panel-grid").classList.add("is-hidden");
+                        document.getElementById("zoomed-panel-grid").replaceChildren();
+                        document.getElementById("zoomed-panel-grid").classList.remove("is-hidden");
+
+                        // Apply single tile grid
+                        this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
+
+                    });
+                    break;
+                case "shrink":
+                    // Button should not exist for non-zoomed views
+                    if (!this.isZoomed) {
+                        item.remove();
+                        break;
+                    }
+
+                    // Revert back to "#result-panel-grid" display
+                    item.addEventListener("click", (event) => {
+                        document.getElementById("result-panel-grid").classList.remove("is-hidden");
+                        document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
+
                     });
                     break;
                 case "info":
@@ -850,7 +911,7 @@ class DatasetTile {
                     const displayId = parseInt(displayElement.dataset.displayId);
                     // Render display
                     if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
-                    this.renderDisplay(this.geneSymbol, displayId, this.tile.height, this.svgScoringMethod);
+                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
 
                     // Close modal
                     closeModal(modalDiv);
@@ -929,13 +990,18 @@ class DatasetTile {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
 
-        this.geneSymbol = geneSymbolInput;  // Store gene symbol for future use (i.e. changing display, etc.)
+        // Store gene symbol for future use (i.e. changing display, etc.)
+        // Since this method manipulates the geneSymbolInput, we need to store the original input
+        this.geneSymbol = geneSymbolInput;
 
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
             displayId = this.defaultDisplayId;
         };
+
+        // For use for zoomed-in views
+        this.currentDisplayId = displayId;
 
         geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
 
@@ -1263,7 +1329,7 @@ class DatasetTile {
 
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image", "is-fullwidth");
-        tsnePreview.id = `tile-${this.tile.tileId}-tsne-preview`;;
+        tsnePreview.id = `tile-${this.tile.tileId}-tsne-preview`;
         plotContainer.append(tsnePreview);
 
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);

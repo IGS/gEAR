@@ -1086,6 +1086,10 @@ def create_dataframe_gene_mask(df, gene_symbols):
     if not gene_symbols:
         return gene_filter, success, message
 
+    # delete all "None" values from the gene_symbols list
+    # These are genes that did not map in the orthology mapping
+    gene_symbols = [gene for gene in gene_symbols if gene]
+
     try:
         # Some genes may map to multiple Ensembl IDs, which can cause issues.  Create a 1-to-1 mapping by dropping dups
         uniq_df = df.drop_duplicates(subset=['gene_symbol'])
@@ -1107,7 +1111,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
 
         # Get list of duplicated genes for the dataset
         gene_counts_df = df['gene_symbol'].value_counts().to_frame()
-        dup_genes = gene_counts_df.index[gene_counts_df['gene_symbol'] > 1].tolist()
+        dup_genes = gene_counts_df.index[gene_counts_df["count"] > 1].tolist()
 
         # Note to user which genes were duplicated.
         dup_genes_intersection = intersection(dup_genes, normalized_genes_list)
@@ -1127,6 +1131,11 @@ def create_dataframe_gene_mask(df, gene_symbols):
     except PlotError as pe:
         raise PlotError(str(pe))
     except Exception as e:
+        # print stack trace
+        import sys
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+
         # Catch non-PlotError stuff
         raise PlotError("There was an issue searching genes in this dataset.")
 
