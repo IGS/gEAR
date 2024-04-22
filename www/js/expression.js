@@ -312,7 +312,7 @@ const parseGeneCartURLParams = () => {
     // handle manually-entered gene symbols
     const gene_symbols = getUrlParameter('gene_symbol');
     if (gene_symbols) {
-        document.getElementById('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
+        document.getElementById('genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
         selected_genes = new Set(gene_symbols.split(','));
         manually_entered_genes = selected_genes;
         urlParamsPassed = true;

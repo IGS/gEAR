@@ -5,7 +5,7 @@ let manually_entered_genes = [];
 document.addEventListener('DOMContentLoaded', () => {
 
     // handle when the dropdown-gene-list-search-input input box is changed
-    document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
+    document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
         let previously_manual_genes = manually_entered_genes;
 
