@@ -1086,10 +1086,6 @@ def create_dataframe_gene_mask(df, gene_symbols):
     if not gene_symbols:
         return gene_filter, success, message
 
-    # delete all "None" values from the gene_symbols list
-    # These are genes that did not map in the orthology mapping
-    gene_symbols = [gene for gene in gene_symbols if gene]
-
     try:
         # Some genes may map to multiple Ensembl IDs, which can cause issues.  Create a 1-to-1 mapping by dropping dups
         uniq_df = df.drop_duplicates(subset=['gene_symbol'])
