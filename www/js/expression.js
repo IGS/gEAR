@@ -378,6 +378,12 @@ const selectGeneResult = (gene_symbol) => {
 }
 
 const setupTileGrid = async (shareId, type="layout") => {
+
+    // Cannot proceed without a shareId
+    if (!shareId) {
+        return;
+    }
+
     const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
