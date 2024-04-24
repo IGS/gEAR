@@ -91,6 +91,7 @@ CREATE TABLE gene (
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 
+-- Changes here mean bin/export_gene_cart_sql.py need to be updated too
 CREATE TABLE gene_cart (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        user_id         INT NOT NULL,
@@ -108,6 +109,7 @@ CREATE TABLE gene_cart (
        FOREIGN KEY (organism_id) REFERENCES organism(id) ON DELETE CASCADE
 ) ENGINE=INNODB;
 
+-- Changes here mean bin/export_gene_cart_sql.py need to be updated too
 CREATE TABLE gene_cart_member (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        gene_cart_id    INT NOT NULL,
