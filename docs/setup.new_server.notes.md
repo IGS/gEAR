@@ -97,3 +97,7 @@ The idea here is that when commiting code, we can use Github Actions to pull the
 
 (to be continued in https://github.com/IGS/gEAR/issues/632)
 
+### Undocumented currently
+
+- Setting up mail server so forgot password works
+- What to do for helpdesk config?
