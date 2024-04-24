@@ -47,8 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // add the manually-entered genes
         // TODO: need to combine selected_genes here to accommodate the case where a gene cart
         //  chosen but the individual genes removed.
-        if (manually_entered_genes.length > 0) {
-            url.searchParams.append('gene_symbol', manually_entered_genes.join(','));
+        const manuallyEnteredGenes = Array.from(manually_entered_genes);
+        if (manuallyEnteredGenes.length > 0) {
+            url.searchParams.append('gene_symbol', manuallyEnteredGenes.join(','));
         }
 
         // are we doing exact matches?
@@ -63,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // add the gene lists
         //  TODO: This will only be for labeling purposes, since individual genes could have been
         //    deselected within
-        if (selected_carts.size > 0) {
-            const geneCartShareIds = Array.from(selected_carts);
+        if (selected_gene_lists.size > 0) {
+            const geneCartShareIds = Array.from(selected_gene_lists);
             url.searchParams.append('gene_lists', geneCartShareIds.join(','));
         }
 
