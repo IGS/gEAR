@@ -107,7 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             logErrorInConsole(error);
+            return;
         }
+
+        const url = buildStateURL();
+
+        // add to state history
+        history.pushState(null, '', url);
+
     });
 
     // handle when the organism-selector select box is changed
@@ -175,6 +182,51 @@ document.addEventListener('DOMContentLoaded', () => {
         selectGeneResult(gene_symbol);
     });
 });
+
+/**
+ * Builds the URL for a GET request based on the current state.
+ * @returns {string} The URL string.
+ */
+const buildStateURL = () => {
+
+    // Create a new URL object (with no search params)
+    const url = new URL('/expression.html', window.location.origin);
+
+    // add the manually-entered genes
+    // TODO: need to combine selected_genes here to accommodate the case where a gene cart
+    //  chosen but the individual genes removed.
+
+    const manuallyEnteredGenes = Array.from(manually_entered_genes);
+    if (manuallyEnteredGenes.length > 0) {
+        url.searchParams.append('gene_symbol', manuallyEnteredGenes.join(','));
+    }
+
+    // are we doing exact matches?
+    if (document.querySelector('#gene-search-exact-match').checked) {
+        url.searchParams.append('gene_symbol_exact_match', '1');
+    }
+
+    // get the value of the single-multi radio box
+    const singleMulti = document.querySelector('input[name="single-multi"]:checked').value;
+    url.searchParams.append('is_multigene', singleMulti === 'single' ? '0' : '1');
+
+    // add the gene lists
+    //  TODO: This will only be for labeling purposes, since individual genes could have been
+    //    deselected within
+    if (selected_gene_lists.size > 0) {
+        const geneCartShareIds = Array.from(selected_gene_lists);
+        url.searchParams.append('gene_lists', geneCartShareIds.join(','));
+    }
+
+    // add the dataset collections
+    if (datasetShareId) {
+        url.searchParams.append('share_id', datasetShareId);
+    } else if (selected_dc_share_id) {
+        url.searchParams.append('layout_id', selected_dc_share_id);
+    }
+
+    return url.toString();
+}
 
 /**
  * Fetches gene annotations.
@@ -284,7 +336,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if (selected_dc_share_id && selected_genes.size > 0) {
+        if ((datasetShareId || selected_dc_share_id) && selected_genes.size > 0) {
             document.querySelector('#submit-expression-search').click();
         }
     }

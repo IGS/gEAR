@@ -103,7 +103,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         } catch (error) {
             logErrorInConsole(error);
+            return;
         }
+
+        const url = buildStateUrl();
+        // add to state history
+        history.pushState(null, '', url);
+
     });
 
     // Change the svg scoring method when select element is changed
@@ -152,7 +158,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both patterns and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if (selected_dc_share_id && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
+        if ((datasetShareId || selected_dc_share_id) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
             document.querySelector('#submit-projection-search').click();
         }
     }
@@ -168,6 +174,40 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     });
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+}
+
+/**
+ * Builds the state URL with the selected parameters.
+ * @returns {string} The state URL.
+ */
+const buildStateUrl = () => {
+
+    // Create a new URL object (with no search params)
+    const url = new URL('/projection.html', window.location.origin);
+
+    // Add the projection algorithm to the URL
+    const algorithm = document.getElementById('algorithm').value;
+    url.searchParams.set('projection_algorithm', algorithm);
+
+    // Add the multipattern_plots value to the URL
+    const multipatternPlots = document.querySelector('#single-multi-multi').checked ? 1 : 0;
+    url.searchParams.set('multipattern_plots', multipatternPlots);
+
+    // Add the pattern source to the URL
+    url.searchParams.set('projection_source', selectedPattern.shareId);
+
+    // Add the dataset collection to the URL
+    if (datasetShareId) {
+        url.searchParams.append('share_id', datasetShareId);
+    } else if (selected_dc_share_id) {
+        url.searchParams.append('layout_id', selected_dc_share_id);
+    }
+
+    // Add the selected pattern weights to the URL
+    const weights = selectedPattern.selectedWeights.map((w) => w.label);
+    url.searchParams.set('projection_patterns', weights.join(','));
+
+    return url.toString();
 }
 
 /**
