@@ -1106,7 +1106,7 @@ def create_dataframe_gene_mask(df, gene_symbols):
         gene_filter = df.index.isin(genes_df.index)
 
         # Get list of duplicated genes for the dataset
-        gene_counts_df = df['gene_symbol'].value_counts().to_frame()
+        gene_counts_df = df['gene_symbol'].value_counts().to_frame("count") # adding name to count ensures compatibility between pandas v1.5 and v2.0+
         dup_genes = gene_counts_df.index[gene_counts_df["count"] > 1].tolist()
 
         # Note to user which genes were duplicated.
