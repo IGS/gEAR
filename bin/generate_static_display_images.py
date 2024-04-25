@@ -129,6 +129,15 @@ def main():
             gene = "single"
 
             if os.path.isfile(filename):
+                # Create symlink to filename for all the designated 'default' displays
+                if props["default"]:
+                    symlink_path = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.default.png".format(dataset_id, gene))
+                    # If running multiple times, we shouldn't need to recreate the symlink
+                    try:
+                        os.symlink(filename, symlink_path)
+                    except:
+                        print("Symlink for {} to default already exists. Skipping".format(filename))
+                continue
                 print("Overwriting file {}".format(filename))
 
             success = False

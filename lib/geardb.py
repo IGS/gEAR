@@ -1072,18 +1072,7 @@ class Layout:
         self.members = []
 
     def remove_member_by_dataset_id(self, dataset_id):
-        """
-        Rather than the layout_member.id, this is a utility function to delete
-        a member based on its dataset ID.  In the future it will be possible for a
-        profile to have two representations of the same dataset in the profile, and
-        this will have to go.  For now we do a check to protect for this just in case.
-        """
-        found_member_dataset_ids = list()
-        for lm in self.members:
-            if lm.dataset_id in found_member_dataset_ids:
-                raise Exception("ERROR: Found two datasets with same ID as part of the same layout.  Not safe to remove based on dataset_id alone.")
-            else:
-                found_member_dataset_ids.append(lm.dataset_id)
+        """Deletes the last member for a given dataset ID from the database."""
 
         conn = Connection()
         cursor = conn.get_cursor()
@@ -1092,11 +1081,11 @@ class Layout:
               DELETE FROM layout_members
               WHERE dataset_id = %s
                 AND layout_id = %s
+                ORDER by id DESC LIMIT 1
         """
         cursor.execute(qry, (dataset_id, self.id))
 
-        # make sure this member is removed from our internal list too
-        self.members = [i for i in self.members if i.dataset_id != dataset_id]
+        self.members = self.get_members()
 
         # TODO: test this later
 

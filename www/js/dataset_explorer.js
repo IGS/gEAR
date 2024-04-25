@@ -352,7 +352,6 @@ const addDatasetListEventListeners = () => {
                         throw new Error(data.error);
                     }
 
-                    await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
                     changeDatasetCollectionCallback();  // Updates the buttons and UI for the selected collection
                     createToast("Dataset added to collection", "is-success");
 
@@ -376,7 +375,6 @@ const addDatasetListEventListeners = () => {
                     throw new Error(data.error);
                 }
 
-                await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
                 changeDatasetCollectionCallback();  // Updates the buttons and UI for the selected collection
 
                 createToast("Dataset removed from collection", "is-success");
@@ -687,6 +685,9 @@ const buildFilterString = (groupName) => {
     return dbvals.join(",");
 }
 
+/**
+ * Clears the results views and hides pagination.
+ */
 const clearResultsViews = () => {
 
     // hide pagination (but keep results were they are)
@@ -704,11 +705,6 @@ const clearResultsViews = () => {
     for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
         elt.remove()
     }
-
-    const arrangementViewSingle = document.getElementById("dataset-arrangement-single");
-    const arrangementViewMulti = document.getElementById("dataset-arrangement-multi");
-    arrangementViewSingle.innerHTML = "";
-    arrangementViewMulti.innerHTML = "";
 
     // remove "no results" message if it exists
     if (document.getElementById("no-results-message")) {
@@ -739,12 +735,23 @@ const createActionTooltips = (referenceElement) => {
  * updates the UI based on the selected collection, and handles button actions.
  * @returns {Promise<void>} A promise that resolves when the function completes.
  */
-const changeDatasetCollectionCallback = async (datasetCollectionData) => {
+const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
     // Show action buttons
     document.getElementById("collection-actions-c").classList.remove("is-hidden");
 
+    // Reset the arrangement views
+    const arrangementViewSingle = document.getElementById("dataset-arrangement-single");
+    const arrangementViewMulti = document.getElementById("dataset-arrangement-multi");
+    arrangementViewSingle.innerHTML = "";
+    arrangementViewMulti.innerHTML = "";
+
     // The share_id should be updated in the component when a new dataset collection is selected
     const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
+
+    // If dataset collection data is not passed in, fetch it from the API
+    if (!datasetCollectionData) {
+        datasetCollectionData = await apiCallsMixin.fetchDatasetCollections();
+    }
 
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
     flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts]
@@ -773,8 +780,8 @@ const changeDatasetCollectionCallback = async (datasetCollectionData) => {
     const imageUrls = {"single":{}, "multi":{}};
     const titles = {};
     for (const dataset of datasetData.datasets) {
-        const previewImageUrl = flatDatasetCollectionData.preview_image_url || "/img/dataset_previews/missing.png";
-        const mgPreviewImageUrl = flatDatasetCollectionData.mg_preview_image_url || "/img/dataset_previews/missing.png";
+        const previewImageUrl = dataset.preview_image_url || "/img/dataset_previews/missing.png";
+        const mgPreviewImageUrl = dataset.mg_preview_image_url || "/img/dataset_previews/missing.png";
         imageUrls["single"][dataset.dataset_id] = previewImageUrl;
         imageUrls["multi"][dataset.dataset_id] = mgPreviewImageUrl;
         titles[dataset.dataset_id] = dataset.title;
@@ -1221,9 +1228,8 @@ const createNewCollectionPopover = () => {
                 const data = await apiCallsMixin.createDatasetCollection(newName);
 
                 if (data['layout_share_id']) {
-                    // ! At this point, the new collection has no layout_members so it will not be fetched if collections are fetched
-                    // So we need to update the collection label object manually.
-                    dataset_collection_label_index[data['layout_share_id']] = data['layout_label']
+                    // Re-fetch the dataset collections, which will update the UI via click events
+                    await fetchDatasetCollections()
 
                     createToast("Dataset collection created", "is-success");
 
@@ -1351,10 +1357,6 @@ const createRenameCollectionPopover = () => {
                     // Re-fetch the dataset collections, which will update the UI via click events
                     await fetchDatasetCollections()
 
-                    // In case the collection has no members, it will not be fetched if collections are fetched
-                    // So we need to update the collection label object manually.
-                    dataset_collection_label_index[data['layout_share_id']] = newName
-
                     createToast("Dataset collection renamed", "is-success");
 
                     selectDatasetCollection(data['layout_share_id']); // performs DatasetCollectionSelectorCallback when label is set
@@ -1465,7 +1467,6 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
             }
             submitSearch();
 
-            await fetchDatasetCollections();    // Update the dataset collections now that the dataset has been added
             changeDatasetCollectionCallback();  // Update the buttons and UI for the selected collection
 
         } catch (error) {
@@ -1953,8 +1954,6 @@ const showDatasetActionNote = (datasetId, shareUrl) => {
 
 const submitSearch = async (page=1) => {
 
-    clearResultsViews();
-
     const searchTerms = document.getElementById("search-terms").value;
 
     // If this is the first time searching with terms, set the sort by to relevance
@@ -1983,8 +1982,10 @@ const submitSearch = async (page=1) => {
 
     try {
         const data = await apiCallsMixin.fetchDatasets(searchCriteria)
-        processSearchResults(data);
+        // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
+        clearResultsViews();
 
+        processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {
         logErrorInConsole(error);

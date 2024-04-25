@@ -399,6 +399,32 @@ const buildFilterString = (groupName) => {
 }
 
 /**
+ * Clears the results views by hiding pagination, removing existing results, and removing the "no results" message if it exists.
+ */
+const clearResultsViews = () => {
+    // hide pagination (but keep results were they are)
+    for (const classElt of document.getElementsByClassName("pagination")) {
+        classElt.classList.add("is-invisible");
+    }
+
+    // Clear any existing results
+    const resultsListDiv = document.getElementById("results-list-div");
+    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
+        elt.remove()
+    }
+
+    const resultsTableBody = document.querySelector("#results-table tbody");
+    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
+        elt.remove()
+    }
+
+    // remove "no results" message if it exists
+    if (document.getElementById("no-results-message")) {
+        document.getElementById("no-results-message").remove();
+    }
+}
+
+/**
  * Creates a tooltip element and appends it to the body.
  * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
  * @returns {HTMLElement} The created tooltip element.
@@ -1189,27 +1215,6 @@ const showGcActionNote = (gcId, shareUrl) => {
  */
 const submitSearch = async (page) => {
 
-    // hide pagination (but keep results were they are)
-    for (const classElt of document.getElementsByClassName("pagination")) {
-        classElt.classList.add("is-invisible");
-    }
-
-    // Clear any existing results
-    const resultsListDiv = document.getElementById("results-list-div");
-    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
-        elt.remove()
-    }
-
-    const resultsTableBody = document.querySelector("#results-table tbody");
-    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
-        elt.remove()
-    }
-
-    // remove "no results" message if it exists
-    if (document.getElementById("no-results-message")) {
-        document.getElementById("no-results-message").remove();
-    }
-
     const searchTerms = document.getElementById("search-terms").value;
 
     // If this is the first time searching with terms, set the sort by to relevance
@@ -1233,8 +1238,11 @@ const submitSearch = async (page) => {
 
     try {
         const data = await apiCallsMixin.fetchGeneLists(searchCriteria)
-        processSearchResults(data);
 
+        // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
+        clearResultsViews();
+
+        processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {
         logErrorInConsole(error);
