@@ -354,6 +354,7 @@ INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
 INSERT INTO layout VALUES (10000, 0, NULL, "Brain development (default)", 0);
 INSERT INTO layout VALUES (10001, 0, NULL, "Huntingtons disease (default)", 0);
 
+/* Soom to delete */
 CREATE TABLE layout_members (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        layout_id                INT NOT NULL,
@@ -375,6 +376,25 @@ CREATE TABLE layout_members (
           ON DELETE CASCADE,
        FOREIGN KEY (dataset_id)
           REFERENCES dataset(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+/* Soon to change to layout_members */
+CREATE TABLE layout_members_new (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       layout_id                INT NOT NULL,
+       display_id               INT NOT NULL,
+       grid_position            INT NOT NULL,
+       start_col                INT NOT NULL DEFAULT 1,
+       grid_width               INT NOT NULL DEFAULT 4,
+       start_row                INT NOT NULL DEFAULT 1,
+       grid_height              INT NOT NULL DEFAULT 1, -- height is number of rows spanned, which is not based on a grid
+       math_preference          VARCHAR(50), -- options: 'raw', 'log2', 'log10'
+       FOREIGN KEY (layout_id)
+          REFERENCES layout(id)
+          ON DELETE CASCADE,
+       FOREIGN KEY (display_id)
+          REFERENCES dataset_display(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 
