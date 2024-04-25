@@ -277,7 +277,9 @@ const parsepatternCartURLParams = () => {
     const pattern = getUrlParameter('projection_source')
     if (pattern) {
         urlParamsPassed = true;
-        selectPatternList(pattern); // declared in pattern-collection-selector.js
+        const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
+        selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
+        updatePatternListSelectorLabel()
     }
 
     // handle manually-entered pattern symbols
@@ -285,7 +287,7 @@ const parsepatternCartURLParams = () => {
     if (pattern && urlWeights) {
         // Cannot have weights without a source pattern
         const labels = urlWeights.split(',');
-        selectPatternWeights(labels);
+        selectedPattern.selectedWeights = labels.map((label) => ({label, top_up: null, top_down: null}));
     }
 }
 
