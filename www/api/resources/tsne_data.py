@@ -113,8 +113,8 @@ def create_projection_pca_colorscale():
     """Create a diverging colorscale but with black in the middle range."""
 
     # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
-    nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
-    colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
+    nodes = [0.0, 0.2, 0.5, 0.6, 0.75, 1.0]
+    colors = [ "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
     return mcolors.LinearSegmentedColormap.from_list("projection_pca", list(zip(nodes, colors)))
 
 def create_two_way_sorting(adata, gene_symbol):
@@ -437,13 +437,11 @@ class TSNEData(Resource):
         # In projections, PCA is more meaningful with two-way sorting
         if projection_id:
             try:
-                algo = get_projection_algorithm(dataset_id, projection_id)
-                if algo == "pca":
-                    selected = create_two_way_sorting(selected, selected_gene)
-                    plot_sort_order = False
-                    # Since this is a diverging scale we want the center to be the median
-                    plot_vcenter = np.median(selected[:, selected_gene].X.squeeze())
-                    expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
+                selected = create_two_way_sorting(selected, selected_gene)
+                plot_sort_order = False
+                # Since this is a diverging scale we want the center to be the median
+                plot_vcenter = np.median(selected[:, selected_gene].X.squeeze())
+                expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
             except Exception as e:
                 print(str(e), file=sys.stderr)
 
