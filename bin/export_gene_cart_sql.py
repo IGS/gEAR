@@ -60,6 +60,12 @@ def main():
         for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added) in cart_cursor:
             if args.user_id:
                 user_id = args.user_id
+
+            if is_domain == 'None' or is_domain is None:
+                is_domain = 'NULL'
+
+            if is_public == 'None' or is_public is None:
+                is_public = 'NULL'
             
             print("INSERT INTO gene_cart (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, is_domain, date_added) ")
             print("VALUES ({0}, {1}, {2}, '{3}', '{4}', '{5}', '{6}', {7}, {8}, '{9}');".format(
