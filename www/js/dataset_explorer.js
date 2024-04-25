@@ -794,10 +794,9 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
 
     // Update action buttons for the dataset collection or datasets
     updateDatasetCollectionButtons(collection);
-    updateDatasetListButtons(collection);
+    updateDatasetAddRemoveToCollectionButtons(collection);
 
     const isDomain = Boolean(collection.is_domain);
-    const isCurrent = Boolean(collection.is_current);
 
     // If selected dataset collection is a "domain" collection, hide the "arrangement" view button.
     // if arrangement view is active (class "gear-bg-secondary") switch to table view
@@ -991,7 +990,7 @@ const createDeleteDatasetConfirmationPopover = () => {
                         createToast("Dataset deleted", "is-success");
 
                         // This can affect page counts, so we need to re-run the search
-                        submitSearch();
+                        await submitSearch();
 
                     } else {
                         throw new Error(data['error']);
@@ -1465,7 +1464,7 @@ const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
                 const error = data['error'] || "Failed to add dataset to collection";
                 throw new Error(error);
             }
-            submitSearch();
+            await submitSearch();
 
             changeDatasetCollectionCallback();  // Update the buttons and UI for the selected collection
 
@@ -1880,8 +1879,8 @@ const setupPagination = (pagination) => {
 
             // Add previous button
             if (pagination.current_page > 1) {
-                paginationList.appendChild(createPaginationButton(null, 'left', () => {
-                    submitSearch(pagination.current_page - 1);
+                paginationList.appendChild(createPaginationButton(null, 'left', async () => {
+                    await submitSearch(pagination.current_page - 1);
                 }));
             }
 
@@ -1890,8 +1889,8 @@ const setupPagination = (pagination) => {
             const endPage = Math.min(pagination.total_pages, pagination.current_page + 1);
 
             if (startPage > 1) {
-                paginationList.appendChild(createPaginationButton(1, null, () => {
-                    submitSearch(1);
+                paginationList.appendChild(createPaginationButton(1, null, async () => {
+                    await submitSearch(1);
                 }));
             }
 
@@ -1900,8 +1899,8 @@ const setupPagination = (pagination) => {
             }
 
             for (let i = startPage; i <= endPage; i++) {
-                const li = paginationList.appendChild(createPaginationButton(i, null, () => {
-                    submitSearch(i);
+                const li = paginationList.appendChild(createPaginationButton(i, null, async () => {
+                    await submitSearch(i);
                 }));
                 if (i == pagination.current_page) {
                     li.firstChild.classList.add("is-current");
@@ -1914,15 +1913,15 @@ const setupPagination = (pagination) => {
             }
 
             if (endPage < pagination.total_pages) {
-                paginationList.appendChild(createPaginationButton(pagination.total_pages, null, () => {
-                    submitSearch(pagination.total_pages);
+                paginationList.appendChild(createPaginationButton(pagination.total_pages, null, async () => {
+                    await submitSearch(pagination.total_pages);
                 }));
             }
 
             // Add next button
             if (pagination.current_page < pagination.total_pages) {
-                paginationList.appendChild(createPaginationButton(null, 'right', () => {
-                    submitSearch(pagination.current_page + 1);
+                paginationList.appendChild(createPaginationButton(null, 'right', async () => {
+                    await submitSearch(pagination.current_page + 1);
                 }));
             }
         }
@@ -2033,11 +2032,9 @@ const updateDatasetCollectionButtons = (collection=null) => {
 }
 
 /**
- * Updates the visibility and properties of various dataset buttons based on the user's ownership status and if the dataset is a domain one.
- * @function
- * @returns {void}
+ * Updates the dataset list buttons based on the dataset properties.
  */
-const updateDatasetListButtons = (collection=null) => {
+const updateDatasetListButtons = () => {
 
     const datasetListElements = document.getElementsByClassName("js-dataset-list-element");
     for (const classElt of datasetListElements) {
@@ -2083,12 +2080,19 @@ const updateDatasetListButtons = (collection=null) => {
                 }
             };
         }
-
-
-
     }
+}
 
-    // Separate loop so the deleteButton continue does not affect the rest of the buttons
+
+/**
+ * Updates the "Add to Collection" and "Remove from Collection" buttons for each dataset element in the dataset list.
+ * If a collection is provided, the buttons will be enabled or disabled based on the dataset's membership in the collection.
+ * If the collection is a domain or no collection is provided, the buttons will be hidden and disabled.
+ *
+ * @param {Object} collection - The collection object. If null, the buttons will be hidden and disabled for all datasets.
+ */
+const updateDatasetAddRemoveToCollectionButtons = (collection=null) => {
+    const datasetListElements = document.getElementsByClassName("js-dataset-list-element");
     for (const classElt of datasetListElements) {
         const datasetId = classElt.dataset.datasetId;
 
@@ -2097,6 +2101,8 @@ const updateDatasetListButtons = (collection=null) => {
 
         // is-hidden removed from previous loop
 
+        addToCollectionButton.parentElement.classList.remove("is-hidden")
+        removeFromCollectionButton.parentElement.classList.remove("is-hidden")
         addToCollectionButton.disabled = false;
         removeFromCollectionButton.disabled = false;
 
@@ -2157,11 +2163,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
 
-    submitSearch();
+    await submitSearch();
+
+    // Set state of initial dataset buttons based on the initial dataset collection.
+    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    updateDatasetAddRemoveToCollectionButtons(collection);
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
-        elt.addEventListener("click", (e) => {
+        elt.addEventListener("click", async (e) => {
             if (e.currentTarget.classList.contains("js-all-selector")) {
                 // if the one clicked is the all_selector then highlight it and unclick the rest
                 for (const elt of e.currentTarget.parentElement.children) {
@@ -2194,20 +2204,20 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 e.currentTarget.classList.add("js-selected");
             }
 
-            submitSearch();
+            await submitSearch();
         });
     }
 
 };
 
-document.getElementById("search-clear").addEventListener("click", () => {
+document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";
-    submitSearch();
+    await submitSearch();
 });
 
 // Search for datasets using the supplied search terms
 const searchTermsElt = document.getElementById("search-terms");
-searchTermsElt.addEventListener("keyup", (event) => {
+searchTermsElt.addEventListener("keyup", async (event) => {
     const searchTerms = searchTermsElt.value;
     const searchClearElt = document.getElementById("search-clear");
     searchClearElt.classList.add("is-hidden");
@@ -2215,13 +2225,13 @@ searchTermsElt.addEventListener("keyup", (event) => {
         searchClearElt.classList.remove("is-hidden");
     }
     if (event.key === "Enter") {
-        submitSearch();
+        await submitSearch();
     }
 });
 
 // Changing sort by criteria should update the search results
-document.getElementById("sort-by").addEventListener("change", () => {
-    submitSearch();
+document.getElementById("sort-by").addEventListener("change", async () => {
+    await submitSearch();
 });
 
 document.getElementById("btn-table-view").addEventListener("click", () => {
