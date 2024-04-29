@@ -85,7 +85,7 @@ for lm in layout_members:
 
     # insert the new layout member record as separate single- and multi-gene display records
     new_layout_member_qry = """
-        INSERT INTO layout_members_new (layout_id, display_id, grid_position, start_col, grid_width, start_row, grid_height, math_preference)
+        INSERT INTO layout_displays (layout_id, display_id, grid_position, start_col, grid_width, start_row, grid_height, math_preference)
         VALUES (%s, %s, %s, %s, %s, %s, %s, 'raw')
     """
     if single_fetch:

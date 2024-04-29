@@ -380,7 +380,7 @@ CREATE TABLE layout_members (
 ) ENGINE=INNODB;
 
 /* Soon to change to layout_members */
-CREATE TABLE layout_members_new (
+CREATE TABLE layout_displays (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        layout_id                INT NOT NULL,
        display_id               INT NOT NULL,
