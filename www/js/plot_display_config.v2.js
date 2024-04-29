@@ -50,6 +50,7 @@ const availablePalettes = [
             { value: "prgn", text: "Purple-Green" },
             { value: "rdbu", text: "Red-Blue" },
             { value: "rdylbu", text: "Red-Yellow-Blue" },
+            { value: "multicolor_diverging", text: "Blue-Black-Red" },
         ],
     },
     {
@@ -79,7 +80,8 @@ const plotly2MatplotlibNames = {
     "piyg": "PiYG",
     "prgn": "PRGn",
     "rdbu": "RdBu",
-    "rdylbu": "RdYlBu"
+    "rdylbu": "RdYlBu",
+    "multicolor_diverging": "multicolor_diverging"
 }
 
 // invert the plotly2MatplotlibNames object

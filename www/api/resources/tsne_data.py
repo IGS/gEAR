@@ -143,21 +143,6 @@ def get_colorblind_scale(n_colors):
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
 
-def get_projection_algorithm(dataset_id, projection_id):
-    dataset_projection_json_file = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id, "projections.json")
-    # Projection already exists, so we can just return info we want to return in a message
-    import json
-    with open(dataset_projection_json_file) as projection_fh:
-        projections_dict = json.load(projection_fh)
-    for genecart_id, configs in projections_dict.items():
-        for config in configs:
-            if config["uuid"] == projection_id:
-                # Handle legacy algorithm
-                if "is_pca" in config:
-                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
-                return config["algorithm"]
-    raise Exception("Could not find projection ID entry within projection CSV file.")
-
 def is_categorical(series):
     """Return True if Dataframe series is categorical."""
     return series.dtype.name == 'category'
