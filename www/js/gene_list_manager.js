@@ -544,7 +544,7 @@ const createDeleteConfirmationPopover = () => {
                         createToast("Gene list deleted", "is-success");
 
                         // This can affect page counts, so we need to re-run the search
-                        submitSearch();
+                        await submitSearch();
 
                     } else {
                         throw new Error(data['error']);
@@ -709,16 +709,15 @@ const geneListFailure = (gc, message) => {
     createToast("Failed to save gene list");
 }
 
-const geneListSaved = (gc) => {
+const geneListSaved = async (gc) => {
     document.getElementById("create-new-gene-list").click(); // resets form also
     createToast("Gene list saved", "is-success");
-    submitSearch();
+    await submitSearch();
 }
 
 /**
- * Loads the list of organisms from the server and populates the organism choices and new cart organism ID select elements.
- * @function
- * @returns {void}
+ * Loads the organism list from the server and populates the organism choices and new list organism select elements.
+ * @returns {Promise<void>} A promise that resolves when the organism list is loaded and elements are populated.
  */
 const loadOrganismList = async () => {
     try {
@@ -1135,8 +1134,8 @@ const setupPagination = (pagination) => {
 
             // Add previous button
             if (pagination.current_page > 1) {
-                paginationList.appendChild(createPaginationButton(null, 'left', () => {
-                    submitSearch(pagination.current_page - 1);
+                paginationList.appendChild(createPaginationButton(null, 'left', async () => {
+                    await submitSearch(pagination.current_page - 1);
                 }));
             }
 
@@ -1145,8 +1144,8 @@ const setupPagination = (pagination) => {
             const endPage = Math.min(pagination.total_pages, pagination.current_page + 1);
 
             if (startPage > 1) {
-                paginationList.appendChild(createPaginationButton(1, null, () => {
-                    submitSearch(1);
+                paginationList.appendChild(createPaginationButton(1, null, async () => {
+                    await submitSearch(1);
                 }));
             }
 
@@ -1155,8 +1154,8 @@ const setupPagination = (pagination) => {
             }
 
             for (let i = startPage; i <= endPage; i++) {
-                const li = paginationList.appendChild(createPaginationButton(i, null, () => {
-                    submitSearch(i);
+                const li = paginationList.appendChild(createPaginationButton(i, null, async () => {
+                    await submitSearch(i);
                 }));
                 if (i == pagination.current_page) {
                     li.firstChild.classList.add("is-current");
@@ -1169,15 +1168,15 @@ const setupPagination = (pagination) => {
             }
 
             if (endPage < pagination.total_pages) {
-                paginationList.appendChild(createPaginationButton(pagination.total_pages, null, () => {
-                    submitSearch(pagination.total_pages);
+                paginationList.appendChild(createPaginationButton(pagination.total_pages, null, async () => {
+                    await submitSearch(pagination.total_pages);
                 }));
             }
 
             // Add next button
             if (pagination.current_page < pagination.total_pages) {
-                paginationList.appendChild(createPaginationButton(null, 'right', () => {
-                    submitSearch(pagination.current_page + 1);
+                paginationList.appendChild(createPaginationButton(null, 'right', async () => {
+                    await submitSearch(pagination.current_page + 1);
                 }));
             }
         }
@@ -1209,9 +1208,10 @@ const showGcActionNote = (gcId, shareUrl) => {
 }
 
 /**
- * Submits a search for gene lists based on the user's search terms and filter options.
- * @function
- * @returns {void}
+ * Submits a search request with the specified search terms and filters.
+ *
+ * @param {number} page - The page number of the search results.
+ * @returns {Promise<void>} - A promise that resolves when the search results are processed.
  */
 const submitSearch = async (page) => {
 
@@ -1322,12 +1322,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     await loadOrganismList();
-
-    submitSearch();
+    await submitSearch();
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
-        elt.addEventListener("click", (e) => {
+        elt.addEventListener("click", async (e) => {
             if (e.currentTarget.classList.contains("js-all-selector")) {
                 // if the one clicked is the all_selector then highlight it and unclick the rest
                 for (const elt of e.currentTarget.parentElement.children) {
@@ -1360,7 +1359,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 e.currentTarget.classList.add("js-selected");
             }
 
-            submitSearch();
+            await submitSearch();
         });
     }
 
@@ -1386,14 +1385,14 @@ document.getElementById("new-list-label").addEventListener("blur", (e) => {
     e.target.parentElement.appendChild(newHelperElt);
 });
 
-document.getElementById("search-clear").addEventListener("click", () => {
+document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";
-    submitSearch();
+    await submitSearch();
 });
 
 // Search for gene lists using the supplied search terms
 const searchTermsElt = document.getElementById("search-terms");
-searchTermsElt.addEventListener("keyup", (event) => {
+searchTermsElt.addEventListener("keyup", async (event) => {
     const searchTerms = searchTermsElt.value;
     const searchClearElt = document.getElementById("search-clear");
     searchClearElt.classList.add("is-hidden");
@@ -1401,13 +1400,13 @@ searchTermsElt.addEventListener("keyup", (event) => {
         searchClearElt.classList.remove("is-hidden");
     }
     if (event.key === "Enter") {
-        submitSearch();
+        await submitSearch();
     }
 });
 
 // Changing sort by criteria should update the search results
-document.getElementById("sort-by").addEventListener("change", () => {
-    submitSearch();
+document.getElementById("sort-by").addEventListener("change", async () => {
+    await submitSearch();
 });
 
 const btnCreateCartToggle = document.getElementById("create-new-gene-list");

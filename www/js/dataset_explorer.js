@@ -1951,6 +1951,12 @@ const showDatasetActionNote = (datasetId, shareUrl) => {
     }, 5000);
 }
 
+/**
+ * Submits a search request with the specified search terms and pagination options.
+ *
+ * @param {number} [page=1] - The page number to retrieve.
+ * @returns {Promise<void>} - A promise that resolves when the search request is completed.
+ */
 const submitSearch = async (page=1) => {
 
     const searchTerms = document.getElementById("search-terms").value;
