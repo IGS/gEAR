@@ -109,13 +109,16 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.filename = projection_adata_path
     return projection_adata
 
-def create_projection_pca_colorscale():
+def create_projection_colorscale():
     """Create a diverging colorscale but with black in the middle range."""
 
     # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
-    nodes = [0.0, 0.2, 0.5, 0.6, 0.75, 1.0]
-    colors = [ "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
-    return mcolors.LinearSegmentedColormap.from_list("projection_pca", list(zip(nodes, colors)))
+    nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
+    colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
+    #create a colormap with the name "multicolor_diverging"
+    register_colormap("multicolor_diverging", mcolors.LinearSegmentedColormap.from_list("multicolor_diverging", list(zip(nodes, colors))))
+    #create a colormap with the name "multicolor_diverging_r"
+    register_colormap("multicolor_diverging_r", mcolors.LinearSegmentedColormap.from_list("multicolor_diverging_r", list(zip(nodes, colors[::-1]))))
 
 def create_two_way_sorting(adata, gene_symbol):
     """
@@ -139,21 +142,6 @@ def get_colorblind_scale(n_colors):
     colors = cividis.colors
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
-
-def get_projection_algorithm(dataset_id, projection_id):
-    dataset_projection_json_file = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id, "projections.json")
-    # Projection already exists, so we can just return info we want to return in a message
-    import json
-    with open(dataset_projection_json_file) as projection_fh:
-        projections_dict = json.load(projection_fh)
-    for genecart_id, configs in projections_dict.items():
-        for config in configs:
-            if config["uuid"] == projection_id:
-                # Handle legacy algorithm
-                if "is_pca" in config:
-                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
-                return config["algorithm"]
-    raise Exception("Could not find projection ID entry within projection CSV file.")
 
 def is_categorical(series):
     """Return True if Dataframe series is categorical."""
@@ -432,18 +420,10 @@ class TSNEData(Resource):
         if expression_palette.startswith("bluered"):
             create_bluered_colorscale()
 
-        expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else expression_palette)
+        if expression_palette.startswith("multicolor_diverging"):
+            create_projection_colorscale()
 
-        # In projections, PCA is more meaningful with two-way sorting
-        if projection_id:
-            try:
-                selected = create_two_way_sorting(selected, selected_gene)
-                plot_sort_order = False
-                # Since this is a diverging scale we want the center to be the median
-                plot_vcenter = np.median(selected[:, selected_gene].X.squeeze())
-                expression_color = "cividis_r" if colorblind_mode else create_projection_pca_colorscale()
-            except Exception as e:
-                print(str(e), file=sys.stderr)
+        expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else expression_palette)
 
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.

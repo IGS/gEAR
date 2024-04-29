@@ -1263,7 +1263,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
-        createToast("Not logged in so saving gene carts is disabled.");
+        createToast("Not logged in so saving gene carts is disabled.", "is-warning");
         document.getElementById("gene-list-btn").disabled = true;
     }
 

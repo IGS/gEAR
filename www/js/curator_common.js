@@ -1605,7 +1605,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     const sessionId = CURRENT_USER.session_id;
     if (! sessionId ) {
-        createToast("Not logged in so saving displays is disabled.");
+        createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;
     }
 
