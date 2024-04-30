@@ -1,6 +1,6 @@
 'use strict';
 
-let url_params_passed = false;
+let urlParamsPassed = false;
 let currently_selected_gene_symbol = null;
 let currently_selected_org_id = "";
 //let selected_dc_share_id = null;
@@ -10,6 +10,9 @@ let annotation_data = null;
 let manually_entered_genes = new Set();
 let tilegrid = null;
 let svg_scoring_method = 'gene';
+
+let datasetShareId = null;
+let layoutShareId = null;
 
 /*
 TODOs:
@@ -24,19 +27,9 @@ TODOs:
 */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Set the page header title
-    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
-
-    // Set current sidebar menu item to active
-	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-		elt.classList.remove("is-active");
-	}
-
-	document.querySelector("a[tool='search_expression'").classList.add("is-active");
-
 
     // handle when the dropdown-gene-list-search-input input box is changed
-    document.querySelector('#genes-manually-entered').addEventListener('change', (event) => {
+    document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
         const new_manually_entered_genes = search_term_string.length > 0 ? new Set(search_term_string.split(/[ ,]+/)) : new Set();
 
@@ -55,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
         manually_entered_genes = new_manually_entered_genes;
     });
 
-    document.querySelector('#functional-annotation-toggle').addEventListener('click', (event) => {
-        const annotation_panel = document.querySelector('#extended-annotation-panel');
+    document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
+        const annotation_panel = document.getElementById('#extended-annotation-panel');
         const toggle_icon = document.querySelector('#functional-annotation-toggle i');
 
         if (annotation_panel.classList.contains('is-hidden')) {
@@ -72,16 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // add event listener for when the submit-expression-search button is clicked
-    document.querySelector('#submit-expression-search').addEventListener('click', async (event) => {
+    document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
         const status = validateExpressionSearchForm();
 
         if (! status) {
-            console.log("Aborting search");
+            console.info("Aborting search");
             return;
         }
 
         // update multigene/single gene
-        is_multigene = document.querySelector('#single-multi-multi').checked;
+        is_multigene = document.getElementById('single-multi-multi').checked;
 
         // if multigene, clear the selected gene symbol and hide the gene-result-list container
         document.getElementById("gene-result-list-c").classList.remove('is-hidden');
@@ -96,9 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("scoring-method-div").classList.add('is-hidden');
         }
 
-
         try {
-            const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGrid(selected_dc_share_id)]);
+
+            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(selected_dc_share_id);
+
+            const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGridFn]);
             tilegrid = tilegridRes.value;
 
             // auto-select the first gene in the list
@@ -112,7 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             logErrorInConsole(error);
+            return;
         }
+
+        const url = buildStateURL();
+
+        // add to state history
+        history.pushState(null, '', url);
+
     });
 
     // handle when the organism-selector select box is changed
@@ -182,6 +184,51 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Builds the URL for a GET request based on the current state.
+ * @returns {string} The URL string.
+ */
+const buildStateURL = () => {
+
+    // Create a new URL object (with no search params)
+    const url = new URL('/expression.html', window.location.origin);
+
+    // add the manually-entered genes
+    // TODO: need to combine selected_genes here to accommodate the case where a gene cart
+    //  chosen but the individual genes removed.
+
+    const manuallyEnteredGenes = Array.from(manually_entered_genes);
+    if (manuallyEnteredGenes.length > 0) {
+        url.searchParams.append('gene_symbol', manuallyEnteredGenes.join(','));
+    }
+
+    // are we doing exact matches?
+    if (document.querySelector('#gene-search-exact-match').checked) {
+        url.searchParams.append('gene_symbol_exact_match', '1');
+    }
+
+    // get the value of the single-multi radio box
+    const singleMulti = document.querySelector('input[name="single-multi"]:checked').value;
+    url.searchParams.append('is_multigene', singleMulti === 'single' ? '0' : '1');
+
+    // add the gene lists
+    //  TODO: This will only be for labeling purposes, since individual genes could have been
+    //    deselected within
+    if (selected_gene_lists.size > 0) {
+        const geneCartShareIds = Array.from(selected_gene_lists);
+        url.searchParams.append('gene_lists', geneCartShareIds.join(','));
+    }
+
+    // add the dataset collections
+    if (datasetShareId) {
+        url.searchParams.append('share_id', datasetShareId);
+    } else if (selected_dc_share_id) {
+        url.searchParams.append('layout_id', selected_dc_share_id);
+    }
+
+    return url.toString();
+}
+
+/**
  * Fetches gene annotations.
  * @param {Function} callback - The callback function to be executed after fetching gene annotations.
  * @returns {Promise<void>} - A promise that resolves when the gene annotations are fetched.
@@ -194,8 +241,6 @@ const fetchGeneAnnotations = async (callback) => {
             selected_dc_share_id,
             is_multigene
         );
-
-        // console.log(annotation_data);
 
         const gene_result_count_elt = document.getElementById("gene-result-count");
         gene_result_count_elt.innerHTML = Object.keys(annotation_data).length;
@@ -250,6 +295,19 @@ const fetchOrganisms = async (callback) => {
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
+    // Set the page header title
+    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
+
+    // Set current sidebar menu item to active
+	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
+		elt.classList.remove("is-active");
+	}
+
+	document.querySelector("a[tool='search_expression'").classList.add("is-active");
+
+    datasetShareId = getUrlParameter('share_id');
+    layoutShareId = getUrlParameter('layout_id');
+
     // Wait until all pending API calls have completed before checking if we need to search
     try {
         // SAdkins note - Promise.all fails fast,
@@ -263,13 +321,38 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         logErrorInConsole(error);
     }
 
+    // Trigger the default dataset collection to be selected in the
+    if (datasetShareId) {
+        selectDatasetCollection(null);  // Clear the label
+        urlParamsPassed = true;
+    } else if (layoutShareId) {
+        selected_dc_share_id = layoutShareId;
+        selectDatasetCollection(layoutShareId);
+        urlParamsPassed = true;
+    } else if (!layoutShareId && CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    }
+
     // Now, if URL params were passed and we have both genes and a dataset collection,
     //  run the search
-    if (url_params_passed) {
-        if (selected_dc_share_id && selected_genes.size > 0) {
+    if (urlParamsPassed) {
+        if ((datasetShareId || selected_dc_share_id) && selected_genes.size > 0) {
             document.querySelector('#submit-expression-search').click();
         }
     }
+
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                // If the user selects a collection, clear the datasetShareId as scope has changed
+                datasetShareId = null;
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+
 }
 
 const hideOrganismSelectorToolip = () => {
@@ -281,19 +364,25 @@ const parseGeneCartURLParams = () => {
     // handle manually-entered gene symbols
     const gene_symbols = getUrlParameter('gene_symbol');
     if (gene_symbols) {
-        document.querySelector('#genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
+        document.getElementById('genes-manually-entered').value = gene_symbols.replaceAll(',', ' ');
         selected_genes = new Set(gene_symbols.split(','));
         manually_entered_genes = selected_genes;
-        url_params_passed = true;
+        urlParamsPassed = true;
     }
 
     // handle passed gene lists
-    // TODO: - Handle legacy "gene_cart_share_id" parameter
     let gene_lists = [];
+
+    // This is a legacy option
+    if (getUrlParameter('gene_cart_share_id')) {
+        gene_lists.push(getUrlParameter('gene_cart_share_id'));
+        urlParamsPassed = true;
+    }
+
     if (getUrlParameter('gene_lists')) {
         gene_lists = getUrlParameter('gene_lists').split(',');
         selectGeneLists(gene_lists); // declared in gene-collection-selector.js
-        url_params_passed = true;
+        urlParamsPassed = true;
     }
 
     // are we doing exact matches?
@@ -312,14 +401,14 @@ const parseGeneCartURLParams = () => {
 
 const parseDatasetCollectionURLParams = () => {
     // handle passed dataset collection
-    const layout_share_id = getUrlParameter('layout_id');
+    const layoutShareId = getUrlParameter('layout_id');
 
-    if (!layout_share_id) {
+    if (!layoutShareId) {
         return;
     }
 
-    selected_dc_share_id = layout_share_id;
-    selected_dc_label = dataset_collection_label_index[layout_share_id];
+    selected_dc_share_id = layoutShareId;
+    selected_dc_label = dataset_collection_label_index[layoutShareId];
     document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
 }
 
@@ -340,8 +429,14 @@ const selectGeneResult = (gene_symbol) => {
     }
 }
 
-const setupTileGrid = async (layout_share_id) => {
-    const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
+const setupTileGrid = async (shareId, type="layout") => {
+
+    // Cannot proceed without a shareId
+    if (!shareId) {
+        return;
+    }
+
+    const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
@@ -452,7 +547,18 @@ const updateAnnotationDisplay = () => {
     }
 }
 
+/**
+ * Validates the expression search form.
+ *
+ * @returns {boolean} Returns true if the form is valid, false otherwise.
+ */
 const validateExpressionSearchForm = () => {
+
+    // User passed in a single dataset share ID.
+    if (datasetShareId) {
+        return true;
+    }
+
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the selected_genes array
     if (selected_genes.size + manually_entered_genes.size === 0) {

@@ -6,6 +6,8 @@ let tilegrid = null;
 let svgScoringMethod = 'gene';
 let projectionOpts = {patternSource: null, algorithm: null, gctype: null};
 let weightedGeneData = null;
+let datasetShareId = null;
+let layoutShareId = null;
 
 // imported from pattern-collection-selector.js
 // selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
@@ -62,13 +64,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	document.querySelector("a[tool='projection'").classList.add("is-active");
 
+    datasetShareId = getUrlParameter('share_id');
+    layoutShareId = getUrlParameter('layout_id');
 
     // add event listener for when the submit-projection-search button is clicked
     document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
+
         const status = validateProjectionSearchForm();
 
         if (! status) {
-            console.log("Aborting search");
+            console.info("Aborting search");
             return;
         }
 
@@ -86,7 +91,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
 
         try {
-            tilegrid = await setupTileGrid(selected_dc_share_id);
+            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(selected_dc_share_id);
+            tilegrid =  await setupTileGridFn;
 
             // auto-select the first pattern in the list
             const first_pattern = document.querySelector('.pattern-result-list-item');
@@ -97,7 +103,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         } catch (error) {
             logErrorInConsole(error);
+            return;
         }
+
+        const url = buildStateUrl();
+        // add to state history
+        history.pushState(null, '', url);
+
     });
 
     // Change the svg scoring method when select element is changed
@@ -131,13 +143,71 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         logErrorInConsole(error);
     }
 
+    // Trigger the default dataset collection to be selected in the
+    if (datasetShareId) {
+        selectDatasetCollection(null);  // Clear the label
+        urlParamsPassed = true;
+    } else if (layoutShareId) {
+        selected_dc_share_id = layoutShareId;
+        selectDatasetCollection(layoutShareId);
+        urlParamsPassed = true;
+    } else if (!layoutShareId && CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    }
+
     // Now, if URL params were passed and we have both patterns and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
-        if (selected_dc_share_id && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
+        if ((datasetShareId || selected_dc_share_id) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
             document.querySelector('#submit-projection-search').click();
         }
     }
+
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                // If the user selects a collection, clear the datasetShareId as scope has changed
+                datasetShareId = null;
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+}
+
+/**
+ * Builds the state URL with the selected parameters.
+ * @returns {string} The state URL.
+ */
+const buildStateUrl = () => {
+
+    // Create a new URL object (with no search params)
+    const url = new URL('/projection.html', window.location.origin);
+
+    // Add the projection algorithm to the URL
+    const algorithm = document.getElementById('algorithm').value;
+    url.searchParams.set('projection_algorithm', algorithm);
+
+    // Add the multipattern_plots value to the URL
+    const multipatternPlots = document.querySelector('#single-multi-multi').checked ? 1 : 0;
+    url.searchParams.set('multipattern_plots', multipatternPlots);
+
+    // Add the pattern source to the URL
+    url.searchParams.set('projection_source', selectedPattern.shareId);
+
+    // Add the dataset collection to the URL
+    if (datasetShareId) {
+        url.searchParams.append('share_id', datasetShareId);
+    } else if (selected_dc_share_id) {
+        url.searchParams.append('layout_id', selected_dc_share_id);
+    }
+
+    // Add the selected pattern weights to the URL
+    const weights = selectedPattern.selectedWeights.map((w) => w.label);
+    url.searchParams.set('projection_patterns', weights.join(','));
+
+    return url.toString();
 }
 
 /**
@@ -207,7 +277,9 @@ const parsepatternCartURLParams = () => {
     const pattern = getUrlParameter('projection_source')
     if (pattern) {
         urlParamsPassed = true;
-        selectPatternList(pattern); // declared in pattern-collection-selector.js
+        const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
+        selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
+        updatePatternListSelectorLabel()
     }
 
     // handle manually-entered pattern symbols
@@ -215,7 +287,7 @@ const parsepatternCartURLParams = () => {
     if (pattern && urlWeights) {
         // Cannot have weights without a source pattern
         const labels = urlWeights.split(',');
-        selectPatternWeights(labels);
+        selectedPattern.selectedWeights = labels.map((label) => ({label, top_up: null, top_down: null}));
     }
 }
 
@@ -293,11 +365,17 @@ const selectPatternWeightResult = async (label) => {
 /**
  * Sets up the tile grid for projection.
  *
- * @param {string} layout_share_id - The share ID of the layout.
+ * @param {string} shareId - The share ID of the layout.
  * @returns {Promise<TileGrid>} - A promise that resolves to the initialized TileGrid object.
  */
-const setupTileGrid = async (layout_share_id) => {
-    const tilegrid = new TileGrid(layout_share_id, "#result-panel-grid");
+const setupTileGrid = async (shareId, type="layout") => {
+
+    // Cannot proceed without a shareId
+    if (!shareId) {
+        return;
+    }
+
+    const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
@@ -340,6 +418,12 @@ const setupTileGrid = async (layout_share_id) => {
  * @returns {boolean} Returns true if the form is valid, otherwise false.
  */
 const validateProjectionSearchForm = () => {
+
+    // User passed in a single dataset share ID.
+    if (datasetShareId) {
+        return true;
+    }
+
     // User must have either selected a pattern list or entered patterns manually. Either of these
     // will populate the selected_patterns array
     document.querySelector('#dropdown-pattern-lists button').classList.remove('is-danger');

@@ -6,7 +6,7 @@ let gene_cart_label_index = {};
 // Build this where key is share_id and values are arrays of gene symbols
 let gene_cart_genes = {};
 
-let selected_carts = new Set();
+let selected_gene_lists = new Set();
 let selected_genes = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
         // and finally the related gene lists and genes
-        selected_carts.clear();
+        selected_gene_lists.clear();
         selected_genes.clear();
     });
 
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.querySelector('.ul-li').dataset.shareId = cart.share_id;
                     row.querySelector('.ul-li').dataset.genes = gene_cart_genes[cart.share_id].join(',');
 
-                    if (selected_carts.has(cart.share_id)) {
+                    if (selected_gene_lists.has(cart.share_id)) {
                         row.querySelector('i.toggler').classList.remove('mdi-plus');
                         row.querySelector('i.toggler').classList.add('mdi-check');
                         row.querySelector('.ul-li').classList.add('is-selected');
@@ -200,10 +200,10 @@ const setActiveGeneCart = (cart_row, mode) => {
 
     // if adding or removing, update the inventory
     if (mode === 'add') {
-        selected_carts.add(cart_row.dataset.shareId);
+        selected_gene_lists.add(cart_row.dataset.shareId);
         selected_genes = new Set([...selected_genes, ...genes]);
     } else if (mode === 'remove') {
-        selected_carts.delete(cart_row.dataset.shareId);
+        selected_gene_lists.delete(cart_row.dataset.shareId);
 
         for (const gene of genes) {
             selected_genes.delete(gene);
@@ -284,7 +284,7 @@ const setActiveGeneCartCategory = (category) => {
         row.querySelector('.ul-li').dataset.genes = gene_cart_genes[entry.share_id].join(',');
 
 
-        if (selected_carts.has(entry.share_id)) {
+        if (selected_gene_lists.has(entry.share_id)) {
             row.querySelector('i.toggler').classList.remove('mdi-plus');
             row.querySelector('i.toggler').classList.add('mdi-check');
             row.querySelector('.ul-li').classList.add('is-selected');
@@ -302,7 +302,7 @@ const selectGeneLists = (share_ids) => {
     // reads the gene list share_ids passed and handles any UI and data updates to make
     //   them preselected
     for (const share_id of share_ids) {
-        selected_carts.add(share_id);
+        selected_gene_lists.add(share_id);
         selected_genes = new Set([...selected_genes, ...gene_cart_genes[share_id]]);
     }
 
@@ -310,23 +310,23 @@ const selectGeneLists = (share_ids) => {
 }
 
 const updateGeneListSelectionPanel = () => {
-    let selection_box = document.querySelector('#gene-select-dropdown-dynamic-selections');
+    const selection_box = document.querySelector('#gene-select-dropdown-dynamic-selections');
 
     // first empty it out, then populate it
     selection_box.innerHTML = '';
 
-    for (const cart_share_id of selected_carts) {
+    for (const cart_share_id of selected_gene_lists) {
         selection_box.innerHTML += `<span class="tag is-info is-light is-small m-1">${gene_cart_label_index[cart_share_id]}</span>`;
     }
 }
 
 const updateGeneListSelectorLabel = () => {
-    // Updates the gene list select drop down label based on the current state of the selected_carts array
-    const selected_cart_count = selected_carts.size;
+    // Updates the gene list select drop down label based on the current state of the selected_gene_lists array
+    const selected_cart_count = selected_gene_lists.size;
 
     if (selected_cart_count === 1) {
         // It's the only one
-        const only_cart_id = Array.from(selected_carts)[0];
+        const only_cart_id = Array.from(selected_gene_lists)[0];
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = gene_cart_label_index[only_cart_id];
     } else if (selected_cart_count > 1) {
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = `${selected_cart_count} gene lists selected`;

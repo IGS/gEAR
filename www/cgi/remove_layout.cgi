@@ -32,10 +32,10 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    layout_id = int(form.getvalue('layout_id'))
+    layout_share_id = form.getvalue('layout_share_id')
 
     user = geardb.get_user_from_session_id(session_id)
-    layout = geardb.Layout(id=layout_id)
+    layout = geardb.get_layout_by_share_id(layout_share_id)
 
     # Does user own the dataset ...
     owns_layout = check_layout_ownership(cursor, user.id, layout.id)

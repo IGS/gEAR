@@ -128,8 +128,12 @@ const fetchDatasetCollections = async (callback) => {
             }
         }
 
+        if (dataset_collection_data.selected) {
+            selectDatasetCollection(dataset_collection_data.selected);
+        }
+
         if (callback) {
-            callback();
+            callback(dataset_collection_data);
         }
 
     } catch (error) {
@@ -140,11 +144,10 @@ const fetchDatasetCollections = async (callback) => {
 const selectDatasetCollection = (share_id) => {
     // reads the DC share_id passed and handles any UI and data updates to make
     //   it preselected
-    selected_dc_label = "Choose a Dataset Collection"
-    if (share_id) {
-        selected_dc_share_id = share_id;
-        selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
-    }
+
+    const defaultLabel = "Choose a Dataset Collection";
+    selected_dc_share_id = share_id || null;
+    selected_dc_label = dataset_collection_label_index[selected_dc_share_id] || defaultLabel;
 
     updateDatasetCollectionSelectorLabel();
 }

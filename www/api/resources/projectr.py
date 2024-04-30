@@ -476,7 +476,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             }
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
-    projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
+    projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
 
     print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)

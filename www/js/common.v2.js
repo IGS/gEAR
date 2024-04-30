@@ -264,7 +264,7 @@ const checkForLogin = async () => {
 
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
-                //CURRENT_USER.setDefaultProfile();
+                CURRENT_USER.setDefaultProfile();
                 document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
 
@@ -644,7 +644,7 @@ const apiCallsMixin = {
     sessionId: null,
     colorblindMode: null,
 
-    // TODO: change all server side scripts with "layout id" to "layout share id"
+    // TODO: change all server side scripts with "layout id" to "layout share id" or "collection share id"
     // TODO: change all "gene cart" function names to "gene list"
 
 
@@ -720,11 +720,11 @@ const apiCallsMixin = {
     /**
      * Deletes a dataset collection with the specified layout ID.
      *
-     * @param {string} layoutId - The ID of the layout to be deleted.
+     * @param {string} layoutShareId - The share ID of the dataset collection.
      * @returns {Promise<any>} - A promise that resolves with the response data from the server.
      */
-    async deleteDatasetCollection(layoutId) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId};
+    async deleteDatasetCollection(layoutShareId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
         const {data} = await axios.post("cgi/remove_layout.cgi", convertToFormData(payload));
         return data;
     },
@@ -1205,17 +1205,16 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/save_default_display.cgi", convertToFormData(payload));
         return data;
     },
+
     /**
      * Saves the dataset collection arrangement.
      *
-     * @param {string} layoutId - The ID of the layout.
-     * @param {Array} layoutArrangement - The layout arrangement to be saved.
-     * @returns {Promise} - A promise that resolves with the saved data.
+     * @param {string} layoutShareId - The layout share ID.
+     * @param {Object} layoutArrangement - The layout arrangement object.
+     * @returns {Promise<any>} - A promise that resolves with the response data.
      */
-    async saveDatasetCollectionArrangement(layoutId, layoutArrangement) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId, layout_arrangement: JSON.stringify(layoutArrangement)};
-
-        // TODO: This requires changing the server-side code to now work with the updated layout attributes
+    async saveDatasetCollectionArrangement(layoutShareId, layoutArrangement) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, layout_arrangement: JSON.stringify(layoutArrangement)};
         const {data} = await axios.post("/cgi/save_layout_arrangement.cgi", convertToFormData(payload));
         return data;
     },
@@ -1247,11 +1246,11 @@ const apiCallsMixin = {
     /**
      * Sets the user's primary dataset collection.
      *
-     * @param {number} layoutId - The ID of the layout to set as the primary layout.
+     * @param {string} layoutShareId - The share ID of the layout.
      * @returns {Promise<any>} - A promise that resolves with the response data from the server.
      */
-    async setUserPrimaryDatasetCollection(layoutId) {
-        const payload = {session_id: this.sessionId, layout_id: layoutId};
+    async setUserPrimaryDatasetCollection(layoutShareId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
         const {data} = await axios.post("/cgi/set_primary_layout.cgi", convertToFormData(payload));
         return data;
     }

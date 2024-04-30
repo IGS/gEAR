@@ -16,6 +16,32 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+def check_dataset_ownership(current_user_id, dataset_id):
+    cnx = geardb.Connection()
+    cursor = cnx.get_cursor()
+
+    qry = """
+       SELECT d.id, d.owner_id
+       FROM dataset d
+       WHERE d.id = %s
+    """
+    cursor.execute(qry, (dataset_id,))
+
+    # default: Assume user does not own dataset
+    user_owns_dataset = False
+
+    for row in cursor:
+
+        # Change access if user owns the dataset
+        if row[1] == current_user_id:
+            user_owns_dataset = True
+
+        # Return a statement that the user does not own the dataset (have permission)
+        else:
+            user_owns_dataset = False
+
+    return user_owns_dataset
+
 def main():
     print('Content-Type: application/json\n\n')
 
@@ -41,8 +67,10 @@ def main():
     else:
         # If make_public is true, set the dataset to public
         if make_public:
-            dataset = geardb.get_dataset_by_id(dataset_id)
-            dataset.save_change(attribute='is_public', value=1)
+            owns_dataset = check_dataset_ownership(user.id, dataset_id)
+            if owns_dataset:
+                dataset = geardb.get_dataset_by_id(dataset_id)
+                dataset.save_change(attribute='is_public', value=1)
 
         # Determine if we are in "legacy" mode where every member start_col is 1
         legacy = False

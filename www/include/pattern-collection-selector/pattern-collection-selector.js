@@ -7,6 +7,7 @@
 // - weights - The individual patterns
 
 let patternsCartData = null;
+let flatPatternsCartData = null;
 let selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []}; // This is used by the script that includes this file
 
 // Add event listener to dropdown trigger
@@ -246,6 +247,8 @@ const createPatternListItem = (item, cart) => {
 const fetchPatternsData = async (callback) => {
     try {
         patternsCartData = await apiCallsMixin.fetchGeneCarts();
+
+        flatPatternsCartData = [...patternsCartData.domain_carts, ...patternsCartData.group_carts, ...patternsCartData.public_carts, ...patternsCartData.user_carts, ...patternsCartData.shared_carts, ...patternsCartData.recent_carts]
         document.getElementById('dropdown-pattern-lists').classList.remove('is-loading');
         document.getElementById('dropdown-pattern-lists').classList.remove('is-disabled');
 

@@ -1072,18 +1072,7 @@ class Layout:
         self.members = []
 
     def remove_member_by_dataset_id(self, dataset_id):
-        """
-        Rather than the layout_member.id, this is a utility function to delete
-        a member based on its dataset ID.  In the future it will be possible for a
-        profile to have two representations of the same dataset in the profile, and
-        this will have to go.  For now we do a check to protect for this just in case.
-        """
-        found_member_dataset_ids = list()
-        for lm in self.members:
-            if lm.dataset_id in found_member_dataset_ids:
-                raise Exception("ERROR: Found two datasets with same ID as part of the same layout.  Not safe to remove based on dataset_id alone.")
-            else:
-                found_member_dataset_ids.append(lm.dataset_id)
+        """Deletes the last member for a given dataset ID from the database."""
 
         conn = Connection()
         cursor = conn.get_cursor()
@@ -1092,11 +1081,11 @@ class Layout:
               DELETE FROM layout_members
               WHERE dataset_id = %s
                 AND layout_id = %s
+                ORDER by id DESC LIMIT 1
         """
         cursor.execute(qry, (dataset_id, self.id))
 
-        # make sure this member is removed from our internal list too
-        self.members = [i for i in self.members if i.dataset_id != dataset_id]
+        self.members = self.get_members()
 
         # TODO: test this later
 
@@ -1276,12 +1265,10 @@ class LayoutCollection:
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.share_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
@@ -1311,9 +1298,8 @@ class LayoutCollection:
                 folder_parent_id=row[8],
                 folder_label=row[9]
             )
-            layout.dataset_count = row[10]
-
             layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1336,12 +1322,10 @@ class LayoutCollection:
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.user_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
@@ -1372,9 +1356,8 @@ class LayoutCollection:
                 folder_label=row[9]
             )
 
-            layout.dataset_count = row[10]
-
             layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1407,12 +1390,10 @@ class LayoutCollection:
                      JOIN layout_group_membership lgm ON lgm.group_id=g.id
                      JOIN layout l ON lgm.layout_id=l.id
                      JOIN layout_members lm ON lm.layout_id=l.id
-                     JOIN dataset d ON lm.dataset_id=d.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE u.id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
               GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
@@ -1444,9 +1425,8 @@ class LayoutCollection:
             )
 
             layout.folder_root_id=folder_id
-            layout.dataset_count = row[10]
-
             layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1466,12 +1446,10 @@ class LayoutCollection:
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.is_domain = 1
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
@@ -1502,8 +1480,8 @@ class LayoutCollection:
                 folder_label=row[9]
             )
 
-            layout.dataset_count = row[10]
             layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
             self.layouts.append(layout)
 
         cursor.close()
@@ -1522,12 +1500,10 @@ class LayoutCollection:
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
                      LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.is_public = 1
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
@@ -1558,8 +1534,8 @@ class LayoutCollection:
                 folder_label=row[9]
             )
 
-            layout.dataset_count = row[10]
             layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -2168,7 +2144,7 @@ class DatasetCollection:
         qry = """
               SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
-                     load_status, has_h5ad, is_downloadable
+                     load_status, has_h5ad
                 FROM dataset d
                WHERE d.is_public = 1
                  AND d.marked_for_removal = 0

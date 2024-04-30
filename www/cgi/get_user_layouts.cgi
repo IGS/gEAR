@@ -85,8 +85,6 @@ def main():
                'folders': [],
                'selected': None }
 
-    # ! Worth noting that currently only layouts with 1+ layout members are returned due to the query for datasets
-
     # Everyone can see public ones
     result['public_layouts'] = geardb.LayoutCollection().get_public()
 
@@ -110,19 +108,19 @@ def main():
                 folder_ids_found.add(l.folder_id)
 
             if l.share_id == layout_share_id:
-                result['selected'] = l.id
+                result['selected'] = l.share_id
                 break
 
     if not result['selected']:
         for l in result['user_layouts']:
             if l.is_current:
-                result['selected'] = l.id
+                result['selected'] = l.share_id
                 break
 
     if not result['selected']:
         for l in result['domain_layouts']:
             if l.is_current:
-                result['selected'] = l.id
+                result['selected'] = l.share_id
                 break
 
     result['folders'] = geardb.FolderCollection()
