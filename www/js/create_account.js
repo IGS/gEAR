@@ -1,22 +1,24 @@
+'use strict';
+
 let verification_uuid = null;
 
 window.onload=function() {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Create an account';
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', async function(e) {
 
         if (e.target.id === 'btn-account-creation-submit') {
             e.preventDefault();
 
             // Validate form's completion. Exit if it contains errors and alert user
-            if (validate_account_creation_form() == false){
+            if (validateAccountCreationForm() == false){
                 return false;
             }
 
             // generate a UUID for the user
             verification_uuid = uuid();
-            const email_sent = sendVerificationEmail(verification_uuid);
+            const email_sent = await sendVerificationEmail(verification_uuid);
 
             if (email_sent == false) {
                 // TODO: Handle UI display here.
@@ -33,7 +35,7 @@ window.onload=function() {
         } else if (e.target.id === 'btn-email-verification-submit') {
             e.preventDefault();
 
-            const account_created = createAccount(verification_uuid);
+            const account_created = await createAccount(verification_uuid);
             console.log("Account created: " + account_created);
 
             if (account_created == false) {
@@ -106,13 +108,9 @@ async function createAccount(verification_uuid) {
         'email_updates': email_updates,
     }));
 
-    console.log("Account creation status: " + data['success']);
+    console.log(`Account creation status: ${data['success']}`);
 
-    if (Boolean(data['success'])) {
-        return true;
-    } else {
-        return false;
-    }
+    return Boolean(data["success"]);
 }
 
 async function sendVerificationEmail(verification_uuid) {
@@ -122,11 +120,7 @@ async function sendVerificationEmail(verification_uuid) {
         'verification_code_long': verification_uuid,
     }));
 
-    if (data['success'] == 1) {
-        return true;
-    } else {
-        return false;
-    }
+    return Boolean(data["success"]);
 }
 
 /**
@@ -298,7 +292,7 @@ function validatePasswordToggleRequirement(requirement, state) {
     }
 }
 
-function validate_account_creation_form() {
+function validateAccountCreationForm() {
     if (validateFirstLast() == false) {
         return false;
     }
