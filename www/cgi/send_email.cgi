@@ -38,7 +38,6 @@ def main():
     form = cgi.FieldStorage()
     email = form.getvalue('email')
     scope = form.getvalue('scope')
-    verification_code_initial = form.getvalue('verification_code_initial')
 
     print("Got e-mail: {0}".format(email))
     print("Got scope: {0}".format(scope))
@@ -87,8 +86,8 @@ def main():
             result['error'] = "We could not find that email. Please check what you entered and try again."
 
     elif scope == 'user_verification':
-        verification_code_initial = form.getvalue('verification_code_initial')
-        verification_code = verification_code_initial
+        verification_code_long = form.getvalue('verification_code_long')
+        verification_code = geardb.get_verification_code_short_form(verification_code_long)
 
         msg['Subject'] = 'Your {} account verification code'.format(domain_short_label)
 

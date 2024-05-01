@@ -1,3 +1,5 @@
+let verification_uuid = null;
+
 window.onload=function() {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Create an account';
@@ -6,48 +8,38 @@ window.onload=function() {
 
         if (e.target.id === 'btn-account-creation-submit') {
             e.preventDefault();
-            var formData = new FormData(document.getElementById('account_creation'));
 
             // Validate form's completion. Exit if it contains errors and alert user
-            if (validate_account_creation_form(formData) == false){
+            if (validate_account_creation_form() == false){
                 return false;
             }
 
-            console.log("Would have submitted the account creation form");
+            // generate a UUID for the user
+            verification_uuid = uuid();
+            const email_sent = sendVerificationEmail(verification_uuid);
+
+            console.log("Email sent: " + email_sent);
+
+            if (email_sent == 1) {
+                alert("There was an error sending the verification email. Please try again later.");
+                return false;
+            }
+
+            // hide the account info and show the verification info
+            document.getElementById('account-info-c').classList.add('is-hidden');
+            document.getElementById('email-verification-c').classList.remove('is-hidden');
+            
+            console.log("Would have submitted the account creation form with UUID: " + verification_uuid);
             return false;
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', './cgi/create_account.cgi', true);
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    var data = JSON.parse(xhr.responseText);
-                    // -1 means the account email existed already
-                    if (data['session_id'] == -1) {
-                        document.getElementById('email_already_exists').style.display = 'block';
-                    } else {
-                        CURRENT_USER.email = document.getElementById('inputEmail').value;
-                        CURRENT_USER.session_id = data['session_id'];
-                        document.querySelector('span.user_logged_in').textContent = CURRENT_USER.user_name;
+        } else if (e.target.id === 'btn-email-verification-submit') {
+            e.preventDefault();
 
-                        document.getElementById('login_controls').style.display = 'none';
-                        document.getElementById('loggedin_controls').style.display = 'block';
+            
 
-                        // https://github.com/js-cookie/js-cookie
-                        Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
-
-                        // now redirect to the home page
-                        window.location.href = './index.html';
-                    }
-                } else {
-                    document.querySelector('.alert-container').innerHTML = '<div class="alert alert-danger alert-dismissible" role="alert">' +
-                                                                           '<button type="button" class="close close-alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-                                                                           '<p class="alert-message"><strong>Oops! </strong>Something went wrong.</p>' +
-                                                                           '<p>Please e-mail jorvis@gmail.com for help creating your account.</p></div>';
-                    document.querySelector('.alert-container').style.display = 'block';
-                }
-            };
-            xhr.send(formData);
+            return false;
         }
+            
     });
 
     document.getElementById('first-last').addEventListener('blur', function() {
@@ -71,6 +63,24 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Nothing to do here at the moment
 }
 
+async function sendVerificationEmail(verification_uuid) {
+    const {data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
+        'email': document.getElementById('email').value,
+        'scope': 'user_verification',
+        'verification_code_long': verification_uuid,
+    }));
+
+    console.log("success is: " + data['success']);
+
+    if (data['success'] == 1) {
+        console.log("Email sent successfully.");
+        return true;
+    } else {
+        console.log("Error sending email.");
+        return false;
+    }
+}
+
 async function validateEmail() {
     const email = document.getElementById('email').value;
     const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
@@ -86,7 +96,7 @@ async function validateEmail() {
         document.getElementById('email-alert-icon').classList.add('is-hidden');
     }
 
-    // TODO: Also check if this e-mail is already registered
+    // Also check if this e-mail is already registered
     const {data} = await axios.post('./cgi/check_existing_email.cgi', convertToFormData({
         'email': email,
     }));
@@ -122,7 +132,6 @@ function validatePassword(mode) {
     This always checks password complexity requirements, but if mode is 
     'submit' it will also check if the two passwords match.
     */
-
 
     const password1 = document.getElementById('password1').value;
     const password2 = document.getElementById('password2').value;
@@ -236,7 +245,7 @@ function validatePasswordToggleRequirement(requirement, state) {
     }
 }
 
-function validate_account_creation_form(formData) {
+function validate_account_creation_form() {
     if (validateFirstLast() == false) {
         return false;
     }

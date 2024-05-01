@@ -36,6 +36,8 @@ def main():
     colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
     get_updates = form.getvalue('getUpdates')
     remember_me = form.getvalue('rememberMe')
+    verification_code_long = form.getvalue('verification_code_long')
+    verification_code = geardb.get_verification_code_short_form(verification_code_long)
     result = {'session_id': 0, 'long_session': 0}
 
     if get_updates == 'yes':
