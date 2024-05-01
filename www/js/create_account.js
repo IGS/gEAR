@@ -56,8 +56,8 @@ window.onload=function() {
         validateFirstLast();
     });
 
-    document.getElementById('email').addEventListener('blur', function() {
-        validateEmail();
+    document.getElementById('email').addEventListener('blur', async function() {
+        await validateEmail();
     });
 
     document.getElementById('password1').addEventListener('keyup', function() {
@@ -292,16 +292,18 @@ function validatePasswordToggleRequirement(requirement, state) {
     }
 }
 
-function validateAccountCreationForm() {
-    if (validateFirstLast() == false) {
+async function validateAccountCreationForm() {
+    // function returns bool
+    if (validateFirstLast()) {
         return false;
     }
 
-    if (validateEmail() == false) {
+    // function returns bool
+    if (await validateEmail()) {
         return false;
     }
-
-    if (validatePassword('submit') == false) {
+    
+    if (validatePassword('submit')) {
         return false;
     }
 
