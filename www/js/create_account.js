@@ -18,9 +18,8 @@ window.onload=function() {
             verification_uuid = uuid();
             const email_sent = sendVerificationEmail(verification_uuid);
 
-            console.log("Email sent: " + email_sent);
-
-            if (email_sent == 1) {
+            if (email_sent == false) {
+                // TODO: Handle UI display here.
                 alert("There was an error sending the verification email. Please try again later.");
                 return false;
             }
@@ -29,13 +28,22 @@ window.onload=function() {
             document.getElementById('account-info-c').classList.add('is-hidden');
             document.getElementById('email-verification-c').classList.remove('is-hidden');
             
-            console.log("Would have submitted the account creation form with UUID: " + verification_uuid);
             return false;
 
         } else if (e.target.id === 'btn-email-verification-submit') {
             e.preventDefault();
 
-            
+            const account_created = createAccount(verification_uuid);
+            console.log("Account created: " + account_created);
+
+            if (account_created == false) {
+                // TODO: Handle UI display here.
+                alert("There was an error creating your account. Please try again later.");
+                return false;
+            } else {
+                // TODO: Handle UI display here.
+                //alert("Account created!");
+            }
 
             return false;
         }
@@ -63,6 +71,50 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Nothing to do here at the moment
 }
 
+/**
+ * Creates a user account with the provided verification UUID.
+ *
+ * @param {string} verification_uuid - The verification UUID for the account.
+ * @returns {Promise<boolean>} - A promise that resolves to `true` if the account creation is successful, otherwise `false`.
+ */
+async function createAccount(verification_uuid) {
+    /*
+    colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
+    remember_me = form.getvalue('rememberMe')
+    */
+
+    // get the value of the colorblind mode checkbox, if it's checked
+    let colorblind_mode = 0;
+    if (document.getElementById('colorblind_mode').checked) {
+        colorblind_mode = 'yes';
+    }
+
+    // get the value of the email_updates checkbox, if it's checked
+    let email_updates = 0;
+    if (document.getElementById('email_updates').checked) {
+        email_updates = 'yes';
+    }
+
+    const {data} = await axios.post('./cgi/create_account.cgi', convertToFormData({
+        'first-last': document.getElementById('first-last').value,
+        'institution': document.getElementById('institution').value,
+        'email': document.getElementById('email').value,
+        'password': document.getElementById('password1').value,
+        'verification_code_long': verification_uuid,
+        'verification_code_short': document.getElementById('verification-code').value,
+        'colorblind_mode': colorblind_mode,
+        'email_updates': email_updates,
+    }));
+
+    console.log("Account creation status: " + data['success']);
+
+    if (Boolean(data['success'])) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 async function sendVerificationEmail(verification_uuid) {
     const {data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
         'email': document.getElementById('email').value,
@@ -70,17 +122,18 @@ async function sendVerificationEmail(verification_uuid) {
         'verification_code_long': verification_uuid,
     }));
 
-    console.log("success is: " + data['success']);
-
     if (data['success'] == 1) {
-        console.log("Email sent successfully.");
         return true;
     } else {
-        console.log("Error sending email.");
         return false;
     }
 }
 
+/**
+ * Validates the email address entered by the user.
+ * 
+ * @returns {boolean} Returns true if the email is valid and not already registered, false otherwise.
+ */
 async function validateEmail() {
     const email = document.getElementById('email').value;
     const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;

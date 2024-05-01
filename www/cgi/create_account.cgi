@@ -7,6 +7,7 @@ ReCAPTCHA to be added yet.
 
 The returned session ID has some informational content:
 
+0  : Something in the process failed (see 'error' field)
 -1 : User already exists
 ?  : Any other (uuid4) value is the session ID
 
@@ -34,11 +35,16 @@ def main():
     user_email = form.getvalue('email')
     user_pass = form.getvalue('password1')
     colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
-    get_updates = form.getvalue('getUpdates')
-    remember_me = form.getvalue('rememberMe')
+    get_updates = form.getvalue('email_updates')
+    remember_me = 'yes'  # Leaving here in case we want to add it back to the form
     verification_code_long = form.getvalue('verification_code_long')
-    verification_code = geardb.get_verification_code_short_form(verification_code_long)
-    result = {'session_id': 0, 'long_session': 0}
+    verification_code_short = form.getvalue('verification_code_short')
+    result = {'success': 0, 'session_id': 0, 'long_session': 0, 'error': ""}
+
+    if geardb.get_verification_code_short_form(verification_code_long) != verification_code_short:
+        result['error'] = "Verification code mismatch. Please refresh and try again."
+        print(json.dumps(result))
+        return
 
     if get_updates == 'yes':
         get_updates = 1
@@ -61,16 +67,25 @@ def main():
     """
 
     if user_already_exists(user_email, cursor) == True:
+       result['error'] = "User already exists"
        result['session_id'] = -1
     else:
-        encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
-        help_id = str(uuid.uuid4())
-        cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, colorblind_mode, get_updates, help_id))
-        user_id = cursor.lastrowid
-        session_id = str(uuid.uuid4())
-        result['session_id'] = session_id
-        cursor.execute(add_session_sql, (user_id, session_id))
+        print("DEBUG: adding user to database", file=sys.stderr)
+        try:
+            encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
+            help_id = str(uuid.uuid4())
+            cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, colorblind_mode, get_updates, help_id))
+            user_id = cursor.lastrowid
+            session_id = str(uuid.uuid4())
+            result['session_id'] = session_id
+            cursor.execute(add_session_sql, (user_id, session_id))
+        except Exception as e:
+            result['error'] = "There was an error adding the user to the database."
+            print(json.dumps(result))
+            return
 
+    # All good if we got this far
+    result['success'] = 1
     print(json.dumps(result))
 
     cnx.commit()
