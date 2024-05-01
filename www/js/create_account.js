@@ -294,16 +294,16 @@ function validatePasswordToggleRequirement(requirement, state) {
 
 async function validateAccountCreationForm() {
     // function returns bool
-    if (validateFirstLast()) {
+    if (!validateFirstLast()) {
         return false;
     }
 
     // function returns bool
-    if (await validateEmail()) {
+    if (!(await validateEmail())) {
         return false;
     }
     
-    if (validatePassword('submit')) {
+    if (!validatePassword('submit')) {
         return false;
     }
 
