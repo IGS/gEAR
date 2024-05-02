@@ -39,29 +39,43 @@ def main():
 
     if owns_layout == True and layout_share_id != 0:
 
-        curr_grid_position = 1
-
         layout_arrangement = json.loads(layout_arrangement_json)
 
-
+        # Clear the current layout displays for this layout
+        qry = """ DELETE FROM layout_displays
+                    WHERE layout_id = %s
+                """
+        cursor.execute(qry, (layout_id,))
 
         # Loop through all the layout members and update their grid positions
-        for dataset_id, vals in layout_arrangement["single"].items():
-            mgvals = layout_arrangement["multi"][dataset_id]
-            vals["grid_position"] = curr_grid_position
-            mgvals["grid_position"] = curr_grid_position
+        curr_grid_position = 1
+        for display_id, layout_display in layout_arrangement["single"].items():
 
-            qry = """ UPDATE layout_members
-                        SET grid_position = %s, mg_grid_position = %s, grid_width = %s, mg_grid_width = %s,
-                        grid_height = %s, mg_grid_height = %s,
-                        start_col = %s, mg_start_col = %s,
-                        start_row = %s, mg_start_row = %s
-                        WHERE layout_id = %s
-                            AND dataset_id = %s
+            qry = """ INSERT INTO layout_displays
+                        (layout_id, display_id, grid_position, grid_width, grid_height, start_col, start_row)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
-            cursor.execute(qry, (vals["grid_position"], mgvals["grid_position"], vals["grid_width"], mgvals["grid_width"],
-                                vals["grid_height"], mgvals["grid_height"], vals["start_col"], mgvals["start_col"],
-                                vals["start_row"], mgvals["start_row"], layout_id, dataset_id))
+
+            cursor.execute(qry, (layout_id, display_id, curr_grid_position,
+                                layout_display["grid_width"], layout_display["grid_height"],
+                                layout_display["start_col"], layout_display["start_row"])
+            )
+
+            curr_grid_position += 1
+
+        # Do this for multi gene displays
+        curr_grid_position = 1
+        for display_id, layout_display in layout_arrangement["multi"].items():
+
+            qry = """ INSERT INTO layout_displays
+                        (layout_id, display_id, grid_position, grid_width, grid_height, start_col, start_row)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """
+
+            cursor.execute(qry, (layout_id, display_id, curr_grid_position,
+                                layout_display["grid_width"], layout_display["grid_height"],
+                                layout_display["start_col"], layout_display["start_row"])
+            )
 
             curr_grid_position += 1
 
@@ -88,8 +102,6 @@ def check_layout_ownership(cursor, current_user_id, layout_id):
     user_owns_layout = False
 
     for row in cursor:
-        print(row, file=sys.stderr)
-        print("User ID: " + str(current_user_id), file=sys.stderr)
         if row[1] == current_user_id:
             user_owns_layout = True
 

@@ -362,10 +362,12 @@ const selectPatternWeightResult = async (label) => {
     }
 }
 
+
 /**
- * Sets up the tile grid for projection.
+ * Sets up the tile grid for a given shareId and type.
  *
- * @param {string} shareId - The share ID of the layout.
+ * @param {string} shareId - The shareId to set up the tile grid for.
+ * @param {string} [type="layout"] - The type of the tile grid. Defaults to "layout".
  * @returns {Promise<TileGrid>} - A promise that resolves to the initialized TileGrid object.
  */
 const setupTileGrid = async (shareId, type="layout") => {
@@ -377,6 +379,7 @@ const setupTileGrid = async (shareId, type="layout") => {
 
     const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
+        tilegrid.datasets = await tilegrid.getDatasets();
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
@@ -394,8 +397,6 @@ const setupTileGrid = async (shareId, type="layout") => {
         for (const tile of tilegrid.tiles) {
             tile.enableProjectR();
         }
-
-        await tilegrid.addDefaultDisplays();
 
         // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_pattern
         // We do not render for single-gene searches because the first pattern result is "clicked" and the tilegrid is rendered in the event listener.

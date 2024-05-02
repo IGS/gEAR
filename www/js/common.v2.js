@@ -642,16 +642,16 @@ const apiCallsMixin = {
 
 
     /**
-     * Adds a dataset to a collection.
+     * Adds a display to the collection.
      *
-     * @param {string} layoutShareId - The share ID of the dataset collection.
-     * @param {string} datasetId - The ID of the dataset.
-     * @param {boolean} [makeDatasetPublic=false] - Indicates whether the dataset should be made public.
+     * @param {string} layoutShareId - The layout share ID.
+     * @param {string} displayId - The display ID.
+     * @param {boolean} [makeDatasetPublic=false] - Whether to make the dataset public. Default is false.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async addDatasetToCollection(layoutShareId, datasetId, makeDatasetPublic=false) {
-        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, dataset_id: datasetId, make_dataset_public: makeDatasetPublic};
-        const {data} = await axios.post("cgi/add_dataset_to_layout.cgi", convertToFormData(payload));
+    async addDisplayToCollection(layoutShareId, displayId, makeDatasetPublic=false) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, display_id: displayId, make_dataset_public: makeDatasetPublic};
+        const {data} = await axios.post("cgi/add_display_to_layout.cgi", convertToFormData(payload));
         return data;
     },
     /**
@@ -689,15 +689,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Deletes a dataset from a collection.
+     * Deletes a display from a collection.
      *
-     * @param {string} layoutShareId - The share ID of the dataset collection.
-     * @param {string} datasetId - The ID of the dataset to be deleted.
+     * @param {string} layoutShareId - The layout share ID.
+     * @param {string} displayId - The display ID.
      * @returns {Promise<any>} - A promise that resolves with the response data.
      */
-    async deleteDatasetFromCollection(layoutShareId, datasetId) {
-        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, dataset_id: datasetId};
-        const {data} = await axios.post("cgi/remove_dataset_from_layout.cgi", convertToFormData(payload));
+    async deleteDisplayFromCollection(layoutShareId, displayId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, display_id: displayId};
+        const {data} = await axios.post("cgi/remove_display_from_layout.cgi", convertToFormData(payload));
         return data;
     },
     /**

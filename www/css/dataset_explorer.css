@@ -77,3 +77,13 @@ article[role="tooltip"] {
     top: 0;
     width: 100%;
 }
+
+.js-modal-display figure {
+    border-color: darkgray;
+    border-width: thin;
+    border-style: solid;
+}
+
+.js-displays-modal .modal-content {
+    width: 70%; /* make wider, which makes preview images larger */
+}

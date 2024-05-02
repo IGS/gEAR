@@ -119,10 +119,6 @@ def main():
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
         wheres.append("d.organism_id in ({0})".format(organism_ids))
 
-        # This way seemed safer but I couldn't get it working in time
-        #organism_id_str = "AND d.organism_id IN (%s)" % repr(tuple(map(str,organism_ids.split(','))))
-        #wheres.append(organism_id_str)
-
     if dtypes:
         ## only alphanumeric characters and the dash are allowed here
         dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
@@ -159,25 +155,29 @@ def main():
     elif layout_share_id:
         qry_params.append(layout_share_id)
 
-        selects.extend(["lm.grid_position", "lm.start_col", "lm.grid_width", "lm.start_row", "lm.grid_height",
-                        "lm.mg_grid_position", "lm.mg_start_col", "lm.mg_grid_width", "lm.mg_start_row", "lm.mg_grid_height"])
-        froms.extend(["layout_members lm", "layout l"])
+        selects.pop(0)
+        selects.insert(0, "DISTINCT d.id")
+
+        froms.extend(["layout_displays lm", "layout l", "dataset_display dd"])
         wheres.extend([
-            "d.id = lm.dataset_id",
+            "lm.display_id = dd.id",
+            "d.id = dd.dataset_id",
             "lm.layout_id = l.id",
             "l.share_id = %s"
         ])
 
-        if not len(orders_by):
-            orders_by.append("lm.grid_position ASC")
+        # Orders by not compatible with "distinct" in the select statement
+        orders_by = []
 
     # build query
     qry = f"""
     SELECT {', '.join(selects)}
         FROM {', '.join(froms)}
         WHERE {' AND '.join(wheres)}
-        ORDER BY {' ,'.join(orders_by) if orders_by else 'd.date_added DESC'}
     """
+
+    if not layout_share_id:
+        qry += f" ORDER BY {' '.join(orders_by) if orders_by else 'd.date_added DESC'}"
 
     # if a limit is defined, add it to the query
     if int(limit):
@@ -196,31 +196,14 @@ def main():
 
     cursor.execute(qry, qry_params)
 
-    matching_dataset_ids = list()
+    matching_dataset_ids = set()
     # this index keeps track of the size and position of each dataset if a layout was passed
-    layout_idx = dict()
     for row in cursor:
-        matching_dataset_ids.append(row[0])
-
-        if layout_share_id:
-            layout_idx[row[0]] = {'position': row[1], 'start_row': row[2], 'width': row[3], 'start_col': row[4], 'grid_height': row[5],
-                                  'mg_grid_position': row[6], 'mg_start_row': row[7], 'mg_grid_width': row[8], 'mg_start_col': row[9], 'mg_grid_height': row[10]
-                                 }
+        matching_dataset_ids.add(row[0])
 
     result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
 
     for dataset in result['datasets']:
-        if layout_share_id:
-            dataset.grid_position = layout_idx[dataset.id]['position']
-            dataset.start_col = layout_idx[dataset.id]['start_col']
-            dataset.grid_width = layout_idx[dataset.id]['width']
-            dataset.start_row = layout_idx[dataset.id]['start_row']
-            dataset.grid_height = layout_idx[dataset.id]['grid_height']
-            dataset.mg_grid_position = layout_idx[dataset.id]['mg_grid_position']
-            dataset.mg_start_col = layout_idx[dataset.id]['mg_start_col']
-            dataset.mg_grid_width = layout_idx[dataset.id]['mg_grid_width']
-            dataset.mg_start_row = layout_idx[dataset.id]['mg_start_row']
-            dataset.mg_grid_height = layout_idx[dataset.id]['mg_grid_height']
 
         dataset.get_layouts(user=user)
         # delete user_id and layout_id from each dataset layout (security reasons)
@@ -246,8 +229,9 @@ def main():
         dataset.is_owner = True if user and dataset.owner_id == user.id else False
 
     # Get count of total results
+
     qry_count = f"""
-        SELECT COUNT(*)
+        SELECT {'COUNT(DISTINCT d.id)' if layout_share_id else 'COUNT(*)'}
         FROM {', '.join(froms)}
         WHERE {' AND '.join(wheres)}
         """

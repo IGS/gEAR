@@ -92,7 +92,6 @@ def main():
 
         dsc = geardb.DatasetCollection()
         dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-        dsc.apply_layout(layout=layout)
         result['datasets'].extend(dsc.datasets)
 
     # If scope is defined, the user is performing a search
@@ -233,7 +232,6 @@ def main():
 
             dsc = geardb.DatasetCollection()
             dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-            dsc.apply_layout(layout=layout)
             result['datasets'].extend(dsc.datasets)
 
     cursor.close()
@@ -271,7 +269,6 @@ def get_default_layout(cursor, domain_label):
 
     dsc = geardb.DatasetCollection()
     dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-    dsc.apply_layout(layout=layout)
 
     return dsc.datasets
 
@@ -312,16 +309,6 @@ def get_users_datasets(cursor, user_id):
 
             datasets.append({
                 'dataset_id': row[0],
-                'grid_position': None,
-                'mg_grid_position': None,
-                'start_col': None,
-                'mg_start_col': None,
-                'grid_width': 4,
-                'mg_grid_width': 6,
-                'start_row': None,
-                'mg_start_row': None,
-                'grid_height': 1,
-                'mg_grid_height': 1,
                 'title': row[1],
                 'organism': row[2],
                 'organism_id': row[16],
@@ -351,9 +338,6 @@ def get_permalink_dataset(cursor, permalink_id):
 
     if len(dsc.datasets):
         ds = dsc.datasets[0]
-        ds.grid_position = 100
-        ds.grid_width = 6
-        ds.mg_grid_width = 6
         ds.is_permalink = 1
         datasets.append(ds)
 

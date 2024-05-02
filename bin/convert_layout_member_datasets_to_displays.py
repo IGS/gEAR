@@ -71,16 +71,22 @@ for lm in layout_members:
     single_gene_preference = """
         SELECT display_id FROM dataset_preference
         WHERE dataset_id = %s AND is_multigene = 0
+        AND user_id = (SELECT owner_id FROM dataset WHERE id = %s)
     """
     multi_gene_preference = """
         SELECT display_id FROM dataset_preference
         WHERE dataset_id = %s AND is_multigene = 1
+        AND user_id = (SELECT owner_id FROM dataset WHERE id = %s)
     """
 
-    cursor.execute(single_gene_preference, (dataset_id,))
+    # Caveats with this approach:
+    # 1. If the dataset has no default single- or multi-gene display preference, the layout member will not be inserted
+    # 2. Only display preferences by the dataset owner will be used
+
+    cursor.execute(single_gene_preference, (dataset_id,dataset_id))
     single_fetch = cursor.fetchone()
 
-    cursor.execute(multi_gene_preference, (dataset_id,))
+    cursor.execute(multi_gene_preference, (dataset_id,dataset_id))
     multi_fetch = cursor.fetchone()
 
     # insert the new layout member record as separate single- and multi-gene display records

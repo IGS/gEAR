@@ -3,8 +3,8 @@
 """
 Requires:
 1) Session id - which contains user_id
-2) Layout ID to which the dataset id added
-3) The dataset ID
+2) Layout ID to which the display id added
+3) The display ID
 """
 
 import cgi
@@ -48,16 +48,10 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_id = form.getvalue('layout_share_id')
-    dataset_id = form.getvalue('dataset_id')
-    make_public_str = form.getvalue('make_dataset_public', "false")
+    display_id = form.getvalue('display_id')
     result = { 'success': 0, 'error': '' }
 
-    make_public = False
-    if make_public_str == "true":
-        make_public = True
-
     user = geardb.get_user_from_session_id(session_id)
-
     layout = geardb.get_layout_by_share_id(share_id)
     layout.load()
 
@@ -65,16 +59,6 @@ def main():
         error = "Not able to add to the layout. User must be logged in."
         result['error'] = error
     else:
-        # If make_public is true, set the dataset to public
-        if make_public:
-            owns_dataset = check_dataset_ownership(user.id, dataset_id)
-            if owns_dataset:
-                dataset = geardb.get_dataset_by_id(dataset_id)
-                dataset.save_change(attribute='is_public', value=1)
-
-        single_default = geardb.get_default_display_id(dataset_id, 0)
-        multi_default = geardb.get_default_display_id(dataset_id, 1)
-
         # Determine if we are in "legacy" mode where every member start_col is 1
         legacy = False
         if len(layout.members) > 0:
@@ -82,16 +66,11 @@ def main():
                 print("Legacy mode found... rebuilding layout member grid positions...", file=sys.stderr)
                 legacy = True
 
-        layout.get_singlegene_members()
-        singlegene_members = layout.members
-        layout.get_multigene_members()
-        multigene_members = layout.members
-
         # If "legacy" mode, adjust the start_col and start_row, as well as mg_start_col and mg_start_row
         if legacy:
             current_col = 1
             current_row = 1
-            for m in singlegene_members:
+            for m in layout.members:
                 width = m.grid_width
                 if current_col + width > 13:
                     current_col = 1
@@ -99,19 +78,12 @@ def main():
                 m.start_col = current_col
                 m.start_row = current_row
                 current_col += width
+
+                # update the member
                 m.save(layout)
 
-            current_col = 1
-            current_row = 1
-            for m in multigene_members:
-                width = m.grid_width
-                if current_col + width > 13:
-                    current_col = 1
-                    current_row += 1
-                m.start_col = current_col
-                m.start_row = current_row
-                current_col += width
-                m.save(layout)
+        # make sure the user owns the layout
+        gpos = len(layout.members) + 1
 
         # determine the next start_row and start_col. If the grid is full, start a new row
         # get the last start_row and start_col in that row
@@ -120,58 +92,23 @@ def main():
         grid_width = 4
         grid_height = 1
 
-        # make sure the user owns the layout
-        gpos = len(singlegene_members) + 1
+        if len(layout.members) > 0:
+            row_to_insert = max([m.start_row for m in layout.members])
 
-        if len(singlegene_members) > 0:
-            row_to_insert = max([m.start_row for m in singlegene_members])
             # get max start_col and max_mg_start_col on the last row
-            col_to_insert = max([m.start_col + m.grid_width for m in singlegene_members if m.start_row == row_to_insert])
-
+            col_to_insert = max([m.start_col + m.grid_width for m in layout.members if m.start_row == row_to_insert])
 
         # If adding this dataset will make the row exceed the grid width, start a new row
-        if len(singlegene_members) > 0:
+        if len(layout.members) > 0:
             if col_to_insert > 12:
                 # get grid height of the last row, first start column
                 # Want to ensure that the new row starts below the span of the previous row
-                grid_height = [m.grid_height for m in singlegene_members if m.start_row == row_to_insert and m.start_col == 1][0]
+                grid_height = [m.grid_height for m in layout.members if m.start_row == row_to_insert and m.start_col == 1][0]
                 row_to_insert += grid_height
                 col_to_insert = 1
 
         if user.id == layout.user_id:
-            lm = geardb.LayoutDisplay(display_id=single_default, grid_position=gpos,
-                                    start_col=col_to_insert, grid_width=grid_width,
-                                    start_row=row_to_insert, grid_height=grid_height)
-
-            layout.add_member(lm)
-            result['success'] = 1
-        else:
-            error = "Not able to add to the profile. User doesn't own it"
-            result['error'] = error
-
-        row_to_insert = 1
-        col_to_insert = 1
-        grid_width = 12
-        grid_height = 1
-
-        # make sure the user owns the layout
-        gpos = len(multigene_members) + 1
-
-        if len(multigene_members) > 0:
-            row_to_insert = max([m.start_row for m in multigene_members])
-            # get max start_col and max_mg_start_col on the last row
-            col_to_insert = max([m.start_col + m.grid_width for m in multigene_members if m.start_row == row_to_insert])
-
-        if len(multigene_members) > 0:
-            if col_to_insert > 12:
-                # get grid height of the last row, first start column
-                # Want to ensure that the new row starts below the span of the previous row
-                grid_height = [m.grid_height for m in multigene_members if m.start_row == row_to_insert and m.start_col == 1][0]
-                row_to_insert += grid_height
-                col_to_insert = 1
-
-        if user.id == layout.user_id:
-            lm = geardb.LayoutDisplay(display_id=multi_default, grid_position=gpos,
+            lm = geardb.LayoutDisplay(display_id=display_id, grid_position=gpos,
                                     start_col=col_to_insert, grid_width=grid_width,
                                     start_row=row_to_insert, grid_height=grid_height)
 

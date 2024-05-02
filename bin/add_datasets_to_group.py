@@ -3,9 +3,9 @@
 '''
 
 To seek out duplicate shares:
-select user_id, dataset_id, count(dataset_id), max(id) 
-  from dataset_shares 
-group by user_id, dataset_id 
+select user_id, dataset_id, count(dataset_id), max(id)
+  from dataset_shares
+group by user_id, dataset_id
 having count(dataset_id) > 1;
 
 '''
@@ -42,7 +42,7 @@ def main():
 
     # if false, no db changes are made and statements are printed instead
     debugging = True
-    
+
     group_label = 'HRP'
     #group_label = 'NIDCD-Griffith'
     #group_label = 'Stone & Segil'
@@ -52,7 +52,7 @@ def main():
 
     # empty this list to do all members
     member_include_ids = []
-    
+
     # get a list of people in this group
     member_ids = get_group_member_ids(cursor, group_label)
 
@@ -96,6 +96,10 @@ def main():
         print("Processing member ID: {0}".format(member_id))
 
         grid_position = get_layout_member_count(cursor, member_layout_ids[member_id]) + 1
+
+        # Don't feel like figuring out math for proper start row and column, so let's start with a large row
+        start_row = grid_position
+        start_col = 1
         for dataset_id in dataset_ids:
             # TODO: skip this step if the user owns the dataset or if it has already been shared with them.
             qry = "INSERT INTO dataset_shares (dataset_id, user_id, is_allowed) VALUES (%s, %s, 1)"
@@ -105,15 +109,47 @@ def main():
             else:
                 cursor.execute(qry, (dataset_id, member_id))
 
-            qry = "INSERT INTO layout_members (layout_id, dataset_id, grid_position, grid_width, math_preference) VALUES (%s, %s, %s, %s, %s)"
+            # get the default single gene and multi gene display ID preferences for the dataset ID
 
-            if debugging:
-                print("{0} - ({1},{2},{3},{4},{5})".format(qry, member_layout_ids[member_id], dataset_id, grid_position, 4, 'raw'))
-            else:
-                cursor.execute(qry, (member_layout_ids[member_id], dataset_id, grid_position, 4, 'raw'))
-                
+            single_gene_preference = """
+                SELECT display_id FROM dataset_preference
+                WHERE dataset_id = %s AND is_multigene = 0
+            """
+            multi_gene_preference = """
+                SELECT display_id FROM dataset_preference
+                WHERE dataset_id = %s AND is_multigene = 1
+            """
+
+            cursor.execute(single_gene_preference, (dataset_id,))
+            single_fetch = cursor.fetchone()
+
+            cursor.execute(multi_gene_preference, (dataset_id,))
+            multi_fetch = cursor.fetchone()
+
+            # insert the new layout member record as separate single- and multi-gene display records
+            new_layout_member_qry = """
+                INSERT INTO layout_displays (layout_id, display_id, grid_position, start_col, grid_width, start_row, grid_height, math_preference)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'raw')
+            """
+            if single_fetch:
+                single_gene_display_id = single_fetch[0]
+                if debugging:
+                    print("{0} - ({1},{2},{3},{4},{5})".format(new_layout_member_qry, member_layout_ids[member_id], single_gene_display_id, grid_position, 4, 0, 1))
+                cursor.execute(new_layout_member_qry, (member_layout_ids[member_id], single_gene_display_id, grid_position, start_col, 4, start_row, 1))
+
+            if multi_fetch:
+                multi_gene_display_id = multi_fetch[0]
+                if debugging:
+                    print("{0} - ({1},{2},{3},{4},{5})".format(new_layout_member_qry, member_layout_ids[member_id], multi_gene_display_id, grid_position, 4, 0, 1))
+                cursor.execute(new_layout_member_qry, (member_layout_ids[member_id], multi_gene_display_id, grid_position, start_col, 4, start_row, 1))
+
+            start_col += 4
+            if start_col > 12:
+                start_col = 1
+                start_row += 1
+
             grid_position += 1
-    
+
     cnx.commit()
     cursor.close()
     cnx.close()
@@ -131,13 +167,13 @@ def add_layouts(curs, ids, label):
 
 
 def get_group_member_ids(curs, label):
-    qry = """SELECT gm.user_id 
-               FROM ggroup_members gm 
+    qry = """SELECT gm.user_id
+               FROM ggroup_members gm
                     JOIN ggroup g ON g.id=gm.group_id
               WHERE g.label = %s
     """
     member_ids = list()
-    
+
     curs.execute(qry, (label,))
 
     for (user_id,) in curs:
@@ -161,11 +197,15 @@ def get_layout_ids_by_member(curs, member_ids, layout_label):
 
         if layout_found is False:
             raise Exception("Error, No layout called {0} found for user {1}".format(layout_label, member_id))
-        
+
     return member_layouts
 
 def get_layout_member_count(curs, layout_id):
-    qry = "SELECT count(*) FROM layout_members WHERE layout_id = %s"
+    qry = "SELECT count(*) FROM layout_displays WHERE layout_id = %s"
+
+    # grid position will be higher than it should be because layout members are not split
+    #  into single and multi gene displays.  This will not affect the order.
+
     curs.execute(qry, (layout_id,))
 
     for (member_count,) in curs:
