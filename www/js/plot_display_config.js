@@ -50,7 +50,7 @@ const availablePalettes = [
             { value: "prgn", text: "Purple-Green" },
             { value: "rdbu", text: "Red-Blue" },
             { value: "rdylbu", text: "Red-Yellow-Blue" },
-            { value: "multicolor_diverging", text: "Blue-Black-Red" },
+            { value: "multicolor_diverging", text: "Purple-Blue-Black-Red-Yellow" },
         ],
     },
     {
