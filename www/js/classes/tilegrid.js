@@ -105,9 +105,9 @@ class TileGrid {
 
                 // TODO: Eventually change "end" values to a "span" value
                 tile.tile.startCol = currentCol;
-                tile.tile.colSpan = currentCol + tileWidth;
+                tile.tile.endCol = currentCol + tileWidth;
                 tile.tile.startRow = currentRow;
-                tile.tile.rowSpan = currentRow + tileHeight;
+                tile.tile.endRow = currentRow + tileHeight;
 
                 currentCol += tileWidth;
             }
