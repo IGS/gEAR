@@ -20,6 +20,9 @@ class TileGrid {
         this.layout = {};   // this.getLayout();
 
         this.maxCols = 12 // highest number of columns in a row
+        this.arrangementWidth = 1080;
+        this.rowWidth = this.arrangementWidth / this.maxCols; // Split width into 12 columns
+        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
 
         this.tiles = [];
         this.selector = selector;
@@ -100,10 +103,11 @@ class TileGrid {
                     currentRow++;
                 }
 
+                // TODO: Eventually change "end" values to a "span" value
                 tile.tile.startCol = currentCol;
-                tile.tile.endCol = currentCol + tileWidth;
+                tile.tile.colSpan = currentCol + tileWidth;
                 tile.tile.startRow = currentRow;
-                tile.tile.endRow = currentRow + tileHeight;
+                tile.tile.rowSpan = currentRow + tileHeight;
 
                 currentCol += tileWidth;
             }
@@ -113,10 +117,8 @@ class TileGrid {
         // Max col is going to be 12 (since width is stored as 12-col format in db),
         // and max row is max(endRow)
 
-        selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
         const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow));
-        // TODO: Change min-content to a constant pixel value
-        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
+        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
 
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
@@ -1039,6 +1041,11 @@ class DatasetTile {
         let userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
         let ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
 
+        // There is a chance this display is a member of a dataset collection
+        // but not owned by the current user or dataset owner (i.e. curator account made it)
+        const layouts = this.type === "single" ? this.parentTileGrid.layout.single : this.parentTileGrid.layout.multi;
+        const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
+
         // Try epiviz display if no plotly display was found
         if (this.type === "single") {
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
@@ -1047,7 +1054,7 @@ class DatasetTile {
         }
 
         // add console warning if default display id was not found in the user or owner display lists
-        if (!userDisplay && !ownerDisplay) {
+        if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
             console.warn(`Selected display id ${this.currentDisplayId} for dataset ${this.dataset.title} was not found. Will show first available.`);
 
@@ -1057,7 +1064,7 @@ class DatasetTile {
         }
 
         // if the display config was not found, then do not render
-        if (!userDisplay && !ownerDisplay) {
+        if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
             // Let the user know that the display config was not found
             const message = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
@@ -1066,7 +1073,14 @@ class DatasetTile {
         }
 
         // if the display config was found, then render
-        const display = userDisplay || ownerDisplay;
+        let display = userDisplay || ownerDisplay;
+
+        // if the display is a layout member, then need to retrieve the actual display
+        if (!display) {
+            console.warn(`Shown display for dataset ${this.dataset.title} is coming from a dataset collection member that was not owned by the current user or dataset owner.`)
+            const layoutDisplayId = JSON.parse(layoutDisplay).display_id;
+            display = await apiCallsMixin.fetchDisplay(layoutDisplayId);
+        }
 
         this.currentDisplayId = display.id;
 
@@ -1284,7 +1298,7 @@ class DatasetTile {
         customLayout.height *= heightMultiplier;
         Plotly.relayout(plotlyPreview.id , customLayout);
 
-
+        // ! Occasionally get a "something went wrong with axis scaling" error. Unsure what the cause is yet.
 
     }
 

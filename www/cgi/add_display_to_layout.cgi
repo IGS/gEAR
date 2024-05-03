@@ -16,32 +16,6 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-def check_dataset_ownership(current_user_id, dataset_id):
-    cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
-
-    qry = """
-       SELECT d.id, d.owner_id
-       FROM dataset d
-       WHERE d.id = %s
-    """
-    cursor.execute(qry, (dataset_id,))
-
-    # default: Assume user does not own dataset
-    user_owns_dataset = False
-
-    for row in cursor:
-
-        # Change access if user owns the dataset
-        if row[1] == current_user_id:
-            user_owns_dataset = True
-
-        # Return a statement that the user does not own the dataset (have permission)
-        else:
-            user_owns_dataset = False
-
-    return user_owns_dataset
-
 def main():
     print('Content-Type: application/json\n\n')
 
@@ -68,42 +42,49 @@ def main():
 
         # If "legacy" mode, adjust the start_col and start_row, as well as mg_start_col and mg_start_row
         if legacy:
-            current_col = 1
-            current_row = 1
-            for m in layout.members:
-                width = m.grid_width
-                if current_col + width > 13:
-                    current_col = 1
-                    current_row += 1
-                m.start_col = current_col
-                m.start_row = current_row
-                current_col += width
+            for lm_type in [layout.singlegene_members, layout.multigene_members]:
+                current_col = 1
+                current_row = 1
+                for m in lm_type:
+                    width = m.grid_width
+                    if current_col + width > 13:
+                        current_col = 1
+                        current_row += 1
+                    m.start_col = current_col
+                    m.start_row = current_row
+                    current_col += width
 
-                # update the member
-                m.save(layout)
+                    # update the member
+                    m.save(layout)
 
-        # make sure the user owns the layout
-        gpos = len(layout.members) + 1
+        # determine if this is a single or multigene display (make a dummy LayoutDisplay)
+        lm = geardb.LayoutDisplay(display_id=display_id)
+        lm.get_is_multigene()
+        is_multigene = lm.is_multigene
 
         # determine the next start_row and start_col. If the grid is full, start a new row
         # get the last start_row and start_col in that row
         row_to_insert = 1
         col_to_insert = 1
-        grid_width = 4
+        grid_width = 6 if is_multigene else 4
         grid_height = 1
 
-        if len(layout.members) > 0:
-            row_to_insert = max([m.start_row for m in layout.members])
+        members_to_use = layout.multigene_members if is_multigene else layout.singlegene_members
+
+        gpos = len(members_to_use) + 1
+
+        if len(members_to_use) > 0:
+            row_to_insert = max([m.start_row for m in members_to_use])
 
             # get max start_col and max_mg_start_col on the last row
-            col_to_insert = max([m.start_col + m.grid_width for m in layout.members if m.start_row == row_to_insert])
+            col_to_insert = max([m.start_col + m.grid_width for m in members_to_use if m.start_row == row_to_insert])
 
         # If adding this dataset will make the row exceed the grid width, start a new row
-        if len(layout.members) > 0:
+        if len(members_to_use) > 0:
             if col_to_insert > 12:
                 # get grid height of the last row, first start column
                 # Want to ensure that the new row starts below the span of the previous row
-                grid_height = [m.grid_height for m in layout.members if m.start_row == row_to_insert and m.start_col == 1][0]
+                grid_height = [m.grid_height for m in members_to_use if m.start_row == row_to_insert and m.start_col == 1][0]
                 row_to_insert += grid_height
                 col_to_insert = 1
 

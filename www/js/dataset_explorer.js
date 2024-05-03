@@ -63,6 +63,7 @@ class LayoutArrangement {
             this.arrangementDiv.appendChild(member.createArrangementTile());
             member.createInteractable();
         }
+
     }
 }
 
@@ -79,7 +80,7 @@ class LayoutArrangementMember {
         this.datasetTitle = "";
         this.image = "";
         this.tileTemplate = document.getElementById("dataset-arrangement-tile-template");
-        this.selector = `.js-sortable-tile[data-dataset-id="${this.displayId}"]`;
+        this.selector = `.js-sortable-tile[data-display-id="${this.displayId}"]`;
         this.snapWidth = this.parentArrangement.rowWidth * 2; // Snap to 1/6 increments for width
         this.snapHeight = this.parentArrangement.colHeight; // Snap to 1/4 increments for height;
     }
@@ -87,7 +88,7 @@ class LayoutArrangementMember {
     createArrangementTile() {
         const tile = this.tileTemplate.content.cloneNode(true);
 
-        setElementProperties(tile, ".js-sortable-tile", { dataset: {datasetId: this.displayId} });
+        setElementProperties(tile, ".js-sortable-tile", { dataset: {displayId: this.displayId} });
         // add gridAra to tile
         tile.querySelector(".js-sortable-tile").style.gridArea = `${this.startRow} / ${this.startCol} / span ${this.gridHeight} / span ${this.gridWidth}`;
         // add dataset title
@@ -186,7 +187,6 @@ class LayoutArrangementMember {
                 end: this.determineGridOverlap
             }
         });
-
     }
 
     determineGridOverlap(event) {
@@ -329,82 +329,6 @@ const addDatasetListEventListeners = () => {
         });
     }
 
-    for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
-        classElt.addEventListener("click", async (e) => {
-            let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-
-            // Currently only collectiosn with datasets members will be fetched.
-            // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
-            if (!collection) {
-                collection = {
-                    dataset_count: 0,
-                    folder_id: null,
-                    folder_label: null,
-                    folder_parent_id: null,
-                    is_current: 0,
-                    is_domain: 0,
-                    is_owner: 1,
-                    is_public: 0,
-                    label: selected_dc_label,
-                    members: [],
-                    share_id: selected_dc_share_id,
-                }
-            }
-
-            const displayId = e.currentTarget.dataset.displayId;
-
-            try {
-                const data = await apiCallsMixin.addDisplayToCollection(selected_dc_share_id, displayId);
-                if (!data.success) {
-                    throw new Error(data.error);
-                }
-
-                // Update count of how many times the display is in the collection (.js-collection-display-count)
-                const displayCount = displayElement.querySelector('.js-collection-display-count');
-                const currentCount = parseInt(displayCount.textContent);
-                displayCount.textContent = currentCount + 1;
-                // Enable ".js-collection-remove-display" button
-                const removeButton = e.currentTarget.parentElement.querySelector(".js-collection-remove-display");
-                removeButton.disabled = false;
-
-                createToast("Display added to collection", "is-success");
-
-
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to add dataset to collection");
-            }
-        });
-    }
-
-    for (const classElt of document.getElementsByClassName("js-collection-remove-display")) {
-        classElt.addEventListener("click", async (e) => {
-            const displayId = e.currentTarget.dataset.displayId;
-
-            try {
-                const data = await apiCallsMixin.deleteDisplayFromCollection(selected_dc_share_id, displayId);
-                if (!data.success) {
-                    throw new Error(data.error);
-                }
-
-                // Update count of how many times the display is in the collection (.js-collection-display-count)
-                const displayCount = displayElement.querySelector('.js-collection-display-count');
-                const currentCount = parseInt(displayCount.textContent);
-                displayCount.textContent = currentCount - 1;
-                // Disable ".js-collection-remove-display" button if this was the last instance of the display
-                if (currentCount === 1) {
-                    e.currentTarget.disabled = true;
-                }
-
-                createToast("Display removed from collection", "is-success");
-
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to remove dataset from collection");
-            }
-        });
-    }
-
     // Cancel button for editing a dataset
     for (const classElt of document.getElementsByClassName("js-edit-dataset-cancel")) {
         classElt.addEventListener("click", (e) => {
@@ -496,8 +420,11 @@ const addDatasetListEventListeners = () => {
             if (downloadButton) {
                 // If button exists (has h5ad), update the button visibility
                 downloadButton.dataset.isDownloadable = isDownloadable;
-                downloadButton.disabled = !isDownloadable;
-                downloadButton.parentElement.classList.toggle("is-hidden", !isDownloadable);
+
+                disableAndHideElement(downloadButton, true);
+                if (isDownloadable) {
+                    enableAndShowElement(downloadButton, true);
+                }
             }
 
             document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal = newTitle;
@@ -605,6 +532,95 @@ const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
         datasetDisplaySpan.textContent = "Not downloadable";
     }
     datasetDisplayContainer.appendChild(datasetDisplaySpan);
+}
+
+const addModalEventListeners = () => {
+    for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
+        classElt.addEventListener("click", async (e) => {
+            const thisElt = e.currentTarget;
+            let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+
+            // Currently only collectiosn with datasets members will be fetched.
+            // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
+            if (!collection) {
+                collection = {
+                    dataset_count: 0,
+                    folder_id: null,
+                    folder_label: null,
+                    folder_parent_id: null,
+                    is_current: 0,
+                    is_domain: 0,
+                    is_owner: 1,
+                    is_public: 0,
+                    label: selected_dc_label,
+                    members: [],
+                    share_id: selected_dc_share_id,
+                }
+            }
+
+            // get nearest parent .js-modal-display
+            const displayElement = thisElt.closest(".js-modal-display");
+            const displayId = parseInt(displayElement.dataset.displayId);
+
+            try {
+                const data = await apiCallsMixin.addDisplayToCollection(selected_dc_share_id, displayId);
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Update count of how many times the display is in the collection (.js-collection-display-count)
+                const displayCount = displayElement.querySelector('.js-collection-display-count');
+                const currentCount = parseInt(displayCount.textContent);
+                displayCount.textContent = currentCount + 1;
+                // Enable ".js-collection-remove-display" button
+                const removeButton = displayElement.querySelector(".js-collection-remove-display");
+                enableAndShowElement(removeButton);
+
+                createToast("Display added to collection", "is-success");
+
+                // Update the layout arrangement views
+                changeDatasetCollectionCallback();
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to add dataset to collection");
+            }
+        });
+    }
+
+    for (const classElt of document.getElementsByClassName("js-collection-remove-display")) {
+        classElt.addEventListener("click", async (e) => {
+            const thisElt = e.currentTarget;
+            // get nearest parent .js-modal-display
+            const displayElement = thisElt.closest(".js-modal-display");
+            const displayId = parseInt(displayElement.dataset.displayId);
+
+            try {
+                const data = await apiCallsMixin.deleteDisplayFromCollection(selected_dc_share_id, displayId);
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Update count of how many times the display is in the collection (.js-collection-display-count)
+                const displayCount = displayElement.querySelector('.js-collection-display-count');
+                const currentCount = parseInt(displayCount.textContent);
+                displayCount.textContent = currentCount - 1;
+                // Disable ".js-collection-remove-display" button if this was the last instance of the display
+                if (currentCount === 1) {
+                    disableAndHideElement(thisElt);
+                }
+
+                createToast("Display removed from collection", "is-success");
+
+                // Update the layout arrangement views
+                changeDatasetCollectionCallback();
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to remove dataset from collection");
+            }
+        });
+    }
 }
 
 /**
@@ -858,6 +874,9 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
         return;
     }
 
+    // Loading indication
+    document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
+
     // JSON parse every layout member
     const layoutMembers = collection.members;
     const singleLayoutMembers = collection.singlegene_members;
@@ -939,6 +958,8 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
     singleArrangement.setupArrangementAdjustable();
     multiArrangement.setupArrangementAdjustable();
 
+    // Hide loading indication
+    document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
 
 }
 
@@ -1786,6 +1807,11 @@ const removeExistingModals = () => {
     for (const modal of existingModals) {
         modal.remove();
     }
+
+    // clear modal tooltips
+    for (const tooltip of document.querySelectorAll(".js-modal-tooltip")) {
+        tooltip.remove();
+    }
 }
 
 /**
@@ -1829,7 +1855,6 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     addModalDisplaySectionTitle(userDisplaysElt, "Your Displays");
     addModalDisplaySectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
 
-
     // Close button event listener
     const closeButton = modalDiv.querySelector(".modal-close");
     closeButton.addEventListener("click", (event) => {
@@ -1846,14 +1871,39 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     // Set state of initial display add/remove buttons based on the initial dataset collection.
     updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
 
-    // Render warning about public collection and private dataset and disable "add to collection" button
-    if (collection.is_public && !isPublic) {
-        const warningElt = document.createElement("p");
-        warningElt.className.add("has-background-warning-light", "has-text-warning-dark", "has-text-centered", "py-2", "px-3", "mb-3");
-        warningElt.textContent = "This collection is public, but the dataset is private. You cannot add displays from private datasets to public collections.";
-        modalContent.prepend(warningElt);
-        modalContent.querySelector(".js-add-to-collection").disabled = true;
+    addModalEventListeners();
+
+    // Create tooltips for all elements with the data-tooltip-content attribute
+    // Only creating one set so that they can be reused
+    const actionGroupElt = document.querySelector(".js-collection-add-remove-group");
+    const tooltips = []
+    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+        tooltips.push(createActionTooltips(classElt))
     }
+
+    for (const tooltip of tooltips) {
+        tooltip.classList.add("js-modal-tooltip"); // prevent removal of tooltip
+    }
+
+    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+
+    for (const actionElt of document.querySelectorAll(".js-collection-add-remove-group")) {
+        const loopTooltips = [...tooltips];
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+
+    // Render warning about public collection and private dataset and disable "add to collection" button
+    if (!(collection.is_public && !isPublic)) {
+        return;
+    }
+    const warningElt = document.createElement("p");
+    warningElt.className.add("has-background-warning-light", "has-text-warning-dark", "has-text-centered", "py-2", "px-3", "mb-3");
+    warningElt.textContent = "This collection is public, but the dataset is private. You cannot add displays from private datasets to public collections.";
+    modalContent.prepend(warningElt);
+    disableAndHideElement(modalContent.querySelector(".js-add-to-collection"));
+    modalContent.querySelector(".js-collection-add-remove-group").classList.add("is-hidden");
 }
 
 /**
@@ -2122,16 +2172,11 @@ const updateDatasetCollectionButtons = (collection=null) => {
     const collectionRenameButton = document.getElementById("btn-rename-collection");
     const collectionDeleteButton = document.getElementById("btn-delete-collection");
 
-    collectionRenameButton.classList.remove("is-hidden");
-    collectionDeleteButton.classList.remove("is-hidden");
-    collectionRenameButton.disabled = false;
-    collectionDeleteButton.disabled = false;
+    enableAndShowElement(collectionRenameButton);
+    enableAndShowElement(collectionDeleteButton);
     if (!isOwner) {
-        collectionRenameButton.classList.add("is-hidden");
-        collectionDeleteButton.classList.add("is-hidden");
-        // disable the buttons
-        collectionRenameButton.disabled = true;
-        collectionDeleteButton.disabled = true;
+        disableAndHideElement(collectionRenameButton);
+        disableAndHideElement(collectionDeleteButton);
     }
 }
 
@@ -2161,8 +2206,10 @@ const updateDatasetListButtons = () => {
         // If button still exists, update its visibility if the dataset is downloadable
         if (downloadButton) {
             const isDownloadable = parseBool(downloadButton.dataset.isDownloadable);
-            downloadButton.parentElement.classList.toggle("is-hidden", !isDownloadable);
-            downloadButton.disabled = !isDownloadable;
+            disableAndHideElement(downloadButton, true);
+            if (isDownloadable) {
+                enableAndShowElement(downloadButton, true);
+            }
         }
 
         // The ability to edit and delete and dataset are currently paired
@@ -2193,36 +2240,35 @@ const updateDatasetListButtons = () => {
  * @param {object|null} collection - The collection object. If null, the buttons will be disabled.
  */
 const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) => {
-    const modalDisplay = document.getElementById(modalDivId);
-    const datasetId = modalDisplay.dataset.datasetId;
+    const modalDisplayBox = document.getElementById(modalDivId);
 
-    const collectionAddRemoveGroup = modalDisplay.querySelector(".js-collection-add-remove-group");
-    const addToCollectionButton = modalDisplay.querySelector("button.js-collection-add-display");
-    const removeFromCollectionButton = modalDisplay.querySelector("button.js-collection-remove-display");
+    const modalDisplayElts = modalDisplayBox.getElementsByClassName("js-modal-display");
 
-    // is-hidden removed from previous loop
+    for (const modalDisplay of modalDisplayElts) {
+        const displayId = parseInt(modalDisplay.dataset.displayId);
 
-    collectionAddRemoveGroup.classList.remove("is-hidden");
-    addToCollectionButton.parentElement.classList.remove("is-hidden")
-    removeFromCollectionButton.parentElement.classList.remove("is-hidden")
-    addToCollectionButton.disabled = false;
-    removeFromCollectionButton.disabled = false;
+        const collectionAddRemoveGroup = modalDisplay.querySelector(".js-collection-add-remove-group");
+        const addToCollectionButton = modalDisplay.querySelector("button.js-collection-add-display");
+        const removeFromCollectionButton = modalDisplay.querySelector("button.js-collection-remove-display");
 
-    // if dataset collection is domain, remove the "add to collection" and "remove from collection" buttons
-    if (!collection || Boolean(collection.is_domain)) {
-        collectionAddRemoveGroup.classList.add("is-hidden");
-        // disable the buttons
-        addToCollectionButton.disabled = true;
-        removeFromCollectionButton.disabled = true;
-        return;
+        collectionAddRemoveGroup.classList.remove("is-hidden");
+        enableAndShowElement(addToCollectionButton);
+        enableAndShowElement(removeFromCollectionButton);
+
+        // if dataset collection is domain, remove the "add to collection" and "remove from collection" buttons
+        if (!collection || Boolean(collection.is_domain)) {
+            collectionAddRemoveGroup.classList.add("is-hidden");
+            disableAndHideElement(addToCollectionButton);
+            disableAndHideElement(removeFromCollectionButton);
+            continue;
+        }
+
+        // if display is not in the currently selected collection, hide the "remove from collection" button
+        const displayInCollection = collection.members.some(member => member.display_id === displayId);
+        if (!displayInCollection) {
+            disableAndHideElement(removeFromCollectionButton);
+        }
     }
-
-    // if dataset is not in the currently selected collection, disable the "remove from collection" button
-    const datasetInCollection = collection.members.some(member => member.dataset_id === datasetId);
-    if (!datasetInCollection) {
-        removeFromCollectionButton.disabled = true;
-    }
-
 }
 
 /* --- Entry point --- */
@@ -2470,26 +2516,28 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
 
     // Get the current grid states for all tiles and put in an object
 
-    const layoutArrangement = {"single": {}, "multi": {}};  // dataset ids as keys
+    const layoutArrangement = {"single": [], "multi": []};  // dataset ids as keys
 
     for (const tile of singlearrangementTiles) {
-        const datasetId = tile.dataset.datasetId;
-        layoutArrangement.single[datasetId] = {
+        const displayId = tile.dataset.displayId;
+        layoutArrangement.single.push( {
+            "display_id": displayId,
             "start_row": parseInt(tile.style.gridRowStart),
             "start_col": parseInt(tile.style.gridColumnStart),
             "grid_height": parseInt(tile.style.gridRowEnd.split(" ")[1]),
             "grid_width": parseInt(tile.style.gridColumnEnd.split(" ")[1])
-        }
+        })
     }
 
     for (const tile of multiarrangementTiles) {
-        const datasetId = tile.dataset.datasetId;
-        layoutArrangement.multi[datasetId] = {
+        const displayId = tile.dataset.displayId;
+        layoutArrangement.multi.push( {
+            "display_id": displayId,
             "start_row": parseInt(tile.style.gridRowStart),
             "start_col": parseInt(tile.style.gridColumnStart),
             "grid_height": parseInt(tile.style.gridRowEnd.split(" ")[1]),
             "grid_width": parseInt(tile.style.gridColumnEnd.split(" ")[1])
-        }
+        })
     }
 
 

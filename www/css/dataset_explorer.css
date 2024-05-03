@@ -87,3 +87,7 @@ article[role="tooltip"] {
 .js-displays-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
 }
+
+.js-modal-tooltip {
+    z-index: 1000; /* make sure it's on top of the modal */
+}

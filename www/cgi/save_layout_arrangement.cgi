@@ -48,45 +48,28 @@ def main():
         cursor.execute(qry, (layout_id,))
 
         # Loop through all the layout members and update their grid positions
-        curr_grid_position = 1
-        for display_id, layout_display in layout_arrangement["single"].items():
+        for display_type in ["single", "multi"]:
+            curr_grid_position = 1
+            for layout_display in layout_arrangement[display_type]:
+                qry = """ INSERT INTO layout_displays
+                            (layout_id, display_id, grid_position, grid_width, grid_height, start_col, start_row)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
 
-            qry = """ INSERT INTO layout_displays
-                        (layout_id, display_id, grid_position, grid_width, grid_height, start_col, start_row)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """
-
-            cursor.execute(qry, (layout_id, display_id, curr_grid_position,
-                                layout_display["grid_width"], layout_display["grid_height"],
-                                layout_display["start_col"], layout_display["start_row"])
-            )
-
-            curr_grid_position += 1
-
-        # Do this for multi gene displays
-        curr_grid_position = 1
-        for display_id, layout_display in layout_arrangement["multi"].items():
-
-            qry = """ INSERT INTO layout_displays
-                        (layout_id, display_id, grid_position, grid_width, grid_height, start_col, start_row)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """
-
-            cursor.execute(qry, (layout_id, display_id, curr_grid_position,
-                                layout_display["grid_width"], layout_display["grid_height"],
-                                layout_display["start_col"], layout_display["start_row"])
-            )
-
-            curr_grid_position += 1
+                cursor.execute(qry, (layout_id, layout_display["display_id"], curr_grid_position,
+                                    layout_display["grid_width"], layout_display["grid_height"],
+                                    layout_display["start_col"], layout_display["start_row"])
+                )
+                curr_grid_position += 1
 
         result = { 'success':1 }
         cnx.commit()
         cursor.close()
         cnx.close()
     else:
-        result = {'success':0}
         error = "Not able to save layout arrangement. User must be logged in and own the layout."
-        result['error'] = error
+        result = {'success':0, "error": error}
+
 
     print(json.dumps(result))
 

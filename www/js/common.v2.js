@@ -324,31 +324,61 @@ const doLogin = async () => {
 }
 
 /**
+ * Disables and hides an element.
+ * @param {HTMLElement} element - The element to disable and hide.
+ * @param {boolean} hideParent - Indicates whether to hide the parent element instead of the element itself.
+ */
+const disableAndHideElement = (element, hideParent=false) => {
+    element.disabled = true;
+    if (hideParent) {
+        // This is useful for where the parent is a ".control" and
+        // removing the element itself still leaves a gap.
+        element.parentNode.classList.add('is-hidden');
+    } else {
+        element.classList.add('is-hidden');
+    }
+}
+
+/**
+ * Enables and shows the specified element.
+ * @param {HTMLElement} element - The element to enable and show.
+ * @param {boolean} showParent - Indicates whether to show the parent element instead of the element itself.
+ */
+const enableAndShowElement = (element, showParent=false) => {
+    element.disabled = false;
+    if (showParent) {
+        element.parentNode.classList.remove('is-hidden');
+    } else {
+        element.classList.remove('is-hidden');
+    }
+}
+
+/**
  * Hides elements with the class 'logged-in'.
  */
 const hideLoggedInElements = () => {
-    document.querySelectorAll('.logged-in').forEach(element => element.style.display = 'none');
+    document.querySelectorAll('.logged-in').forEach(element => element.classList.add('is-hidden'));
 }
 
 /**
  * Hides elements with the class 'not-logged-in'.
  */
 const hideNotLoggedInElements = () => {
-    document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = 'none');
+    document.querySelectorAll('.not-logged-in').forEach(element => element.classList.add('is-hidden'));
 }
 
 /**
  * Shows the logged-in elements by setting their display property to an empty string.
  */
 const showLoggedInElements = () => {
-    document.querySelectorAll('.logged-in').forEach(element => element.style.display = '');
+    document.querySelectorAll('.logged-in').forEach(element => element.classList.remove('is-hidden'));
 }
 
 /**
  * Shows the elements that are only visible when the user is not logged in.
  */
 const showNotLoggedInElements = () => {
-    document.querySelectorAll('.not-logged-in').forEach(element => element.style.display = '');
+    document.querySelectorAll('.not-logged-in').forEach(element => element.classList.remove('is-hidden'));
 }
 
 /**
@@ -646,11 +676,10 @@ const apiCallsMixin = {
      *
      * @param {string} layoutShareId - The layout share ID.
      * @param {string} displayId - The display ID.
-     * @param {boolean} [makeDatasetPublic=false] - Whether to make the dataset public. Default is false.
      * @returns {Promise<any>} - A promise that resolves to the response data.
      */
-    async addDisplayToCollection(layoutShareId, displayId, makeDatasetPublic=false) {
-        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, display_id: displayId, make_dataset_public: makeDatasetPublic};
+    async addDisplayToCollection(layoutShareId, displayId) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, display_id: displayId};
         const {data} = await axios.post("cgi/add_display_to_layout.cgi", convertToFormData(payload));
         return data;
     },
@@ -899,12 +928,22 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches a single display by ID.
+     * @param {string} displayId - The ID of the display.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchDisplay(displayId) {
+        const payload = {session_id: this.sessionId, display_id: displayId};
+        const {data} = await axios.post("/cgi/get_dataset_display.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
      * Fetches the Epiviz display data for a given dataset, gene symbol, and genome.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} geneSymbol - The gene symbol.
      * @param {string} genome - The genome.
-     * @param {Object} [otherOpts={}] - Additional options for the axios GET request.
-     * @returns {Promise} - A promise that resolves to the fetched Epiviz display data.
+     * @param {Object} [otherOpts={}] - Additional options for the axios request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
      */
     async fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts={}) {
 

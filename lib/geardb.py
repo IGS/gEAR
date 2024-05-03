@@ -1007,7 +1007,7 @@ class Layout:
             raise Exception("ERROR: Invalid scope '{0}' passed to Layout.get_members()".format(scope))
 
         qry = """
-            SELECT lm.id, lm.display_id, lm.grid_position, lm.start_col, lm.grid_width, lm.start_row, lm.grid_height, d.plot_type
+            SELECT lm.id, lm.display_id, lm.grid_position, lm.start_col, lm.grid_width, lm.start_row, lm.grid_height
               FROM layout_displays lm
                    JOIN dataset_display d ON lm.display_id=d.id
                    JOIN dataset ds ON d.dataset_id=ds.id
@@ -1017,32 +1017,27 @@ class Layout:
 
         cursor.execute(qry, (self.id,))
 
-        single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
-        multi_plot_types = ["dotplot", "heatmap", "mg_violin", "quadrant", "volcano"]
-
         for row in cursor:
             lm = LayoutDisplay(id=row[0], display_id=row[1], grid_position=row[2], start_col=row[3],
                                  grid_width=row[4], start_row=row[5], grid_height=row[6]
                 )
 
             lm.get_dataset_id()
+            lm.get_is_multigene()
 
-            plot_type = row[7]
-            is_single = plot_type in single_plot_types
-            is_multi = plot_type in multi_plot_types
-
-            if is_single:
-                self.singlegene_members.append(lm)
-            if is_multi:
+            if lm.is_multigene:
                 self.multigene_members.append(lm)
+            else:
+                self.singlegene_members.append(lm)
 
-            if scope == "single" and not is_single:
+            if scope == "single" and lm.is_multigene:
                 continue
-            if scope == "multi" and not is_multi:
+            if scope == "multi" and not lm.is_multigene:
                 continue
 
             self.members.append(lm)
         cursor.close()
+        conn.close()
 
     def get_singlegene_members(self):
         return self.get_members(scope="single")
@@ -1117,10 +1112,12 @@ class Layout:
         conn = Connection()
         cursor = conn.get_cursor()
 
+        # limit removal to 1 member. TIe-breaker is highest grid_position
         qry = """
               DELETE FROM layout_displays
               WHERE display_id = %s
                 AND layout_id = %s
+                ORDER BY grid_position DESC LIMIT 1
         """
         cursor.execute(qry, (display_id, self.id))
 
@@ -2972,6 +2969,7 @@ class LayoutDisplay:
         self.id = id
         self.display_id = display_id
         self.dataset_id = None
+        self.is_multigene = None  # True if multi, False if single
         self.grid_position = grid_position
         self.start_col = start_col  # if not provided, fill into layout where it fits
         self.grid_width = grid_width
@@ -3010,6 +3008,27 @@ class LayoutDisplay:
 
         cursor.close()
         conn.close()
+
+    def get_is_multigene(self):
+        single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
+        multi_plot_types = ["dotplot", "heatmap", "mg_violin", "quadrant", "volcano"]
+
+        qry = """
+            SELECT plot_type from dataset_display WHERE id = %s
+            """
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(qry, (self.display_id,))
+        (plot_type,) = cursor.fetchone()
+
+        is_single = plot_type in single_plot_types
+        is_multi = plot_type in multi_plot_types
+
+        self.is_multigene = is_multi
+
+        cursor.close()
+        conn.close()
+
 
     def save(self, layout=None):
         """
