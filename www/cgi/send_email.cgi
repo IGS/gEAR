@@ -25,7 +25,6 @@ domain_short_label = geardb.domain_short_label
 
 
 def main():
-
     config = configparser.ConfigParser()
     config.read('../../gear.ini')
     sender = config['email_sender']['address']
@@ -39,24 +38,25 @@ def main():
     form = cgi.FieldStorage()
     email = form.getvalue('email')
     scope = form.getvalue('scope')
+
+    #print("Got e-mail: {0}".format(email))
+    #print("Got scope: {0}".format(scope))
+    
     destination_page = form.getvalue('destination_page')
 
-    if scope == 'forgot_password':
+    # https://docs.python.org/3/library/email-examples.html
+    msg = MIMEMultipart('alternative')
+    msg['From'] = sender
+    msg['To'] = email
 
+    if scope == 'forgot_password':
         user_help_id = get_help_id(cursor, email) # return 'False' or help_id string
         if user_help_id:
             #email was found.
-
             # url to change password
             url = destination_page + '?help_id=' + user_help_id
 
-            # https://docs.python.org/3/library/email-examples.html
-            gear = 'gearportal.igs@gmail.com'
-            # user = email
-            msg = MIMEMultipart('alternative')
             msg['Subject'] = 'Reset {} Password'.format(domain_short_label)
-            msg['From'] = gear
-            msg['To'] = email
 
             text = "You requested to change your {} password. Please click the link to continue:  {}".format(domain_short_label, url)
             html = """\
@@ -80,25 +80,62 @@ def main():
             </html>
             """.format(domain_home_url, domain_logo, url)
 
-            part1 = MIMEText(text, 'plain')
-            part2 = MIMEText(html, 'html')
+            result['success'] = 1
+        else:
+            #email was not in database.
+            result['error'] = "We could not find that email. Please check what you entered and try again."
 
-            msg.attach(part1)
-            msg.attach(part2)
+    elif scope == 'user_verification':
+        verification_code_long = form.getvalue('verification_code_long')
+        verification_code = geardb.get_verification_code_short_form(verification_code_long)
 
+        msg['Subject'] = 'Your {} account verification code'.format(domain_short_label)
+
+        text = "It appears you began creating a {} account. Please use the verification code below to complete it.".format(domain_short_label)
+        html = """\
+            <html>
+            <head></head>
+            <body style="font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+            <div style="height:50px; background-color:#2F103E;">
+                <img src="{}" style="border-radius:4px; margin-left:90px;">
+            </div>
+            <div style="text-align:center; height:50vh; vertical-align:middle; margin-top:100px;">
+              <br />
+              <h2 style="font-weight:bold;color: rgb(134,134,134);">Verification code: {}</h2>
+              <p> Copy that code and enter it into the form waiting in your browser!</p>
+              <br /><br />
+              <p>Please do not reply to this message.</p>
+            </div>
+            </body>
+            </html>
+            """.format(domain_logo, verification_code)
+
+        result['success'] = 1
+
+    # If we're good so far, send the e-mail
+    if result['success'] == 1:
+        part1 = MIMEText(text, 'plain')
+        part2 = MIMEText(html, 'html')
+
+        msg.attach(part1)
+        msg.attach(part2)
+
+        try:
             # http://stackoverflow.com/a/17596848/2900840
             s = smtplib.SMTP('smtp.gmail.com:587')
             s.ehlo()
             s.starttls()
             s.login(sender, password)
 
-            s.sendmail( gear, email, msg.as_string() )
+            s.sendmail(sender, email, msg.as_string())
             s.quit()
+        except Exception as e:
+            result['error'] = "E-mail delivery failed. Please try again later or contact us."
+            result['success'] = 0
+    else:
+        result['error'] = "E-mail delivery failed. Please try again later or contact us."
+        result['success'] = 0
 
-            result['success'] = 1
-        else:
-            #email was not in database.
-            result['error'] = "We could not find that email. Please check what you entered and try again."
 
     print(json.dumps(result))
 
