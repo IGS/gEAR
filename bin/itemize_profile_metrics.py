@@ -11,7 +11,7 @@ import argparse
 from pathlib import Path
 
 lib_path = Path(__file__).resolve().parents[1].joinpath('lib')
-sys.path.append(lib_path)
+sys.path.append(str(lib_path))
 import geardb
 
 

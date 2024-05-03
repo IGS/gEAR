@@ -16,9 +16,13 @@ class TileGrid {
     constructor(shareId, type="layout", selector ) {
         this.shareId = shareId;
         this.type = type;
-        this.layout = [];   // this.getLayout();
+        this.datasets = []; // this.getDatasets();
+        this.layout = {};   // this.getLayout();
 
         this.maxCols = 12 // highest number of columns in a row
+        this.arrangementWidth = 1080;
+        this.rowWidth = this.arrangementWidth / this.maxCols; // Split width into 12 columns
+        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
 
         this.tiles = [];
         this.selector = selector;
@@ -31,7 +35,7 @@ class TileGrid {
      */
     async addAllDisplays() {
 
-        for (const dataset of this.layout) {
+        for (const dataset of this.datasets) {
             dataset.userDisplays = [];
             dataset.ownerDisplays = [];
 
@@ -39,15 +43,6 @@ class TileGrid {
             dataset.userDisplays = userDisplays;
             dataset.ownerDisplays = ownerDisplays;
         }
-    }
-
-    /**
-     * Adds default displays to all tiles in the tile grid.
-     * @returns {Promise<void>} A promise that resolves when all default displays have been added.
-     */
-    async addDefaultDisplays() {
-        // Each tile has "single" or "multi" type stored, so we can use that to determine the correct default display
-        await Promise.allSettled(this.tiles.map( async tile => await tile.addDefaultDisplay()));
     }
 
     /**
@@ -62,18 +57,29 @@ class TileGrid {
         const selectorElt = document.querySelector(selector);
         selectorElt.replaceChildren();
 
+        if (this.type === "dataset") {
+            const datasetTile = new DatasetTile(this, null, this.datasets[0], isMulti); // default display will be currentDisplayId
+            this.applySingleTileGrid(datasetTile, selectorElt);
+            return;
+        }
+
         const tiles = [];
 
-        for (const dataset of this.layout) {
-            const datasetTile = new DatasetTile(this, dataset, isMulti);
+        const layout = isMulti ? this.layout.multi : this.layout.single;
+
+        for (const memberString of layout) {
+            const member = JSON.parse(memberString);
+            const dataset = this.datasets.find(d => d.id === member.dataset_id);
+            if (!dataset) {
+                console.warn(`Dataset with ID ${member.dataset_id} not found.`);
+                continue;
+            }
+            const datasetTile = new DatasetTile(this, member, dataset, isMulti);
             tiles.push(datasetTile);
         }
         this.tiles = tiles;
 
-        if (this.type === "dataset") {
-            this.applySingleTileGrid(this.tiles[0], selectorElt);
-            return;
-        }
+
 
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
@@ -97,10 +103,11 @@ class TileGrid {
                     currentRow++;
                 }
 
+                // TODO: Eventually change "end" values to a "span" value
                 tile.tile.startCol = currentCol;
-                tile.tile.endCol = currentCol + tileWidth;
+                tile.tile.colSpan = currentCol + tileWidth;
                 tile.tile.startRow = currentRow;
-                tile.tile.endRow = currentRow + tileHeight;
+                tile.tile.rowSpan = currentRow + tileHeight;
 
                 currentCol += tileWidth;
             }
@@ -110,10 +117,8 @@ class TileGrid {
         // Max col is going to be 12 (since width is stored as 12-col format in db),
         // and max row is max(endRow)
 
-        selectorElt.style.gridTemplateColumns = `repeat(${this.maxCols}, 1fr)`;
         const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow));
-        // TODO: Change min-content to a constant pixel value
-        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, min-content)`; // this prevents extra space at the bottom of each grid row
+        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
 
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
@@ -147,7 +152,7 @@ class TileGrid {
         // if zoomed, create new DatasetTile object with zoomed flag
         // SAdkins - I tried to use a "clone node and change ids" approach, but it was not working.
         const createZoomedTile = () => {
-            const zoomedDatasetTile = new DatasetTile(this, datasetTile.dataset, datasetTile.type === "multi", true);
+            const zoomedDatasetTile = new DatasetTile(this, datasetTile.display, datasetTile.dataset, datasetTile.type === "multi", true);
             // add gene symbol to zoomed tile
             zoomedDatasetTile.geneSymbol = datasetTile.geneSymbol;
             zoomedDatasetTile.currentDisplayId = datasetTile.currentDisplayId;
@@ -174,18 +179,31 @@ class TileGrid {
 
     }
 
-    // NOTE: This may change if data is returned previously and can be loaded
     /**
-     * Retrieves the layout information from the server.
+     * Retrieves the datasets associated with the tile grid.
      * @returns {Promise<Array>} A promise that resolves to an array of datasets.
-     * @throws {Error} If an error occurs during the API call.
+     * @throws {Error} If there is an error fetching the dataset list information.
      */
-    async getLayout() {
+    async getDatasets() {
         const args = this.type === "dataset" ? {permalink_share_id: this.shareId} : {layout_share_id: this.shareId};
 
         try {
             const data = await apiCallsMixin.fetchDatasetListInfo(args);
             return data['datasets'];
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Retrieves the layout of the tile grid.
+     * @returns {Promise<Array>} A promise that resolves to an array representing the layout of the tile grid.
+     * @throws {Error} If there is an error while fetching the layout.
+     */
+    async getLayout() {
+        try {
+            const data = await apiCallsMixin.fetchDatasetCollectionMembers(this.shareId);
+            return data["layout_members"];
         } catch (error) {
             throw error;
         }
@@ -228,11 +246,15 @@ class TileGrid {
 };
 
 class DatasetTile {
-    constructor(thisTileGrid, dataset, isMulti=true, isZoomed=false) {
-        this.dataset = dataset;
+    constructor(thisTileGrid, display, dataset, isMulti=true, isZoomed=false) {
+        this.display = display; // has the layout member info
+        this.dataset = dataset; // Has dataset metadata info
+
         this.type = isMulti ? 'multi' : 'single';
         this.typeInt = isMulti ? 1 : 0;
+
         this.tile = this.generateTile();
+
         this.isZoomed = isZoomed;
         if (this.isZoomed) {
             this.tile.tileId = `zoomed-${this.tile.tileId}`;
@@ -252,7 +274,7 @@ class DatasetTile {
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
         this.geneSymbol = null;
-        this.currentDisplayId = null;
+        this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay();
 
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
@@ -268,16 +290,15 @@ class DatasetTile {
      * @returns {Object} The generated tile object.
      */
     generateTile() {
-        const { id, grid_position, mg_grid_position, title, grid_width, mg_grid_width, grid_height, mg_grid_height, start_row, mg_start_row, start_col, mg_start_col } = this.dataset;
+        const { display_id, grid_position, grid_width, grid_height, start_row, start_col } = this.display;
         return {
-            gridPosition: this.type === "single" ? grid_position : mg_grid_position,
-            width: this.type === "single" ? grid_width : mg_grid_width,
+            gridPosition: grid_position,
+            width: grid_width,
             // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
-            height: this.type === "single" ? grid_height : mg_grid_height,
-            startRow: this.type === "single" ? start_row : mg_start_row,
-            startCol: this.type === "single" ? start_col : mg_start_col,
-            tileId: `${id}-${grid_position}-${this.type}`,
-            title,
+            height: grid_height,
+            startRow: start_row,
+            startCol: start_col,
+            tileId: `${display_id}-${grid_position}-${this.type}`,  // Alternatively could use "id" which is layout_displays.id
         };
     }
 
@@ -297,7 +318,7 @@ class DatasetTile {
         tileElement.id = `tile-${tile.tileId}`;
 
         const tileTitle = tileHTML.querySelector('.card-header-title');
-        tileTitle.textContent = tile.title;
+        tileTitle.textContent = this.dataset.title;
 
         this.addDropdownInformation(tileElement, tileElement.id, this.dataset);
 
@@ -318,15 +339,14 @@ class DatasetTile {
     async addDefaultDisplay() {
 
         const dataset = this.dataset;
-        this.defaultDisplayId = null;
         try {
             const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, this.typeInt);
-            this.defaultDisplayId = defaultDisplayId;
+            return defaultDisplayId;
         } catch (error) {
             //pass
+            console.warn("Could not fetch default display for dataset", dataset.id);
         }
     }
-
 
     /**
      * Processes a tile for rendering display.
@@ -611,7 +631,7 @@ class DatasetTile {
                     item.addEventListener("click", (event) => {
                         // Create and open modal for all user and owner displays
                         this.renderChooseDisplayModal();    // TODO: Need to add after displays are retrieved
-                        const modalElt = document.getElementById(`choose-display-modal_${this.tile.tileId}`);
+                        const modalElt = document.getElementById(`choose-display-modal-${this.tile.tileId}`);
                         openModal(modalElt);
                     });
                     break;
@@ -807,13 +827,13 @@ class DatasetTile {
      * @param {string} titleText - The text content of the title.
      */
     addModalDisplaySectionTitle(element, titleText) {
-        if (!element.length) {
+        if (!element.children.length) {
             return;
         }
         const title = document.createElement("p");
         title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
         title.textContent = titleText;
-        element.append(title);
+        element.prepend(title);
     }
 
     /**
@@ -825,7 +845,7 @@ class DatasetTile {
         const modalHTML = modalTemplate.content.cloneNode(true);
 
         const modalDiv = modalHTML.querySelector('.modal');
-        modalDiv.id = `choose-display-modal_${this.tile.tileId}`;
+        modalDiv.id = `choose-display-modal-${this.tile.tileId}`;
 
         return modalHTML;
     }
@@ -883,14 +903,16 @@ class DatasetTile {
         const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
         ownerDisplaysElt.replaceChildren();
 
-        this.addModalDisplaySectionTitle(userDisplaysElt, "Your Displays");
-        this.addModalDisplaySectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
-
         // Did it this way so we didn't have to pass async/await up the chain
         Promise.allSettled([
             this.renderChooseDisplayModalDisplays(userDisplays, userDisplaysElt),
             this.renderChooseDisplayModalDisplays(ownerDisplays, ownerDisplaysElt)
         ]).then(() => {
+
+            this.addModalDisplaySectionTitle(userDisplaysElt, "Your Displays");
+            this.addModalDisplaySectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
+
+
             const currentDisplayElt = modalContent.querySelector(`.js-modal-display[data-display-id="${this.currentDisplayId}"]`);
 
             // remove tag from all other displays
@@ -943,9 +965,9 @@ class DatasetTile {
      * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
      */
     async renderChooseDisplayModalDisplays(displays, displayElt) {
+        const displayTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal-display');
         // Add user displays
         for (const display of displays) {
-            const displayTemplate = document.getElementById('tmpl-tile-grid-choose-display-modal-display');
             const displayHTML = displayTemplate.content.cloneNode(true);
 
             const displayElement = displayHTML.querySelector('.js-modal-display');
@@ -955,7 +977,7 @@ class DatasetTile {
             // Add display image
             let displayUrl = "";
             try {
-                // TODO: SVGs are colorless
+                // NOTE: SVGs are colorless
                 displayUrl = await apiCallsMixin.fetchDatasetDisplayImage(this.dataset.id, display.id);
             } catch (error) {
                 logErrorInConsole(error);
@@ -997,7 +1019,7 @@ class DatasetTile {
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
         if (displayId === null) {
-            displayId = this.defaultDisplayId;
+            displayId = this.currentDisplayId;  // this should be the defaultDisplayId
         };
 
         // For use for zoomed-in views
@@ -1019,6 +1041,11 @@ class DatasetTile {
         let userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
         let ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plotly_config.hasOwnProperty(filterKey));
 
+        // There is a chance this display is a member of a dataset collection
+        // but not owned by the current user or dataset owner (i.e. curator account made it)
+        const layouts = this.type === "single" ? this.parentTileGrid.layout.single : this.parentTileGrid.layout.multi;
+        const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
+
         // Try epiviz display if no plotly display was found
         if (this.type === "single") {
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
@@ -1027,8 +1054,9 @@ class DatasetTile {
         }
 
         // add console warning if default display id was not found in the user or owner display lists
-        if (!userDisplay && !ownerDisplay) {
-            console.warn(`Selected display config for dataset ${this.dataset.title} was not found. Will show first available.`);
+        if (!userDisplay && !ownerDisplay && !layoutDisplay) {
+            // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
+            console.warn(`Selected display id ${this.currentDisplayId} for dataset ${this.dataset.title} was not found. Will show first available.`);
 
             // last chance... if still no display config (i.e default display was not found), then use the first display config
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));
@@ -1036,7 +1064,7 @@ class DatasetTile {
         }
 
         // if the display config was not found, then do not render
-        if (!userDisplay && !ownerDisplay) {
+        if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
             // Let the user know that the display config was not found
             const message = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
@@ -1045,7 +1073,14 @@ class DatasetTile {
         }
 
         // if the display config was found, then render
-        const display = userDisplay || ownerDisplay;
+        let display = userDisplay || ownerDisplay;
+
+        // if the display is a layout member, then need to retrieve the actual display
+        if (!display) {
+            console.warn(`Shown display for dataset ${this.dataset.title} is coming from a dataset collection member that was not owned by the current user or dataset owner.`)
+            const layoutDisplayId = JSON.parse(layoutDisplay).display_id;
+            display = await apiCallsMixin.fetchDisplay(layoutDisplayId);
+        }
 
         this.currentDisplayId = display.id;
 
@@ -1263,7 +1298,7 @@ class DatasetTile {
         customLayout.height *= heightMultiplier;
         Plotly.relayout(plotlyPreview.id , customLayout);
 
-
+        // ! Occasionally get a "something went wrong with axis scaling" error. Unsure what the cause is yet.
 
     }
 

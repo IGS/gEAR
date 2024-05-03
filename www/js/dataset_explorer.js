@@ -63,14 +63,15 @@ class LayoutArrangement {
             this.arrangementDiv.appendChild(member.createArrangementTile());
             member.createInteractable();
         }
+
     }
 }
 
 class LayoutArrangementMember {
 
-    constructor(arrangementObj, datasetId, gridPosition, startCol, startRow, gridWidth, gridHeight) {
+    constructor(arrangementObj, displayId, gridPosition, startCol, startRow, gridWidth, gridHeight) {
         this.parentArrangement = arrangementObj;
-        this.datasetId = datasetId;
+        this.displayId = displayId;
         this.gridPosition = gridPosition;
         this.startCol = startCol;
         this.startRow = startRow;
@@ -79,7 +80,7 @@ class LayoutArrangementMember {
         this.datasetTitle = "";
         this.image = "";
         this.tileTemplate = document.getElementById("dataset-arrangement-tile-template");
-        this.selector = `.js-sortable-tile[data-dataset-id="${this.datasetId}"]`;
+        this.selector = `.js-sortable-tile[data-display-id="${this.displayId}"]`;
         this.snapWidth = this.parentArrangement.rowWidth * 2; // Snap to 1/6 increments for width
         this.snapHeight = this.parentArrangement.colHeight; // Snap to 1/4 increments for height;
     }
@@ -87,7 +88,7 @@ class LayoutArrangementMember {
     createArrangementTile() {
         const tile = this.tileTemplate.content.cloneNode(true);
 
-        setElementProperties(tile, ".js-sortable-tile", { dataset: {datasetId: this.datasetId} });
+        setElementProperties(tile, ".js-sortable-tile", { dataset: {displayId: this.displayId} });
         // add gridAra to tile
         tile.querySelector(".js-sortable-tile").style.gridArea = `${this.startRow} / ${this.startCol} / span ${this.gridHeight} / span ${this.gridWidth}`;
         // add dataset title
@@ -186,7 +187,6 @@ class LayoutArrangementMember {
                 end: this.determineGridOverlap
             }
         });
-
     }
 
     determineGridOverlap(event) {
@@ -312,78 +312,20 @@ const addDatasetListEventListeners = () => {
             const datasetId = e.currentTarget.dataset.datasetId;
 
             showDatasetActionNote(datasetId, shareUrl);
-
         });
     }
 
-    // TODO: Feature - add dataset to collection multiple times, with indicator to show how many times it is in the collection
-    for (const classElt of document.getElementsByClassName("js-collection-add-dataset")) {
+    for (const classElt of document.getElementsByClassName("js-view-displays")) {
         classElt.addEventListener("click", async (e) => {
-            let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-
-            // Currently only collectiosn with datasets members will be fetched.
-            // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
-            if (!collection) {
-                collection = {
-                    dataset_count: 0,
-                    folder_id: null,
-                    folder_label: null,
-                    folder_parent_id: null,
-                    is_current: 0,
-                    is_domain: 0,
-                    is_owner: 1,
-                    is_public: 0,
-                    label: selected_dc_label,
-                    members: [],
-                    share_id: selected_dc_share_id,
-                }
-            }
 
             const datasetId = e.currentTarget.dataset.datasetId;
-            const datasetIsPublic = e.currentTarget.dataset.isPublic;
+            const title = e.currentTarget.dataset.title;
+            const isPublic = parseBool(e.currentTarget.dataset.isPublic);
+            await renderDisplaysModal(datasetId, title, isPublic);
 
-            // if dataset is private and the collection is public, then we need to show a popover to confirm to the user the dataset will switch to public.
-            if (!parseBool(datasetIsPublic) && Boolean(collection.is_public)) {
-                createSwitchDatasetToPublicPopover(classElt, datasetId);
-            } else {
-                try {
-                    const data = await apiCallsMixin.addDatasetToCollection(selected_dc_share_id, datasetId);
-                    if (!data.success) {
-                        throw new Error(data.error);
-                    }
+            const modalElt = document.getElementById(`displays-modal-${datasetId}`);
+            openModal(modalElt);
 
-                    changeDatasetCollectionCallback();  // Updates the buttons and UI for the selected collection
-                    createToast("Dataset added to collection", "is-success");
-
-
-                } catch (error) {
-                    logErrorInConsole(error);
-                    createToast("Failed to add dataset to collection");
-                }
-            }
-        });
-    }
-
-    // TODO: remove last instance of dataset from collection
-    for (const classElt of document.getElementsByClassName("js-collection-remove-dataset")) {
-        classElt.addEventListener("click", async (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-
-            try {
-                const data = await apiCallsMixin.deleteDatasetFromCollection(selected_dc_share_id, datasetId);
-                if (!data.success) {
-                    throw new Error(data.error);
-                }
-
-                changeDatasetCollectionCallback();  // Updates the buttons and UI for the selected collection
-
-                createToast("Dataset removed from collection", "is-success");
-
-
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to remove dataset from collection");
-            }
         });
     }
 
@@ -478,8 +420,11 @@ const addDatasetListEventListeners = () => {
             if (downloadButton) {
                 // If button exists (has h5ad), update the button visibility
                 downloadButton.dataset.isDownloadable = isDownloadable;
-                downloadButton.disabled = !isDownloadable;
-                downloadButton.parentElement.classList.toggle("is-hidden", !isDownloadable);
+
+                disableAndHideElement(downloadButton, true);
+                if (isDownloadable) {
+                    enableAndShowElement(downloadButton, true);
+                }
             }
 
             document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal = newTitle;
@@ -555,6 +500,18 @@ const addDatasetListEventListeners = () => {
 }
 
 /**
+ * Adds the dataset title to the modal.
+ *
+ * @param {HTMLElement} modalHTML - The HTML element representing the modal.
+ */
+const addDatasetTitleToModal = (modalHTML, title) => {
+    const modalContent = modalHTML.querySelector('.modal-content');
+    const datasetTitle = modalContent.querySelector("h5");
+    datasetTitle.replaceChildren();
+    datasetTitle.textContent = title;
+}
+
+/**
  * Adds downloadable information to a dataset.
  *
  * @param {string} datasetId - The ID of the dataset.
@@ -575,6 +532,111 @@ const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
         datasetDisplaySpan.textContent = "Not downloadable";
     }
     datasetDisplayContainer.appendChild(datasetDisplaySpan);
+}
+
+const addModalEventListeners = () => {
+    for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
+        classElt.addEventListener("click", async (e) => {
+            const thisElt = e.currentTarget;
+            let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+
+            // Currently only collectiosn with datasets members will be fetched.
+            // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
+            if (!collection) {
+                collection = {
+                    dataset_count: 0,
+                    folder_id: null,
+                    folder_label: null,
+                    folder_parent_id: null,
+                    is_current: 0,
+                    is_domain: 0,
+                    is_owner: 1,
+                    is_public: 0,
+                    label: selected_dc_label,
+                    members: [],
+                    share_id: selected_dc_share_id,
+                }
+            }
+
+            // get nearest parent .js-modal-display
+            const displayElement = thisElt.closest(".js-modal-display");
+            const displayId = parseInt(displayElement.dataset.displayId);
+
+            try {
+                const data = await apiCallsMixin.addDisplayToCollection(selected_dc_share_id, displayId);
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Update count of how many times the display is in the collection (.js-collection-display-count)
+                const displayCount = displayElement.querySelector('.js-collection-display-count');
+                const currentCount = parseInt(displayCount.textContent);
+                displayCount.textContent = currentCount + 1;
+                // Enable ".js-collection-remove-display" button
+                const removeButton = displayElement.querySelector(".js-collection-remove-display");
+                enableAndShowElement(removeButton);
+
+                createToast("Display added to collection", "is-success");
+
+                // Update the layout arrangement views
+                changeDatasetCollectionCallback();
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to add dataset to collection");
+            }
+        });
+    }
+
+    for (const classElt of document.getElementsByClassName("js-collection-remove-display")) {
+        classElt.addEventListener("click", async (e) => {
+            const thisElt = e.currentTarget;
+            // get nearest parent .js-modal-display
+            const displayElement = thisElt.closest(".js-modal-display");
+            const displayId = parseInt(displayElement.dataset.displayId);
+
+            try {
+                const data = await apiCallsMixin.deleteDisplayFromCollection(selected_dc_share_id, displayId);
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Update count of how many times the display is in the collection (.js-collection-display-count)
+                const displayCount = displayElement.querySelector('.js-collection-display-count');
+                const currentCount = parseInt(displayCount.textContent);
+                displayCount.textContent = currentCount - 1;
+                // Disable ".js-collection-remove-display" button if this was the last instance of the display
+                if (currentCount === 1) {
+                    disableAndHideElement(thisElt);
+                }
+
+                createToast("Display removed from collection", "is-success");
+
+                // Update the layout arrangement views
+                changeDatasetCollectionCallback();
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to remove dataset from collection");
+            }
+        });
+    }
+}
+
+/**
+ * Adds a section title to the specified element in a modal display.
+ *
+ * @param {HTMLElement} element - The element to which the section title will be added.
+ * @param {string} titleText - The text content of the section title.
+ */
+const addModalDisplaySectionTitle = (element, titleText) => {
+    if (!element.children.length) {
+        return;
+    }
+    const title = document.createElement("p");
+    title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+    title.textContent = titleText;
+    element.prepend(title);
 }
 
 /**
@@ -780,10 +842,6 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
     const imageUrls = {"single":{}, "multi":{}};
     const titles = {};
     for (const dataset of datasetData.datasets) {
-        const previewImageUrl = dataset.preview_image_url || "/img/dataset_previews/missing.png";
-        const mgPreviewImageUrl = dataset.mg_preview_image_url || "/img/dataset_previews/missing.png";
-        imageUrls["single"][dataset.dataset_id] = previewImageUrl;
-        imageUrls["multi"][dataset.dataset_id] = mgPreviewImageUrl;
         titles[dataset.dataset_id] = dataset.title;
     }
 
@@ -794,7 +852,6 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
 
     // Update action buttons for the dataset collection or datasets
     updateDatasetCollectionButtons(collection);
-    updateDatasetAddRemoveToCollectionButtons(collection);
 
     const isDomain = Boolean(collection.is_domain);
 
@@ -812,37 +869,41 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 
+    // Domain collections are not editable, so don't bother with creating the layout arrangment view
+    if (collection.is_domain) {
+        return;
+    }
+
+    // Loading indication
+    document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
+
     // JSON parse every layout member
-    const layoutMembers = collection.members
+    const layoutMembers = collection.members;
+    const singleLayoutMembers = collection.singlegene_members;
+    const multiLayoutMembers = collection.multigene_members;
 
     // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
     // These layouts were generated only with a "width" property
     const legacyMode = layoutMembers.every((dataset) => dataset.start_col === 1);
 
-    if (legacyMode) {
-        console.info("Legacy grid mode detected");
-    }
-
     let currentCol = 1;
     let currentRow = 1;
-    let currentMgCol = 1;
-    let currentMgRow = 1;
-    const maxEndCol = 13;   // 12 grid slots. CSS grid is 1-indexed, so 13 is the max
 
     singleArrangement = new LayoutArrangement();
     multiArrangement = new LayoutArrangement(true);
 
-    for (const dataset of layoutMembers) {
+    // TODO: Get layout members from the "get_users_layout_members.cgi" API call
 
-        const datasetId = dataset.dataset_id;
+    for (const member of singleLayoutMembers) {
+        const displayId = member.display_id;
+        const datasetId = member.dataset_id;
 
-        const singleMember = new LayoutArrangementMember(singleArrangement, datasetId, dataset.grid_position, dataset.start_col, dataset.start_row, dataset.grid_width, dataset.grid_height);
-        const multiMember = new LayoutArrangementMember(multiArrangement, datasetId, dataset.mg_grid_position, dataset.mg_start_col, dataset.mg_start_row, dataset.mg_grid_width, dataset.mg_grid_height);
+        const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
 
         // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
         // so the arrangement view can be displayed correctly
         if (legacyMode) {
-            const width = dataset.grid_width;
+            const width = member.grid_width;
 
             // If endCol is greater than 13, then this tile is in the next row
             if (currentCol + width > maxEndCol) {
@@ -854,35 +915,51 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
             singleMember.startRow = currentRow;
 
             currentCol += width;
+        }
 
-            // Do this for multi gene view as well
-            const mgWidth = dataset.mg_grid_width;
+        singleMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
 
-            if (currentMgCol + mgWidth > maxEndCol) {
-                currentMgCol = 1;
-                currentMgRow++;
+        singleMember.datasetTitle = titles[datasetId];
+        singleArrangement.addMember(singleMember);
+    }
+
+    // Reset for the multi-gene layout
+    currentCol = 1;
+    currentRow = 1;
+    for (const member of multiLayoutMembers) {
+        const displayId = member.display_id;
+        const datasetId = member.dataset_id;
+
+        const multiMember = new LayoutArrangementMember(multiArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
+
+        if (legacyMode) {
+            const width = member.grid_width;
+
+            // If endCol is greater than 13, then this tile is in the next row
+            if (currentCol + width > maxEndCol) {
+                currentCol = 1;
+                currentRow++;
             }
 
-            multiMember.startCol = currentMgCol;
-            multiMember.startRow = currentMgRow;
+            multiMember.startCol = currentCol;
+            multiMember.startRow = currentRow;
 
-            currentMgCol += mgWidth;
+            currentCol += width;
 
         }
 
-        singleMember.datasetTitle = titles[datasetId];
+        multiMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
+
         multiMember.datasetTitle = titles[datasetId];
-
-        singleMember.image = imageUrls.single[datasetId];
-        multiMember.image = imageUrls.multi[datasetId];
-
-        singleArrangement.addMember(singleMember);
         multiArrangement.addMember(multiMember);
+
     }
 
     singleArrangement.setupArrangementAdjustable();
     multiArrangement.setupArrangementAdjustable();
 
+    // Hide loading indication
+    document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
 
 }
 
@@ -1374,109 +1451,6 @@ const createRenameCollectionPopover = () => {
     });
 }
 
-const createSwitchDatasetToPublicPopover = (addButton, datasetId) => {
-    // remove existing popovers
-    const existingPopover = document.getElementById('toggle-dataset-to-public-popover');
-    if (existingPopover) {
-        existingPopover.remove();
-    }
-
-    // Create popover content
-    const popoverContent = document.createElement('article');
-    popoverContent.id = 'toggle-dataset-to-public-popover';
-    popoverContent.classList.add("message", "is-warning");
-    popoverContent.setAttribute("role", "tooltip");
-    popoverContent.style.width = "500px";
-    popoverContent.innerHTML = `
-        <div class='message-header'>
-            <p>Dataset privacy change</p>
-        </div>
-        <div class='message-body'>
-            <p>The selected dataset collection is public, but this dataset is private.
-            Adding this dataset to the collection will make the dataset public. Do you want to proceed?</p>
-            <div class='field is-grouped' style='width:250px'>
-                <p class="control">
-                    <button id='confirm-dataset-public-toggle' class='button'>Yes</button>
-                </p>
-                <p class="control">
-                    <button id='cancel-dataset-public-toggle' class='button' value='cancel_add'>No</button>
-                </p>
-            </div>
-        </div>
-        <div id="arrow"></div>
-    `;
-
-    // append element to DOM to get its dimensions
-    document.body.appendChild(popoverContent);
-
-    const arrowElement = document.getElementById('arrow');
-
-    // Create popover (help from https://floating-ui.com/docs/tutorial)
-    computePosition(addButton, popoverContent, {
-        placement: 'top',
-        middleware: [
-            flip(), // flip to bottom if there is not enough space on top
-            shift(), // shift the popover to the right if there is not enough space on the left
-            offset(5), // offset relative to the button
-            arrow({ element: arrowElement }) // add an arrow pointing to the button
-        ],
-    }).then(({ x, y, placement, middlewareData }) => {
-        // Position the popover
-        Object.assign(popoverContent.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-        });
-        // Accessing the data
-        const { x: arrowX, y: arrowY } = middlewareData.arrow;
-
-        // Position the arrow relative to the popover
-        const staticSide = {
-            top: 'bottom',
-            right: 'left',
-            bottom: 'top',
-            left: 'right',
-        }[placement.split('-')[0]];
-
-        // Set the arrow position
-        Object.assign(arrowElement.style, {
-            left: arrowX != null ? `${arrowX}px` : '',
-            top: arrowY != null ? `${arrowY}px` : '',
-            right: '',
-            bottom: '',
-            [staticSide]: '-4px',
-        });
-    });
-
-    // Show popover
-    document.body.appendChild(popoverContent);
-
-    // Add event listener to cancel button
-    document.getElementById('cancel-dataset-public-toggle').addEventListener('click', () => {
-        popoverContent.remove();
-    });
-
-    // Add event listener to confirm button
-    document.getElementById('confirm-dataset-public-toggle').addEventListener('click', async () => {
-        try {
-            // Add to collection (+ make dataset public = true)
-            const data = await apiCallsMixin.addDatasetToCollection(selected_dc_share_id, datasetId, true);
-            if (!data.success) {
-                const error = data['error'] || "Failed to add dataset to collection";
-                throw new Error(error);
-            }
-            await submitSearch();
-
-            changeDatasetCollectionCallback();  // Update the buttons and UI for the selected collection
-
-        } catch (error) {
-            logErrorInConsole(error);
-            createToast("Failed to add dataset to collection");
-        } finally {
-            popoverContent.remove();
-        }
-    });
-}
-
 /**
  * Creates a pagination button element.
  *
@@ -1530,6 +1504,17 @@ const datasetCollectionSelectCallback = (datasetCollectionData) => {
     }
 }
 
+/**
+ * Retrieves all dataset displays for a given dataset ID.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @returns {Promise<{userDisplays: Array, ownerDisplays: Array}>} - An object containing arrays of user displays and owner displays.
+ */
+const getAllDatasetDisplays = async (datasetId) => {
+    // Worth noting, both single and multigene displays are returned. Can add each to their respective layout arrangements
+    const {user: userDisplays, owner: ownerDisplays} = await apiCallsMixin.fetchDatasetDisplays(datasetId);
+    return { userDisplays, ownerDisplays };
+}
 
 /**
  * Loads the list of organisms from the server and populates the organism choices and new cart organism ID select elements.
@@ -1563,7 +1548,6 @@ const parseBool = (boolStr) => {
     }
     return false;
 }
-
 
 /**
  * Processes search results and updates the DOM with the results view.
@@ -1710,9 +1694,8 @@ const processSearchResults = (data) => {
 
         // action buttons section
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
+        setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
-        setElementProperties(listResultsView, ".js-collection-add-dataset", { dataset: { datasetId, isPublic } });
-        setElementProperties(listResultsView, ".js-collection-remove-dataset", { dataset: { datasetId } });
         setElementProperties(listResultsView, ".js-download-dataset", { id: `${resultDatasetId}-download-dataset`, dataset: { datasetId, isDownloadable, hasH5ad } });
         setElementProperties(listResultsView, ".js-share-dataset", { value: shareId, dataset: { datasetId } });
         setElementProperties(listResultsView, ".js-edit-dataset", { value: datasetId, dataset: { datasetId } });
@@ -1814,6 +1797,171 @@ const processSearchResults = (data) => {
 
     // All event listeners for all dataset elements
     addDatasetListEventListeners();
+}
+
+/**
+ * Removes existing modals from the document.
+ */
+const removeExistingModals = () => {
+    const existingModals = document.querySelectorAll('.js-displays-modal');
+    for (const modal of existingModals) {
+        modal.remove();
+    }
+
+    // clear modal tooltips
+    for (const tooltip of document.querySelectorAll(".js-modal-tooltip")) {
+        tooltip.remove();
+    }
+}
+
+/**
+ * Renders the displays modal for a dataset.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} title - The title of the dataset.
+ * @param {boolean} isPublic - Indicates whether the dataset is public or not.
+ */
+const renderDisplaysModal = async (datasetId, title, isPublic) => {
+    removeExistingModals();
+
+    // Clone the #tmpl-displays-modal template
+    const modalTemplate = document.getElementById("tmpl-displays-modal");
+    const modalHTML = modalTemplate.content.cloneNode(true);
+
+    const modalDiv = modalHTML.querySelector('.modal');
+    modalDiv.id = `displays-modal-${datasetId}`;
+    modalDiv.dataset.datasetId = datasetId;
+
+    addDatasetTitleToModal(modalHTML, title);
+
+    const { userDisplays, ownerDisplays } = await getAllDatasetDisplays(datasetId);
+
+    const modalContent = modalHTML.querySelector('.modal-content');
+    // Add user and owner displays
+    const userDisplaysElt = modalContent.querySelector(".js-modal-user-displays");
+    userDisplaysElt.replaceChildren();
+    const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
+    ownerDisplaysElt.replaceChildren();
+
+    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+
+    // Did it this way so we didn't have to pass async/await up the chain
+    await Promise.allSettled([
+        renderDisplaysModalDisplays(userDisplays, collection, userDisplaysElt, datasetId),
+        renderDisplaysModalDisplays(ownerDisplays, collection, ownerDisplaysElt, datasetId)
+    ]);
+
+    // Add after displays are rendered
+    addModalDisplaySectionTitle(userDisplaysElt, "Your Displays");
+    addModalDisplaySectionTitle(ownerDisplaysElt, "Displays by Dataset Owner");
+
+    // Close button event listener
+    const closeButton = modalDiv.querySelector(".modal-close");
+    closeButton.addEventListener("click", (event) => {
+        closeModal(modalDiv);
+    });
+    const modalBackground = modalDiv.querySelector(".modal-background");
+    modalBackground.addEventListener("click", (event) => {
+        closeModal(modalDiv);
+    });
+
+    // Add modal to DOM
+    document.body.append(modalHTML);
+
+    // Set state of initial display add/remove buttons based on the initial dataset collection.
+    updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
+
+    addModalEventListeners();
+
+    // Create tooltips for all elements with the data-tooltip-content attribute
+    // Only creating one set so that they can be reused
+    const actionGroupElt = document.querySelector(".js-collection-add-remove-group");
+    const tooltips = []
+    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+        tooltips.push(createActionTooltips(classElt))
+    }
+
+    for (const tooltip of tooltips) {
+        tooltip.classList.add("js-modal-tooltip"); // prevent removal of tooltip
+    }
+
+    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+
+    for (const actionElt of document.querySelectorAll(".js-collection-add-remove-group")) {
+        const loopTooltips = [...tooltips];
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+
+    // Render warning about public collection and private dataset and disable "add to collection" button
+    if (!(collection.is_public && !isPublic)) {
+        return;
+    }
+    const warningElt = document.createElement("p");
+    warningElt.className.add("has-background-warning-light", "has-text-warning-dark", "has-text-centered", "py-2", "px-3", "mb-3");
+    warningElt.textContent = "This collection is public, but the dataset is private. You cannot add displays from private datasets to public collections.";
+    modalContent.prepend(warningElt);
+    disableAndHideElement(modalContent.querySelector(".js-add-to-collection"));
+    modalContent.querySelector(".js-collection-add-remove-group").classList.add("is-hidden");
+}
+
+/**
+ * Renders the displays in a modal window.
+ *
+ * @param {Array} displays - The array of displays to render.
+ * @param {Object} collection - The collection object.
+ * @param {HTMLElement} displayElt - The element where the displays will be appended.
+ * @param {string} datasetId - The ID of the dataset.
+ * @returns {Promise<void>} - A promise that resolves when the displays are rendered.
+ */
+const renderDisplaysModalDisplays = async (displays, collection, displayElt, datasetId) => {
+    const displayTemplate = document.getElementById('tmpl-displays-modal-display');
+
+    // Add user displays
+    for (const display of displays) {
+        const displayHTML = displayTemplate.content.cloneNode(true);
+
+        const displayId = display.id;;
+
+        const displayElement = displayHTML.querySelector('.js-modal-display');
+        displayElement.dataset.displayId = displayId;
+        displayElement.dataset.datasetId = datasetId;
+
+        // Add display image
+        let displayUrl = "";
+        try {
+            // NOTE: SVGs are colorless
+            displayUrl = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId);
+        } catch (error) {
+            logErrorInConsole(error);
+            // Realistically we should try to plot, but I assume most saved displays will have an image present.
+            displayUrl = "/img/dataset_previews/missing.png";
+            if (display.plot_type === "epiviz") {
+                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+            }
+        }
+
+        const displayImage = displayElement.querySelector('figure > img');
+        displayImage.src = displayUrl;
+
+        // Add tag indicating plot type
+        const displayType = displayElement.querySelector('.js-modal-display-type');
+        displayType.textContent = display.plot_type;
+
+        // Determine number of times display is in current layout
+        const displayCount = displayElement.querySelector('.js-collection-display-count');
+        if (collection) {
+            const displayCountValue = collection.members.filter((member) => member.display_id === displayId).length;
+            displayCount.textContent = displayCountValue;
+        } else {
+            // maybe a new collection
+            displayCount.textContent = 0;
+        }
+
+        // Append display to modal
+        displayElt.append(displayHTML);
+    }
 }
 
 /**
@@ -2024,16 +2172,11 @@ const updateDatasetCollectionButtons = (collection=null) => {
     const collectionRenameButton = document.getElementById("btn-rename-collection");
     const collectionDeleteButton = document.getElementById("btn-delete-collection");
 
-    collectionRenameButton.classList.remove("is-hidden");
-    collectionDeleteButton.classList.remove("is-hidden");
-    collectionRenameButton.disabled = false;
-    collectionDeleteButton.disabled = false;
+    enableAndShowElement(collectionRenameButton);
+    enableAndShowElement(collectionDeleteButton);
     if (!isOwner) {
-        collectionRenameButton.classList.add("is-hidden");
-        collectionDeleteButton.classList.add("is-hidden");
-        // disable the buttons
-        collectionRenameButton.disabled = true;
-        collectionDeleteButton.disabled = true;
+        disableAndHideElement(collectionRenameButton);
+        disableAndHideElement(collectionDeleteButton);
     }
 }
 
@@ -2063,8 +2206,10 @@ const updateDatasetListButtons = () => {
         // If button still exists, update its visibility if the dataset is downloadable
         if (downloadButton) {
             const isDownloadable = parseBool(downloadButton.dataset.isDownloadable);
-            downloadButton.parentElement.classList.toggle("is-hidden", !isDownloadable);
-            downloadButton.disabled = !isDownloadable;
+            disableAndHideElement(downloadButton, true);
+            if (isDownloadable) {
+                enableAndShowElement(downloadButton, true);
+            }
         }
 
         // The ability to edit and delete and dataset are currently paired
@@ -2089,46 +2234,41 @@ const updateDatasetListButtons = () => {
     }
 }
 
-
 /**
- * Updates the "Add to Collection" and "Remove from Collection" buttons for each dataset element in the dataset list.
- * If a collection is provided, the buttons will be enabled or disabled based on the dataset's membership in the collection.
- * If the collection is a domain or no collection is provided, the buttons will be hidden and disabled.
- *
- * @param {Object} collection - The collection object. If null, the buttons will be hidden and disabled for all datasets.
+ * Updates the display of "Add to Collection" and "Remove from Collection" buttons in a modal.
+ * @param {string} modalDivId - The ID of the modal's div element.
+ * @param {object|null} collection - The collection object. If null, the buttons will be disabled.
  */
-const updateDatasetAddRemoveToCollectionButtons = (collection=null) => {
-    const datasetListElements = document.getElementsByClassName("js-dataset-list-element");
-    for (const classElt of datasetListElements) {
-        const datasetId = classElt.dataset.datasetId;
+const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) => {
+    const modalDisplayBox = document.getElementById(modalDivId);
 
-        const addToCollectionButton = classElt.querySelector("button.js-collection-add-dataset");
-        const removeFromCollectionButton = classElt.querySelector("button.js-collection-remove-dataset");
+    const modalDisplayElts = modalDisplayBox.getElementsByClassName("js-modal-display");
 
-        // is-hidden removed from previous loop
+    for (const modalDisplay of modalDisplayElts) {
+        const displayId = parseInt(modalDisplay.dataset.displayId);
 
-        addToCollectionButton.parentElement.classList.remove("is-hidden")
-        removeFromCollectionButton.parentElement.classList.remove("is-hidden")
-        addToCollectionButton.disabled = false;
-        removeFromCollectionButton.disabled = false;
+        const collectionAddRemoveGroup = modalDisplay.querySelector(".js-collection-add-remove-group");
+        const addToCollectionButton = modalDisplay.querySelector("button.js-collection-add-display");
+        const removeFromCollectionButton = modalDisplay.querySelector("button.js-collection-remove-display");
+
+        collectionAddRemoveGroup.classList.remove("is-hidden");
+        enableAndShowElement(addToCollectionButton);
+        enableAndShowElement(removeFromCollectionButton);
 
         // if dataset collection is domain, remove the "add to collection" and "remove from collection" buttons
         if (!collection || Boolean(collection.is_domain)) {
-            addToCollectionButton.parentElement.classList.add("is-hidden")
-            removeFromCollectionButton.parentElement.classList.add("is-hidden")
-            // disable the buttons
-            addToCollectionButton.disabled = true;
-            removeFromCollectionButton.disabled = true;
+            collectionAddRemoveGroup.classList.add("is-hidden");
+            disableAndHideElement(addToCollectionButton);
+            disableAndHideElement(removeFromCollectionButton);
             continue;
         }
 
-        // if dataset is not in the currently selected collection, remove the "remove from collection" button (and vice versa)
-        const datasetInCollection = collection.members.some(member => member.dataset_id === datasetId);
-        if (!datasetInCollection) {
-            removeFromCollectionButton.parentElement.classList.add("is-hidden")
-            removeFromCollectionButton.disabled = true;
+        // if display is not in the currently selected collection, hide the "remove from collection" button
+        const displayInCollection = collection.members.some(member => member.display_id === displayId);
+        if (!displayInCollection) {
+            disableAndHideElement(removeFromCollectionButton);
         }
-    };
+    }
 }
 
 /* --- Entry point --- */
@@ -2170,10 +2310,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
 
     await submitSearch();
-
-    // Set state of initial dataset buttons based on the initial dataset collection.
-    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-    updateDatasetAddRemoveToCollectionButtons(collection);
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
@@ -2380,26 +2516,28 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
 
     // Get the current grid states for all tiles and put in an object
 
-    const layoutArrangement = {"single": {}, "multi": {}};  // dataset ids as keys
+    const layoutArrangement = {"single": [], "multi": []};  // dataset ids as keys
 
     for (const tile of singlearrangementTiles) {
-        const datasetId = tile.dataset.datasetId;
-        layoutArrangement.single[datasetId] = {
+        const displayId = tile.dataset.displayId;
+        layoutArrangement.single.push( {
+            "display_id": displayId,
             "start_row": parseInt(tile.style.gridRowStart),
             "start_col": parseInt(tile.style.gridColumnStart),
             "grid_height": parseInt(tile.style.gridRowEnd.split(" ")[1]),
             "grid_width": parseInt(tile.style.gridColumnEnd.split(" ")[1])
-        }
+        })
     }
 
     for (const tile of multiarrangementTiles) {
-        const datasetId = tile.dataset.datasetId;
-        layoutArrangement.multi[datasetId] = {
+        const displayId = tile.dataset.displayId;
+        layoutArrangement.multi.push( {
+            "display_id": displayId,
             "start_row": parseInt(tile.style.gridRowStart),
             "start_col": parseInt(tile.style.gridColumnStart),
             "grid_height": parseInt(tile.style.gridRowEnd.split(" ")[1]),
             "grid_width": parseInt(tile.style.gridColumnEnd.split(" ")[1])
-        }
+        })
     }
 
 

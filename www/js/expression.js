@@ -429,6 +429,13 @@ const selectGeneResult = (gene_symbol) => {
     }
 }
 
+/**
+ * Sets up the tile grid with the provided shareId and type.
+ *
+ * @param {string} shareId - The shareId for the tile grid.
+ * @param {string} [type="layout"] - The type of the tile grid. Default is "layout".
+ * @returns {Promise<TileGrid>} - A promise that resolves to the initialized TileGrid object.
+ */
 const setupTileGrid = async (shareId, type="layout") => {
 
     // Cannot proceed without a shareId
@@ -438,11 +445,11 @@ const setupTileGrid = async (shareId, type="layout") => {
 
     const tilegrid = new TileGrid(shareId, type, "#result-panel-grid");
     try {
+        tilegrid.datasets = await tilegrid.getDatasets();
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
         tilegrid.applyTileGrid(is_multigene);
-        await tilegrid.addDefaultDisplays();
 
         // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_gene
         // We do not render for single-gene searches because the first gene result is "clicked" and the tilegrid is rendered in the event listener.

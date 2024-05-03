@@ -458,8 +458,12 @@
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
                                                                 </button>
                                                             </p>
-
                                                             <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-view-displays" data-tooltip-content="View, add or remove displays from current collection">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-plus-minus-variant"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <!--<p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-collection-add-dataset" data-tooltip-content="Add dataset to current collection">
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-plus-box-multiple"></i></span>
                                                                 </button>
@@ -468,7 +472,7 @@
                                                                 <button class="button is-small is-outlined is-dark js-collection-remove-dataset" data-tooltip-content="Remove dataset from current collection">
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-minus-box-multiple"></i></span>
                                                                 </button>
-                                                            </p>
+                                                            </p>-->
 
                                                             <p class="control">
                                                                 <button class="button is-small is-danger js-delete-dataset" data-tooltip-content="Delete dataset">
@@ -582,7 +586,7 @@
                                 <li>You can also drag the right or bottom edges or corner of any display to change its width or height.</li>
                                 <li>Dragging or resizing below the bottom row will create a new row to work with.</li>
                                 <li>Tiles have the potential to overlap, and saving is disabled until all overlaps are resolved.</li>
-                                <li>Click "Save" to save this arrangement.</li>
+                                <li>Click "Save" to save both single- and multigene arrangements.</li>
                             </ul>
                             <div class="field">
                                 <div class="control">
@@ -593,6 +597,9 @@
                                 </div>
                             </div>
                             <h4 class="title is-4">Profile arrangement</h4>
+                            <div class="notification is-info is-hidden" id="dataset-arrangement-loading-notification">
+                                Loading arrangements...
+                            </div>
                             <div class="my-3">
                                 <p class="subtitle is-5 is-underlined">Single-gene view</p>
                                 <div id="dataset-arrangement-single" class="arrangement-grid"></div>
@@ -617,13 +624,52 @@
         </section>
     </div>
 
+    <template id="tmpl-displays-modal">
+        <div class="js-displays-modal modal">
+            <div class="modal-background"></div>
+            <div class="modal-content">
+                <div class="box has-background-white-ter">
+                    <h5 class="title is-5"></h5>
+                    <div class="js-modal-user-displays columns is-multiline">
+                        <img>
+                    </div>
+                    <div class="js-modal-owner-displays columns is-multiline">
+                        <img>
+                    </div>
+                </div>
+            </div>
+            <button class="modal-close is-large has-background-link" aria-label="close"></button>
+        </div>
+    </template>
+
+    <template id="tmpl-displays-modal-display">
+        <div class="js-modal-display column is-3 p-1">
+            <figure class="image is-4by3">
+                <img alt="Saved display">
+                <span class="js-modal-display-type tag is-info is-relative"></span>
+                <div class="control is-pulled-right">
+                    <div class="tags has-addons js-collection-add-remove-group">
+                        <button class="button tag is-light js-collection-remove-display" data-tooltip-content="Remove last instance of this display from current collection">
+                            <span class="icon"><i class="mdi mdi-18px mdi-minus-box-multiple"></i></span>
+                        </button>
+                        <span class="tag is-light js-collection-display-count"></span>
+                        <button class="button tag is-dark js-collection-add-display" data-tooltip-content="Add an instance of this display to current collection">
+                            <span class="icon"><i class="mdi mdi-18px mdi-plus-box-multiple"></i></span>
+                        </button>
+                    </div>
+                </div>
+            </figure>
+        </div>
+    </template>
+
+
     <!-- Promise based HTTP client for the browser  -->
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script src="js/vendor/js.cookie.js"></script>
 
     <!-- Draggable and resizable elements -->
-    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    <script src="https://unpkg.com/interactjs@1.10.27/dist/interact.min.js"></script>
 
     <!-- Floating UI for tooltips, popovers, etc -->
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>

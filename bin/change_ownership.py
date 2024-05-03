@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-This can be used to change ownership of a single dataset or a 
+This can be used to change ownership of a single dataset or a
 profile and all the datasets within it.
 
 If the --include_displays argument is passed, those displays owned
@@ -27,7 +27,7 @@ def main():
 
     if not args.dataset_id and not args.profile_id:
         print("ERROR: You must specify either --dataset_id or --profile_id (or both)")
-    
+
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
 
@@ -46,7 +46,7 @@ def reown_dataset(cursor, dataset_id, user_id, include_displays):
 
     if dataset is None:
         raise Exception("ERROR: No dataset found of ID: {0}".format(dataset_id))
-    
+
     original_owner = dataset.owner_id
     print("\nDataset:{0} Changing owner from {1} to {2}".format(dataset_id, original_owner, user_id))
     dataset.save_change(attribute='owner_id', value=user_id)
@@ -64,20 +64,20 @@ def reown_dataset(cursor, dataset_id, user_id, include_displays):
 
         display_qry = "UPDATE dataset_display SET user_id = %s WHERE id = %s"
         pref_update_qry = """
-             UPDATE dataset_preference 
-             SET user_id = %s 
+             UPDATE dataset_preference
+             SET user_id = %s
              WHERE user_id = %s
                AND dataset_id = %s
                AND display_id = %s
         """
-        
+
         for display_id in display_ids_to_update:
             print("Dataset display:{0} Changing owner to {1}".format(display_id, user_id))
             cursor.execute(display_qry, (user_id, display_id))
 
             print("Dataset preference: Setting user_id to {0} where user_id was {1}, dataset_id {2} and display_id:{3}".format(user_id, original_owner, dataset_id, display_id))
             cursor.execute(pref_update_qry, (user_id, original_owner, dataset_id, display_id))
-    
+
 
 def reown_profile(cursor, profile_id, user_id, include_displays):
     layout = geardb.get_layout_by_id(profile_id)
@@ -88,15 +88,27 @@ def reown_profile(cursor, profile_id, user_id, include_displays):
     qry = "UPDATE layout SET user_id = %s WHERE id = %s"
     print("Layout:{0} Changing owner to {1}".format(profile_id, user_id))
     cursor.execute(qry, (user_id, profile_id))
-    
-    # now layout_members
+
+    # now layout_displays
     layout.get_members()
 
     print("Got {0} members in layout {1}".format(len(layout.members), profile_id))
 
+    dataset_ids = set()
+
     for lm in layout.members:
-        reown_dataset(cursor, lm.dataset_id, user_id, include_displays)
+
+        # retrieve the dataset using the display ID
+        qry = "SELECT dataset_id FROM dataset_display WHERE id = %s"
+        cursor.execute(qry, (lm.display_id,))
+
+        (dataset_id,) = cursor.fetchone()
+        dataset_ids.add(dataset_id)
+
+    for dataset_id in list(dataset_isds):
+        print("Reowning dataset {0}".format(dataset_id))
+        reown_dataset(cursor, dataset_id, user_id, include_displays)
 
 if __name__ == '__main__':
     main()
-    
+
