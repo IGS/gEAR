@@ -113,8 +113,8 @@ def create_projection_colorscale():
     """Create a diverging colorscale but with black in the middle range."""
 
     # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
-    nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
-    colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
+    nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
+    colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
     #create a colormap with the name "multicolor_diverging"
     register_colormap("multicolor_diverging", mcolors.LinearSegmentedColormap.from_list("multicolor_diverging", list(zip(nodes, colors))))
     #create a colormap with the name "multicolor_diverging_r"

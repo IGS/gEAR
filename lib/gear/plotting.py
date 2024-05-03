@@ -123,15 +123,21 @@ def _adjust_colorscale(plotting_args, colormap=None, palette=None):
             plotting_args["color_continuous_scale"] = palette
             if palette == "multicolor_diverging":
                 # This is a custom colorscale for diverging data (for Carlo)
-                plotting_args["color_continuous_scale"] = [
 
-                    [0, 'rgb(173, 216, 230)'],
-                    [0.25, 'rgb(0, 0, 128)'],
-                    [0.4, 'rgb(0, 0, 255)'],
-                    [0.5, 'rgb(0, 0, 0)'],
-                    [0.6, 'rgb(128, 0, 0)'],
-                    [0.75, 'rgb(255, 0, 0)'],
-                    [1, 'rgb(240, 128, 128)']
+                #     nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
+                #     colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
+
+                # Hex codes are based on Matplotlib values -> https://i.stack.imgur.com/nCk6u.jpg
+                plotting_args["color_continuous_scale"] = [
+                    [0.0, '#9a0eea'],
+                    [0.12, '#0343df'],
+                    [0.25, '#380282'],
+                    [0.38, '#00035b'],
+                    [0.5, '#000000'],
+                    [0.62, '#840000'],
+                    [0.75, '#e50000)'],
+                    [0.88, '#f97306'],
+                    [1.0, '#ffff14']
                 ]
 
     return plotting_args
