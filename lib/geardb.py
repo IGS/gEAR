@@ -69,6 +69,26 @@ this.domain_label = _read_domain_label()
 this.domain_short_label = _read_domain_short_label()
 this.links_out = _read_domain_links_out()
 
+def check_verification_code(long_form, short_form):
+    """
+    To prevent fake users from creating accounts, we now employ e-mail verification.
+    We don't want to store a temp verification code in the database, so we generate
+    a full UUID in javascript and then hash it to a short form for user's verification
+    e-mail.  This function checks if the long form matches the short form.
+    """
+    if get_verification_code_short_form(long_form) == short_form:
+        return True
+    else:
+        return False
+
+def get_verification_code_short_form(long_form):
+    """
+    Get the hashed/short form of the full verification code. If you want to ensure
+    anyone who can see the repo in GitHub can't script account creation still, you 
+    can just modify the string this function returns for your own site.
+    """
+    return ''.join([x[0] for x in long_form.split('-')])
+
 def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad

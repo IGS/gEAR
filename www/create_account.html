@@ -38,7 +38,35 @@
 
           <section id="content-c" class="m-3">
             
-            <div class="columns">
+            <div id="email-verification-c" class="columns is-hidden">
+              <div class="column is-1"></div>
+              <div class="column is-6">
+                <h2>E-mail verification</h2>
+                <p>You have been sent an e-mail to verify your address. Please copy the short 
+                  code from the e-mail and paste it here to complete the verification process.
+                </p>
+                <br />
+                <form id="email-verification">
+                  <div class="field">
+                    <label class="label">Verification code</label>
+                    <div class="control has-icons-left has-icons-right">
+                      <input class="input" id="verification-code" name="verification-code" type="text" placeholder="Verification code" value="">
+                      <span class="icon is-small is-left">
+                        <i class="mdi mdi-key"></i>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <div class="control">
+                      <button id="btn-email-verification-submit" class="button is-primary">Verify</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="column is-5"></div>
+            </div>
+
+            <div id="account-info-c" class="columns">
               <div class="column is-1"></div>
               <div class="column is-6">
                 <p>
@@ -48,7 +76,7 @@
 
                 <br />
 
-                <form id="account_creation">
+                <form id="account-creation">
                   <div class="field">
                     <label class="label">Name</label>
                     <div class="control has-icons-left has-icons-right">
@@ -76,7 +104,7 @@
                   <div class="field">
                     <label class="label">Email</label>
                     <div class="control has-icons-left has-icons-right">
-                      <input class="input" id="email" type="email" placeholder="Email input" value="">
+                      <input class="input" id="email" name="email" type="email" placeholder="Email input" value="">
                       <span class="icon is-small is-left">
                         <i class="mdi mdi-email"></i>
                       </span>
@@ -131,7 +159,7 @@
                   <div class="field">
                     <div class="control">
                       <label class="checkbox">
-                        <input type="checkbox" name="colorblind_mode" value="yes">
+                        <input type="checkbox" id="colorblind_mode" name="colorblind_mode" value="yes">
                         Click to view all plots using a color scheme suitable for those with color-vision deficiencies.
                       </label>
                     </div>
@@ -140,7 +168,7 @@
                   <div class="field">
                     <div class="control">
                       <label class="checkbox">
-                        <input type="checkbox" name="email_updates" value="yes">
+                        <input type="checkbox" id="email_updates" name="email_updates" value="yes">
                         Get regular email updates?
                       </label>
                     </div>
