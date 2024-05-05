@@ -50,6 +50,7 @@ const availablePalettes = [
             { value: "prgn", text: "Purple-Green" },
             { value: "rdbu", text: "Red-Blue" },
             { value: "rdylbu", text: "Red-Yellow-Blue" },
+            { value: "bublrd", text: "Blue-Black-Red"},
             { value: "multicolor_diverging", text: "Purple-Blue-Black-Red-Yellow" },
         ],
     },
@@ -73,7 +74,7 @@ const plotly2MatplotlibNames = {
     "blues": "Blues",
     "purp": "Purples",
     "reds": "Reds",
-    "bluered": "bluered",   // Custom color
+    "bluered": "bluered",   // Custom colorscale
     "ylgnbu": "YlGnBu",
     "ylorrd": "YlOrRd",
     "brbg": "BrBG",
@@ -81,6 +82,8 @@ const plotly2MatplotlibNames = {
     "prgn": "PRGn",
     "rdbu": "RdBu",
     "rdylbu": "RdYlBu",
+    // anything below is custom colorscales
+    "bublrd": "bublrd",
     "multicolor_diverging": "multicolor_diverging"
 }
 

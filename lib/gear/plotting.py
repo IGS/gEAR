@@ -140,6 +140,17 @@ def _adjust_colorscale(plotting_args, colormap=None, palette=None):
                     [1.0, '#ffff14']
                 ]
 
+            elif palette == "bublrd":
+                plotting_args["color_continuous_scale"] = [
+                    [0, 'rgb(173, 216, 230)'],
+                    [0.25, 'rgb(0, 0, 128)'],
+                    [0.4, 'rgb(0, 0, 255)'],
+                    [0.5, 'rgb(0, 0, 0)'],
+                    [0.6, 'rgb(128, 0, 0)'],
+                    [0.75, 'rgb(255, 0, 0)'],
+                    [1, 'rgb(240, 128, 128)']
+                ]
+
     return plotting_args
 
 def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=None ):

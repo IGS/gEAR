@@ -109,9 +109,15 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     projection_adata.filename = projection_adata_path
     return projection_adata
 
+def create_bublrd_colorscale():
+    """Create a diverging colorscale but with black in the middle range."""
+    nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
+    colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
+    register_colormap("bublrd", mcolors.LinearSegmentedColormap.from_list("bublrd", list(zip(nodes, colors))))
+    register_colormap("bublrd_r", mcolors.LinearSegmentedColormap.from_list("bublrd_r", list(zip(nodes, colors[::-1]))))
+
 def create_projection_colorscale():
     """Create a diverging colorscale but with black in the middle range."""
-
     # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
     nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
     colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
@@ -419,6 +425,9 @@ class TSNEData(Resource):
 
         if expression_palette.startswith("bluered"):
             create_bluered_colorscale()
+
+        if expression_palette.startswith("bublrd"):
+            create_bublrd_colorscale()
 
         if expression_palette.startswith("multicolor_diverging"):
             create_projection_colorscale()
