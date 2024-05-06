@@ -638,7 +638,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     # More general layout updates
     fig.update_layout(
         autosize=True,
-        hovermode='closest' if not plot_type == "bar" and "std" in df.columns else 'x', # Easier to click on small bars
+        hovermode='closest' if not (plot_type == "bar" and "std" in df.columns) else 'x', # Easier to click on small bars
         legend = dict(itemsizing="constant"),
         showlegend=False if hide_legend else None,   # 'None' just means do whatever plotly defaults to
     )
