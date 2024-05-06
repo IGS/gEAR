@@ -556,6 +556,9 @@ class DatasetTile {
             });
 
             dropdownContent.append(orthologItem);
+
+            // Adjust height of card image to account for the dropdown
+            document.querySelector(`#tile-${this.tile.tileId} .card-image`).style.height = "calc(100% - 80px)";
         }
 
         // Make first dropdown item active
@@ -1107,7 +1110,7 @@ class DatasetTile {
 
         try {
             if (plotlyPlots.includes(display.plot_type)) {
-                await this.renderPlotlyDisplay(display, this.tile.height, otherOpts);
+                await this.renderPlotlyDisplay(display, otherOpts);
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display, otherOpts);
 
@@ -1134,7 +1137,7 @@ class DatasetTile {
             } else if (display.plot_type === "epiviz") {
                 await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
-                await this.renderMultiGeneDisplay(display, this.tile.height, otherOpts);
+                await this.renderMultiGeneDisplay(display, otherOpts);
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
@@ -1252,7 +1255,7 @@ class DatasetTile {
         return epivizTracksTemplate;
     }
 
-    async renderMultiGeneDisplay(display, heightMultiplier, otherOpts) {
+    async renderMultiGeneDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -1296,14 +1299,13 @@ class DatasetTile {
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
-        customLayout.height *= heightMultiplier;
         Plotly.relayout(plotlyPreview.id , customLayout);
 
         // ! Occasionally get a "something went wrong with axis scaling" error. Unsure what the cause is yet.
 
     }
 
-    async renderPlotlyDisplay(display, heightMultiplier, otherOpts) {
+    async renderPlotlyDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
@@ -1338,8 +1340,6 @@ class DatasetTile {
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
-        customLayout.height *= heightMultiplier;
-
         Plotly.relayout(plotlyPreview.id, customLayout);
     }
 

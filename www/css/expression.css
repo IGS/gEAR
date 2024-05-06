@@ -76,22 +76,32 @@ ul#go-terms li {
 }
 
 /* Adjusting .card-image and img for static images */
-#result-panel-grid .card-image {
-    height: 30vh;
+.js-tile .card-image {
+    height: calc(100% - 60px); /* factors in the card-header height ... inexact art */
 }
-#result-panel-grid .card-image img {
+.js-tile .card-image img {
     width: 100%;
     height: 100%;
     object-fit: fill;
 }
 
 /* This is the main svg image */
-#result-panel-grid .card-image .svg svg {
-    margin-top:10%;
+.js-tile .card-image .svg {
+    height: calc(95% - 40px); /* factors in the svg legend */
+}
+
+.js-tile .card-image .js-plotly-plot {
+    width: 100%;
+    height: 100%;
+}
+
+.js-tile .card-image .plotly {
+    width: 100%;
+    height: 100%;
 }
 
 /* Loading info or error message */
-#result-panel-grid .card-image p {
+.js-tile .card-image p {
     height: 200px;
     display: flex;
     align-items: center;
