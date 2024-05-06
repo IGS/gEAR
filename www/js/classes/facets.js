@@ -8,6 +8,7 @@ class FacetWidget {
         this.onFilterChange = onFilterChange || {}; // Callback function when a filter is changed
         this.facetContainer =  facetContainer || document.getElementById('facet-c');
         this.selectedFacetsTags = selectedFacetsTags || document.getElementById('selected-facets-tags');
+        this.allSelectedTag = document.getElementById('selected-facets-all');
         this.filterHeaderExtraClasses = filterHeaderExtraClasses || 'has-background-primary-dark has-text-primary-light';
         this.init();
     }
@@ -158,7 +159,8 @@ class FacetWidget {
         }
 
         inputElt.addEventListener('click', (event) => {
-            this.onFilterItemClick(item, filterName)
+            const isClicked = event.currentTarget.checked;
+            this.onFilterItemClick(item, filterName, isClicked)
         });
         return filterItem;
     }
@@ -177,34 +179,52 @@ class FacetWidget {
         }
     }
 
-    async onFilterItemClick(item, filterName) {
-        this.toggleFilterItem(item, filterName);
+    async onFilterItemClick(item, filterName, isChecked) {
+        this.toggleFilterItem(item, filterName, isChecked);
         const escapedFilterName = CSS.escape(filterName);
         const loadingSelector = document.querySelector(`#filter-${escapedFilterName} .loader`);
         loadingSelector.classList.remove("is-hidden")
         await this.onFilterChange(this.filters);
-        this.toggleSelectedTag(item.name, filterName);
+        this.toggleSelectedTag(item.name, filterName, isChecked);
         loadingSelector.classList.add("is-hidden")
+
+        // if #selected-facets-tags has children, hide #selected-facets-all
+        if (this.selectedFacetsTags.children.length > 0) {
+            this.allSelectedTag.classList.add('is-hidden');
+        } else {
+            this.allSelectedTag.classList.remove('is-hidden');
+        }
 
     }
 
-    toggleFilterItem(item, filterName) {
+    toggleFilterItem(item, filterName, isChecked) {
 
-        // Add or remove the filter item from the selected filters
-        if (this.filters.hasOwnProperty(filterName)) {
-            if (this.filters[filterName].includes(item.name)) {
+        // Explicitly check for isChecked to ensure toggling aligns with the checkbox state
+        if (isChecked) {
+            // If filterName is a key in filters, add the item to the list (assuming it's not already there)
+            if (this.filters.hasOwnProperty(filterName)) {
+                if (this.filters[filterName].includes(item.name)) {
+                    return;
+                }
+                this.filters[filterName].push(item.name);
+            } else {
+                this.filters[filterName] = [item.name];
+            }
+        } else {
+            // If filterName is a key in filters, remove the item from the list
+            if (this.filters.hasOwnProperty(filterName)) {
                 this.filters[filterName] = this.filters[filterName].filter((value) => value !== item.name);
 
                 // If no filters are selected, remove the filter
                 if (this.filters[filterName].length === 0) {
                     delete this.filters[filterName];
                 }
-            } else {
-                this.filters[filterName].push(item.name);
             }
+        }
 
-        } else {
-            this.filters[filterName] = [item.name];
+        // if no filters are selected proceed
+        if (Object.keys(this.filters).length === 0) {
+            return;
         }
 
         // If all items are selected, remove the filter
@@ -215,11 +235,13 @@ class FacetWidget {
     }
 
     // Add a tag to the selected filter items list
-    toggleSelectedTag(itemName, filterName) {
+    toggleSelectedTag(itemName, filterName, isChecked) {
         // Append the tag if it doesn't exist, otherwise remove it
         const tagId = `selected-tag-${filterName}-${itemName}`
         const selectedTag = document.getElementById(tagId);
-        if (selectedTag === null) {
+
+        // Explicitly check for isChecked to ensure toggling aligns with the checkbox state
+        if (selectedTag === null && isChecked) {
             const tag = document.createElement('span');
             tag.id = tagId;
             tag.className = 'tag is-light is-primary';
