@@ -579,5 +579,11 @@ const validateExpressionSearchForm = () => {
         return false;
     }
 
+    // If multi, check that at least two genes are selected
+    if (is_multigene && selected_genes.size < 2) {
+        createToast('Please select at least two genes to proceed');
+        return false;
+    }
+
     return true;
 }
