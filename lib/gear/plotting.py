@@ -414,20 +414,22 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     if plot_type in ["bar"]:
         plotting_args["error_y"] = "std" if "std" in df.columns else None
-        # For expression data, error_y_minus cannot go below 0 (negative values are not possible)
-        # Projections can go either way depending on the data
-        if not is_projection:
-            df["std_minus"] = df["std"]
-            df.loc[df[y] - df["std"] < 0, "std_minus"] = df[y]
 
-            plotting_args["error_y_minus"] = "std_minus"
+        if "std" in df.columns:
+            # For expression data, error_y_minus cannot go below 0 (negative values are not possible)
+            # Projections can go either way depending on the data
+            if not is_projection:
+                df["std_minus"] = df["std"]
+                df.loc[df[y] - df["std"] < 0, "std_minus"] = df[y]
 
-        # Add standard deviation to hover data
-        plotting_args["hover_data"] = {
-            x: False,
-            y: False,
-            "std": True
-        }
+                plotting_args["error_y_minus"] = "std_minus"
+
+            # Add standard deviation to hover data
+            plotting_args["hover_data"] = {
+                x: False,
+                y: False,
+                "std": True
+            }
 
     if plot_type == 'contour':
         plotting_args["z"] = z
