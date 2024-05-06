@@ -49,7 +49,43 @@ for row in cursor:
     grid_height = row[10]
     mg_grid_height = row[11]
 
+    if mg_grid_position == 0:
+        mg_grid_position = grid_position
+
     layout_members.append((layout_id, dataset_id, grid_position, mg_grid_position, start_col, mg_start_col, grid_width, mg_grid_width, start_row, mg_start_row, grid_height, mg_grid_height))
+
+# Determine if we are in "legacy" mode where every member start_col is 1
+legacy = False
+if len(layout.members) > 0:
+    if all([m.start_col == 1 for m in layout.members]):
+        print("Legacy mode found... rebuilding layout member grid positions...", file=sys.stderr)
+        legacy = True
+
+# If "legacy" mode, adjust the start_col and start_row, as well as mg_start_col and mg_start_row
+if legacy:
+    current_col = 1
+    current_row = 1
+    for lm in layout_members:
+        width = lm.grid_width
+        if current_col + width > 13:
+            current_col = 1
+            current_row += 1
+        lm.start_col = current_col
+        lm.start_row = current_row
+        current_col += width
+
+    # Multigene displays now
+    current_col = 1
+    current_row = 1
+    for lm in layout_members:
+        width = lm.mg_grid_width
+        if current_col + width > 13:
+            current_col = 1
+            current_row += 1
+        lm.mg_start_col = current_col
+        lm.mg_start_row = current_row
+        current_col += width
+
 
 for lm in layout_members:
 
@@ -65,6 +101,7 @@ for lm in layout_members:
     mg_start_row = lm[9]
     grid_height = lm[10]
     mg_grid_height = lm[11]
+
 
     # get the default single gene and multi gene display ID preferences for the dataset ID
 
