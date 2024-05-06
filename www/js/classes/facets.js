@@ -188,11 +188,13 @@ class FacetWidget {
         this.toggleSelectedTag(item.name, filterName, isChecked);
         loadingSelector.classList.add("is-hidden")
 
-        // if #selected-facets-tags has children, hide #selected-facets-all
-        if (this.selectedFacetsTags.children.length > 0) {
-            this.allSelectedTag.classList.add('is-hidden');
-        } else {
-            this.allSelectedTag.classList.remove('is-hidden');
+        // if #selected-facets-tags has children, hide #selected-facets-all (if it exists)
+        if (this.allSelectedTag) {
+            if (this.selectedFacetsTags.children.length > 0) {
+                this.allSelectedTag.classList.add('is-hidden');
+            } else {
+                this.allSelectedTag.classList.remove('is-hidden');
+            }
         }
 
     }
