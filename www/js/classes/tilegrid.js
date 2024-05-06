@@ -516,6 +516,9 @@ class DatasetTile {
         const cardContent = tileElement.querySelector('.js-card-extras');
 
         cardContent.append(projectionInfoHTML);
+
+        // Adjust height of card image to account for the dropdown
+        document.querySelector(`#tile-${this.tile.tileId} .card-image`).style.height = "calc(100% - 80px)";
     }
 
     /**
@@ -556,9 +559,6 @@ class DatasetTile {
             });
 
             dropdownContent.append(orthologItem);
-
-            // Adjust height of card image to account for the dropdown
-            document.querySelector(`#tile-${this.tile.tileId} .card-image`).style.height = "calc(100% - 80px)";
         }
 
         // Make first dropdown item active
@@ -604,6 +604,9 @@ class DatasetTile {
         const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
         const cardContent = tileElement.querySelector('.js-card-extras');
         cardContent.append(orthoHTML);
+
+        // Adjust height of card image to account for the dropdown
+        document.querySelector(`#tile-${this.tile.tileId} .card-image`).style.height = "calc(100% - 80px)";
     }
 
     /**
