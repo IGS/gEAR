@@ -622,6 +622,7 @@ class DatasetTile {
         const geoId = dataset.geo_id;
         const hasTarball = dataset.has_tarball;
         const hasH5ad = dataset.has_h5ad;
+        const isDownloadable = dataset.is_downloadable;
         const links = dataset.links;
 
         for (const item of dropdownItems) {
@@ -737,7 +738,7 @@ class DatasetTile {
                     break;
                 case "download-bundle":
                     // Download dataset bundle
-                    if (hasTarball) {
+                    if (hasTarball && isDownloadable) {
                         const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
                         item.href = url;
                     } else {
@@ -746,7 +747,7 @@ class DatasetTile {
                     break;
                 case "download-h5ad":
                     // Download h5ad file
-                    if (hasH5ad) {
+                    if (hasH5ad && isDownloadable) {
                         const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
                         item.href = url;
                     } else {
