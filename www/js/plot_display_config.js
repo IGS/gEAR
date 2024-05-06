@@ -196,9 +196,9 @@ function adjustExpressionColorbar(plotData) {
     for (const element of plotData) {
         if ("colorbar" in element && element.name === "expression") {
             element.colorbar.len = 1.5;
-            element.colorbar.xpad = 10;
+            //element.colorbar.xpad = 10;
             element.colorbar.x = 1.15;
-            element.colorbar.title = {text: "Expression"};
+            //element.colorbar.title = {text: "Expression"};
         }
     }
 }

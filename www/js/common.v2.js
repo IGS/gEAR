@@ -443,8 +443,6 @@ const logErrorInConsole = (error) => {
         console.error('Request Error:', error.request);
     } else {
         // Something happened in setting up the request that triggered an Error
-        // SAdkins - commenting out since this is typically duplicated in the stack trace
-        // console.error('Setup Error:', error.message);
     }
 
     if (error.config) {

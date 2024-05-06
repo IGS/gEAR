@@ -1146,7 +1146,7 @@ class DatasetTile {
             }
         } catch (error) {
             // we want to ensure other plots load even if one fails
-            console.error(error);
+            logErrorInConsole(error);
             // Fill in card-image with error message
             createCardMessage(this.tile.tileId, "danger", error.message);
         }
@@ -1293,18 +1293,19 @@ class DatasetTile {
         if (plotType === 'heatmap') {
             // These modify the plotJson object in place
             // TODO: Adjust these functions
-            //adjustExpressionColorbar(plotJson.data);
-            //adjustClusterColorbars(plotJson.data);
+            adjustExpressionColorbar(plotJson.data);
+            adjustClusterColorbars(plotJson.data);
         }
 
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
+        // ! Occasionally get a "something went wrong with axis scaling" error. This seems to arise if the colorbar is too small
+
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
-        // ! Occasionally get a "something went wrong with axis scaling" error. Unsure what the cause is yet.
 
     }
 
