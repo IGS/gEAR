@@ -1,6 +1,8 @@
 # Purely kept so we can debug with sys.stderr
 from itertools import cycle
 
+import pandas as pd
+
 import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib.pyplot import plot
@@ -162,7 +164,7 @@ def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=No
     if not priority_groups:
         return df
 
-    grouped = df.groupby(priority_groups)
+    grouped = df.groupby(priority_groups, observed=False)
 
     # Discrete colorscale or no colorscale
     if not color_name or _is_categorical(df[color_name]):
@@ -340,6 +342,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                       plot_type='scatter', hide_x_labels=False, hide_y_labels=False,
                       hide_legend=None, text_name=None, jitter=False,
                       x_range=None, y_range=None, vlines=[], x_title=None, y_title=None,
+                      is_projection=False,
                       **kwargs):
     """Generates and returns figure for facet grid."""
 
@@ -383,7 +386,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     # For scatter plots with a lot of datapoints, use WebGL rendering
     if plot_type == "scattergl":
-        plot_type == "scatter"
+        plot_type = "scatter"
         plotting_args["render_mode"] = "webgl"
 
     # For line plots, use svg render since webgl mode does not have spline as a valid line shape (as of plotly 4.14.3)
@@ -411,6 +414,17 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     if plot_type in ["bar"]:
         plotting_args["error_y"] = "std" if "std" in df.columns else None
+        # For expression data, start scale at 0
+        # Projections can go either way depending on the data
+        if not is_projection:
+            plotting_args["error_y_minus"] = pd.Series([0]*len(df))
+
+        # Add standard deviation to hover data
+        plotting_args["hover_data"] = {
+            x: False,
+            y: False,
+            "std": True
+        }
 
     if plot_type == 'contour':
         plotting_args["z"] = z
@@ -619,7 +633,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     # More general layout updates
     fig.update_layout(
         autosize=True,
-        hovermode='closest',
+        hovermode='closest' if not plot_type == "bar" else 'x', # Easier to click on small bars
         legend = dict(itemsizing="constant"),
         showlegend=False if hide_legend else None,   # 'None' just means do whatever plotly defaults to
     )

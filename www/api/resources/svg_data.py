@@ -153,7 +153,7 @@ class SvgData(Resource):
             df = selected.to_df()
             df = pd.concat([df, selected.obs["cell_type"]], axis=1)
 
-            cell_type_avgs = df.groupby('cell_type').mean()
+            cell_type_avgs = df.groupby('cell_type', observed=False).mean()
             # Add mean label
             mean_labels = cell_type_avgs.reset_index()['cell_type'].apply(
                 lambda cell_type: f"{cell_type}--mean")
