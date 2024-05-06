@@ -414,10 +414,13 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     if plot_type in ["bar"]:
         plotting_args["error_y"] = "std" if "std" in df.columns else None
-        # For expression data, start scale at 0
+        # For expression data, error_y_minus cannot go below 0 (negative values are not possible)
         # Projections can go either way depending on the data
         if not is_projection:
-            plotting_args["error_y_minus"] = pd.Series([0]*len(df))
+            df["std_minus"] = df["std"]
+            df.loc[df[y] - df["std"] < 0, "std_minus"] = df[y]
+
+            plotting_args["error_y_minus"] = "std_minus"
 
         # Add standard deviation to hover data
         plotting_args["hover_data"] = {
