@@ -29,7 +29,7 @@ window.onload=function() {
             // hide the account info and show the verification info
             document.getElementById('account-info-c').classList.add('is-hidden');
             document.getElementById('email-verification-c').classList.remove('is-hidden');
-            
+
             return false;
 
         } else if (e.target.id === 'btn-email-verification-submit') {
@@ -40,16 +40,16 @@ window.onload=function() {
 
             if (account_created == false) {
                 // TODO: Handle UI display here.
-                alert("There was an error creating your account. Please try again later.");
+                createToast("There was an error creating your account. Please try again later.");
                 return false;
             } else {
                 // TODO: Handle UI display here.
-                //alert("Account created!");
+                //createToast("Account created!", "is-success");
             }
 
             return false;
         }
-            
+
     });
 
     document.getElementById('first-last').addEventListener('blur', function() {
@@ -86,16 +86,10 @@ async function createAccount(verification_uuid) {
     */
 
     // get the value of the colorblind mode checkbox, if it's checked
-    let colorblind_mode = 0;
-    if (document.getElementById('colorblind_mode').checked) {
-        colorblind_mode = 'yes';
-    }
+    const colorblind_mode = document.getElementById('colorblind-mode').checked ? 'yes' : 0;
 
     // get the value of the email_updates checkbox, if it's checked
-    let email_updates = 0;
-    if (document.getElementById('email_updates').checked) {
-        email_updates = 'yes';
-    }
+    let email_updates = document.getElementById('email-updates').checked ? 'yes' : 0;
 
     const {data} = await axios.post('./cgi/create_account.cgi', convertToFormData({
         'first-last': document.getElementById('first-last').value,
@@ -104,8 +98,8 @@ async function createAccount(verification_uuid) {
         'password': document.getElementById('password1').value,
         'verification_code_long': verification_uuid,
         'verification_code_short': document.getElementById('verification-code').value,
-        'colorblind_mode': colorblind_mode,
-        'email_updates': email_updates,
+        colorblind_mode,
+        email_updates,
     }));
 
     console.log(`Account creation status: ${data['success']}`);
@@ -125,22 +119,22 @@ async function sendVerificationEmail(verification_uuid) {
 
 /**
  * Validates the email address entered by the user.
- * 
+ *
  * @returns {boolean} Returns true if the email is valid and not already registered, false otherwise.
  */
 async function validateEmail() {
     const email = document.getElementById('email').value;
     const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    if (! email_regex.test(email) ) {
+    if (email_regex.test(email) ) {
+        document.getElementById('email').classList.remove('is-danger');
+        document.getElementById('email-error-message').classList.add('is-hidden');
+        document.getElementById('email-alert-icon').classList.add('is-hidden');
+    } else {
         document.getElementById('email-error-message').innerHTML = 'Please enter a valid e-mail address';
         document.getElementById('email').classList.add('is-danger');
         document.getElementById('email-error-message').classList.remove('is-hidden');
         document.getElementById('email-alert-icon').classList.remove('is-hidden');
         return false;
-    } else {
-        document.getElementById('email').classList.remove('is-danger');
-        document.getElementById('email-error-message').classList.add('is-hidden');
-        document.getElementById('email-alert-icon').classList.add('is-hidden');
     }
 
     // Also check if this e-mail is already registered
@@ -166,17 +160,16 @@ function validateFirstLast() {
         document.getElementById('first-last-error-message').classList.add('is-hidden');
         document.getElementById('first-last-alert-icon').classList.add('is-hidden');
         return true;
-    } else {
-        document.getElementById('first-last').classList.add('is-danger');
-        document.getElementById('first-last-error-message').classList.remove('is-hidden');
-        document.getElementById('first-last-alert-icon').classList.remove('is-hidden');
-        return false;
     }
+    document.getElementById('first-last').classList.add('is-danger');
+    document.getElementById('first-last-error-message').classList.remove('is-hidden');
+    document.getElementById('first-last-alert-icon').classList.remove('is-hidden');
+    return false;
 }
 
 function validatePassword(mode) {
     /*
-    This always checks password complexity requirements, but if mode is 
+    This always checks password complexity requirements, but if mode is
     'submit' it will also check if the two passwords match.
     */
 
@@ -227,37 +220,37 @@ function validatePassword(mode) {
         document.getElementById('password1-error-message').classList.remove('is-hidden');
         document.getElementById('password1-alert-icon').classList.remove('is-hidden');
         return false;
-    } else {
-        document.getElementById('password1').classList.remove('is-danger');
-        document.getElementById('password1-error-message').classList.add('is-hidden');
-        document.getElementById('password1-alert-icon').classList.add('is-hidden');
     }
 
-    if (mode == 'submit') {
-        if (password1 != password2) {
-            document.getElementById('password1').classList.add('is-danger');
-            document.getElementById('password2').classList.add('is-danger');
-            document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
-            document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
-            document.getElementById('password1-error-message').classList.remove('is-hidden');
-            document.getElementById('password2-error-message').classList.remove('is-hidden');
-            document.getElementById('password1-alert-icon').classList.remove('is-hidden');
-            document.getElementById('password2-alert-icon').classList.remove('is-hidden');
-            return false;
-        } else {
-            document.getElementById('password1').classList.remove('is-danger');
-            document.getElementById('password2').classList.remove('is-danger');
-            document.getElementById('password1-error-message').classList.add('is-hidden');
-            document.getElementById('password2-error-message').classList.add('is-hidden');
-            document.getElementById('password1-alert-icon').classList.add('is-hidden');
-            document.getElementById('password2-alert-icon').classList.add('is-hidden');
-            return true;
-        }
-    }    
+    document.getElementById('password1').classList.remove('is-danger');
+    document.getElementById('password1-error-message').classList.add('is-hidden');
+    document.getElementById('password1-alert-icon').classList.add('is-hidden');
+
+    if (mode != 'submit') {
+        return;
+    }
+    if (password1 != password2) {
+        document.getElementById('password1').classList.add('is-danger');
+        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
+        document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
+        document.getElementById('password1-error-message').classList.remove('is-hidden');
+        document.getElementById('password2-error-message').classList.remove('is-hidden');
+        document.getElementById('password1-alert-icon').classList.remove('is-hidden');
+        document.getElementById('password2-alert-icon').classList.remove('is-hidden');
+        return false;
+    }
+    document.getElementById('password1').classList.remove('is-danger');
+    document.getElementById('password2').classList.remove('is-danger');
+    document.getElementById('password1-error-message').classList.add('is-hidden');
+    document.getElementById('password2-error-message').classList.add('is-hidden');
+    document.getElementById('password1-alert-icon').classList.add('is-hidden');
+    document.getElementById('password2-alert-icon').classList.add('is-hidden');
+    return true;
 }
 
 function validatePassword2() {
-    // Here we only care about if the two passwords match, and we don't want to be 
+    // Here we only care about if the two passwords match, and we don't want to be
     //  annoying about it while the user is still typing
     if (document.getElementById('password1').value != document.getElementById('password2').value) {
         document.getElementById('password1').classList.add('is-danger');
@@ -280,8 +273,8 @@ function validatePassword2() {
 }
 
 function validatePasswordToggleRequirement(requirement, state) {
-    // state is either 'pass' or 'fail'   
-    let selectorString = '#pc-' + requirement + ' i';
+    // state is either 'pass' or 'fail'
+    const selectorString = `#pc-${requirement} i`;
 
     if (state == 'pass') {
         document.querySelector(selectorString).classList.remove('mdi-emoticon-sad-outline');
@@ -302,7 +295,7 @@ async function validateAccountCreationForm() {
     if (!(await validateEmail())) {
         return false;
     }
-    
+
     if (!validatePassword('submit')) {
         return false;
     }
