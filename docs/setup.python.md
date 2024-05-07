@@ -30,21 +30,21 @@ fixed paths have worked fine for decades.
 
     $ ./pip3 install \
       aiohttp==3.8.3 \
-      anndata==0.7.8 \
-      aiohttp \
+      anndata==0.10.6 \
+      biocode==0.10.0 \
       biopython==1.79 \
       cairosvg==2.7.1 \
       dash-bio==1.0.2 \
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
       gunicorn \
-      h5py==3.9.0 \
+      h5py==3.10.0 \
       itsdangerous==2.1.2 \
       jupyterlab==4.0.5 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
       llvmlite==0.41.1 \
-      matplotlib==3.6.2 \
+      matplotlib==3.8.3 \
       mod-wsgi==4.9.4 \
       more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
@@ -53,7 +53,7 @@ fixed paths have worked fine for decades.
       numpy==1.26.0 \
       opencv-python==4.5.5.64 \
       openpyxl==3.0.10 \
-      pandas==1.5.3 \
+      pandas==2.2.1 \
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.6.0 \
@@ -61,7 +61,7 @@ fixed paths have worked fine for decades.
       requests==2.31.0 \
       rpy2==3.5.1 \
       sanic \
-      scanpy[louvain]==1.8.2 \
+      scanpy[louvain]==1.9.8 \
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
       seaborn==0.12.2 \
