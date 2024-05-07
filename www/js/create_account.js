@@ -1,103 +1,305 @@
+'use strict';
+
+let verification_uuid = null;
+
 window.onload=function() {
-    $('#btn_account_creation_cancel').click(function(e) {
-        e.preventDefault();
+    // Set the page title
+    document.getElementById('page-header-label').textContent = 'Create an account';
 
-        // redirect to home page
-        window.location.href = "./index.html";
-    });
+    document.addEventListener('click', async function(e) {
 
-    $(document).on('click', '#btn_account_creation_submit', function(e) {
-        e.preventDefault();
-        var formData = $("#account_creation").serializeArray();
+        if (e.target.id === 'btn-account-creation-submit') {
+            e.preventDefault();
 
-        // Validate form's completion. Exit if it contains errors and alert user
-        if (validate_account_creation_form(formData) == false){
+            // Validate form's completion. Exit if it contains errors and alert user
+            if (validateAccountCreationForm() == false){
+                return false;
+            }
+
+            // generate a UUID for the user
+            verification_uuid = uuid();
+            const email_sent = await sendVerificationEmail(verification_uuid);
+
+            if (email_sent == false) {
+                // TODO: Handle UI display here.
+                alert("There was an error sending the verification email. Please try again later.");
+                return false;
+            }
+
+            // hide the account info and show the verification info
+            document.getElementById('account-info-c').classList.add('is-hidden');
+            document.getElementById('email-verification-c').classList.remove('is-hidden');
+
+            return false;
+
+        } else if (e.target.id === 'btn-email-verification-submit') {
+            e.preventDefault();
+
+            const account_created = await createAccount(verification_uuid);
+            console.log("Account created: " + account_created);
+
+            if (account_created == false) {
+                // TODO: Handle UI display here.
+                createToast("There was an error creating your account. Please try again later.");
+                return false;
+            } else {
+                // TODO: Handle UI display here.
+                //createToast("Account created!", "is-success");
+            }
+
             return false;
         }
 
-        $.ajax({
-            url : './cgi/create_account.cgi',
-            type: "POST",
-            data : formData,
-            dataType:"json",
-            success: function(data, textStatus, jqXHR) {
-                // -1 means the account email existed already
-                if (data['session_id'] == -1) {
-                    $("#email_already_exists").show();
+    });
 
-                    // ? - Any other value is the session ID
-                } else {
-                    CURRENT_USER.email = $('#inputEmail').val();
-                    CURRENT_USER.session_id = data['session_id'];
-                    $('span.user_logged_in').text(CURRENT_USER.user_name);
+    document.getElementById('first-last').addEventListener('blur', function() {
+        validateFirstLast();
+    });
 
-                    // $('#login_controls').hide();
-                    $('#login_controls').attr("style", "display: none !important");
+    document.getElementById('email').addEventListener('blur', async function() {
+        await validateEmail();
+    });
 
-                    $('#loggedin_controls').show();
-                    // https://github.com/js-cookie/js-cookie
-                    Cookies.set('gear_session_id', CURRENT_USER.session_id, { expires: 7 });
+    document.getElementById('password1').addEventListener('keyup', function() {
+        validatePassword('typing');
+    });
 
-                    // now redirect to the home page
-                    window.location.href = "./index.html";
-                }
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-      			$('.alert-container').html('<div class="alert alert-danger alert-dismissible" role="alert">' +
-      				                       '<button type="button" class="close close-alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
-      				                       '<p class="alert-message"><strong>Oops! </strong>Something went wrong.</p>' +
-      				                       '<p>Please e-mail jorvis@gmail.com for help creating your account.</p></div>').show();
-            }
-        });
+    document.getElementById('password2').addEventListener('blur', function() {
+        validatePassword2();
     });
 };
 
-function validate_account_creation_form(formData) {
-    $(".account-creation-error-message").hide();
-    var is_form_valid = true;
+const handlePageSpecificLoginUIUpdates = async (event) => {
+    // Nothing to do here at the moment
+}
 
-    var user_name = "";
-    var email = "";
-    var password1 = "";
-    var password2 = "";
-    $.each(formData, function(i, item){
-        if (item.name == 'inputName') {
-            user_name = item.value;
-        }
-        if (item.name == 'inputEmail') {
-            email = item.value;
-        }
-        if (item.name == 'inputPassword') {
-            password1 = item.value;
-        }
-        if (item.name == 'retypePassword') {
-            password2 = item.value;
-        }
-    });
+/**
+ * Creates a user account with the provided verification UUID.
+ *
+ * @param {string} verification_uuid - The verification UUID for the account.
+ * @returns {Promise<boolean>} - A promise that resolves to `true` if the account creation is successful, otherwise `false`.
+ */
+async function createAccount(verification_uuid) {
+    /*
+    colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
+    remember_me = form.getvalue('rememberMe')
+    */
 
-    //User name: Check length
-    if ( user_name.length < 2 ) {
-        $("#name_invalid").show();
-        is_form_valid = false;
-    }
+    // get the value of the colorblind mode checkbox, if it's checked
+    const colorblind_mode = document.getElementById('colorblind-mode').checked ? 'yes' : 0;
 
-    //Email: Check format
-    var email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    if ( !email_regex.test(email) ) {
-      $("#email_invalid").show();
-      is_form_valid = false;
-    }
+    // get the value of the email_updates checkbox, if it's checked
+    let email_updates = document.getElementById('email-updates').checked ? 'yes' : 0;
 
-    //Password: 1) Check length 2) Does the retype match
-    if ( password1.length > 2  ) {
-        if ( password1 != password2 ) {
-          $("#password_mismatch").show();
-          is_form_valid = false;
-        }
+    const {data} = await axios.post('./cgi/create_account.cgi', convertToFormData({
+        'first-last': document.getElementById('first-last').value,
+        'institution': document.getElementById('institution').value,
+        'email': document.getElementById('email').value,
+        'password': document.getElementById('password1').value,
+        'verification_code_long': verification_uuid,
+        'verification_code_short': document.getElementById('verification-code').value,
+        colorblind_mode,
+        email_updates,
+    }));
+
+    console.log(`Account creation status: ${data['success']}`);
+
+    return Boolean(data["success"]);
+}
+
+async function sendVerificationEmail(verification_uuid) {
+    const {data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
+        'email': document.getElementById('email').value,
+        'scope': 'user_verification',
+        'verification_code_long': verification_uuid,
+    }));
+
+    return Boolean(data["success"]);
+}
+
+/**
+ * Validates the email address entered by the user.
+ *
+ * @returns {boolean} Returns true if the email is valid and not already registered, false otherwise.
+ */
+async function validateEmail() {
+    const email = document.getElementById('email').value;
+    const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (email_regex.test(email) ) {
+        document.getElementById('email').classList.remove('is-danger');
+        document.getElementById('email-error-message').classList.add('is-hidden');
+        document.getElementById('email-alert-icon').classList.add('is-hidden');
     } else {
-        $("#password_invalid").show();
-        is_form_valid = false;
+        document.getElementById('email-error-message').innerHTML = 'Please enter a valid e-mail address';
+        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email-error-message').classList.remove('is-hidden');
+        document.getElementById('email-alert-icon').classList.remove('is-hidden');
+        return false;
     }
 
-    return is_form_valid;
+    // Also check if this e-mail is already registered
+    const {data} = await axios.post('./cgi/check_existing_email.cgi', convertToFormData({
+        'email': email,
+    }));
+
+    if (data['email_exists'] == 1) {
+        document.getElementById('email-error-message').innerHTML = 'This e-mail address is already registered';
+        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email-error-message').classList.remove('is-hidden');
+        return false;
+    }
+
+    return true;
+}
+
+function validateFirstLast() {
+    const first_last = document.getElementById('first-last').value;
+
+    if ( first_last.length > 2 && first_last.includes(' ')) {
+        document.getElementById('first-last').classList.remove('is-danger');
+        document.getElementById('first-last-error-message').classList.add('is-hidden');
+        document.getElementById('first-last-alert-icon').classList.add('is-hidden');
+        return true;
+    }
+    document.getElementById('first-last').classList.add('is-danger');
+    document.getElementById('first-last-error-message').classList.remove('is-hidden');
+    document.getElementById('first-last-alert-icon').classList.remove('is-hidden');
+    return false;
+}
+
+function validatePassword(mode) {
+    /*
+    This always checks password complexity requirements, but if mode is
+    'submit' it will also check if the two passwords match.
+    */
+
+    const password1 = document.getElementById('password1').value;
+    const password2 = document.getElementById('password2').value;
+
+    let complexity_met = true;
+
+    // Check the list of password requirements
+    if (password1.length < 8) {
+        validatePasswordToggleRequirement('character-limit', 'fail');
+        complexity_met = false;
+    } else {
+        validatePasswordToggleRequirement('character-limit', 'pass');
+    }
+
+    if (password1.match(/[A-Z]/) == null) {
+        validatePasswordToggleRequirement('upper-char', 'fail');
+        complexity_met = false;
+    } else {
+        validatePasswordToggleRequirement('upper-char', 'pass');
+    }
+
+    if (password1.match(/[a-z]/) == null) {
+        validatePasswordToggleRequirement('lower-char', 'fail');
+        complexity_met = false;
+    } else {
+        validatePasswordToggleRequirement('lower-char', 'pass');
+    }
+
+    if (password1.match(/[0-9]/) == null) {
+        validatePasswordToggleRequirement('number', 'fail');
+        complexity_met = false;
+    } else {
+        validatePasswordToggleRequirement('number', 'pass');
+    }
+
+    if (password1.match(/[^A-Za-z0-9]/) == null) {
+        validatePasswordToggleRequirement('special-char', 'fail');
+        complexity_met = false;
+    } else {
+        validatePasswordToggleRequirement('special-char', 'pass');
+    }
+
+    if (complexity_met == false) {
+        document.getElementById('password1').classList.add('is-danger');
+        document.getElementById('password1-error-message').innerHTML = 'Password does not meet complexity requirements';
+        document.getElementById('password1-error-message').classList.remove('is-hidden');
+        document.getElementById('password1-alert-icon').classList.remove('is-hidden');
+        return false;
+    }
+
+    document.getElementById('password1').classList.remove('is-danger');
+    document.getElementById('password1-error-message').classList.add('is-hidden');
+    document.getElementById('password1-alert-icon').classList.add('is-hidden');
+
+    if (mode != 'submit') {
+        return;
+    }
+    if (password1 != password2) {
+        document.getElementById('password1').classList.add('is-danger');
+        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
+        document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
+        document.getElementById('password1-error-message').classList.remove('is-hidden');
+        document.getElementById('password2-error-message').classList.remove('is-hidden');
+        document.getElementById('password1-alert-icon').classList.remove('is-hidden');
+        document.getElementById('password2-alert-icon').classList.remove('is-hidden');
+        return false;
+    }
+    document.getElementById('password1').classList.remove('is-danger');
+    document.getElementById('password2').classList.remove('is-danger');
+    document.getElementById('password1-error-message').classList.add('is-hidden');
+    document.getElementById('password2-error-message').classList.add('is-hidden');
+    document.getElementById('password1-alert-icon').classList.add('is-hidden');
+    document.getElementById('password2-alert-icon').classList.add('is-hidden');
+    return true;
+}
+
+function validatePassword2() {
+    // Here we only care about if the two passwords match, and we don't want to be
+    //  annoying about it while the user is still typing
+    if (document.getElementById('password1').value != document.getElementById('password2').value) {
+        document.getElementById('password1').classList.add('is-danger');
+        document.getElementById('password2').classList.add('is-danger');
+        document.getElementById('password1-error-message').innerHTML = 'Passwords do not match';
+        document.getElementById('password2-error-message').innerHTML = 'Passwords do not match';
+        document.getElementById('password1-error-message').classList.remove('is-hidden');
+        document.getElementById('password2-error-message').classList.remove('is-hidden');
+        document.getElementById('password1-alert-icon').classList.remove('is-hidden');
+        document.getElementById('password2-alert-icon').classList.remove('is-hidden');
+        return false;
+    } else {
+        document.getElementById('password1').classList.remove('is-danger');
+        document.getElementById('password2').classList.remove('is-danger');
+        document.getElementById('password1-error-message').classList.add('is-hidden');
+        document.getElementById('password2-error-message').classList.add('is-hidden');
+        document.getElementById('password1-alert-icon').classList.add('is-hidden');
+        document.getElementById('password2-alert-icon').classList.add('is-hidden');
+    }
+}
+
+function validatePasswordToggleRequirement(requirement, state) {
+    // state is either 'pass' or 'fail'
+    const selectorString = `#pc-${requirement} i`;
+
+    if (state == 'pass') {
+        document.querySelector(selectorString).classList.remove('mdi-emoticon-sad-outline');
+        document.querySelector(selectorString).classList.add('mdi-check-bold');
+    } else {
+        document.querySelector(selectorString).classList.remove('mdi-check-bold');
+        document.querySelector(selectorString).classList.add('mdi-emoticon-sad-outline');
+    }
+}
+
+async function validateAccountCreationForm() {
+    // function returns bool
+    if (!validateFirstLast()) {
+        return false;
+    }
+
+    // function returns bool
+    if (!(await validateEmail())) {
+        return false;
+    }
+
+    if (!validatePassword('submit')) {
+        return false;
+    }
+
+    // if we made it this far, things are good
+    return true;
 }

@@ -6,7 +6,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>gEAR multigene viewer page</title>
+        <title>gEAR multigene curator page</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
@@ -182,6 +182,7 @@
                   <span id="plot-type-select-c-failed" class="js-step-success icon has-text-danger-dark is-hidden">
                     <i class="mdi mdi-close-circle"></i>
                   </span>
+                  <span class="has-text-success-dark is-pulled-right has-text-weight-bold">Required</span>
                 </div>
                 <div class="select is-fullwidth">
                   <select id="plot-type-select" disabled>
@@ -259,6 +260,7 @@
 
                 <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
               </div>
+              <span class="has-text-success-dark has-text-weight-bold">At least 2 genes required</span>
             </div>
             <div id="gene-tags-c" class="box is-hidden">
               <p class="subtitle is-5" id="genes-selected">Genes selected:</p>
@@ -397,6 +399,7 @@
             <p> Selected conditions:
                 <span class="loader is-hidden is-inline-flex" id="selected-facets-loader"></span>
             </p>
+            <span class="tag is-light is-primary" id="selected-facets-all">All</span>
             <span class="tags" id="selected-facets-tags"></span>
           </div>
           <div id="plot-container" class="content"></div>
@@ -498,7 +501,7 @@
   <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/plot_display_config.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
   <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>

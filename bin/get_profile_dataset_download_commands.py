@@ -23,20 +23,25 @@ def main():
     cursor = cnx.get_cursor()
 
     qry = """SELECT d.id
-               FROM layout_members lm
-                    JOIN dataset d on lm.dataset_id=d.id
+               FROM layout_displays lm
+                    JOIN dataset_display dd ON lm.display_id=dd.id
+                    JOIN dataset d on dd.dataset_id=d.id
                     JOIN layout l ON lm.layout_id=l.id
               WHERE l.share_id = %s
     """
 
     cursor.execute(qry, (args.profile_share_id,))
 
-    for (dataset_id) in cursor:
-        print("gcloud compute scp gear-prod-20200713:/home/jorvis/git/gEAR/www/datasets/{0}.h5ad .".format(dataset_id[0]))
+    dataset_ids = set()
+    for (dataset_id,) in cursor:
+        dataset_ids.add(dataset_id)
+
+    for dataset_id in list(dataset_ids):
+        print("gcloud compute scp gear-prod-20200713:/home/jorvis/git/gEAR/www/datasets/{0}.h5ad .".format(dataset_id))
 
     cursor.close()
     cnx.close()
 
 if __name__ == '__main__':
     main()
-    
+

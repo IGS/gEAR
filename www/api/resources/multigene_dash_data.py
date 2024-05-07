@@ -230,6 +230,10 @@ class MultigeneDashData(Resource):
         # 3 Warning - One or more genes could not be processed
         # NOTE: The success level in a warning can be overridden by another warning or error
 
+        # delete all "None" values from the gene_symbols list
+        # These are genes that did not map in the orthology mapping
+        gene_symbols = [gene for gene in gene_symbols if gene]
+
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
             if not gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
@@ -497,15 +501,15 @@ class MultigeneDashData(Resource):
                 union_fields.extend([groupby_index, "filters_composite"])   # Preserve filters index for downstream labeling
                 groupby_fields = union_fields
 
-            # Remove composite index so that the label is not duplicated.
-            for cat in columns:
+            # Only add the fields that will be used downstream
+            for cat in groupby_fields:
                 df[cat] = selected.obs[cat]
 
             # Groupby to remove the replicates
             # Ensure the composite index is used as the index for plot labeling
             if matrixplot:
-                grouped = df.groupby(groupby_fields)
-                df = grouped.agg('mean') \
+                grouped = df.groupby(groupby_fields, observed=False)
+                df = grouped.mean() \
                     .dropna() \
                     .reset_index() \
                     .set_index(groupby_index)

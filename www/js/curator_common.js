@@ -204,9 +204,9 @@ const curatorApiCallsMixin = {
      * @returns {Promise<any>} A promise that resolves with the fetched datasets.
      * @throws {Error} If the datasets cannot be fetched.
      */
-    async fetchDatasets() {
+    async fetchAllDatasets() {
         try {
-            return await super.fetchDatasets();
+            return await super.fetchAllDatasets();
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch datasets. Please contact the gEAR team."
@@ -1004,7 +1004,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await curatorApiCallsMixin.fetchDatasets();
+        const datasetData = await curatorApiCallsMixin.fetchAllDatasets();
 
         let counter = 0;
 
@@ -1605,7 +1605,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     const sessionId = CURRENT_USER.session_id;
     if (! sessionId ) {
-        createToast("Not logged in so saving displays is disabled.");
+        createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;
     }
 

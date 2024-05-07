@@ -1,6 +1,8 @@
 # Purely kept so we can debug with sys.stderr
 from itertools import cycle
 
+import pandas as pd
+
 import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib.pyplot import plot
@@ -121,6 +123,35 @@ def _adjust_colorscale(plotting_args, colormap=None, palette=None):
         # Palette selection supercedes "purples"
         if palette:
             plotting_args["color_continuous_scale"] = palette
+            if palette == "multicolor_diverging":
+                # This is a custom colorscale for diverging data (for Carlo)
+
+                #     nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
+                #     colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
+
+                # Hex codes are based on Matplotlib values -> https://i.stack.imgur.com/nCk6u.jpg
+                plotting_args["color_continuous_scale"] = [
+                    [0.0, '#9a0eea'],
+                    [0.12, '#0343df'],
+                    [0.25, '#380282'],
+                    [0.38, '#00035b'],
+                    [0.5, '#000000'],
+                    [0.62, '#840000'],
+                    [0.75, '#e50000)'],
+                    [0.88, '#f97306'],
+                    [1.0, '#ffff14']
+                ]
+
+            elif palette == "bublrd":
+                plotting_args["color_continuous_scale"] = [
+                    [0, 'rgb(173, 216, 230)'],
+                    [0.25, 'rgb(0, 0, 128)'],
+                    [0.4, 'rgb(0, 0, 255)'],
+                    [0.5, 'rgb(0, 0, 0)'],
+                    [0.6, 'rgb(128, 0, 0)'],
+                    [0.75, 'rgb(255, 0, 0)'],
+                    [1, 'rgb(240, 128, 128)']
+                ]
 
     return plotting_args
 
@@ -134,7 +165,7 @@ def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=No
         return df
 
     # If observed=False, then all groupings will be present in the final dataframe
-    grouped = df.groupby(priority_groups, observed=True)
+    grouped = df.groupby(priority_groups, observed=False)
 
     # Discrete colorscale or no colorscale
     if not color_name or _is_categorical(df[color_name]):
@@ -312,6 +343,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                       plot_type='scatter', hide_x_labels=False, hide_y_labels=False,
                       hide_legend=None, text_name=None, jitter=False,
                       x_range=None, y_range=None, vlines=[], x_title=None, y_title=None,
+                      is_projection=False,
                       **kwargs):
     """Generates and returns figure for facet grid."""
 
@@ -355,7 +387,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     # For scatter plots with a lot of datapoints, use WebGL rendering
     if plot_type == "scattergl":
-        plot_type == "scatter"
+        plot_type = "scatter"
         plotting_args["render_mode"] = "webgl"
 
     # For line plots, use svg render since webgl mode does not have spline as a valid line shape (as of plotly 4.14.3)
@@ -383,6 +415,22 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     if plot_type in ["bar"]:
         plotting_args["error_y"] = "std" if "std" in df.columns else None
+
+        if "std" in df.columns:
+            # For expression data, error_y_minus cannot go below 0 (negative values are not possible)
+            # Projections can go either way depending on the data
+            if not is_projection:
+                df["std_minus"] = df["std"]
+                df.loc[df[y] - df["std"] < 0, "std_minus"] = df[y]
+
+                plotting_args["error_y_minus"] = "std_minus"
+
+            # Add standard deviation to hover data
+            plotting_args["hover_data"] = {
+                x: False,
+                y: False,
+                "std": True
+            }
 
     if plot_type == 'contour':
         plotting_args["z"] = z

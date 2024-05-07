@@ -27,10 +27,10 @@ def main():
     gene_cart = form.getvalue('c')
     gene_symbol = form.getvalue('g')
     gene_symbol_exact_match = form.getvalue('gsem')
-    layout_id = form.getvalue('l')
+    layout_share_id = form.getvalue('l')
     is_multigene = form.getvalue('m')
     page = form.getvalue('p')
-    share_id = form.getvalue('s')
+    dataset_share_id = form.getvalue('s')
     identifiers_org_id = form.getvalue('id')
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
@@ -40,14 +40,14 @@ def main():
         main_page = 'analyze_dataset.html'
 
     url = url_base + '/' + main_page
-        
+
     params = dict()
 
-    if share_id is not None:
-        params['share_id'] = share_id
+    if dataset_share_id is not None:
+        params['share_id'] = dataset_share_id
 
-    if layout_id is not None:
-        params['layout_id'] = layout_id
+    if layout_share_id is not None:
+        params['layout_id'] = layout_share_id
 
     if is_multigene is not None:
         params['is_multigene'] = is_multigene
@@ -55,13 +55,13 @@ def main():
     if gene_symbol is not None:
         params['gene_symbol'] = gene_symbol
 
-    if gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
+    if gene_symbol_exact_match and gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
         params['gene_symbol_exact_match'] = 0
     else:
         params['gene_symbol_exact_match'] = 1
 
     if gene_cart:
-        params['gene_cart_share_id'] = gene_cart
+        params["gene_lists"] = gene_cart
 
     if identifiers_org_id:
         (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')
@@ -71,11 +71,11 @@ def main():
 
         elif id_prefix == 'p':
             params['layout_id'] = identifiers_share_id
-        
+
     if len(params) > 0:
         url += '?'
         first_param = True
-        
+
         for p in params:
             if first_param:
                 url += "{0}={1}".format(p, params[p])

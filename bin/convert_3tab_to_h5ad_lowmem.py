@@ -33,6 +33,10 @@ def main():
     var = None
 
     for infile in os.listdir(args.input_directory):
+        # skip any files beginning with a dot
+        if infile.startswith('.'):
+            continue
+        
         filepath = "{0}/{1}".format(args.input_directory, infile)
         
         # Read each file as pandas dataframes

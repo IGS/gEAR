@@ -5,6 +5,7 @@ class User {
                   help_id, date_created, session_id, default_profile_share_id, default_org_id} = {}) {
 
         // SAdkins - I would love to make these properties camelCase as per JS convention, but that would be an effort to fix in all code that uses this class.
+        // TODO: Remove the "id" attribute when v2 is completely ready since it is not used in the code. It is a security risk to expose the user's id.
         this.id = id;
         this.user_name = user_name;
         this.email = email;
@@ -19,40 +20,25 @@ class User {
         this.default_org_id = default_org_id;
 
         // derived
+        // TODO: Remove "profile" as the share_id is enough to identify the profile and populate the label
         this.profile = undefined;
         this.default_profile_share_id = default_profile_share_id
     }
 
     setDefaultProfile() {
-        const profileElt = document.getElementById("selected_profile");
-        const searchParamElt = document.getElementById("search_param_profile");
+
+         // TODO: Set all this via a config file as it can vary by site and DB
+        // This corresponds to "Hearing (site default)"
+        this.default_profile_share_id = "f64f9c22";
 
         if (!this.session_id) {
-            //User not logged in.
-            if (! this.profile) {
-                //User did not change selected profile
-                this.profile = "Hearing (site default)"
-            }
-
-            //Set profile to 'Hearing (default)'
-            // TODO: Get this UI call out of here.
-            //profileElt.textContent = this.profile;
             return;
         }
         //User is logged in.
-        if (! this.profile) {
+        if (Cookies.get('gear_default_domain')) {
             //Get user's default profile
-            this.profile = Cookies.get('gear_default_domain');
-        }
-        if (! this.profile) {
-            this.profile = "Hearing (site default)"
+            this.default_profile_share_id = Cookies.get('gear_default_domain');
         }
 
-        // Selected profile is empty if user has a domain selected as primary.
-        // Populate it with that domain
-        /*if (profileElt.textContent == 'Empty') {
-            profileElt.textContent = this.profile;
-            searchParamElt.textContent = this.profile;
-        }*/
     }
 }

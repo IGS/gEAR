@@ -36,7 +36,7 @@ CREATE TABLE guser (
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        default_org_id INT NOT NULL DEFAULT 1,
-       is_gear_curator TINYINT(1) DEFAULT 0,
+       is_curator     TINYINT(1) DEFAULT 0
        FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
@@ -91,6 +91,7 @@ CREATE TABLE gene (
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 
+-- Changes here mean bin/export_gene_cart_sql.py need to be updated too
 CREATE TABLE gene_cart (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        user_id         INT NOT NULL,
@@ -108,6 +109,7 @@ CREATE TABLE gene_cart (
        FOREIGN KEY (organism_id) REFERENCES organism(id) ON DELETE CASCADE
 ) ENGINE=INNODB;
 
+-- Changes here mean bin/export_gene_cart_sql.py need to be updated too
 CREATE TABLE gene_cart_member (
        id              INT PRIMARY KEY AUTO_INCREMENT,
        gene_cart_id    INT NOT NULL,
@@ -190,6 +192,7 @@ CREATE TABLE dataset (
        pubmed_id                VARCHAR(20),
        geo_id                   VARCHAR(50),
        is_public                TINYINT DEFAULT 0,
+       is_downloadable          TINYINT DEFAULT 1,
        ldesc                    TEXT,
        date_added               DATETIME,
        dtype                    VARCHAR(50) NOT NULL DEFAULT 'svg-expression',
@@ -351,6 +354,7 @@ INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
 INSERT INTO layout VALUES (10000, 0, NULL, "Brain development (default)", 0);
 INSERT INTO layout VALUES (10001, 0, NULL, "Huntingtons disease (default)", 0);
 
+/* Soom to delete */
 CREATE TABLE layout_members (
        id                       INT PRIMARY KEY AUTO_INCREMENT,
        layout_id                INT NOT NULL,
@@ -372,6 +376,25 @@ CREATE TABLE layout_members (
           ON DELETE CASCADE,
        FOREIGN KEY (dataset_id)
           REFERENCES dataset(id)
+          ON DELETE CASCADE
+) ENGINE=INNODB;
+
+/* Soon to change to layout_members */
+CREATE TABLE layout_displays (
+       id                       INT PRIMARY KEY AUTO_INCREMENT,
+       layout_id                INT NOT NULL,
+       display_id               INT NOT NULL,
+       grid_position            INT NOT NULL,
+       start_col                INT NOT NULL DEFAULT 1,
+       grid_width               INT NOT NULL DEFAULT 4,
+       start_row                INT NOT NULL DEFAULT 1,
+       grid_height              INT NOT NULL DEFAULT 1, -- height is number of rows spanned, which is not based on a grid
+       math_preference          VARCHAR(50), -- options: 'raw', 'log2', 'log10'
+       FOREIGN KEY (layout_id)
+          REFERENCES layout(id)
+          ON DELETE CASCADE,
+       FOREIGN KEY (display_id)
+          REFERENCES dataset_display(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 

@@ -163,15 +163,7 @@ const addGeneListEventListeners = () => {
             const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
-                const {data} = await axios.post('./cgi/save_genecart_changes.cgi', convertToFormData({
-                    'session_id': CURRENT_USER.session_id,
-                    'gc_id': gcId,
-                    'visibility': intNewVisibility,
-                    'title': newTitle,
-                    'organism_id': newOrgId,
-                    'ldesc': newLdesc || ""
-                }));
-
+                const data = await apiCallsMixin.saveGeneCartChanges(gcId, intNewVisibility, newTitle, newOrgId, newLdesc);
                 createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
@@ -407,6 +399,32 @@ const buildFilterString = (groupName) => {
 }
 
 /**
+ * Clears the results views by hiding pagination, removing existing results, and removing the "no results" message if it exists.
+ */
+const clearResultsViews = () => {
+    // hide pagination (but keep results were they are)
+    for (const classElt of document.getElementsByClassName("pagination")) {
+        classElt.classList.add("is-invisible");
+    }
+
+    // Clear any existing results
+    const resultsListDiv = document.getElementById("results-list-div");
+    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
+        elt.remove()
+    }
+
+    const resultsTableBody = document.querySelector("#results-table tbody");
+    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
+        elt.remove()
+    }
+
+    // remove "no results" message if it exists
+    if (document.getElementById("no-results-message")) {
+        document.getElementById("no-results-message").remove();
+    }
+}
+
+/**
  * Creates a tooltip element and appends it to the body.
  * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
  * @returns {HTMLElement} The created tooltip element.
@@ -441,6 +459,7 @@ const createDeleteConfirmationPopover = () => {
             popoverContent.id = 'delete-gc-popover';
             popoverContent.classList.add("message", "is-danger");
             popoverContent.setAttribute("role", "tooltip");
+            popoverContent.style.width = "500px";
             popoverContent.innerHTML = `
                 <div class='message-header'>
                     <p>Remove list</p>
@@ -515,11 +534,7 @@ const createDeleteConfirmationPopover = () => {
             document.getElementById('confirm-gc-delete').addEventListener('click', async () => {
 
                 try {
-                    const {data} = await axios.post('./cgi/remove_gene_cart.cgi', convertToFormData({
-                        'session_id': CURRENT_USER.session_id,
-                        'gene_cart_id': gcIdToDelete
-                    }));
-
+                    const data = await apiCallsMixin.deleteGeneList(gcIdToDelete);
                     if (data['success'] == 1) {
                         const resultElement = document.getElementById(`result-gc-id-${gcIdToDelete}`);
                         resultElement.style.transition = 'opacity 1s';
@@ -529,7 +544,7 @@ const createDeleteConfirmationPopover = () => {
                         createToast("Gene list deleted", "is-success");
 
                         // This can affect page counts, so we need to re-run the search
-                        submitSearch();
+                        await submitSearch();
 
                     } else {
                         throw new Error(data['error']);
@@ -694,20 +709,19 @@ const geneListFailure = (gc, message) => {
     createToast("Failed to save gene list");
 }
 
-const geneListSaved = (gc) => {
+const geneListSaved = async (gc) => {
     document.getElementById("create-new-gene-list").click(); // resets form also
     createToast("Gene list saved", "is-success");
-    submitSearch();
+    await submitSearch();
 }
 
 /**
- * Loads the list of organisms from the server and populates the organism choices and new cart organism ID select elements.
- * @function
- * @returns {void}
+ * Loads the organism list from the server and populates the organism choices and new list organism select elements.
+ * @returns {Promise<void>} A promise that resolves when the organism list is loaded and elements are populated.
  */
 const loadOrganismList = async () => {
     try {
-        const {data} = await axios.get('./cgi/get_organism_list.cgi');
+        const data = await apiCallsMixin.fetchOrganismList();
         const organismChoices = document.getElementById("organism-choices");    // <ul> element
         for (const organism of data.organisms) {
             const li = document.createElement("li");
@@ -754,7 +768,6 @@ const parseBool = (boolStr) => {
 /**
  * Processes search results and updates the DOM with the results view.
  * @param {Object} data - The search results data.
- * @param {string} resultLabel - The label to display for the search results.
  */
 const processSearchResults = (data) => {
 
@@ -778,7 +791,7 @@ const processSearchResults = (data) => {
     const resultsListDiv = document.getElementById("results-list-div");
     const listTemplate = document.getElementById("results-list-view");
 
-    // data.gene_carts is a list of JSON strings
+    // data.gene_carts is a list of JSON strings (different from data.datasets in dataset explorer)
     for (const gcString of data.gene_carts) {
         const gc = JSON.parse(gcString);
         const geneListId = gc.id;
@@ -1089,12 +1102,21 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
     }
 }
 
+/**
+ * Sets up the pagination UI based on the provided pagination data.
+ *
+ * @param {Object} pagination - The pagination data object.
+ * @param {number} pagination.total_results - The total number of results.
+ * @param {number} pagination.current_page - The current page number.
+ * @param {number} pagination.total_pages - The total number of pages.
+ * @param {number} resultsPerPage - The number of results per page.
+ */
 const setupPagination = (pagination) => {
 
         // Update result count and label
         document.getElementById("result-count").textContent = pagination.total_results;
         document.getElementById("result-label").textContent = pagination.total_results == 1 ? " result" : " results";
-        document.getElementById("gc-count-label-c").classList.remove("is-hidden");
+        document.getElementById("count-label-c").classList.remove("is-hidden");
 
         const firstResult = pagination.total_results > 0 ? (pagination.current_page - 1) * resultsPerPage + 1 : 0;
         const lastResult = Math.min(pagination.current_page * resultsPerPage, pagination.total_results);
@@ -1112,8 +1134,8 @@ const setupPagination = (pagination) => {
 
             // Add previous button
             if (pagination.current_page > 1) {
-                paginationList.appendChild(createPaginationButton(null, 'left', () => {
-                    submitSearch(pagination.current_page - 1);
+                paginationList.appendChild(createPaginationButton(null, 'left', async () => {
+                    await submitSearch(pagination.current_page - 1);
                 }));
             }
 
@@ -1122,8 +1144,8 @@ const setupPagination = (pagination) => {
             const endPage = Math.min(pagination.total_pages, pagination.current_page + 1);
 
             if (startPage > 1) {
-                paginationList.appendChild(createPaginationButton(1, null, () => {
-                    submitSearch(1);
+                paginationList.appendChild(createPaginationButton(1, null, async () => {
+                    await submitSearch(1);
                 }));
             }
 
@@ -1132,8 +1154,8 @@ const setupPagination = (pagination) => {
             }
 
             for (let i = startPage; i <= endPage; i++) {
-                const li = paginationList.appendChild(createPaginationButton(i, null, () => {
-                    submitSearch(i);
+                const li = paginationList.appendChild(createPaginationButton(i, null, async () => {
+                    await submitSearch(i);
                 }));
                 if (i == pagination.current_page) {
                     li.firstChild.classList.add("is-current");
@@ -1146,15 +1168,15 @@ const setupPagination = (pagination) => {
             }
 
             if (endPage < pagination.total_pages) {
-                paginationList.appendChild(createPaginationButton(pagination.total_pages, null, () => {
-                    submitSearch(pagination.total_pages);
+                paginationList.appendChild(createPaginationButton(pagination.total_pages, null, async () => {
+                    await submitSearch(pagination.total_pages);
                 }));
             }
 
             // Add next button
             if (pagination.current_page < pagination.total_pages) {
-                paginationList.appendChild(createPaginationButton(null, 'right', () => {
-                    submitSearch(pagination.current_page + 1);
+                paginationList.appendChild(createPaginationButton(null, 'right', async () => {
+                    await submitSearch(pagination.current_page + 1);
                 }));
             }
         }
@@ -1186,32 +1208,12 @@ const showGcActionNote = (gcId, shareUrl) => {
 }
 
 /**
- * Submits a search for gene lists based on the user's search terms and filter options.
- * @function
- * @returns {void}
+ * Submits a search request with the specified search terms and filters.
+ *
+ * @param {number} page - The page number of the search results.
+ * @returns {Promise<void>} - A promise that resolves when the search results are processed.
  */
 const submitSearch = async (page) => {
-
-    // hide pagination (but keep results were they are)
-    for (const classElt of document.getElementsByClassName("pagination")) {
-        classElt.classList.add("is-invisible");
-    }
-
-    // Clear any existing results
-    const resultsListDiv = document.getElementById("results-list-div");
-    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
-        elt.remove()
-    }
-
-    const resultsTableBody = document.querySelector("#results-table tbody");
-    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
-        elt.remove()
-    }
-
-    // remove "no results" message if it exists
-    if (document.getElementById("no-results-message")) {
-        document.getElementById("no-results-message").remove();
-    }
 
     const searchTerms = document.getElementById("search-terms").value;
 
@@ -1235,9 +1237,12 @@ const submitSearch = async (page) => {
     searchCriteria.page = page || 1;
 
     try {
-        const {data} = await axios.post('./cgi/search_gene_carts.cgi', convertToFormData(searchCriteria));
-        processSearchResults(data);
+        const data = await apiCallsMixin.fetchGeneLists(searchCriteria)
 
+        // This is added here to prevent duplicate elements in the results generation if the user hits enter too quickly
+        clearResultsViews();
+
+        processSearchResults(data);
         setupPagination(data.pagination);
     } catch (error) {
         logErrorInConsole(error);
@@ -1317,12 +1322,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     await loadOrganismList();
-
-    submitSearch();
+    await submitSearch();
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
-        elt.addEventListener("click", (e) => {
+        elt.addEventListener("click", async (e) => {
             if (e.currentTarget.classList.contains("js-all-selector")) {
                 // if the one clicked is the all_selector then highlight it and unclick the rest
                 for (const elt of e.currentTarget.parentElement.children) {
@@ -1355,7 +1359,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 e.currentTarget.classList.add("js-selected");
             }
 
-            submitSearch();
+            await submitSearch();
         });
     }
 
@@ -1381,14 +1385,14 @@ document.getElementById("new-list-label").addEventListener("blur", (e) => {
     e.target.parentElement.appendChild(newHelperElt);
 });
 
-document.getElementById("search-clear").addEventListener("click", () => {
+document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";
-    submitSearch();
+    await submitSearch();
 });
 
 // Search for gene lists using the supplied search terms
 const searchTermsElt = document.getElementById("search-terms");
-searchTermsElt.addEventListener("keyup", (event) => {
+searchTermsElt.addEventListener("keyup", async (event) => {
     const searchTerms = searchTermsElt.value;
     const searchClearElt = document.getElementById("search-clear");
     searchClearElt.classList.add("is-hidden");
@@ -1396,13 +1400,13 @@ searchTermsElt.addEventListener("keyup", (event) => {
         searchClearElt.classList.remove("is-hidden");
     }
     if (event.key === "Enter") {
-        submitSearch();
+        await submitSearch();
     }
 });
 
 // Changing sort by criteria should update the search results
-document.getElementById("sort-by").addEventListener("change", () => {
-    submitSearch();
+document.getElementById("sort-by").addEventListener("change", async () => {
+    await submitSearch();
 });
 
 const btnCreateCartToggle = document.getElementById("create-new-gene-list");

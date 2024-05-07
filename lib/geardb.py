@@ -69,6 +69,26 @@ this.domain_label = _read_domain_label()
 this.domain_short_label = _read_domain_short_label()
 this.links_out = _read_domain_links_out()
 
+def check_verification_code(long_form, short_form):
+    """
+    To prevent fake users from creating accounts, we now employ e-mail verification.
+    We don't want to store a temp verification code in the database, so we generate
+    a full UUID in javascript and then hash it to a short form for user's verification
+    e-mail.  This function checks if the long form matches the short form.
+    """
+    if get_verification_code_short_form(long_form) == short_form:
+        return True
+    else:
+        return False
+
+def get_verification_code_short_form(long_form):
+    """
+    Get the hashed/short form of the full verification code. If you want to ensure
+    anyone who can see the repo in GitHub can't script account creation still, you 
+    can just modify the string this function returns for your own site.
+    """
+    return ''.join([x[0] for x in long_form.split('-')])
+
 def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
@@ -108,7 +128,7 @@ def get_dataset_by_id(id=None, include_shape=None):
     cursor = conn.get_cursor()
 
     qry = """
-         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
                 dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
                 has_h5ad
            FROM dataset
@@ -117,11 +137,11 @@ def get_dataset_by_id(id=None, include_shape=None):
     cursor.execute(qry, (id, ))
     dataset = None
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
          has_h5ad) in cursor:
         dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
-                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, ldesc=ldesc,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
@@ -149,7 +169,7 @@ def get_dataset_by_title(title=None, include_shape=None):
     cursor = conn.get_cursor()
 
     qry = """
-         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
                 dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
                 has_h5ad
            FROM dataset
@@ -161,11 +181,11 @@ def get_dataset_by_title(title=None, include_shape=None):
 
     found = 0
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added,
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
          has_h5ad) in cursor:
         dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
-                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, ldesc=ldesc,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
@@ -370,17 +390,17 @@ def get_user_by_id(user_id):
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
-                 g.is_admin, g.default_org_id, g.is_gear_curator, g.help_id
+                 g.is_admin, g.default_org_id, g.is_curator, g.help_id
             FROM guser g
            WHERE g.id = %s
     """
     cursor.execute(qry, (user_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_gear_curator, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, validation_code, is_validated, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_gear_curator=is_gear_curator, help_id=help_id)
+                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
         break
 
     cursor.close()
@@ -399,7 +419,7 @@ def get_user_from_session_id(session_id):
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
-                 g.is_admin, g.default_org_id, g.is_gear_curator, g.help_id
+                 g.is_admin, g.default_org_id, g.is_curator, g.help_id
             FROM guser g
                  JOIN user_session us ON g.id=us.user_id
            WHERE us.session_id = %s
@@ -407,10 +427,10 @@ def get_user_from_session_id(session_id):
     cursor.execute(qry, (session_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_gear_curator, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_gear_curator=is_gear_curator, help_id=help_id)
+                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
         break
 
     cursor.close()
@@ -641,7 +661,7 @@ class Analysis:
 
 
         # if the user who created it is a gear curator, return that
-        if current_user.is_gear_curator:
+        if current_user.is_curator:
             self.vetting = 'gear'
             return 'gear'
         # Are the current user and dataset owner the same?
@@ -810,7 +830,7 @@ class AnalysisCollection:
                     if os.path.isdir(dir_path):
                         for pipeline_file in (f for f in os.listdir(dir_path) if f.endswith('.pipeline.json')):
                             json_path = "{0}/{1}".format(dir_path, pipeline_file)
-                            json_obj = json.loads(open(json_path).read())
+                            json_obj = json.loads(open(json_path, encoding="utf-8").read())
                             analyses.append(Analysis.from_json(json_obj))
 
         return analyses
@@ -927,7 +947,10 @@ class Layout:
         self.folder_parent_id = folder_parent_id
         self.folder_label = folder_label
 
-        # This should be a list of LayoutMember objects
+        self.singlegene_members = list()
+        self.multigene_members = list()
+
+        # This should be a list of LayoutDisplays objects
         if not members:
             self.members = list()
 
@@ -947,20 +970,17 @@ class Layout:
 
     def add_member(self, member):
         """
-        Adds a LayoutMember to the database as part of this Layout
+        Adds a LayoutDisplay to the database as part of this Layout
         """
         conn = Connection()
         cursor = conn.get_cursor()
 
         qry = """
-              INSERT INTO layout_members (layout_id, dataset_id, grid_position, mg_grid_position,
-              start_col, mg_start_col, grid_width, mg_grid_width,
-              start_row, mg_start_row, grid_height, mg_grid_height)
-              VALUES (%s, %s, %s, %s, %s)
+             INSERT INTO layout_displays (layout_id, display_id, grid_position, start_col, grid_width, start_row, grid_height)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(qry, (self.id, member.dataset_id, member.grid_position, member.mg_grid_position,
-                             member.start_col, member.mg_start_col, member.grid_width, member.mg_grid_width,
-                             member.start_row, member.mg_start_row, member.grid_height, member.mg_grid_height))
+        cursor.execute(qry, (self.id, member.display_id, member.grid_position, member.start_col,
+                             member.grid_width, member.start_row, member.grid_height))
         member.id = cursor.lastrowid
         self.members.append(member)
 
@@ -971,44 +991,79 @@ class Layout:
         """
         Returns a list of the unique dataset IDs belonging to this layout
         """
-        ids = list()
+        ids = set()
 
         for ds in self.members:
-            if ds.dataset_id not in ids:
-                ids.append(ds.dataset_id)
+            ds.get_dataset_id()
+            ids.add(ds.dataset_id)
+        return list(ids)
 
-        return ids
+    def display_ids(self):
+        """
+        Returns a list of the unique display IDs belonging to this layout
+        """
+        ids = set()
 
-    def get_members(self):
+        for ds in self.members:
+            if ds.display_id not in ids:
+                ids.add(ds.display_id)
+
+        return list(ids)
+
+    def get_members(self, scope="all"):
         """
         Gets all members from the database and populates the 'members' attribute as a
-        list of LayoutMember objects
+        list of LayoutDisplay objects
+
+        scope: "all" -> get all members, "single" -> get single-gene displays, "multi" -> get multi-gene displays
+
         """
         conn = Connection()
         cursor = conn.get_cursor()
 
         self.members = list()
 
+        if scope not in ['all', 'single', 'multi']:
+            raise Exception("ERROR: Invalid scope '{0}' passed to Layout.get_members()".format(scope))
+
         qry = """
-              SELECT lm.id, lm.dataset_id, lm.grid_position, lm.mg_grid_position,
-              lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
-              lm.start_row, lm.mg_start_row, lm.grid_height, lm.mg_grid_height
-                FROM layout_members lm
-                     JOIN dataset d ON lm.dataset_id=d.id
-               WHERE lm.layout_id = %s
-                     AND d.marked_for_removal = 0
-            ORDER BY lm.grid_position
+            SELECT lm.id, lm.display_id, lm.grid_position, lm.start_col, lm.grid_width, lm.start_row, lm.grid_height
+              FROM layout_displays lm
+                   JOIN dataset_display d ON lm.display_id=d.id
+                   JOIN dataset ds ON d.dataset_id=ds.id
+             WHERE lm.layout_id = %s
+                   AND ds.marked_for_removal = 0
         """
+
         cursor.execute(qry, (self.id,))
 
         for row in cursor:
-            lm = LayoutMember(id=row[0], dataset_id=row[1], grid_position=row[2],
-                                mg_grid_position=row[3], start_col=row[4], mg_start_col=row[5],
-                                grid_width=row[6], mg_grid_width=row[7], start_row=row[8],
-                                mg_start_row=row[9], grid_height=row[10], mg_grid_height=row[11])
-            self.members.append(lm)
+            lm = LayoutDisplay(id=row[0], display_id=row[1], grid_position=row[2], start_col=row[3],
+                                 grid_width=row[4], start_row=row[5], grid_height=row[6]
+                )
 
+            lm.get_dataset_id()
+            lm.get_is_multigene()
+
+            if lm.is_multigene:
+                self.multigene_members.append(lm)
+            else:
+                self.singlegene_members.append(lm)
+
+            if scope == "single" and lm.is_multigene:
+                continue
+            if scope == "multi" and not lm.is_multigene:
+                continue
+
+            self.members.append(lm)
         cursor.close()
+        conn.close()
+
+    def get_singlegene_members(self):
+        return self.get_members(scope="single")
+
+    def get_multigene_members(self):
+        return self.get_members(scope="multi")
 
     def load(self):
         """
@@ -1061,7 +1116,7 @@ class Layout:
         cursor = conn.get_cursor()
 
         qry = """
-              DELETE FROM layout_members
+              DELETE FROM layout_displays
               WHERE layout_id = %s
         """
         cursor.execute(qry, (self.id,))
@@ -1071,35 +1126,53 @@ class Layout:
 
         self.members = []
 
-    def remove_member_by_dataset_id(self, dataset_id):
+    def remove_member_by_display_id(self, display_id):
+        """Deletes a member for a given display ID from the database."""
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        # limit removal to 1 member. TIe-breaker is highest grid_position
+        qry = """
+              DELETE FROM layout_displays
+              WHERE display_id = %s
+                AND layout_id = %s
+                ORDER BY grid_position DESC LIMIT 1
         """
-        Rather than the layout_member.id, this is a utility function to delete
-        a member based on its dataset ID.  In the future it will be possible for a
-        profile to have two representations of the same dataset in the profile, and
-        this will have to go.  For now we do a check to protect for this just in case.
-        """
-        found_member_dataset_ids = list()
-        for lm in self.members:
-            if lm.dataset_id in found_member_dataset_ids:
-                raise Exception("ERROR: Found two datasets with same ID as part of the same layout.  Not safe to remove based on dataset_id alone.")
-            else:
-                found_member_dataset_ids.append(lm.dataset_id)
+        cursor.execute(qry, (display_id, self.id))
+
+        self.members = self.get_members()
+
+        # ? Would be nice to delete empty rows, but then we have to figure out
+        #  if this was a single or multigene display, then adjust the start_row for that type
+
+        cursor.close()
+        conn.commit()
+
+    def remove_members_by_dataset_id(self, dataset_id):
+        """Deletes all members where the display ID belongs to a given dataset ID from the database."""
 
         conn = Connection()
         cursor = conn.get_cursor()
 
         qry = """
-              DELETE FROM layout_members
-              WHERE dataset_id = %s
+              DELETE FROM layout_displays
+              WHERE display_id IN (SELECT
+                                    id
+                                    FROM dataset_display
+                                    WHERE dataset_id = %s)
                 AND layout_id = %s
         """
+
         cursor.execute(qry, (dataset_id, self.id))
 
-        # make sure this member is removed from our internal list too
-        self.members = [i for i in self.members if i.dataset_id != dataset_id]
+        self.members = self.get_members()
+
+        # ? Would be nice to dynamically adjust the start_row afterwards to remove gaps
 
         cursor.close()
         conn.commit()
+
 
     def save(self):
         """
@@ -1120,9 +1193,27 @@ class Layout:
             self.id = cursor.lastrowid
         else:
             # ID already populated
-            # Update Layout properties, delete existing members, add current ones
-            # TODO
-            raise Exception("Layout.save() not yet implemented for update mode")
+            conn = Connection()
+            cursor = conn.get_cursor()
+
+            # Update layout properties
+            sql = """
+                  UPDATE layout
+                     SET user_id = %s,
+                         label = %s,
+                         is_current = %s,
+                         is_domain = %s,
+                         share_id = %s
+                   WHERE id = %s
+            """
+            cursor.execute(sql, (
+                self.user_id, self.label, self.is_current,
+                self.is_domain, self.share_id, self.id
+            ))
+
+            conn.commit()
+
+            # TODO: delete existing members, add current ones
 
         cursor.close()
         conn.commit()
@@ -1220,13 +1311,11 @@ class LayoutCollection:
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
-                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN layout_displays lm ON lm.layout_id=l.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.share_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
@@ -1256,8 +1345,9 @@ class LayoutCollection:
                 folder_parent_id=row[8],
                 folder_label=row[9]
             )
+            layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
-            layout.dataset_count = row[10]
             self.layouts.append(layout)
 
         cursor.close()
@@ -1278,13 +1368,11 @@ class LayoutCollection:
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
-                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN layout_displays lm ON lm.layout_id=l.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.user_id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
@@ -1315,7 +1403,9 @@ class LayoutCollection:
                 folder_label=row[9]
             )
 
-            layout.dataset_count = row[10]
+            layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1346,13 +1436,11 @@ class LayoutCollection:
                      JOIN guser u ON u.id=ugm.user_id
                      JOIN layout_group_membership lgm ON lgm.group_id=g.id
                      JOIN layout l ON lgm.layout_id=l.id
-                     JOIN layout_members lm ON lm.layout_id=l.id
-                     JOIN dataset d ON lm.dataset_id=d.id
+                     JOIN layout_displays lm ON lm.layout_id=l.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE u.id = %s
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
               GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
@@ -1384,7 +1472,8 @@ class LayoutCollection:
             )
 
             layout.folder_root_id=folder_id
-            layout.dataset_count = row[10]
+            layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1403,13 +1492,11 @@ class LayoutCollection:
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
-                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN layout_displays lm ON lm.layout_id=l.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.is_domain = 1
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
@@ -1440,7 +1527,8 @@ class LayoutCollection:
                 folder_label=row[9]
             )
 
-            layout.dataset_count = row[10]
+            layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
             self.layouts.append(layout)
 
         cursor.close()
@@ -1458,13 +1546,11 @@ class LayoutCollection:
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
                      f.id, f.parent_id, f.label, count(lm.id)
                 FROM layout l
-                     LEFT JOIN layout_members lm ON lm.layout_id=l.id
-                     LEFT JOIN dataset d on lm.dataset_id=d.id
+                     LEFT JOIN layout_displays lm ON lm.layout_id=l.id
                      LEFT JOIN folder_member fm ON fm.item_id=l.id
                      LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.is_public = 1
                  AND (fm.item_type = 'layout' or fm.item_type is NULL)
-                 AND d.marked_for_removal = 0
             GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry)
@@ -1495,7 +1581,9 @@ class LayoutCollection:
                 folder_label=row[9]
             )
 
-            layout.dataset_count = row[10]
+            layout.get_members()
+            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1700,6 +1788,7 @@ class Dataset:
     pubmed_id: str = None
     geo_id: str = None
     is_public: int = None
+    is_downloadable: int = None
     ldesc: str = None
     date_added: datetime.datetime = None
     dtype: str = None
@@ -1763,8 +1852,6 @@ class Dataset:
 
             self.displays.append(display)
 
-        return self.displays
-
         cursor.close()
         conn.close()
 
@@ -1817,9 +1904,10 @@ class Dataset:
                 qry = """
                       SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
-                             JOIN layout_members lm ON lm.layout_id=l.id
-                       WHERE lm.dataset_id = %s
-                             AND (user_id = 0 OR user_id = %s)
+                             JOIN layout_displays lm ON lm.layout_id=l.id
+                             JOIN dataset_display dd ON dd.id =lm.display_id
+                       WHERE dd.dataset_id = %s
+                             AND (l.user_id = 0 OR l.user_id = %s)
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id, user.id))
@@ -1827,9 +1915,10 @@ class Dataset:
                 qry = """
                       SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
-                             JOIN layout_members lm ON lm.layout_id=l.id
-                       WHERE lm.dataset_id = %s
-                             AND user_id = 0
+                             JOIN layout_displays lm ON lm.layout_id=l.id
+                             JOIN dataset_display dd ON dd.id =lm.display_id
+                       WHERE dd.dataset_id = %s
+                             AND l.user_id = 0
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id,))
@@ -1939,44 +2028,6 @@ class DatasetCollection:
         # Called when json modules attempts to serialize
         return self.__dict__
 
-    def apply_layout(self, layout=None):
-        """
-        Applying a layout to a dataset collection adds the following attributes to
-        each of the datasets according to that layout:
-
-          - grid_position
-          - mg-grid_position
-          - start_col
-          - mg_start_col
-          - grid_width
-          - mg_grid_width
-          - start_row
-          - mg_start_row
-          - grid_height
-          - mg_grid_height
-
-        """
-        if layout is None:
-            raise Exception("A layout must be passed to DatasetCollection.apply_layout()")
-
-        lm_idx = dict()
-
-        for lm in layout.members:
-            lm_idx[lm.dataset_id] = lm
-
-        for d in self.datasets:
-            if d.id in lm_idx:
-                d.grid_position = lm_idx[d.id].grid_position
-                d.mg_grid_position = lm_idx[d.id].mg_grid_position
-                d.start_col = lm_idx[d.id].start_col
-                d.mg_start_col = lm_idx[d.id].mg_start_col
-                d.grid_width = lm_idx[d.id].grid_width
-                d.mg_grid_width = lm_idx[d.id].mg_grid_width
-                d.start_row = lm_idx[d.id].start_row
-                d.mg_start_row = lm_idx[d.id].mg_start_row
-                d.grid_height = lm_idx[d.id].grid_height
-                d.mg_grid_height = lm_idx[d.id].mg_grid_height
-
     def filter_by_types(self, types=None):
         """
         Filters the collection by one or more dataset types (a list).
@@ -1995,7 +2046,7 @@ class DatasetCollection:
 
         # I tried but couldn't make this work in a single query with IN () instead.
         qry = """
-           SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
+           SELECT d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.is_downloadable, d.ldesc,
                   d.dtype, u.id, u.user_name, d.schematic_image, d.share_id,
                   d.math_default, d.marked_for_removal, d.date_added, d.load_status,
                   IFNULL(GROUP_CONCAT(t.label), 'NULL') as tags,
@@ -2007,7 +2058,7 @@ class DatasetCollection:
                   LEFT JOIN tag t ON t.id = IFNULL(dt.tag_id, 'NULL')
             WHERE d.id = %s
               AND d.marked_for_removal != 1
-        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.ldesc,
+        GROUP BY d.id, d.title, o.label, d.pubmed_id, d.geo_id, d.is_public, d.is_downloadable, d.ldesc,
                    d.dtype, u.id, u.user_name, d.schematic_image, d.share_id,
                    d.math_default, d.marked_for_removal, d.date_added, d.load_status,
                    d.annotation_source, d.annotation_release, d.organism_id
@@ -2016,17 +2067,6 @@ class DatasetCollection:
             cursor.execute(qry, (id,))
 
             for row in cursor:
-                if row[5] == 1:
-                    access_level = 'Public'
-                else:
-                    access_level = 'Private'
-
-                date_added = row[14].isoformat()
-
-                if row[16] == 'NULL':
-                    tag_list = None
-                else:
-                    tag_list = row[16].replace(',', ', ')
 
                 # valid pubmed IDs are numeric
                 m = re.match("\d+", str(row[3]))
@@ -2035,29 +2075,32 @@ class DatasetCollection:
                 else:
                     pubmed_id = None
 
+                date_added = row[15].isoformat()
+
                 dataset = Dataset(id=row[0],
-                                  title=row[1],
-                                  organism_id=row[19],
-                                  pubmed_id=pubmed_id,
-                                  geo_id=row[4],
-                                  is_public=row[5],
-                                  ldesc=row[6],
-                                  dtype=row[7],
-                                  owner_id=row[8],
-                                  schematic_image=row[10],
-                                  share_id=row[11],
-                                  math_default=row[12],
-                                  date_added=date_added,
-                                  load_status=row[15],
-                                  annotation_source=row[17],
-                                  annotation_release=row[18]
+                                title=row[1],
+                                organism_id=row[20],
+                                pubmed_id=pubmed_id,
+                                geo_id=row[4],
+                                is_public=row[5],
+                                is_downloadable=row[6],
+                                ldesc=row[7],
+                                dtype=row[8],
+                                owner_id=row[9],
+                                schematic_image=row[11],
+                                share_id=row[12],
+                                math_default=row[13],
+                                date_added=date_added,
+                                load_status=row[16],
+                                annotation_source=row[18],
+                                annotation_release=row[19]
                 )
 
                 # Add supplemental attributes this method created previously
                 dataset.organism = row[2]
-                dataset.tags = row[16].split(',')
+                dataset.tags = row[17].split(',')
                 dataset.access = 'access_level'
-                dataset.user_name = row[9]
+                dataset.user_name = dataset.owner_id
 
                 if os.path.exists(dataset.get_tarball_path()):
                     dataset.has_tarball = 1
@@ -2108,7 +2151,7 @@ class DatasetCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc,
+              SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
                      load_status, has_h5ad
                 FROM dataset d
@@ -2133,7 +2176,7 @@ class DatasetCollection:
         for r in cursor:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
-                              geo_id=r['geo_id'], is_public=r['is_public'], ldesc=r['ldesc'],
+                              geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
                               date_added=r['date_added'], dtype=r['dtype'],
                               schematic_image=r['schematic_image'], share_id=r['share_id'],
                               math_default=r['math_default'], marked_for_removal=r['marked_for_removal'],
@@ -2151,7 +2194,7 @@ class DatasetCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, ldesc,
+              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
                      load_status, has_h5ad
                 FROM dataset d
@@ -2170,7 +2213,7 @@ class DatasetCollection:
         for r in cursor:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
-                              geo_id=r['geo_id'], is_public=r['is_public'], ldesc=r['ldesc'],
+                              geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
                               date_added=r['date_added'], dtype=r['dtype'],
                               schematic_image=r['schematic_image'], share_id=r['share_id'],
                               math_default=r['math_default'], marked_for_removal=r['marked_for_removal'],
@@ -2189,7 +2232,7 @@ class DatasetCollection:
         cursor = conn.get_cursor(use_dict=True)
 
         qry = """
-              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, ldesc,
+              SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
                      load_status, has_h5ad
                 FROM dataset d
@@ -2210,7 +2253,7 @@ class DatasetCollection:
         for r in cursor:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
-                              geo_id=r['geo_id'], is_public=r['is_public'], ldesc=r['ldesc'],
+                              geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
                               date_added=r['date_added'], dtype=r['dtype'],
                               schematic_image=r['schematic_image'], share_id=r['share_id'],
                               math_default=r['math_default'], marked_for_removal=r['marked_for_removal'],
@@ -2656,7 +2699,10 @@ class GeneCartCollection:
         cart.num_genes = len(cart.genes)
         return cart
 
-    def get_by_cart_ids(self, ids=None):
+    def get_by_cart_ids(self, ids=[]):
+        if not ids:
+            raise Exception("No cart IDs provided to get_by_cart_ids")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2683,7 +2729,10 @@ class GeneCartCollection:
         conn.close()
         return self.carts
 
-    def get_by_share_ids(self, share_ids=None):
+    def get_by_share_ids(self, share_ids=[]):
+        if not share_ids:
+            raise Exception("No share_ids provided to get_by_share_ids")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2711,6 +2760,9 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_user(self, user=None):
+        if not user:
+            raise Exception("User not provided to get_by_user")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2741,6 +2793,10 @@ class GeneCartCollection:
         """
         Put here as it will be needed in the future. User groups not yet supported.
         """
+
+        if not user:
+            raise Exception("User not provided to get_by_user_groups")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2770,6 +2826,9 @@ class GeneCartCollection:
         return self.carts
 
     def get_by_user_recent(self, user=None, n=None):
+        if not user:
+            raise Exception("No user provided to get_by_user_recent")
+
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
@@ -2901,7 +2960,7 @@ class LayoutMember:
         if self.id is None:
             lm_insert_qry = """
             INSERT INTO layout_members (layout_id, dataset_id, grid_position, mg_grid_position, start_col, mg_start_col, grid_width, mg_grid_width, start_row, mg_start_row, grid_height, mg_grid_height)
-            VALUES (%s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(lm_insert_qry, (layout.id, self.dataset_id, self.grid_position, self.mg_grid_position,
                                             self.start_col, self.mg_start_col, self.grid_width,
@@ -2911,12 +2970,118 @@ class LayoutMember:
         else:
             # ID already populated
             # Update Layout properties, delete existing members, add current ones
-            raise Exception("LayoutMember.save() not yet implemented for update mode")
+            lm_update_qry = """
+            UPDATE layout_members
+            SET dataset_id = %s, grid_position = %s, mg_grid_position = %s, start_col = %s, mg_start_col = %s, grid_width = %s, mg_grid_width = %s, start_row = %s, mg_start_row = %s, grid_height = %s, mg_grid_height = %s
+            WHERE id = %s and layout_id = %s
+            """
+            cursor.execute(lm_update_qry, (self.dataset_id, self.grid_position, self.mg_grid_position,
+                                           self.start_col, self.mg_start_col, self.grid_width,
+                                           self.mg_grid_width, self.start_row, self.mg_start_row,
+                                           self.grid_height, self.mg_grid_height, self.id, layout.id))
 
         cursor.close()
         conn.commit()
         conn.close()
 
+class LayoutDisplay:
+    def __init__(self, id=None, display_id=None, grid_position=None, start_col=None, grid_width=None, start_row=None, grid_height=None):
+        self.id = id
+        self.display_id = display_id
+        self.dataset_id = None
+        self.is_multigene = None  # True if multi, False if single
+        self.grid_position = grid_position
+        self.start_col = start_col  # if not provided, fill into layout where it fits
+        self.grid_width = grid_width
+        self.start_row = start_row  # if not provided, fill into layout where it fits
+        self.grid_height = grid_height
+
+    def __repr__(self):
+        return json.dumps(self.__dict__)
+
+    def remove(self):
+        """
+        Deletes the current layout member from the database
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              DELETE FROM layout_displays
+              WHERE id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+    def get_dataset_id(self):
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = "SELECT dataset_id FROM dataset_display WHERE id = %s"
+        cursor.execute(qry, (self.display_id,))
+
+        for (dataset_id,) in cursor:
+            self.dataset_id = dataset_id
+
+        cursor.close()
+        conn.close()
+
+    def get_is_multigene(self):
+        single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
+        multi_plot_types = ["dotplot", "heatmap", "mg_violin", "quadrant", "volcano"]
+
+        qry = """
+            SELECT plot_type from dataset_display WHERE id = %s
+            """
+        conn = Connection()
+        cursor = conn.get_cursor()
+        cursor.execute(qry, (self.display_id,))
+        (plot_type,) = cursor.fetchone()
+
+        is_single = plot_type in single_plot_types
+        is_multi = plot_type in multi_plot_types
+
+        self.is_multigene = is_multi
+
+        cursor.close()
+        conn.close()
+
+
+    def save(self, layout=None):
+        """
+        Will perform a save or an update depending on whether the ID attribute is
+        defined.  If ID is already present, it's assumed to be an existing row which
+        needs to be updated.
+        """
+        if layout is None:
+            raise Exception("You must pass a layout member object to save a layout member")
+
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        if self.id is None:
+            lm_insert_qry = """
+            INSERT INTO layout_displays (layout_id, display_id, grid_position, start_col, grid_width, start_row, grid_height)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(lm_insert_qry, (layout.id, self.display_id, self.grid_position, self.start_col, self.grid_width, self.start_row, self.grid_height))
+            self.id = cursor.lastrowid
+        else:
+            # ID already populated
+            # Update Layout properties, delete existing members, add current ones
+            lm_update_qry = """
+            UPDATE layout_displays
+            SET display_id = %s, grid_position = %s, start_col = %s, grid_width = %s, start_row = %s, grid_height = %s
+            WHERE id = %s and layout_id = %s
+            """
+            cursor.execute(lm_update_qry, (self.display_id, self.grid_position, self.start_col, self.grid_width, self.start_row, self.grid_height, self.id, layout.id))
+
+        cursor.close()
+        conn.commit()
+        conn.close()
 
 class User:
     """
@@ -2924,7 +3089,7 @@ class User:
     table column name.
     """
     def __init__(self, id=None, user_name=None, email=None, institution=None, password=None,
-                 updates_wanted=None, is_admin=None, default_org_id=None, is_gear_curator=None,
+                 updates_wanted=None, is_admin=None, default_org_id=None, is_curator=None,
                  help_id=None):
         self.id = id
         self.user_name = user_name
@@ -2934,7 +3099,7 @@ class User:
         self.updates_wanted = updates_wanted
         self.is_admin = is_admin
         self.default_org_id = default_org_id
-        self.is_gear_curator = is_gear_curator
+        self.is_curator = is_curator
         self.help_id = help_id
 
         # This is a DatasetCollection and is NOT guaranteed to be all the user's datasets

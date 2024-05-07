@@ -322,7 +322,7 @@ const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX
 
 const fetchDatasets = async () => {
     try {
-        return await apiCallsMixin.fetchDatasets();
+        return await apiCallsMixin.fetchAllDatasets();
     } catch (error) {
         logErrorInConsole(error);
         const msg = "Could not fetch datasets. Please contact the gEAR team."
@@ -416,7 +416,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await fetchDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets();
 
         let counter = 0;
 
@@ -450,6 +450,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
+		createToast("Could not fetch datasets. Please contact the gEAR team.");
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 }
@@ -1262,7 +1263,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
-        createToast("Not logged in so saving gene carts is disabled.");
+        createToast("Not logged in so saving gene carts is disabled.", "is-warning");
         document.getElementById("gene-list-btn").disabled = true;
     }
 
@@ -1289,6 +1290,5 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
-
 
 };

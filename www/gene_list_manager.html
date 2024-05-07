@@ -83,7 +83,7 @@
                                 <hr class="my-2 has-background-grey-lighter">
                                 <ul class="js-expandable-target">
                                     <li class="js-all-selector">All</li>
-                                    <li class="js-selected" id="your-gene-list-filter" data-dbval="yours">Your lists</li>
+                                    <li class="js-selected" data-dbval="yours">Your lists</li>
                                     <li data-dbval="group">Group-affiliated lists</li>
                                     <li data-dbval="shared">Lists shared with you</li>
                                     <li data-dbval="public">Public lists</li>
@@ -280,18 +280,18 @@
                                         <div class="field-body">
                                             <div class="buttons has-addons" role="group" aria-label="Gene cart list view preference">
                                                 <button type="button" id="btn-table-view" class="js-view-btn button is-small is-gear-bg-secondary" aria-label="Table view" data-tooltip-content="Table view">
-                                                    <span class="icon is-small">
-                                                        <i class="mdi mdi-table-column"></i>
+                                                    <span class="icon">
+                                                        <i class="mdi mdi-18px mdi-table-column"></i>
                                                     </span>
                                                 </button>
                                                 <button type="button" id="btn-list-view-compact" class="js-view-btn button is-small is-dark" aria-label="Compact list view" data-tooltip-content="List view - Compact">
-                                                    <span class="icon is-small">
-                                                        <i class="mdi mdi-format-list-bulleted"></i>
+                                                    <span class="icon">
+                                                        <i class="mdi mdi-18px mdi-format-list-bulleted"></i>
                                                     </span>
                                                 </button>
                                                 <button type="button" id="btn-list-view-expanded" class="js-view-btn button is-small is-dark" aria-label="Expanded list view" data-tooltip-content="List view - Expanded">
-                                                    <span class="icon is-small">
-                                                        <i class="mdi mdi-window-maximize"></i>
+                                                    <span class="icon">
+                                                        <i class="mdi mdi-18px mdi-window-maximize"></i>
                                                     </span>
                                                 </button>
                                             </div>
@@ -317,8 +317,8 @@
 
                             <div class="level-right">
                                 <div class="level-item">
-                                    <div id="gc-count-label-c" class="is-hidden">
-                                        <span id="gc-count-label">Showing <span id="result-range"></span> of <span id="result-count"></span> <span id="result-label"></span></span>
+                                    <div id="count-label-c" class="is-hidden">
+                                        <span id="count-label">Showing <span id="result-range"></span> of <span id="result-count"></span> <span id="result-label"></span></span>
                                     </div>
                                 </div>
                                 <div class="level-item">
@@ -403,7 +403,7 @@
                                                 </div>
                                                 <div class="js-editable-version js-editable-organism is-hidden">
                                                     <div class="field">
-                                                        <label class="label" for="result-gc-id-${geneListId}-editable-organism-id">Organism</label>
+                                                        <label class="label">Organism</label>
                                                         <div class="control">
                                                             <div class="select">
                                                                 <select></select>
@@ -421,18 +421,20 @@
                                                     <div class="field">
                                                         <label class="label">Owner</label>
                                                         <div class="control">
-                                                            <input class="input is-static" value="${userName}" readonly>
+                                                            <input class="input is-static" readonly>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="column is-3 py-0">
-                                                <div class="js-display-version js-display-date-added"><span class="has-text-weight-semibold">Added</span> <span></span></div>
+                                                <div class="js-display-version js-display-date-added">
+                                                    <span class="has-text-weight-semibold">Added</span> <span></span>
+                                                </div>
                                                 <div class="js-editable-version js-editable-date-added is-hidden">
                                                     <div class="field">
                                                         <label class="label">Added</label>
                                                         <div class="control">
-                                                            <input class="input is-static" value="${dateAdded}" readonly>
+                                                            <input class="input is-static" readonly>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -449,38 +451,38 @@
                                                         <div class="field has-addons js-action-links my-0" role="group">
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View on front page">
-                                                                    <span class="icon is-small"><i class="mdi mdi-eye"></i></span>
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-danger js-delete-gc" data-tooltip-content="Delete list">
-                                                                    <span class="icon is-small"><i class="mdi mdi-delete"></i></span>
+                                                                <button class="button is-small is-danger js-delete-gc" data-tooltip-content="Delete list">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-delete"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv">
-                                                                    <span class="icon is-small"><i class="mdi mdi-download"></i></span>
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-download"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link">
-                                                                    <span class="icon is-small"><i class="mdi mdi-share-variant"></i></span>
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata">
-                                                                    <span class="icon is-small"><i class="mdi mdi-pencil"></i></span>
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
                                                                 </button>
                                                             </p>
                                                         </div>
                                                         <div class="field has-addons" role="group">
                                                             <p class="control">
-                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden" data-gc-id="${geneListId}">
+                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden" data-gc-id="${geneListId}">
+                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden">
                                                                     <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
                                                                 </button>
                                                             </p>

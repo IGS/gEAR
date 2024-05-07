@@ -39,8 +39,8 @@ def main():
     if owns_dataset == True:
         result = { 'success': 1, 'dataset':[] }
 
- 	# Delete dataset from referenced tables
-        remove_from_layout_members(cursor, dataset_id)
+    # Delete dataset from referenced tables
+        remove_from_layout_displays(cursor, dataset_id)
         remove_from_dataset_shares(cursor, dataset_id)
 
         # Mark dataset deleted
@@ -76,10 +76,11 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
 
     return user_owns_dataset
 
-def remove_from_layout_members(cursor, dataset_id):
+def remove_from_layout_displays(cursor, dataset_id):
     qry = """
-        DELETE FROM layout_members
-        WHERE dataset_id = %s
+        DELETE FROM layout_displays
+        JOIN dataset_display ON layout_displays.display_id = dataset_display.id
+        WHERE dataset_display.dataset_id = %s
     """
     cursor.execute(qry, (dataset_id,))
 

@@ -17,7 +17,7 @@ import geardb
 from gear.userhistory import UserHistory
 
 # limits the number of matches returned
-DEFAULT_MAX_RESULTS = 200
+DEFAULT_MAX_RESULTS = 20
 DEBUG_MODE = False
 
 def main():
@@ -26,13 +26,12 @@ def main():
 
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    custom_list = form.getvalue('custom_list')
     search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
     organism_ids = form.getvalue('organism_ids')
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
-    page = form.getvalue('page')    # page starts at 1
-    limit = form.getvalue('limit')
+    page = form.getvalue('page', "1")    # page starts at 1
+    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'gene_carts': []}
@@ -85,7 +84,7 @@ def main():
         # otherwise, give the usual self and public.
         else:
             wheres.append("AND (gc.is_public = 1 OR gc.user_id = %s)")
-            qry_params.extend([user.id])
+            qry_params.append(user.id)
 
     if search_terms:
         selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
@@ -155,7 +154,7 @@ def main():
         gc.gene_count = len(gc.genes)
         gc.organism = "{0} {1}".format(row[8], row[9])
         gc.is_owner = True if user and gc.user_id == user.id else False
-        gene_carts.append(gc)
+        gene_carts.append(gc)   # this appends as a JSON dumped string
 
     # Get count of total results
     qry_count = """
@@ -176,8 +175,8 @@ def main():
     # compile pagination information
     result["pagination"] = {}
     result["pagination"]['total_results'] = cursor.fetchone()[0]
-    result["pagination"]['current_page'] = int(page) if page else 1
-    result["pagination"]['limit'] = int(limit) if limit else DEFAULT_MAX_RESULTS
+    result["pagination"]['current_page'] = int(page)
+    result["pagination"]['limit'] = int(limit)
     result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
     result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
     result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
@@ -194,7 +193,7 @@ def main():
         history.add_record(
             user_id=user.id,
             entry_category='gene_cart_search',
-            label="Gene carts matching '{0}'".format(' '.join(search_terms)),
+            label="Gene lists matching '{0}'".format(' '.join(search_terms)),
             search_terms=search_terms,
         )
 
