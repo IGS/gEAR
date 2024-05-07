@@ -423,7 +423,7 @@ class TSNEData(Resource):
             selected = create_two_way_sorting(selected, selected_gene)
             plot_sort_order = False
 
-        if expression_palette.startswith("bluered"):
+        if expression_palette and expression_palette.startswith("bluered"):
             create_bluered_colorscale()
 
         if expression_palette.startswith("bublrd"):
@@ -433,6 +433,26 @@ class TSNEData(Resource):
             create_projection_colorscale()
 
         expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else expression_palette)
+
+
+        # These will be passed into the sc.pl.embedding function
+        columns = []
+        titles = []
+
+        # Variables that may be set based on various parameters
+        # basis=basis, color=columns, color_map=expression_color, show=False, use_raw=False, title=titles, ncols=max_cols, vmax=max_expression, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter, return_fig=True
+        kwargs = {
+            "basis": basis,
+            "color": columns,
+            "color_map": expression_color,
+            "show": False,
+            "use_raw": False,
+            "title": titles,
+            "size": marker_size,
+            "sort_order": plot_sort_order,
+            "vcenter": plot_vcenter,
+            "return_fig": True
+        }
 
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
@@ -471,17 +491,6 @@ class TSNEData(Resource):
                 # Get for legend order.
                 colorize_by_order = selected.obs[colorize_by].unique()
 
-            """
-            NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
-
-            bbox_to_anchor is the location of the legend relative to the plot frame.
-            If x and y are 0, that is the lower-left corner of the plot.
-            If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
-
-            loc is the portion of the legend that will be at the bbox_to_anchor point.
-            So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
-            """
-
             # If plotting by group the plot dimensions need to be determined
             if plot_by_group:
                 column_order = selected.obs[plot_by_group].unique()
@@ -491,96 +500,70 @@ class TSNEData(Resource):
                 max_cols = num_plots
                 if max_columns:
                     max_cols = min(int(max_columns), num_plots)
-                max_rows = ceil((num_plots) / max_cols)
-
-                # Set up the figure specs
-                figwidth = calculate_figure_width(max_cols)
-                figheight = calculate_figure_height(max_rows)
-                io_fig = plt.figure(figsize=(figwidth,figheight))
-                spec = io_fig.add_gridspec(ncols=max_cols, nrows=max_rows)
 
                 selected.obs["gene_expression"] = [float(x) for x in selected[:,selected.var.index.isin([selected_gene])].X]
                 max_expression = max(selected.obs["gene_expression"].tolist())
-
-                row_counter = 0
-                col_counter = 0
 
                 # Filter expression data by "plot_by_group" group and plot each instance
                 if order and plot_by_group in order:
                     column_order = order[plot_by_group]
 
+
                 for _,name in enumerate(column_order):
                     # Copy gene expression dataseries to observation
                     # Filter only expression values for a particular group.
-                    selected.obs["split_by_group"] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
-                    f = io_fig.add_subplot(spec[row_counter, col_counter])
-                    sc.pl.embedding(selected, basis=basis, color=["split_by_group"], color_map=expression_color, ax=f, show=False, use_raw=False, title=name, vmax=max_expression, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
-                    rename_axes_labels(f, x_axis, y_axis)
-                    col_counter += 1
-                    # Increment row_counter when the previous row is filled.
-                    if col_counter % max_cols == 0:
-                        row_counter += 1
-                        col_counter = 0
-                # Add total gene plot and color plots
-                if not skip_gene_plot:
-                    f_gene = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                    sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, ax=f_gene, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter) # Max expression is vmax by default
-                    rename_axes_labels(f_gene, x_axis, y_axis)
-                    col_counter += 1
-                    # Increment row_counter when the previous row is filled.
-                    if col_counter % max_cols == 0:
-                        row_counter += 1
-                        col_counter = 0
-                f_color = io_fig.add_subplot(spec[row_counter, col_counter])    # final plot with colorize-by group
-                sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f_color, show=False, use_raw=False, size=marker_size)
-                rename_axes_labels(f_color, x_axis, y_axis)
-                if color_category:
-                    (handles, labels) = sort_legend(f_color, colorize_by_order, horizontal_legend)
-                    f_color.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                    if horizontal_legend:
-                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                            f_color.get_legend().remove()  # Remove legend added by scanpy
+                    group_name = name + "_split_by_group"
+                    selected.obs[group_name] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
+                    columns.append(group_name)
+                    titles.append(name)
 
-            else:
-                # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
-                if skip_gene_plot:
-                    # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
-                    io_fig = plt.figure(figsize=(6, 4))
-                    if color_category and len(selected.obs[colorize_by].cat.categories) > 10:
-                        io_fig = plt.figure(figsize=(13, 4))
-                    spec = io_fig.add_gridspec(ncols=1, nrows=1)
-                    f1 = io_fig.add_subplot(spec[0,0])
-                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f1, show=False, use_raw=False, size=marker_size)
-                    rename_axes_labels(f1, x_axis, y_axis)
-                    if color_category:
-                        (handles, labels) = sort_legend(f1, colorize_by_order, horizontal_legend)
-                        f1.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                        if horizontal_legend:
-                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                            f1.get_legend().remove()  # Remove legend added by scanpy
+                kwargs["ncols"] = max_cols
+                kwargs["vmax"] = max_expression
 
-                else:
-                    # the figsize options here (paired with dpi spec above) dramatically affect the definition of the image
-                    io_fig = plt.figure(figsize=(13, 4))
-                    spec = io_fig.add_gridspec(ncols=2, nrows=1, width_ratios=[1.1, 1])
-                    f1 = io_fig.add_subplot(spec[0,0])
-                    f2 = io_fig.add_subplot(spec[0,1])
-                    sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, ax=f1, show=False, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
-                    # BUG: the line below throws error with stacktrace
-                    # ValueError: To copy an AnnData object in backed mode, pass a filename: `.copy(filename='myfilename.h5ad')`. To load the object into memory, use `.to_memory()
-                    sc.pl.embedding(selected, basis=basis, color=[colorize_by], ax=f2, show=False, use_raw=False, size=marker_size)
-                    rename_axes_labels(f1, x_axis, y_axis)
-                    rename_axes_labels(f2, x_axis, y_axis)
-                    if color_category:
-                        (handles, labels) = sort_legend(f2, colorize_by_order, horizontal_legend)
-                        f2.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                        if horizontal_legend:
-                            io_fig.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                            f2.get_legend().remove()  # Remove legend added by scanpy
+            # If 'skip_gene_plot' is set, only the colorize_by plot is printed, otherwise print gene symbol and colorize_by plots
+            if not skip_gene_plot:
+                columns.append(selected_gene)
+                titles.append(selected_gene)
+
+            columns.append(colorize_by)
+            titles.append(None)
 
         else:
-            io_fig = sc.pl.embedding(selected, basis=basis, color=[selected_gene], color_map=expression_color, return_fig=True, use_raw=False, size=marker_size, sort_order=plot_sort_order, vcenter=plot_vcenter)
-            rename_axes_labels(io_fig.axes[0], x_axis, y_axis)
+            columns.append(selected_gene)
+            titles.append(selected_gene)
+
+        io_fig = sc.pl.embedding(selected, **kwargs)
+        ax = io_fig.get_axes()
+
+        # rename axes labels
+        if type(ax) == list:
+            for f in ax:
+                # skip colorbar
+                if f.get_label() == "<colorbar>":
+                    continue
+                rename_axes_labels(f, x_axis, y_axis)
+            last_ax = ax[-1]    # color axes
+            if colorize_by and color_category:
+
+                """
+                NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
+
+                bbox_to_anchor is the location of the legend relative to the plot frame.
+                If x and y are 0, that is the lower-left corner of the plot.
+                If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
+
+                loc is the portion of the legend that will be at the bbox_to_anchor point.
+                So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
+                """
+
+                (handles, labels) = sort_legend(last_ax, colorize_by_order, horizontal_legend)
+                last_ax.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                if horizontal_legend:
+                    last_ax.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                    last_ax.get_legend().remove() # Remove legend added by scanpy
+        else:
+            rename_axes_labels(ax, x_axis, y_axis)
+
 
         # Close adata so that we do not have a stale opened object
         if selected.isbacked:

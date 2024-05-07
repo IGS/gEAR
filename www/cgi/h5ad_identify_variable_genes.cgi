@@ -58,22 +58,14 @@ def main():
     if not os.path.exists(dest_directory):
         os.makedirs(dest_directory)
 
-    # Set the .raw attribute of AnnData object to the logarithmized raw gene expression
-    #  for later use in differential testing and visualizations of gene expression.
-    adata.raw = sc.pp.log1p(adata, copy=True)
-
     # Per-cell normalize the data matrix, identify highly-variable genes and compute logarithm.
-    # Update - SAdkins - "normalize_per_cell" is deprecated so using "normalize_total"
     sc.pp.normalize_total(adata, target_sum=norm_counts_per_cell)
 
     # log the data
     sc.pp.log1p(adata)
     adata.raw = adata
 
-    # This next command hits a memory issue if not backed.  But the previous commands fail for various reasons if backed.  So back up now
-    adata.filename = dest_datafile_path + ".backed.h5ad"
-    #print(adata.isbacked)
-
+    # SAdkins - For some reason, if adata is backed these will fail when a copy of adata.X is made by the function.
     if n_top_genes:
         sc.pp.highly_variable_genes(
             adata, flavor=flavor, n_top_genes=n_top_genes)

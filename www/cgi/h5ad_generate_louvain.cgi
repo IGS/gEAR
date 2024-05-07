@@ -54,10 +54,12 @@ def main():
 
         adata.obs.drop(columns=["louvain", "orig_louvain"], errors="ignore", inplace=True)
 
-        # NOTE - Occasionally I run out of memory computing this step on Docker,
-        # especially if I want to do downstream stuff.
-        # If this happens, set 'flavor="igraph"' which uses a different package.
-        sc.tl.louvain(adata, resolution=resolution)
+        sc.tl.leiden(adata, resolution=resolution)
+
+        # rename the leiden column to louvain to not break things elsewhere
+        adata.obs.rename(columns={"leiden":"louvain"}, inplace=True)
+
+
         adata.obs["orig_louvain"] = adata.obs["louvain"].astype(int)   # Copy cluster ID so it's easier to rename categories
         adata.write(dest_datafile_path)
 

@@ -164,6 +164,7 @@ def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=No
     if not priority_groups:
         return df
 
+    # If observed=False, then all groupings will be present in the final dataframe
     grouped = df.groupby(priority_groups, observed=False)
 
     # Discrete colorscale or no colorscale
