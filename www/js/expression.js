@@ -202,7 +202,7 @@ const buildStateURL = () => {
     }
 
     // are we doing exact matches?
-    if (document.querySelector('#gene-search-exact-match').checked) {
+    if (document.getElementById('gene-search-exact-match').checked) {
         url.searchParams.append('gene_symbol_exact_match', '1');
     }
 
@@ -237,7 +237,7 @@ const fetchGeneAnnotations = async (callback) => {
     try {
         annotation_data = await apiCallsMixin.fetchGeneAnnotations(
             Array.from(selected_genes).join(','),
-            document.querySelector('#gene-search-exact-match').checked,
+            document.getElementById('gene-search-exact-match').checked,
             selected_dc_share_id,
             is_multigene
         );
@@ -246,17 +246,18 @@ const fetchGeneAnnotations = async (callback) => {
         gene_result_count_elt.innerHTML = Object.keys(annotation_data).length;
         gene_result_count_elt.parentElement.classList.remove('is-hidden');
 
+        // Render template based on the number of annotations
         if (Object.keys(annotation_data).length === 0) {
-            const no_history_template = document.querySelector('#tmpl-gene-result-none-found');
-            document.querySelector('#gene-result-list').appendChild(no_history_template.content.cloneNode(true));
+            const no_history_template = document.getElementById('tmpl-gene-result-none-found');
+            document.getElementById('gene-result-list').appendChild(no_history_template.content.cloneNode(true));
         } else {
-            const template = document.querySelector('#tmpl-gene-result-item');
-            document.querySelector('#gene-result-list').innerHTML = '';
+            const template = document.getElementById('tmpl-gene-result-item');
+            document.getElementById('gene-result-list').innerHTML = '';
 
             for (const gene_symbol in annotation_data) {
                 const row = template.content.cloneNode(true);
                 row.querySelector('li').innerHTML = gene_symbol;
-                document.querySelector('#gene-result-list').appendChild(row);
+                document.getElementById('gene-result-list').appendChild(row);
 
                 // due to a python issue, at some point in depth the data becomes a string. Parse it.
                 for (const organism_id in annotation_data[gene_symbol]['by_organism']) {
@@ -273,7 +274,7 @@ const fetchGeneAnnotations = async (callback) => {
 const fetchOrganisms = async (callback) => {
     try {
         const orgs = await apiCallsMixin.fetchOrganismList();
-        const template = document.querySelector('#tmpl-organism-option');
+        const template = document.getElementById('tmpl-organism-option');
 
         for (const organism of orgs['organisms']) {
             const row = template.content.cloneNode(true);
@@ -286,11 +287,11 @@ const fetchOrganisms = async (callback) => {
                 currently_selected_org_id = organism.id;
             }
 
-            document.querySelector('#organism-selector').appendChild(row);
+            document.getElementById('organism-selector').appendChild(row);
         }
 
     } catch (error) {
-        createToast("There was an error fetching the organism list (" + error + ")");
+        createToast(`There was an error fetching the organism list (${error})`);
     }
 }
 
@@ -393,9 +394,9 @@ const parseGeneCartURLParams = () => {
     const is_multigene_param = getUrlParameter('is_multigene');
     is_multigene = is_multigene_param === '1';
     if (is_multigene) {
-        document.querySelector('#single-multi-multi').checked = true;
+        document.getElementById('single-multi-multi').checked = true;
     } else {
-        document.querySelector('#single-multi-single').checked = true;
+        document.getElementById('single-multi-single').checked = true;
     }
 }
 
@@ -409,11 +410,11 @@ const parseDatasetCollectionURLParams = () => {
 
     selected_dc_share_id = layoutShareId;
     selected_dc_label = dataset_collection_label_index[layoutShareId];
-    document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
+    document.getElementById('dropdown-dc-selector-label').innerHTML = selected_dc_label;
 }
 
 const selectGeneResult = (gene_symbol) => {
-    const selected_organism_id = document.querySelector('#organism-selector').value;
+    const selected_organism_id = document.getElementById('organism-selector').value;
     currently_selected_gene_symbol = gene_symbol;
 
     // if no organism is selected, display a tooltip to choose one

@@ -226,8 +226,8 @@ const customNumericSort = (a, b) => {
  * Populates the pattern results list with weights.
  */
 const populatePatternResultsList = () => {
-    const template = document.querySelector('#tmpl-pattern-result-item');
-    document.querySelector('#pattern-result-list').innerHTML = '';
+    const template = document.getElementById('tmpl-pattern-result-item');
+    document.getElementById('pattern-result-list').innerHTML = '';
 
     // sort the selectedWeights array based on the numeric value at the end of each string
     const sortedLabels = selectedPattern.selectedWeights.map((weight) => weight.label).sort(customNumericSort);
@@ -236,13 +236,13 @@ const populatePatternResultsList = () => {
         const row = template.content.cloneNode(true);
         row.querySelector('li').innerHTML = label;
         row.querySelector('li').dataset.weight = label;
-        document.querySelector('#pattern-result-list').appendChild(row);
+        document.getElementById('pattern-result-list').appendChild(row);
 
         const thisRow = document.querySelector(`.pattern-result-list-item[data-weight="${label}"]`);
         thisRow.addEventListener('click', (event) => {
 
             // remove is-selected from all the existing rows, then add it to this one
-            const rows = document.querySelectorAll('.pattern-result-list-item');
+            const rows = document.getElementsByClassName('pattern-result-list-item');
             for (const row of rows) {
                 row.classList.remove('is-selected');
             }
